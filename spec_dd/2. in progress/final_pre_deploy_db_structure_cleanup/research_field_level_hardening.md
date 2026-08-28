@@ -2,323 +2,336 @@
 
 ## Executive summary
 
-Of the seven areas in scope, only one is genuinely time-sensitive: **timestamps**. Adding
-`created_at`/`updated_at` to a model that has never had them is the one change in this whole unit that
-cannot be done honestly after rows exist — a backfilled `created_at` on an existing row is not a
-recovered fact, it is a fabricated one (it can only ever be "whenever the migration ran" or an arbitrary
-chosen default), and there is no way to later tell a genuine value from a fabricated one by looking at the
-column. Do this now, on the models that have **no** timestamp of any kind today: `accounts.User` (zero
-timestamps at all — not even a signup date), `student_management.Cohort` and `CohortMembership`, every
-concrete `content_engine` model (11 of them — genuinely zero timestamp coverage across the app),
-`organisations.Organisation`, and the three deadline models `CohortDeadline`/`StudentDeadline`/
-`UserCohortDeadlineOverride`. There is no single abstract base that can absorb all of these: `SiteAwareModel`
-(`freedom_ls/site_aware_models/models.py:79-84`) doesn't cover `User` (which subclasses the lower
-`SiteAwareModelBase`, `accounts/models.py:67`) or `role_based_permissions.SystemRoleAssignment` (a plain
-`models.Model`, `role_based_permissions/models.py:9-14`) — so the right shape is a small standalone
-`TimestampedModel` mixin applied explicitly per model, not bolted onto `SiteAwareModel` itself. Renaming the
-*existing*, already-populated domain timestamps (`registered_at`, `assigned_at`, `requested_at`, `timestamp`)
-to a uniform name is **not** in the same bucket — a Postgres column rename is a metadata-only operation at
-any table size, so that is cosmetic and safe to defer (do-later), and several of those names genuinely carry
-domain meaning `created_at` doesn't (`registered_at` ≠ "row created", it is "access granted"). Everything
-else in this unit is genuinely optional or genuinely already fine: `accounts.User`'s integer PK next to
-everyone else's UUID PK is a defensible, not a broken, choice — FK columns auto-match their target's type so
-there is no internal inconsistency, the one real cost (User's PK is exposed, sequential, and enumerable in
-educator-interface URLs, `freedom_ls/panel_framework/views.py:541`, unlike every UUID-keyed object) is real
-but low-severity given email is the actual login/authorization key, and converting it now would touch
-FKs in 7 apps plus already-shipped webhook payload shapes (`user_id` sent as a raw int,
-`freedom_ls/student_management/models.py:97`, next to `course_id` explicitly cast to `str`, line 99) for a
-benefit that doesn't clear the "materially cheaper now" bar — recommend leaving it, documenting the choice.
-The `role_based_permissions.ObjectRoleAssignment.object_id` `CharField(255)` vs. the `UUIDField` used by
-every other GFK in the codebase is not an inconsistency to fix either: it is the *correct* choice given
-`ObjectRoleAssignment` targets are open-ended (any future model, possibly non-UUID), while every other GFK
-in FLS targets a closed, guaranteed-UUID set (content_engine models) — recommend documenting the rule, not
-unifying the types. Constraint naming/shape issues (`unique_cohort_name_per_site` misnamed,
-`CourseInterest` missing `site` where its near-twin `CourseApplication` has it, `unique_together` vs.
-`UniqueConstraint`) are all real but all cosmetic-to-lightly-defensive and all cheap at any time (Postgres
-constraint/index renames are metadata-only) — pick the convention now (free), defer the actual renames
-(do-later). `collection` → `course` on three FK fields is real and worth doing, but by the task's own bar it
-is equally cheap later (a field rename touches the same call sites regardless of when it happens) — do-later.
-Index coverage: nothing found rises above "cheap later via `CREATE INDEX CONCURRENTLY`" — say so plainly
-rather than manufacture urgency. JSONField usage is, on inspection, well-judged everywhere except one: `tags`
-(`content_engine/models.py:67`) is used as an admin `list_filter` (`content_engine/admin.py:133` etc.) despite
-being a JSON list, which doesn't filter usefully as JSON and already has a same-file precedent for the
-correct type (`Course.learning_outcomes` is an `ArrayField`, `content_engine/models.py:210-217`) — worth
-matching that precedent while the table is empty, though not urgent. `access_config` and `scores` — the two
-cases flagged for scrutiny — both hold up as genuinely correct JSONField uses: `access_config` is explicitly
-backend-owned/opaque by design (`content_engine/models.py:178-181`, enforced by a system check,
-`freedom_ls/course_access/checks.py`), and `scores` is polymorphic by strategy (a flat `{score, max_score}`
-for quizzes vs. a nested category tree for `CATEGORY_VALUE_SUM`, `student_progress/models.py:235-361`),
-never queried at the DB level, and about to be restructured by the in-flight `better_course_progress_tracking`
-spec anyway — not evaluated further here.
+Timestamps are the only genuinely time-sensitive item in this unit. `auto_now_add=True` records
+insertion time; adding it after rows exist means every pre-existing row gets either the migration's
+run time or an arbitrary backfill, and nothing in the row can later distinguish a real value from a
+fabricated one. FLS has no production rows yet, so every `created_at` added now is accurate from its
+first row. `accounts.User` (`freedom_ls/accounts/models.py:67-134`) has no timestamp of any kind, not
+even a signup date, and is the flagship case. `content_base.BaseContent` and its eight concrete
+subclasses across `content_engine` and `form_engine` are the second: one abstract-base fix reaches all
+eight, but three sibling models (`File`, `ContentCollectionItem`, `form_engine.QuestionOption`) sit
+outside that base and need the same fix applied individually. `updated_at` is a different question:
+its semantics survive a late addition honestly ("last touched since we started tracking"), so it is
+do-later everywhere it is missing, with one real trap: role assignments in `role_based_permissions`
+are deactivated through `QuerySet.update()`, which never runs `auto_now`, so an `updated_at` added
+there would need those call sites fixed in the same change or it would silently go stale.
+
+Constraints and indexes are all do-later. A Postgres column, index or constraint rename is
+catalog-only (`ALTER TABLE ... RENAME COLUMN` / `RENAME CONSTRAINT`) at any table size, so
+`Cohort`'s misnamed `unique_cohort_name_per_site` and the `"site"` vs `"site_id"` spelling
+inconsistency in `Meta.constraints` cost the same now or later. `CourseInterest`'s constraint omits
+`site` where `CourseApplication`'s includes it, and the newer `Learner` model omits it too, so the
+asymmetry is now three-way, not two, and none of the three is reachable in practice because `user`,
+`course` and `organisation` are all themselves site-scoped. Every index gap found (`ContentCollectionItem`'s
+missing composite indexes, `WebhookEndpoint.event_types`'s un-indexed JSON containment lookup) closes
+later with `CREATE INDEX CONCURRENTLY` without meaningful lock contention, so none of them are pre-deploy
+items.
+
+Field types are mostly sound. `BaseContent.tags` (`freedom_ls/content_base/models.py:22`) is a JSON list
+used as an admin `list_filter`, which filters by exact-list-value rather than "contains this tag,"
+one field away from `Course.learning_outcomes`, which already uses the correct `ArrayField` for the
+same shape. `access_config` and `scores` are genuinely schemaless/polymorphic by design and hold up.
+`default_auto_field` is declared in 19 `apps.py` files but is consulted in exactly two: `accounts`
+(`accounts.User`'s `id` is a bare, undeclared pk, so Django fills it in from `AccountsConfig.default_auto_field`)
+and `role_based_permissions` (`SystemRoleAssignment`, a plain `models.Model`). Every other app's concrete
+models extend `SiteAwareModel`, which declares its own UUID `id` explicitly, so the setting is dead
+weight everywhere else.
 
 ## 1. Timestamps
 
-**The backfill-honesty argument, precisely.** `auto_now_add=True` records the instant a row was inserted.
-Adding that field via a migration *after* rows already exist forces a choice for every pre-existing row:
-either a one-off default applied at migration time (every existing row gets the *migration's* run time, not
-its true creation time) or a nullable backfill with no source of truth to backfill *from* (there is nothing
-elsewhere in the row that records when it first existed). Either way, the resulting column is permanently and
-undetectably wrong for every row that predates the migration — there is no way to tell, from the data alone,
-which `created_at` values are real and which are fabricated. This is qualitatively different from every other
-finding in this unit: a missing index is merely slow, a misnamed constraint is merely confusing, a wrong field
-name is merely awkward — all recoverable, lossless fixes at any time. A missing `created_at` is the one case
-where waiting destroys information that cannot be reconstructed. FLS has zero production rows today
-(per the idea's premise) — every `created_at` added now is accurate from the first row it ever has.
+### Current inventory
 
-**Renaming existing, already-correct timestamps is a different, non-urgent question.** `RenameField` in
-Postgres is `ALTER TABLE ... RENAME COLUMN`, a catalog-only operation that doesn't rewrite the table and costs
-the same whether the table has zero rows or ten million. So standardising `registered_at` → `created_at` (or
-similar) later is genuinely no more expensive after deploy than before it — that piece is do-later, not
-do-now, and several of the existing names are arguably *better* than a generic `created_at` would be:
-`registered_at` names a domain event (access granted), not merely "row created"; `assigned_at`
-(`role_based_permissions/models.py:30,63,103`) is the same pattern for role grants; `student_progress`'s
-`start_time`/`completed_time`/`last_accessed_time` name attempt-lifecycle events that a bare
-`created_at`/`updated_at` pair would not replace, only duplicate.
-
-**Where there is genuinely nothing today (do now):**
-
-| Model | Current state | Recommendation | Judgement |
+| Model | Path | Timestamp fields | Base |
 |---|---|---|---|
-| `accounts.User` (`accounts/models.py:67-134`) | No timestamp field of any kind — not even a signup date | Add `created_at` (`auto_now_add`); `updated_at` optional but cheap to add alongside | **Do-now** — flagship backfill-honesty case; account age is a routine reporting/support need with no field to derive it from later |
-| `student_management.Cohort` (`models.py:16-32`) | None | Add `created_at` | **Do-now** — cheap, and cohorts are long-lived administrative objects worth dating |
-| `student_management.CohortMembership` (`models.py:35-48`) | None | Add `created_at` (reads as "joined cohort at") | **Do-now** — directly reportable ("when did this student join"); check for overlap with `better_course_progress_tracking`'s `CourseRun` provenance work before implementing, since that spec is mid-flight on adjacent membership/registration semantics |
-| `content_engine` — `Topic`, `Activity`, `Course`, `CoursePart`, `Form`, `FormPage`, `FormContent`, `FormQuestion` (all via `BaseContent`, `models.py:55-101`) | None — 8 models with zero timestamp coverage | Add `created_at`/`updated_at` to `BaseContent` (single field addition, propagates to all 8) | **Do-now** — flagship case #2: content is loaded/re-loaded via a file-based pipeline (`content_engine/management/commands/content_save.py`, which touches nothing timestamp-related today), so "when was this last edited" is currently unanswerable and would stay unanswerable forever for anything imported before the field existed |
-| `content_engine.QuestionOption`, `File`, `ContentCollectionItem` (`models.py:552-606`, `381-418`) | None — these three extend `SiteAwareModel` directly, not `BaseContent`, so a `BaseContent` fix does not cover them | Add `created_at`/`updated_at` individually | **Do-now** — same reasoning as above; call out explicitly so the `BaseContent` fix isn't assumed to be complete coverage |
-| `organisations.Organisation` (`models.py:28-60`) | None | Add `created_at` | **Do-now** — cheap, small table, genuinely useful ("when was this org onboarded") |
-| `student_management.CohortDeadline`, `StudentDeadline`, `UserCohortDeadlineOverride` (`models.py:135-290`) | None | Add `updated_at` at minimum (audit trail for deadline extensions — "was this deadline changed after it passed" is a real dispute-resolution question); `created_at` too, cheap alongside | **Do-now** — small, cheap, and the value (audit trail on a disputable admin action) is real, not decorative. Note: `StudentDeadline` is being renamed to `LearnerDeadline` by the in-flight `learner-terminology-rename` spec (`spec_dd/2. in progress/learner-terminology-rename/idea.md:83-91`) — land timestamps under whichever name lands first, don't block on the rename |
+| `accounts.User` | `accounts/models.py:67` | none | `SiteAwareModelBase` (bare `id`, filled by `default_auto_field`) |
+| `accounts.SiteSignupPolicy` | `accounts/models.py:137` | none | `SiteAwareModel` |
+| `accounts.LegalConsent` | `accounts/models.py:161` | `timestamp` (`auto_now_add`, `:182`) | `SiteAwareModel` |
+| `organisations.Organisation` | `organisations/models.py:58` | none | `SiteAwareModel` |
+| `learner_management.Cohort` | `learner_management/models.py:32` | none | `SiteAwareModel` |
+| `learner_management.Learner` | `learner_management/models.py:51` | `created_at` (`auto_now_add`, `:70`) | `SiteAwareModel` |
+| `learner_management.CohortMembership` | `learner_management/models.py:83` | none | `SiteAwareModel` |
+| `learner_management.LearnerCourseRegistration` | `learner_management/models.py:108` | `registered_at` (`auto_now_add`, `:118`) | `SiteAwareModel` |
+| `learner_management.CohortCourseRegistration` | `learner_management/models.py:132` | `registered_at` (`auto_now_add`, `:144`) | `SiteAwareModel` |
+| `learner_management.CohortDeadline` | `learner_management/models.py:158` | none | `SiteAwareModel` |
+| `learner_management.LearnerDeadline` | `learner_management/models.py:205` | none | `SiteAwareModel` |
+| `learner_management.UserCohortDeadlineOverride` | `learner_management/models.py:252` | none | `SiteAwareModel` |
+| `learner_management.RecommendedCourse` | `learner_management/models.py:319` | `created_at` (`auto_now_add`, `:338`) | `SiteAwareModel` |
+| `learner_progress.TopicProgress` | `learner_progress/models.py:59` | `start_time` (`auto_now_add`, `:87`), `last_accessed_time` (`auto_now`, `:88`), `complete_time` (`:89`) | `SiteAwareModel` |
+| `learner_progress.CourseProgress` | `learner_progress/models.py:106` | `created_at` (`auto_now_add`, `:138`), `started_at` (`:139`), `last_accessed_time` (`:140`), `completed_time` (`:141`) | `SiteAwareModel` |
+| `learner_progress.CourseFormAttempt` | `learner_progress/models.py:242` | none | `SiteAwareModel` |
+| `content_base.BaseContent` / `TitledContent` / `MarkdownContent` (→ `content_engine.Topic`, `Activity`, `Course`, `CoursePart`; `form_engine.Form`, `FormPage`, `FormContent`, `FormQuestion`) | `content_base/models.py:10,59,79` | none, on all eight concrete subclasses | `SiteAwareModel` |
+| `content_engine.File` | `content_engine/models/files.py:30` | none | `SiteAwareModel` (direct, not via `BaseContent`) |
+| `content_engine.ContentCollectionItem` | `content_engine/models/courses.py:270` | none | `SiteAwareModel` (direct) |
+| `form_engine.QuestionOption` | `form_engine/models.py:172` | none | `SiteAwareModel` (direct) |
+| `form_engine.FormProgress` | `form_engine/models.py:193` | `start_time` (`auto_now_add`, `:204`), `last_updated_time` (`auto_now`, `:205`), `completed_time` (`:206`) | `SiteAwareModel` |
+| `form_engine.QuestionAnswer` | `form_engine/models.py:568` | `last_updated_time` (`auto_now`, `:579`) only, no `created_at` | `SiteAwareModel` |
+| `role_based_permissions.SystemRoleAssignment` | `role_based_permissions/models.py:9` | `assigned_at` (`auto_now_add`, `:30`) | plain `models.Model` |
+| `role_based_permissions.SiteRoleAssignment` | `role_based_permissions/models.py:46` | `assigned_at` (`auto_now_add`, `:63`) | `SiteAwareModel` |
+| `role_based_permissions.ObjectRoleAssignment` | `role_based_permissions/models.py:80` | `assigned_at` (`auto_now_add`, `:103`) | `SiteAwareModel` |
+| `course_interest.CourseInterest` | `course_interest/models.py:17` | `created_at` (`auto_now_add`, `:38`) | `SiteAwareModel` |
+| `course_applications.CourseApplication` | `course_applications/models.py:17` | `created_at` + `updated_at` (`:42-43`) | `SiteAwareModel` |
+| `app_authentication.Client` | `app_authentication/models.py:8` | `created_at` + `updated_at` (`:24-25`) | `SiteAwareModel` |
+| `webhooks.WebhookEndpoint` | `webhooks/models.py:48` | `created_at` + `updated_at` (`:73-74`) | `SiteAwareModel` |
+| `webhooks.WebhookEvent` | `webhooks/models.py:366` | `created_at` (`:369`) only (immutable event record, no update expected) | `SiteAwareModel` |
+| `webhooks.WebhookDelivery` | `webhooks/models.py:375` | `created_at` (`:392`) only, mutated repeatedly by retries with no `updated_at` | `SiteAwareModel` |
+| `webhooks.WebhookSecret` | `webhooks/models.py:415` | `created_at` + `updated_at` (`:422-423`) | `SiteAwareModel` |
+| `reports.GeneratedReport` | `reports/models.py:42` | `requested_at` (`auto_now_add`, `:67`), `started_at`, `finished_at` (`:68-69`) | `SiteAwareModel` |
 
-**Where an existing name is legitimately domain-specific (leave as-is):**
+### The backfill-honesty argument
 
-| Model.field | Why it's not `created_at` in disguise |
+A `created_at` added by migration after rows exist forces a choice for every pre-existing row: a
+one-off default at migration time, or a nullable backfill with nothing in the row to backfill from.
+Either way the column reads as a real historical fact but is not one, and there is no way to tell
+which values are genuine from the data alone. `updated_at` does not have this problem: its contract is
+"last touched," and a value stamped at the moment the column was added honestly means "not known to
+have changed since." Nobody reads an `updated_at` as a claim about the distant past the way a
+`created_at` implies row age. So a missing `created_at` is do-now wherever it can still be added before
+real rows exist; a missing `updated_at` is do-later, with one condition below.
+
+`ALTER TABLE ... RENAME COLUMN` and `RENAME CONSTRAINT` are catalog-only operations in Postgres: they
+update `pg_attribute`/`pg_constraint` and take a brief lock, without rewriting table data, regardless of
+row count. Renaming `registered_at` to `created_at`, or `unique_cohort_name_per_site` to something
+accurate, costs the same today as after a million rows exist.
+
+### Ranked: genuinely zero timestamp coverage today (do now)
+
+Ranked by how much the absence costs, most severe first.
+
+| Model | Why it ranks here | Judgement |
+|---|---|---|
+| `accounts.User` (`accounts/models.py:67-134`) | The most-referenced row in the schema (every FK in the system eventually points here) has no signup date, no way to answer "how old is this account." Nothing else in the row proxies for it. | Do now: add `created_at` |
+| `content_base.BaseContent` subclasses (`Topic`, `Activity`, `Course`, `CoursePart`, `Form`, `FormPage`, `FormContent`, `FormQuestion`) | One field on one abstract base reaches all eight. Content is edited and re-imported via `content_engine/management/commands/content_save.py`, so "when was this last changed" is currently unanswerable and stays that way for anything imported before the field exists. | Do now: add to `BaseContent` |
+| `content_engine.File`, `content_engine.ContentCollectionItem`, `form_engine.QuestionOption` | Same content-type family as above, but they extend `SiteAwareModel` directly, not `BaseContent`, so the fix above does not reach them. Easy to assume coverage is complete and miss these three. | Do now: add individually |
+| `organisations.Organisation` | Small table, cheap, and "when was this org onboarded" is a real, low-effort question to be able to answer later. | Do now: add `created_at` |
+| `learner_management.Cohort`, `CohortMembership` | Long-lived administrative objects with no creation record at all. | Do now: add `created_at` |
+| `learner_management.CohortDeadline`, `LearnerDeadline`, `UserCohortDeadlineOverride` | Deadlines are disputable admin actions. "Was this deadline changed after it passed" needs `updated_at` specifically, not just `created_at`, since these rows are edited in place. | Do now: add `created_at` and `updated_at` |
+| `accounts.SiteSignupPolicy` | Free and cheap, but low value: one row per site, rarely touched. Lowest priority in this list. | Do now, no urgency attached |
+| `learner_progress.CourseFormAttempt` | Zero timestamps, but the sitting's real timestamp (`start_time`/`completed_time`) already lives one hop away on `form_progress` (`freedom_ls/form_engine/models.py:204,206`). The row itself is a pure join, so a `created_at` here would duplicate information already reachable, not recover lost information. | Lowest priority of the zero-coverage group; cheap to add, not clearly needed |
+
+### An existing timestamp that is not what it looks like
+
+`form_engine.QuestionAnswer.last_updated_time` (`form_engine/models.py:579`) is `auto_now=True` with no
+paired `created_at`. `save_answers()` (`form_engine/models.py:286-307`) calls
+`get_or_create()` then overwrites `text_answer`/`selected_options` and saves again on every visit to a
+form page, so `last_updated_time` is rewritten on every edit and the original submission time is lost
+the moment a learner revisits a page and changes an answer. This is not yet a backfill problem (no rows
+exist), but it will become the same "unrecoverable once overwritten" shape as `created_at` the first
+time a real answer gets edited twice. Cheap to fix now (add `created_at = models.DateTimeField(auto_now_add=True)`)
+while there is nothing to lose.
+
+### Where an existing domain name is correct and should not become `created_at`
+
+| Model.field | Why it earns a name of its own |
 |---|---|
-| `UserCourseRegistration.registered_at`, `CohortCourseRegistration.registered_at` (`student_management/models.py:65,121`) | Names "access granted", a real domain event distinct from generic row-creation semantics used elsewhere |
-| `role_based_permissions.*.assigned_at` (`models.py:30,63,103`) | Names "role assigned"; for these models assignment and creation happen to be the same instant, but the name carries intent a generic `created_at` wouldn't |
-| `accounts.LegalConsent.timestamp` (`accounts/models.py:182`) | An append-only audit record; "timestamp" reads correctly as "when this consent was recorded" in a compliance context |
-| `student_progress` — `start_time`, `last_updated_time`, `completed_time`, `last_accessed_time`, `complete_time` (`student_progress/models.py:88-90,515-517,542-544`) | Attempt-lifecycle semantics a bare created/updated pair would duplicate, not replace. Not evaluated further — `better_course_progress_tracking` is actively restructuring these models into the `CourseRun` shape (`spec_dd/2. in progress/better_course_progress_tracking/idea.md:41-54`) |
-| `reports.GeneratedReport.requested_at` (`reports/models.py:69`) | Borderline: row-creation *is* the request event here, so this is closer to `created_at` wearing a label than the others above. Still: a rename is a metadata-only operation at any time — **do-later**, not urgent |
+| `LearnerCourseRegistration.registered_at`, `CohortCourseRegistration.registered_at` | Names "access granted," a domain event, not "row created." |
+| `role_based_permissions.*.assigned_at` | Names "role assigned." For these models assignment and creation are the same instant, but the name still carries intent a bare `created_at` would not. |
+| `accounts.LegalConsent.timestamp` | An append-only compliance record; "timestamp" reads correctly as "when this consent was recorded." |
+| `learner_progress.TopicProgress.start_time`, `.last_accessed_time`, `.complete_time`; `CourseProgress.started_at`, `.last_accessed_time`, `.completed_time` | Attempt/registration-lifecycle semantics a bare created/updated pair would duplicate, not replace. `CourseProgress.created_at` and `.started_at` are already split and documented as non-interchangeable (`learner_progress/models.py:134-138`): `created_at` is the registration date, `started_at` is first content access. |
+| `reports.GeneratedReport.requested_at` | Row-creation genuinely is the request event here, so this is closer to `created_at` wearing a label than the others above. Still a metadata-only rename if it ever moves. |
 
-**Where an app already gets it right (the convention to standardise toward, no action needed):**
-`webhooks` (`created_at`/`updated_at` throughout, `webhooks/models.py:73-74,369,392,422-423`), `course_interest`
-(`created_at`, `models.py:38`), `course_applications` (`created_at`+`updated_at`, `models.py:42-43`), the new
-`Learner` model from the in-flight `learners-associated-with-organisations` spec (`created_at`,
-`spec_dd/2. in progress/learners-associated-with-organisations/idea.md:59`). These four are the pattern: name
-it `created_at`/`updated_at` unless a more specific domain name genuinely earns its keep.
+### Where the convention already reads right
 
-**Mixin placement.** No abstract base in FLS currently carries timestamps. `SiteAwareModel`
-(`site_aware_models/models.py:79-84`) is the obvious first place to look, but it would miss `accounts.User`
-(subclasses the lower `SiteAwareModelBase`, `models.py:53-77`, not `SiteAwareModel`) and
-`role_based_permissions.SystemRoleAssignment` (a plain `models.Model`, `role_based_permissions/models.py:9-14`,
-deliberately not site-aware) — exactly the two models with the least timestamp coverage today. Recommend a
-small standalone `TimestampedModel(models.Model)` abstract mixin (two fields, `abstract = True`) applied
-explicitly to each model that needs it, mixed in alongside `SiteAwareModel`/`SiteAwareModelBase`/`models.Model`
-as appropriate, rather than folded into `SiteAwareModel` itself. **Judgement: do-now** — this is a one-time
-design decision that is free to make now and expensive to unwind once a dozen models have each grown their
-own copy-pasted pair of fields.
+`webhooks.WebhookEndpoint`/`WebhookSecret`, `course_applications.CourseApplication`,
+`app_authentication.Client` (all `created_at` + `updated_at`), and `course_interest.CourseInterest`,
+`learner_management.Learner`, `learner_management.RecommendedCourse` (all bare `created_at`) are the
+pattern: use `created_at`/`updated_at` unless a domain name earns its keep, per the table above.
 
-## 2. PK types
+### Mixin placement
 
-**This is not a relational-integrity problem.** Django infers a FK column's type from its target's PK
-automatically, so every FK pointing at `accounts.User` across the codebase already agrees with `User`'s
-`BigAutoField` — there is no place where a UUID and an integer are forced to compare or join against each
-other. Verified: at least 7 apps carry a FK to `User` — `accounts` (`LegalConsent.user`, `models.py:174-178`),
-`role_based_permissions` (`SystemRoleAssignment.user`, `SiteRoleAssignment.user`,
-`ObjectRoleAssignment.user`, `models.py:16-20,49-53,83-87`), `student_management`
-(`CohortMembership.user`, `UserCourseRegistration.user`, `UserCohortDeadlineOverride.user`,
-`RecommendedCourse.user`, `models.py:37,63,237,299-303`), `student_progress` (`FormProgress.user`,
-`TopicProgress.user`, `CourseProgress.user`, `models.py:85-87,509-511,536-538`), `reports`
-(`requested_by`, `models.py:56-62`), `course_interest` (`user`, `models.py:28-32`), `course_applications`
-(`user`, `models.py:32-36`) — none of them are typed inconsistently with each other; the type follows `User`
-automatically in every case. So "PK types disagree" is accurate as a *description* but not, by itself,
-evidence of a defect.
+No abstract base in FLS carries timestamps today. `SiteAwareModel` (`site_aware_models/models.py:79-84`)
+adds a UUID `id` on top of `SiteAwareModelBase`'s site FK, and every concrete model in the system
+extends one of these two except `accounts.User` (extends the lower `SiteAwareModelBase` directly, no
+UUID pk) and `role_based_permissions.SystemRoleAssignment` (a plain `models.Model`, deliberately not
+site-aware, per its own docstring at `role_based_permissions/models.py:10-14`). Those two are exactly
+the models with the least timestamp coverage.
 
-**Where it is real: exposure and enumeration, not correctness.** `accounts.User`'s `BigAutoField` produces
-small, sequential, guessable integers. Every other object in the system that appears in a URL is a UUID —
-verified concretely: the educator interface builds detail-page URLs by interpolating `current_instance.pk`
-directly into the path (`freedom_ls/panel_framework/views.py:538-544`), so a `Cohort`/`Course` detail URL
-carries an unguessable UUID while a `User` detail URL (via `UserConfig`, `educator_interface/views.py:769-774`)
-carries a small sequential integer — the one place in the whole app where an object's identity in a URL is
-enumerable. The same asymmetry shows up in `UserCourseRegistration.save()`'s webhook firing
-(`student_management/models.py:83-103`): `course_id` is explicitly cast with `str(self.collection_id)` (line
-99) because it's a UUID that needs a JSON-safe form, while `user_id` is sent as the raw integer (line 97) —
-an external webhook consumer receives a sequential, enumerable identifier for every registered user, forever,
-as part of a payload contract. Because nothing has shipped yet, this webhook payload shape is itself still
-cheap to change (there are no external consumers to break) — but that is a webhook-contract question, not a
-database-structure one, and is out of this unit's scope; flagged here as a downstream consequence worth the
-webhooks-owning spec's attention, not a recommendation of this unit's.
+Folding timestamps into `SiteAwareModel` itself would miss both, and would also force generic
+`created_at`/`updated_at` onto models that already carry a correct domain-named timestamp
+(`LegalConsent.timestamp`, `GeneratedReport.requested_at`), producing two fields that say the same thing.
+The shape that reaches everything is a small standalone abstract mixin,
+`class TimestampedModel(models.Model): created_at = ...; updated_at = ...; class Meta: abstract = True`,
+with no site dependency, applied explicitly per model alongside whichever of `SiteAwareModel`,
+`SiteAwareModelBase` or `models.Model` that model already uses. Django supports multiple abstract-base
+inheritance without conflict, so `class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMixin)`
+and `class SystemRoleAssignment(TimestampedModel, models.Model)` both work. This is a one-time decision:
+cheap now, and expensive to unwind once a dozen models have each grown their own copy-pasted pair of
+fields.
 
-**Severity is low, not absent.** `email` is the actual login/authorization key
-(`USERNAME_FIELD = "email"`, `accounts/models.py:77`) — knowing a user's numeric ID grants no access on its
-own, and every view that exposes user data already goes through guardian's per-object permission checks
-(e.g. `CohortDataTable`'s `get_objects_for_user`, per the sibling organisations research). The practical risk
-is limited to "an authorised educator can infer roughly how many users exist and roughly when a given user
-signed up relative to others," which is a mild information leak to an already-trusted audience, not an
-account-takeover vector.
+### Does `updated_at` need backfilling?
 
-**Cost of converting now vs. later.** Converting `User` to a UUID PK now means: changing which base class it
-extends (`SiteAwareModelBase` → `SiteAwareModel`, or manually adding a UUID field), a schema change touching
-7 apps' FK columns (mechanically trivial on empty tables), and updating the type hints that already encode
-`int` explicitly in a few places (e.g. `dict[tuple[int, UUID], TopicProgress]`,
-`educator_interface/views.py:387-388,458,466-468`) — all mechanical, all doable in one pass while there is no
-data. Converting it *later* means the same schema change plus reconciling every downstream integration that
-has since come to depend on `user_id` being a stable integer — session/auth continuity, any external API
-consumer, any webhook subscriber, any exported report keyed on it. That is a real, materially-higher cost
-later — which is exactly the "do it now if you're going to do it at all" test this unit is built around. But
-clearing that cost bar only matters if the change is warranted, and per the severity analysis above it is not:
-**recommendation is to keep `BigAutoField` for `User`**, on the grounds that it is a defensible, common choice
-(Django's own default, cheaper to index/store, no functional cost anywhere), not a broken one.
-**Judgement: won't-do** (converting the type). One cheap, genuinely do-now action: `SystemRoleAssignment`
-already documents its own deliberate BigAutoField choice in a code comment (`role_based_permissions/models.py:9-14`,
-*"Uses BigAutoField ... because this intentionally does not extend SiteAwareModel"*) — `User` has no
-equivalent comment explaining why it's the one `SiteAwareModelBase` (not `SiteAwareModel`) subclass in the
-codebase. **Do-now**: add a one-line comment on `accounts.User` recording that the integer PK is deliberate,
-mirroring the existing pattern, so a future contributor doesn't "fix" it by accident.
+No, for the reason given above: its semantics survive a late addition. But one FLS-specific trap makes
+"add it whenever" not quite free. Role deactivation in `role_based_permissions` goes through
+`QuerySet.update()`, not `.save()`:
 
-**Does the `role_based_permissions` deliberate-BigAutoField comment still hold?** Yes for
-`SystemRoleAssignment` (genuinely global, no site FK, `models.py:9-43`) — nothing in this unit's findings
-touches that reasoning. `SiteRoleAssignment` and `ObjectRoleAssignment` (`models.py:46-118`) *do* extend
-`SiteAwareModel` and so already carry UUID PKs; the comment on `SystemRoleAssignment` only ever claimed to
-explain that one model, and it still does.
+```
+role_based_permissions/utils.py:246,314,365   .update(is_active=False)
+```
 
-**One small, unrelated, free finding surfaced while checking this:** `freedom_ls/webhooks/apps.py:6` sets
-`default_auto_field = "django.db.models.BigAutoField"` on the `WebhooksConfig` `AppConfig`, but every model in
-`webhooks/models.py` extends `SiteAwareModel`, which explicitly declares its own UUID `id`
-(`site_aware_models/models.py:80`) — so this per-app setting is dead configuration; it has never had any
-effect and reads as if webhooks models use BigAutoField when they don't. **Judgement: do-now** — deleting it
-is a one-line, zero-risk clarity fix, unrelated to the `User` question but caught by the same grep.
+`auto_now=True` only fires on `.save()`. An `updated_at` added to `SystemRoleAssignment`,
+`SiteRoleAssignment` or `ObjectRoleAssignment` would silently stop reflecting reality the first time a
+role is deactivated through these call sites, unless they are changed to pass `updated_at=timezone.now()`
+explicitly in the same `.update()` call. This is not a reason to defer adding the field. It is a reason
+to land the field and the call-site fix in the same change, not the field alone. Every other reactivation
+path checked (`learner_management.ensure_learner`, `learner_management/utils.py:96-101`) goes through
+`update_or_create()`, which calls `.save()` and so would not have this problem.
 
-## 3. GFK `object_id` types
+## 2. Constraints
 
-Two conventions coexist, and both are correct for what they're used for — this is not the same shape of
-problem as the PK question above, because here a single universal type would be a **regression**, not a
-simplification.
+### `Cohort`'s constraint name
 
-**`UUIDField` — used everywhere the GFK's target set is closed and guaranteed-UUID.** `CohortDeadline.object_id`
-(`student_management/models.py:149`), `StudentDeadline.object_id` (`:196`), `UserCohortDeadlineOverride.object_id`
-(`:244`) all target `Topic | Form` only — both always `content_engine` models with UUID PKs
-(`content_engine/models.py:80`, inherited via `SiteAwareModel`). `student_progress.CourseProgress.last_accessed_object_id`
-(`student_progress/models.py:561`) targets the same closed set. `content_engine.ContentCollectionItem.collection_id`/
-`child_id` (`content_engine/models.py:392,403`) target `Course | CoursePart` and any content-item type
-respectively — again always `content_engine` models, always UUID. For all of these, `UUIDField` is strictly
-better than a string column would be: native 16-byte comparison instead of string comparison, no
-serialization ambiguity, and the type system documents the constraint (nothing in these models could ever
-hold a non-UUID target even by mistake, since only `content_engine` models are ever linked in).
+`Cohort`'s only constraint is `unique_cohort_name_per_site` (`learner_management/models.py:40-44`), but
+its fields are `["site_id", "organisation", "name"]`. It scopes uniqueness to an organisation, not to a
+site: two organisations in the same site can already have a cohort of the same name. The name should
+read `unique_cohort_name_per_organisation`. Since `organisation` is itself a `SiteAwareModel`
+(`organisations/models.py:58`) and already pins exactly one site, the `site_id` column in the constraint
+is also redundant, though harmless. Renaming a constraint is catalog-only in Postgres at any table size:
+do-later, no deadline attached.
 
-**`CharField(255)` — used exactly once, where the target set is deliberately open.**
-`role_based_permissions.ObjectRoleAssignment.object_id` (`role_based_permissions/models.py:92`) is the only
-GFK in the codebase whose target is not a closed set — `ObjectRoleAssignment` exists specifically to let
-*any* model become an authorization target (today only `Cohort`, per `role_based_permissions/README.md:35`,
-but the model imposes no such restriction, and nothing else in the app would need to change if a future model
-— including, hypothetically, `User` itself, whose PK is an integer — became an assignable target). A
-`CharField` is the only `object_id` type that can represent every possible Django PK type without knowing in
-advance what they are; a `UUIDField` here would make it impossible to ever grant a role on a non-UUID-keyed
-object, which is precisely the flexibility this model exists to provide.
+### Which models scope their uniqueness by site, and which do not
 
-**What breaks or is merely awkward today: nothing.** No code path was found that compares or joins
-`ObjectRoleAssignment.object_id` against a `UUIDField` GFK's `object_id`, so the type mismatch never has to be
-reconciled at a call site. The only cost is storage/comparison efficiency (`CharField(255)` vs. a native
-`uuid` column) on `role_based_permissions_objectroleassignment`, a low-cardinality table by nature (one row
-per user/role/object grant), so this is a non-issue in practice.
+Three models pair `user`/`learner` with `course`/`organisation` under a `UniqueConstraint`, and only one
+of the three includes `site`:
 
-**Is a single convention achievable?** No, and forcing one would be wrong given `User`'s integer PK exists and
-`ObjectRoleAssignment` needs to remain generic. **Recommendation: keep the dichotomy, document the rule so
-future GFK additions pick correctly instead of by copy-paste accident** — "closed, guaranteed-UUID target
-set → `UUIDField`; open/heterogeneous target set → `CharField`." **Judgement: do-now** for the one-line
-docstring addition (free, prevents future drift); **won't-do** for any type unification (would be a
-regression, not a fix).
-
-## 4. Constraints
-
-| Issue | Where | Fix | Judgement |
+| Model | Fields | Includes `site`? | Path |
 |---|---|---|---|
-| Misleading name: `unique_cohort_name_per_site` is actually scoped to `(site_id, organisation, name)`, not just site | `student_management/models.py:24-29` | Rename to `unique_cohort_name_per_organisation`; optionally drop the redundant `site_id` column from the constraint fields, since `organisation` is itself a `SiteAwareModel` (`organisations/models.py:28`) and already pins exactly one site | **Do-later** — `ALTER TABLE ... RENAME CONSTRAINT` and a constraint rebuild are metadata/index operations, not backfill-sensitive; safe to defer to a batch cleanup |
-| `CourseInterest`'s unique constraint omits `site` (`user`, `course` only); its near-twin `CourseApplication` includes it (`site`, `user`, `course`) | `course_interest/models.py:41-45` vs. `course_applications/models.py:46-51` | Add `site` to `CourseInterest`'s constraint for consistency with its twin | **Do-later** — technically redundant either way, since `accounts.User` is itself site-scoped (a `User` row belongs to exactly one site), so the two models are already equivalent in practice; the in-flight `learners-associated-with-organisations` spec independently reaches for the same "belt-and-braces, not load-bearing" `site` column on its new `Learner` model (`spec_dd/2. in progress/learners-associated-with-organisations/idea.md:61-63`) — worth matching that emerging convention, but not urgent since there is no real duplicate-row risk to close |
-| `unique_together` (older API) used alongside `Meta.constraints`/`UniqueConstraint` (current API) inconsistently: `content_engine` — `Topic`, `Activity`, `Course`, `CoursePart`, `Form` all `["site","slug"]` (`content_engine/models.py:153,168,240,361,450`) and `File` `["site","file_path"]` (`:602`); `student_progress` — `QuestionAnswer` (`:497`), `TopicProgress` (`:521`), `CourseProgress` (`:568`); `webhooks.WebhookSecret` (`:426`) | Various | Convert to named `Meta.constraints = [models.UniqueConstraint(...)]` for consistency with newer models (`Organisation`, `Cohort`, `CourseInterest`, etc., which already use `UniqueConstraint`) | **Do-later** — functionally identical, stylistic only; `student_progress`'s three models are about to be restructured by `better_course_progress_tracking` anyway (`CourseRun`/placement-scoped progress, see §1), so converting them now risks wasted work |
+| `course_applications.CourseApplication` | `site, user, course` | Yes | `course_applications/models.py:46-50` |
+| `course_interest.CourseInterest` | `user, course` | No | `course_interest/models.py:41-44` |
+| `learner_management.Learner` | `user, organisation` | No | `learner_management/models.py:73-76` |
 
-**Recommendation on convention:** pick `Meta.constraints` + `UniqueConstraint` with an explicit `name=` as
-the house style going forward (already the majority pattern in newer models) — **do-now** as a documented
-rule (free), with the actual conversions of existing `unique_together` usages **do-later**, batched whenever
-convenient rather than gated on the deploy date.
+The asymmetry is not reachable in practice for either omission. `accounts.User` is itself site-scoped
+(`SiteAwareModelBase`), `content_engine.Course` is site-scoped (`SiteAwareModel`), and
+`organisations.Organisation` is site-scoped, so a `CourseInterest` or `Learner` row can never legitimately
+pair a user from one site with a course or organisation from another: the dropdowns and managers that
+populate these rows are already site-filtered upstream. Adding `site` to `CourseInterest`'s and
+`Learner`'s constraints would be belt-and-braces, not load-bearing. Worth doing for consistency the next
+time either model's migration is touched anyway; not a reason to schedule one. Do-later.
 
-## 5. Field naming
+### Three spellings of "the site field," one behaviour
 
-| Field | Model | Actually holds | Judgement |
+`Meta.constraints` field lists reference `site` two different ways in FLS today, and once by omission:
+
+| Spelling | Where | Example |
+|---|---|---|
+| `"site_id"` (the attname) | `learner_management` | `Cohort` (`:42`), `LearnerCourseRegistration` (`:123`), `CohortCourseRegistration` (`:149`) |
+| `"site"` (the field name) | `course_applications`, `organisations`, `accounts.SiteSignupPolicy` | `CourseApplication` (`:48`), `Organisation` (`:97-101`), `SiteSignupPolicy` (`:152-153`) |
+| omitted entirely | `course_interest`, `learner_management.Learner` | see table above |
+
+`"site_id"` and `"site"` behave identically. Django's `Options._forward_fields_map`
+(`django/db/models/options.py:634-660` in the installed package) indexes every field by both its `.name`
+and its `.attname`, so `models.UniqueConstraint(fields=["site_id", ...])` resolves to the same `site`
+field, and generates the same SQL, as `fields=["site", ...])`. The `0001_initial.py` migrations for
+`learner_management` confirm this: Django accepted `"site_id"` in `fields=(...)` without complaint and
+produced a normal constraint. This is not a bug, only an inconsistency in how the field is spelled at
+the point of writing. The house rule should be to spell it `"site"`, the field name, since that is what
+every other field reference in a constraint's field list already uses (nobody writes `"organisation_id"`
+or `"cohort_id"` elsewhere in these same `Meta.constraints` blocks). Fixing the three existing
+`"site_id"` usages is a docs-only, zero-risk rewrite of the migration state and does not require a
+database migration at all, since the generated SQL does not change. Do-now as a house rule, do-whenever
+for updating the three existing usages to match it.
+
+### `unique_together` inventory
+
+Eight model `Meta` blocks still use the legacy `unique_together` API where the rest of the codebase has
+moved to named `Meta.constraints = [models.UniqueConstraint(...)]`:
+
+| Model | Fields | Path |
+|---|---|---|
+| `content_engine.Topic` | `site, slug` | `content_engine/models/topics.py:16` |
+| `content_engine.Activity` | `site, slug` | `content_engine/models/topics.py:31` |
+| `content_engine.Course` | `site, slug` | `content_engine/models/courses.py:99` |
+| `content_engine.CoursePart` | `site, slug` | `content_engine/models/courses.py:241` |
+| `content_engine.File` | `site, file_path` | `content_engine/models/files.py:54` |
+| `form_engine.Form` | `site, slug` | `form_engine/models.py:72` |
+| `form_engine.QuestionAnswer` | `form_progress, question` | `form_engine/models.py:582` |
+| `webhooks.WebhookSecret` | `site, name` | `webhooks/models.py:426` |
+
+Functionally identical to `UniqueConstraint`, just unnamed, which means the database picks an
+autogenerated constraint name instead of one under FLS's control. Converting these to named
+`UniqueConstraint`s is a metadata-only migration (Postgres does not need to rebuild the underlying index
+just because the constraint gained an explicit name via `ALTER TABLE ... RENAME CONSTRAINT`-style
+handling in the migration). Do-later, batched with whatever else eventually touches these models: no
+functional gain to converting them in isolation, and `content_engine`'s and `form_engine`'s content
+models are exactly the models the timestamp mixin work above will touch anyway.
+
+## 3. Indexes
+
+Two real gaps were found by walking the query paths in `learner_progress/queries.py`,
+`learner_management/queries.py`, `reports/indexes.py` and `educator_interface/views.py`. Every other
+query checked in those paths is already covered:
+
+- `learner_progress.TopicProgress` and `CourseFormAttempt` are queried by
+  `(course_progress, collection_item)` (`educator_interface/views.py:432-436,444-448`), and both already
+  carry that exact composite via a `UniqueConstraint`/`Index` (`learner_progress/models.py:94-98,275`).
+  `CourseProgress` is queried by `(cohort_registration, learner)` / `(learner_registration, learner)`
+  (`learner_management/queries.py:241-245`), which is exactly its own uniqueness constraint
+  (`learner_progress/models.py:163-170`), and by `(learner, course)`, which has its own `Index`
+  (`learner_progress/models.py:185`).
+- `CohortDeadline`/`LearnerDeadline`/`UserCohortDeadlineOverride` lookups are always additionally scoped
+  by an already-indexed FK first (`cohort_course_registration=selected_reg`,
+  `educator_interface/views.py:497-499,515-518`).
+- `reports.GeneratedReport.status` already carries `db_index=True` (`reports/models.py:61-66`).
+- `role_based_permissions.ObjectRoleAssignment` already has the composite index its GFK lookups need
+  (`role_based_permissions/models.py:112-115`).
+
+| Gap | Where it's hot | Why it's harmless today | Judgement |
 |---|---|---|---|
-| `collection` | `UserCourseRegistration` (`student_management/models.py:58-62`) | FK to `content_engine.Course` | **Do-later** |
-| `collection` | `CohortCourseRegistration` (`:112-116`) | FK to `content_engine.Course` | **Do-later** |
-| `collection` | `RecommendedCourse` (`:304-308`) | FK to `content_engine.Course` | **Do-later** |
+| `content_engine.ContentCollectionItem` has no composite index on `(collection_type, collection_id)` or `(child_type, child_id)`. Only `collection_type`/`child_type` are auto-indexed as FKs; `collection_id`/`child_id` are plain `UUIDField`s with no `db_index` (`content_engine/models/courses.py:274-292`) | `Course.children()` / `CoursePart.children()` (`content_engine/models/courses.py:192-221,254-264`), called on every course/part page render, and reused by the educator progress panel | The `content_type` half of the pair already narrows the scan; the table is one row per content placement, currently small | Do-later. `CREATE INDEX CONCURRENTLY` closes this against a populated table without meaningful lock contention |
+| `webhooks.WebhookEndpoint.event_types__contains=[...]` (`webhooks/events.py:71`) is a JSON containment lookup on an un-indexed `JSONField(default=list)` (`webhooks/models.py:52`) | Runs on every outbound webhook event, matching subscribers by event type | Per-site endpoint counts are small (a handful of configured webhooks, not thousands) | Do-later. A GIN index add via `CREATE INDEX CONCURRENTLY` is the standard fix if this ever gets slow, and does not need to happen before deploy |
 
-All three are legacy names (`content_engine.Course` was presumably once a more generic "collection of
-content" concept). Renaming to `course` is worth doing for clarity, but by this unit's own bar it does not
-qualify as do-now: a Django field rename (`RenameField`) is a metadata-only column rename in Postgres,
-identical cost whether the table has zero rows or a million, and the code-side cost (updating every
-`.collection`, `.collection_id`, `collection__title`-style lookup across the codebase) is the *same*
-mechanical find-and-replace exercise regardless of when it happens — nothing about waiting makes it harder.
-**Recommendation: do-later**, but worth bundling into whatever pass eventually touches these models for other
-reasons (e.g. if `better_course_progress_tracking`'s `CourseRun` work already touches `UserCourseRegistration`
-FKs, do the rename in the same PR to avoid two separate migrations touching the same rows). No other
-drifted field names were found in the models covered by this unit.
+No index gap found in this unit's query paths rises to "materially cheaper before deploy than after."
+Say so plainly rather than invent urgency: this section has no do-now items.
 
-## 6. Index coverage
+## 4. Field types
 
-Every gap found below is the kind Postgres can close later with `CREATE INDEX CONCURRENTLY` (or, for a
-composite unique constraint, a same-cost-then-or-now rebuild) without meaningful lock contention even against
-a populated production table — so, per this unit's own instruction, none of these clear the "materially
-cheaper now" bar. Listed for completeness, all **do-later**:
+### `tags` should be an `ArrayField`, not a `JSONField`
 
-| Gap | Where it's hot | Why it's currently harmless | Judgement |
+`content_base.BaseContent.tags` (`content_base/models.py:22`) is a `JSONField` holding a list of
+freeform strings, and it is used as an admin `list_filter` in four places:
+`content_engine/admin.py:19,31,75,103`. Django's `list_filter` on a `JSONField` filters by exact value
+of the whole field, not "contains this element," so filtering by tag in the admin today does not do what
+a tag filter should. `Course.learning_outcomes`, in the same file family
+(`content_engine/models/courses.py:69-76`), is already the correct type for exactly this shape:
+`ArrayField(models.CharField(max_length=255), ...)`. Matching that precedent (`ArrayField(models.CharField(...))`,
+or a real `Tag` model plus M2M if cross-content tag browsing is ever wanted) fixes the filter. The
+field is otherwise unused outside the admin (checked repo-wide), so this is a pre-existing minor bug,
+not a data-loss risk. Cheap to fix at either time since the field holds no real data yet. Do-later.
+
+### JSONField inventory
+
+| Field | Path | Genuinely schemaless, or a shape waiting to be a table? | Judgement |
 |---|---|---|---|
-| `FormProgress` has no composite index on `(user, form)` — unlike `TopicProgress`/`CourseProgress`, it deliberately allows multiple rows per `(user, form)` (one per attempt), so there is no `unique_together` to piggyback an index on | `educator_interface`'s `CohortCourseProgressPanel._fetch_progress_maps` (`educator_interface/views.py:409-414`), filtered `user_id__in=..., form_id__in=...` | Both `user` and `form` FKs are already individually indexed (Django auto-indexes FK columns); Postgres can bitmap-AND the two single-column indexes reasonably well at current/near-term scale | **Do-later** — and `better_course_progress_tracking` is about to change this model's shape anyway (placement-scoped progress, `spec_dd/2. in progress/better_course_progress_tracking/idea.md:74-93`); don't index a model that's mid-redesign |
-| `ContentCollectionItem` has no composite index on `(collection_type, collection_id)` or `(child_type, child_id)` — only `collection_type`/`child_type` are auto-indexed (they're FKs), `collection_id`/`child_id` are plain `UUIDField`s (`content_engine/models.py:385-404`) | `Course.children()`/`CoursePart.children()` (`content_engine/models.py:302-322,363-375`), called on every course/part page render across both student and educator surfaces, and reused by `CohortCourseProgressPanel` | Table is currently small (one row per content-item placement); the `content_type` half of the pair already narrows the scan a lot in practice | **Do-later** |
-| `role_based_permissions.ObjectRoleAssignment` — already has `Index(fields=["content_type","object_id","role","is_active"])` (`models.py:112-115`) | N/A — flagged only to note this one is already correctly indexed | No gap | Not applicable — included to show the pattern is already followed correctly here |
-| `webhooks.WebhookEndpoint.event_types__contains=[...]` (`webhooks/events.py:71`) — a JSON containment lookup on an un-indexed `JSONField(default=list)` (`webhooks/models.py:52`) | Fires on every outbound webhook event, matching subscribers by event type | Per-site endpoint counts are small (a handful of configured webhooks, not thousands); a GIN index would help at scale but nothing here is slow today | **Do-later** — out of this unit's stated scope (educator interface / reports) but noted since it was found along the way; a Postgres GIN index add is exactly the kind of thing `CREATE INDEX CONCURRENTLY` handles cleanly post-deploy |
+| `content_engine.Course.access_config` | `content_engine/models/courses.py:41-49` | Genuinely schemaless by design. The field's own docstring says no view, template or utility may read it directly; the shape is owned entirely by whichever `COURSE_ACCESS_BACKEND` is configured, validated per-backend by a dedicated system check (`freedom_ls/course_access/checks.py`). Normalising this into columns would force one backend's shape to be canonical, defeating the pluggability the field exists for. | Won't-do |
+| `form_engine.FormProgress.scores` | `form_engine/models.py:207-209` | Genuinely polymorphic. Shape depends on `Form.strategy`: a flat `{score, max_score}` for `QUIZ` (`compute_quiz_scores`, `:448-482`) vs. a nested category tree for `CATEGORY_VALUE_SUM` (`score_category_value_sum`, `:320-446`). Never queried at the database level, checked repo-wide; always read as `fp.scores.get(...)` in Python and always recomputed from `QuestionAnswer` rows, so it is derived/cache data, not a system of record. | Won't-do |
+| `content_base.BaseContent.meta` | `content_base/models.py:19-21` | Optional freeform metadata. No read site anywhere outside the admin form (`content_engine/admin.py`), checked repo-wide. Currently write-only. | Won't-do; revisit only once something reads it |
+| `content_base.BaseContent.tags` | `content_base/models.py:22` | See above: a fixed shape (list of short strings) that already has the correct precedent field one line away. | Do-later, convert to `ArrayField` |
+| `content_engine.ContentCollectionItem.overrides` | `content_engine/models/courses.py:296-300` | Written by the content-import pipeline (`content_engine/management/commands/content_save.py:687`) but never read anywhere. An unimplemented placeholder for per-placement overrides. | Won't-do; nothing to normalise until a reader exists |
+| `accounts.SiteSignupPolicy.additional_registration_forms` | `accounts/models.py:148` | An ordered list of dotted import paths to `Form` subclasses, actively used across `middleware.py`, `views.py`, `registration_forms.py`. Small, ordered, always read/written whole. Genuine configuration, not data. | Won't-do |
+| `webhooks.WebhookEndpoint.event_types` | `webhooks/models.py:52` | A small, bounded list of event-type strings per endpoint, queried via `__contains` (see §3). Right-sized for JSON; a GIN index, not a schema change, is the fix if it ever needs one. | Won't-do |
+| `webhooks.WebhookEvent.payload` | `webhooks/models.py:368` | The event payload itself, inherently variable shape across event types, read/replayed whole, never queried into. | Won't-do |
 
-No index gap was found in the educator-interface or reports query paths that reaches "expensive to add
-later" — `CohortDeadline`/`StudentDeadline`/`UserCohortDeadlineOverride` GFK lookups are always additionally
-scoped by an already-indexed FK first (`cohort_course_registration=selected_reg`,
-`educator_interface/views.py:452-456,471-478`), `CourseProgress`/`TopicProgress` already get a composite index
-via their `unique_together` (`student_progress/models.py:568,521`), and `GeneratedReport.status` already
-carries `db_index=True` (`reports/models.py:66`). **Overall judgement for this section: no do-now items.**
+### `default_auto_field` is consulted in exactly two of nineteen apps
 
-## 7. JSONField usage
+`default_auto_field = "django.db.models.BigAutoField"` is set in 19 `apps.py` files. It only takes
+effect for a model that declares no explicit primary key. Every concrete model in FLS extends
+`site_aware_models.SiteAwareModel`, which declares its own `id = models.UUIDField(primary_key=True, ...)`
+(`site_aware_models/models.py:80`), except two:
 
-| Field | Where | Genuinely schemaless, or a table waiting to happen? | Judgement |
-|---|---|---|---|
-| `content_engine.Course.access_config` | `content_engine/models.py:182-190` | **Genuinely schemaless, by explicit design.** Docstring at the field itself: *"BACKEND-PRIVATE: no view, template, or utility may read or branch on `access_config` directly"* (line 178-180) — the shape is owned entirely by whichever `COURSE_ACCESS_BACKEND` is configured (`freedom_ls/course_access/backends.py`), validated per-backend via a dedicated system check (`freedom_ls/course_access/checks.py:27-66`, error `E001`), and different backends can legitimately want different keys. Normalising this into columns would require FLS to pick one backend's shape as canonical, defeating the pluggability the field exists to provide | **Won't-do** |
-| `student_progress.FormProgress.scores` | `student_progress/models.py:91` | **Genuinely polymorphic, currently.** Shape depends on `Form.strategy`: a flat `{"score": int, "max_score": int}` for `QUIZ` (`score_quiz`/`compute_quiz_scores`, `:363-397`) vs. a nested category tree (`{category: {score, max_score, sub_categories: {...}}}`) for `CATEGORY_VALUE_SUM` (`score_category_value_sum`, `:235-361`). Never queried at the database level (confirmed by repo-wide grep — every read site is `fp.scores.get(...)` in Python, e.g. `reports/gather.py:282-285`); always recomputed from source `QuestionAnswer` rows, so it's derived/cache data, not a system of record. Not evaluated further — `better_course_progress_tracking` is actively restructuring this model | **Won't-do** (for this unit; revisit if scoring needs bulk filtering/sorting at the DB level in future reporting work) |
-| `content_engine.BaseContent.meta` | `content_engine/models.py:64-66` | Optional freeform metadata, `help_text="Optional metadata as key-value pairs"`. Grep found **no read site anywhere in the codebase** outside the admin form (`content_engine/admin.py:126` etc.) — currently write-only/unused | **Won't-do** — nothing to normalise; revisit only once something actually reads it |
-| `content_engine.BaseContent.tags` | `content_engine/models.py:67` | A list of freeform strings, but used as a Django admin `list_filter` (`content_engine/admin.py:133,145,189,217,239`) — `list_filter` on a `JSONField` storing a list filters by exact-list-value, not by "contains this tag," so the admin's own use of the field doesn't actually work the way a tag filter should. The same file already has the correct precedent one field away: `Course.learning_outcomes` is an `ArrayField(CharField(...))` (`content_engine/models.py:210-217`) for exactly this "list of short strings" shape | Recommend `ArrayField(CharField(max_length=...))` to match `learning_outcomes`'s existing precedent, or a real `Tag` model + M2M if cross-content tag browsing is ever wanted. **Judgement: do-later** — the admin filter being non-functional is a pre-existing minor bug, not a data-loss risk, and the field is unused outside the admin, so there is no urgency; cheap to fix at either time since it's currently empty/unused |
-| `content_engine.ContentCollectionItem.overrides` | `content_engine/models.py:407-411` | Round-tripped by the content-import pipeline (`content_engine/management/commands/content_save.py:685`, writes it out) but **never read anywhere** — no consumer interprets it. An unimplemented placeholder | **Won't-do** — nothing to normalise until a reader exists; flag for whoever eventually implements per-placement overrides that the field is already there |
-| `accounts.SiteSignupPolicy.additional_registration_forms` | `accounts/models.py:148` | An ordered list of dotted Python import paths to `django.forms.Form` subclasses (`accounts/registration_forms.py:1-5`), actively used across `accounts/middleware.py`, `views.py`, `registration_forms.py`. Genuinely configuration, not data — never filtered, always read/written whole | **Won't-do** — correct use of JSON for a small, ordered, whole-read config list |
-| `webhooks.WebhookEndpoint.event_types` | `webhooks/models.py:52` | A small, bounded list of event-type strings per endpoint (dozens at most), queried via `__contains` (`webhooks/events.py:71`, see §6) | **Won't-do** — right-sized for JSON; if it ever needs a real index, that's a Postgres GIN index add (§6), not a schema change |
-| `webhooks.WebhookEvent.payload` | `webhooks/models.py:368` | The actual event payload — inherently variable shape (different event types carry different data), read/replayed whole, never queried into | **Won't-do** — textbook correct JSONField use |
+- `accounts.User` extends the lower `SiteAwareModelBase`, which has no pk field of its own
+  (`site_aware_models/models.py:53-76`), and declares no `id` field itself
+  (`accounts/models.py:67-134`). Django fills in `id` using `AccountsConfig.default_auto_field`
+  (`accounts/apps.py:5`), confirmed by the generated migration:
+  `accounts/migrations/0001_initial.py:21` shows `models.BigAutoField(...)` for `User.id`.
+- `role_based_permissions.SystemRoleAssignment` is a plain `models.Model` with no explicit pk
+  (`role_based_permissions/models.py:9-43`). Django fills in `id` from
+  `RoleBasedPermissionsConfig.default_auto_field` (`role_based_permissions/apps.py:5`).
 
-## Risks and gotchas
-
-1. **The three sibling specs are actively restructuring exactly the models this unit would otherwise touch
-   hardest.** `better_course_progress_tracking` renames `CourseProgress` → `CourseRun`, adds new FKs, and
-   makes `TopicProgress`/`FormProgress` placement-scoped
-   (`spec_dd/2. in progress/better_course_progress_tracking/idea.md:41-93`); `learner-terminology-rename`
-   renames `StudentDeadline` → `LearnerDeadline` and its field/constraint (`.../learner-terminology-rename/idea.md:83-91`);
-   `learners-associated-with-organisations` adds a new `Learner` model with its own timestamp/constraint
-   pattern (`.../learners-associated-with-organisations/idea.md:48-63`). Any plan built from this research
-   must sequence around these — timestamps on the progress-tracking models are explicitly deferred here for
-   that reason (§1), and the deadline-model timestamp recommendation should land under whichever name
-   `learner-terminology-rename` settles on.
-2. **The `User` PK question is the one place a "leave it" verdict genuinely depends on believing severity is
-   low.** If a future spec adds a public-facing API or export that serializes `user_id` directly (the webhook
-   payload at `student_management/models.py:97` is the existing precedent for exactly this pattern), the
-   enumeration concern documented in §2 stops being hypothetical. Worth a standing note for whoever designs
-   that surface, not a reason to revisit this unit's recommendation now.
-3. **`content_engine.BaseContent.meta`/`.tags` being unread today is a snapshot, not a guarantee.** If content
-   authoring grows a real use for either field between now and deploy, the "won't-do" verdict in §7 should be
-   re-checked — an unread JSONField that gains a consumer mid-flight is exactly the kind of drift this whole
-   pre-deploy exercise exists to catch early.
-4. **The timestamp mixin decision (§1) needs to land before the `content_engine`, `Cohort`/`CohortMembership`,
-   and deadline-model additions**, since those are presented as depending on it (`TimestampedModel` applied
-   per-model). Doing the additions ad hoc per model first and retrofitting a mixin later would mean touching
-   the same models twice.
-5. **The `unique_cohort_name_per_site` rename (§4) touches the same model (`Cohort`) that
-   `learners-associated-with-organisations` is adding a sibling `Learner` model next to** — no direct
-   dependency, but worth doing in the same review pass for locality of change.
+Every other `apps.py` carrying the setting (`app_authentication`, `base`, `content_base`,
+`content_engine`, `educator_interface`, `form_engine`, `learner_interface`, `learner_management`,
+`learner_progress`, `markdown_rendering`, `organisations`, `panel_framework`, `qa_helpers`, `reports`,
+`site_aware_models`, `webhooks`, `xapi_learning_record_store`) either has no concrete models at all, or
+every concrete model extends `SiteAwareModel` with its explicit UUID pk, so the setting is never read.
+The house rule: `default_auto_field` only matters for a model that does not extend `SiteAwareModel`
+(directly or via `SiteAwareModelBase` with its own explicit pk). Do not add or "fix" this setting out of
+habit; it does nothing on a `SiteAwareModel`-rooted app.
 
 status: ok

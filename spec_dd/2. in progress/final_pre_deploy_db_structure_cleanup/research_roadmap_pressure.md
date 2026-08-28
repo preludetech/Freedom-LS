@@ -1,146 +1,193 @@
 # Research: what queued work implies about today's schema
 
-## Executive summary
+Every item currently queued in `spec_dd/1. next/` and `spec_dd/2. in progress/` (excluding this
+cleanup's own siblings) implies **nothing** about today's schema: built as sketched, each one adds a
+new table and/or a nullable field to a model that already exists or is itself brand new. Nothing
+forces a change to an existing table's shape, keys, or uniqueness. Two items get closer treatment
+because the task asked for it, not because they change that answer:
+`debt-simplify-course-progress-tracking` confirms the cleanup should leave `CourseProgress` alone
+rather than touch it again, and `content_snapshots` has a stale dependency boundary worth recording
+before it is specced.
 
-Ten of the eleven queued items assessed here imply **nothing** about today's schema: every one of
-them, if built as currently sketched, adds a new table and/or nullable field to a model that either
-already exists or is itself brand new — nothing forces a change to an existing table's shape, keys,
-or uniqueness. Two things happened while researching this that make the "implies nothing" answer
-stronger than it would otherwise look: first, `basic_reports` and the Organisation layer have both
-already merged into `main` since this idea was written (`freedom_ls/reports/models.py`,
-`freedom_ls/organisations/models.py`, `Cohort.organisation`/`UserCourseRegistration.organisation`
-all exist today, not just in spec form) — so `report-upgrades`, which this task treats as a queued
-unknown, is actually additive against models that are already sitting in the repo, which is about as
-low-risk as "implies nothing" gets. Second, `CourseApplication`'s own docstring
-(`freedom_ls/course_applications/models.py:23-29`) already states, in writing, that its state-machine
-expansion is additive and instructs future contributors not to architect it away — the roadmap
-pressure this task went looking for has already been pre-empted at the model layer for that one item.
-The one item that does imply something is `referral-link-tracker`'s deliberate choice not to subclass
-`SiteAwareModel` — not because it needs a `site` field it doesn't have (it takes an optional
-`contrib.sites` FK instead, by design), but because it is set to become the first app in the entire
-dependency graph with zero edge to `site_aware_models` in `docs/app_structure.md`, a graph where every
-other domain app has that edge. That isn't a schema change and doesn't need one; it needs a one-line
-policy decision recorded now so a future contributor (or `/plan_structure_review`) doesn't "fix" it.
-Separately, the one genuine convergent-demand signal — two independent features both wanting a
-run/registration id on their records — is already flagged in `better_course_progress_tracking/idea.md`
-itself and is fully satisfied by that spec landing; nothing new needs deciding for it either.
+The one structural question the previous pass left open — a run/registration id wanted
+independently by `better_course_progress_tracking` and `xapi_implementation` — is now closed:
+`course.registered` already fires `course_progress_id` (`freedom_ls/learner_progress/signals.py:154`,
+asserted at `freedom_ls/learner_progress/tests/test_registration_signals.py:320`). See §6.
 
 ## Verdict table
 
 | # | Item | Verdict | Why |
 |---|---|---|---|
-| 1 | `certificates` | implies-nothing | Needs a new `Certificate` model (hash/token, public verify URL) FK'd to a frozen completion record. `better_course_progress_tracking/idea.md:167-171` already names the exact requirement ("must bind to a frozen completion record rather than a live `(user, course)` query") and the sibling spec's `CourseRun` (a new, per-pass row, `idea.md:41-54`) *is* that frozen record. `certificates` needs zero of its own structural decisions once that lands — just a new, additive table pointing at it. |
-| 2 | `post-mvp` (payment gateway + per-seat billing) | implies-nothing | `User` is already site-scoped (`freedom_ls/accounts/models.py:67-82`, via `SiteAwareModelBase`), so a per-Site seat count (`User.objects.filter(site=..., is_active=True).count()`) needs no new anchor today. If billing is ever scoped to Organisation instead of Site, the anchor that would be missing — "who belongs to this organisation" as a stored fact rather than a derived query — is exactly what the sibling `learners-associated-with-organisations` spec's new `Learner` model (`idea.md:11-20`) is being built to answer. That gap is being closed by an already-assumed-landing sibling, not by this cleanup. |
-| 3 | Notification system + `student-communication` | implies-nothing | The comms design's audience/config-precedence chain (`student-communication/idea.md:108-157`) is deliberately built on generic references *into* `UserCourseRegistration`, `CohortCourseRegistration`, `Course`, and `Site` — none of which need a field added to host that reference. The idea doc is explicit that these are spec/plan-phase model decisions (`idea.md:13-14`, `176`), and nothing in the guiding principles requires any existing table to change shape. |
-| 4 | `xapi_implementation` | implies-nothing (today) | The app doesn't exist yet (`freedom_ls/xapi_learning_record_store` per `docs/app_structure.md:37`, still the un-renamed stub). Whatever event table it eventually gets is entirely new, so any run/registration id it wants is a new nullable FK on a new table — see Convergent demand below for the one thing worth writing down for whoever specs it. |
-| 5 | Course application review/approval | implies-nothing | `CourseApplication`'s own docstring (`freedom_ls/course_applications/models.py:1-29`) already documents the exact expansion ("gains `state = FSMField(protected=True)`... `ApplicationNote` + `ApplicationStateTransition`... swap the plain constraint for an active-state partial index") and closes with "Do not architect these away — leave this model standalone and additive." The roadmap pressure this task is checking for has already been written into the model itself. |
-| 6 | `compliance-form-randomization` | implies-nothing | The new sub-page "group" primitive sits between `FormPage` and `FormContent`/`FormQuestion` (`freedom_ls/content_engine/models.py:456-568`) as a new table with new, nullable FKs from those two existing models — additive, no change to their current `order`/`form_page` shape. The per-attempt realized-order record is a new JSON-shaped field on `FormProgress`, which already carries exactly this kind of thing (`scores`, a `JSONField`, `freedom_ls/student_progress/models.py:91-93`) — direct precedent for adding another one. |
-| 7 | `compliance-exam-remediation` | implies-nothing | Optional per-answer explanation/reference text is a new nullable field on `FormQuestion`/`QuestionOption` (`freedom_ls/content_engine/models.py:503-568`), which today hold only `question`/`text` content fields of the same shape. No key or uniqueness changes. |
-| 8 | `report-upgrades` | implies-nothing | Both models it upgrades — `GeneratedReport` (`freedom_ls/reports/models.py:44-95`) and `Organisation` (`freedom_ls/organisations/models.py:28-76`) — already exist in `main`, not just in spec form (`basic_reports` and the Organisation cut have both merged; see recent commits). `ReportConfig`/`ReportAtRiskRule` are new models; the resolved-config JSON is a new nullable field on `GeneratedReport`. Note separately: this idea's own header (`report-upgrades/idea.md:1-9`) says it "needs revision before it is specced" because `basic_reports` removed the settings-module rules hook it was written against — it is not spec-ready, but that is an idea-freshness problem, not a schema-pressure one. |
-| 9 | `multi-factor-authentication` | implies-nothing | An MFA device/secret table is a new table FK'd to `User`, no different in shape from any other `*Factory`-adjacent child table already in the codebase. "Configurable per test" is a new nullable boolean on `Form`, which already carries a boolean of exactly this shape (`submit_on_exit`, `freedom_ls/content_engine/models.py:441-447`). |
-| 10 | `re-consent-idea.md` (T&C versioning) | implies-nothing | `LegalConsent` is already an append-only, per-document-type, per-version row (`document_version`, `git_hash`, `timestamp`, `freedom_ls/accounts/models.py:161-213`) and the "current" version is already resolved from versioned frontmatter in git at request time (`freedom_ls/accounts/legal_docs.py:56-66, 220-274`), not from a mutable DB row. "Latest accepted version for user X" vs. "current active version" is already a two-query comparison against data that exists today. A grace-period toggle is a new nullable field on `SiteSignupPolicy` (`freedom_ls/accounts/models.py:137-158`), which already holds boolean/JSON policy flags of the same shape. |
-| 11 | `referral-link-tracker` | **implies-a-cheap-decision** | See §1 below. Not a schema change to any existing table — a documentation/convention decision. |
+| 1 | `certificates` | implies nothing | New, additive `Certificate` model FK'd to `CourseProgress` (`freedom_ls/learner_progress/models.py:106`), which today is a stable-enough frozen completion record because no retake mechanism exists yet. See §4. |
+| 2 | `compliance-exam-remediation` | implies nothing | Optional per-answer explanation/reference text is a new nullable field on `FormQuestion` (`freedom_ls/form_engine/models.py:125`) or `QuestionOption` (`:172`), the same shape as their existing `question`/`text` fields. |
+| 3 | `content-glossary-widget` | implies nothing | A Cotton component. Its one open design fork ("shared glossary registry" vs. two self-contained widgets) would, if taken, add one small new table — it does not touch anything that exists. |
+| 4 | `content-links` | implies nothing | A URL-resolution and template bug fix (`freedom_ls/content_engine/templates/cotton/content-link.html:12`, `Topic.preview_url()` at `freedom_ls/content_engine/models/topics.py:18`). No model changes. |
+| 5 | `content-plugin-distribution` | implies nothing | Governs how Claude Code plugins reach content-author repos. Touches no FLS database at all. |
+| 6 | `critical_security_fixes` | implies nothing | Authorisation and queryset-filtering fixes in `panel_framework`/`educator_interface`. Its one live design fork, "introduce a `view_course` object permission," is a new `Permission` row through Django's/guardian's existing generic permission tables (already used for cohort grants) — no new table. |
+| 7 | `debt-cotton-vs-partials` | implies nothing | A template/partial placement convention. No models. |
+| 8 | `debt_markdown_rendering_package_isolation` | implies nothing | `markdown_rendering` has no `models.py` at all and already carries a compliant `freedom_ls_markdown_rendering` label (`freedom_ls/markdown_rendering/apps.py:7`). See §3. |
+| 9 | `debt-simplify-course-progress-tracking` | implies nothing, and settles the question this cleanup asked about | See §1. |
+| 10 | `educator-interface-full-polish` | implies nothing | Panel-framework layout, CSS and template polish against an existing design. No new fields. |
+| 11 | `educator-interface-quick-view-panel` | implies nothing | Reads existing `TopicProgress`/`FormProgress`/`CourseFormAttempt` fields only; any field needing new computation is explicitly deferred by the idea itself (`idea.md:60`). |
+| 12 | `extract-icons-app` | implies nothing | `freedom_ls/icons` has no `models.py` at all (confirmed: no `freedom_ls/icons/**/models.py` file exists). See §3. |
+| 13 | `learner-management-actions` | implies nothing | The cohort-move action re-points `CourseProgress.cohort_registration` (`freedom_ls/learner_progress/models.py:126`) at a different `CohortCourseRegistration` row. That FK carries no immutability constraint — only "exactly one of the two FKs is set" (`:171-183`) — so re-pointing it is an `UPDATE`, not a schema change. |
+| 14 | `multi-factor-authentication` | implies nothing | A device/secret table is new and FK's to `User`. "Configurable per test" is a new nullable boolean on `Form`, the same shape as its existing `submit_on_exit` (`freedom_ls/form_engine/models.py:63-69`). |
+| 15 | `panel-framework-tables-and-panel-api-upgrades-and-design` | implies nothing | `Panel`, `Tab`, `PanelAction` are plain Python classes, not Django models. The whole workstream is code structure. |
+| 16 | `post-mvp` | implies nothing | Per-seat billing scoped to an organisation now has its anchor: `Learner.objects.filter(organisation=..., is_active=True)` (`freedom_ls/learner_management/models.py:51-77`) — landed since the prior pass treated it as an in-flight sibling assumption. The payment gateway is a wholly new, additive integration. |
+| 17 | `re-consent-idea.md` | implies nothing | `LegalConsent` (`freedom_ls/accounts/models.py:161-212`) and `SiteSignupPolicy` (`:137-158`) are unchanged. A grace-period toggle is a new nullable field on `SiteSignupPolicy`, the same shape as its existing booleans. |
+| 18 | `referral-link-tracker` | implies a decision, already made | See §3. |
+| 19 | `student-communication` | implies nothing | A registration-scoped comms config would FK into `LearnerCourseRegistration`/`CohortCourseRegistration` following the precedent `CourseProgress` already set (exactly-one-of-two-FKs, `freedom_ls/learner_progress/models.py:119-132`). Its own idea text still says `UserCourseRegistration` (`idea.md:129`, `:160`) — a name `learner-terminology-rename` retired. That is an idea-freshness gap to close before spec, not a schema question. |
+| 20 | `student-interface-course-color-token-simplification` | implies nothing | CSS custom properties only. |
+| 21 | `system_qa` | implies nothing | A QA slash-command and report format. Touches no FLS models. |
+| 22 | `user-data-retention-idea.md` | implies nothing, and is the correct owner of this question | See §5. |
+| 23 | `xapi_implementation` | implies nothing to today's schema | Its event table's registration/attempt concept should key off `CourseProgress.id`, which now exists for exactly this reason. See §6. |
+| 24 | `compliance-form-randomization` | implies nothing | The sub-page "group" primitive is a new model sitting between `FormPage` (`freedom_ls/form_engine/models.py:78`) and `FormContent`/`FormQuestion` (`:107`, `:125`), with new nullable FKs from those two. `realized_order` is a new JSON field on `FormProgress`, the same shape as its existing `scores` (`:207-209`). |
+| 25 | `content_snapshots` | implies nothing to today's schema, but its own dependency boundary is stale | See §2. |
 
-## 1. `referral-link-tracker`'s deliberate non-use of `SiteAwareModel`
+## 1. `debt-simplify-course-progress-tracking` — leave `CourseProgress` alone
 
-The idea is explicit and has clearly already reasoned this through, not stumbled into it:
-`referral-link-tracker/idea.md:29-33` states the app "must **not** import from FLS-specific apps
-... or subclass FLS base classes (`SiteAwareModel`)," and `idea.md:102-106` repeats it for the model
-layer ("The app does **not** subclass FLS's `SiteAwareModel`; FLS layers its own site-aware
-querying/filtering on top of the app's models rather than the app depending on FLS's base class").
-The idea even flags that its own research doc's model sketch needs correcting for this
-(`idea.md:196-199`): `research_data_model.md`'s sketch subclasses `SiteAwareModel` directly
-(`research_data_model.md:170, 194, 221-224`), and the idea author has already caught and overridden
-that in favour of an optional `django.contrib.sites` FK, precisely to keep the app dependency-free
-and extractable.
+The idea's complaint is real and already visible in the code, not hypothetical: `course_progress_for`
+(`freedom_ls/learner_progress/queries.py:125-152`) takes a bare `(user, course)`, resolves which
+registration wins through `learner_for_course`, and only then looks up the `CourseProgress` row —
+precedence logic (`cohort_registration` vs. `learner_registration`, `-is_active`, `-registered_at`)
+that `course_progress_by_course_for` (`:162-260`) repeats for the bulk case. That guesswork is exactly
+what the idea wants deleted, and every view that opens a course today calls into it with only a course
+in hand (`freedom_ls/learner_interface/views.py:153`, `:820`, `:1269`).
 
-**What this does and doesn't imply for the pre-deploy cleanup:**
+The fix the idea describes does not need a new column. `CourseProgress` already carries a UUID
+primary key (`SiteAwareModel.id`, `freedom_ls/site_aware_models/models.py:79-83`) and already supports
+"a learner registered for the same course in two different ways" as two distinct rows — its own
+docstring says so (`freedom_ls/learner_progress/models.py:106-107`), and its constraints
+(`:158-184`) are what make two coexisting records legal. Passing `CourseProgress.id` in the course
+player's URL and reading the record directly, instead of re-deriving it from `(user, course)` on every
+request, removes the guesswork the idea is asking to remove without altering what `CourseProgress`
+stores or how it is keyed.
 
-- It does not need a `site` field that's missing — the plain, optional `contrib.sites` FK it plans to
-  use is a completely ordinary Django pattern and needs no FLS schema decision.
-- It does set a precedent worth recording *now*, before it's built: `docs/app_structure.md` currently
-  shows every domain app in the codebase with a `--> site_aware_models` edge — `accounts`, `content_engine`,
-  `course_applications`, `course_interest`, `educator_interface`, `organisations`, `qa_helpers`, `reports`,
-  `role_based_permissions`, `student_interface`, `student_management`, `student_progress`
-  (`docs/app_structure.md:40, 46, 54, 66, 73, 80, 86, 91, 99, 107`, etc.) — `referral-link-tracker`
-  will be the **first app in the graph with none**. There is currently no written convention anywhere in
-  `docs/` describing when `SiteAwareModel` should or shouldn't be used — a repo-wide grep of `docs/` for
-  `SiteAwareModel` returns nothing — so this precedent is being set by one idea document's reasoning,
-  not by policy.
-- The cheap decision to take now, before this is built: **explicitly document that "self-contained,
-  extractable, reusable Django apps intended to be lifted out of FLS" are a deliberate, named exception
-  to the SiteAwareModel convention**, with `referral-link-tracker` as the worked example. This is cheap
-  precisely because it's a documentation change, not a code change — but it is worth doing *before* the
-  app is built, not after, because the alternative failure mode is a future contributor or a
-  `/plan_structure_review` pass treating the missing `site_aware_models` edge as an oversight and
-  "fixing" it by subclassing `SiteAwareModel`, which would silently reintroduce the FLS coupling the
-  idea spent a whole section arguing against.
-- This is not evidence that `SiteAwareModel` is positioned wrong for anything else in the roadmap — every
-  other item assessed here (certificates, MFA, comms, xAPI, reports) is ordinary FLS domain code with no
-  extractability requirement, and should keep using `SiteAwareModel` exactly as everything else does.
-  The exception is narrow and should stay narrow.
+This is why the answer to the question this cleanup asked is the opposite of "leave progress models
+alone because they are about to move again": `debt-simplify-course-progress-tracking` does not
+restructure `CourseProgress` a second time. It is a routing and query-layer simplification that the
+shape `better_course_progress_tracking` just shipped already supports. The pre-deploy cut can safely
+apply hardening (timestamps, `PROTECT`, indexes — see `research_field_level_hardening.md`) to
+`CourseProgress`/`TopicProgress`/`CourseFormAttempt` now; nothing here reopens their shape.
 
-## Convergent demand
+## 2. `content_snapshots` — the QuestionAnswer question isn't its to own, and its own scope is stale
 
-**The one real signal: a run/registration id, wanted independently by two features.**
-`better_course_progress_tracking/idea.md:140-141` states this directly, in its own words: *"Which run
-do the webhooks mean? `course.registered` and `course.completed` carry no run or registration id
-today. Both this work and the queued `xapi_implementation` will independently want one."* This is
-corroborated from the xAPI side by the standard itself: xAPI's own `Context` object has a standing
-`registration` (UUID) field for exactly "which instance of this person doing this activity does this
-statement belong to" (`xapi_implementation/research_xapi_standard.md:13`) — the xAPI research already
-landed on the same concept the progress-tracking idea named, independently, without either document
-citing the other.
+**The parked question stays parked, for the reason this cleanup's Decision 3 already gives.**
+`content_snapshots`' public surface is `take_snapshot(content_obj)` / `get_latest_snapshot(content_obj)`
+/ `get_snapshot(snapshot_id)` (`idea.md:52-56`) against `content_engine` objects — it snapshots
+*authored content*, and says explicitly that wiring any consumer to it is out of scope
+(`idea.md:57`, `:75`). Freezing `question_text` and `selected_option_texts` on `QuestionAnswer` at
+answer time is a different thing: it is about what a *learner's answer row* should remember, not
+what a *piece of content* looked like. `content_snapshots` gives a future consumer the mechanism to
+close that gap — a caller could store the `snapshot_id` returned by `take_snapshot(form)` on
+`FormProgress` at completion — but it does not decide to do so, and nothing in its idea, spec-phase
+open questions, or success criteria commits to it. The gate this cleanup's idea.md already names
+(`idea.md:115-117`) — "before the first learner answer exists," which is deploy time, not today —
+still holds, and still isn't this cleanup's or `content_snapshots`'s to close.
 
-Why this one is worth calling out and the others below aren't: two features arriving at the same need
-from unrelated directions (a UX/data-integrity problem in one case, a 20-year-old external standard in
-the other) is a much stronger signal than either wanting it alone. But note what it does *not* imply
-for *this* pre-deploy cleanup: it doesn't force any change today. `better_course_progress_tracking`'s
-new `CourseRun` model (`idea.md:41-54`) is the answer, and it lands from a spec that's already
-in-flight and assumed to land per this task's fixed decisions. Nothing needs deciding in *this* unit's
-scope beyond the one thing worth writing down for whoever eventually specs `xapi_implementation`: point
-its event table's registration/attempt concept at `CourseRun`'s id rather than re-deriving or
-reinventing its own attempt identity, since that identity will already exist by the time xAPI is built.
+**Its own scope statement no longer matches the tree it will be built against.** The idea requires
+"no imports from apps other than `content_engine`, `accounts`, and `site_aware_models`" (`idea.md:23`,
+repeated at `:75`), but also lists `Form`, `FormContent` and `FormQuestion` — "full body, not
+truncated; with options" — as in-scope content models (`idea.md:30-37`). Those three no longer live in
+`content_engine`: `extract_forms_into_seperate_app` moved them to `form_engine`
+(`freedom_ls/form_engine/models.py:43`, `:107`, `:125`), and `content_engine/models/__init__.py`
+re-exports only `Activity`, `ContentCollectionItem`, `Course`, `CoursePart`, `File`, `Topic` — no
+`Form`. The dependency graph confirms the direction: `content_engine --> form_engine`
+(`docs/app_structure.md:49`), not the reverse, so `content_snapshots` cannot reach `Form` through
+`content_engine` at all. Whoever specs this needs `form_engine` as an explicit fourth dependency
+(`freedom_ls/content_base` is the natural fifth, since it is what both `content_engine` and
+`form_engine` already share for `BaseContent`/`TitledContent`/`MarkdownContent`,
+`freedom_ls/content_base/models.py:10-93`, and sits below both in the graph,
+`docs/app_structure.md:45-46`) — or the idea's form-content scope needs to shrink. This is a
+dependency-list correction for the idea document, not a schema decision; nothing about it is expensive
+to fix later.
 
-**A convergence that both sides already noticed and deliberately did not resolve — the "pool of
-questions" concept.** `compliance-form-randomization/idea.md:77-78` says so itself: *"Note the overlap:
-both touch a 'pool of questions' concept; the remediation spec will define its own primitives and may
-later converge — that convergence is not a goal here."* This is included specifically as a contrast to
-the run/registration id case above: it is the same *shape* of signal (two roadmap items wanting a
-related concept) but the idea authors have already looked at it and decided, correctly, not to force a
-shared primitive before either side is built. Nothing to add here beyond confirming that call still
-holds — it does, and it is a good model for how "convergent demand" should usually be handled: noted,
-not pre-built.
+## 3. Apps headed out of FLS — the `SiteAwareModel`/`freedom_ls_` exemption, checked against all three
 
-## Risks and gotchas
+This cleanup's Decision 5 (`idea.md:143-149`) already settles that self-contained, extractable apps
+are a named exception to the `SiteAwareModel` convention, with `referral-link-tracker` as the worked
+example. Checking all three apps the prompt named against that decision:
 
-1. **Inventing schema for a feature nobody has specced.** The explicit risk this task was warned to
-   guard against. It did not materialise here: every item that could have tempted a pre-built model
-   (certificates' verify token, MFA's device table, comms' audience abstraction) turns out to need
-   nothing from today's schema because it's either purely additive against existing tables or, in
-   `certificates`' case, fully covered by a sibling spec that's already in flight. The one item that
-   does get a recommendation in this report (`referral-link-tracker`, §1) gets a *documentation*
-   decision, not a model — which is the right size of decision for an idea that hasn't been specced yet.
-2. **`report-upgrades` is not spec-ready and its own header says so.** `report-upgrades/idea.md:1-9`
-   flags that `basic_reports` removed the `REPORTS_AT_RISK_RULES_MODULE` settings hook the idea was
-   written against, and several sections need reworking before this idea can be trusted as a spec input.
-   Treat the "implies-nothing" verdict above as a statement about the *shape* of the change (new models,
-   new nullable field), which survives that rework — not as a signal that the idea document is otherwise
-   current.
-3. **The "no organisation membership" non-goal was already reversed once.** The shipped Organisation cut
-   stated "No organisation membership object" as a deliberate non-goal; `learners-associated-with-organisations`
-   (`idea.md:14-20`) explicitly reverses it, with a paragraph recorded specifically so nobody re-litigates
-   the original call without reading why. This is a useful precedent for this cleanup's own scope
-   discipline: a documented non-goal is not permanent, but reversing one needs the same "written down,
-   with reasoning" treatment that spec did — an undocumented reversal is how scope creep actually happens.
-4. **Two structural facts assumed by the task turned out to already be true, not merely queued.** Both
-   `basic_reports` and the Organisation cut have already merged into `main` (confirmed by reading
-   `freedom_ls/reports/models.py` and `freedom_ls/organisations/models.py` directly, and by
-   `Cohort.organisation`/`UserCourseRegistration.organisation` already being mandatory FKs in
-   `freedom_ls/student_management/models.py:16-73`). This report treated `report-upgrades` as resting on
-   already-shipped ground rather than on two more in-flight specs — worth this cleanup's author
-   double-checking which of the "fixed decisions" sibling specs are still in-flight vs. already landed
-   before finalising the refined idea, since the answer changes how much residual risk each queued item
-   actually carries.
+- **`referral-link-tracker` wants the exemption and has already reasoned through it.** Its own idea
+  is explicit twice over: it "must **not** ... subclass FLS base classes (`SiteAwareModel`)"
+  (`idea.md:29-33`), restated at the model layer (`:102-106`) with an optional `django.contrib.sites`
+  FK instead. The idea also catches and overrides its own sibling research doc, which sketches models
+  subclassing `SiteAwareModel` directly (`research_data_model.md:170, 194, 221-224`) — flagged as
+  needing translation before spec (`idea.md:196-199`). Nothing further to decide here; the exemption
+  this cleanup already wrote down is exactly what the idea asks for.
+- **`extract-icons-app` has no model to exempt.** `freedom_ls/icons/apps.py` declares
+  `name = "freedom_ls.icons"` with no explicit `label` and no `models.py` anywhere under
+  `freedom_ls/icons/` — zero tables, so the `SiteAwareModel` question never arises, and the
+  `freedom_ls_` label question (which this cleanup's own do-now finding #1 already flags as
+  zero-risk for `icons` precisely because it has no tables) is likewise moot for this app. The
+  extraction idea's own decisions (`idea.md:76-81`) rename the package (`django-semantic-iconify`)
+  and its settings prefix (`SEMANTIC_ICONIFY_*`) — an app identity change this cleanup's `freedom_ls_`
+  labelling work should not pre-empt by relabelling `icons` first.
+- **`debt_markdown_rendering_package_isolation` is not actually proposing an extraction, and the
+  premise doesn't fit it.** `markdown_rendering` has no `models.py` either, and unlike `icons` it
+  already carries a correct, explicit `label = "freedom_ls_markdown_rendering"`
+  (`freedom_ls/markdown_rendering/apps.py:7`). Its idea is entirely about relocating misplaced test
+  code across an existing dashed dependency edge (`idea.md:39-93`) so the app's tests stop reaching
+  into `content_engine`; it never proposes publishing `markdown_rendering` as a separate installable
+  package the way `extract-icons-app` and (eventually) `referral-link-tracker` do. There is no
+  `SiteAwareModel`/`freedom_ls_` exemption question here at all, because there is no model and no
+  extraction plan — the three apps do not, in fact, share one implication.
+
+## 4. `certificates` — re-derived against what shipped
+
+The old research bound certificates to a "frozen completion record" and named the sibling spec's
+(then-proposed) `CourseRun` model as that record. `CourseRun` did not ship.
+`better_course_progress_tracking` landed a different shape: `CourseProgress` keyed on `learner` plus
+exactly one of `learner_registration`/`cohort_registration` (`freedom_ls/learner_progress/models.py:106-184`),
+and its own decision record states plainly that **nothing in that work retires a record** — no
+resolver reads `is_active` as a retirement signal, and there is deliberately no retake trigger yet
+(`spec_dd/3. done/2026-08-28_14:19_better-course-progress-tracking/1. spec.md:206-259`). A `CourseProgress`
+row's `completed_time` is therefore not reset or superseded by anything in the codebase today —
+stable enough for `certificates` to FK against directly, the same way any other content-bearing model
+FKs against a stable row.
+
+That stability is conditional on retake staying unbuilt. `learner-management-actions` names the
+"explicit retake trigger" as work `better_course_progress_tracking` deliberately left unbuilt
+(`spec_dd/1. next/learner-management-actions/idea.md:111-112`), and when it lands, deciding whether a
+retake resets the same `CourseProgress` row or mints a new one is that spec's question to answer, not
+this cleanup's or `certificates`'s. `certificates` needs nothing from the pre-deploy cut: a new,
+additive `Certificate` model (hash/token, public verify URL) FK'd to `CourseProgress`.
+
+## 5. `user-data-retention-idea.md` — confirmed as the sole owner of `delete_user()`
+
+This cleanup's own idea.md already declares retention out of scope and defers it here by name
+(`idea.md:95`: "Retention, anonymisation, and a canonical `delete_user()` flow... belongs to
+`user-data-retention-idea.md`"), and the idea file itself agrees — it is explicitly "the placeholder
+for a future spec," not an implementation (`user-data-retention-idea.md:7`, `:30-32`). Every user-side
+CASCADE the pre-deploy cut leaves in place — `LegalConsent.user`
+(`freedom_ls/accounts/models.py:174-177`), `FormProgress.user` (`freedom_ls/form_engine/models.py:201-203`),
+`CourseApplication.user` (`freedom_ls/course_applications/models.py:32-35`), and the rest — is
+compatible with this idea's own stated options (hard-delete, anonymise-in-place, or snapshot-and-detach,
+`idea.md:16-19`): CASCADE is one legitimate default among the three the future spec will choose per
+model, not a decision this cleanup is making on the retention spec's behalf. Nothing here needs
+revisiting before deploy; the retention questions are all still open exactly where this idea leaves
+them.
+
+## 6. Convergent demand — the run/registration id gap is closed, and two more items lean on the same shape
+
+**The gap the prior research flagged is shipped, not merely planned.** `better_course_progress_tracking`
+landed with `course.registered` firing `"course_progress_id": str(record.id)`
+(`freedom_ls/learner_progress/signals.py:145-156`), asserted by
+`freedom_ls/learner_progress/tests/test_registration_signals.py:320`. `xapi_implementation` wants
+exactly this concept — xAPI's own `Context` object has a standing `registration` (UUID) field
+(`spec_dd/1. next/xapi_implementation/research_xapi_standard.md:13`) — and its idea already commits
+to `SiteAwareModel` for its own new event table (`0. idea.md:9`), so it is building fresh tables
+regardless. The one thing worth writing down for whoever specs it: point the event table's
+registration/attempt concept at `CourseProgress.id` (via `CourseFormAttempt.course_progress_id`,
+`freedom_ls/learner_progress/models.py:254-256`, for form-shaped events) rather than re-deriving or
+reinventing attempt identity that already exists.
+
+**A second, independent feature is leaning on the same shape.** `student-communication`'s
+registration-scoped comms config (§19 above) wants to attach to "a specific `UserCourseRegistration`
+*or* `CohortCourseRegistration`" (`idea.md:129`) — precisely the exactly-one-of-two-FKs shape
+`CourseProgress` already uses (`freedom_ls/learner_progress/models.py:119-132`, constraints at
+`:158-184`). Nothing needs building now — the config model doesn't exist yet, and inventing it ahead
+of a spec would be exactly the risk this task was warned against — but it is a second data point that
+this shape is becoming a house pattern, not a one-off.
 
 status: ok

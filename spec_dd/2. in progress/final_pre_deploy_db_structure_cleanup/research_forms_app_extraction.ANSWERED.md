@@ -1,5 +1,13 @@
 # Research: forms as their own app
 
+**Answered by the code.** The extraction shipped as
+`spec_dd/3. done/2026-08-24_20:56_extract_forms_into_seperate_app`: `content_base` holds the abstract
+bases, `form_engine` holds `Form`, `FormPage`, `FormContent`, `FormQuestion`, `QuestionOption`,
+`FormProgress` and `QuestionAnswer`, and `content_engine` is a `models/` package. This file is kept
+for the costing it did, not as a live recommendation — where it argues against extraction, the
+project went the other way.
+
+
 ## Executive summary
 
 **Recommendation: no — do not extract forms into their own Django app.** Split

@@ -1,211 +1,199 @@
 # Final pre-deploy database structure cleanup
 
 FreedomLS has not been deployed. Once it is, schema changes stop being cheap: FLS ships as a git
-submodule into downstream projects that run `migrate` against their own databases, so every
-structural decision made now is one somebody else's production data has to live with.
+submodule into downstream projects that run `migrate` against their own databases, so every structural
+decision made now is one somebody else's production data has to live with.
 
-This is the sweep that catches what the in-flight specs don't. It is a cleanup, not a feature hunt —
-renames, app placement, relationships, and the handful of additive changes that are only honest to
-make while no rows exist.
+This is the sweep that catches what the shipped specs did not. It is a cleanup, not a feature hunt.
+Names, app placement, relationships, and the handful of additive changes that are only honest to make
+while no rows exist.
 
-**The window is narrower than "before we deploy".** FLS is never deployed standalone; a production
-deployment is a *concrete project* (`docs/product/deployment.md:110-116`). So the point of no return
-is **the first `migrate` any downstream project runs against a database it intends to keep**. The one
-downstream project that exists, `ConcreteFlsImplementation`, currently has no deployment artifacts at
-all — no Dockerfile, no compose file, no CI (`spec_dd/3. done/2026-07-09_09:42_support-concrete-project-deployment-master-decomposed-into-specs/concrete_project_idea.md:25-27`).
-The window is open. It will not announce when it shuts.
+## The window
 
----
+FLS is never deployed standalone. A production deployment is a *concrete project* built from the
+`freedom-ls-concrete-template` repo, so the point of no return is **the first `migrate` any downstream
+project runs against a database it intends to keep**.
 
-## The forms question, answered
+That point is closer than it reads. `docs/product/deployment.md` records the build step as built. The
+template repo ships Caddy, Docker Compose and CI that pushes a per-commit SHA-tagged image, and
+production Cloudflare R2 buckets were configured on 2026-08-27. What remains unbuilt is VPS
+provisioning and the step that pulls an image onto a server. The gap used to be three layers. It is
+one.
 
-The idea asked: *should the forms that are managed by the content engine be in their own app? they
-seem complicated enough that they should be.*
-
-**No.** The intuition is real but mis-locates the complexity. The hard parts of forms — scoring,
-attempts, resumability, quiz percentages, per-question answer state — already live in
-`learner_progress` (`FormProgress` is 405 of 571 model lines), and the player UI already lives in
-`learner_interface` (`views.py:832-1338`). Both already have their own apps. What is left in
-`content_engine` is structural definition: five models of title, order and FK fields, no more
-intrinsically complex than `Course`/`CoursePart`'s own GFK-based `children()` tree, which nobody is
-proposing to extract.
-
-Extraction would also cost real things for no functional gain: the abstract bases
-(`BaseContent`/`TitledContent`/`MarkdownContent`) have no good new home, the single shared pydantic
-registry and single-pass importer would have to be forked or re-coupled, and every table would be
-renamed. The decisive fact: **six apps that already depend on `content_engine` import
-`Form`/`FormPage`/`FormQuestion` interchangeably with `Topic`/`Course` in the same functions.**
-Extraction wouldn't shrink `content_engine`'s fan-in — it would add at least seven new edges to the
-dependency graph.
-
-What forms actually want is a `models/` package with a `forms.py` module inside the same app — same
-label, same tables, zero migration, most of the organisational benefit. Because that costs no
-migration, it carries **no pre-deploy deadline at all**, which is why it lands in do-later below
-rather than do-now. That is the honest answer, not a hedge.
+Nothing here says a downstream `migrate` has run, and nothing here can. Dev databases in this repo are
+disposable and rebuilt per worktree, and this tree has no visibility into the deploy repo at all.
+Silence is not evidence either way. The window is open, it is narrower than it looks, and it will not
+announce when it shuts.
 
 ---
 
-## Ranked findings
+## Do now
 
-Ranked by cost-if-deferred, which is the only ranking that matters here.
-
-### Do now
+Ranked by cost if deferred, which is the only ranking that matters here.
 
 | # | Finding | Cost if deferred |
 |---|---|---|
-| 1 | **`webhooks` has no `label`** (`freedom_ls/webhooks/apps.py`), so its four models' tables are `webhooks_*`, not `freedom_ls_webhooks_*`. `health` and `icons` are also unlabelled (no models, so no tables). | The one genuine table-namespacing gap in the codebase. After deploy this is a downstream-run data migration renaming production tables. It is also a boot-time collision risk: a downstream project with its own `webhooks`, `health` or `icons` app cannot start. Django's own docs warn a label change after migrations ship "will result in breaking changes to ... any existing installs". |
-| 2 | **Timestamps are absent, not merely inconsistent.** No `created_at`/`updated_at` on `accounts.User` (no timestamp of any kind — not even a signup date), `Cohort`, `CohortMembership`, all 11 `content_engine` models, `Organisation`, or the three deadline models. | The one genuinely unbackfillable item. A `created_at` added after rows exist is not a recovered fact, it is a fabricated one, and nothing in the data distinguishes the two afterwards. |
-| 3 | **Authored content cascades into learner records.** Three separate CASCADE chains — `FormProgress.form`, `TopicProgress.topic`, `CourseProgress.course` — mean hard-deleting a `Form`/`Topic`/`Course` silently destroys every learner's progress for it. Plus `QuestionAnswer.question` and the two registration `.collection` FKs. Nine FKs should become `PROTECT`. | Silent, unrecoverable learner-data loss. Cheap to fix now; after deploy it needs a migration plus an admin-workflow change. Moodle enforces exactly this rule at the product level. |
-| 4 | **Migration history should be reset once, project-wide** — delete each app's migrations, regenerate a fresh `0001_initial`. 57 files today, including four that only service a `Student` model deleted long ago and a merge migration caused by a duplicate `0010_`. | The option expires at the tripwire above and never returns. See Decision 4 — this runs **last**, behind a re-check gate. |
-| 5 | **`LearnerCourseRegistration.collection`, `CohortCourseRegistration.collection`, `RecommendedCourse.collection`** are all hard FKs to `content_engine.Course`. `course_applications` and `course_interest` already call the identical field `course`. | At the database level a rename is metadata-only and costs the same forever. But FLS is a *library*: once downstream projects write `.collection` in their own code, the rename becomes a breaking API change needing upgrade notes and downstream edits. That is the cliff, and it is a real one. |
-| 6 | **`calculate_course_progress_percentage` lives in `learner_management/utils.py:17`** but its only real caller is `learner_progress` (`signals.py:25`). It is the sole cause of the `learner_progress → learner_management` runtime edge (`docs/app_structure.md:88`). | Nearly free to fix, and it deletes a dependency-graph edge outright. Deferring costs nothing but nothing is gained by waiting either. |
-| 7 | **Two constraint defects.** `Cohort`'s constraint is named `unique_cohort_name_per_site` but is on `(site_id, organisation, name)`. `CourseInterest`'s unique constraint omits `site` where its near-twin `CourseApplication` includes it. | Individually cheap at any time. Included as do-now because the pass is already open in these files, not because deferring is dangerous. Constraint names do persist in the database. |
-| 8 | **Deadline GFK `content_type` FKs are CASCADE** on three models, against the codebase's own precedent (`CourseProgress.last_accessed_content_type` is deliberately `SET_NULL` "so deleting a content model type cannot cascade-delete progress"). | Consistency fix; each model's `clean()` already treats a null pair as a whole-course deadline, so `SET_NULL` degrades into an already-tested state. |
-| 9 | **`WebhookDelivery.endpoint` is CASCADE**, so deleting an endpoint config erases its entire delivery audit history. | Same audit-survives-its-subject principle. A new finding, not in the original brief. |
-| 10 | **Three one-line clarity fixes.** `webhooks/apps.py` sets `default_auto_field = BigAutoField` which has never had any effect (its models are `SiteAwareModel`, UUID PK). `accounts.User` has no comment recording that its integer PK is deliberate. The GFK `object_id` type rule is undocumented. | Free. Each one prevents a future contributor "fixing" something that is already correct. |
-| 11 | **Delete `app_authentication`.** Not installed, no migrations, zero tables — but its `Client.api_key` is a plaintext, queryable, admin-visible `CharField`, one uncommented line away from shipping. | Code hygiene riding along, not a DB-structure finding — flagged as such. If API-client auth is wanted later it should be designed properly, with hashed key storage and a rotation story. |
+| 1 | **Timestamps are absent, not merely inconsistent.** `accounts.User` carries no timestamp of any kind, not even a signup date. `content_base.BaseContent` has none, which is eight content models at once, and `File`, `ContentCollectionItem` and `form_engine.QuestionOption` sit outside that base and need the same fix individually. Nor do `Organisation`, `Cohort`, `CohortMembership`, `SiteSignupPolicy`, `CourseFormAttempt`, or the three deadline models, which are edited in place and want `updated_at` as well as `created_at`. `QuestionAnswer` has `last_updated_time` and no `created_at`, and `save_answers()` rewrites it on every visit to a form page, so the original submission time dies the first time a learner edits an answer. | The one genuinely unbackfillable item. A `created_at` added after rows exist is not a recovered fact, it is a fabricated one, and nothing in the data distinguishes the two afterwards. |
+| 2 | **Migration history should be reset once, project-wide.** Delete each app's migrations, regenerate a fresh `0001_initial`. 47 files across 11 apps, 18 of them in `content_engine`, which carries a merge migration caused by a duplicate `0010_` and a `0015`/`0016` delete pair that only unwinds form models `form_engine` recreates from scratch. | The option expires at the window above and never returns. Decision 5 runs it **last**, behind a re-check gate. |
+| 3 | **`webhooks` declares no `label`**, so its four tables are `webhooks_*`, the only prefix in the schema that is not `freedom_ls_`. `health` is unlabelled too, and owns no tables. `icons` is unlabelled by design, per Decision 3. | The one genuine table-namespacing gap. After deploy it is a downstream-run data migration renaming production tables, and Django's own docs warn that a label change after migrations ship "will result in breaking changes to ... any existing installs". It is also a boot-time collision: a downstream project with its own `webhooks` or `health` app cannot start. |
+| 4 | **`LearnerCourseRegistration.collection`, `CohortCourseRegistration.collection` and `RecommendedCourse.collection`** are FKs to `Course`, while `course_applications` and `course_interest` already call the identical field `course`. `collection` is also already taken: `ContentCollectionItem.collection` is a genuine GFK over `Course`/`CoursePart`, and the two meanings sit in the same queries. | At the database level a rename is metadata-only and costs the same forever. But FLS is a *library*. Once a downstream project writes `.collection`, the rename becomes a breaking API change needing upgrade notes and downstream edits. That is the cliff. 106 files reference the name, so the sweep has to tell the two meanings apart. |
+| 5 | **`UserCohortDeadlineOverride` names a `User` it no longer has.** Its only person-identifying field is `learner`, and the sibling models re-keyed by the same spec already say `Learner` in their names. | The same cliff as #4, on a footprint of 12 files, all internal to FLS today. A class rename is metadata-only in Postgres now and a breaking import rename for any downstream project afterwards. |
+| 6 | **`QuestionAnswer.question` is CASCADE**, so deleting one `FormQuestion` erases every learner's answer to it. `FormProgress.form` being `PROTECT` stops the whole `Form` from being deleted; it says nothing about a question being trimmed off one. | Silent, unrecoverable learner-data loss through a live admin page. `PROTECT` is one line now and a migration plus a workflow change later. The two registration `.collection` FKs should become explicit `PROTECT` in the same pass. They are already blocked transitively, because every active registration mints a `PROTECT`-guarded `CourseProgress`, which leaves this model's integrity resting on another model's cascade policy. |
+| 7 | **The Django admin exposes full delete on `Topic`, `Course`, `CoursePart`, `Form`, `FormPage`, `FormQuestion` and `QuestionOption`**, contradicting `docs/product/content-editing-workflow.md`, which states there is no admin-side or browser-based authoring interface. It is the only live path any of these cascades fire from. Re-import is upsert-only and never deletes. | No deadline. This costs the same at any time. It earns do-now because it is the cheapest change in the document and closes the most ground, including the one gap no `on_delete` can reach (Decision 2). |
+| 8 | **The three deadline models' GFK `content_type` FKs are CASCADE**, against the codebase's own precedent: `TopicProgress.collection_item`, `CourseProgress.last_accessed_item` and `CourseFormAttempt.collection_item` are all `SET_NULL`, so that removing what a pointer names cannot destroy the record holding it. | Consistency fix. Each model's `clean()` already treats a null `(content_type, object_id)` pair as a whole-course deadline, so `SET_NULL` degrades into a state the model already validates and renders. |
+| 9 | **`WebhookDelivery.endpoint` is CASCADE**, so an ordinary admin delete of an endpoint config erases every delivery attempt ever recorded against it, with their status codes and response bodies. Its sibling `WebhookDelivery.event` is CASCADE too but unreachable, because both those admins already hard-disable delete. | The one place in the matrix where the data lost is compliance evidence rather than learner progress, and it is the reachable half of the pair. See the open question. |
+| 10 | **Move `RecommendedCourse` into its own app.** It is the third member of the pre-registration-intent family, after `CourseApplication` and `CourseInterest`, which each got a single-model app. It depends on nothing they do not. | Only free during the reset pass, where a fresh `0001_initial` absorbs the move. Afterwards it needs a state-only migration to keep the table while its app-label lineage changes. Well-trodden, but no longer free. Runs **with** the reset, not before or after it. |
+| 11 | **Delete `app_authentication`.** Not installed, no migrations, zero tables. But `Client.api_key` is a plaintext, queryable, admin-visible `CharField`, one uncommented line away from shipping, in a repo where `WebhookSecret` next door already uses `EncryptedTextField`. | A dormant credential trap for whoever re-enables it without re-reading the model. If API-client auth is wanted later it should be designed properly, with hashed key storage and a rotation story. |
+| 12 | **Write down the extractable-app convention and guard it.** Nothing in `docs/` states when `SiteAwareModel` applies, and no check anywhere validates app labels. `freedom_ls/icons/checks.py` also raises `freedom_ls.E00x` ids under a label no installed app holds. | Near-zero cost. It stops #3 recurring in an app not yet written, and stops a blanket rule from fighting the three apps already queued to leave FLS. See Decision 3. |
+| 13 | **Four one-line clarity fixes.** `default_auto_field` is declared in 19 `apps.py` files and consulted in two: `accounts.User` and `SystemRoleAssignment`, the only models not rooted in `SiteAwareModel`'s explicit UUID pk. `accounts.User` has no comment recording that its integer PK is deliberate. The GFK `object_id` type rule is undocumented. And `ContentCollectionItem` still carries a dead `collection_old` field from the pre-GFK design. | Free. Each one stops a future contributor "fixing" something already correct, or copying dead configuration into a new app out of habit. |
 
-### Do later
+## Do later
 
-No deadline pressure — these cost the same after deploy as before it.
+No deadline pressure. These cost the same after deploy as before it.
 
 | Finding | Why it can wait |
 |---|---|
-| Split `content_engine/models.py` into a `models/` package with `forms.py` | Pure code organisation. No label change, no table rename, no migration. |
-| Extract `RecommendedCourse` into its own small app | It is the third member of the "pre-registration intent" family (`CourseApplication`, `CourseInterest`) that each got their own single-model app. Structurally identical, just misplaced. A model move is a migration-lineage question — keep it away from the field rename. |
-| `Activity` has no `ActivityProgress` model | A real gap: an `Activity` in a course tree is permanently untracked. But `CourseItemProgress` is already an abstract base built so the subclass is close to free to add later. Building it now is exactly the scope creep this idea rules out. |
-| Normalise existing timestamp names (`registered_at`, `requested_at`, `assigned_at`, `timestamp`) | A Postgres column rename is catalog-only at any table size. Several of these names also carry domain meaning `created_at` would lose — `registered_at` means "access granted", not "row created". |
-| Convert remaining `unique_together` usages to named `UniqueConstraint` | Functionally identical. Several sit on models `better_course_progress_tracking` is about to restructure. |
-| `content_engine.tags` should be an `ArrayField`, matching `Course.learning_outcomes` one field away | Used as an admin `list_filter` where JSON-list filtering doesn't work usefully. A pre-existing minor bug, and the field is unused outside the admin. |
-| Index gaps (`FormProgress(user, form)`, `ContentCollectionItem` GFK pairs, `WebhookEndpoint.event_types` GIN) | `CREATE INDEX CONCURRENTLY` closes all of these later without meaningful lock contention. Nothing here reaches "expensive to add later". |
+| `updated_at` wherever it is missing | Its contract is "not known to have changed since", which is honest whenever the column is added. One trap: `role_based_permissions` deactivates roles through `QuerySet.update()`, which never fires `auto_now`, so an `updated_at` there must land with its call sites or go stale unnoticed. |
+| Normalise existing domain-named timestamps (`registered_at`, `assigned_at`, `requested_at`, `timestamp`) | A Postgres column rename is catalog-only at any table size. Several of these names also carry meaning `created_at` would lose. `registered_at` means "access granted", not "row created". |
+| `Cohort`'s constraint is named `unique_cohort_name_per_site` but scopes to `(site_id, organisation, name)` | It should read `unique_cohort_name_per_organisation`. Constraint names persist in the database, but renaming one is catalog-only at any size. |
+| `CourseInterest` and `Learner` omit `site` from their unique constraints where `CourseApplication` includes it | Three-way, not two, and unreachable. `User`, `Course` and `Organisation` are all themselves site-scoped, so no row can legitimately straddle sites. Belt-and-braces. Settle `"site"` over `"site_id"` as the house spelling in the same pass. |
+| Convert the eight remaining `unique_together` blocks to named `UniqueConstraint` | Functionally identical. The only gain is FLS naming the constraint instead of the database. Batch it with the timestamp work, which touches the same content models. |
+| Move `calculate_course_progress_percentage` from `learner_management/utils.py` to `learner_progress` | It has no `learner_management` dependency and every real caller is in `learner_progress`. It buys correct ownership, not a smaller dependency graph. `learner_progress` imports `Learner` and both registration models across four other files, because that is what a `CourseProgress` is keyed on. |
+| `content_base.tags` should be an `ArrayField`, matching `Course.learning_outcomes` | Used as an admin `list_filter`, where JSON-list filtering matches the whole list rather than one tag. A pre-existing minor bug, and the field is unused outside the admin. |
+| Index gaps on `ContentCollectionItem`'s GFK pairs and `WebhookEndpoint.event_types` | `CREATE INDEX CONCURRENTLY` closes both later without meaningful lock contention. Neither reaches "expensive to add later". |
+| `Activity` has no `ActivityProgress` model | Real, and genuinely deferrable rather than conveniently so. No course places an `Activity` today, so there is no progress to migrate around whenever the model arrives. `CourseItemProgress` is already the abstract base it would extend. |
 
-### Won't do
+## Won't do
 
-Stated so they read as deliberate, not as gaps.
-
-- **Extract forms into their own app.** ~~Answered above.~~ Superseded: this shipped as
-  `spec_dd/2. in progress/extract_forms_into_seperate_app/1. spec.md`, landing before this cleanup so
-  the migration reset in finding 4 now runs *after* the extraction and regenerates `0001_initial` for
-  `content_base`/`form_engine` along with everything else.
-- **Convert `accounts.User` to a UUID PK.** FK columns already agree automatically — this is not an integrity problem. The one real cost is that `User` is the only object whose identity appears in a URL as a small sequential integer. Severity is low: `email` is the actual auth key and every view goes through per-object permission checks. Defensible choice, not a broken one.
-- **Unify the GFK `object_id` types.** `UUIDField` is used where the target set is closed and guaranteed-UUID; `CharField(255)` exactly once, on `ObjectRoleAssignment`, where the target set is deliberately open. Forcing one type would be a regression — it would make it impossible to ever grant a role on a non-UUID-keyed object.
-- **Merge the three deadline models** into one polymorphic model, or split them into their own app. They are near-identical by shape but each hangs off a different registration; consolidating trades three explicit FK-typed models for one GFK on the hot deadline-lookup path.
-- **Merge `course_access` / `course_applications` / `course_interest`.** The separation is deliberate and documented in the code itself: `course_access` is a swappable-backend seam, and the other two are minimal seeds with committed future shapes.
-- **Add an answer-text snapshot to `QuestionAnswer`.** See Decision 3 — the research recommended it and the recommendation was wrong for this cut.
-- **Retention, anonymisation, and a canonical `delete_user()` flow.** Every user-side FK stays `CASCADE`, unchanged and flagged. This belongs to `user-data-retention-idea.md`.
-- **Touch `xapi_learning_record_store`.** Fully commented out, no tables, and `xapi_implementation` already plans the rename it would otherwise need.
+- **An explicit `through` model for `QuestionAnswer.selected_options`.** It is the only fix here whose
+  price rises after deploy, a bare migration now against a join-row data migration later. But locking
+  the admin down (#7) closes the same gap for free, and the through table buys nothing else.
+- **A frozen answer-text snapshot on `QuestionAnswer`.** Preserving historical answer text is a
+  feature, not database structure, and a nullable field costs the same at any time. The real gate is
+  "before the first learner answer exists", which is deploy time.
+- **Convert `accounts.User` to a UUID PK.** FK columns already agree automatically, so this is not an
+  integrity problem. The one real cost is that `User` is the only object whose identity appears in a
+  URL as a small sequential integer, and `email` is the actual auth key behind per-object permission
+  checks. Defensible, not broken.
+- **Unify the GFK `object_id` types.** `UUIDField` where the target set is closed and guaranteed-UUID;
+  `CharField(255)` exactly once, on `ObjectRoleAssignment`, where the target set is deliberately open.
+  Forcing one type would make it impossible to grant a role on a non-UUID-keyed object.
+- **Merge the three deadline models** into one polymorphic model. `deadline_utils` resolves all three
+  by name in a fixed priority order and bulk-indexes each by its own FK-typed registration id. A GFK
+  owner would replace three indexed lookups on the hot deadline path with one, and break the batching.
+- **Merge `course_access` / `course_applications` / `course_interest`.** `course_access` has no models
+  at all, only a swappable-backend seam, and the other two carry explicit "do not architect these
+  away" notes in their own model docstrings.
+- **Rename `learner_management`.** "Management" is vague but accurate for cohorts, learners,
+  registrations and deadlines, and nothing narrower covers them without splitting models that validate
+  against each other. There is no cost asymmetry making this pre-deploy-urgent, and #10 tightens the
+  fit anyway.
+- **Retention, anonymisation, and a canonical `delete_user()` flow.** Every user-side FK stays
+  `CASCADE`, unchanged. `user-data-retention-idea.md` owns this, and CASCADE is one of the three
+  defaults it will choose between per model.
+- **Touch `xapi_learning_record_store`.** Its `models.py` is fully commented out and it owns no
+  tables. Its `apps.py` `name` does not match its real module path, so installing it as-is would
+  `ImportError`. But `xapi_implementation` already scopes the directory rename that fixes it, and
+  doing it here only creates merge friction.
 
 ---
 
 ## Decisions
 
-1. **The `webhooks` label fix does not ride along with `learner-terminology-rename`.** The two are
-   mechanically similar — both rewrite app-label strings across a migration history — but that spec's
-   scope explicitly excludes `webhooks`. Land them as separate, separately-reviewable changes so a
-   structure-review gate can diff each against `docs/app_structure.md` independently.
+1. **Timestamps go on a standalone `TimestampedModel` mixin, not on `SiteAwareModel`.** Folding them
+   in would miss the two models with the least coverage: `accounts.User` subclasses the lower
+   `SiteAwareModelBase`, and `SystemRoleAssignment` is a plain `models.Model`, deliberately not
+   site-aware. It would also force a generic pair onto models that already carry a correct
+   domain-named timestamp, producing two fields that say the same thing. The mixin lands *before* the
+   per-model additions, or the same models get touched twice.
 
-2. **Timestamps go on a standalone `TimestampedModel` mixin, not on `SiteAwareModel`.** Folding them
-   into `SiteAwareModel` would miss the two models with the least coverage today: `accounts.User`
-   (subclasses the lower `SiteAwareModelBase`) and `SystemRoleAssignment` (a plain `models.Model`,
-   deliberately not site-aware). The mixin decision must land *before* the per-model additions, or
-   the same models get touched twice.
+2. **The content admin loses delete.** `webhooks/admin.py` already overrides `has_delete_permission`
+   to `False` on its two audit models, and the same pattern applies to the content models. This is the
+   only fix that reaches the gap Django gives no lever for: `QuestionAnswer.selected_options` uses an
+   auto-generated through table, so deleting one `QuestionOption` silently drops the join row from
+   every answer that selected it, and `PROTECT` on `QuestionAnswer.question` does not close that.
+   Locking the admin down also makes the code match `docs/product/content-editing-workflow.md` instead
+   of contradicting it. It does not replace the `PROTECT` changes. `danger_content_delete` and any
+   future API bypass admin permissions entirely.
 
-3. **No snapshot column on `QuestionAnswer`.** The deletion research recommended freezing
-   `question_text` and `selected_option_texts` at answer time, on the grounds that it is
-   unbackfillable and is the only thing that survives the M2M gap. On review the urgency argument
-   does not hold: the real gate is "before the first learner answer exists", which is deploy time,
-   not today — so nothing is lost by leaving it to `content_snapshots` or to a future authoring cut.
-   And preserving historical answer text is a *feature*, with an owner already, not database
-   structure. It is recorded here as a note for those specs, not built.
+3. **Extractable apps are a named exception to both the `freedom_ls_` label convention and the
+   `SiteAwareModel` convention.** An app is extractable when a spec has committed it to leaving
+   `freedom_ls/` as its own installable package. Today that is `icons`, which becomes
+   `django_semantic_iconify`, so an FLS-prefixed label would only be renamed twice;
+   `markdown_rendering`; and the planned `referral-link-tracker`, designed with no `site_aware_models`
+   edge at all. They are exempt from nothing else. Dependency direction still points host to app,
+   never the reverse. `health` is not extractable and gets `freedom_ls_health`.
 
-   The underlying gap is real and should be written down where those specs will find it: **Django
-   exposes no `on_delete` lever on the auto-generated M2M through table** for
-   `QuestionAnswer.selected_options`, so deleting a single `QuestionOption` silently drops the join
-   row from every answer that selected it. `PROTECT` on `QuestionAnswer.question` does not close
-   that. The cheaper fix is probably to stop content being hard-deleted through the admin at all —
-   see Open Questions.
+   Write the convention into `docs/` before `referral-link-tracker` is built, or a future contributor,
+   or `/fls-dev:plan_structure_review`, will read the missing edge as an oversight and "fix" it. The
+   guardrail belongs beside the conformance suite as an FLS-internal probe rather than an exported
+   downstream check, and encodes the exemption as an allowlist rather than asserting a blanket prefix.
+   The related house rule: a system-check id's label segment must equal that app's own registered
+   `AppConfig.label`, whatever it is.
 
-4. **The migration reset runs last, behind a re-check gate.** Delete and regenerate, project-wide,
-   once — after `learner-terminology-rename`, `learners-associated-with-organisations` and
-   `better_course_progress_tracking` have all landed, because each of them changes models in the apps
-   this would otherwise regenerate twice. Immediately before executing it, **re-verify that no
-   downstream project has run a `migrate` it intends to keep**; if that has changed, fall back to
-   ordinary forward migrations, which are always safe.
+4. **The three pre-registration course FKs keep CASCADE**, on `CourseApplication`,
+   `CourseInterest` and `RecommendedCourse`. None has progress, answers or registrations behind it. They are pre-registration
+   signals, and deleting the course discards a stale preference. `CourseApplication` is the one to
+   revisit later, when application review adds a decision state. At that point deleting the course
+   would erase a decision record rather than a preference, and that is the review spec's call.
 
-   This is a **declared, one-time exception** to `CLAUDE.md`'s "never edit existing migration files",
-   and should be recorded as one. The rule guards against quietly rewriting a migration that has
-   already run against real rows — which is precisely the failure this gate exists to prevent.
-   Deleting and regenerating from current model state is categorically different from editing a
-   migration's logic in place. That third option — hand-rewriting label strings inside existing files
-   — is rejected outright: it carries the same downstream risk with none of the benefit, and produces
-   files that still look historical but no longer are.
+5. **The migration reset runs last, behind a re-check gate.** All four specs it was waiting on have
+   landed. Immediately before executing, **re-verify that no downstream project has run a `migrate` it
+   intends to keep**. In practice that means asking whoever owns the deploy repo whether a VPS has
+   been provisioned and `migrate` run against a Postgres instance anyone intends to keep data in. This
+   repo's own green tests and clean migration state are not an answer to that question. If the answer
+   is yes, or cannot be obtained, fall back to ordinary forward migrations, which are always safe.
 
-5. **Self-contained, extractable apps are a named exception to the `SiteAwareModel` convention.**
-   `referral-link-tracker` will be the first app in the graph with no `site_aware_models` edge, by
-   deliberate design, so it stays liftable out of FLS. There is currently no written convention
-   anywhere in `docs/` about when `SiteAwareModel` should be used. Write it down *before* that app is
-   built, or a future contributor — or `/fls-dev:plan_structure_review` — will read the missing edge
-   as an oversight and "fix" it, silently reintroducing the coupling it was designed to avoid. The
-   exception is narrow and should stay narrow.
+   This is a **declared, one-time exception** to `CLAUDE.md`'s "never edit existing migration files".
+   The rule guards against rewriting a migration some database's history already vouches for having
+   run. Deleting a file and regenerating from current model state does not touch such a file. It
+   discards an artifact before it was ever load-bearing. The exception covers this one pass and
+   nothing after it: once any downstream `migrate` has run against a database meant to be kept, the
+   door is closed permanently.
 
-6. **A conformance guardrail asserting every installed app's label starts with `freedom_ls_`.**
-   The machinery already exists (`freedom_ls/contrib/conformance/`, and the `base/checks.py` system
-   checks). Near-zero cost, and it stops this exact problem recurring in an app not yet written.
-
----
-
-## Sequencing
-
-This idea is a **sibling** of the three in-flight specs, not an umbrella over them. It assumes they
-land and only adds what they miss. But the order matters:
-
-1. [DONE] `learner-terminology-rename` first. It renamed three app labels and therefore every table
-   those apps own. Anything here touching those models lands under the new names:
-   `learner_management`, `learner_progress`, `learner_interface`.
-2. [DONE] `learners-associated-with-organisations`, which introduced `Learner` and re-keyed every
-   enrolment model onto it. Still pending: `better_course_progress_tracking`, which re-keys
-   `CourseProgress` from `user` onto `Learner`, adds an `is_active` flag so a learner can hold more
-   than one pass at a course, and re-scopes `TopicProgress`/`FormProgress` from the bare
-   `Topic`/`Form` to the `ContentCollectionItem` that places them — do not index or add timestamps
-   to models it is mid-redesign on.
-3. Everything in this idea's do-now list except the migration reset.
-4. **The migration reset, last**, behind the Decision 4 gate.
-
-Two ordering hazards worth naming:
-
-- The `collection` → `course` rename and the `RecommendedCourse` app extraction both touch the same
-  model but are different kinds of change. Do the field rename on its own; a model move is a
-  migration-lineage question that belongs with the reset.
-- `PROTECT` on the content FKs will make `danger_content_delete` fail loudly once any learner data
-  exists. It fails safe — the transaction rolls back — but the command's messaging doesn't explain
-  why. Update its help text in the same change.
+   There is precedent in this repo already. `learner_management` and `learner_progress` are each a
+   single `0001_initial` today, and got there by exactly this operation, deletion and regeneration
+   rather than squashing with a `replaces` list, during the specs that restructured them. Rewriting
+   label strings inside existing files is the third option, and this cut rejects it outright: it
+   carries the same downstream risk with none of the benefit, and produces files that still look
+   historical but no longer are.
 
 ---
 
-## Open questions
+## Ordering
 
-1. **The Django admin exposes full delete on `Form`, `FormQuestion`, `Topic`, `Course`, `CoursePart`
-   and `FormPage`, which directly contradicts `docs/product/content-editing-workflow.md:19` ("There
-   is no admin-side or browser-based authoring interface").** The docs and the code disagree about
-   whether this surface exists. It is also the live surface the `PROTECT` recommendations defend
-   against — content re-import is upsert-only and never deletes, so the admin and
-   `danger_content_delete` are the only two paths that fire these cascades at all. Should this cut
-   lock the admin down, or just document the surface honestly? Locking it down is arguably the
-   cheaper fix for the M2M gap in Decision 3 than any schema change.
+1. The `TimestampedModel` mixin, then the per-model timestamp additions.
+2. The `webhooks` and `health` label fix, as its own separately-reviewable change. It rewrites label
+   strings across nine of ten migration files and should diff against `docs/app_structure.md` alone.
+3. The `collection` → `course` and `UserCohortDeadlineOverride` renames. Both are field- and
+   class-level, so keep them clear of any model move.
+4. The rest of the do-now list.
+5. **The migration reset, last**, behind the Decision 5 gate, carrying the `RecommendedCourse` app
+   move with it.
 
-2. **Is `learner_management` the right name?** It holds cohorts, `Learner`, registrations,
-   deadlines and recommendations. "Management" is a vague noun but an accurate one, and no better
-   name suggests itself. Flagged rather than decided — `learner-terminology-rename` was a word swap
-   and deliberately did not re-think app boundaries, so the question it left open is still open.
+Two hazards worth naming. `PROTECT` on `QuestionAnswer.question` will make `danger_content_delete`
+fail loudly unless it clears answers before questions. It already clears progress before content for
+exactly this reason, so extend the same ordering and say why in the command's help text. And a
+`RecommendedCourse` app move done at any time other than the reset needs a state-only migration, which
+is why it is pinned to step 5 rather than floated.
+
+## Open question
+
+**`WebhookDelivery.endpoint`: `SET_NULL` or `PROTECT`?** `PROTECT` needs nothing added but blocks
+deleting an endpoint that has any delivery history at all, which may be too strict for a
+rotate-and-replace workflow. `SET_NULL` needs the field to become nullable, and needs
+`WebhookEndpoint.url` denormalised onto the delivery so the audit row still says where it was trying
+to send once the endpoint is gone.
 
 ---
 
 ## Research
 
-- `research_model_inventory.md` — every concrete model, with a keep/rename/move/re-relate verdict
-- `research_forms_app_extraction.md` — the forms question, with the extraction costed
-- `research_app_boundaries_and_labels.md` — app labels, table namespacing, dormant apps, misplaced code
-- `research_field_level_hardening.md` — timestamps, PK types, GFK key types, constraints, indexes, JSONFields
-- `research_deletion_semantics.md` — the full `on_delete` matrix
-- `research_migration_reset_strategy.md` — squash vs rewrite vs reset, and the tripwire
-- `research_roadmap_pressure.md` — what queued work implies about today's schema (ten of eleven items: nothing)
+- `research_model_inventory.md`: every concrete model, with a keep/rename/move/re-relate verdict
+- `research_deletion_semantics.md`: the full `on_delete` matrix and the live delete paths
+- `research_field_level_hardening.md`: timestamps, PK types, GFK key types, constraints, indexes, JSONFields
+- `research_app_boundaries_and_labels.md`: app labels, table namespacing, the extractable-app convention, dormant apps
+- `research_migration_reset_strategy.md`: squash vs rewrite vs reset, and the tripwire
+- `research_roadmap_pressure.md`: what queued work implies about today's schema (all 25 items: nothing)
+- `research_forms_app_extraction.ANSWERED.md`: kept for its costing, since the extraction shipped
+- `notes_for_other_specs.md`: findings this cut surfaced that belong to somebody else's spec

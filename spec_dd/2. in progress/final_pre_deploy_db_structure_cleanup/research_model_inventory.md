@@ -1,162 +1,203 @@
 # Research: model-by-model inventory
 
-## Executive summary
+39 concrete models across 12 apps that own tables, plus two dormant apps (`app_authentication`,
+`xapi_learning_record_store`) that own zero tables today, and twelve installed-or-adjacent apps that
+have never owned a model at all. No model surveyed is dead, duplicated, or needs deleting. No
+`db_table` is set anywhere in the tree (confirmed by exhaustive grep), so every table name below is the
+Django default, `<app_label>_<model_name_lower>`.
 
-Across the 38 concrete models in 11 active apps (plus 2 dormant, uninstalled apps that own no table
-today), the great majority are correctly shaped and correctly placed — this is not a codebase that
-needs a rewrite. Three findings carry real weight and should be **do-now**: first, three separate
-fields (`UserCourseRegistration.collection`, `CohortCourseRegistration.collection`,
-`RecommendedCourse.collection`, all in `freedom_ls/student_management/models.py:58,112,304`) are named
-`collection` while every one of them is a hard FK straight to `content_engine.Course`, never to a
-`CoursePart` or any other collection type — the generic name belongs only to
-`ContentCollectionItem.collection` (`content_engine/models.py:393`), which really is a GFK to
-`Course|CoursePart`; the two later, better-designed apps `course_applications` and `course_interest`
-already call the equivalent field `course` (`course_applications/models.py:37`,
-`course_interest/models.py:33`), so this isn't even a consistent legacy convention to preserve, it's a
-straight rename to match a pattern the codebase has already converged on elsewhere. Second,
-`RecommendedCourse` (`student_management/models.py:293-319`) is the third member of a family of
-"pre-registration intent" models — alongside `CourseApplication` and `CourseInterest` — that the other
-two members each got their own single-model app for, while this one is buried inside the large,
-soon-to-be-renamed `student_management`/`learner_management` app; extracting it into its own small app
-now, mirroring `course_applications`/`course_interest`, costs nothing today and avoids it forever
-looking like the odd one out. Third, two small constraint-naming/coverage inconsistencies are cheap to
-fix now and expensive to notice later: `Cohort`'s unique constraint is literally misnamed
-(`unique_cohort_name_per_site` on a `(site_id, organisation, name)` tuple,
-`student_management/models.py:24-28`) and `CourseInterest`'s unique constraint omits `site` where
-`CourseApplication`'s equivalent constraint includes it (`course_interest/models.py:41-44` vs.
-`course_applications/models.py:46-50`). Everything else is either already correctly shaped, already
-owned and being fixed by one of the three in-flight sibling specs (flagged inline as "covered by X"
-rather than repeated), explicitly and deliberately deferred by the model's own docstring
-(`CourseApplication`, `CourseInterest`), or a real but low-priority gap that is cheap to leave alone
-because the abstraction it would need already exists (`Activity` has no `ActivityProgress`, but
-`CourseItemProgress` is already an abstract base built to support exactly that addition later at zero
-structural cost). No model surveyed needs deleting, and the two dormant apps (`app_authentication`,
-`xapi_learning_record_store`) own zero tables today — commented out of `INSTALLED_APPS`
-(`config/settings_base.py:99-100`) with no migrations directory in either — so they carry no pre-deploy
-DB risk and are out of scope for a database-structure cleanup by definition.
+## Apps that own zero tables
 
-## 1. `accounts`
+Checked, not missed. `content_base` and `site_aware_models` define abstract model bases only
+(`BaseContent`/`TitledContent`/`MarkdownContent` at `freedom_ls/content_base/models.py:10,59,79`;
+`SiteAwareModelBase`/`SiteAwareModel` at `freedom_ls/site_aware_models/models.py:53,79`). Both are
+`abstract = True`, and neither app has a `migrations/` directory. `base`, `course_access`,
+`deployment`, `educator_interface`, `health`, `icons`, `learner_interface`, `markdown_rendering`,
+`panel_framework`, `qa_helpers` have no `models.py` at all.
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+## Dormant apps have zero tables and are out of scope
+
+Neither is in `INSTALLED_APPS` (`config/settings_base.py:99-100`, both lines commented out) and
+neither has a `migrations/` directory.
+
+- `app_authentication.Client` (`freedom_ls/app_authentication/models.py:8`) is a real model with a
+  plaintext `api_key` `CharField`, one uncommented `INSTALLED_APPS` line away from shipping with no
+  hashing or rotation story. It owns no table; nothing to restructure here.
+- `xapi_learning_record_store`'s `models.py` is entirely commented-out sketch code
+  (`freedom_ls/xapi_learning_record_store/models.py:1-37`). Its `AppConfig.name` is `freedom_ls.xapi`
+  (`freedom_ls/xapi_learning_record_store/apps.py:6`), already anticipating the rename
+  `xapi_implementation` will do; nothing to fix here either.
+
+## Every model that owns a table
+
+PK type is UUID for every model below except where stated otherwise. Every `SiteAwareModel` subclass
+gets `id = UUIDField(primary_key=True, default=uuid.uuid4)`
+(`freedom_ls/site_aware_models/models.py:79-80`).
+
+### `accounts` (label `freedom_ls_accounts`)
+
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `User` (`accounts/models.py:67`) | The one site-scoped person model; every learner, educator and admin | FK target of nearly every other model in the codebase | Keep as-is | Subclasses `SiteAwareModelBase`, not `SiteAwareModel`, so it alone has a `BigAutoField` int PK while every other model gets a UUID PK (`site_aware_models/models.py:78-82`). That inconsistency is real but is explicitly the sibling **PK-type consistency** research unit's territory — cite it there, not here. |
-| `SiteSignupPolicy` (`accounts/models.py:137`) | Per-site signup configuration | One-to-one-ish via `unique_signup_policy_per_site` on `site` | Keep as-is | Correctly scoped, correctly placed; it's account/signup policy, not a generic site-config model. |
-| `LegalConsent` (`accounts/models.py:161`) | Append-only consent record | FK `user` (`CASCADE`) | Keep as-is | Deliberately append-only (`save()` rejects updates, `models.py:194-206`), already well hardened. |
+| `User` (`accounts/models.py:67`) | `freedom_ls_accounts_user` | `BigAutoField` (int) | Keep | Extends `SiteAwareModelBase`, not `SiteAwareModel`, and `AccountsConfig` sets `default_auto_field = BigAutoField` (`accounts/apps.py:5`), the only model in the tree with an integer PK, deliberately (PK-type consistency is the field-hardening sibling's territory, not re-litigated here). |
+| `SiteSignupPolicy` (`:137`) | `freedom_ls_accounts_sitesignuppolicy` | UUID | Keep | Correctly scoped, one row per site (`unique_signup_policy_per_site`, `:152-154`). |
+| `LegalConsent` (`:161`) | `freedom_ls_accounts_legalconsent` | UUID | Keep | Append-only by `save()` guard (`:202-206`); correctly placed. |
 
-## 2. `content_engine`
+### `organisations` (label `freedom_ls_organisations`)
 
-**Scope note:** whether the `Form`/`FormPage`/`FormContent`/`FormQuestion`/`QuestionOption` cluster
-should move to its own app is the explicit subject of a sibling research unit (forms-app extraction).
-Every row below states a per-model verdict on naming and relationships only; app-placement for the
-forms cluster is intentionally left to that unit and not re-litigated here.
-
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `Topic` (`content_engine/models.py:145`) | A markdown lesson/content unit | Reverse `progress_records` from `TopicProgress` | Keep as-is | Correctly named, correctly scoped (`unique_together = ["site", "slug"]`). |
-| `Activity` (`content_engine/models.py:159`) | A content type distinct from Topic/Form (category + difficulty level) | None — no progress model references it | **Do-later (leave alone for this cut)** | Confirmed by grep and by `spec_dd/3. done/2026-08-21_20:12_basic_reports/research_fls_data_availability.md:12,30,76-78`: there is **no `ActivityProgress` model anywhere**, and `calculate_course_progress_percentage` (`student_management/utils.py:44-54`) only counts `TOPIC` and `FORM` content types — an `Activity` placed in a course's content tree is permanently untracked, not even "not started". This is a genuine content-type-without-a-progress-model gap ("absence of a model is the problem"), but it is cheap to leave for whenever Activity tracking is actually built: `CourseItemProgress` (`student_progress/models.py:36-73`) is already an abstract base purpose-built so a new `ActivityProgress(CourseItemProgress)` subclass is close to free to add later. Building it now would be exactly the "fancy feature" scope creep the idea explicitly rules out. |
-| `Course` (`content_engine/models.py:172`) | The top-level ordered content container a learner registers for | `items` `GenericRelation` to `ContentCollectionItem`; reverse `user_registrations`, `cohort_registrations`, `recommendations`, `applications`, `interests`, `progress_records` | Keep as-is | All its reverse `related_name`s already correctly say "course" (`user_registrations` etc. — see §3, §5, §6) even though three of the *forward* FKs pointing at it are misnamed `collection`. The mismatch is on the other end, not here. |
-| `CoursePart` (`content_engine/models.py:347`) | A chapter/section within a Course, itself an ordered container | `items` `GenericRelation` to `ContentCollectionItem`; reachable as a *child* of `Course` only via `ContentCollectionItem`, no direct `course` FK | Keep as-is | No direct FK back to its owning Course is a deliberate consequence of the generic placement model (a `CoursePart`, like a `Topic`/`Form`, is technically shareable across courses today, unexercised) — this is the shared-content design `better_course_progress_tracking` already discusses (`research_shared_content_across_courses.md`, referenced in that idea). Not this unit's call to change. |
-| `ContentCollectionItem` (`content_engine/models.py:381`) | The through/placement model: orders a child content item within a Course or CoursePart, with per-placement overrides | Double GFK: `collection` (→ Course\|CoursePart) and `child` (→ Topic\|Activity\|Form\|CoursePart) | Keep as-is | This is the one place `collection` is the *correct* name — it genuinely is generic over two collection types via GFK, unlike the three misnamed FKs in §3. `collection_id`/`child_id` are `UUIDField`s consistent with every content model's UUID PK, so no GFK-key-type inconsistency here (contrast `ObjectRoleAssignment.object_id`, a `CharField` — see §4, sibling territory). |
-| `Form` (`content_engine/models.py:421`) | A scored/quizzable content type | `pages` reverse from `FormPage`; reverse `progress_records` from `FormProgress` | Keep as-is (placement question owned by forms-extraction sibling) | — |
-| `FormPage` (`content_engine/models.py:456`) | A page within a Form | FK `form` (`CASCADE`) | Keep as-is (forms-extraction sibling) | — |
-| `FormContent` (`content_engine/models.py:485`) | Static text within a form page | FK `form_page` (`CASCADE`) | Keep as-is (forms-extraction sibling) | — |
-| `FormQuestion` (`content_engine/models.py:503`) | A question within a form page | FK `form_page` (`CASCADE`); reverse `options` | Keep as-is (forms-extraction sibling) | — |
-| `QuestionOption` (`content_engine/models.py:552`) | An answer option for a `FormQuestion` | FK `question` (`CASCADE`); M2M target of `QuestionAnswer.selected_options` | Keep as-is (forms-extraction sibling) | — |
-| `File` (`content_engine/models.py:580`) | An uploaded content asset (image/doc/video/audio) | None inbound; referenced by path from markdown content | Keep as-is | The only uploaded-file model in the whole non-dormant codebase pre-`Organisation.logo`; already unique on `(site, file_path)`, PK-based storage path (`file_upload_handler`, `models.py:570-577`). No structural issue. |
+| `Organisation` (`organisations/models.py:58`) | `freedom_ls_organisations_organisation` | UUID | Keep | Deliberately minimal tenancy-layer model; nothing to revisit. |
 
-## 3. `organisations`
+### `learner_management` (label `freedom_ls_learner_management`)
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `Organisation` (`organisations/models.py:28`) | The tenancy layer below Site, above Cohort/registration | FK target of `Cohort.organisation`, `UserCourseRegistration.organisation`; reached transitively by everything else per that spec's Decision 2 | Keep as-is | Freshly shipped (`spec_dd/3. done/2026-08-21_09:09_organisations`), deliberately minimal, deliberately no delete/merge/membership object. Nothing here needs revisiting. |
+| `Cohort` (`learner_management/models.py:32`) | `..._cohort` | UUID | Keep model; **rename constraint** | `unique_cohort_name_per_site` (`:40-44`) is on `(site_id, organisation, name)`, not `(site_id, name)`. The name is stale from before the organisations cut. Rename it to `unique_cohort_name_per_organisation`. Constraint names persist in the database. The rename is free now and cheap forever; left alone, it keeps misdescribing itself to the next reader. |
+| `Learner` (`:51`) | `..._learner` | UUID | Keep | The `(user, organisation)` join row the rest of enrolment hangs off (`unique_learner_per_organisation`, `:73-77`). Correctly placed and named. |
+| `CohortMembership` (`:83`) | `..._cohortmembership` | UUID | Keep | Keyed `(learner, cohort)` (`:88-93`); `clean()` enforces same-organisation membership (`:95-102`). |
+| `LearnerCourseRegistration` (`:108`) | `..._learnercourseregistration` | UUID | **Rename `collection` → `course`** | Settled (premise 1). Field at `:111-115`, constraint `unique_learner_course_registration` at `:120-126`. This is the highest-blast-radius rename in the inventory: 106 files under `freedom_ls/` reference `.collection`/`collection=`/`collection_id` (grep), mixed with the legitimately generic `ContentCollectionItem.collection`, so the two must be told apart during the sweep. At the database level a metadata-only rename costs the same forever; the cliff is that FLS ships as a library, so once a downstream project's own code reads `.collection` off this model, the rename becomes a breaking API change instead of an internal one. |
+| `CohortCourseRegistration` (`:132`) | `..._cohortcourseregistration` | UUID | **Rename `collection` → `course`** | Same finding, same file, `:135-139`; constraint `unique_cohort_course_registration` at `:146-152`. |
+| `CohortDeadline` (`:158`) | `..._cohortdeadline` | UUID | Keep | Hangs off `CohortCourseRegistration` (`:161-165`); GFK `content_type`/`object_id` nullable-pair means "whole course" (`clean()`, `:186-197`). Correct shape; see the deadline-triplication note below. |
+| `LearnerDeadline` (`:205`) | `..._learnerdeadline` | UUID | Keep | Hangs off `LearnerCourseRegistration` (`:208-212`). Renamed from `StudentDeadline` by the landed `learner-terminology-rename` spec; already the current name, nothing further to do. |
+| `UserCohortDeadlineOverride` (`:252`) | `..._usercohortdeadlineoverride` | UUID | **Class name is wrong for its own field** | Its only person-identifying field is `learner = models.ForeignKey(Learner, ...)` (`:260`), not a `User`. That field was set by `learners-associated-with-organisations`, which re-keyed it but left the class name from before that spec landed. Every other model in this file that touched a person during that spec (`LearnerCourseRegistration`, `CohortMembership`) already carries `learner` in its name; this one alone still says `User`. A class rename here is metadata-only in Postgres (the table name changes, nothing about the columns does) and touches 12 files today (admin, factories, `deadline_utils.py`, tests, `educator_interface/views.py`, one `qa_helpers` command), all internal to FLS and none of them downstream-project code yet, because FLS has never deployed. That is exactly the same cliff as the `collection` rename, on a smaller footprint: free today, a breaking rename for any downstream project that has already imported this class name after deploy. `UserCohortDeadlineOverride` → `LearnerCohortDeadlineOverride` (or `CohortDeadlineOverride`, since `cohort_course_registration` already names the cohort side) is a do-now-priced item this cut should decide on, not defer. |
+| `RecommendedCourse` (`:319`) | `..._recommendedcourse` | UUID | **Rename `collection` → `course` now; app extraction is do-later, not deadline-pressured** | Third member of the "pre-registration intent" family alongside `CourseApplication` (own app, `freedom_ls_course_applications`) and `CourseInterest` (own app, `freedom_ls_course_interest`), both single-model apps with explicit "deliberately minimal and standalone" docstrings (`course_applications/models.py:1-7`, `course_interest/models.py:1-7`). `RecommendedCourse` is structurally identical (`user` FK, `course`-to-be FK, `created_at`) and depends on nothing `course_applications`/`course_interest` don't already depend on, so extracting it to its own app (e.g. `course_recommendations`) adds no new dependency-graph edge. The `collection` field rename (`:330-334`) is the same do-now item as the other two: cheap now, a downstream-breaking rename later. The app move is a different kind of cost. Moving a model between apps after real rows exist needs a state-only migration (`SeparateDatabaseAndState` or equivalent) to keep the table's data while its app-label lineage changes, which Django supports but is genuinely more work than "delete migrations, write a fresh `0001_initial`", the option this project's still-empty database makes available today. That extra cost is real but bounded and well-trodden, so it does not carry the same "point of no return" weight as the `collection` rename. `idea.md`'s own sequencing already places both the `RecommendedCourse` move and the field rename before the project-wide migration reset (Decision 4), which is the cheapest possible moment to do the move. After that reset, it is still doable, just no longer free. Do the field rename now; do the app move at the same time as (or immediately before) the migration reset, not after it. The commented-out `form_progress` FK (`:335-337`) documents a real, deliberately-deferred future link to a `FormProgress`, confirmed present and unaltered by any landed spec. It is not a TODO/`@claude` comment; leave it exactly as is. |
 
-## 4. `role_based_permissions`
+**Deadline-triplication re-assessment (still won't-do, re-verified against current code):**
+`CohortDeadline`, `LearnerDeadline`, `UserCohortDeadlineOverride` are near-identical by shape
+(`deadline`, `is_hard_deadline`, `content_type`/`object_id`/`content_item` GFK) but each hangs off a
+different registration-shaped FK. `learner_management/deadline_utils.py:39-329` resolves all three by
+name in a fixed priority order (override, then cohort deadline, then course-level fallback for cohort
+registrations; item-level, then course-level for individual registrations) and bulk-indexes each one by
+its own FK-typed registration id (`:264-299`). `Learner` existing now does not change this: all three
+models already point at either `Learner` directly (`UserCohortDeadlineOverride.learner`, `:260`) or at
+a registration that itself points at `Learner`. Collapsing them into one polymorphic `Deadline` with a
+GFK "owner" would replace three FK-indexed lookups on the hot deadline-resolution path with one GFK
+lookup, and would force `deadline_utils.py`'s per-type bulk-fetch-and-index pattern into a single mixed
+query it cannot easily stay batched under. This is a real behaviour/performance trade-off, not a naming
+cleanup. Won't-do stands.
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+### `learner_progress` (label `freedom_ls_learner_progress`)
+
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `SystemRoleAssignment` (`role_based_permissions/models.py:9-43`) | A global (non-site) role grant | FK `user` (`CASCADE`), `assigned_by` (`SET_NULL`) | Keep as-is | Deliberately not a `SiteAwareModel` (own docstring says so, `models.py:10-14`) — correct, since a system role is global by definition. |
-| `SiteRoleAssignment` (`role_based_permissions/models.py:46-77`) | A per-site role grant | FK `user`; `SiteAwareModel` | Keep as-is | Correctly scoped and named. |
-| `ObjectRoleAssignment` (`role_based_permissions/models.py:80-118`) | A per-object role grant via GFK | GFK `target` (any model); `SiteAwareModel` | Keep as-is; one known field-type inconsistency already flagged | `object_id` is `CharField(max_length=255)` (`models.py:92`) rather than `UUIDField`, unlike every content-engine/student-management GFK (§2, §5). This is the exact "GFK key types" item the fixed-decisions brief already names as sibling (field-hardening) territory — flagged here for completeness, not re-decided. |
+| `TopicProgress` (`learner_progress/models.py:59`) | `..._topicprogress` | UUID | Keep | Keys on `course_progress` + `collection_item` (`:70-81`), not the bare `topic`. `unique_together` is `(course_progress, collection_item)` (`:94-99`), correctly placement-scoped per `better_course_progress_tracking`. |
+| `CourseProgress` (`:106`) | `..._courseprogress` | UUID | Keep | Keys on `learner` plus exactly one of `learner_registration`/`cohort_registration`, enforced by a `CheckConstraint` (`:171-183`) plus two partial `UniqueConstraint`s (`:158-170`). `last_accessed_item` is a `ContentCollectionItem` FK (`SET_NULL`), not the resolved child (`:147-153`). The resume-pointer redesign from `better_course_progress_tracking` is fully landed; the old `last_accessed_content_type` GFK is gone. |
+| `CourseFormAttempt` (`:242`) | `..._courseformattempt` | UUID | Keep | Bridges `form_engine.FormProgress` into a course: `course_progress` FK (`:254-256`) + nullable `collection_item` FK (`:261-267`) + `OneToOneField` to `FormProgress` (`:268-270`). No uniqueness constraint on the placement is deliberate: many attempts per placement, one row each, matching quiz-retake behaviour. |
+| `CourseItemProgress` (`:19`) | *(no table, abstract)* | — | Keep | Abstract base; `TopicProgress` is its only subclass today. This is what makes an `ActivityProgress(CourseItemProgress)` close to free to add later; see below. |
 
-## 5. `student_management` (renamed `learner_management` by the terminology sibling — see note)
+### `content_engine` (label `freedom_ls_content_engine`)
 
-**Note on app rename:** `learner-terminology-rename` (in progress) renames this whole app to
-`learner_management` and `StudentDeadline` → `LearnerDeadline`. Every row below is written against
-today's names and cites what that sibling already covers so it isn't duplicated.
-
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `Cohort` (`student_management/models.py:16-32`) | A named group of learners within an Organisation | FK `organisation` (`PROTECT`); reverse `course_registrations`, `reports` | Keep the model; **rename the constraint** | `unique_cohort_name_per_site` (`models.py:24-28`) is a stale name from before the Organisation cut broadened it to `(site_id, organisation, name)` — it should read `unique_cohort_name_per_organisation`. Cheap, mechanical, zero behaviour change, exactly the kind of drift this cut exists to catch before it's baked into anyone's memory of "the" constraint name. **Do-now.** |
-| `CohortMembership` (`student_management/models.py:35-48`) | A learner's membership in a Cohort | FK `cohort`, `user` (both `CASCADE`) | Keep as-is | Correctly named and scoped; `Learner` (learners-associated-with-organisations sibling) reads this model, doesn't change it. |
-| `UserCourseRegistration` (`student_management/models.py:51-106`) | An individual learner's registration for a course | FK `organisation` (`PROTECT`), `collection`→`Course` (`CASCADE`), `user` (`CASCADE`) | **Rename `collection` → `course`** | See executive summary. `better_course_progress_tracking` adds nullable `user_registration`/`cohort_registration` FKs *from* `CourseRun` *to* this model — it does not touch this model's own fields, so the rename is orthogonal and safe to land independently, ideally in the same restructuring pass since both touch this file. **Do-now.** |
-| `CohortCourseRegistration` (`student_management/models.py:109-133`) | A cohort-wide registration for a course | FK `collection`→`Course` (`CASCADE`), `cohort` (`CASCADE`) | **Rename `collection` → `course`** | Same finding, same file. **Do-now.** |
-| `CohortDeadline` (`student_management/models.py:135-180`) | A deadline for an entire cohort's course registration | FK `cohort_course_registration` (`CASCADE`); GFK `content_item` (→ Topic\|Form, nullable = whole-course) | Keep as-is | Correctly registration-scoped already — `better_course_progress_tracking`'s own idea doc credits this model as the pattern it's completing (`.../better_course_progress_tracking/idea.md:71-73`). See the deadline-triplication note below. |
-| `StudentDeadline` (`student_management/models.py:182-227`) | A deadline for an individually-registered learner | FK `student_course_registration`→`UserCourseRegistration` (`CASCADE`); GFK `content_item` | Rename covered by sibling | `learner-terminology-rename` renames this to `LearnerDeadline` with field `learner_course_registration` (`.../learner-terminology-rename/idea.md:83-91`). **Covered by learner-terminology-rename — no action here.** |
-| `UserCohortDeadlineOverride` (`student_management/models.py:229-291`) | A per-user override of a cohort deadline | FK `cohort_course_registration` (`CASCADE`), `user` (`CASCADE`); GFK `content_item` | Keep as-is | Correctly modelled; validated in `clean()` against actual cohort membership (`models.py:263-272`). |
-| `RecommendedCourse` (`student_management/models.py:293-319`) | A third-party recommendation that a user take a course (created when "a parent fills out a form") | FK `user` (`CASCADE`), `collection`→`Course` (`CASCADE`) | **Extract to its own small app; rename `collection` → `course`** | This is the third member of the "pre-registration intent" family alongside `CourseApplication` and `CourseInterest` (§6, §7) — those two each got a dedicated single-model app with an explicit "deliberately minimal and standalone" docstring; `RecommendedCourse` is structurally identical (user + course + timestamp, no workflow yet) but is buried inside the large `student_management`/`learner_management` app instead. It depends only on `accounts` and `content_engine`, exactly like its two siblings, so extracting it (e.g. to `course_recommendations`) adds no new cross-app edges beyond what it already has. The mechanics of the new app's label/`db_table` naming are the app-labels sibling's job; the *decision* that it deserves the same treatment as its two siblings is this unit's to make. **Do-now** for the rename (trivial); **do-later** for the app extraction, since it is a bigger, non-trivial move (new app scaffolding, import updates, admin re-registration) that is safe to defer without leaving it more expensive later — nothing about deferring it narrows a constraint or loses data. Leave the commented-out `form_progress` FK (`models.py:309-311`) exactly as it is; it documents a real, deliberately-deferred future link to a specific `FormProgress` and isn't a `@claude`/TODO comment, but there's no cleanup value in touching it either. |
+| `Topic` (`content_engine/models/topics.py:8`) | `..._topic` | UUID | Keep | Correctly named and scoped (`unique_together = ["site", "slug"]`, `:16`). |
+| `Activity` (`:22`) | `..._activity` | UUID | Keep model; **no `ActivityProgress`, genuinely deferrable rather than conveniently deferrable** | See the dedicated answer below. |
+| `Course` (`content_engine/models/courses.py:31`) | `..._course` | UUID | Keep | `items` `GenericRelation` to `ContentCollectionItem` (`:91-96`); every reverse relation from a registration/application/interest/recommendation model already says "course" on this side (`learner_registrations`, `cohort_registrations`, `applications`, `interests`, `recommendations`). The naming mismatch is entirely on the FK side (`collection`), not here. |
+| `CoursePart` (`:227`) | `..._coursepart` | UUID | Keep | No direct FK back to its owning `Course`. It is reachable only via `ContentCollectionItem`, a deliberate consequence of the shared-content design; not this unit's call to change. |
+| `ContentCollectionItem` (`:270`) | `..._contentcollectionitem` | UUID | Keep | The one place `collection` is the *correct* name: a genuine GFK over `Course`/`CoursePart` (`:274-282`). `collection_id`/`child_id` are `UUIDField`s (`:281,292`), consistent with every content model's UUID PK, so there is no GFK-key-type inconsistency here. A commented-out `collection_old` FK (`:284-286`) is dead code left over from the pre-GFK design (superseded by migrations `0003`/`0004`); harmless, but worth deleting in the same pass as anything else that touches this file, since it documents nothing a `@claude`/TODO comment would protect. |
+| `File` (`content_engine/models/files.py:30`) | `..._file` | UUID | Keep | Unique on `(site, file_path)` (`:53-54`); the only uploaded-content-asset model. |
 
-**Deadline-triplication note (won't-do):** `CohortDeadline`, `StudentDeadline`/`LearnerDeadline`, and
-`UserCohortDeadlineOverride` are three near-identical schemas (`deadline`, `is_hard_deadline`,
-`content_type`/`object_id`/`content_item` GFK), differing only in which registration-shaped thing they
-hang off. Consolidating them into one polymorphic `Deadline` model with a GFK "owner" was considered
-and rejected: it would trade three small, explicit, easy-to-query FK-typed models for one generic
-model with a GFK on the hot deadline-lookup path, which is a real behaviour/performance trade-off, not
-a "cheap pre-deploy" rename — and `better_course_progress_tracking` already treats the current
-three-model shape as the *correct* pattern to extend, not a smell to fix (see its idea doc line cited
-above). **Won't-do.**
+### `form_engine` (label `freedom_ls_form_engine`)
 
-## 6. `student_progress` (renamed `learner_progress` by the terminology sibling)
-
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `FormProgress` (`student_progress/models.py:76-99`) | One attempt at a Form | FK `form`, `user` (`CASCADE`); reverse `answers` | Keep as-is; restructuring covered by sibling | `better_course_progress_tracking` adds a non-nullable `run` FK to `CourseRun` and moves uniqueness to placement-scoped. **Covered by better_course_progress_tracking.** |
-| `QuestionAnswer` (`student_progress/models.py:483-500`) | An answer to one question within a `FormProgress` attempt | FK `form_progress`, `question` (`CASCADE`); M2M `selected_options` | Keep as-is | Correctly scoped, `unique_together = ["form_progress", "question"]` is the right key. |
-| `TopicProgress` (`student_progress/models.py:503-524`) | A user's progress through one Topic | FK `user`, `topic` (`CASCADE`) | Keep as-is; restructuring covered by sibling | Gains non-nullable `run` FK, placement-scoped uniqueness. **Covered by better_course_progress_tracking.** |
-| `CourseProgress` (`student_progress/models.py:527-571`) | A user's progress through one Course | FK `user`, `course` (`CASCADE`); GFK `last_accessed_item` | Renamed/restructured by sibling | Becomes `CourseRun` with `user_registration`/`cohort_registration` provenance FKs and `is_current`. **Covered by better_course_progress_tracking** — including the `student_progress → student_management` edge that exists solely because `calculate_course_progress_percentage` lives at `student_management/utils.py:15` (verified fact): once `CourseRun` carries its own registration FKs directly, that utility's reason to live outside `student_progress` weakens, which is worth a one-line note in that spec rather than a separate item here. |
+| `Form` (`form_engine/models.py:43`) | `..._form` | UUID | Keep | Landed by `extract_forms_into_seperate_app`; not up for discussion (premise 3). |
+| `FormPage` (`:78`) | `..._formpage` | UUID | Keep | — |
+| `FormContent` (`:107`) | `..._formcontent` | UUID | Keep | — |
+| `FormQuestion` (`:125`) | `..._formquestion` | UUID | Keep | — |
+| `QuestionOption` (`:172`) | `..._questionoption` | UUID | Keep | — |
+| `FormProgress` (`:193`) | `..._formprogress` | UUID | Keep | The sitting itself (answers, score, completion) is course-blind by design, per the domain glossary; bridged into a course via `learner_progress.CourseFormAttempt`. |
+| `QuestionAnswer` (`:568`) | `..._questionanswer` | UUID | Keep | `unique_together = ["form_progress", "question"]` (`:581-582`) is the right key. |
 
-## 7. `course_applications`
+### `role_based_permissions` (label `freedom_ls_role_based_permissions`)
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `CourseApplication` (`course_applications/models.py:17-54`) | A learner's request to access an application-gated course | FK `user`, `course` (`CASCADE`) | Keep as-is, exactly as designed | The model's own docstring (`models.py:1-30`) explicitly pre-declares its own future evolution (FSM state, review workflow, application forms) and says "do not architect these away — leave this model standalone and additive." Already correctly named (`course`, not `collection`) and already includes `site` in its unique constraint (`unique_application_per_site_user_course`, `models.py:46-50`) — the model to match, not to change. |
+| `SystemRoleAssignment` (`role_based_permissions/models.py:9`) | `..._systemroleassignment` | `BigAutoField` (int) | Keep | Deliberately not `SiteAwareModel` (own docstring, `:10-14`) since a system role is global; `RoleBasedPermissionsConfig.default_auto_field = BigAutoField` (`apps.py:5`) actually takes effect here, unlike on `webhooks` (see below). |
+| `SiteRoleAssignment` (`:46`) | `..._siteroleassignment` | UUID | Keep | Correctly scoped, `unique_site_role_per_user` on `(user, site, role)` (`:66-69`). |
+| `ObjectRoleAssignment` (`:80`) | `..._objectroleassignment` | UUID | Keep | `object_id` is `CharField(max_length=255)` (`:92`), not `UUIDField`, deliberately, since its target set is open (any model, not just UUID-keyed content). GFK-key-type unification is field-hardening-sibling territory and is a won't-do there for exactly this reason; not re-argued here. |
 
-## 8. `course_interest`
+### `course_applications` (label `freedom_ls_course_applications`)
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `CourseInterest` (`course_interest/models.py:17-49`) | A learner's expressed interest in a coming-soon course | FK `user`, `course` (`CASCADE`) | **Add `site` to the unique constraint** | `unique_course_interest` is on `(user, course)` only (`models.py:41-44`), while its structural twin `CourseApplication.unique_application_per_site_user_course` (§7) includes `site`. In practice this can't currently produce a cross-site duplicate because `User` itself is already site-scoped (`accounts/models.py:67`, `UserManager.get_queryset` filters by site), but the constraint should say what's actually guaranteed rather than rely on that indirect fact, and matching its sibling model removes a "why is this one different" question for whoever reads both side by side later. One-line migration, no data risk. **Do-now.** |
+| `CourseApplication` (`course_applications/models.py:17`) | `..._courseapplication` | UUID | Keep, exactly as designed | Docstring (`:1-7`) explicitly pre-declares its own future evolution (FSM state, review workflow) and says not to architect it away. Already named `course`, not `collection` (`:37-41`); unique constraint already includes `site` (`unique_application_per_site_user_course`, `:46-50`). This is the model the others should match, not the other way round. |
 
-## 9. `reports`
+### `course_interest` (label `freedom_ls_course_interest`)
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `GeneratedReport` (`reports/models.py:44-96`) | An async-generated PDF report for one Cohort | FK `cohort` (`CASCADE`), `requested_by` (`SET_NULL`) | Keep as-is | No `organisation` FK, and it shouldn't get one — reachable via `cohort.organisation` exactly like `CohortCourseRegistration` deliberately has no independent `organisation` FK per the Organisation cut's own design (`.../2026-08-21_09:09_organisations/idea.md:27-28`). Consistent with the rest of the codebase's "derive through the one owning FK" convention. |
+| `CourseInterest` (`course_interest/models.py:17`) | `..._courseinterest` | UUID | **Add `site` to the unique constraint** | `unique_course_interest` is on `(user, course)` only (`:41-44`); its structural twin `CourseApplication.unique_application_per_site_user_course` includes `site`. `User` is itself already site-scoped (`UserManager.get_queryset`, `accounts/models.py:24-32`), so this cannot currently produce a live cross-site duplicate, but the constraint should state what is actually guaranteed, and matching its sibling removes a "why is this one different" question. One-line migration, no data risk. Keep the migration separate from anything `better_course_progress_tracking` does to `LearnerCourseRegistration`'s own constraint: different model, different app, no reason to couple the reverts. |
 
-## 10. `webhooks`
+### `reports` (label `freedom_ls_reports`)
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `WebhookEndpoint` (`webhooks/models.py:48-364`) | A configured outbound webhook target | `SiteAwareModel` | Keep as-is | Mature, already hardened (SSRF checks, secret validation). |
-| `WebhookEvent` (`webhooks/models.py:366-372`) | A fired domain event | `SiteAwareModel` | Keep as-is | Correctly separated from delivery (see below). |
-| `WebhookDelivery` (`webhooks/models.py:375-412`) | One attempt to deliver one event to one endpoint | FK `event`, `endpoint` (`CASCADE`); unique on `(event, endpoint)` | Keep as-is | Correct split of "what happened" (`WebhookEvent`) from "did it get there" (`WebhookDelivery`) — not a fusion candidate. |
-| `WebhookSecret` (`webhooks/models.py:415-430`) | An encrypted per-site secret referenced by templates | `SiteAwareModel`; unique `(site, name)` | Keep as-is | — |
+| `GeneratedReport` (`reports/models.py:42`) | `..._generatedreport` | UUID | Keep | FK `cohort` (`:49-53`) only. No independent `organisation` FK: it is reached via `cohort.organisation`, exactly as `CohortCourseRegistration` deliberately has none, per the organisations cut's "derive through the one owning FK" convention. `reports/indexes.py:44-64` still resolves cohort to organisation this way today. |
 
-## 11. `app_authentication` (dormant — not in `INSTALLED_APPS`)
+### `webhooks` (label: none set, defaults to `webhooks`)
 
-| Model | Represents | Relationships | Verdict | Reasoning |
+| Model | Table | PK | Verdict | Reason |
 |---|---|---|---|---|
-| `Client` (`app_authentication/models.py:8-43`) | An API client credential for external-system authentication | `SiteAwareModel`; self-generating `api_key` | Out of scope — leave dormant | Commented out of `INSTALLED_APPS` (`config/settings_base.py:99`) and has no `migrations/` directory at all — it owns **zero database tables** today, so it carries zero pre-deploy DB risk and there is nothing to restructure. Deciding whether/how to activate `app_authentication` is a feature decision for a future spec, not this cleanup. If it is ever activated, its shape (UUID `SiteAwareModel`, self-generating secret) is already consistent with the rest of the codebase — no structural surprise waiting. |
+| `WebhookEndpoint` (`webhooks/models.py:48`) | `webhooks_webhookendpoint` | UUID | Keep model | App-label fix (adding a `freedom_ls_` prefix) is settled premise 2's territory, not re-decided here; flagged for completeness because it changes every table name in this app. |
+| `WebhookEvent` (`:366`) | `webhooks_webhookevent` | UUID | Keep | Correctly separated "what happened" from "did it get there". |
+| `WebhookDelivery` (`:375`) | `webhooks_webhookdelivery` | UUID | Keep | Unique on `(event, endpoint)` (`:396-404`). |
+| `WebhookSecret` (`:415`) | `webhooks_webhooksecret` | UUID | Keep | Unique on `(site, name)` (`:425-426`). |
 
-## 12. `xapi_learning_record_store` (dormant — not in `INSTALLED_APPS`)
+`WebhooksConfig.default_auto_field = "django.db.models.BigAutoField"` (`webhooks/apps.py:6`) has never
+had any effect. Every model in the app is a `SiteAwareModel` with a UUID PK, so the setting is dead
+configuration, not a real integer-PK app. Contrast `role_based_permissions`, where the identical
+setting genuinely governs `SystemRoleAssignment`.
 
-No concrete models — `models.py` is entirely commented-out sketch code (`xapi_learning_record_store/models.py:1-37`). Same verdict as `app_authentication`: zero tables, zero pre-deploy risk, out of scope.
+## The three deadline models and `Learner`
 
-## Risks and gotchas
+Answered inline in the `learner_management` table above and its follow-up note: merging remains
+won't-do, `UserCohortDeadlineOverride`'s class name is the one real naming defect the `Learner` cut
+left behind, and it should be renamed in this pass rather than deferred.
 
-1. **The three `collection` fields are the single highest-value rename in this whole inventory, and it must land before the FK is ever queried from outside `student_management`.** `course_access`, `qa_helpers`, `educator_interface`, `reports`, and every factory/test touching `UserCourseRegistration`/`CohortCourseRegistration`/`RecommendedCourse` currently write `.collection`/`collection=`. This is a field rename, not a new column — it touches every call site, not just the model file, and should be scoped and swept exhaustively (grep for `\.collection\b` and `collection=` across `freedom_ls/`) in the same change, or it will fail loudly (attribute errors) rather than silently, which is the good failure mode but still needs budgeting.
-2. **`RecommendedCourse`'s app extraction should not be done in the same change as the `collection` → `course` rename**, even though both touch the same model. Moving a model to a new app changes its migration app-label lineage (a fresh `0001_initial` in the new app, a `DeleteModel`-equivalent in the old one, or a `state_operations`-based move) — that is squarely the squash-vs-rewrite migration-strategy sibling's decision to make, and stacking an app move on top of a field rename in one migration risks conflating two independent judgement calls. Do the field rename first (cheap, self-contained); let the app-extraction land whenever the migration-strategy question is settled.
-3. **The `Cohort` constraint rename (`unique_cohort_name_per_site` → `unique_cohort_name_per_organisation`) touches error-message assumptions.** Any test or view that asserts on the constraint name in an `IntegrityError` message (grep for the literal string) needs updating in the same change, or the rename will pass `makemigrations`/`migrate` cleanly but silently break an assertion that was never exercised against the new name.
-4. **`Activity`/`ActivityProgress` and the deadline-triplication question are both genuine findings that this cut deliberately leaves alone** — say so explicitly in the refined idea's do-later/won't-do rows rather than letting them read as oversights. Both were evaluated and rejected for this pass on cost/benefit grounds stated above, not missed.
-5. **Do not let the `CourseInterest` unique-constraint fix (item 8) get bundled with the `better_course_progress_tracking` sibling's own constraint work** on `UserCourseRegistration` (its idea doc explicitly discusses whether that model's unique constraint needs to change). They are different models in different apps; keep the migrations separate so a revert of one doesn't have to touch the other.
+## `Activity`/`ActivityProgress`: the honest answer
+
+No `ActivityProgress` model exists anywhere in the tree (grep, whole `freedom_ls/`), and
+`reports/indexes.py:227` says so in a code comment: an `Activity` placed in a course is excluded from
+`viewable_items()`'s traversal entirely, "taking them out of the completion denominator too (no
+ActivityProgress model exists)". `CourseItemProgress` (`learner_progress/models.py:19-56`) is an
+abstract base with exactly one subclass, `TopicProgress`, built by its own shape
+(`completion_field_name`, `content_item_field_name`, `newly_completed_item()`) to make a second
+subclass close to free.
+
+The honest answer is not "it's cheap so do it anyway" or "it's a gap so it must be fixed". It is that
+**this gap carries no pre-deploy deadline at all**, for a reason distinct from the abstract-base
+argument: `Activity` is wired all the way through the content pipeline (`content_save.py:27,309-310`,
+`admin.py:28-29`, `factories.py:30-36`, `schema.py:40-41`) but is not placed in any course today
+(`demo_content/` has zero `Activity` files, per grep). Adding `ActivityProgress` later is purely
+additive: a new model, a new FK, no existing row to migrate around, because no course places an
+`Activity` yet to have progress against. That is categorically different from the `collection` →
+`course` rename or the `UserCohortDeadlineOverride` class rename, both of which get strictly more
+expensive after a downstream project starts writing code against today's names. Building
+`ActivityProgress` now would be scope creep into a feature this idea explicitly rules out; leaving it
+unbuilt costs nothing extra by waiting, pre-deploy or post-deploy alike.
+
+## Is `learner_management` the right app name?
+
+It holds `Cohort`, `Learner`, `CohortMembership`, both course-registration models, all three deadline
+models, and `RecommendedCourse`: cohorts and enrolment, deadlines, and a recommendation seed.
+"Management" is a vague noun but an accurate one for that span, and nothing narrower covers all seven
+models without either fragmenting cohorts from registrations (which query and validate against each
+other constantly, see `deadline_utils.py` and `CohortMembership.clean()`) or leaving
+`RecommendedCourse` stranded with no obvious other home once it is *not* extracted. This question has
+no forcing function: renaming an app after deploy costs exactly what `learner-terminology-rename`
+already paid to rename `student_management`, a label rewrite across every migration referencing it,
+done once, by that spec's own precedent. There is no cost asymmetry that makes this pre-deploy-urgent
+the way the `collection` rename or the `webhooks` label fix are. Leave the name as `learner_management`.
+If `RecommendedCourse` moves out to its own app per the verdict above, that alone brings the app closer
+to "cohorts, learners, registrations, deadlines", a tighter fit for the existing name, not a reason to
+rename it.
+
+## Dead, duplicated, or leftover models
+
+None. The only leftover artifact found is the commented-out `collection_old` field on
+`ContentCollectionItem` (`content_engine/models/courses.py:284-286`), which is dead code, not a dead
+model; call it out for cleanup rather than give it a verdict of its own. No `Student*` model or app
+namespace remains anywhere in `freedom_ls/` (grep for `student_management`, `student_progress`,
+`StudentDeadline`, `UserCourseRegistration`: no matches). `learner-terminology-rename` finished cleanly.
 
 status: ok
