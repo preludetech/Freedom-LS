@@ -24,14 +24,14 @@ def regular_user(mock_site_context: object) -> object:
 
 def _send_test_form_url(endpoint_pk: object) -> str:
     return reverse(
-        "admin:webhooks_webhookendpoint_send_test_form",
+        "admin:freedom_ls_webhooks_webhookendpoint_send_test_form",
         args=[endpoint_pk],
     )
 
 
 def _send_test_result_url(endpoint_pk: object) -> str:
     return reverse(
-        "admin:webhooks_webhookendpoint_send_test_result",
+        "admin:freedom_ls_webhooks_webhookendpoint_send_test_result",
         args=[endpoint_pk],
     )
 

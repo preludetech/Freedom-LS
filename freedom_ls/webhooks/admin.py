@@ -128,7 +128,7 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
     @unfold_action(description="Send Test", url_path="send-test-action")
     def send_test_action(self, request: HttpRequest, object_id: str) -> HttpResponse:
         url = reverse(
-            "admin:webhooks_webhookendpoint_send_test_form",
+            "admin:freedom_ls_webhooks_webhookendpoint_send_test_form",
             args=[object_id],
         )
         return redirect(url)
@@ -161,14 +161,14 @@ class WebhookEndpointAdmin(SiteAwareModelAdmin):
                 self.admin_site.admin_view(
                     partial(send_test_form_view, model_admin=self)
                 ),
-                name="webhooks_webhookendpoint_send_test_form",
+                name="freedom_ls_webhooks_webhookendpoint_send_test_form",
             ),
             path(
                 "<path:object_id>/send-test/result/",
                 self.admin_site.admin_view(
                     partial(send_test_result_view, model_admin=self)
                 ),
-                name="webhooks_webhookendpoint_send_test_result",
+                name="freedom_ls_webhooks_webhookendpoint_send_test_result",
             ),
         ]
         return custom_urls + list(super().get_urls())

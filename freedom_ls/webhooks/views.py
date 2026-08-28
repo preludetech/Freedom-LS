@@ -33,7 +33,7 @@ def send_test_form_view(
         "endpoint": endpoint,
         "form": SendTestWebhookForm(endpoint=endpoint),
         "result_url": reverse(
-            "admin:webhooks_webhookendpoint_send_test_result",
+            "admin:freedom_ls_webhooks_webhookendpoint_send_test_result",
             args=[object_id],
         ),
         **admin_page_context(
@@ -85,7 +85,7 @@ def send_test_result_view(
     delivery.refresh_from_db()
 
     back_url = reverse(
-        "admin:webhooks_webhookendpoint_change",
+        "admin:freedom_ls_webhooks_webhookendpoint_change",
         args=[object_id],
     )
 

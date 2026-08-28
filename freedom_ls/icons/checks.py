@@ -33,7 +33,7 @@ def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
             Error(
                 f"Unknown icon set: {icon_set_name!r}",
                 hint=f"Available sets: {sorted(PACKAGE_MAP)}",
-                id="freedom_ls.E001",
+                id="icons.E001",
             )
         )
         return errors
@@ -44,7 +44,7 @@ def check_iconify_json_exists(**kwargs: object) -> list[CheckMessage]:
             Error(
                 f"Iconify JSON file not found for icon set {icon_set_name!r}",
                 hint=f"Run: npm install @iconify-json/{pkg}",
-                id="freedom_ls.E002",
+                id="icons.E002",
             )
         )
     return errors
@@ -73,7 +73,7 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
                 Error(
                     f"Mapping {semantic_name!r} -> {icon_name!r} not found in "
                     f"{icon_set_name!r} Iconify JSON",
-                    id="freedom_ls.E003",
+                    id="icons.E003",
                 )
             )
         else:
@@ -85,7 +85,7 @@ def check_mapping_values_exist(**kwargs: object) -> list[CheckMessage]:
                             Error(
                                 f"Variant {variant_name!r} of {semantic_name!r} -> "
                                 f"{lookup!r} not found in {icon_set_name!r} Iconify JSON",
-                                id="freedom_ls.E004",
+                                id="icons.E004",
                             )
                         )
     return errors
@@ -113,7 +113,7 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
             errors.append(
                 Error(
                     f"Override key {semantic_name!r} is not a valid semantic icon name",
-                    id="freedom_ls.E005",
+                    id="icons.E005",
                 )
             )
         if icon_name not in icons:
@@ -121,7 +121,7 @@ def check_overrides_exist(**kwargs: object) -> list[CheckMessage]:
                 Error(
                     f"Override {semantic_name!r} -> {icon_name!r} not found in "
                     f"{icon_set_name!r} Iconify JSON",
-                    id="freedom_ls.E006",
+                    id="icons.E006",
                 )
             )
     return errors
@@ -140,7 +140,7 @@ def check_mapping_keys(**kwargs: object) -> list[CheckMessage]:
                 Error(
                     f"Icon set {set_name!r} mapping keys mismatch: "
                     f"missing={missing}, extra={extra}",
-                    id="freedom_ls.E007",
+                    id="icons.E007",
                 )
             )
     return errors
@@ -162,7 +162,7 @@ def check_variant_support(**kwargs: object) -> list[CheckMessage]:
                 Warning(
                     f"Variant {variant!r} is not supported by icon set {icon_set_name!r}",
                     hint=f"Available variants: {sorted(set_config.variants)}",
-                    id="freedom_ls.W001",
+                    id="icons.W001",
                 )
             )
     return warnings
