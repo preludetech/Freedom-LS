@@ -40,7 +40,7 @@ Investigate existing code to find relevant files and functionality. Make sure th
 
 Write the plan document.
 
-The spec's vocabulary is the plan's vocabulary: its **Terminology** section where it has one, its prose and the codebase otherwise. The same nouns for the same concepts, and those same nouns in every identifier the plan proposes — class, function, field, `related_name`, constraint, template, URL name. The plan is where a spec's words become code, so a word that survives to here survives to the schema. If planning turns up a concept the spec never named, name it in the spec rather than inventing a name for it in the plan.
+The spec's vocabulary is the plan's vocabulary, in every identifier the plan proposes. A concept the plan turns up that the spec never named gets its name in the spec, not here.
 
 # Step 4: Skills/MCP scan (fan-out)
 

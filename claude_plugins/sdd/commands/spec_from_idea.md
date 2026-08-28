@@ -47,12 +47,8 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. It carries the rul
 artifact obeys: rewriting means replacing, coverage rather than length, the shared cut-list, where
 overflow goes, and the two finishing passes. What follows is what is specific to a spec.
 
-Before writing any of it, read the sources listed under `## Vocabulary Sources` in
-`.claude/sdd/config.md` and `Grep` the codebase for every noun you intend to use. Use the word the
-project already has; make the model class and field names the spec's nouns, in the proposed
-identifiers as much as in the prose; never reuse an existing word with a different meaning. Coining
-a word, or using an existing one in a narrower sense, is what earns the spec a Terminology section.
-A spec whose nouns all come from the code does not need one.
+Names come from `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. The spec is where the
+vocabulary is fixed, in the identifiers it proposes as much as in its prose.
 
 ## Read the whole directory first
 

@@ -20,7 +20,8 @@ that already has a name.
 
 Where a concept is a model, the document's noun is the model class name and its attributes are the
 field names, in the identifiers it proposes as much as in its prose. The invented names are the half
-that survives into the code.
+that survives into the code, and field, `related_name` and constraint names survive as database
+identifiers, where getting a word wrong costs a migration rather than an edit.
 
 ## Coining a new word
 
@@ -41,7 +42,9 @@ definition or `narrowed` with the source it comes from.
 | `ContentCollectionItem` | narrowed | `freedom_ls/content_engine/models.py`, here only the topic case |
 | … | coined | … , no existing term because … |
 
-A long list of `coined` terms means the document is renaming things rather than building something.
+Each line is checkable: a `narrowed` term with no hits in the codebase is wrong, and a `coined` term
+that does have hits is a collision, which is worse. A long list of `coined` terms means the document
+is renaming things rather than building something.
 
 ## Words borrowed from other systems
 

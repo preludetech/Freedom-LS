@@ -26,11 +26,7 @@ Read over any implementation details mentioned in the spec and make sure that th
 
 Read through all the documentation in ${CLAUDE_PLUGIN_ROOT}/resources/ and make sure the spec does not go against any project norms defined there.
 
-Check the spec's vocabulary against `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. For each concept the spec names, `Grep` for the concept itself, because a spec can coin a synonym without ever using a word that collides. If the project already has a word, the spec uses that word, in its proposed identifiers as much as in its prose. The sources to search are listed under `## Vocabulary Sources` in `.claude/sdd/config.md`.
-
-Most specs use only words the code already has, and those need no **Terminology** section. Where the spec does have one, `Grep` each term: one marked `narrowed` with no hits in the codebase is wrong, and one marked `coined` that *does* have hits is a collision, which is worse. Where the spec coins a term or uses an existing one in a narrower sense and says so nowhere, add the section.
-
-Field names, `related_name`s and constraint names deserve a pass of their own: they become database identifiers, so a word the spec gets wrong here costs a migration to fix later rather than an edit.
+Check the spec's names against `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`, running the checks it describes on the **Terminology** section, and adding that section where the spec coins or narrows a term and says so nowhere.
 
 Read any mentioned source code files and any related code and look for inconsistencies and problems.
 
