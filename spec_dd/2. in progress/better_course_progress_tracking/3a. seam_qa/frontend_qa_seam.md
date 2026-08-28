@@ -280,17 +280,28 @@ independent attempt streams. Course completion is gated on placements, not forms
 Which record an attempt credits is decided when the attempt is minted, not when it completes. That is the
 design; this step confirms it holds and that nothing is destroyed when the resolution changes underneath.
 
-1. Log in as Cara and start the **Mid course Quiz** (item 2 of `functionality-demo-show-end-with-quiz`) —
-   register her for that course through the RPAS cohort first if she is not already. Answer page 1, then
-   navigate away without finishing.
+Use the **End course Quiz** (item 4 of `functionality-demo-show-end-with-quiz`), not the Mid course Quiz.
+The Mid course Quiz is `submit_on_exit`, so "navigate away without finishing" is impossible on it by
+construction — leaving the page submits the attempt and there is nothing left to resume. The End course
+Quiz is also two pages but has `submit_on_exit` off, which is what this step needs.
+
+`§0.1` seeds no registrations at all for this course. Create both grants first, or steps 3–5 have nothing
+to switch between: a cohort course registration for the **RPAS Training** Year 9 Maths cohort, and an
+individual `LearnerCourseRegistration` on Cara's **Northside** `Learner`.
+
+1. Log in as Cara and work forward to the **End course Quiz** (item 4). The items unlock sequentially, so
+   she must pass the Mid course Quiz (80%) on the way. Answer page 1, advance to page 2 so page 1 is
+   saved, then navigate away without finishing.
 2. Return to the same item.
    **Expect:** it offers to resume and drops you on the page you left, with page 1's answers still
    selected — not a fresh attempt and not page 1 of a new one.
 3. In the admin, **deactivate** the cohort course registration that currently grants her this course, so
    resolution falls through to her individual grant.
 4. As Cara, return to the quiz.
-   **Expect:** she now resolves to the other record and gets a **fresh start screen**. The half-finished
-   attempt is not offered, because it belongs to the other record.
+   **Expect:** she now resolves to the other record, and the half-finished attempt is **not** offered
+   because it belongs to the other record. The new record has no progress, so sequential unlocking makes
+   item 4 **Locked** and requesting its URL redirects to the course detail page — that redirect is the
+   correct answer here, not a bug. What matters is that none of the other record's work is visible.
    **Expect:** the original incomplete `FormProgress` and its `CourseFormAttempt` **still exist** in the
    admin, untouched. Re-resolving must never destroy work.
 5. Reactivate the cohort registration.
@@ -320,9 +331,15 @@ added that refusal; it is a new failure mode with no prior coverage.
 An attempt with no `CourseFormAttempt` is how `form_engine` represents a form sat outside a course. The
 receiver has to return silently rather than raise.
 
-1. In the admin, create a **Form progress record** by hand against any form, for any learner, and mark it
-   complete — do **not** create a `CourseFormAttempt` for it.
-   **Expect:** it saves. No traceback, no `RelatedObjectDoesNotExist`.
+1. In the admin, create a **Form progress record** by hand against any form, for any learner — do **not**
+   create a `CourseFormAttempt` for it.
+   **Expect:** it saves. No traceback, no `RelatedObjectDoesNotExist`, and `site_id` is populated.
+
+   Then complete it by calling `FormProgress.complete()` on it, not by editing the admin form.
+   `completed_time` is deliberately read-only on `FormProgressAdmin`: only `complete()` may finish an
+   attempt, because only `complete()` scores it and sends `form_attempt_completed`, which is the receiver
+   this step exists to exercise. Stamping the field directly would test nothing.
+   **Expect:** `complete()` returns silently. No `RelatedObjectDoesNotExist`.
 2. Check that learner's course progress records.
    **Expect:** no percentage moved anywhere. A standalone sitting must credit nothing.
 3. Watch the `runserver` terminal through this step.

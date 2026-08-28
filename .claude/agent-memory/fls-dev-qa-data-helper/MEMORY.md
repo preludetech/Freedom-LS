@@ -45,6 +45,7 @@
 - [reference_dual_grant_course_progress_fixture.md](reference_dual_grant_course_progress_fixture.md) — Two grants (cohort + individual) on one course for grant fall-through QA; SiteAwareFactory needs explicit site= outside a request; cohort registration fans out to the WHOLE cohort
 - [reference_seeding_form_attempts_around_the_site_bug.md](reference_seeding_form_attempts_around_the_site_bug.md) — `form_progress__site=site` workaround for the CourseFormAttemptFactory NULL-site bug; how to build a real answered/scored cohort-granted sitting; recalculate surfaces unrelated denominator drift
 - [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
+- [reference_detaching_a_cohort_membership.md](reference_detaching_a_cohort_membership.md) — Deleting ONE CohortMembership to make grant resolution fall through to the individual registration; nothing FKs to CohortMembership (no cascade, no ProtectedError); there is deliberately no post_delete, so the cohort-granted CourseProgress SURVIVES
 
 ## Recurring requests
 
@@ -153,7 +154,10 @@ The **better_course_progress_tracking branch** introduces per-grant `CourseProgr
 nullable grant FKs (`learner_registration` / `cohort_registration`), one record per grant, minted
 only by the registration `post_save` signals. Expect repeat asks for "give persona X a second
 grant of a different kind". Never hand-create the progress rows; create the registration and let
-the signal mint it. See [[reference_dual_grant_course_progress_fixture]].
+the signal mint it. See [[reference_dual_grant_course_progress_fixture]]. The follow-on ask is now
+also on record: **"take one of the two grants away again"**. Do it by deleting the
+`CohortMembership`, not the progress row — the resolver joins through membership, and the
+progress row is meant to survive. See [[reference_detaching_a_cohort_membership]].
 
 The `CourseFormAttemptFactory` **NULL-site sub-factory bug is FIXED** by commit 2c2b5e35
 (`site=factory.SelfAttribute("..site")` on `form_progress` / `collection_item` in both
