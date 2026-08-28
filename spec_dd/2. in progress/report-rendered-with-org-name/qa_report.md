@@ -1,352 +1,204 @@
-# Frontend QA report: Reports rendered with the organisation's brand
+# Frontend QA: Reports rendered with the organisation's brand
 
-Branch: `report-rendered-with-org-name`
-Test plan under test: `3. frontend_qa.md`
+## Result
+
+35 test records. All pass. 0 failures, 0 bugs found.
 
 ## Methodology
 
-The artefact under test is a **PDF**, not a web page. The browser work consisted of the Django
-admin flow that generates and downloads the report (logging in, seeding organisations, submitting
-"Generate cohort report", polling the changelist for `Ready`, clicking Download); the actual
-assertions were made by opening the resulting PDF and inspecting it — by eye, and, where possible,
-objectively with command-line tools (`pdfinfo`, `pdfimages -list`, text search) rather than visual
-judgement alone. Two of the eight tests (the R1–R4 responsive checks) test an on-screen HTML partial
-directly (`course_organisation_chip.html` in the learner course-outline drawer) rather than the PDF,
-and were checked in-browser with Playwright.
+Playwright MCP drove the Django admin at `http://127.0.0.1:8342/` — a dedicated dev server on an unused port, with the branch confirmed via the debug branch badge before testing began. Each report was generated through the admin's "Generate cohort report" object-list action and downloaded through the row's download URL; using the download URL directly (rather than clicking the changelist link) is what proved the organisation-first download filenames.
 
-Two kinds of screenshot were collected, both under `screenshots/` beside this report:
+PDF assertions were made against the downloaded files, not the browser DOM:
 
-- PDF page renders produced with `pdftoppm`, named like `t1-rpas-cover-01.png` or
-  `t6.1-vanish-footer-p2-400dpi-02.png` (the `400dpi` ones are zoomed crops used to check
-  fine detail such as glyph shape or mark cropping).
-- Browser viewport screenshots from Playwright MCP, named like
-  `page-2026-08-25T11-38-36-330Z.png`, used for the R1–R4 checks.
+- `pdfinfo` — document metadata (Author, Creator, Title).
+- `pdftotext`, including `-bbox` for word bounding boxes — used to measure wordmark type sizes and slot widths from the PDF's own layout rather than by eye.
+- `pdfimages` — to list and extract embedded images, identifying which artwork occupies each slot by dimensions, and by pixel-diffing extracted images against the organisation's and platform's source files.
+- `pdftoppm` renders at 300/400dpi, inspected visually.
 
-Every screenshot referenced below has been confirmed to exist in `screenshots/`.
-
-The dev server ran on port 8116 against this worktree's database, seeded by the
-`fls-dev:qa-data-helper` agent. The branch badge was confirmed correct on the dashboard before
-testing began.
-
-Nothing aborted during the run — no smoke-gate failure, no compression failure (compression ran
-clean, exit 0, nothing oversized) — so every step in the plan executed, including all three
-viewport passes.
+Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists there. Note that most of these "screenshots" are high-DPI renders of PDF pages and page regions rather than browser captures, since the surface under test is a PDF, not a web page.
 
 ## Diff scoping
 
-Classed **FULL**. The changed-file set includes template files (`report.html`, `title_page.html`,
-`course_organisation_chip.html`, `course_toc_header.html`) and a stylesheet (`print.css`), which
-is enough on its own to require the full pass under this project's scoping rules. Nothing was
-skipped: desktop, mobile and tablet passes all ran, including the three responsive checks (R2, R3)
-against the organisation chip and the general mobile course-page check (R4).
+Class: **FULL**, triggered by changed templates, CSS and HTML — `reports/templates/reports/report.html`, `reports/templates/reports/partials/title_page.html`, `reports/static/reports/print.css`, `_base_interface.html`, the learner-interface partials (`course_organisation_chip.html`, `course_toc_header.html`) and `tailwind.base_interface.css`, alongside `reports/render.py`, `reports/views.py`, `reports/report_data.py` and the organisations app.
+
+FULL means desktop, mobile and tablet passes all ran. Nothing was skipped by scoping.
 
 ## Smoke gate
 
-Passed. Two pages checked: the dashboard (`http://127.0.0.1:8116/`, branch badge correct) and the
-`GeneratedReport` admin changelist (`http://127.0.0.1:8116/admin/freedom_ls_reports/generatedreport/`,
-200). No failure URL, no failure reason.
+Passed. Loaded as the logged-in admin:
 
-## Results by test
+- `http://127.0.0.1:8342/`
+- `http://127.0.0.1:8342/admin/freedom_ls_reports/generatedreport/`
 
-### Test 1 — RPAS Training, the golden path (all sub-checks pass)
+## Coverage
 
-- **1.1 Cover** — pass. Logo top-left, whole and uncropped, bound by width; accent rule under the
-  brand block aligned left; organisation name not repeated beside the logo; the metadata
-  `ORGANISATION` row shows the full name `RPAS Training`; the site's own name appears nowhere on
-  the cover except the band. (`t1-rpas-cover-01.png`)
-- **1.2 Band** — pass, and settled objectively rather than by eye: `pdfimages` shows page 1
-  embeds the 1512x737 asset, which is `first_class_logo_on_dark.png` — the reversed mark, correctly
-  used on the band. Whole and undistorted, about 7.6mm tall, clear of both band edges. The two-tier
-  lockup reads correctly: "Powered by" smaller and lighter, "FirstClass" larger and bold.
-  (`t1-rpas-band-400dpi-01.png`)
-- **1.3 "Powered by" appears once on the cover** — pass, and this is the plan's stated trap. Text
-  search: "Powered" occurs exactly once on page 1 (band only), and 32 times across 32 pages —
-  one per page. `@page :first { @bottom-center { content: none } }` correctly clears the cover's
-  bottom-centre box.
-- **1.4 Interior footer (page 2)** — pass, in full. Left box reads `RPAS Training · QA Report
-  Standard Cohort · Cohort progress report` on **one line** — this organisation's name is 13
-  characters, which is just inside the budget, so Test 1's own one-line requirement is met. (It is
-  the *next* character that breaks it: see bug B1, which this test does not itself trip.) Centre box embeds the 512x248
-  asset — confirmed by `pdfimages` to be `first_class_logo.png`, the full-colour variant, correctly
-  used on white paper — plus "Powered by FirstClass" on one line, mark about 3.8mm tall and on the
-  text's baseline. Right box reads "Page 2 of 32". No box collides with another.
-  (`t1-rpas-footer-p2-400dpi-02.png`)
-- **1.5 Landscape pages** — pass. Pages 5 and 6 (841.89x595.276) both carry the full footer row:
-  identity, "Powered by FirstClass", page number.
-- **1.6 Document properties** — pass. `pdfinfo`: Author = `RPAS Training` (one name, no
-  `"RPAS Training, DemoDev"` doubling), Creator = `FirstClass`, Title =
-  `QA Report Standard Cohort — Cohort progress report`, Producer = WeasyPrint 69.0.
-- **1.7 Download filename** — pass. `Content-Disposition: attachment;
-  filename="rpas-training-qa-report-standard-cohort-progress-report.pdf"` — organisation first.
+### Test 1 — golden path (RPAS Training)
 
-### Test 2 — Northside, no logo (wordmark fallback)
+Cover: logo top-left, whole, aspect ratio 2.1741 identical to source (no distortion), sized 34.8mm x 16.0mm (within the 70mm/16mm budget). Organisation name set as text beneath the logo in the primary colour, above a left-aligned accent rule. ORGANISATION metadata row shows the full name. Download filename `rpas-training-qa-report-standard-cohort-progress-report.pdf` — organisation first.
 
-Pass. (`t2-northside-cover-01.png`) The top-left slot holds the organisation name set large in the
-deployment's primary blue — no monogram/initials badge, no broken-image icon, no empty box, no alt
-text; the cover reads as finished. Band, footer, metadata, Author (`Northside`) and filename
-(`northside-qa-report-standard-cohort-progress-report.pdf`) all match Test 1's pattern.
+![](screenshots/t1-rpas-cover.png)
 
-### Test 3 — The house organisation (attribution suppressed)
+**Cover band trap check (page-1 grep count).** "Powered by" appears exactly ONCE on page 1 (grep count = 1). `@page :first` correctly clears the new `@bottom-center` box; the site name appears nowhere else on the cover. This is the trap the plan flagged as most likely to fail — it didn't.
 
-Pass. "Powered" has zero hits across all 43 pages, and `pdfimages -list` reports no images at all
-in the whole document — no platform mark anywhere, matching the plan's expectation for an org with
-no logo of its own. The coloured band at the foot of the cover is still drawn, solid and
-full-width, just empty. Footer identity line is intact (`DemoDev · QA Report Standard Cohort ·
-Cohort progress report`) and "Page 2 of 43" is unshifted by the empty centre box.
-(`t3-house-cover-01.png`)
+**Cover band bleed.** Band pixels run x=0..2479 of a 2480.4px-wide page at 300dpi, and to the last row — bleeding off left, right and bottom. The single white column at x=2480 is a 0.08mm rasteriser rounding sliver, not a margin. The band's embedded mark is 1512x737 (`first_class_logo_on_dark.png`, the reversed variant): reads cleanly white against the blue, whole, undistorted, 8.0mm tall, lockup centred horizontally (1638px vs page centre 1654px at 400dpi) and vertically. "Powered by" is visibly smaller and lighter than "FirstClass", same typeface.
 
-### Test 4 — Very long organisation name
+![](screenshots/t1-rpas-band-400dpi.png)
 
-- **4.1 Cover, 147-char name** — pass. Condensed size class measured directly: 3.56mm cap-ink
-  versus 6.10mm for the 40-character name in 4.2. Wraps to exactly 3 lines and ends in a single
-  U+2026 (verified byte-level: 1 occurrence of the ellipsis glyph, 0 literal `...`). Measured ink
-  span 22.1mm–90.9mm from the page left = 68.8mm slot width, inside the ~70mm budget. No overlap
-  with the accent rule, overline or cover title; cover body not pushed down.
-  (`t4-long150-brandblock-01.png`)
-- **4.2 Size-class boundary** — pass. Lakeside (40 chars) renders at full size (6.10mm first-line
-  ink, the largest measured of the set); Riverbend (45 chars) renders condensed (4.40mm), 2 lines,
-  no overflow. Neither overflows its slot at its size. (`t4-med45-brandblock-01.png`)
-- **4.3 Footer, 147-char name** — pass on the plan's own terms, since it grants two lines as the
-  tolerance for this case specifically. Organisation truncated to `The Northern Federation of Co…`
-  with the same single U+2026; identity line runs to 2 lines. Centre box still holds mark plus
-  "Powered by FirstClass" on one line, with no collision with the centre box or the content above.
-  (`t4-long150-footer-p2-400dpi-02.png`)
+**Interior footer.** Bottom-left is a two-line stack ("RPAS Training" / "QA Report Standard Cohort"), no "Cohort progress report" label, no site name. Bottom-centre carries the full-colour mark (512x248, `first_class_logo.png` — the right-way-round pairing with the band's reversed mark) plus "Powered by FirstClass" on one line; the mark is 3.5mm tall and sits on the text baseline. Bottom-right reads "Page 2 of 32". No collisions. Landscape pages 5 and 6 carry the identical full footer row.
 
-### Test 5 — Non-Latin organisation name
+![](screenshots/t1-rpas-footer-p2-400dpi.png)
 
-Pass. `Восточно-Европейская Академия Непрерывного Образования` renders as legible Cyrillic on the
-cover, no missing-glyph boxes, in the plainer bundled fallback face — expected per the plan.
-Footer shows it truncated with a single U+2026, also as real text. The download filename preserves
-the script via RFC 5987 (`filename*=utf-8''%D0%B2%D0%BE%D1%81...`), decoding to
-`восточно-европейская-академия-непрерывного-образования-qa-report-standard-cohort-progress-report.pdf`.
-(`t5-cyrillic-brandblock-01.png`)
+**Document metadata.** Author = "RPAS Training" (one name only, not "RPAS Training, DemoDev"). Creator = "FirstClass" (the site name). Title = "QA Report Standard Cohort - Cohort progress report", unchanged.
 
-### Test 6 — Things that could break sideways
+### Test 2 — wordmark fallback (Northside)
 
-- **6.1 Logo vanished from storage** — pass. DB row points at a `.webp` absent from disk. Report
-  still reaches `Ready`, not `Failed`. Cover falls back to the wordmark: page 1 embeds only the
-  1512x737 band mark, no organisation image. (`t6.1-vanish-cover-01.png`)
-- **6.2 File that is not really an image** — pass. Logo field points at an ASCII text file named
-  `.png`. Report reaches `Ready`, cover falls back to the wordmark (page 1 embeds only the
-  1512x737 band mark). No garbage embedded, no broken-image box. (`t6.2-bad-cover-01.png`)
-- **6.3 Admin upload validation** — pass. SVG renamed `.png` → "File is not a readable image. Use
-  PNG, JPEG or WebP." A 5.6MB PNG → "Image file is too large (5.6MB; maximum is 2MB)." A 48x24 PNG
-  → "Image is too small (48x24px; minimum is 64x32px)." All three rejected at the form; none
-  reached a report.
-- **6.4 Old report not retroactively rebranded** — pass. After renaming `RPAS Training` to
-  `Riverdale Flight School`, the pre-rename report is frozen: Author still `RPAS Training`, cover
-  `ORGANISATION` row still `RPAS Training`, page-2 footer still `RPAS Training · ...`, file mtime
-  unchanged. A newly generated report for the same cohort carries the new name and still embeds
-  the logo. Both behaviours correct. Name restored afterwards. (See the download-filename
-  observation in General notes below — the plan's own assertion here is unaffected.)
-- **6.5 Markup/quotes in the name** — pass. `Acme & Sons <b>Ltd</b> "Trading"` renders literally on
-  the cover — `<b>`/`</b>` visible as text, ampersand and quotes intact, no bold applied, no
-  missing characters. `pdfinfo` Author carries the name literally. Footer truncates it with U+2026.
-  No styling elsewhere in the document was disturbed, so the name did not reach the stylesheet.
-  The admin changelist also escapes it correctly. (`t6.5-markup-brandblock-01.png`)
-- **6.6 Punctuation-only name** — pass. `---` downloads fine (HTTP 200), no 500. Filename is
-  `-qa-report-standard-cohort-progress-report.pdf` (`slugify('---')` is empty, so the name leads
-  with a bare hyphen) — the plan calls this shape "ugly but valid". Footer reads
-  `--- · QA Report Standard Cohort · Cohort progress report`. (`t6.6-punct-cover-01.png`)
-- **6.7 Download permissions unchanged** — pass. Logged in as
-  `qa-report-restricted@email.com`: downloading the permitted cohort's report returns HTTP 200 with
-  the organisation-named `Content-Disposition`; downloading a different cohort's report returns
-  HTTP 403. The filename change did not widen who can download what.
-- **6.8 Non-Ready report download** — pass. Hitting the download URL of a non-Ready report returns
-  404 with no traceback and no broken file, verified against a report caught `RUNNING` mid-
-  generation and against two pre-existing `FAILED` reports. The changelist also renders no
-  Download link for non-Ready rows.
-- **6.9 Repeat generation** — pass. Two Generate submissions fired concurrently for the same
-  cohort: the second returns "A report for this cohort is already being generated." Exactly one
-  new row was created.
-- **6.10 Cohort with no learners** — pass. `QA Report Empty Cohort` under RPAS Training produces a
-  7-page report; the cover still carries the RPAS logo (1324x609 embedded on page 1) and the
-  reversed platform mark on the band (1512x737). Branding is not lost with the content. Footer
-  reads `RPAS Training · QA Report Empty Cohort · Cohort progress report`.
-  (`t6.10-empty-cover-1.png`)
-- **6.11 Dark logo vanished from storage** — pass. `QA Dual Logo`'s `*-on-dark.png` moved off disk;
-  report still reaches `Ready`, no traceback. The cover brand slot renders byte-identical to the
-  run with the dark file present (md5 match on a 300dpi crop), so the light logo is unchanged and
-  the missing dark file is completely invisible. File restored afterwards.
-  (`t6.11-darkgone-cover-01.png`)
+Northside has no logo. The top-left slot holds the organisation name set large in the deployment's primary blue, above the left-aligned accent rule — reads as finished, not as a failed image. No monogram/initials badge anywhere; page 1 embeds exactly one image (1512x737, the platform's on-dark band mark), so there is no image in the brand slot at all. No broken-image icon, no empty box, no alt text. Author=Northside, Creator=FirstClass, page-1 "Powered by" count = 1, footer two-line stack intact, filename `northside-qa-report-standard-cohort-progress-report.pdf`.
 
-### Test 7 — Both logo variants (QA Dual Logo)
+![](screenshots/t2-northside-brandblock-300dpi.png)
 
-- **7.1 Cover** — pass. Cover top-left slot holds the light (full-colour) variant — navy left wing
-  on white — while the band below carries the reversed variant — pale left wing on blue. The two
-  are visibly different in the one render, confirming the dark variant does not leak into the
-  organisation's cover slot. Band, footer, metadata and filename all match Test 1.
-  (`t7-dual-cover-01.png`)
-- **7.2 Files on disk** — pass. `media/organisations/` holds two genuinely distinct files for
-  QA Dual Logo: `cd09ec82-....png` (201093 B) and `cd09ec82-....-on-dark.png` (171022 B), different
-  md5s, dark one suffixed `-on-dark`. Neither overwrote the other.
-- **7.3 Admin form fields** — pass. Exactly two upload fields: "Logo (for light backgrounds)" —
-  help "The full-colour mark, for white and near-white surfaces. Used on the report cover and
-  anywhere the organisation appears on screen." — and "Logo (for dark backgrounds)" — help "The
-  reversed mark, for surfaces painted in a strong colour. Optional — a surface with no dark variant
-  to reach for falls back to the organisation's name." Each has a Clear checkbox.
-- **7.4 Dark-field validation** — pass. A text file renamed `.png` uploaded into the dark field is
-  rejected with the same message the light field gives: "File is not a readable image. Use PNG,
-  JPEG or WebP." Same validators on both fields.
-- **7.5 Clear the dark field** — pass. Ticking Clear on the dark field saves successfully
-  ("The organisation 'QA Dual Logo' was changed successfully."). The organisation keeps its light
-  logo — the new report's cover brand slot is byte-identical to the pre-clear render — and the
-  report still generates to `Ready`.
+### Test 3 — house organisation (DemoDev)
 
-### Test 8 — Platform mark not configured
+DemoDev is the site's default organisation. Attribution is fully suppressed: text search for "Powered" returns **zero** hits across all 43 pages, and `pdfimages -list` lists **nothing at all** — no platform mark on the band, none in any page footer. The coloured band is still present and solid: 18.0mm tall, bleeding to left/right/bottom, and sampling inside it returns exactly one colour (43,108,176) — bare colour, no mark, no text. The interior footer keeps the two-line identity stack (DemoDev / QA Report Standard Cohort) at bottom-left and "Page 2 of 43" at bottom-right, neither shifted nor re-centred by the empty middle box.
 
-- **8.1 Neither mark configured** — pass. With both settings commented out, the report reaches
-  `Ready`. The whole document embeds exactly one image — the organisation's own logo on page 1 —
-  so no platform mark appears anywhere. The band reads "Powered by FirstClass" as text alone in
-  the two-tier treatment, starting at the normal left inset with no gap and no broken-image box.
-  Interior footers likewise read text alone. Looks unremarkable, as intended.
-  (`t8-1-noMarks-band-01.png`)
-- **8.2 Only the light mark configured** — pass, and settled decisively by `pdfimages` rather than
-  by eye: with only `HEADER_LOGO_ON_DARK_STATIC_PATH` commented out, page 1 embeds only the
-  1324x609 organisation logo — the band embeds no image at all, so it did **not** fall back to the
-  full-colour mark. Page 2 embeds the 512x248 full-colour mark in the footer. This is exactly the
-  asymmetry the two separate settings exist to produce. (`t8-2-lightonly-band-01.png`)
-- **8.3 A mark that does not resolve** — pass. `HEADER_LOGO_STATIC_PATH` pointed at
-  `images/nope.png`: the report goes to `Failed`, and its error message names the path: "Static
-  asset 'images/nope.png' could not be resolved through the staticfiles finders. Run `npm run
-  tailwind_build` if this is the compiled Tailwind bundle; otherwise check the path against the
-  setting that names it." Setting restored; the next report reached `Ready`.
-  `config/settings_dev.py` restored byte-exact (empty git diff).
+![](screenshots/t3-house-cover.png)
 
-### R1–R4 — Responsive checks on the organisation chip
+### Test 4 — long / medium / short names
 
-These test `course_organisation_chip.html` and `course_toc_header.html` directly in-browser
-(this diff's only non-PDF surface), rather than the generated PDF.
+Size-class boundary behaviour, measured from the PDF's own word bounding boxes:
 
-- **R1 — desktop (1920x1080)** — pass. As learner
-  `qa-report-std-rpas-training-01@email.com` on QA Report Medium Course, the chip renders in the
-  TOC sidebar with the RPAS Training logo contained on its own surface fill, name as text beneath,
-  no monogram. Rect measured at 272x113, positioned at x=56, y=100. No overflow.
-  (`page-2026-08-25T11-35-16-809Z.png`)
-- **R2 — mobile (375x812)** — **fail**, filed as bug B2 below. The TOC becomes a dialog drawer;
-  with the chip present, the dialog computes to `position: fixed; top: -50px` with height 862
-  against an 812 viewport, clipping the top 14px of the logo, and there is no inner scroll to
-  recover it (`side-panel-body scrollHeight == clientHeight == 862`).
-  (`page-2026-08-25T11-38-36-330Z.png`)
-- **R3 — tablet (768x1024)** — pass. Still uses the drawer, not the desktop sidebar. Dialog sits
-  at `top:162px`, height 862, within the 1024 viewport; chip fully visible with the logo top at
-  y=198. No horizontal overflow. The mobile clipping does not reproduce here because the viewport
-  is tall enough.
-- **R4 — course-page mobile (375x812)** — pass. No horizontal overflow (`scrollWidth ==
-  clientWidth == 375`), breadcrumb truncates cleanly, progress bar, title, body and Next button all
-  readable and correctly sized. The "Open course outline" toggle is a 44px-plus touch target.
-  (`page-2026-08-25T11-36-05-340Z.png`)
+| Organisation | Length | Wordmark size | Class |
+|---|---|---|---|
+| Northside | 10 ch | 21.78pt | FULL |
+| Lakeside College of Health Sciences Inc. | 40 ch | 21.78pt | FULL |
+| Riverbend Institute of Applied Technology Ltd | 45 ch | 15.73pt | CONDENSED |
+| (147-char org name) | 147 ch | 15.73pt | CONDENSED |
 
-## Bug B1: Interior-page footer identity line wraps to two lines for organisation names of 14 characters or more
+Neither medium name overflows its slot at its size. Lakeside's 40-char name fits the footer budget untruncated; Riverbend's 45-char name truncates cleanly with a single ellipsis.
 
-**Manifestations** (organisations whose footer identity line wraps):
-- 6.1 — `QA Logo Vanish`, 14 characters (desktop) — the clearest case: a short, untruncated name that
-  still wraps
-- 4.2-sizeclass — `Lakeside College of Health Sciences Inc.` and
-  `Riverbend Institute of Applied Technology Ltd` (desktop)
-- 5 — `Восточно-Европейская Академия Непрерывного Образования` (desktop)
-- 6.5 — `Acme & Sons <b>Ltd</b> "Trading"` (desktop)
+The 147-char case: the cover wordmark is set at the condensed size (line box 15.73pt vs 21.78pt full), wraps to exactly 3 lines and ends with a single U+2026 ellipsis glyph (confirmed via hexdump: `E2 80 A6`, not three periods). The block spans 20.0mm–89.0mm = 69.0mm wide, inside the ~70mm slot; it does not run to full page width. Brand block bottom is at y=113.3pt while the "COHORT PROGRESS REPORT" overline starts at y=253.5pt — 140pt of clearance, so no overlap with the accent rule, the overline or the cover title, and the cover body is not pushed down. The ORGANISATION metadata row still shows the full untruncated name.
 
-**Not affected:** Test 1 (`RPAS Training`, 13 chars), Test 2 (`Northside`, 9), Test 7
-(`QA Dual Logo`, 12), Test 6.6 (`---`, 3) and Test 3 (`DemoDev`, 7 — and its centre box is empty
-anyway) all keep the identity line on one line. Test 4's 147-character name also wraps but is
-explicitly granted that tolerance by the plan, so it is not counted as a manifestation here.
+![](screenshots/t4-long147-cover.png)
 
-**Screenshots:**
+The footer identity block for the 147-char org stays at exactly two lines: "The Northern Federation of Colleges, Un…" over "QA Report Standard Cohort", truncated with a single U+2026, well clear of the centre box — no collision. The centre box still holds the mark plus "Powered by FirstClass" on one line. Checked on portrait page 2 and landscape page 5: both sane, same character budget, neither collides.
 
-The wrapping case — `QA Logo Vanish`, 14 characters, "report" orphaned onto a second line:
+![](screenshots/t4-long147-footer-p2-400dpi.png)
 
-![](screenshots/t6.1-vanish-footer-p2-400dpi-02.png)
+![](screenshots/t4-med45-brandblock-300dpi.png)
 
-The passing control — `RPAS Training`, 13 characters, all on one line:
+### Test 5 — non-Latin name (Cyrillic)
 
-![](screenshots/t1-rpas-footer-p2-400dpi-02.png)
+Organisation "Восточно-Европейская Академия Непрерывного Образования" renders as real text on the cover (3 lines, condensed size, primary blue) and in the footer — no missing-glyph boxes, in a face consistent with the rest of the cover. The download filename preserves the script: `восточно-европейская-академия-непрерывного-образования-qa-report-standard-cohort-progress-report.pdf` — the organisation name is not stripped. PDF Author metadata also carries the Cyrillic name intact. The footer truncates to two lines with a single ellipsis, as designed.
 
-**Expected:** Test 1 states the bottom-left identity line stays on one line, and that a wrap here
-is a regression rather than a tolerance, because the platform mark took width from that box. Two
-lines is granted only for the very long name in Test 4.
+![](screenshots/t5-cyrillic-brandblock-300dpi.png)
 
-**Actual:** The identity line wraps to two lines for any organisation name of about 14 characters
-or more, orphaning the word "report" (or "Cohort progress report") onto a second line. Measured
-boundary with the 25-character cohort name "QA Report Standard Cohort": `RPAS Training` (13 chars)
-fits on one line; `QA Logo Vanish` (14 chars) wraps. `QA Bad Logo` does not wrap, but `Lakeside
-College of Health Sciences Inc.`, `Riverbend Institute of Applied Technology Ltd`, the Cyrillic
-name, and `Acme & Sons <b>Ltd</b> "Trading"` all wrap — these are truncated to roughly 30 characters
-plus an ellipsis, which still exceeds the one-line budget. The organisation-name truncation budget
-(~30 chars) is therefore wider than the space the line actually has, so almost every organisation
-longer than a very short name gets a two-line footer. No collision with page content or the centre
-box was observed, and the centre "Powered by" lockup itself correctly stays on one line.
+### Test 6.1 — 6.11: sideways cases
 
-## Bug B2: Organisation chip clips the top of the logo in the mobile course-outline drawer
+**6.1 — logo vanishes from storage (QA Logo Vanish).** The organisation's logo file had been deleted by a previous run in this worktree; it was restored so the full before/after sequence could be run, then deleted again as the test requires. Report 1 (logo restored): confirmed embedded on the cover (page-1 images 1324x609 org logo + 1512x737 band mark). File then deleted from `media/organisations/`, DB row left pointing at it. Report 2: status reached Ready (not Failed), `error_message` empty, page 1 now embeds only the 1512x737 band mark, and the cover falls back to the "QA Logo Vanish" wordmark. No traceback in the runserver console.
 
-**Manifestations:**
-- R2-chip-mobile (mobile)
+![](screenshots/t6.1-vanish-cover.png)
 
-**Screenshots:**
+**6.2 — logo file isn't really an image (QA Bad Logo).** A 45-byte ASCII text file named `.png`, attached bypassing `full_clean`. Report generated to Ready with an empty `error_message`. Cover falls back cleanly to the "QA Bad Logo" wordmark: page 1 embeds only the 1512x737 band mark — no garbage embedded, nothing renders as a broken image.
 
-![](screenshots/page-2026-08-25T11-38-36-330Z.png)
+![](screenshots/t6.2-badlogo-brandblock-300dpi.png)
 
-**Expected:** The organisation chip added to `course_toc_header.html` should render fully inside
-the course-outline drawer at a 375x812 mobile viewport, with the logo whole and reachable.
+**6.3 — admin upload validation.** On the organisation change form, all three bad uploads were rejected on save with clear messages: SVG renamed `.png` → "File is not a readable image. Use PNG, JPEG or WebP."; a 9.3MB file → "Image file is too large (9.3MB; maximum is 2MB)."; a 48x24px image → "Image is too small (48x24px; minimum is 64x32px)." None reached storage or a report.
 
-**Actual:** The chip's 113px of height pushes the drawer dialog's height to 862px against an 812px
-viewport; the dialog resolves to `position: fixed; top: -50px`, so its top 50px sits off-screen and
-the top 14px of the organisation logo is cut off. There is no inner scroll to recover it —
-`side-panel-body` `scrollHeight` equals `clientHeight` — and the dialog itself is fixed, so the
-clipped strip is unreachable. Removing the chip from the DOM on the same page and reopening the
-drawer puts the dialog at `top: 91px`, height 721, entirely on-screen, which isolates the chip as
-the cause. Does not reproduce at the 768x1024 tablet viewport.
+**6.11 — organisation's dark-mode file vanishes (QA Dual Logo).** The `*-on-dark` file was deleted from storage with the DB row left pointing at it. Report reached Ready with an empty `error_message` and no traceback. The cover still embeds the LIGHT variant — pixel-identical to `media/organisations/cd09ec82-...png` (mean abs diff 0.000) — and the band still carries the platform's on-dark mark (diff 0.000 vs `static/images/first_class_logo_on_dark.png`). The missing dark file is completely invisible, as intended: nothing on the report reads the organisation's dark variant today.
+
+![](screenshots/t6.11-darkgone-cover.png)
+
+**6.4 — organisation renamed after a report exists.** Renamed "Northside" to "Northside Renamed Ltd" and re-downloaded the report generated before the rename. The PDF is byte-identical (md5 `1fe3978eea9beda0c198179d9e6c3a89` both before and after), still reads "Northside" on the cover and still carries Author='Northside' — an immutable snapshot. Generating a NEW report for the same cohort produced "Northside Renamed Ltd" on the cover and in Author. Both behaviours correct. Organisation name restored afterwards. (See General notes for the filename-vs-content divergence this exposed.)
+
+**6.5 — organisation name contains markup and punctuation (`Acme & Sons <b>Ltd</b> "Trading"`).** The cover wordmark, the ORGANISATION metadata row, the page footer and the PDF Author field all show the name literally, with `<b>` visible as text. No bold is applied, the ampersand and both quotation marks render intact, and nothing further down the document is affected — band, title, metadata block and footer are all correct, so no name reached the stylesheet. The cover wordmark breaks mid-tag across two lines, which is ordinary text wrapping, not a lost character.
+
+![](screenshots/t6.5-markup-cover.png)
+
+**6.6 — organisation name is punctuation only (`---`).** Download filename comes out as `-qa-report-standard-cohort-progress-report.pdf` — ugly but valid, exactly as the plan predicts. Downloads without a 500 and the file has a name. Report reached Ready; the cover renders "---" as the wordmark above the accent rule and the ORGANISATION row reads "---".
+
+![](screenshots/t6.6-punct-cover.png)
+
+**6.10 — empty cohort (0 learners).** QA Report Empty Cohort (RPAS Training). The cover still carries the organisation's full brand — logo embedded (1324x609) top-left, "RPAS Training" set beneath it, accent rule — and the band with the platform's on-dark mark and "Powered by FirstClass" renders correctly. An empty cohort does not lose its branding along with its content.
+
+![](screenshots/t6.10-empty-cover.png)
+
+**6.8 — download a report stuck in `pending`.** Hit the download URL for a report row left in `pending` directly. Response is a clean HTTP 404 — no broken file, no traceback.
+
+**6.9 — duplicate generation while one is in flight.** With a pending report already in flight for the cohort, submitting Generate for that same cohort returns "A report for this cohort is already being generated." and creates no second row — the report count for the cohort stayed at 4 across the blocked attempt.
+
+**6.7 — download permissions.** Logged in as `qa-report-restricted@email.com`. Downloading the report for a cohort this user may view succeeded and served the organisation-named file `rpas-training-qa-report-standard-cohort-progress-report.pdf`. Downloading a report for a cohort the user may not view (RPAS Training / QA Report Empty Cohort) returned HTTP 403 Forbidden. The filename change has not widened who can download what — `download_report_view` still gates on `can_view_cohort()` before it builds the filename.
+
+### Test 7 — dual logo variants (QA Dual Logo)
+
+**Cover.** With both light and dark variants present, the cover's top-left slot holds the LIGHT variant: the first page-1 image is pixel-identical to the organisation's light file (mean abs diff 0.000) while differing from its dark file by 201.72. The dark variant appears nowhere as the organisation's mark. Band, footer, metadata (Author=QA Dual Logo, Creator=FirstClass) and filename (`qa-dual-logo-qa-report-standard-cohort-progress-report.pdf`) all match Test 1. Note: the fixture seeds the organisation's dark file with the same artwork the platform uses, so the band mark happens to be byte-identical to the org's dark file — a fixture coincidence the plan calls out, not the cover reading the wrong variant.
+
+![](screenshots/t7-dual-cover.png)
+
+**Admin fields.** The change form has two upload fields with distinct labels and help text: "Logo (for light backgrounds)" — "The full-colour mark, for white and near-white surfaces. Used on the report cover…"; "Logo (for dark backgrounds)" — "The reversed mark, for surfaces painted in a strong colour. Optional…". The two files have different names on disk (`cd09ec82-...png` and `cd09ec82-...-on-dark_RwN9G3o.png`, the dark one ending `-on-dark`), so neither upload overwrote the other. Slug is rendered read-only. Uploading a text file renamed `.png` into the DARK field is rejected with the same message the light field gives: "File is not a readable image. Use PNG, JPEG or WebP."
+
+**Clearing the dark field.** Ticked Clear on the dark field and saved. The organisation kept its light logo (`logo='organisations/cd09ec82-...png'`) while `logo_on_dark` became empty, and a freshly generated report for the cohort still reached Ready.
+
+### Test 8.1 — 8.3: platform mark configuration
+
+| Test | `HEADER_LOGO_STATIC_PATH` | `HEADER_LOGO_ON_DARK_STATIC_PATH` | Band | Interior footer | Result |
+|---|---|---|---|---|---|
+| 8.1 | unset | unset | text-only "Powered by FirstClass", centred, no mark/gap | text-only "Powered by FirstClass" | Ready |
+| 8.2 | set | unset | **text-only** — does NOT fall back to full-colour mark | full-colour mark (512x248) on every interior page | Ready |
+| 8.3 | invalid path | set | — | — | Failed, loudly |
+
+**8.1 — neither mark configured.** Report reached Ready with an empty `error_message`. The band reads "Powered by FirstClass" as text alone in the two-tier treatment, centred, with no mark, no gap where a mark would sit and no broken-image box. Interior footers likewise read text alone. The whole document embeds exactly one image — the organisation's own logo on page 1 — confirming no platform mark anywhere. Looks unremarkable, as the pre-mark treatment should.
+
+![](screenshots/t8.1-nomarks-band-400dpi.png)
+
+**8.2 — only the light mark configured.** Interior footers carry the full-colour mark (512x248 on every interior page) while the band carries text alone. Critically the band does **not** fall back to the full-colour mark: page 1 embeds only the organisation's 1324x609 logo and no platform mark at all. This is the whole reason the two settings are kept separate, and it holds.
+
+![](screenshots/t8.2-lightonly-band-400dpi.png)
+
+**8.3 — configured but unresolvable path.** `HEADER_LOGO_STATIC_PATH` pointed at `images/nope.png`. The report went to Failed, as intended, with an error message naming the unresolvable path: "Static asset 'images/nope.png' could not be resolved through the staticfiles finders. Run `npm run tailwind_build` if this is the compiled Tailwind bundle; otherwise check the path against the setting that names it." A configured-but-wrong path is loud rather than silently missing. Restoring the setting and generating again reached Ready with both marks back in place. `config/settings_dev.py` restored to its committed state.
+
+### Mobile pass
+
+**M1 — generate-report form, 375x812.** No horizontal overflow (`scrollWidth` 375 = viewport). Cohort select is 293x38, Generate button 88x38, both inside the viewport with the select's right edge at 334px. Label, help paragraph and control stack legibly. The 38px control height is Django-unfold's standard admin sizing, not something this change introduced.
+
+![](screenshots/page-2026-08-27T17-58-42-881Z.png)
+
+**M2 — generated-reports changelist, 375x812.** The wide table collapses to stacked label/value cards per row rather than overflowing — no horizontal page scroll (`scrollWidth` 375). Organisation, Cohort, Status, Requested By/At, Finished At and the Download link are all readable, and the organisation column (the one this change added) is not truncated.
+
+![](screenshots/page-2026-08-27T17-58-59-654Z.png)
+
+**M3 — course-player side panel, 375x812.** The mobile sheet clamp from this branch. The dialog opens in bottom-sheet variant with a computed max-height of 690.2px = exactly 85vh of the 812px viewport, so the UA's own cap no longer wins and the sheet cannot grow off the top of the screen (dialog top 495, bottom 812, never negative). The TOC header renders inside it — eyebrow, course title, progress bar, "0% complete" — with the item list below, over a dimmed backdrop. No horizontal overflow.
+
+![](screenshots/page-2026-08-27T18-00-10-603Z.png)
+
+**M4 — organisation chip, absence check.** Organisation chip is correctly absent on this course: it is served by the site's default organisation (DemoDev), and the branch's fix hides the chip for a Site's own default org. Verified via `#course-organisation-chip` being missing from the DOM. (The positive case — chip present for a non-default org — is out of scope; see General notes.)
+
+### Tablet pass
+
+**T1 — course-player side panel, 768x1024.** The desktop dock is gated at `lg` (1024px), so an iPad-portrait tablet correctly gets the mobile bottom-sheet variant rather than a half-formed dock. Computed max-height is 870.4px = exactly 85vh of the 1024px viewport, so the same clamp holds at this width. The sheet renders the full TOC header (eyebrow, title, progress bar, "0% complete") and item list over the dimmed backdrop. No horizontal overflow.
+
+![](screenshots/page-2026-08-27T18-00-49-189Z.png)
+
+**T2 — generated-reports changelist, 768x1024.** Still renders as stacked label/value cards — roomy rather than crowded, no horizontal scroll, and the Organisation column this change added is fully readable at full width. A Failed row correctly shows an empty Download cell rather than a dead link.
+
+![](screenshots/page-2026-08-27T18-00-58-542Z.png)
+
+**T3 — generate-report form, 768x1024.** No horizontal overflow. Cohort select stretches to 672x38 with its right edge at 713px, comfortably inside the viewport, and the Generate button sits below it. The longest option label is 175 characters (the 147-char organisation plus its cohort) and the select still does not push the page wide — the control clips its own text rather than overflowing.
 
 ## Bug status
 
-- **FIXED** — B1: Interior-page footer identity line wrapped raggedly for organisation names of 14
-  characters or more. The identity block is now a deliberate two-line stack — organisation on the
-  first line, `<Cohort> · Cohort progress report` on the second — and the cohort name has a
-  character budget of its own, which it previously lacked entirely.
-- **FIXED** — B2: The mobile course-outline drawer clipped its own content off the top of the
-  screen. The organisation chip was not the cause: a `max-h-none` utility had been defeating the
-  sheet's `max-height: 85vh` from a later cascade layer, and the chip only made the panel tall
-  enough to expose it. The clamp now lives where the variant rule can win, and the panel body sizes
-  by flex so the overflow the clamp creates has somewhere to scroll.
+No bugs found.
 
-Both fixes were made after this report was first rendered, following a re-triage. The re-triage also
-corrected two things this report had wrong about B1 — see the note below.
-
-### Correction to B1 as first filed
-
-B1 was filed as a spec violation. It was not. `1. spec.md` says the identity line **may wrap** within
-its margin box and asks only that QA confirm it does not collide with the centre box — which it did
-not. The "stays on one line" rule this report tested against was invented by the QA plan, and the
-plan has been corrected. The genuine defects behind B1 were that the wrap was *ragged* (stranding a
-bare `report` on the second line) and that the cohort name had no budget at all, so the line could
-grow without limit. Both are now fixed, and spec decision 3 — that the footer keeps its
-`Cohort progress report` label — stands unreversed.
+| ID | Description | Severity | Status |
+|---|---|---|---|
 
 ## General notes
 
-These are observations about the test plan and the product's behaviour outside the plan's stated
-assertions — kept separate from the two bugs above, which are defects against the plan's stated
-expectations.
+- **Test data.** All required organisations and cohorts already existed in this worktree's database from earlier runs, so no `qa-data-helper` spawn was needed. `QA Logo Vanish`'s logo file had been deleted by a previous run; it was restored so test 6.1 could be run in full (confirm logo on cover → delete file → regenerate), then deleted again as the test requires.
+- **Environment.** The `DemoDev` Site is bound to `127.0.0.1:8000` in this worktree's database, so its domain was repointed to the run's port for site resolution to work. This is a local dev-database detail, not a product finding.
+- **Observation, not a defect.** The download filename is derived from the organisation's *current* name at download time, not from the snapshot the PDF froze. After renaming an organisation, re-downloading an older report serves byte-identical PDF content (old name inside) under a filename built from the new name. Test 6.4 asserts only that the PDF is unchanged, which held, so this is reported as an observation for the team to rule on rather than a bug.
+- **Dev-only friction.** The django-debug-toolbar overlay intercepts pointer events on the changelist's Download link and on the admin file-input widgets, so downloads were driven by navigating to the download URL directly, and the toolbar was hidden before form interaction. Not a product issue.
+- **Not exercised, with reasons.**
+  - Test 5's optional CJK/Devanagari sub-case — the plan marks it a known accepted limitation and only requires the filename to survive, which the Cyrillic case already demonstrates.
+  - Test 6.4's "upload a different logo" variant — the plan offers renaming as an equivalent alternative, and that was used instead.
+  - The positive case of the learner-interface organisation chip appearing for a non-default organisation — the chip's absence for the site's default org was verified (M4), but showing it requires a learner registered through a non-default organisation, which is outside this PDF-focused plan and is covered by the branch's own tests.
 
-1. The test plan's admin URL for the report changelist is wrong. It gives
-   `/admin/freedom_ls/reports/generatedreport/`, which 404s. The real path is
-   `/admin/freedom_ls_reports/generatedreport/`. Doc typo in the plan, not a product defect.
-2. The plan's setup command is wrong: `qa_create_organisations --site-name DemoDev` fails with
-   "No such option: --site-name". The site name is a positional argument:
-   `qa_create_organisations DemoDev`. Confirmed by the `qa-data-helper` agent.
-3. The plan states the cohort dropdown on the Generate action groups cohorts by organisation name.
-   It does not — it is one flat select, with labels formatted `<Organisation> — <Cohort>`.
-   Cosmetic doc drift, no functional impact.
-4. Not filed as a bug, but worth a product decision: the download filename of an **already-
-   generated** report is computed at download time from the organisation's **current** name, so
-   renaming an organisation changes the filename of old reports even though their PDF content
-   stays frozen. After renaming `RPAS Training` to `Riverdale Flight School`, the pre-rename report
-   still downloaded as `riverdale-flight-school-...pdf` although every name inside the PDF itself
-   still read `RPAS Training`. Test 6.4 only asserts the PDF content is unchanged, which it is, so
-   this sits outside the plan's stated assertions — but it cuts against the "immutable snapshot"
-   framing the plan uses for that test.
-
----
-
-status: ok
-reason: 2 bugs — 2 fixed, 0 unresolved; B1 re-triaged (the plan, not the product, held the wrong rule); report rendered, screenshots verified
+status: ok · reason: report rendered, 35 test records, 0 bugs documented, 30 screenshots verified present
