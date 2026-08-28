@@ -41,46 +41,33 @@ through any other server lands somewhere Step 10 will not find it.
 Your first browser action is Step 4, once a server is running. If Playwright MCP is unavailable
 then: explain why, explain how to fix the error, and **do not continue with the tests**.
 
-## Rule 2 — The dev database is yours to shape
+## Rule 2 — Fix broken test data yourself
 
-The database this run drives is disposable development data. Nothing in it is precious and nothing in
-it needs anyone's permission to change. When the data is wrong for the test in front of you — missing,
-stale, or actively blocking — **fix the data and carry on testing**.
+The dev database is per-branch, disposable, and rebuildable from the test plan's `§0` seed. When data
+blocks a test — missing, stale, or wrong — fix it and carry on testing. **Never write a `todo.md` item
+asking the user to create, delete, reset or re-seed development data**, including residue this run
+created.
 
-### Missing data — delegate to `fls-dev:qa-data-helper`
+**Missing data** — spawn **`fls-dev:qa-data-helper`** via the `Agent` tool (a paginator with too few
+rows, a panel with no instance of the model, a flow with no user/cohort/course). Tell it the exact
+shape you need: entity counts, relationships, which Site, which fixtures. It owns the factory
+conventions — do not hand-roll ORM scripts. Wait for it to confirm, then re-attempt the test.
 
-If a test cannot run because the required data does not exist (a paginator with too few rows, a panel
-with no instance of the model, a flow with no user/cohort/course), spawn the
-**`fls-dev:qa-data-helper`** agent via the `Agent` tool and tell it exactly what shape you need: entity
-counts, relationships, which Site, which fixtures to attach to. It owns the factory conventions — do
-not hand-roll ORM scripts to create data. Wait for it to confirm, then re-attempt the test.
-
-### Blocking data — delete it or reset it
-
-Existing rows block tests too: a past hard deadline that locks an item, an orphaned join row, a role
-grant that widens a list, a password an earlier run changed. Clear it. Cheapest option first:
+**Blocking data** — a past hard deadline, an orphaned join row, a stray role grant, a password an
+earlier run changed. Clear it, cheapest option first:
 
 1. Delegate the delete to `fls-dev:qa-data-helper`, naming the records by pk.
-2. Clear all content and re-seed: `uv run python manage.py danger_content_delete --yes`, then the plan's
-   seed list. Lighter than dropping the database, and it keeps users, organisations and role grants
-   intact.
-3. For a full wipe and re-seed, run the test plan's own setup section (`§0`). In FLS that is
-   `.claude/fls-dev/scripts/dev_db_delete.sh`, then `.claude/fls-dev/scripts/dev_db_init.sh`, then
-   `uv run python manage.py migrate`, then the plan's seed list. The two scripts match the allow-listed
-   `Bash(.claude/fls-dev/scripts/*.sh:*)` wildcard, so they run without a prompt.
+2. `uv run python manage.py danger_content_delete --yes`, then the plan's seed list. Keeps users,
+   organisations and role grants intact.
+3. Full wipe — the plan's own `§0`: `.claude/fls-dev/scripts/dev_db_delete.sh`,
+   `.claude/fls-dev/scripts/dev_db_init.sh`, `uv run python manage.py migrate`, then the seed list.
+   Both scripts match the allow-listed `Bash(.claude/fls-dev/scripts/*.sh:*)` wildcard.
 
-**Never write a `todo.md` item asking the user to delete, reset, re-seed or tidy development data** —
-including residue this run created. That is your work. Do it before the run ends.
+**If a command is refused**, use the allow-listed wrappers in `.claude/fls-dev/scripts/` and
+`.claude/ds/scripts/`. File a `(user)` item only when a command is refused *and* has no allow-listed
+equivalent — naming the command and why you could not issue it.
 
-### If a data command is refused
-
-Reach for the allow-listed wrappers in `.claude/fls-dev/scripts/` and `.claude/ds/scripts/` instead of
-giving up. Only when a command is refused **and** has no allow-listed equivalent may you file a `(user)`
-item, and it must name the exact command and say why you could not issue it.
-
-### The one case that is genuinely not yours
-
-Only mark a test PARTIAL / skipped if `fls-dev:qa-data-helper` itself reports the scenario is impossible
+**Only** mark a test PARTIAL / skipped if `fls-dev:qa-data-helper` reports the scenario is impossible
 to set up.
 
 ## Rule 3 — Batching safety rules
@@ -108,12 +95,11 @@ prose; never write the literal flag string into a file.
 
 **3f. `git revert` (Step 13) is not allow-listed as a solo-safe batch member** — issue it alone.
 
-**3g. Never run a management command that prompts.** Anything using `click.confirm` — `danger_content_delete`
-is the one QA plans reach for — blocks forever waiting on stdin nobody will type into. Pass its
-non-interactive flag (`--yes` / `-y`). A step that wipes and re-seeds the dev database is an ordinary QA
-step you run yourself: the dev database is per-worktree and rebuildable from the plan's §0.1 seed, so
-never hand it back to the user as a human errand, and never mark it `SKIP` for want of a confirmation.
-If a plan you are handed marks such a step human-run, run it anyway and correct the plan.
+**3g. Never run a management command that prompts.** A `click.confirm` command — `danger_content_delete`
+is the one QA plans reach for — blocks forever on stdin nobody will type into; pass `--yes` / `-y`.
+Wiping and re-seeding the dev database is an ordinary step you run yourself (Rule 2): never a human
+errand, never a `SKIP` for want of a confirmation. If a plan marks such a step human-run, run it
+anyway and correct the plan.
 
 ## Rule 4 — Pass paths, never payloads
 
@@ -565,40 +551,36 @@ spawning. Pass `<todo-path>`: the `todo.md` in `<spec-dir>`.
 
 ### The `tick:`
 
-Read the todo file and find the `/fls-dev:do_qa` item naming **this run's** test plan. A `todo.md`
-often holds several of them, one per plan, so match on a substring unique to yours (e.g. `3a. seam_qa`)
-and pass the line **verbatim** as it appears in the file. Do not reconstruct the wording from memory —
-it drifts between specs.
+Find the `/fls-dev:do_qa` item naming **this run's** test plan — a `todo.md` often holds one per plan,
+so match on a substring unique to yours (e.g. `3a. seam_qa`) — and pass the line **verbatim** as it
+appears in the file. Do not reconstruct the wording from memory; it drifts between specs.
 
 ### What may be added — this list is closed
 
-These four categories, and nothing else. There is no fifth category and you must not invent one.
+These four categories, and nothing else:
 
-1. Each **UNRESOLVED** bug, green-lane failures and red-lane alike:
+1. Each **UNRESOLVED** bug, green-lane and red-lane alike:
    `add:"<section>|user + cmd|Fix QA bug: <short title> (TDD — failing test first, then fix)"`.
 2. A scenario `fls-dev:qa-data-helper` reported **impossible to set up** — not merely absent, which
    Rule 2 required you to fix during the run:
-   `add:"<section>|cmd|<what could not be set up, and why the agent said it was impossible>"`.
+   `add:"<section>|cmd|<what could not be set up, and why>"`.
 3. A smoke-gate failure:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/fls-dev:do_qa\`"`.
-4. A product or UX decision a bug turns on, which you cannot make yourself:
+4. A product or UX decision a bug turns on:
    `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
 
 ### What must never be added
 
-- Deleting, resetting, re-seeding or otherwise tidying development data. Rule 2 — you do that yourself,
-  before the run ends. This includes residue this run created.
+- Deleting, resetting, re-seeding or tidying development data — Rule 2, that is your work.
 - "Verify X yourself" for anything you could have driven in the browser.
-- An observation with no action attached. It goes in `qa_report.md` under General notes.
-- Anything already fixed this run. **FIXED** bugs are recorded only in `qa_report.md`'s `## Bug status`
-  section, with their commit hash. An unchecked checklist item with no actionable follow-up jams a
-  later `/sdd:next`.
+- An observation with no action attached — it goes in `qa_report.md` under General notes.
+- Anything already fixed this run. **FIXED** bugs live only in `qa_report.md`'s `## Bug status`, with
+  their commit hash; an unchecked item with no follow-up jams a later `/sdd:next`.
 
 ### If there is nothing to add, add nothing
 
-An empty `add:` list is the normal outcome of a clean run, not a gap to fill. Omit `add:` entirely and
-pass only the `tick:`. Do not pad the list so the run has something to show for itself — the report is
-where the run's observations go.
+A clean run adds nothing. Omit `add:` and pass only the `tick:`; do not pad the list — the report is
+where observations go.
 
 ### The section argument
 
