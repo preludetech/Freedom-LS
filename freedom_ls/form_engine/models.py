@@ -571,7 +571,7 @@ class QuestionAnswer(SiteAwareModel, TimestampedModel):
     form_progress = models.ForeignKey(
         FormProgress, on_delete=models.CASCADE, related_name="answers"
     )
-    question = models.ForeignKey(FormQuestion, on_delete=models.CASCADE)
+    question = models.ForeignKey(FormQuestion, on_delete=models.PROTECT)
     selected_options = models.ManyToManyField(
         QuestionOption, blank=True
     )  # For checkbox/multiple choice questions

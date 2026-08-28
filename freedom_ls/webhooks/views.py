@@ -72,6 +72,7 @@ def send_test_result_view(
     delivery = WebhookDelivery.objects.create(
         event=event,
         endpoint=endpoint,
+        endpoint_url=endpoint.url,
         status="pending",
         site_id=endpoint.site_id,
     )

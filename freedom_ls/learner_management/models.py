@@ -110,7 +110,7 @@ class LearnerCourseRegistration(SiteAwareModel):
 
     course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="learner_registrations",
     )
     learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
@@ -134,7 +134,7 @@ class CohortCourseRegistration(SiteAwareModel):
 
     course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="cohort_registrations",
     )
     cohort = models.ForeignKey(
@@ -165,7 +165,7 @@ class CohortDeadline(SiteAwareModel, TimestampedModel):
     )
     content_type = models.ForeignKey(
         DjangoContentType,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
@@ -185,11 +185,10 @@ class CohortDeadline(SiteAwareModel, TimestampedModel):
 
     def clean(self) -> None:
         super().clean()
-        if self.content_type is None and self.object_id is None:
+        if self.content_type is None:
             existing = CohortDeadline.objects.filter(
                 cohort_course_registration=self.cohort_course_registration,
                 content_type__isnull=True,
-                object_id__isnull=True,
             ).exclude(pk=self.pk)
             if existing.exists():
                 raise ValidationError(
@@ -212,7 +211,7 @@ class LearnerDeadline(SiteAwareModel, TimestampedModel):
     )
     content_type = models.ForeignKey(
         DjangoContentType,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
@@ -232,11 +231,10 @@ class LearnerDeadline(SiteAwareModel, TimestampedModel):
 
     def clean(self) -> None:
         super().clean()
-        if self.content_type is None and self.object_id is None:
+        if self.content_type is None:
             existing = LearnerDeadline.objects.filter(
                 learner_course_registration=self.learner_course_registration,
                 content_type__isnull=True,
-                object_id__isnull=True,
             ).exclude(pk=self.pk)
             if existing.exists():
                 raise ValidationError(
@@ -260,7 +258,7 @@ class LearnerCohortDeadlineOverride(SiteAwareModel, TimestampedModel):
     learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
     content_type = models.ForeignKey(
         DjangoContentType,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
     )
@@ -298,12 +296,11 @@ class LearnerCohortDeadlineOverride(SiteAwareModel, TimestampedModel):
             )
 
         # Validate uniqueness for course-level overrides (null content)
-        if self.content_type is None and self.object_id is None:
+        if self.content_type is None:
             existing = LearnerCohortDeadlineOverride.objects.filter(
                 cohort_course_registration=self.cohort_course_registration,
                 learner=self.learner,
                 content_type__isnull=True,
-                object_id__isnull=True,
             ).exclude(pk=self.pk)
             if existing.exists():
                 raise ValidationError(

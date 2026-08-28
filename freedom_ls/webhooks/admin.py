@@ -244,7 +244,7 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Endpoint")
     def endpoint_truncated(self, obj: WebhookDelivery) -> str:
-        url = obj.endpoint.url
+        url = obj.endpoint_url
         if len(url) > 50:
             return url[:50] + "..."
         return url
@@ -256,7 +256,8 @@ class WebhookDeliveryAdmin(SiteAwareModelAdmin):
         # "pending" is included so a delivery stranded by a worker crash (row
         # committed, send never finished) has a manual recovery path.
         retryable = queryset.filter(
-            status__in=["pending", "failed", "permanent_failure", "dead_letter"]
+            status__in=["pending", "failed", "permanent_failure", "dead_letter"],
+            endpoint__isnull=False,
         ).select_related("endpoint", "event")
         for delivery in retryable:
             delivery.attempt_count = 0

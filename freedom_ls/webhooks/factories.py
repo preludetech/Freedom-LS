@@ -59,4 +59,5 @@ class WebhookDeliveryFactory(SiteAwareFactory):
 
     event = factory.SubFactory(WebhookEventFactory)
     endpoint = factory.SubFactory(WebhookEndpointFactory)
+    endpoint_url = factory.LazyAttribute(lambda obj: obj.endpoint.url)
     status = "pending"

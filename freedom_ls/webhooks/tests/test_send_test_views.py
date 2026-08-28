@@ -184,6 +184,7 @@ class TestSendTestResultView:
         # delivery we just created; assert on that, not just on the DB count.
         delivery = WebhookDelivery.objects.first()
         assert delivery is not None
+        assert delivery.endpoint_url == endpoint.url
         assert response.context["delivery"].pk == delivery.pk
         assert "Test Result" in response.content.decode()
 

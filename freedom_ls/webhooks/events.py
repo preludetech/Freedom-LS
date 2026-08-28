@@ -83,7 +83,11 @@ def dispatch_event(event_id: str, site_id: int) -> None:
         delivery, created = WebhookDelivery.objects.get_or_create(
             event=event,
             endpoint=endpoint,
-            defaults={"status": "pending", "site_id": site_id},
+            defaults={
+                "status": "pending",
+                "site_id": site_id,
+                "endpoint_url": endpoint.url,
+            },
         )
         if created:
             attempt_delivery(delivery)

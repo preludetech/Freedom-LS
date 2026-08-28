@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
+from django.http import HttpRequest
 
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
@@ -23,6 +24,11 @@ class TopicAdmin(SiteAwareModelAdmin):
         (None, {"fields": ("title", "subtitle", "description", "slug", "content")}),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Topic | None = None
+    ) -> bool:
+        return False
 
 
 @admin.register(Activity)
@@ -48,6 +54,11 @@ class ActivityAdmin(SiteAwareModelAdmin):
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Activity | None = None
+    ) -> bool:
+        return False
+
     @admin.display(description="Content Preview")
     def content_preview(self, obj: Activity) -> str:
         from django.utils.safestring import mark_safe
@@ -67,6 +78,7 @@ class ContentCollectionItemInline(GenericTabularInline):
     extra = 1
     fields = ("child_type", "child_id", "order", "overrides")
     ordering = ("order",)
+    can_delete = False
 
 
 @admin.register(Course)
@@ -96,6 +108,11 @@ class CourseAdmin(SiteAwareModelAdmin):
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Course | None = None
+    ) -> bool:
+        return False
+
 
 @admin.register(CoursePart)
 class CoursePartAdmin(SiteAwareModelAdmin):
@@ -110,6 +127,11 @@ class CoursePartAdmin(SiteAwareModelAdmin):
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: CoursePart | None = None
+    ) -> bool:
+        return False
+
 
 @admin.register(ContentCollectionItem)
 class ContentCollectionItemAdmin(SiteAwareModelAdmin):
@@ -121,6 +143,11 @@ class ContentCollectionItemAdmin(SiteAwareModelAdmin):
     list_filter = ("collection_type", "child_type")
     search_fields = ("collection_type__model", "child_type__model")
     ordering = ("collection_type", "collection_id", "order")
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: ContentCollectionItem | None = None
+    ) -> bool:
+        return False
 
 
 @admin.register(File)
@@ -141,3 +168,8 @@ class FileAdmin(SiteAwareModelAdmin):
             {"fields": ("file_path", "mime_type"), "classes": ("collapse",)},
         ),
     )
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: File | None = None
+    ) -> bool:
+        return False

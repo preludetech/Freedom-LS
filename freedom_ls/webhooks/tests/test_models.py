@@ -411,3 +411,15 @@ class TestWebhookDelivery:
         assert delivery.endpoint is not None
         assert delivery.event.deliveries.count() == 1
         assert delivery.endpoint.deliveries.count() == 1
+
+    def test_deleting_the_endpoint_leaves_the_delivery_naming_its_target(
+        self, mock_site_context: object
+    ) -> None:
+        delivery = WebhookDeliveryFactory()
+        endpoint_url = delivery.endpoint.url
+
+        delivery.endpoint.delete()
+
+        delivery.refresh_from_db()
+        assert delivery.endpoint is None
+        assert delivery.endpoint_url == endpoint_url

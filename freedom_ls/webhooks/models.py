@@ -377,8 +377,11 @@ class WebhookDelivery(SiteAwareModel):
         WebhookEvent, on_delete=models.CASCADE, related_name="deliveries"
     )
     endpoint = models.ForeignKey(
-        WebhookEndpoint, on_delete=models.CASCADE, related_name="deliveries"
+        WebhookEndpoint, on_delete=models.SET_NULL, null=True, related_name="deliveries"
     )
+    # Captured at dispatch so the audit row still names the attempted target
+    # after the endpoint itself is deleted.
+    endpoint_url = models.URLField(max_length=2048)
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True
     )

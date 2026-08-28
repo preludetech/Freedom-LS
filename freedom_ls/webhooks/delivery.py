@@ -105,6 +105,13 @@ def attempt_delivery(delivery: WebhookDelivery) -> None:
     endpoint = delivery.endpoint
     event = delivery.event
 
+    if endpoint is None:
+        delivery.last_attempt_at = timezone.now()
+        delivery.last_response_error_message = "Endpoint no longer exists."
+        delivery.status = "permanent_failure"
+        delivery.save()
+        return
+
     try:
         if endpoint.has_transformation:
             method, body, headers = build_transformed_request(endpoint, event)

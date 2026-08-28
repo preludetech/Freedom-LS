@@ -81,6 +81,7 @@ class TestDispatchEvent:
         assert delivery is not None
         assert delivery.event == event
         assert delivery.endpoint == endpoint
+        assert delivery.endpoint_url == endpoint.url
         assert delivery.status == "pending"
         mock_attempt.assert_called_once_with(delivery)
 

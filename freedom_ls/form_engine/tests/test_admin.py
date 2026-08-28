@@ -4,9 +4,28 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib import admin
 from django.urls import reverse
 
+from freedom_ls.form_engine.admin import (
+    FormAdmin,
+    FormContentAdmin,
+    FormContentInline,
+    FormPageAdmin,
+    FormPageInline,
+    FormQuestionAdmin,
+    FormQuestionInline,
+    QuestionOptionAdmin,
+    QuestionOptionInline,
+)
 from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.form_engine.models import (
+    Form,
+    FormContent,
+    FormPage,
+    FormQuestion,
+    QuestionOption,
+)
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
 
@@ -24,3 +43,52 @@ def test_completed_time_is_not_editable(staff_client):
     response = staff_client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
 
     assert "completed_time" not in response.context["adminform"].form.fields
+
+
+class TestDeletePermissionAlwaysFalse:
+    def test_form_admin(self) -> None:
+        assert FormAdmin(Form, admin.site).has_delete_permission(request=None) is False
+
+    def test_form_page_admin(self) -> None:
+        assert (
+            FormPageAdmin(FormPage, admin.site).has_delete_permission(request=None)
+            is False
+        )
+
+    def test_form_content_admin(self) -> None:
+        assert (
+            FormContentAdmin(FormContent, admin.site).has_delete_permission(
+                request=None
+            )
+            is False
+        )
+
+    def test_form_question_admin(self) -> None:
+        assert (
+            FormQuestionAdmin(FormQuestion, admin.site).has_delete_permission(
+                request=None
+            )
+            is False
+        )
+
+    def test_question_option_admin(self) -> None:
+        assert (
+            QuestionOptionAdmin(QuestionOption, admin.site).has_delete_permission(
+                request=None
+            )
+            is False
+        )
+
+
+class TestInlinesCannotDelete:
+    def test_form_page_inline(self) -> None:
+        assert FormPageInline.can_delete is False
+
+    def test_form_content_inline(self) -> None:
+        assert FormContentInline.can_delete is False
+
+    def test_form_question_inline(self) -> None:
+        assert FormQuestionInline.can_delete is False
+
+    def test_question_option_inline(self) -> None:
+        assert QuestionOptionInline.can_delete is False

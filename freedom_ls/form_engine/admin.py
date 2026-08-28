@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.http import HttpRequest
 
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
@@ -19,6 +20,7 @@ class QuestionOptionInline(admin.TabularInline):
     model = QuestionOption
     extra = 1
     fields = ("text", "value", "order")
+    can_delete = False
 
 
 @admin.register(QuestionOption)
@@ -27,6 +29,11 @@ class QuestionOptionAdmin(SiteAwareModelAdmin):
     list_filter = ("question__form_page__form",)
     search_fields = ("text", "question__question")
     ordering = ("question", "order")
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: QuestionOption | None = None
+    ) -> bool:
+        return False
 
 
 class FormContentInline(admin.StackedInline):
@@ -38,6 +45,7 @@ class FormContentInline(admin.StackedInline):
         "content",
         "order",
     )
+    can_delete = False
 
 
 class FormQuestionInline(admin.StackedInline):
@@ -47,6 +55,7 @@ class FormQuestionInline(admin.StackedInline):
     extra = 0
     fields = ("question", "type", "required", "category", "order")
     show_change_link = True
+    can_delete = False
 
 
 @admin.register(FormContent)
@@ -63,6 +72,11 @@ class FormContentAdmin(SiteAwareModelAdmin):
     @admin.display(description="Content")
     def content_preview(self, obj):
         return obj.content[:50]
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: FormContent | None = None
+    ) -> bool:
+        return False
 
 
 @admin.register(FormQuestion)
@@ -84,6 +98,11 @@ class FormQuestionAdmin(SiteAwareModelAdmin):
     def question_preview(self, obj):
         return obj.question[:50]
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: FormQuestion | None = None
+    ) -> bool:
+        return False
+
 
 class FormPageInline(admin.StackedInline):
     """Inline for form pages."""
@@ -92,6 +111,7 @@ class FormPageInline(admin.StackedInline):
     extra = 0
     fields = ("title", "subtitle", "description", "order")
     show_change_link = True
+    can_delete = False
 
 
 @admin.register(FormPage)
@@ -121,6 +141,11 @@ class FormPageAdmin(SiteAwareModelAdmin):
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: FormPage | None = None
+    ) -> bool:
+        return False
+
 
 @admin.register(Form)
 class FormAdmin(SiteAwareModelAdmin):
@@ -146,6 +171,11 @@ class FormAdmin(SiteAwareModelAdmin):
         ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Form | None = None
+    ) -> bool:
+        return False
 
 
 class QuestionAnswerInline(admin.TabularInline):

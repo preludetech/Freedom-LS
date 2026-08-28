@@ -9,6 +9,8 @@ from django.db import transaction
 from django.db.models import ProtectedError
 
 from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.form_engine.factories import QuestionAnswerFactory
+from freedom_ls.form_engine.models import FormQuestion, QuestionAnswer
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
@@ -32,3 +34,15 @@ def test_deleting_a_topic_with_progress_is_blocked(mock_site_context):
 
     with pytest.raises(ProtectedError), transaction.atomic():
         progress.topic.delete()
+
+
+def test_danger_content_delete_succeeds_with_question_answers_present(
+    mock_site_context,
+):
+    """QuestionAnswer.question is PROTECTed; the command clears answers first."""
+    QuestionAnswerFactory()
+
+    call_command("danger_content_delete", "--yes")
+
+    assert FormQuestion.objects.count() == 0
+    assert QuestionAnswer.objects.count() == 0

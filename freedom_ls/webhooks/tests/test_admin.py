@@ -102,6 +102,49 @@ class TestRetryPermanentFailures:
 
 
 @pytest.mark.django_db
+class TestRetryDeliveriesExcludesNullEndpoint:
+    def test_a_delivery_whose_endpoint_is_gone_is_skipped(
+        self, mock_site_context: object
+    ) -> None:
+        orphaned = WebhookDeliveryFactory(status="failed")
+        orphaned.endpoint = None
+        orphaned.save()
+
+        admin_instance = WebhookDeliveryAdmin(WebhookDelivery, None)
+        queryset = WebhookDelivery.objects.filter(pk=orphaned.pk)
+
+        with patch("freedom_ls.webhooks.delivery.httpx.request") as mock_request:
+            admin_instance.retry_deliveries(request=None, queryset=queryset)
+
+        mock_request.assert_not_called()
+        orphaned.refresh_from_db()
+        assert orphaned.status == "failed"
+
+    def test_a_delivery_whose_endpoint_survives_is_still_retried(
+        self, mock_site_context: object
+    ) -> None:
+        delivery = WebhookDeliveryFactory(status="failed")
+        endpoint = delivery.endpoint
+
+        mock_response = httpx.Response(
+            status_code=200,
+            content=b'{"ok": true}',
+            request=httpx.Request("POST", endpoint.url),
+        )
+
+        admin_instance = WebhookDeliveryAdmin(WebhookDelivery, None)
+        queryset = WebhookDelivery.objects.filter(pk=delivery.pk)
+
+        with patch(
+            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+        ):
+            admin_instance.retry_deliveries(request=None, queryset=queryset)
+
+        delivery.refresh_from_db()
+        assert delivery.status == "success"
+
+
+@pytest.mark.django_db
 class TestDisableEndpoints:
     def test_disable_clears_circuit_breaker_state(
         self, mock_site_context: object
