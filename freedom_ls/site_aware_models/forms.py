@@ -35,11 +35,11 @@ class ConstraintValidationFormMixin(_ModelFormBase):
     looks up. A subclass adding any other field owns the same guarantee for it.
 
     The exclusion set holds field *names*, which ``UniqueConstraint.validate()``
-    compares against the strings in ``fields`` verbatim, and models here use
-    both spellings. ``Organisation`` declares ``fields=["site", "name"]``, which
-    the excluded ``site`` does match, so its form needs the default below;
-    ``Cohort`` declares ``fields=["site_id", ...]``, which matches nothing in
-    the exclusion set and so is checked without help.
+    compares against the strings in ``fields`` verbatim, and every constraint
+    here is spelled ``"site"``, so every one of them needs the help below.
+    ``Organisation`` declares ``fields=["site", "name"]`` and ``Cohort`` declares
+    ``fields=["site", "organisation", "name"]``; the excluded ``site`` matches
+    both, so both forms need this mixin.
 
     Only name fields whose errors have somewhere to go. Un-excluding a field
     also switches on that field's own model validation, and ``ModelForm`` cannot

@@ -57,12 +57,12 @@ for the row and **child** for the resolved object.
 | Term | Defined at | Means |
 | --- | --- | --- |
 | `Learner` | `models.py:51` | **A user's association with one organisation.** One row per `(user, organisation)` — `unique_learner_per_organisation` (`:73`). Fields: `user`, `organisation`, `is_active`, `created_at`. See the note below. |
-| `LearnerCourseRegistration` | `:108` | One learner registered for one course. Fields: `learner`, `collection` (the `Course` — a legacy field name; match it, don't rename it), `is_active`, `registered_at`. Keyed `(site_id, learner, collection)` (`:120`). It has **no** `organisation` field — that comes from `learner.organisation`. |
+| `LearnerCourseRegistration` | `:108` | One learner registered for one course. Fields: `learner`, `course`, `is_active`, `registered_at`. Keyed `(site, learner, course)` (`:120`). It has **no** `organisation` field — that comes from `learner.organisation`. |
 | `CohortCourseRegistration` | `:165` | A cohort registered for a course. Its organisation is reached through `cohort.organisation`. |
 | `Cohort` | `:32` | A group of learners, owned by an organisation. |
 | `CohortMembership` | `:83` | One learner's membership of a cohort, keyed `(learner, cohort)` (`:88`). **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` (`:95`) enforces that the learner and the cohort share an organisation. |
-| `CohortDeadline`, `LearnerDeadline`, `UserCohortDeadlineOverride` | `:191`, `:238`, `:285` | Deadlines. Each carries a `content_item` generic FK to the `Topic`/`Form`. `UserCohortDeadlineOverride` keeps its name but its field is now `learner` (`:293`). |
-| `RecommendedCourse` | `:352` | A course recommended to a learner. Still keyed on `User` (`:358`), not `Learner` — it is a recommendation, not an enrolment. |
+| `CohortDeadline`, `LearnerDeadline`, `LearnerCohortDeadlineOverride` | `:191`, `:238`, `:285` | Deadlines. Each carries a `content_item` generic FK to the `Topic`/`Form`. |
+| `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
 | `is_registered_for_course` | `learner_management/utils.py:69` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
 | `ensure_learner` | `learner_management/utils.py:104` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a removed row. The only supported way to make one. |
 | `CourseAccessDecision`, `CourseAccessBackend`, `CourseAccessType` | `course_access/backends.py:41`, `:95`, `:177` | The pluggable access layer. Note the `*Decision` suffix — it is the house pattern for a resolver's return value. |
@@ -140,7 +140,7 @@ Do not give these a second meaning.
 | **link** | An `<a href>` in ~280 template and view usages. | Fine as a verb ("links a collection to a child"); not as a noun for a model or field. |
 | **slot** | `Course.accent_slot`, palette slots, cotton template slots. | Something else. |
 | **course item** | Positional content in a course — `view_course_item`, `_paginate_course_items` (the educator matrix columns), `docs/product/educator-interface.md`. Today it means the resolved `Topic`/`Form`. | Only reuse it deliberately, and say so. |
-| **collection** | `ContentCollectionItem.collection`, and `LearnerCourseRegistration.collection` (which is a `Course`). | Keep it for these; don't widen it. |
+| **collection** | `ContentCollectionItem.collection` only. | Keep it for that; don't widen it. |
 | **is_active** | Three different things on three models: removed-from-organisation (`Learner`), and registration in force (`LearnerCourseRegistration`, `CohortCourseRegistration`). | Fine to reuse — it is the house flag name. But a sentence naming two of them must name the model. |
 | **learner** | `Learner`, the `(user, organisation)` association row — and also the everyday English word for the person. | In prose either is fine. As an identifier, `learner` means the model; write `learner.user` / `learner__user` when you mean the account. |
 
