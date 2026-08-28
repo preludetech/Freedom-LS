@@ -39,8 +39,8 @@ class Cohort(SiteAwareModel, TimestampedModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "organisation", "name"],
-                name="unique_cohort_name_per_site",
+                fields=["site", "organisation", "name"],
+                name="unique_cohort_name_per_organisation",
             )
         ]
 
@@ -72,7 +72,8 @@ class Learner(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "organisation"], name="unique_learner_per_organisation"
+                fields=["site", "user", "organisation"],
+                name="unique_learner_per_organisation",
             )
         ]
 
@@ -120,7 +121,7 @@ class LearnerCourseRegistration(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "learner", "course"],
+                fields=["site", "learner", "course"],
                 name="unique_learner_course_registration",
             )
         ]
@@ -146,7 +147,7 @@ class CohortCourseRegistration(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["site_id", "course", "cohort"],
+                fields=["site", "course", "cohort"],
                 name="unique_cohort_course_registration",
             )
         ]

@@ -96,7 +96,11 @@ class Course(MarkdownContent, TitledContent):
     )
 
     class Meta:
-        unique_together = ["site", "slug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_course_slug_per_site"
+            )
+        ]
 
     @property
     def accent_slot_key(self) -> str:
@@ -238,7 +242,11 @@ class CoursePart(TitledContent):
     )
 
     class Meta:
-        unique_together = ["site", "slug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_course_part_slug_per_site"
+            )
+        ]
 
     def collection_items(self) -> list["ContentCollectionItem"]:
         """The ordered rows placing this part's children.
@@ -301,6 +309,12 @@ class ContentCollectionItem(SiteAwareModel, TimestampedModel):
 
     class Meta:
         ordering = ["order"]
+        indexes = [
+            models.Index(
+                fields=["collection_type", "collection_id"], name="cci_collection_idx"
+            ),
+            models.Index(fields=["child_type", "child_id"], name="cci_child_idx"),
+        ]
 
     def __str__(self):
         collection_title = self.collection.title if self.collection else "Unknown"

@@ -40,7 +40,7 @@ class CourseInterest(SiteAwareModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "course"], name="unique_course_interest"
+                fields=["site", "user", "course"], name="unique_course_interest"
             )
         ]
 

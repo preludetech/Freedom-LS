@@ -10,6 +10,7 @@ from encrypted_fields.fields import EncryptedTextField
 from jinja2.sandbox import SandboxedEnvironment
 
 from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
@@ -72,6 +73,15 @@ class WebhookEndpoint(SiteAwareModel):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            GinIndex(
+                fields=["event_types"],
+                opclasses=["jsonb_path_ops"],
+                name="webhook_event_types_gin",
+            )
+        ]
 
     @property
     def has_transformation(self) -> bool:
@@ -426,7 +436,11 @@ class WebhookSecret(SiteAwareModel):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = [("site", "name")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "name"], name="unique_webhook_secret_name_per_site"
+            )
+        ]
 
     def __str__(self) -> str:
         return self.name

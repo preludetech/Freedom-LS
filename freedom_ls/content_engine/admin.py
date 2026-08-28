@@ -4,6 +4,7 @@ from django.http import HttpRequest
 
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
+from .forms import FileAdminForm
 from .models import (
     Activity,
     ContentCollectionItem,
@@ -152,6 +153,7 @@ class ContentCollectionItemAdmin(SiteAwareModelAdmin):
 
 @admin.register(File)
 class FileAdmin(SiteAwareModelAdmin):
+    form = FileAdminForm
     list_display = [
         "original_filename",
         "file_type",

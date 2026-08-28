@@ -51,7 +51,11 @@ class File(SiteAwareModel, TimestampedModel):
     mime_type = models.CharField(max_length=100, blank=True)
 
     class Meta:
-        unique_together = ["site", "file_path"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "file_path"], name="unique_file_path_per_site"
+            )
+        ]
 
     def __str__(self):
         return f"{self.original_filename} ({self.get_file_type_display()})"

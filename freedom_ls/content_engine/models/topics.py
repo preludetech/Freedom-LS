@@ -13,7 +13,11 @@ class Topic(TitledContent, MarkdownContent):
     category = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:
-        unique_together = ["site", "slug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_topic_slug_per_site"
+            )
+        ]
 
     def preview_url(self):
         return reverse("content_engine:topic_detail", kwargs={"topic_slug": self.slug})
@@ -28,5 +32,9 @@ class Activity(TitledContent, MarkdownContent):
     level = models.PositiveSmallIntegerField(null=True, blank=True)
 
     class Meta:
-        unique_together = ["site", "slug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_activity_slug_per_site"
+            )
+        ]
         verbose_name_plural = "Activities"

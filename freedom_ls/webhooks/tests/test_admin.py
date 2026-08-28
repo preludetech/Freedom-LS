@@ -221,6 +221,8 @@ class TestWebhookSecretAdmin:
 
     def test_duplicate_name_shows_form_error(self, mock_site_context: object) -> None:
         """Creating a secret with a duplicate name should show a form validation error, not crash."""
+        from django.core.exceptions import NON_FIELD_ERRORS
+
         from freedom_ls.webhooks.forms import WebhookSecretForm
 
         WebhookSecretFactory(name="duplicate_key")
@@ -232,7 +234,7 @@ class TestWebhookSecretAdmin:
             },
         )
         assert not form.is_valid()
-        assert "name" in form.errors
+        assert NON_FIELD_ERRORS in form.errors
 
     def test_creating_secret_stores_value(self, mock_site_context: object) -> None:
         """Creating a new secret via the form stores the encrypted value."""

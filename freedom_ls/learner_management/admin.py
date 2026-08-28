@@ -16,6 +16,12 @@ from freedom_ls.site_aware_models.admin import (
     SiteAwareModelAdmin,
 )
 
+from .forms import (
+    CohortAdminForm,
+    CohortCourseRegistrationAdminForm,
+    LearnerAdminForm,
+    LearnerCourseRegistrationAdminForm,
+)
 from .models import (
     Cohort,
     CohortCourseRegistration,
@@ -95,6 +101,7 @@ class ScopedLearnerAutocompleteSelect(AutocompleteSelect):
 
 @admin.register(Learner)
 class LearnerAdmin(SiteAwareModelAdmin):
+    form = LearnerAdminForm
     list_display = ["user", "organisation", "is_active", "created_at"]
     list_filter = ["organisation", "is_active"]
     readonly_fields = ["created_at"]
@@ -200,6 +207,7 @@ class CohortCourseRegistrationInline(TabularInline):
 
 @admin.register(Cohort)
 class CohortAdmin(GuardedSiteAwareModelAdmin):
+    form = CohortAdminForm
     list_display = ["name"]
     search_fields = ["name"]
     autocomplete_fields = ["organisation"]
@@ -223,6 +231,7 @@ class LearnerDeadlineInline(TabularInline):
 
 @admin.register(LearnerCourseRegistration)
 class LearnerCourseRegistrationAdmin(SiteAwareModelAdmin):
+    form = LearnerCourseRegistrationAdminForm
     list_display = ["get_user_name", "course", "is_active", "registered_at"]
     list_select_related = ["learner__user", "course"]
     list_filter = ["is_active", "registered_at"]
@@ -298,6 +307,7 @@ class LearnerCohortDeadlineOverrideInline(TabularInline):
 
 @admin.register(CohortCourseRegistration)
 class CohortCourseRegistrationAdmin(SiteAwareModelAdmin):
+    form = CohortCourseRegistrationAdminForm
     list_display = ["cohort", "course", "is_active", "registered_at"]
     list_select_related = ["cohort", "course"]
     list_filter = ["is_active", "registered_at"]

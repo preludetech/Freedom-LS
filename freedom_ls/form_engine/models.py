@@ -69,7 +69,11 @@ class Form(TitledContent, MarkdownContent):
     )
 
     class Meta:
-        unique_together = ["site", "slug"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_form_slug_per_site"
+            )
+        ]
 
     def __str__(self):
         return self.title
@@ -578,7 +582,12 @@ class QuestionAnswer(SiteAwareModel, TimestampedModel):
     text_answer = models.TextField(blank=True, default="")  # For text questions
 
     class Meta:
-        unique_together = ["form_progress", "question"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["form_progress", "question"],
+                name="one_answer_per_question_per_form_progress",
+            )
+        ]
 
     def __str__(self):
         return f"{self.form_progress.user} - {self.question}"

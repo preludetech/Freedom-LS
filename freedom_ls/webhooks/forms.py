@@ -6,6 +6,7 @@ from django.utils.html import json_script
 from django.utils.safestring import SafeString
 
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
+from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 from freedom_ls.webhooks.models import WebhookEndpoint, WebhookSecret
 from freedom_ls.webhooks.presets import WEBHOOK_PRESETS, get_preset_choices
 from freedom_ls.webhooks.registry import get_event_type_registry
@@ -160,7 +161,14 @@ class SendTestWebhookForm(forms.Form):
             self.fields["event_type"].initial = endpoint.event_types[0]
 
 
-class WebhookSecretForm(forms.ModelForm):
+class WebhookSecretForm(ConstraintValidationFormMixin):
+    """Admin form for WebhookSecret.
+
+    ``site`` is un-excluded from validation so
+    unique_webhook_secret_name_per_site is checked while cleaning rather
+    than failing at the database. It is still never rendered.
+    """
+
     class Meta:
         model = WebhookSecret
         fields = ["name", "description", "encrypted_value"]
@@ -178,15 +186,6 @@ class WebhookSecretForm(forms.ModelForm):
         else:
             # On create: use standard TextInput
             self.fields["encrypted_value"].widget = forms.TextInput()
-
-    def clean_name(self) -> str:
-        name: str = self.cleaned_data.get("name", "")
-        qs = WebhookSecret.objects.filter(name=name)
-        if self.instance and self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise forms.ValidationError("A secret with this name already exists.")
-        return name
 
     def clean_encrypted_value(self) -> str:
         value: str = self.cleaned_data.get("encrypted_value", "")

@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.core.exceptions import NON_FIELD_ERRORS
 from django.test import RequestFactory
 from django.urls import reverse
 
@@ -137,3 +138,4 @@ def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
     form = CohortForm({"name": "Year 10 Science"}, instance=cohort)
 
     assert not form.is_valid()
+    assert NON_FIELD_ERRORS in form.errors
