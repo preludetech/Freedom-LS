@@ -221,6 +221,37 @@ class TestLogoReplacement:
             f"{organisation.pk}.webp"
         ]
 
+    def test_replacing_the_dark_variant_leaves_no_superseded_object(
+        self, mock_site_context: object
+    ) -> None:
+        """The dark variant shares the anonymously-readable bucket, so it needs
+        the same sweep — an abandoned object there stays fetchable for good."""
+        organisation = OrganisationFactory()
+        organisation.logo_on_dark.save(
+            "first.png", ContentFile(b"first-logo"), save=True
+        )
+
+        organisation.logo_on_dark.save(
+            "second.jpg", ContentFile(b"second-logo"), save=True
+        )
+
+        directory = Path(organisation.logo_on_dark.path).parent
+        assert sorted(path.name for path in directory.iterdir()) == [
+            f"{organisation.pk}-on-dark.jpg"
+        ]
+
+    def test_replacing_one_variant_leaves_the_other_alone(
+        self, mock_site_context: object
+    ) -> None:
+        """The sweep is per field. Deleting by pk prefix would take both."""
+        organisation = OrganisationFactory()
+        organisation.logo.save("light.png", ContentFile(b"light-logo"), save=True)
+        organisation.logo_on_dark.save("dark.png", ContentFile(b"dark-logo"), save=True)
+
+        organisation.logo.save("light.jpg", ContentFile(b"new-light"), save=True)
+
+        assert Path(organisation.logo_on_dark.path).read_bytes() == b"dark-logo"
+
 
 @pytest.mark.django_db
 class TestOrganisationConstraints:

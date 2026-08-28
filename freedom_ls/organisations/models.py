@@ -42,6 +42,12 @@ def organisation_logo_on_dark_upload_to(instance: Organisation, filename: str) -
     return _logo_upload_path(instance, filename, "-on-dark")
 
 
+#: The logo fields, in one place: save() sweeps every one of them, and the two
+#: variants land in the same public bucket, so a field added here without the
+#: sweep following would abandon its superseded objects there.
+LOGO_FIELD_NAMES = ("logo", "logo_on_dark")
+
+
 def get_organisation_logo_storage() -> Storage:
     """The alias named by ORGANISATION_LOGO_STORAGE_ALIAS."""
     return storage_for_alias(
@@ -72,6 +78,7 @@ class Organisation(SiteAwareModel):
     logo_on_dark = models.ImageField(
         _("logo (for dark backgrounds)"),
         upload_to=organisation_logo_on_dark_upload_to,
+        storage=get_organisation_logo_storage,
         blank=True,
         validators=[validate_organisation_logo_extension, validate_organisation_logo],
         help_text=_(
@@ -107,7 +114,7 @@ class Organisation(SiteAwareModel):
         return self.name
 
     def save(self, *args: object, **kwargs: object) -> None:
-        """Save, then remove the logo object this save superseded.
+        """Save, then remove the logo objects this save superseded.
 
         Overwriting only replaces an object at the same key, and the key carries
         the uploaded file's extension. Four extensions are allowed, so replacing a
@@ -116,14 +123,18 @@ class Organisation(SiteAwareModel):
         logo publicly fetchable indefinitely. Deleting is the fix rather than
         normalising the extension away, because the key's extension is what gives
         the object its Content-Type.
-        """
-        superseded = self._stored_logo_name()
-        super().save(*args, **kwargs)
-        if superseded and superseded != self.logo.name:
-            self.logo.storage.delete(superseded)
 
-    def _stored_logo_name(self) -> str:
-        """The logo name the database currently holds, or '' for an unsaved row.
+        Both variants go to that same public bucket, so both need the sweep.
+        """
+        superseded = self._stored_logo_names()
+        super().save(*args, **kwargs)
+        for field_name, previous in superseded.items():
+            current = getattr(self, field_name)
+            if previous and previous != current.name:
+                current.storage.delete(previous)
+
+    def _stored_logo_names(self) -> dict[str, str]:
+        """The logo names the database currently holds, empty for an unsaved row.
 
         Read through the base manager, because `objects` filters to the current
         request's Site and this has to see the row whatever Site it belongs to.
@@ -131,13 +142,18 @@ class Organisation(SiteAwareModel):
         `logo.save()` mutates and saves an instance that was never loaded.
         """
         if self._state.adding:
-            return ""
-        return (
+            return {}
+        stored = (
             Organisation._base_manager.filter(pk=self.pk)
-            .values_list("logo", flat=True)
+            .values_list(*LOGO_FIELD_NAMES)
             .first()
-            or ""
         )
+        if stored is None:
+            return {}
+        return {
+            field_name: name or ""
+            for field_name, name in zip(LOGO_FIELD_NAMES, stored, strict=True)
+        }
 
     @property
     def initials(self) -> str | None:
