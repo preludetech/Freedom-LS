@@ -18,19 +18,19 @@ right and this file needs fixing.
 
 ---
 
-## Content — `freedom_ls/content_engine/models.py`
+## Content — `freedom_ls/content_engine/models/` (a package: `courses.py`, `topics.py`, `files.py`)
 
 | Term | Defined at | Means |
 | --- | --- | --- |
-| `Course` | `models.py:172` | A course. The top-level content collection. |
-| `CoursePart` | `:347` | A chapter within a course. Also a collection. Product docs call it a "course part (chapter)". |
-| `Topic` | `:145` | A page of markdown content a learner reads. |
-| `Activity` | `:159` | Like a `Topic`, plus a difficulty `level`. Not currently used by FLS courses. |
-| `Form` | `:421` | A form or quiz. `FormPage`, `FormContent`, `FormQuestion`, `QuestionOption` hang off it. |
-| `ContentCollectionItem` | `:381` | **The through model.** One row links a `collection` to a `child`, with an `order` and optional `overrides`. |
+| `Course` | `courses.py:31` | A course. The top-level content collection. |
+| `CoursePart` | `:231` | A chapter within a course. Also a collection. Product docs call it a "course part (chapter)". |
+| `Topic` | `topics.py:8` | A page of markdown content a learner reads. |
+| `Activity` | `:26` | Like a `Topic`, plus a difficulty `level`. Not currently used by FLS courses. |
+| `Form` | `form_engine/models.py:43` | A form or quiz, lives in the `form_engine` app. `FormPage`, `FormContent`, `FormQuestion`, `QuestionOption` hang off it. |
+| `ContentCollectionItem` | `courses.py:278` | **The through model.** One row links a `collection` to a `child`, with an `order` and optional `overrides`. |
 | **collection** | `ContentCollectionItem.collection` | The `Course` or `CoursePart` a child sits in. A generic FK. |
 | **child** | `ContentCollectionItem.child` | The `Topic`, `Form` or `CoursePart` sitting in a collection. A generic FK. |
-| `File` | `:580` | An uploaded file attached to content. |
+| `File` | `files.py:30` | An uploaded file attached to content. |
 
 ### `ContentCollectionItem` — read this before naming anything nearby
 
@@ -56,15 +56,15 @@ for the row and **child** for the resolved object.
 
 | Term | Defined at | Means |
 | --- | --- | --- |
-| `Learner` | `models.py:51` | **A user's association with one organisation.** One row per `(user, organisation)` — `unique_learner_per_organisation` (`:73`). Fields: `user`, `organisation`, `is_active`, `created_at`. See the note below. |
-| `LearnerCourseRegistration` | `:108` | One learner registered for one course. Fields: `learner`, `course`, `is_active`, `registered_at`. Keyed `(site, learner, course)` (`:120`). It has **no** `organisation` field — that comes from `learner.organisation`. |
-| `CohortCourseRegistration` | `:165` | A cohort registered for a course. Its organisation is reached through `cohort.organisation`. |
+| `Learner` | `models.py:51` | **A user's association with one organisation.** One row per `(user, organisation)` — `unique_learner_per_organisation` (`:76`). Fields: `user`, `organisation`, `is_active`, `created_at`. See the note below. |
+| `LearnerCourseRegistration` | `:109` | One learner registered for one course. Fields: `learner`, `course`, `is_active`, `registered_at`. Keyed `(site, learner, course)` (`:125`). It has **no** `organisation` field — that comes from `learner.organisation`. |
+| `CohortCourseRegistration` | `:133` | A cohort registered for a course. Its organisation is reached through `cohort.organisation`. |
 | `Cohort` | `:32` | A group of learners, owned by an organisation. |
-| `CohortMembership` | `:83` | One learner's membership of a cohort, keyed `(learner, cohort)` (`:88`). **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` (`:95`) enforces that the learner and the cohort share an organisation. |
-| `CohortDeadline`, `LearnerDeadline`, `LearnerCohortDeadlineOverride` | `:191`, `:238`, `:285` | Deadlines. Each carries a `content_item` generic FK to the `Topic`/`Form`. |
+| `CohortMembership` | `:84` | One learner's membership of a cohort, keyed `(learner, cohort)` (`:91`). **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` (`:96`) enforces that the learner and the cohort share an organisation. |
+| `CohortDeadline`, `LearnerDeadline`, `LearnerCohortDeadlineOverride` | `:159`, `:205`, `:251` | Deadlines. Each carries a `content_item` generic FK to the `Topic`/`Form`. |
 | `RecommendedCourse` | `freedom_ls/course_recommendations/models.py` | A course recommended to a learner. Still keyed on `User`, not `Learner` — it is a recommendation, not an enrolment. |
-| `is_registered_for_course` | `learner_management/utils.py:69` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
-| `ensure_learner` | `learner_management/utils.py:104` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a removed row. The only supported way to make one. |
+| `is_registered_for_course` | `learner_management/utils.py:16` | The access check. Every `COURSE_ACCESS_BACKEND` delegates to it. |
+| `ensure_learner` | `learner_management/utils.py:51` | Get-or-create the `Learner` for a `(user, organisation)` pair. Idempotent, and reactivates a removed row. The only supported way to make one. |
 | `CourseAccessDecision`, `CourseAccessBackend`, `CourseAccessType` | `course_access/backends.py:41`, `:95`, `:177` | The pluggable access layer. Note the `*Decision` suffix — it is the house pattern for a resolver's return value. |
 
 ### `Learner` — read this before naming anything nearby
@@ -88,7 +88,7 @@ through two client organisations has **two `Learner` rows and one `User`**.
   removed learner keeps their registrations, memberships and progress. It is filtered explicitly at
   every call site — there is deliberately no manager that hides removed rows.
 - **Never construct one directly.** Use `ensure_learner`.
-- **`learners_visible_to`** (`learner_management/queries.py:209`) returns `Learner` rows and replaced
+- **`learners_visible_to`** (`learner_management/queries.py:261`) returns `Learner` rows and replaced
   the deleted `users_visible_to`. Don't reintroduce a user-shaped sibling.
 
 ---
@@ -97,10 +97,10 @@ through two client organisations has **two `Learner` rows and one `User`**.
 
 | Term | Defined at | Means |
 | --- | --- | --- |
-| `CourseProgress` | `models.py:588` | A learner's progress through a course. `verbose_name_plural = "Course progress records"`, so **"course progress record" is existing FLS language** — use it. |
+| `CourseProgress` | `models.py:106` | A learner's progress through a course. `verbose_name_plural = "course progress records"`, so **"course progress record" is existing FLS language** — use it. |
 | `CourseItemProgress` | `:19` | The abstract base `TopicProgress` extends. |
 | `TopicProgress` | `:59` | "Topic progress records". One row per placement per record. |
-| `CourseFormAttempt` | `:239` | "Course form attempt". The course's side of one sitting: which record it counts toward, and which placement it was sat at. Many per placement, one per attempt. |
+| `CourseFormAttempt` | `:242` | "Course form attempt". The course's side of one sitting: which record it counts toward, and which placement it was sat at. Many per placement, one per attempt. |
 | `FormProgress` | `form_engine/models.py` | "Form progress records". The sitting itself: its answers, its score, when it finished. Lives in `form_engine` and knows nothing about courses, so a form can also be sat outside one. |
 | `QuestionAnswer` | `form_engine/models.py` | One answer within a `FormProgress`. |
 | `learner_registration` / `cohort_registration` | `CourseProgress.learner_registration` / `CourseProgress.cohort_registration` | Exactly one is set — the registration that minted this record. See `course_progress_for`. |
@@ -124,7 +124,7 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | Term | Defined at | Means |
 | --- | --- | --- |
 | `Site` | Django `Sites` | The tenant, and the isolation boundary. |
-| `Organisation` | `organisations/models.py:28` | A client or department **inside** a site. A grouping, **not** an isolation boundary — see `docs/product/multi-tenancy-and-isolation.md`. |
+| `Organisation` | `organisations/models.py:58` | A client or department **inside** a site. A grouping, **not** an isolation boundary — see `docs/product/multi-tenancy-and-isolation.md`. |
 | `SiteAwareModel` / `SiteAwareModelBase` / `SiteAwareManager` | `site_aware_models/models.py` | The base model and manager that apply the site filter. |
 
 ---
@@ -165,13 +165,14 @@ The codebase has caught up. `learner-terminology-rename` moved the three apps to
   follow: another product's word in research prose (Open edX's `StudentModule`, SCORM's), a stale
   `__pycache__` directory from before the rename, or a genuine miss — fix the last one.
 - **`user` is not the same question.** Where a model's field genuinely is `user`
-  (`CourseProgress.user`, `Learner.user`, `RecommendedCourse.user`), that is Django's own noun for an
+  (`FormProgress.user`, `Learner.user`, `RecommendedCourse.user`), that is Django's own noun for an
   account, not the old word for a learner. Leave it alone — renaming it to `learner` would be wrong,
   because `Learner` is a different thing.
 - **But do check which one a model *should* key on.** Enrolment moved from `User` to `Learner`
   (`unique_user_course_registration` is gone; the constraint is now
-  `unique_learner_course_registration`), while progress has not moved yet. A new model keying on
-  `user` should be able to say why.
+  `unique_learner_course_registration`), and `CourseProgress` followed, keying on `learner` rather than
+  `user`. `FormProgress` has not moved yet — it still keys on `user` directly, since a form can be sat
+  outside a course. A new model keying on `user` should be able to say why.
 
 ---
 
@@ -183,4 +184,4 @@ The codebase has caught up. `learner-terminology-rename` moved the three apps to
   `docs/product/learner-tracking.md` is the progress vocabulary; `learner-experience.md` the player's.
 - `docs/app_structure.md` — the canonical app names and the authoritative dependency graph.
 - `claude_plugins/fls-content/skills/content-types/SKILL.md` — the author-facing `content_type` values.
-- `freedom_ls/content_engine/schema.py` — `ContentType` as a `StrEnum`.
+- `freedom_ls/content_base/schema.py` — `ContentType` as a `StrEnum`.

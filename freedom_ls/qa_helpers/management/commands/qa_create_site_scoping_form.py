@@ -99,8 +99,9 @@ def _get_site(site_name: str) -> Site:
 def _build_form(site: Site) -> tuple[Form, bool]:
     """Create the form tree on ``site``. Returns ``(form, created)``.
 
-    Idempotent on ``(site, slug)`` -- ``Form.Meta.unique_together`` -- so a
-    re-run is a no-op rather than a duplicate or an IntegrityError. Every
+    Idempotent on ``(site, slug)`` -- the ``unique_form_slug_per_site``
+    constraint -- so a re-run is a no-op rather than a duplicate or an
+    IntegrityError. Every
     factory call passes ``site=site`` explicitly and passes its real parent, so
     no ``SubFactory`` has to guess: without an HTTP request there is no
     thread-local site for ``SiteAwareFactory`` to fall back on.

@@ -389,7 +389,7 @@ class TestWebhookSecret:
         # Should not raise
         secret.full_clean()
 
-    def test_unique_together_site_and_name(self, mock_site_context: object) -> None:
+    def test_unique_secret_name_per_site(self, mock_site_context: object) -> None:
         """Two secrets with the same name on the same site should fail."""
         WebhookSecretFactory(name="duplicate_key")
         with pytest.raises(IntegrityError):
