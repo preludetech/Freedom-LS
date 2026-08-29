@@ -1,3 +1,11 @@
+"""Development-only command. Seeds demo Sites, cohorts and accounts.
+
+Writes Site rows on loopback domains (127.0.0.1 and its port variants) and
+creates accounts whose password is set to their own email address. Both are
+fine for a developer's machine and unsafe anywhere reachable over the
+network. Never point this command at a Site with a real hostname.
+"""
+
 from typing import Any
 
 from allauth.account.models import EmailAddress
@@ -44,7 +52,11 @@ demo_sites: list[dict[str, Any]] = [
 
 
 class Command(BaseCommand):
-    help = "Create a superuser and 2 sites for initial setup"
+    help = (
+        "Create demo Sites, cohorts and accounts for local development. Writes "
+        "loopback-only Site domains and accounts whose password equals their "
+        "email address. Never run against a Site with a real hostname."
+    )
 
     @staticmethod
     def _ensure_verified_email(user: User) -> None:
