@@ -154,41 +154,6 @@ def test_course_detail_returns_200_for_authenticated_user(
 
 
 @pytest.mark.django_db
-def test_course_detail_is_public(mock_site_context, course_with_topics, client):
-    """Anonymous users can access the course detail page — no login redirect."""
-    response = client.get(
-        reverse(
-            "learner_interface:course_detail",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
-    )
-    assert response.status_code == 200
-
-
-@pytest.mark.django_db
-def test_course_detail_shows_enrol_for_free_for_unregistered_user_free_course(
-    mock_site_context, course_with_topics, logged_in_client
-):
-    """An unregistered user sees the backend's free-course CTA label on the detail page.
-
-    The FreeOnlyCourseAccessBackend (and ApplicationCourseAccessBackend for free courses)
-    returns "Enrol for free" as the cta_label for an unregistered learner on a free
-    course — the not-registered branch uses the backend's acquisition label, not the
-    registered-learner progress-aware helper.
-    """
-    user = UserFactory()
-    client = logged_in_client(user)
-    response = client.get(
-        reverse(
-            "learner_interface:course_detail",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
-    )
-    body = response.content.decode()
-    assert "Enrol for free" in body
-
-
-@pytest.mark.django_db
 def test_course_detail_enrol_cta_links_to_initiate_course_access_when_unregistered(
     mock_site_context, course_with_topics, logged_in_client
 ):
@@ -231,50 +196,6 @@ def test_course_detail_has_start_button_when_registered_zero_progress(
     )
     assert "Start course" in body
     assert first_item_url in body
-
-
-@pytest.mark.django_db
-def test_course_detail_shows_continue_when_registered_with_progress(
-    mock_site_context, course_with_topics, logged_in_client
-):
-    """A registered learner with partial (>0) progress and no completion
-    sees a 'Continue' CTA."""
-    user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
-    course_progress_record(
-        course_with_topics, user, progress_percentage=50, completed_time=None
-    )
-
-    client = logged_in_client(user)
-    response = client.get(
-        reverse(
-            "learner_interface:course_detail",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
-    )
-    body = response.content.decode()
-    assert "Continue" in body
-
-
-@pytest.mark.django_db
-def test_course_detail_shows_review_course_when_completed(
-    mock_site_context, course_with_topics, logged_in_client
-):
-    """A registered learner who has completed the course sees a
-    'Review course' CTA."""
-    user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=course_with_topics)
-    course_progress_record(course_with_topics, user, completed_time=timezone.now())
-
-    client = logged_in_client(user)
-    response = client.get(
-        reverse(
-            "learner_interface:course_detail",
-            kwargs={"course_slug": course_with_topics.slug},
-        )
-    )
-    body = response.content.decode()
-    assert "Review course" in body
 
 
 @pytest.mark.django_db

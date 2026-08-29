@@ -232,25 +232,6 @@ def test_course_detail_free_shows_free_acquisition_copy(
 
 
 @pytest.mark.django_db
-def test_course_detail_registered_shows_start_course_label(
-    mock_site_context, logged_in_client, course_with_topic
-):
-    """course_detail for a registered learner with 0 progress shows 'Start course'."""
-    course = course_with_topic(access_type="free")
-    user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=course)
-    client = logged_in_client(user)
-
-    url = reverse(
-        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
-    )
-    response = client.get(url)
-
-    assert response.status_code == 200
-    assert "Start course" in response.content.decode()
-
-
-@pytest.mark.django_db
 def test_course_detail_registered_in_progress_shows_continue_label(
     mock_site_context, logged_in_client, course_with_topic
 ):

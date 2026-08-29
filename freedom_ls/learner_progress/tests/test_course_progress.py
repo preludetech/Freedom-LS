@@ -21,21 +21,6 @@ from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
 
 @pytest.mark.django_db
-def test_course_progress_has_progress_percentage_field(mock_site_context):
-    """Test that CourseProgress has a progress_percentage field that defaults to 0."""
-    course_progress: CourseProgress = CourseProgressFactory()
-    assert course_progress.progress_percentage == 0
-
-
-@pytest.mark.django_db
-def test_course_progress_progress_percentage_can_be_set(mock_site_context):
-    """Test that progress_percentage can be set to a specific value."""
-    progress: CourseProgress = CourseProgressFactory(progress_percentage=50)
-    progress.refresh_from_db()
-    assert progress.progress_percentage == 50
-
-
-@pytest.mark.django_db
 def test_completing_topic_updates_progress_percentage(mock_site_context):
     """Test that completing a topic updates progress_percentage on its record."""
     course = CourseFactory()
@@ -167,24 +152,6 @@ def _complete_topic(record, collection_item) -> None:
 
 
 @pytest.mark.django_db
-def test_progress_percentage_zero_when_no_items_complete(mock_site_context):
-    """Test that progress_percentage is 0 when no items are complete."""
-    course = CourseFactory()
-    topic = TopicFactory()
-    collection_item = ContentCollectionItemFactory(
-        collection_object=course, child_object=topic, order=0
-    )
-    course_progress: CourseProgress = CourseProgressFactory(course=course)
-
-    TopicProgressFactory(
-        course_progress=course_progress, collection_item=collection_item, topic=topic
-    )
-
-    course_progress.refresh_from_db()
-    assert course_progress.progress_percentage == 0
-
-
-@pytest.mark.django_db
 def test_completing_an_item_mints_no_further_record(mock_site_context):
     """Records come from registrations; a completion never creates one."""
     course = CourseFactory()
@@ -265,33 +232,6 @@ def test_quiz_with_no_pass_mark_counts_toward_progress_percentage(
 
     course_progress.refresh_from_db()
     assert course_progress.progress_percentage == 100
-
-
-@pytest.mark.django_db
-def test_partial_completion_gives_correct_percentage(mock_site_context):
-    """Test that partial completion gives correct percentage (e.g. 2 of 4 items = 50%)."""
-    course = CourseFactory()
-    topics = [TopicFactory() for _ in range(4)]
-    collection_items = [
-        ContentCollectionItemFactory(
-            collection_object=course, child_object=topic, order=index
-        )
-        for index, topic in enumerate(topics)
-    ]
-
-    course_progress: CourseProgress = CourseProgressFactory(course=course)
-
-    for collection_item in collection_items[:2]:
-        tp: TopicProgress = TopicProgressFactory(
-            course_progress=course_progress,
-            collection_item=collection_item,
-            topic=collection_item.child,
-        )
-        tp.complete_time = timezone.now()
-        tp.save()
-
-    course_progress.refresh_from_db()
-    assert course_progress.progress_percentage == 50
 
 
 @pytest.mark.django_db

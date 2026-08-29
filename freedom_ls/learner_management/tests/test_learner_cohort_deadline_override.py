@@ -1,5 +1,6 @@
 import pytest
 
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils import timezone
@@ -19,42 +20,21 @@ from freedom_ls.learner_management.models import (
 
 
 @pytest.mark.django_db
-def test_create_override_with_content_item(mock_site_context):
-    """Override can be created for a user in the cohort with a content item."""
+def test_content_item_is_stored_as_a_generic_reference(mock_site_context):
+    """`content_item` is a GenericForeignKey: it writes both halves of the pair."""
     topic = TopicFactory()
     cohort = CohortFactory()
     membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
     cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
 
-    deadline_dt = timezone.now() + timezone.timedelta(days=7)
-
     override: LearnerCohortDeadlineOverride = LearnerCohortDeadlineOverrideFactory(
         cohort_course_registration=cohort_course_reg,
         learner=membership.learner,
         content_item=topic,
-        deadline=deadline_dt,
-        is_hard_deadline=True,
     )
 
-    assert override.cohort_course_registration == cohort_course_reg
-    assert override.learner == membership.learner
-    assert override.content_item == topic
-    assert override.is_hard_deadline is True
-
-
-@pytest.mark.django_db
-def test_create_override_for_whole_course(mock_site_context):
-    """Override with null content_item applies to the whole course."""
-    cohort = CohortFactory()
-    membership: CohortMembership = CohortMembershipFactory(cohort=cohort)
-    cohort_course_reg = CohortCourseRegistrationFactory(cohort=cohort)
-
-    override: LearnerCohortDeadlineOverride = LearnerCohortDeadlineOverrideFactory(
-        cohort_course_registration=cohort_course_reg,
-        learner=membership.learner,
-    )
-
-    assert override.content_item is None
+    assert override.content_type == ContentType.objects.get_for_model(topic)
+    assert override.object_id == topic.pk
 
 
 @pytest.mark.django_db

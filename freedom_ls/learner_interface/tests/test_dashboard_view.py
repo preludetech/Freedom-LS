@@ -94,7 +94,7 @@ def test_dashboard_current_courses_have_progress_percentage(
     response = client.get(reverse("learner_interface:dashboard"))
     registered = response.context["registered_courses"]
     assert len(registered) == 1
-    assert hasattr(registered[0], "progress_percentage")
+    assert registered[0].progress_percentage == 0
 
 
 @pytest.mark.django_db
@@ -145,10 +145,14 @@ def test_dashboard_recommended_courses(mock_site_context, courses, logged_in_cli
 
 
 @pytest.mark.django_db
-def test_dashboard_annotates_accent_on_every_course(
+def test_dashboard_sorts_each_course_into_its_own_section(
     mock_site_context, courses, logged_in_client
 ):
-    """Every current/completed/recommended course gets an accent_slot_key."""
+    """Registered, completed and recommended courses land in three lists.
+
+    The template reads `accent_slot_key` off whatever each list holds, so the
+    courses have to arrive as Course objects rather than bare ids.
+    """
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     LearnerCourseRegistrationFactory(learner__user=user, course=courses[1])
@@ -157,14 +161,14 @@ def test_dashboard_annotates_accent_on_every_course(
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
-    assert response.status_code == 200
 
-    for course in response.context["registered_courses"]:
-        assert hasattr(course, "accent_slot_key")
-    for course in response.context["completed_courses"]:
-        assert hasattr(course, "accent_slot_key")
-    for rec in response.context["recommended_courses"]:
-        assert hasattr(rec.course, "accent_slot_key")
+    context = response.context
+    assert [course.pk for course in context["registered_courses"]] == [courses[0].pk]
+    assert [course.pk for course in context["completed_courses"]] == [courses[1].pk]
+    assert [rec.course.pk for rec in context["recommended_courses"]] == [courses[2].pk]
+    assert context["registered_courses"][0].accent_slot_key == (
+        courses[0].accent_slot_key
+    )
 
 
 # --- dashboard available_courses ---
@@ -236,22 +240,18 @@ def test_dashboard_available_includes_eligible_course(
 def test_dashboard_available_courses_are_not_registered(
     mock_site_context, courses, logged_in_client
 ):
-    """Available courses have is_registered=False and no stale preview annotations.
-
-    The dead ``_annotate_preview_context`` helper has been removed; the not-registered
-    card now links directly to the course_detail page via the course slug only.
-    """
+    """An available course's card links to the course detail page, not into it."""
     user = UserFactory()
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
-    assert response.status_code == 200
+
     available = response.context["available_courses"]
-    assert available
-    for course in available:
-        assert course.is_registered is False
-        assert not hasattr(course, "preview_is_registered")
-        assert not hasattr(course, "preview_start_url")
+    assert [course.is_registered for course in available] == [False] * len(available)
+    assert (
+        reverse("learner_interface:course_detail", args=[available[0].slug])
+        in response.content.decode()
+    )
 
 
 # --- dashboard "Available courses" section + Browse-all link ---

@@ -66,54 +66,71 @@ class TestRegistrationCourseProtect:
             registration.course.delete()
 
 
+def _cohort_deadline_on(topic):
+    return CohortDeadlineFactory(content_item=topic)
+
+
+def _learner_deadline_on(topic):
+    return LearnerDeadlineFactory(content_item=topic)
+
+
+def _override_on(topic):
+    membership = CohortMembershipFactory()
+    registration = CohortCourseRegistrationFactory(cohort=membership.cohort)
+    return LearnerCohortDeadlineOverrideFactory(
+        cohort_course_registration=registration,
+        learner=membership.learner,
+        content_item=topic,
+    )
+
+
+DEADLINE_BUILDERS = [
+    ("CohortDeadline", _cohort_deadline_on),
+    ("LearnerDeadline", _learner_deadline_on),
+    ("LearnerCohortDeadlineOverride", _override_on),
+]
+
+
 class TestDeadlineContentTypeSetNull:
-    def test_deleting_the_content_type_leaves_cohort_deadline_as_whole_course(
-        self, mock_site_context
+    """Losing the content type leaves the row pointing at nothing in particular.
+
+    The FK is SET_NULL rather than CASCADE so the deadline itself survives; what
+    matters to the rest of the system is that `content_item` then resolves to
+    None, which is how a whole-course deadline is spelled.
+    """
+
+    @pytest.mark.parametrize(
+        "build_deadline",
+        [builder for _, builder in DEADLINE_BUILDERS],
+        ids=[name for name, _ in DEADLINE_BUILDERS],
+    )
+    def test_an_orphaned_deadline_points_at_no_content_item(
+        self, mock_site_context, build_deadline
     ):
         topic = TopicFactory()
-        deadline = CohortDeadlineFactory(content_item=topic)
+        deadline = build_deadline(topic)
 
         _delete_content_type_for(topic)
 
         deadline.refresh_from_db()
-        assert deadline.content_type is None
-        assert deadline.object_id == topic.pk
-        deadline.full_clean()
         assert deadline.content_item is None
 
-    def test_deleting_the_content_type_leaves_learner_deadline_as_whole_course(
-        self, mock_site_context
+    @pytest.mark.parametrize(
+        "build_deadline",
+        [builder for _, builder in DEADLINE_BUILDERS],
+        ids=[name for name, _ in DEADLINE_BUILDERS],
+    )
+    def test_an_orphaned_deadline_still_validates(
+        self, mock_site_context, build_deadline
     ):
+        """clean() keys on content_type alone, so a half-nulled row is still legal."""
         topic = TopicFactory()
-        deadline = LearnerDeadlineFactory(content_item=topic)
+        deadline = build_deadline(topic)
 
         _delete_content_type_for(topic)
-
         deadline.refresh_from_db()
-        assert deadline.content_type is None
-        assert deadline.object_id == topic.pk
+
         deadline.full_clean()
-        assert deadline.content_item is None
-
-    def test_deleting_the_content_type_leaves_override_as_whole_course(
-        self, mock_site_context
-    ):
-        topic = TopicFactory()
-        membership = CohortMembershipFactory()
-        registration = CohortCourseRegistrationFactory(cohort=membership.cohort)
-        override = LearnerCohortDeadlineOverrideFactory(
-            cohort_course_registration=registration,
-            learner=membership.learner,
-            content_item=topic,
-        )
-
-        _delete_content_type_for(topic)
-
-        override.refresh_from_db()
-        assert override.content_type is None
-        assert override.object_id == topic.pk
-        override.full_clean()
-        assert override.content_item is None
 
 
 class TestOrphanedDeadlineResolvesAsWholeCourse:

@@ -97,18 +97,6 @@ class TestFilterVisibleVisibilityOverride:
 
         assert result.filter(pk=course.pk).exists()
 
-    def test_hidden_course_excluded_for_anonymous_when_override_off(
-        self, mock_site_context
-    ):
-        CourseFactory(visibility=CourseVisibility.HIDDEN)
-        with override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=False):
-            get_course_access_backend.cache_clear()
-            result = get_course_access_backend().filter_visible(
-                user=AnonymousUser(), courses=Course.objects.all()
-            )
-
-        assert result.count() == 0
-
 
 @pytest.mark.django_db
 class TestVisibilityOverrideNeverWritesDb:

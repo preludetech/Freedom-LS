@@ -197,7 +197,7 @@ class TestRemoveObjectRole:
 
     @pytest.mark.django_db
     def test_removing_role_advances_updated_at(self) -> None:
-        """QuerySet.update() skips auto_now, so removal must stamp it by hand."""
+        """Removing a role is a write: the assignment's updated_at moves with it."""
         user = UserFactory()
         cohort = CohortFactory()
         with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
@@ -336,7 +336,7 @@ class TestSiteRoleFunctions:
     def test_removing_site_role_advances_updated_at(
         self, mock_site_context: Site
     ) -> None:
-        """QuerySet.update() skips auto_now, so removal must stamp it by hand."""
+        """Removing a role is a write: the assignment's updated_at moves with it."""
         user = UserFactory()
         with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
             assign_site_role(user, "site_admin")
@@ -430,7 +430,7 @@ class TestSystemRoleFunctions:
 
     @pytest.mark.django_db
     def test_removing_system_role_advances_updated_at(self) -> None:
-        """QuerySet.update() skips auto_now, so removal must stamp it by hand."""
+        """Removing a role is a write: the assignment's updated_at moves with it."""
         user = UserFactory()
         with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
             assign_system_role(user, "system_admin")

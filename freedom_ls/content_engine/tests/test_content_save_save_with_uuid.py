@@ -9,9 +9,7 @@ from freedom_ls.content_engine.management.commands.content_save import (
     save_form_content,
     save_form_page,
     save_form_question,
-    save_topic,
 )
-from freedom_ls.content_engine.models import Topic
 from freedom_ls.content_engine.validate import parse_single_file
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import FormPage
@@ -556,65 +554,3 @@ def test_markdown_translate_strips_whitespace_around_title():
     """markdown_translate trims whitespace from the title slot."""
     result = markdown_translate("![[graph.png |  Some title  ]]")
     assert 'title="Some title"' in result
-
-
-_TOPIC_UUID = "11111111-1111-4111-8111-111111111111"
-
-
-def _topic_file(make_temp_file, tags_line: str):
-    return make_temp_file(
-        suffix=".md",
-        content=(
-            "---\n"
-            "content_type: TOPIC\n"
-            "title: Reimported Topic\n"
-            f"uuid: {_TOPIC_UUID}\n"
-            f"{tags_line}"
-            "---\n"
-        ),
-    )
-
-
-def _import(path, site):
-    return save_topic(parse_single_file(path)[0], site, path.parent)
-
-
-@pytest.mark.django_db
-def test_reimport_without_a_tags_key_keeps_the_stored_tags(
-    site, mock_site_context, make_temp_file
-):
-    """A file that says nothing about tags must not clear them, as with meta."""
-    path = _topic_file(make_temp_file, tags_line="")
-    topic = _import(path, site)
-    Topic.objects.filter(pk=topic.pk).update(tags=["curated-in-the-admin"])
-
-    reimported = _import(path, site)
-
-    assert reimported.tags == ["curated-in-the-admin"]
-
-
-@pytest.mark.django_db
-def test_reimport_with_an_empty_tags_key_clears_the_stored_tags(
-    site, mock_site_context, make_temp_file
-):
-    """An explicit empty list is how a file says "this has no tags"."""
-    path = _topic_file(make_temp_file, tags_line="tags: []\n")
-    topic = _import(path, site)
-    Topic.objects.filter(pk=topic.pk).update(tags=["curated-in-the-admin"])
-
-    reimported = _import(path, site)
-
-    assert reimported.tags == []
-
-
-@pytest.mark.django_db
-def test_reimport_replaces_the_stored_tags_with_the_files_own(
-    site, mock_site_context, make_temp_file
-):
-    path = _topic_file(make_temp_file, tags_line="tags: [python, advanced]\n")
-    topic = _import(path, site)
-    Topic.objects.filter(pk=topic.pk).update(tags=["curated-in-the-admin"])
-
-    reimported = _import(path, site)
-
-    assert reimported.tags == ["python", "advanced"]

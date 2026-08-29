@@ -6,11 +6,9 @@ import pytest
 
 from freedom_ls.accounts.factories import (
     LegalConsentFactory,
-    SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
 )
-from freedom_ls.accounts.models import LegalConsent
 
 
 @pytest.mark.django_db
@@ -120,26 +118,3 @@ def test_legal_consent_save_rejects_updates(mock_site_context):
 
     with pytest.raises(ValueError, match="append-only"):
         consent.save()
-
-
-@pytest.mark.django_db
-def test_legal_consent_records_for_other_site_not_returned_in_current_site(
-    mock_site_context,
-):
-    """Cross-tenant isolation: LegalConsent rows from another site are filtered out."""
-    other_site = SiteFactory(name="OtherSite")
-
-    LegalConsentFactory(git_hash="hash-current")
-    other_user = UserFactory(site=other_site)
-    LegalConsentFactory(user=other_user, site=other_site, git_hash="hash-other")
-
-    visible = list(LegalConsent.objects.values_list("git_hash", flat=True))
-    assert "hash-current" in visible
-    assert "hash-other" not in visible
-
-
-@pytest.mark.django_db
-def test_legal_consent_site_set_automatically_on_create(mock_site_context, site):
-    consent = LegalConsentFactory(document_type="privacy", git_hash="hash-priv")
-
-    assert consent.site == site

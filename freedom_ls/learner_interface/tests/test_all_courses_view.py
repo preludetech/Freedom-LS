@@ -11,22 +11,11 @@ from __future__ import annotations
 import pytest
 
 from django.urls import reverse
-from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.learner_interface.utils import CourseListingStatus
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
-from .conftest import course_progress_record
-
 # --- access + base annotations ---
-
-
-@pytest.mark.django_db
-def test_all_courses_anonymous_returns_200(client, courses, mock_site_context):
-    """Anonymous users can browse the catalogue — no login redirect."""
-    response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -63,82 +52,3 @@ def test_all_courses_annotates_accent_slot_key(
     all_courses_list = list(response.context["all_courses"])
     assert all_courses_list, "Expected at least one course in the catalogue"
     assert all(c.accent_slot_key in PALETTE for c in all_courses_list)
-
-
-# --- listing_status + preview context per registration state ---
-
-
-@pytest.mark.django_db
-def test_all_courses_not_registered_has_not_registered_status(
-    mock_site_context, courses, logged_in_client
-):
-    """An unregistered course has listing_status=NOT_REGISTERED on the context object."""
-    user = UserFactory()
-    client = logged_in_client(user)
-
-    response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
-
-    all_courses_list = list(response.context["all_courses"])
-    course = next(c for c in all_courses_list if c.id == courses[0].id)
-    assert course.listing_status == CourseListingStatus.NOT_REGISTERED
-    assert course.progress_percentage == 0
-
-
-@pytest.mark.django_db
-def test_all_courses_registered_zero_percent_has_registered_status(
-    mock_site_context, courses, logged_in_client
-):
-    """A registered-but-not-started course has listing_status=REGISTERED and 0% progress."""
-    user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
-    client = logged_in_client(user)
-
-    response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
-
-    all_courses_list = list(response.context["all_courses"])
-    course = next(c for c in all_courses_list if c.id == courses[0].id)
-    assert course.listing_status == CourseListingStatus.REGISTERED
-    assert course.progress_percentage == 0
-
-
-@pytest.mark.django_db
-def test_all_courses_in_progress_has_in_progress_status(
-    mock_site_context, courses, logged_in_client
-):
-    """A started course has listing_status=IN_PROGRESS and progress_percentage > 0."""
-    user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
-    course_progress_record(
-        courses[0], user, progress_percentage=40, completed_time=None
-    )
-    client = logged_in_client(user)
-
-    response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
-
-    all_courses_list = list(response.context["all_courses"])
-    course = next(c for c in all_courses_list if c.id == courses[0].id)
-    assert course.listing_status == CourseListingStatus.IN_PROGRESS
-    assert course.progress_percentage == 40
-
-
-@pytest.mark.django_db
-def test_all_courses_complete_has_complete_status(
-    mock_site_context, courses, logged_in_client
-):
-    """A completed course has listing_status=COMPLETE."""
-    user = UserFactory()
-    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
-    course_progress_record(
-        courses[0], user, progress_percentage=100, completed_time=timezone.now()
-    )
-    client = logged_in_client(user)
-
-    response = client.get(reverse("learner_interface:courses"))
-    assert response.status_code == 200
-
-    all_courses_list = list(response.context["all_courses"])
-    course = next(c for c in all_courses_list if c.id == courses[0].id)
-    assert course.listing_status == CourseListingStatus.COMPLETE

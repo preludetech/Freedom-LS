@@ -1,10 +1,14 @@
-"""Regression tests for the admin forms guarding site-scoped constraints.
+"""The admin forms guarding site-scoped constraints.
 
 SiteAwareModelAdmin excludes ``site`` from every admin form, and
 UniqueConstraint.validate() abandons a constraint whose field sits in that
-exclusion set. Each admin form under test un-excludes ``site`` via
-ConstraintValidationFormMixin, so a duplicate row surfaces as a form error
-instead of an IntegrityError from the database.
+exclusion set. Each admin form here un-excludes ``site`` via
+ConstraintValidationFormMixin, so a duplicate row surfaces as the model's own
+uniqueness error on the form instead of an IntegrityError from the database.
+
+The mixin's own set arithmetic is tested in
+``site_aware_models/tests/test_forms.py``; these are the wiring checks that
+each form actually takes it.
 """
 
 from __future__ import annotations
@@ -12,7 +16,6 @@ from __future__ import annotations
 import pytest
 
 from django.core.exceptions import NON_FIELD_ERRORS
-from django.db import IntegrityError
 
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -26,93 +29,87 @@ from freedom_ls.learner_management.forms import (
     LearnerAdminForm,
     LearnerCourseRegistrationAdminForm,
 )
-from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 
-
-@pytest.mark.django_db
-def test_cohort_name_may_repeat_across_organisations_on_one_site(mock_site_context):
-    CohortFactory(organisation=OrganisationFactory(), name="Year 10 Science")
-
-    Cohort.objects.create(organisation=OrganisationFactory(), name="Year 10 Science")
-
-    assert Cohort.objects.filter(name="Year 10 Science").count() == 2
+pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.django_db
-def test_cohort_name_cannot_repeat_within_one_organisation(mock_site_context):
+def _duplicate_cohort():
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Year 10 Science")
-
-    with pytest.raises(IntegrityError):
-        Cohort.objects.create(organisation=organisation, name="Year 10 Science")
+    return {"organisation": organisation.pk, "name": "Year 10 Science"}
 
 
-@pytest.mark.django_db
-def test_cohort_admin_form_rejects_duplicate_name_with_a_form_error(mock_site_context):
-    organisation = OrganisationFactory()
-    CohortFactory(organisation=organisation, name="Year 10 Science")
-
-    form = CohortAdminForm(
-        data={"organisation": organisation.pk, "name": "Year 10 Science"}
-    )
-
-    assert form.is_valid() is False
-    assert NON_FIELD_ERRORS in form.errors
-
-
-@pytest.mark.django_db
-def test_learner_admin_form_rejects_duplicate_user_organisation_pair(
-    mock_site_context,
-):
+def _duplicate_learner():
     learner = LearnerFactory()
-
-    form = LearnerAdminForm(
-        data={
-            "user": learner.user_id,
-            "organisation": learner.organisation_id,
-            "is_active": True,
-        }
-    )
-
-    assert form.is_valid() is False
-    assert NON_FIELD_ERRORS in form.errors
+    return {
+        "user": learner.user_id,
+        "organisation": learner.organisation_id,
+        "is_active": True,
+    }
 
 
-@pytest.mark.django_db
-def test_learner_course_registration_admin_form_rejects_duplicate(mock_site_context):
+def _duplicate_learner_course_registration():
     registration = LearnerCourseRegistrationFactory()
-
-    form = LearnerCourseRegistrationAdminForm(
-        data={
-            "learner": registration.learner_id,
-            "course": registration.course_id,
-            "is_active": True,
-        }
-    )
-
-    assert form.is_valid() is False
-    assert NON_FIELD_ERRORS in form.errors
+    return {
+        "learner": registration.learner_id,
+        "course": registration.course_id,
+        "is_active": True,
+    }
 
 
-@pytest.mark.django_db
-def test_cohort_course_registration_admin_form_rejects_duplicate(mock_site_context):
+def _duplicate_cohort_course_registration():
     registration = CohortCourseRegistrationFactory()
+    return {
+        "cohort": registration.cohort_id,
+        "course": registration.course_id,
+        "is_active": True,
+    }
 
-    form = CohortCourseRegistrationAdminForm(
-        data={
-            "cohort": registration.cohort_id,
-            "course": registration.course_id,
-            "is_active": True,
-        }
-    )
+
+# The expected message names the constraint's fields in the constraint's own
+# order, which is what distinguishes one constraint's error from another's.
+DUPLICATE_CASES = [
+    (
+        CohortAdminForm,
+        _duplicate_cohort,
+        "Cohort with this Site, Organisation and Name already exists.",
+    ),
+    (
+        LearnerAdminForm,
+        _duplicate_learner,
+        "Learner with this Site, User and Organisation already exists.",
+    ),
+    (
+        LearnerCourseRegistrationAdminForm,
+        _duplicate_learner_course_registration,
+        "Learner course registration with this Site, Learner and Course "
+        "already exists.",
+    ),
+    (
+        CohortCourseRegistrationAdminForm,
+        _duplicate_cohort_course_registration,
+        "Cohort course registration with this Site, Course and Cohort already exists.",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("form_class", "build_duplicate", "expected_message"),
+    DUPLICATE_CASES,
+    ids=[form_class.__name__ for form_class, _, _ in DUPLICATE_CASES],
+)
+def test_admin_form_reports_a_duplicate_as_a_form_error(
+    mock_site_context, form_class, build_duplicate, expected_message
+):
+    form = form_class(data=build_duplicate())
 
     assert form.is_valid() is False
-    assert NON_FIELD_ERRORS in form.errors
+    assert form.errors[NON_FIELD_ERRORS] == [expected_message]
 
 
-@pytest.mark.django_db
 def test_learner_admin_form_accepts_a_genuinely_new_learner(mock_site_context):
+    """The negative control: an over-eager mixin would reject this too."""
     organisation = OrganisationFactory()
     other_organisation = OrganisationFactory()
     LearnerFactory(organisation=organisation)

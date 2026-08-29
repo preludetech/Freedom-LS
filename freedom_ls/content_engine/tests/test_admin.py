@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.contrib import admin
@@ -10,13 +12,16 @@ from django.urls import reverse
 from freedom_ls.content_engine.admin import (
     ActivityAdmin,
     ContentCollectionItemAdmin,
-    ContentCollectionItemInline,
     CourseAdmin,
     CoursePartAdmin,
     FileAdmin,
     TopicAdmin,
 )
-from freedom_ls.content_engine.factories import TopicFactory
+from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
+    CourseFactory,
+    TopicFactory,
+)
 from freedom_ls.content_engine.models import (
     Activity,
     ContentCollectionItem,
@@ -26,85 +31,69 @@ from freedom_ls.content_engine.models import (
     Topic,
 )
 
-
-class TestDeletePermissionAlwaysFalse:
-    def test_topic_admin(self) -> None:
-        assert (
-            TopicAdmin(Topic, admin.site).has_delete_permission(request=None) is False
-        )
-
-    def test_activity_admin(self) -> None:
-        assert (
-            ActivityAdmin(Activity, admin.site).has_delete_permission(request=None)
-            is False
-        )
-
-    def test_course_admin(self) -> None:
-        assert (
-            CourseAdmin(Course, admin.site).has_delete_permission(request=None) is False
-        )
-
-    def test_course_part_admin(self) -> None:
-        assert (
-            CoursePartAdmin(CoursePart, admin.site).has_delete_permission(request=None)
-            is False
-        )
-
-    def test_content_collection_item_admin(self) -> None:
-        assert (
-            ContentCollectionItemAdmin(
-                ContentCollectionItem, admin.site
-            ).has_delete_permission(request=None)
-            is False
-        )
-
-    def test_file_admin(self) -> None:
-        assert FileAdmin(File, admin.site).has_delete_permission(request=None) is False
+CONTENT_ADMINS = [
+    (TopicAdmin, Topic),
+    (ActivityAdmin, Activity),
+    (CourseAdmin, Course),
+    (CoursePartAdmin, CoursePart),
+    (ContentCollectionItemAdmin, ContentCollectionItem),
+    (FileAdmin, File),
+]
 
 
-def test_content_collection_item_inline_cannot_delete() -> None:
-    assert ContentCollectionItemInline.can_delete is False
-
-
-TOPIC_CHANGELIST_URL_NAME = "admin:freedom_ls_content_engine_topic_changelist"
+@pytest.mark.parametrize(
+    ("admin_class", "model"),
+    CONTENT_ADMINS,
+    ids=[model.__name__ for _, model in CONTENT_ADMINS],
+)
+def test_content_admins_never_permit_deletion(admin_class, model) -> None:
+    assert admin_class(model, admin.site).has_delete_permission(request=None) is False
 
 
 @pytest.mark.django_db
-class TestTagFilter:
-    def test_filtering_by_a_tag_narrows_the_changelist(self, staff_client) -> None:
-        tagged = TopicFactory(title="Tagged", tags=["python", "advanced"])
-        TopicFactory(title="Other", tags=["django"])
+class TestTheLockdownReachesTheAdminUi:
+    """A superuser -- who holds every Django permission -- still cannot delete.
+
+    `has_delete_permission` returning False is only worth anything if it is what
+    the admin actually consults, so these go through HTTP rather than call it.
+    """
+
+    def test_the_change_page_offers_no_delete_link(self, staff_client) -> None:
+        topic = TopicFactory()
 
         response = staff_client.get(
-            reverse(TOPIC_CHANGELIST_URL_NAME), {"tag": "python"}
+            reverse("admin:freedom_ls_content_engine_topic_change", args=[topic.pk])
         )
 
-        assert [topic.pk for topic in response.context["cl"].result_list] == [tagged.pk]
+        delete_url = reverse(
+            "admin:freedom_ls_content_engine_topic_delete", args=[topic.pk]
+        )
+        assert delete_url not in response.content.decode()
 
-    def test_the_filter_offers_every_stored_tag(self, staff_client) -> None:
-        TopicFactory(tags=["python", "advanced"])
-        TopicFactory(tags=["django"])
+    def test_posting_the_delete_url_leaves_the_topic_standing(
+        self, staff_client
+    ) -> None:
+        topic = TopicFactory()
 
-        response = staff_client.get(reverse(TOPIC_CHANGELIST_URL_NAME))
+        response = staff_client.post(
+            reverse("admin:freedom_ls_content_engine_topic_delete", args=[topic.pk]),
+            {"post": "yes"},
+        )
 
-        assert _tag_filter_choices(response) == {"advanced", "django", "python"}
+        assert response.status_code == 403
+        assert Topic.objects.filter(pk=topic.pk).exists()
 
-    def test_an_unknown_tag_matches_nothing(self, staff_client) -> None:
-        TopicFactory(tags=["python"])
+    def test_the_course_change_page_offers_no_inline_delete_checkbox(
+        self, staff_client
+    ) -> None:
+        """Placements are removed by editing the course, never by a stray tick."""
+        course = CourseFactory()
+        ContentCollectionItemFactory(
+            collection_object=course, child_object=TopicFactory()
+        )
 
         response = staff_client.get(
-            reverse(TOPIC_CHANGELIST_URL_NAME), {"tag": "nonexistent"}
+            reverse("admin:freedom_ls_content_engine_course_change", args=[course.pk])
         )
 
-        assert list(response.context["cl"].result_list) == []
-
-
-def _tag_filter_choices(response) -> set[str]:
-    """The tag names the changelist sidebar offers, minus its "All" entry."""
-    changelist = response.context["cl"]
-    spec = next(spec for spec in changelist.filter_specs if str(spec.title) == "tags")
-    return {
-        choice["display"]
-        for choice in spec.choices(changelist)
-        if choice["query_string"] != "?"
-    }
+        assert not re.search(r'name="[^"]*-DELETE"', response.content.decode())

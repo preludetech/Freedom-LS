@@ -55,10 +55,10 @@ class TestCheckMappingValuesExist:
 
     @override_settings(FREEDOM_LS_ICON_SET="heroicons")
     def test_variant_suffixed_names_are_validated(self) -> None:
-        """Checks should also validate that variant-suffixed names exist in JSON."""
+        """Variant-suffixed names ("bell-solid") must resolve in the icon JSON too."""
         errors = check_mapping_values_exist()
-        # All heroicons variant-suffixed names should be valid
-        assert not any(e.id == "icons.E004" for e in errors)
+
+        assert errors == []
 
 
 class TestCheckOverridesExist:

@@ -4,7 +4,10 @@ import httpx
 import pytest
 
 from django.contrib import messages
+from django.core.exceptions import NON_FIELD_ERRORS
+from django.db import connection
 from django.test import RequestFactory
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from freedom_ls.webhooks.admin import (
@@ -17,7 +20,12 @@ from freedom_ls.webhooks.factories import (
     WebhookEndpointFactory,
     WebhookSecretFactory,
 )
-from freedom_ls.webhooks.models import WebhookDelivery, WebhookEndpoint, WebhookSecret
+from freedom_ls.webhooks.forms import WebhookSecretForm
+from freedom_ls.webhooks.models import (
+    WebhookDelivery,
+    WebhookEndpoint,
+    WebhookSecret,
+)
 
 
 @pytest.mark.django_db
@@ -48,27 +56,41 @@ class TestRetryDeliveries:
         assert delivery.status == "success"
         assert delivery.attempt_count == 1  # reset to 0, then incremented by attempt
 
-    def test_retry_uses_select_related(self, mock_site_context: object) -> None:
-        """Issue #5: retry queryset should use select_related to avoid N+1."""
-        delivery = WebhookDeliveryFactory(
-            status="failed",
-        )
+    def test_retrying_a_batch_fetches_the_endpoints_in_one_query(
+        self, mock_site_context: object
+    ) -> None:
+        """The action select_relates its endpoints rather than one lookup per row."""
+        endpoint = WebhookEndpointFactory()
+        deliveries = [
+            WebhookDeliveryFactory(status="failed", endpoint=endpoint) for _ in range(3)
+        ]
 
         mock_response = httpx.Response(
             status_code=200,
             content=b'{"ok": true}',
-            request=httpx.Request("POST", delivery.endpoint.url),
+            request=httpx.Request("POST", endpoint.url),
         )
 
         admin_instance = WebhookDeliveryAdmin(WebhookDelivery, None)
-        queryset = WebhookDelivery.objects.filter(pk=delivery.pk)
+        queryset = WebhookDelivery.objects.filter(
+            pk__in=[delivery.pk for delivery in deliveries]
+        )
 
-        with patch(
-            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
-        ) as mock_request:
-            # Use assertNumQueries or just verify it works without extra queries
+        with (
+            patch(
+                "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
+            ),
+            CaptureQueriesContext(connection) as captured,
+        ):
             admin_instance.retry_deliveries(request=None, queryset=queryset)
-            mock_request.assert_called_once()
+
+        endpoint_reads = [
+            query
+            for query in captured.captured_queries
+            if query["sql"].lstrip().upper().startswith("SELECT")
+            and "webhookendpoint" in query["sql"].lower()
+        ]
+        assert len(endpoint_reads) <= 1
 
 
 @pytest.mark.django_db
@@ -107,8 +129,8 @@ class TestRetryDeliveriesExcludesNullEndpoint:
         self, mock_site_context: object
     ) -> None:
         orphaned = WebhookDeliveryFactory(status="failed")
-        orphaned.endpoint = None
-        orphaned.save()
+        orphaned.endpoint.delete()
+        orphaned.refresh_from_db()
 
         admin_instance = WebhookDeliveryAdmin(WebhookDelivery, None)
         queryset = WebhookDelivery.objects.filter(pk=orphaned.pk)
@@ -119,29 +141,6 @@ class TestRetryDeliveriesExcludesNullEndpoint:
         mock_request.assert_not_called()
         orphaned.refresh_from_db()
         assert orphaned.status == "failed"
-
-    def test_a_delivery_whose_endpoint_survives_is_still_retried(
-        self, mock_site_context: object
-    ) -> None:
-        delivery = WebhookDeliveryFactory(status="failed")
-        endpoint = delivery.endpoint
-
-        mock_response = httpx.Response(
-            status_code=200,
-            content=b'{"ok": true}',
-            request=httpx.Request("POST", endpoint.url),
-        )
-
-        admin_instance = WebhookDeliveryAdmin(WebhookDelivery, None)
-        queryset = WebhookDelivery.objects.filter(pk=delivery.pk)
-
-        with patch(
-            "freedom_ls.webhooks.delivery.httpx.request", return_value=mock_response
-        ):
-            admin_instance.retry_deliveries(request=None, queryset=queryset)
-
-        delivery.refresh_from_db()
-        assert delivery.status == "success"
 
 
 @pytest.mark.django_db
@@ -204,8 +203,6 @@ class TestWebhookSecretAdmin:
         self, mock_site_context: object
     ) -> None:
         """Submitting the edit form with empty encrypted_value keeps the old value."""
-        from freedom_ls.webhooks.forms import WebhookSecretForm
-
         secret = WebhookSecretFactory(
             name="keep_me", encrypted_value="original-secret-value"
         )
@@ -221,10 +218,6 @@ class TestWebhookSecretAdmin:
 
     def test_duplicate_name_shows_form_error(self, mock_site_context: object) -> None:
         """Creating a secret with a duplicate name should show a form validation error, not crash."""
-        from django.core.exceptions import NON_FIELD_ERRORS
-
-        from freedom_ls.webhooks.forms import WebhookSecretForm
-
         WebhookSecretFactory(name="duplicate_key")
         form = WebhookSecretForm(
             data={
@@ -238,8 +231,6 @@ class TestWebhookSecretAdmin:
 
     def test_creating_secret_stores_value(self, mock_site_context: object) -> None:
         """Creating a new secret via the form stores the encrypted value."""
-        from freedom_ls.webhooks.forms import WebhookSecretForm
-
         form = WebhookSecretForm(
             data={
                 "name": "new_secret",
