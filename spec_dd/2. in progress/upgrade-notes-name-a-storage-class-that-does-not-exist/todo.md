@@ -10,9 +10,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model
@@ -22,7 +22,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -51,6 +51,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user) No QA needed — feature has no frontend changes
 
 ## 10. Product documentation
 
@@ -75,6 +76,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [ ] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
 
 ## 15. Cleanup

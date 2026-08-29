@@ -95,13 +95,37 @@ Write `<spec-dir>/upgrade_notes.md` using the schema above.
 Rules for the prose sections:
 
 - **Facts only.** Base every statement on the spec, the plan, and the actual diff. Do not speculate.
+- **Every name must resolve.** A dotted path, class, setting, check id, migration name or file path in these notes is an instruction the reader will follow literally. Check each one against the tree before you write it, and again in step 4. A name that was true when the branch started may have been deleted by a review fix since.
 - **Right altitude.** The audience is a developer maintaining a downstream FLS project. Name settings, migration commands, and template paths explicitly when relevant. Skip internal implementation details they don't need.
 - **Breaking changes** — list anything a downstream project must change in their own code to stay working (renamed settings, removed template blocks, changed URLs, altered model fields). Write "None" if there are none.
 - **Manual steps** — list concrete actions the downstream developer must take after pulling (e.g. "run `manage.py migrate`", "rebuild Tailwind", "review and re-apply customisations to `freedom_ls/learner_interface/templates/…`"). Write "None" if there are none.
 
 Keep the prose short and actionable. If there is genuinely nothing for downstream projects to do, say so plainly — an honest "no action needed" is more useful than padding.
 
-## Step 4: Tick the todo
+## Step 4: Verify every name against the tree
+
+The notes are prose, so nothing else checks them. Before finishing, resolve every name the file
+states against the code as it stands right now, not against the spec or the diff:
+
+- **Dotted paths.** Grep for each module, class and function the notes name. Django resolves a
+  callable `storage=` at model import, so a path that resolves nowhere stops a downstream project
+  from booting rather than merely confusing its reader.
+- **System check ids.** Confirm each id exists, and that the notes name every check the change adds.
+  Omit one and the reader takes a clean run of the ids they know for a clean deploy.
+- **Settings keys and environment variables.** Confirm each name, and each count, against the
+  settings module. Counts drift when a key lands late in the branch.
+- **File and directory paths.** Confirm each path exists. A path under `spec_dd/2. in progress/` is
+  invalidated by the spec's own move to `spec_dd/3. done/`, so cite one that survives closure.
+- **Migration names.** Confirm each migration file exists under the app it names.
+
+Fix whatever does not check out, then read the file once more for claims that contradict each other.
+Two sentences describing the same setting differently is the same defect as a wrong name.
+
+This step earns its keep on a re-run. `upgrade_notes.md` is authored before the PR review round, and
+review fixes delete and rename things. If the file already exists, read it and correct it against
+HEAD rather than trusting what it already says.
+
+## Step 5: Tick the todo
 
 Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
 

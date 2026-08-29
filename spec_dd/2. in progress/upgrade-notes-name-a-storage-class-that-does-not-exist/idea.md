@@ -54,38 +54,42 @@ direction of the root `.env.example`.
 **Correct the notes where they are.** The archived `upgrade_notes.md` is the artifact downstream
 projects were pointed at, so it gets fixed in place. Every false claim is corrected, and the `E003`
 and `E004` coverage and the real error counts are added, so the document describes what shipped
-rather than what was true for the forty-eight minutes the class existed.
+rather than what was true for the two hours the class existed.
 
-**Add a guard that runs while the code is still moving.** A check in the existing pytest suite reads
-the `upgrade_notes.md` of any spec under `spec_dd/2. in progress/`, finds the tokens shaped like
-Python dotted paths, and resolves each one. It fails when a document names a symbol that does not
-exist.
+**Restate the correction downstream.** `update_fls` pins the submodule to each spec's completion
+commit, so a project integrating `prod_bucket_setup` reads that tree's stale notes and never sees the
+in-place fix. This spec's own `upgrade_notes.md` is the only route to that reader.
 
-Two things about that guard are settled, both because the incident turns on them:
+**Fix the root `.env.example`, which is worse.** It never learned about the multi-bucket layout at
+all. It ships no per-purpose bucket variables and calls `AWS_STORAGE_BUCKET_NAME` an on/off gate,
+which is the configuration `E003` was written to reject. That file is what a downstream copies, so it
+does more damage than the archive does. The sibling idea
+`root-env-example-stale-after-prod-bucket-setup` found it from the other direction, and this spec
+absorbs it.
 
-- It reads the whole document, not just fenced code blocks. Every off-the-shelf markdown-verification
-  tool checks fences only, and this document's runnable fence was fine. The bad dotted path was in
-  prose. Fence-scoped checking would have missed it.
-- A document that deliberately names something gone ("`W001` is deleted; drop it from
-  `SILENCED_SYSTEM_CHECKS`") must not fail. That case is real in this very file. The reader marks the
-  exception explicitly; nothing infers intent from the surrounding prose, because no prior art
-  manages that reliably.
-
-Running inside pytest rather than at worktree-finish is what puts the check in front of the commits
-that cause the drift. The commit that deleted this class ran the test suite and passed.
+**Close the window rather than police it.** An earlier draft proposed a pytest guard resolving every
+backticked dotted path in an in-progress `upgrade_notes.md`, with a marker convention for names a
+document reports as deliberately gone. It is dropped. It would catch one of the eleven defects, its
+scan set is empty today, and its escape hatch would be needed on any spec documenting a removal,
+which is most of them. The real gap is that `/update_upgrade_notes` runs at todo step 11, PR review
+lands at step 14, and nothing re-reads the prose in between. A re-verify item in the todo template
+and a verification step in the authoring command cover all eleven defect classes for the price of two
+edits.
 
 ## What this does not cover
 
-The guard catches names that stop resolving. It does not catch manual step 5's other defect. That
-step cites `spec_dd/2. in progress/prod_bucket_setup/env_example`, a path that was correct when
-written and that the spec's own closure invalidated by moving the directory to `3. done/`. A check
-scoped to in-progress specs runs only while that path is still right. Fixing the reference is part of
-correcting the document. Catching the class of error is not something this guard does, and the
-sibling `.env.example` idea is the better place for it.
+Manual step 5 cited `spec_dd/2. in progress/prod_bucket_setup/env_example`, a path that was correct
+when written and that the spec's own closure invalidated by moving the directory to `3. done/`.
+Correcting the reference is part of fixing the document, and the corrected notes now point at the
+repo root `.env.example` instead, which survives closure. Catching that class of error mechanically
+is not something this spec attempts.
 
 `First-Class-LMS` has not applied these notes. It still declares the old two-key `STORAGES` and will
 hit the boot failure the notes describe when it pulls. That is the concrete project's work, not this
 one's.
+
+Sweeping the other twenty archived `upgrade_notes.md` for the same defect class is an operator's
+call. Three were spot-checked and none drifted.
 
 ## Sources
 
@@ -99,3 +103,8 @@ disturbed.
 `research_docs_code_drift_practices.md` covers how Django, django-storages, allauth and Wagtail
 handle the same risk, which in every case is human review, and why the fence-scoped tooling for
 markdown does not fit here.
+
+
+## important
+
+Upgrade notes for this spec should still be executable by concrete implementations, even if it just refers to old docs

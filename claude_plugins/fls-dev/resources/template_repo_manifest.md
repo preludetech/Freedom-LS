@@ -212,7 +212,7 @@ Items a concrete dev config should contain — see the exclusions table below fo
   - [ ] `course_media`: `STORAGES["course_media"]`, purpose prefix `COURSE_MEDIA`, points at the course-content bucket
   - [ ] `user_uploads`: `STORAGES["user_uploads"]`, purpose prefix `USER_UPLOADS`, points at the bucket holding data tied to an identified learner
   - [ ] `reports` (or whatever `REPORTS_STORAGE_ALIAS` renames it to): `STORAGES[REPORTS_STORAGE_ALIAS]`, purpose prefix `GENERATED`, points at the same learner-data bucket as `user_uploads`
-- [ ] Every `FileField` and `ImageField` the project defines names one of the six media aliases; none is left on `default`
+- [ ] Every `FileField` and `ImageField` the project defines names one of the five media aliases (`public`, `certificates`, `course_media`, `user_uploads`, `reports`); none is left on `default`, which has no bucket behind it
 - [ ] Email settings (`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, etc.) from env vars
 - [ ] `ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"`
 - [ ] Logging configuration — `LOGGING = fls_defaults.build_logging_config()` (stdout/console handlers only, no rotating files; the container `json-file` log driver caps size/rotation)

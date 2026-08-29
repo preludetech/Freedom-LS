@@ -19,9 +19,10 @@ PDF physically exists ONLY at `MEDIA_ROOT/reports/<pk>-cohort-report.pdf`.
 
 ## Gotcha: in dev, ALL storage aliases share MEDIA_ROOT
 
-`config/settings_base.py` (~line 266) declares all six aliases as bare `FileSystemStorage`
-with **no OPTIONS/LOCATION**, deliberately, so the test suite's tmp-dir MEDIA_ROOT isolation
-covers every alias for free. Consequence for QA:
+`config/settings_base.py` declares all seven `STORAGES` keys as `FileSystemStorage` with
+**no LOCATION**, deliberately, so the test suite's tmp-dir MEDIA_ROOT isolation covers every
+alias for free. `public` is the only key carrying an `OPTIONS` value, `allow_overwrite: True`,
+and `staticfiles` uses `StaticFilesStorage`. Consequence for QA:
 
 - `report.file.storage.location == MEDIA_ROOT` (not `MEDIA_ROOT/cohort_reports`).
 - So a legacy `reports/...` name still returns `storage.exists() == True` in dev. The only
