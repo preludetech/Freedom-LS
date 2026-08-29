@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.http import HttpRequest
 
+from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 from .models import (
@@ -150,7 +151,7 @@ class FormPageAdmin(SiteAwareModelAdmin):
 @admin.register(Form)
 class FormAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "strategy"]
-    list_filter = ("strategy", "tags")
+    list_filter = ("strategy", ContentTagListFilter)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     inlines = [FormPageInline]

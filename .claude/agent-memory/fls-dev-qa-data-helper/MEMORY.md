@@ -46,6 +46,8 @@
 - [reference_seeding_form_attempts_around_the_site_bug.md](reference_seeding_form_attempts_around_the_site_bug.md) — `form_progress__site=site` workaround for the CourseFormAttemptFactory NULL-site bug; how to build a real answered/scored cohort-granted sitting; recalculate surfaces unrelated denominator drift
 - [reference_organisation_educator_access.md](reference_organisation_educator_access.md) — Getting a persona into the organisation-scoped educator interface: the two independent access paths, why a missing ObjectRoleAssignment does NOT prove a blocked step, and where cohort reports live
 - [reference_detaching_a_cohort_membership.md](reference_detaching_a_cohort_membership.md) — Deleting ONE CohortMembership to make grant resolution fall through to the individual registration; nothing FKs to CohortMembership (no cascade, no ProtectedError); there is deliberately no post_delete, so the cohort-granted CourseProgress SURVIVES
+- [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest + second-org Learner + per-org cohorts for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
+- [reference_half_nulled_deadline_contenttype.md](reference_half_nulled_deadline_contenttype.md) — qa_create_half_nulled_deadlines: making `content_type IS NULL` + `object_id` populated deadline rows; ContentCollectionItem.child_type is CASCADE so deleting the Topic ContentType strips every topic out of every course — use the zero-instance Activity ContentType as the decoy target instead
 
 ## Recurring requests
 
@@ -182,3 +184,46 @@ unblocking anything — and check the persona's real password, which is usually 
 email rather than whatever the plan quotes. The standalone grant command written that day
 has been deleted; grant inline if a persona genuinely needs it. See
 [[reference_organisation_educator_access]].
+
+The **"seed me a row so I can try to DUPLICATE it in the admin" pass** arrived once
+(final_pre_deploy_db_structure_cleanup, Aug 2026): `WebhookEndpoint`/`WebhookSecret`,
+`CourseInterest`, a second-organisation `Learner` and per-organisation `Cohort`s, all at zero
+rows on a freshly rebuilt DB. Wrapped in `qa_create_admin_constraint_fixtures`; see
+[[reference_admin_constraint_fixtures_command]]. Two things to carry forward:
+**(a)** always run the rolled-back *form* probe (`SomeAdminForm(data=...).errors`) to show the
+tester the exact message the constraint produces — twice it revealed the requested fixture
+value would have failed validation for an unrelated reason (the hyphenated
+`qa-existing-secret`); **(b)** `CohortCourseRegistration` creation fans out `CourseProgress`
+to every cohort member, so prefer stacking extra `CohortDeadline` rows on the registrations
+that already exist over minting new registrations "for variety".
+
+**`CohortDeadline` scope shapes**: `content_type`/`object_id` BOTH NULL = whole-course;
+both set = item-scoped. `CohortDeadline.clean()` allows only ONE course-level row per
+registration (Python-level, not a DB constraint), while item-level rows are capped by
+`unique_cohort_deadline_per_item`. So "4 deadlines across 2 registrations" = one course-level
++ one item-level each. `qa_create_soft_deadline` covers both shapes via `--item-slug`.
+`freedom_ls/content_engine/models` is a PACKAGE (`courses.py`/`topics.py`/`files.py`) — import
+from `freedom_ls.content_engine.models`, and `ContentCollectionItem`'s GenericFK fields are
+`collection_type`/`collection_id` and `child_type`/`child_id` (not `*_content_type`/`*_object_id`).
+
+The **"delete a ContentType to half-null a GenericFK" data-integrity fixture** arrived once
+(test 5.3, final_pre_deploy_db_structure_cleanup, Aug 2026). Never delete the ContentType the
+QA plan names: `ContentCollectionItem.child_type`/`collection_type` are **CASCADE**, so the
+Topic ContentType takes 21 course items with it and destroys every TOC. Seed the deadlines
+against the zero-instance `content_engine.activity` ContentType instead — 4 unheld permissions
+is the entire blast radius. `qa_create_half_nulled_deadlines` wraps it, and its
+`_describe_holders()` helper sizes any ContentType deletion. See
+[[reference_half_nulled_deadline_contenttype]]. Generalise the habit: before ANY delete of a
+shared lookup row, walk `apps.get_models()` for FKs to it and print `on_delete.__name__` —
+"expected SET_NULL" in a QA plan only ever describes the rows the plan is thinking about.
+
+The **"delete the genuine course-level deadline so the half-nulled one is isolated"** ask
+arrived once (test 5.3, final_pre_deploy_db_structure_cleanup, Aug 2026) as the sequel to the
+half-nulling fixture. All three deadline `clean()` methods filter on `content_type__isnull=True`
+**alone**, ignoring `object_id`, so a genuine both-NULL row on the same registration blocks the
+half-nulled row for an unrelated reason and masks the behaviour under test. Nothing FKs to
+`CohortDeadline` / `LearnerDeadline` / `LearnerCohortDeadlineOverride` and they have no delete
+signals, so each delete is exactly 1 row with zero cascade. Guard the delete with
+`assert row.content_type_id is None and row.object_id is None` — genuine and half-nulled rows
+have **identical `__str__`** ("... - Whole course"), so only `object_id` tells them apart. See
+[[reference_half_nulled_deadline_contenttype]].

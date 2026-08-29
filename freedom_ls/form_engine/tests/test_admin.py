@@ -18,7 +18,7 @@ from freedom_ls.form_engine.admin import (
     QuestionOptionAdmin,
     QuestionOptionInline,
 )
-from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
@@ -92,3 +92,17 @@ class TestInlinesCannotDelete:
 
     def test_question_option_inline(self) -> None:
         assert QuestionOptionInline.can_delete is False
+
+
+FORM_CHANGELIST_URL_NAME = "admin:freedom_ls_form_engine_form_changelist"
+
+
+@pytest.mark.django_db
+def test_form_changelist_filters_by_tag(staff_client):
+    """FormAdmin filters on the same ArrayField-aware tag filter."""
+    tagged = FormFactory(title="Tagged quiz", tags=["python"])
+    FormFactory(title="Other quiz", tags=["django"])
+
+    response = staff_client.get(reverse(FORM_CHANGELIST_URL_NAME), {"tag": "python"})
+
+    assert [form.pk for form in response.context["cl"].result_list] == [tagged.pk]

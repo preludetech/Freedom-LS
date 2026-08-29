@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.http import HttpRequest
 
+from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 from .forms import FileAdminForm
@@ -18,7 +19,7 @@ from .models import (
 @admin.register(Topic)
 class TopicAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "file_path"]
-    list_filter = ("tags",)
+    list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     fieldsets = (
@@ -35,7 +36,7 @@ class TopicAdmin(SiteAwareModelAdmin):
 @admin.register(Activity)
 class ActivityAdmin(SiteAwareModelAdmin):
     list_display = ["title", "category", "level", "file_path"]
-    list_filter = ("tags",)
+    list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug", "content_preview")
     fieldsets = (
@@ -85,7 +86,7 @@ class ContentCollectionItemInline(GenericTabularInline):
 @admin.register(Course)
 class CourseAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "visibility"]
-    list_filter = ("visibility", "tags")
+    list_filter = ("visibility", ContentTagListFilter)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug", "visibility")
     inlines = [ContentCollectionItemInline]
@@ -118,7 +119,7 @@ class CourseAdmin(SiteAwareModelAdmin):
 @admin.register(CoursePart)
 class CoursePartAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle"]
-    list_filter = ("tags",)
+    list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     inlines = [ContentCollectionItemInline]
