@@ -107,6 +107,17 @@ def get_effective_deadlines(
     return results
 
 
+def _deadline_key(deadline: _DeadlineType) -> tuple[int | None, uuid.UUID | None]:
+    """The (content_type, object) key a deadline resolves under.
+
+    A deadline with no content type is a whole-course deadline, whatever
+    object_id it still carries from before its ContentType was deleted.
+    """
+    if deadline.content_type_id is None:
+        return (None, None)
+    return (deadline.content_type_id, deadline.object_id)
+
+
 def _resolve_cohort_deadline(
     reg: CohortCourseRegistration,
     learner: Learner,
@@ -150,7 +161,6 @@ def _resolve_cohort_deadline(
         cohort_course_registration=reg,
         learner=learner,
         content_type__isnull=True,
-        object_id__isnull=True,
     ).first()
     if course_override:
         return EffectiveDeadline(
@@ -163,7 +173,6 @@ def _resolve_cohort_deadline(
     course_dl = CohortDeadline.objects.filter(
         cohort_course_registration=reg,
         content_type__isnull=True,
-        object_id__isnull=True,
     ).first()
     if course_dl:
         return EffectiveDeadline(
@@ -202,7 +211,6 @@ def _resolve_learner_deadline(
     course_dl = LearnerDeadline.objects.filter(
         learner_course_registration=reg,
         content_type__isnull=True,
-        object_id__isnull=True,
     ).first()
     if course_dl:
         return EffectiveDeadline(
@@ -286,7 +294,7 @@ def get_course_deadlines(
     ) -> dict[_IndexKey, list[_DeadlineType]]:
         index: dict[_IndexKey, list[_DeadlineType]] = {}
         for dl in deadlines:
-            key = (getattr(dl, reg_field), dl.content_type_id, dl.object_id)
+            key = (getattr(dl, reg_field), *_deadline_key(dl))
             index.setdefault(key, []).append(dl)
         return index
 
@@ -301,7 +309,7 @@ def get_course_deadlines(
     # Collect all unique (ct_id, obj_id) keys across all deadlines
     all_keys: set[tuple[int | None, uuid.UUID | None]] = set()
     for dl in all_cohort_deadlines + all_overrides + all_learner_deadlines:
-        all_keys.add((dl.content_type_id, dl.object_id))
+        all_keys.add(_deadline_key(dl))
 
     # For each unique key, resolve effective deadlines per registration
     result: dict[tuple[int | None, uuid.UUID | None], list[EffectiveDeadline]] = {}

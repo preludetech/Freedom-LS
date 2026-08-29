@@ -39,3 +39,19 @@ title: Topic Without Tags
 
     assert len(parsed_items) == 1
     assert parsed_items[0].tags == []
+
+
+@pytest.mark.django_db
+def test_frontmatter_with_a_bare_tags_key_parses_to_empty_list(make_temp_file):
+    """YAML reads a valueless `tags:` as None; it means "no tags", not invalid."""
+    content = """---
+content_type: TOPIC
+title: Topic With A Bare Tags Key
+tags:
+---
+"""
+    temp_file = make_temp_file(suffix=".md", content=content)
+    parsed_items = parse_single_file(temp_file)
+
+    assert len(parsed_items) == 1
+    assert parsed_items[0].tags == []

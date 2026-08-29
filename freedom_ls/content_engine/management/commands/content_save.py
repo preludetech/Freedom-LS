@@ -226,6 +226,13 @@ def save_with_uuid(
         exclude_none=True,  # Don't include None values
     )
 
+    # A file with no `tags:` key says nothing about tags, exactly as an absent
+    # `meta:` does -- leave whatever is stored alone. `tags: []` still clears
+    # them. Without this, `tags` defaulting to [] rather than None would
+    # survive exclude_none and wipe tags added through the admin.
+    if "tags" not in item.model_fields_set:
+        fields.pop("tags", None)
+
     # Add extra fields (like foreign keys that aren't in the Pydantic schema)
     fields.update(extra_fields)
 

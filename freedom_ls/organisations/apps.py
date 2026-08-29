@@ -5,6 +5,7 @@ class OrganisationsConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "freedom_ls.organisations"
     label = "freedom_ls_organisations"
+    verbose_name = "Organisations"
 
     def ready(self) -> None:
         from django.db.models.signals import post_migrate

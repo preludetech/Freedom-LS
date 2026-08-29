@@ -51,7 +51,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: admin app section headings read Freedom_Ls_Webhooks / Freedom_Ls_Course_Recommendations instead of Webhooks / Course recommendations — decide whether to scope the verbose_name fix to the webhooks regression alone or to every freedom_ls_* app, then apply it (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: admin app section headings read Freedom_Ls_Webhooks / Freedom_Ls_Course_Recommendations instead of Webhooks / Course recommendations — decide whether to scope the verbose_name fix to the webhooks regression alone or to every freedom_ls_* app, then apply it (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

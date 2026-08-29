@@ -98,3 +98,46 @@ def test_pre_rename_deadline_override_name_is_gone_from_the_tree() -> None:
         "were renamed; migrations are exempt since RenameModel/RemoveConstraint "
         "legitimately keep the old name as an argument."
     )
+
+
+class _PrefixedLabelOnlyConfig(AppConfig):
+    """An FLS app that prefixes its label and leaves verbose_name to Django."""
+
+    name = "freedom_ls.webhooks"
+    label = "freedom_ls_webhooks"
+
+
+def _apps_with_a_raw_label_heading(app_configs: Iterable[AppConfig]) -> list[AppConfig]:
+    """FLS apps whose admin section heading still reads as their raw label."""
+    offenders = []
+    for config in app_configs:
+        if not config.name.startswith("freedom_ls."):
+            continue
+        if "freedom_ls" not in str(config.verbose_name).lower():
+            continue
+        offenders.append(config)
+    return offenders
+
+
+def test_fls_app_headings_do_not_read_as_their_label() -> None:
+    offenders = _apps_with_a_raw_label_heading(apps.get_app_configs())
+    assert not offenders, (
+        "These FLS apps show their label as the admin section heading: "
+        f"{', '.join(sorted(config.name for config in offenders))}. "
+        'Add verbose_name = "<Human readable>" to the app\'s AppConfig -- '
+        "Django otherwise derives the heading from the prefixed label and "
+        'renders it as "Freedom_Ls_<App>".'
+    )
+
+
+def test_app_config_that_only_prefixes_its_label_is_flagged() -> None:
+    config = _PrefixedLabelOnlyConfig("freedom_ls.webhooks", freedom_ls)
+
+    assert config in _apps_with_a_raw_label_heading([config])
+
+
+def test_app_config_with_its_own_verbose_name_is_not_flagged() -> None:
+    config = _PrefixedLabelOnlyConfig("freedom_ls.webhooks", freedom_ls)
+    config.verbose_name = "Webhooks"
+
+    assert config not in _apps_with_a_raw_label_heading([config])

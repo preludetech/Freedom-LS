@@ -4,6 +4,7 @@ from django.apps import AppConfig
 class DeploymentAppConfig(AppConfig):
     name = "freedom_ls.deployment"
     label = "freedom_ls_deployment"
+    verbose_name = "Deployment"
 
     def ready(self) -> None:
         from freedom_ls.deployment import checks  # noqa: F401

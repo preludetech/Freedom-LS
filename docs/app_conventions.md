@@ -41,6 +41,21 @@ half of the exemption is untested in practice: it exists so that when
 stay a plain `django.db.models.Model` instead of pulling in FLS's own
 `site_aware_models` app, which an extracted package cannot depend on.
 
+## Admin headings: `verbose_name` on every AppConfig
+
+Every FLS app also sets `verbose_name` on its `AppConfig`. Django derives the admin's
+app section heading from `label` when no `verbose_name` is given, so a prefixed label
+renders as `Freedom_Ls_Webhooks` and `Freedom_Ls_Course_Recommendations`. The label
+prefix is not optional, so the heading has to be spelled out separately.
+
+Use sentence case, and the name a person would say out loud: `"Webhooks"`,
+`"Course recommendations"`, `"QA helpers"`. Plain strings, since `apps.py` carries no
+translation machinery today.
+
+`freedom_ls/contrib/conformance/tests/test_app_labels.py` enforces this in
+`test_fls_app_headings_do_not_read_as_their_label`, which flags any installed
+`freedom_ls.*` app whose `verbose_name` still contains its own label.
+
 ## System-check ids match the app's own label
 
 A system check's id is `<label>.<severity><number>` where `<label>` is whatever that

@@ -2,7 +2,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ContentType(StrEnum):
@@ -30,6 +30,12 @@ class BaseBaseContentModel(BaseModel):
     uuid: str | None = Field(None, description="Optional unique identifier")
 
     _registry: ClassVar[dict[ContentType, type["BaseBaseContentModel"]]] = {}
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _null_tags_mean_no_tags(cls, value: list[str] | None) -> list[str]:
+        """A bare `tags:` key in front matter parses as None, not a list."""
+        return [] if value is None else value
 
     def __init_subclass__(cls, content_type: ContentType | None = None, **kwargs):
         super().__init_subclass__(**kwargs)
