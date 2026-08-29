@@ -73,8 +73,7 @@
       "Bash(git push --force:*)",
       "Read(**/*.pem)",
       "Read(**/*.key)",
-      "Read(.env)",
-      "Read(.env.*)"
+      "Read(.env)"
     ]
   },
   "enabledPlugins": {
