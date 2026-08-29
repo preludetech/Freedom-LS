@@ -12,14 +12,25 @@ when the commit is a checkpoint you have not verified.
 
 This command runs at **depth 0**, inline. It spawns no subagents.
 
+## Optimise for the user's time
+
+A hook failure you can fix in under a minute is **not a decision point**. Fix it and move on.
+Escalate only when the retry budget in Step 4 is spent, or the failure is genuinely outside this
+commit. Never turn a fixable hook failure into a conversation.
+
 ## The speed contract
 
 **Do not**:
 
-- run pytest, ruff, mypy, or any other check
-- read the contents of a changed file
+- run pytest, ruff, mypy, or any other check **proactively** — the hooks are the gate, don't
+  pre-empt them
+- read the contents of a changed file **before** a hook has complained about it
 - run `git diff` in patch mode — `--stat` and `--name-only` only
 - spawn a subagent or invoke another slash command
+
+**Once a hook fails**, exactly two things open up: you may read the files the hook named, and you
+may re-run that one check to verify your fix. Nothing else — still no pytest, no full-repo sweeps,
+no patch-mode diff.
 
 The commit message comes from the file list and the spec directory name, not from reading the diff.
 
@@ -47,8 +58,13 @@ git status --short
 git diff --cached --name-only
 ```
 
-**If `git diff --cached --name-only` prints anything**, the user has already staged what they want.
-Commit exactly that. Never run `git add`. Ignore `$ARGUMENTS`.
+**If `git diff --cached --name-only` prints anything**, work out *whose* staging it is:
+
+- **You did not stage it in this conversation** → it is the user's. Commit exactly that. Never run
+  `git add`. Ignore `$ARGUMENTS`.
+- **An earlier run of this command staged it** (a previous attempt that a hook rejected) → it is
+  yours, not a user decision. Re-apply `$ARGUMENTS` against the full dirty set and carry on.
+  **Never** ask the user to adjudicate staging this command itself created.
 
 **Otherwise**, go by the argument:
 
@@ -86,9 +102,32 @@ uv run git commit -m "…"
 
 `uv run` is required by the project's `CLAUDE.md` — the pre-commit hooks live in the uv environment.
 
-If a hook rewrites files and aborts the commit, `git add -u` the files it touched and retry **once**.
-If it fails a second time, stop: print the hook output and leave the work staged. Never pass
-`--no-verify`.
+### If the hooks reject the commit, fix it — do not stop
+
+Hooks fail in layers: clearing one often reveals the next. That is normal progress, not a reason to
+escalate. Work the loop.
+
+**Budget: up to 5 attempts.** Stop early only when an attempt fails *identically* to the one before
+it — same hook, same finding. That means you are not making progress, and another retry won't help.
+
+On each failure, classify what you got:
+
+| Failure | Action |
+| --- | --- |
+| A formatter rewrote files (`ruff-format`, `trailing-whitespace`, `end-of-file-fixer`) | `git add -u` the files it touched and retry. No thinking required. |
+| A check reported fixable errors (`mypy`, `ruff check`, `bandit`, `shellcheck`) | **Fix them.** Read only the files named in the output, make the minimal correct change, `git add -u`, retry. |
+| `detect-secrets` / `detect-private-key` flagged a line | Read the line. If it is a **real** credential, stop immediately and tell the user — never work around it. If it is plainly a false positive (a fixture name, a doc example, a reserved-domain URL), prefer removing the literal; where the wording cannot avoid it, append the tool's own `pragma: allowlist secret` marker, as `.claude/fls-dev/config.md` already does. |
+| The failure is in a file you neither created nor modified in this conversation, and unrelated to this commit | Pre-existing breakage. Stop and report it — do not fix unrelated code. Note that the `mypy` hook is whole-repo (`pass_filenames: false`), so this can happen. |
+
+**Hard rules for the loop:**
+
+- Never pass `--no-verify`.
+- Never `# type: ignore`, never a blanket `noqa`, never a new `[[tool.mypy.overrides]]` block, never
+  any config relaxation to dodge an error. Fix the code. A *targeted* `noqa: <CODE>` with a comment
+  justifying it is acceptable where the rule is genuinely wrong about the line.
+- Never use `AskUserQuestion` about a hook failure. Fixing it **is** the job.
+- Only once the budget is spent, or an attempt repeats identically: stop, print the last hook
+  output, leave the work staged, and say in one line what still fails.
 
 ## Step 5: Report
 
