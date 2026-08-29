@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-29_
 
 ## Summary
 
@@ -8,7 +8,7 @@ _Last updated: 2026-08-05_
 - Content is loaded into the database by the `content_save` command, which validates first and then idempotently upserts each item by UUID. Re-running it is safe.
 - Markdown renders through a four-stage pipeline: Markdown → sanitiser → content-widget compilation → template render.
 - Legal documents are versioned alongside content, and the exact version a user accepted is recorded on their consent record.
-- There is **no browser-based content editor**. All authoring happens in files.
+- There is **no browser-based content editor**. All authoring happens in files, and content cannot be deleted from the admin either.
 
 ## Authoring Model
 
@@ -16,7 +16,7 @@ Content lives as files on disk — Markdown for text-heavy items, YAML for struc
 
 **UUIDs in frontmatter.** On the first run of `content_save`, a UUID is written back into each file's frontmatter. That UUID is the stable identifier for the item and survives edits, renames, and re-saves.
 
-**No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail.
+**No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail. Content records cannot be deleted from the admin either — see [admin interface](./admin-interface.md#content-cannot-be-deleted).
 
 **AI authoring.** Authors may use AI tools to draft or revise Markdown. This is a workflow affordance only — there is no AI integration in the application code.
 
@@ -77,7 +77,7 @@ Validation parses every YAML and Markdown file against strict schemas before any
 
 `content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect.
 
-A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation.
+A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content is deleted.
 
 ## Markdown Rendering Pipeline
 

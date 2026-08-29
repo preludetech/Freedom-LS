@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-08-28_
+_Last updated: 2026-08-29_
 
 ## Summary
 
@@ -57,7 +57,7 @@ In production, FLS checks an endpoint URL when it is saved: the scheme must be H
 
 ## Delivery, Retries, and the Circuit Breaker
 
-FLS records every attempt with its outcome, timing, and what the receiver said, so a failing integration can be diagnosed from the admin.
+FLS records every attempt with its outcome, timing, and what the receiver said, so a failing integration can be diagnosed from the admin. That history outlives the endpoint: deleting an endpoint leaves its delivery records in place, each still naming the URL the send was aimed at.
 
 **Retries.** Server errors, timeouts, and transport failures are retried with exponential back-off, then given up on. A rejection the receiver will never accept is not retried.
 
