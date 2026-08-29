@@ -321,12 +321,21 @@ AUTHENTICATION_BACKENDS = (
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # 1 hour
-AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+# The nested form is one combined parameter, so a lockout needs address and
+# username together; the flat form locks on either alone.
+AXES_LOCKOUT_PARAMETERS = [["ip_address", "username"]]
 AXES_RESET_ON_SUCCESS = True
+# axes' own default (True) measures the cool-off from the most recent attempt,
+# including attempts made while already locked out, so a script that keeps
+# trying holds its own lockout open for as long as it runs.
+AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT = False
+AXES_CLIENT_IP_CALLABLE = "freedom_ls.accounts.utils.get_client_ip"
 
-# Header used to derive the real client IP behind a trusted proxy.
-# Default: None, meaning REMOTE_ADDR is trusted directly. Set explicitly only
-# when the deployment terminates TLS at a known proxy (e.g. "HTTP_X_FORWARDED_FOR").
+# Header used to derive the real client IP behind a trusted proxy, e.g.
+# "X-Real-IP". Must be a header the edge *sets* rather than appends, so it
+# carries exactly one address. Default: None, meaning REMOTE_ADDR is trusted
+# directly. Set explicitly only when the deployment terminates TLS at a known
+# proxy.
 TRUSTED_PROXY_IP_HEADER: str | None = None
 
 # Optional path to a JSON manifest of legal-doc git-blob hashes + base64 content.

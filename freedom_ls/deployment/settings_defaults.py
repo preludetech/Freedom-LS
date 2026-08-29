@@ -50,6 +50,17 @@ DATABASE_TASKS: dict[str, dict[str, str]] = {
     "default": {"BACKEND": "django_tasks_db.DatabaseBackend"},
 }
 
+# Database-backed cache for production. LOCATION is a table name, not created by
+# migration: `createcachetable` makes it, idempotently, as part of the
+# downstream's deploy sequence.
+DATABASE_CACHES: dict[str, dict[str, object]] = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache_table",
+        "OPTIONS": {"MAX_ENTRIES": 5000},
+    }
+}
+
 
 def require_secret_key() -> str:
     """Return SECRET_KEY from the environment, raising ImproperlyConfigured if

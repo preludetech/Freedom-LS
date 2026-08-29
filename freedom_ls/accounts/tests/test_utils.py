@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from django.test import RequestFactory
+from django.utils.module_loading import import_string
 
 from freedom_ls.accounts.factories import SiteFactory, SiteSignupPolicyFactory
 from freedom_ls.accounts.models import SiteSignupPolicy
@@ -30,14 +31,17 @@ def test_get_client_ip_uses_remote_addr_when_no_proxy_header_configured(settings
     assert get_client_ip(request) == "203.0.113.7"
 
 
-def test_get_client_ip_returns_leftmost_value_of_configured_header(settings):
-    settings.TRUSTED_PROXY_IP_HEADER = "HTTP_X_FORWARDED_FOR"
-    request = _request_with_meta(
-        HTTP_X_FORWARDED_FOR="198.51.100.42, 10.0.0.1",
+def test_get_client_ip_returns_configured_header_value_verbatim(settings):
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    request = RequestFactory().get(
+        "/",
+        headers={"x-real-ip": "198.51.100.42, 10.0.0.1"},
         REMOTE_ADDR="10.0.0.1",
     )
 
-    assert get_client_ip(request) == "198.51.100.42"
+    # A value containing a comma must come back whole: the header this reads is
+    # single-valued and set by the edge, never appended, so there is nothing to split.
+    assert get_client_ip(request) == "198.51.100.42, 10.0.0.1"
 
 
 def test_get_client_ip_falls_back_to_empty_string_when_nothing_set(settings):
@@ -50,10 +54,20 @@ def test_get_client_ip_falls_back_to_empty_string_when_nothing_set(settings):
 
 
 def test_get_client_ip_falls_back_to_remote_addr_when_proxy_header_missing(settings):
-    settings.TRUSTED_PROXY_IP_HEADER = "HTTP_X_FORWARDED_FOR"
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
     request = _request_with_meta(REMOTE_ADDR="10.0.0.5")
 
     assert get_client_ip(request) == "10.0.0.5"
+
+
+def test_axes_lockout_parameters_is_nested_form(settings):
+    # The flat form (two independent parameters) locks on address or username
+    # alone; the nested form requires both together.
+    assert settings.AXES_LOCKOUT_PARAMETERS == [["ip_address", "username"]]
+
+
+def test_axes_client_ip_callable_imports_to_get_client_ip(settings):
+    assert import_string(settings.AXES_CLIENT_IP_CALLABLE) is get_client_ip
 
 
 @pytest.mark.django_db

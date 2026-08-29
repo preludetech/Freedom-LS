@@ -250,3 +250,43 @@ def test_missing_forwarded_header_leaves_request_insecure() -> None:
     request = RequestFactory().get("/")
 
     assert request.is_secure() is False
+
+
+def test_prod_settings_sets_trusted_proxy_ip_header(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.TRUSTED_PROXY_IP_HEADER == "X-Real-IP"
+    assert prod.ALLAUTH_TRUSTED_CLIENT_IP_HEADER == prod.TRUSTED_PROXY_IP_HEADER
+
+
+def test_database_caches_default_backend_path_is_importable() -> None:
+    from django.utils.module_loading import import_string
+
+    backend_path = settings_defaults.DATABASE_CACHES["default"]["BACKEND"]
+
+    assert import_string(backend_path) is not None
+
+
+def test_database_caches_location_and_max_entries_are_fixed() -> None:
+    default_cache = settings_defaults.DATABASE_CACHES["default"]
+
+    assert default_cache["LOCATION"] == "django_cache_table"
+    assert default_cache["OPTIONS"] == {"MAX_ENTRIES": 5000}
+
+
+def test_prod_settings_uses_database_cache_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.CACHES == settings_defaults.DATABASE_CACHES

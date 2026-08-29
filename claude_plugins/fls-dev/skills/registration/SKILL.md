@@ -57,7 +57,7 @@ One row per `Site` controls signup behaviour for that site. If no row exists for
 | `REQUIRE_TERMS_ACCEPTANCE` | Global fallback for `SiteSignupPolicy.require_terms_acceptance`. Default `False` in base, `True` in dev. |
 | `ADDITIONAL_REGISTRATION_FORMS` | Global fallback for `SiteSignupPolicy.additional_registration_forms`. Default `[]`. |
 | `ALLOW_SIGN_UPS` | Global fallback for `SiteSignupPolicy.allow_signups`. |
-| `TRUSTED_PROXY_IP_HEADER` | e.g. `"HTTP_X_FORWARDED_FOR"`. `None` (default) → fall back to `REMOTE_ADDR`. Read by `get_client_ip` when recording consent. Set this if your app sits behind a trusted proxy or load balancer. |
+| `TRUSTED_PROXY_IP_HEADER` | e.g. `"X-Real-IP"`. `None` (default) → fall back to `REMOTE_ADDR`. Read by `get_client_ip` when recording consent. Set this if your app sits behind a trusted proxy or load balancer. |
 
 The signup form itself is wired via `ACCOUNT_FORMS` / `ACCOUNT_SIGNUP_FIELDS` in `settings_base.py`. You should not need to touch these.
 

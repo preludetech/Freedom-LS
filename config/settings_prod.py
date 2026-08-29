@@ -82,6 +82,8 @@ DATABASES["default"]["CONN_HEALTH_CHECKS"] = fls_defaults.CONN_HEALTH_CHECKS
 # `python manage.py db_worker` process; see settings_defaults.py for details.
 TASKS = fls_defaults.DATABASE_TASKS
 
+CACHES = fls_defaults.DATABASE_CACHES
+
 
 # Static files
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # noqa: F405
@@ -108,6 +110,12 @@ DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
 # Allauth
 
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
+
+# Do not set ALLAUTH_TRUSTED_PROXY_COUNT; it selects the X-Forwarded-For path
+# instead. Naming the header removes allauth's fallback to REMOTE_ADDR, so the
+# edge header becomes load-bearing for login and signup here in production.
+TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+ALLAUTH_TRUSTED_CLIENT_IP_HEADER = TRUSTED_PROXY_IP_HEADER
 
 
 # Media Storage

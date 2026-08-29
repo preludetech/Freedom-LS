@@ -14,23 +14,22 @@ from .models import SiteSignupPolicy
 def get_client_ip(request: HttpRequest) -> str:
     """Return the client IP address.
 
-    When `config.TRUSTED_PROXY_IP_HEADER` is set, reads the leftmost value
-    from the named header (e.g. ``"HTTP_X_FORWARDED_FOR"``). Otherwise falls
-    back to ``REMOTE_ADDR``. Returns an empty string if neither is available.
+    When `config.TRUSTED_PROXY_IP_HEADER` names a header (e.g. "X-Real-IP"),
+    returns that header's value verbatim. The header must be one the edge
+    *sets* rather than appends, so it carries exactly one address; the value
+    is never split. Falls back to REMOTE_ADDR when no header is configured
+    or the named header is absent, which is what keeps this correct on a
+    deployment with no proxy in front.
 
-    This is the only sanctioned way to derive a client IP for use in
-    `LegalConsent` records and similar evidence trails.
+    This is the only sanctioned way to derive a client IP for LegalConsent
+    records, django-axes lockouts and similar evidence trails.
     """
     header_name: str | None = config.TRUSTED_PROXY_IP_HEADER
 
     if header_name:
-        raw_value = request.META.get(header_name, "")
-        if raw_value:
-            # X-Forwarded-For style headers may be comma-separated; take the
-            # leftmost (the original client) and strip whitespace.
-            leftmost = raw_value.split(",")[0].strip()
-            if leftmost:
-                return str(leftmost)
+        value = request.headers.get(header_name, "")
+        if value:
+            return str(value)
 
     return str(request.META.get("REMOTE_ADDR", "") or "")
 
