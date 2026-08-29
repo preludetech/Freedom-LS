@@ -1,1 +1,0 @@
-Threat model command is too intense. it doesn't only look at what we are building it looks at bloody everything and comes up with a lot of things that are out of scope. It should focus on new risks, not random hygene
