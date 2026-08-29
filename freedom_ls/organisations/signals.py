@@ -47,9 +47,9 @@ def ensure_default_organisation(
 ) -> None:
     """Every Site saved at runtime carries a default Organisation.
 
-    A receiver rather than an edit to create_site so site_aware_models keeps
-    its zero outgoing edges, and so the admin, the shell and SiteFactory are
-    covered too.
+    A receiver rather than logic in whatever writes the Site, so
+    site_aware_models keeps its zero outgoing edges, and so the admin, the
+    shell and every management command that creates a Site are covered too.
     """
     _ensure_default_organisation(instance)
 
