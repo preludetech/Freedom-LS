@@ -24,3 +24,15 @@ class TestHousekeepingHeartbeatDefaults:
 
     def test_housekeeping_unpicked_task_max_age_seconds_defaults_to_3600(self) -> None:
         assert config.HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS == 3600
+
+    def test_housekeeping_orphaned_task_max_age_seconds_defaults_to_3600(self) -> None:
+        assert config.HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS == 3600
+
+    def test_orphaned_task_window_clears_the_worker_heartbeat_window(self) -> None:
+        # Below it, the sweep closes rows a live worker is still inside: the
+        # watchdog is what bounds how long a task may run, and this window has to
+        # sit above that bound or it marks working tasks failed.
+        assert (
+            config.HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS
+            >= config.WORKER_HEARTBEAT_MAX_AGE_SECONDS
+        )

@@ -8,7 +8,7 @@ nothing cleans up.
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from io import StringIO
 from pathlib import Path
 
@@ -17,14 +17,19 @@ import pytest_django.fixtures
 import time_machine
 from django_tasks import TaskResultStatus
 from django_tasks_db.models import DBTaskResult, get_date_max
+from pytest_mock import MockerFixture
 
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.core.management.base import CommandError
+from django.db import DatabaseError
 from django.utils import timezone
 
 from freedom_ls.deployment.housekeeping import (
+    OrphanReapResult,
     find_late_unpicked_tasks,
+    find_orphaned_running_tasks,
+    mark_orphaned_running_tasks_failed,
     run_housekeeping_sweeps,
 )
 
@@ -49,14 +54,38 @@ def database_task_backend(settings: pytest_django.fixtures.SettingsWrapper) -> N
 
 
 def _create_task_result(
-    *, status: str = TaskResultStatus.READY, run_after: object
+    *,
+    status: str = TaskResultStatus.READY,
+    run_after: object,
+    started_at: datetime | None = None,
+    worker_ids: list[str] | None = None,
+    task_path: str = "freedom_ls.deployment.tests.test_housekeeping.dummy_task",
 ) -> DBTaskResult:
+    # started_at is a plain nullable column, unlike auto_now_add enqueued_at, so a
+    # claimed row can be aged by passing a past value rather than travelling in time.
     return DBTaskResult.objects.create(
         status=status,
         args_kwargs={"args": [], "kwargs": {}},
-        task_path="freedom_ls.deployment.tests.test_housekeeping.dummy_task",
+        task_path=task_path,
         backend_name="default",
         run_after=run_after,
+        started_at=started_at,
+        worker_ids=worker_ids or [],
+    )
+
+
+def _create_orphan(
+    *,
+    claimed_hours_ago: float = 2,
+    worker_ids: list[str] | None = None,
+    task_path: str = "freedom_ls.deployment.tests.test_housekeeping.dummy_task",
+) -> DBTaskResult:
+    return _create_task_result(
+        status=TaskResultStatus.RUNNING,
+        run_after=get_date_max(),
+        started_at=timezone.now() - timedelta(hours=claimed_hours_ago),
+        worker_ids=worker_ids,
+        task_path=task_path,
     )
 
 
@@ -85,6 +114,138 @@ class TestFindLateUnpickedTasks:
             )
 
         assert task not in find_late_unpicked_tasks(max_age_seconds=3600)
+
+
+@pytest.mark.django_db
+class TestFindOrphanedRunningTasks:
+    def test_running_task_claimed_long_ago_is_orphaned(self) -> None:
+        task = _create_orphan(claimed_hours_ago=2)
+
+        assert task in find_orphaned_running_tasks(max_age_seconds=3600)
+
+    def test_running_task_claimed_recently_is_not_orphaned(self) -> None:
+        task = _create_orphan(claimed_hours_ago=0.1)
+
+        assert task not in find_orphaned_running_tasks(max_age_seconds=3600)
+
+    def test_ready_task_of_any_age_is_not_orphaned(self) -> None:
+        """The late check owns READY; this one owns RUNNING. They must not overlap."""
+        with time_machine.travel(timezone.now() - timedelta(hours=2), tick=False):
+            task = _create_task_result(run_after=get_date_max())
+
+        assert task not in find_orphaned_running_tasks(max_age_seconds=3600)
+
+    def test_failed_task_claimed_long_ago_is_not_orphaned(self) -> None:
+        """Nothing re-reaps a row an earlier run already closed."""
+        task = _create_task_result(
+            status=TaskResultStatus.FAILED,
+            run_after=get_date_max(),
+            started_at=timezone.now() - timedelta(hours=5),
+        )
+
+        assert task not in find_orphaned_running_tasks(max_age_seconds=3600)
+
+    def test_running_task_never_claimed_is_not_orphaned(self) -> None:
+        """A NULL started_at never satisfies the comparison, which is correct."""
+        task = _create_task_result(
+            status=TaskResultStatus.RUNNING, run_after=get_date_max()
+        )
+
+        assert task not in find_orphaned_running_tasks(max_age_seconds=3600)
+
+
+@pytest.mark.django_db
+class TestMarkOrphanedRunningTasksFailed:
+    def test_orphaned_task_is_marked_failed_and_not_requeued(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        task = _create_orphan()
+
+        mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        task.refresh_from_db()
+        assert task.status == TaskResultStatus.FAILED
+        assert task.status != TaskResultStatus.READY
+        assert task.finished_at is not None
+
+    def test_orphaned_task_records_the_housekeeping_exception_path(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        task = _create_orphan()
+
+        mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        task.refresh_from_db()
+        assert (
+            task.exception_class_path
+            == "freedom_ls.deployment.housekeeping.OrphanedTaskError"
+        )
+        # The exception is never raised, so format_exception yields the message and
+        # no frames. That one line is everything the row will say.
+        assert "not requeued" in task.traceback
+
+    def test_orphaned_task_traceback_names_the_worker_that_held_it(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        task = _create_orphan(worker_ids=["worker-abc"])
+
+        mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        task.refresh_from_db()
+        assert "worker-abc" in task.traceback
+
+    def test_recently_claimed_task_is_left_running(self, mocker: MockerFixture) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        task = _create_orphan(claimed_hours_ago=0.1)
+
+        mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        task.refresh_from_db()
+        assert task.status == TaskResultStatus.RUNNING
+        assert task.finished_at is None
+
+    def test_every_row_marked_is_counted(self, mocker: MockerFixture) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphan()
+        _create_orphan()
+
+        result = mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        assert result == OrphanReapResult(marked_failed=2, left_running=0)
+
+    def test_a_row_the_database_refuses_does_not_stop_the_rest(
+        self, mocker: MockerFixture
+    ) -> None:
+        # Patched rather than provoked: a real DatabaseError poisons the test's
+        # wrapping transaction and every later query raises.
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        set_failed = mocker.patch.object(
+            DBTaskResult, "set_failed", side_effect=[DatabaseError("nope"), None]
+        )
+        _create_orphan()
+        _create_orphan()
+
+        result = mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        assert result == OrphanReapResult(marked_failed=1, left_running=1)
+        assert set_failed.call_count == 2
+
+    def test_each_orphaned_task_is_reported_to_sentry_separately(
+        self, mocker: MockerFixture
+    ) -> None:
+        mock_sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphan(task_path="freedom_ls.tests.first_task")
+        _create_orphan(task_path="freedom_ls.tests.second_task")
+
+        mark_orphaned_running_tasks_failed(max_age_seconds=3600)
+
+        reported = [call.args[0] for call in mock_sentry.capture_message.call_args_list]
+        assert len(reported) == 2
+        assert any("freedom_ls.tests.first_task" in message for message in reported)
+        assert any("freedom_ls.tests.second_task" in message for message in reported)
 
 
 @pytest.mark.django_db
@@ -148,18 +309,83 @@ class TestRunHousekeepingSweepsIndependence:
 
 @pytest.mark.django_db
 class TestLateTaskReporting:
-    def test_late_unpicked_task_reported_to_sentry_and_returned_as_failure(
-        self, mocker, database_task_backend: None
+    def test_late_unpicked_task_reported_to_sentry_and_returned_as_a_finding(
+        self, mocker: MockerFixture, database_task_backend: None
     ) -> None:
         with time_machine.travel(timezone.now() - timedelta(hours=2), tick=False):
             _create_task_result(run_after=get_date_max())
         mock_sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
 
-        failures = run_housekeeping_sweeps()
+        outcome = run_housekeeping_sweeps()
 
         mock_sentry.capture_message.assert_called_once()
-        assert len(failures) == 1
-        assert "unpicked" in failures[0]
+        assert len(outcome.findings) == 1
+        assert "unpicked" in outcome.findings[0]
+        # A stopped worker is not a fault in housekeeping, so it withholds nothing.
+        assert outcome.sweep_failures == []
+
+
+@pytest.mark.django_db
+class TestOrphanedTaskReporting:
+    def test_orphaned_task_is_reported_but_fails_nothing(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mock_sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphan()
+
+        outcome = run_housekeeping_sweeps()
+
+        mock_sentry.capture_message.assert_called_once()
+        assert outcome.sweep_failures == []
+        assert outcome.findings == []
+        assert len(outcome.notes) == 1
+        assert "1 task result(s) orphaned" in outcome.notes[0]
+
+    def test_reap_failure_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mock_sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.mark_orphaned_running_tasks_failed",
+            side_effect=DatabaseError("db is gone"),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert len(outcome.sweep_failures) == 1
+        assert "orphaned task sweep failed" in outcome.sweep_failures[0]
+        mock_sentry.capture_exception.assert_called_once()
+
+    def test_rows_left_running_are_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mock_sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.mark_orphaned_running_tasks_failed",
+            return_value=OrphanReapResult(marked_failed=0, left_running=1),
+        )
+
+        outcome = run_housekeeping_sweeps()
+
+        assert len(outcome.sweep_failures) == 1
+        assert "still RUNNING" in outcome.sweep_failures[0]
+        # The reap already captured per row; nothing captures it a second time here.
+        mock_sentry.capture_exception.assert_not_called()
+
+    def test_prune_failure_still_reaps_orphaned_tasks(
+        self, mocker: MockerFixture
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.call_command",
+            side_effect=CommandError("prune is broken"),
+        )
+        task = _create_orphan()
+
+        run_housekeeping_sweeps()
+
+        task.refresh_from_db()
+        assert task.status == TaskResultStatus.FAILED
 
 
 @pytest.mark.django_db
@@ -223,3 +449,79 @@ class TestFlsRunHousekeepingCommand:
         call_command("fls_run_housekeeping", stdout=StringIO())
 
         assert heartbeat.exists()
+
+    def test_late_task_finding_raises_but_still_touches_heartbeat(
+        self, mocker: MockerFixture, database_task_backend: None, tmp_path: Path
+    ) -> None:
+        """A stopped worker fails the run without calling housekeeping itself dead."""
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        heartbeat = tmp_path / "heartbeat"
+        with time_machine.travel(timezone.now() - timedelta(hours=2), tick=False):
+            _create_task_result(run_after=get_date_max())
+
+        with pytest.raises(CommandError):
+            call_command("fls_run_housekeeping", stdout=StringIO())
+
+        assert heartbeat.exists()
+
+    def test_orphaned_task_alone_neither_raises_nor_withholds_the_heartbeat(
+        self, mocker: MockerFixture, database_task_backend: None, tmp_path: Path
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        heartbeat = tmp_path / "heartbeat"
+        task = _create_orphan()
+
+        stdout = StringIO()
+        call_command("fls_run_housekeeping", stdout=stdout)
+
+        task.refresh_from_db()
+        assert task.status == TaskResultStatus.FAILED
+        assert heartbeat.exists()
+        assert "orphaned in RUNNING" in stdout.getvalue()
+
+    def test_failure_message_names_a_sweep_failure_apart_from_a_finding(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+
+        def fake_call_command(command_name: str, **kwargs: object) -> None:
+            if command_name == "prune_db_task_results":
+                raise CommandError("prune is broken")
+
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.call_command",
+            side_effect=fake_call_command,
+        )
+        with time_machine.travel(timezone.now() - timedelta(hours=2), tick=False):
+            _create_task_result(run_after=get_date_max())
+
+        with pytest.raises(CommandError) as excinfo:
+            call_command("fls_run_housekeeping", stdout=StringIO())
+
+        message = str(excinfo.value)
+        assert "Sweep failures:" in message
+        assert "prune_db_task_results" in message
+        assert "Findings:" in message
+        assert "unpicked" in message
+
+    def test_a_sweep_failure_alongside_a_finding_still_withholds_the_heartbeat(
+        self, mocker: MockerFixture, database_task_backend: None, tmp_path: Path
+    ) -> None:
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        heartbeat = tmp_path / "heartbeat"
+
+        def fake_call_command(command_name: str, **kwargs: object) -> None:
+            if command_name == "prune_db_task_results":
+                raise CommandError("prune is broken")
+
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.call_command",
+            side_effect=fake_call_command,
+        )
+        with time_machine.travel(timezone.now() - timedelta(hours=2), tick=False):
+            _create_task_result(run_after=get_date_max())
+
+        with pytest.raises(CommandError):
+            call_command("fls_run_housekeeping", stdout=StringIO())
+
+        assert not heartbeat.exists()

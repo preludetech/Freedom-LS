@@ -14,10 +14,16 @@ from pathlib import Path
 import django_tasks_db
 import pytest
 import pytest_django.fixtures
+from django_tasks import DEFAULT_TASK_BACKEND_ALIAS
+from django_tasks_db.management.commands.db_worker import Worker
 
 from django.core.management import call_command
 
-from freedom_ls.deployment.worker import check_worker_heartbeat, touch_heartbeat
+from freedom_ls.deployment.worker import (
+    HeartbeatWorker,
+    check_worker_heartbeat,
+    touch_heartbeat,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -111,3 +117,56 @@ def test_fls_run_worker_processes_every_queue(mocker) -> None:
 
     _args, kwargs = mock_worker_cls.call_args
     assert kwargs["queue_names"] == ["*"]
+    # The heartbeat touch only runs on every iteration for these two values:
+    # upstream's batch and max_tasks branches return before it.
+    assert kwargs["batch"] is False
+    assert kwargs["max_tasks"] is None
+
+
+class TestGracefulShutdown:
+    """The worker stops claiming new work on SIGTERM and drains the task in hand.
+
+    All of it is upstream's, and HeartbeatWorker's copied run() is what a version
+    bump breaks silently, so these pin the parts that make the drain work.
+    """
+
+    def test_heartbeat_worker_inherits_upstream_signal_handling(self) -> None:
+        assert HeartbeatWorker.shutdown is Worker.shutdown
+        assert HeartbeatWorker.configure_signals is Worker.configure_signals
+
+    def test_fls_run_worker_configures_signals_before_running(self, mocker) -> None:
+        mocker.patch(
+            "freedom_ls.deployment.management.commands.fls_run_worker.start_watchdog"
+        )
+        mock_worker_cls = mocker.patch(
+            "freedom_ls.deployment.management.commands.fls_run_worker.HeartbeatWorker"
+        )
+        worker = mock_worker_cls.return_value
+        calls: list[str] = []
+        worker.configure_signals.side_effect = lambda: calls.append("configure_signals")
+        worker.run.side_effect = lambda: calls.append("run")
+
+        call_command("fls_run_worker")
+
+        assert calls == ["configure_signals", "run"]
+
+    def test_run_claims_no_work_once_running_is_cleared(
+        self, settings: pytest_django.fixtures.SettingsWrapper, tmp_path: Path
+    ) -> None:
+        """What a drained SIGTERM looks like from the loop's side."""
+        heartbeat = tmp_path / "heartbeat"
+        settings.WORKER_HEARTBEAT_PATH = str(heartbeat)
+        worker = HeartbeatWorker(
+            queue_names=["*"],
+            interval=1,
+            batch=False,
+            backend_name=DEFAULT_TASK_BACKEND_ALIAS,
+            startup_delay=False,
+            max_tasks=None,
+            worker_id="test-worker",
+        )
+        worker.running = False
+
+        worker.run()
+
+        assert not heartbeat.exists()

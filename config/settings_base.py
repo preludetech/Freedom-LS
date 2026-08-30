@@ -404,8 +404,17 @@ ACCOUNT_FORMS = {"signup": "freedom_ls.accounts.forms.SiteAwareSignupForm"}
 # Don't differentiate signup/login responses for known vs. unknown emails.
 ACCOUNT_PREVENT_ENUMERATION = True
 # Per-IP and per-key signup throttling. Disabled in dev (settings_dev.py).
+#
+# login_failed is the layer above the account lockout. A lockout needs address
+# and username together (AXES_LOCKOUT_PARAMETERS), so one address may try five
+# passwords against as many usernames as it likes, and enough addresses may work
+# one account five tries at a time. Ten failures a minute per address caps the
+# first, five in five minutes per account caps the second, and neither shuts
+# anyone out for an hour the way a lockout does. Written out rather than left to
+# allauth's default, which it derives from two deprecated settings.
 ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
     "signup": "5/m/ip,3/m/key",
+    "login_failed": "10/m/ip,5/5m/key",
 }
 
 

@@ -16,6 +16,7 @@ class DeploymentSettings(AppSettings):
     WORKER_HEARTBEAT_MAX_AGE_SECONDS: int
     HOUSEKEEPING_HEARTBEAT_PATH: str
     HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS: int
+    HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS: int
 
     declared_settings = {
         # PostHog: declared here to own the region-host default; the client-side
@@ -41,6 +42,12 @@ class DeploymentSettings(AppSettings):
         # a dead worker's heartbeat fresh and the liveness probe green over it.
         "HOUSEKEEPING_HEARTBEAT_PATH": Setting(default="/tmp/housekeeping-heartbeat"),  # noqa: S108  # nosec B108
         "HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS": Setting(default=3600),
+        # How long a worker may hold a claimed task before housekeeping closes the row
+        # as failed. Separate from the unpicked window because this one writes: set
+        # below the longest legitimate task runtime it marks live work failed. Keep it
+        # at or above WORKER_HEARTBEAT_MAX_AGE_SECONDS, already the ceiling on how long
+        # a task may run before the watchdog kills the worker holding it.
+        "HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS": Setting(default=3600),
     }
 
 
