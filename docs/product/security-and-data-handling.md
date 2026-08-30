@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-08-26_
+_Last updated: 2026-08-30_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
