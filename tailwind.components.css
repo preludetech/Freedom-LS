@@ -307,7 +307,10 @@
                focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2;
     }
     .course-card-hero   { height: var(--fls-card-hero-height); }
-    .course-card-body   { padding: var(--fls-card-padding); }
+    .course-card-body   {
+        padding: var(--fls-card-padding);
+        @apply flex flex-col;
+    }
 
     /* Course-card accent tiles — vibrant gradients drawn from the dedicated
      * `--fls-course-accent-*` series (separate from the UI role tokens). The

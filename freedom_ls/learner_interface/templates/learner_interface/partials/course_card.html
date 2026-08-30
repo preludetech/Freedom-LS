@@ -59,7 +59,10 @@ access_badge) and user.
         </p>
     {% endif %}
 
-    <div class="flex justify-end">
+    {% comment %}`mt-auto` only consumes free space while this div is a *direct* flex
+    item of .course-card-body. Nest it one level deeper and the pin silently stops
+    working — Details goes ragged again with no CSS error.{% endcomment %}
+    <div class="flex justify-end mt-auto">
         {% include "learner_interface/partials/course_details_link.html" %}
     </div>
 
