@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from io import StringIO
 from pathlib import Path
+from typing import cast
 
 import pytest
 import pytest_django.fixtures
@@ -28,10 +29,14 @@ from django.utils import timezone
 from freedom_ls.deployment.housekeeping import (
     OrphanReapResult,
     find_late_unpicked_tasks,
+    find_orphaned_running_reports,
     find_orphaned_running_tasks,
+    mark_orphaned_running_reports_failed,
     mark_orphaned_running_tasks_failed,
     run_housekeeping_sweeps,
 )
+from freedom_ls.reports.factories import GeneratedReportFactory
+from freedom_ls.reports.models import GeneratedReport
 
 
 @pytest.fixture(autouse=True)
@@ -86,6 +91,24 @@ def _create_orphan(
         started_at=timezone.now() - timedelta(hours=claimed_hours_ago),
         worker_ids=worker_ids,
         task_path=task_path,
+    )
+
+
+def _create_orphaned_report(
+    *,
+    started_hours_ago: float = 2,
+    **kwargs: object,
+) -> GeneratedReport:
+    """A cohort report left in RUNNING, as a killed worker would leave it."""
+    # cast because factory_boy's generated __call__ is untyped, so mypy reads the
+    # call as instantiating the factory class rather than the model.
+    return cast(
+        GeneratedReport,
+        GeneratedReportFactory(
+            status=GeneratedReport.STATUS_RUNNING,
+            started_at=timezone.now() - timedelta(hours=started_hours_ago),
+            **kwargs,
+        ),
     )
 
 
@@ -525,3 +548,259 @@ class TestFlsRunHousekeepingCommand:
             call_command("fls_run_housekeeping", stdout=StringIO())
 
         assert not heartbeat.exists()
+
+
+@pytest.mark.django_db
+class TestFindOrphanedRunningReports:
+    def test_report_running_since_long_ago_is_orphaned(
+        self, mock_site_context: None
+    ) -> None:
+        # Arrange
+        report = _create_orphaned_report(started_hours_ago=2)
+
+        # Act
+        orphans = find_orphaned_running_reports(3600)
+
+        # Assert
+        assert list(orphans) == [report]
+
+    def test_report_running_recently_is_not_orphaned(
+        self, mock_site_context: None
+    ) -> None:
+        # Arrange
+        _create_orphaned_report(started_hours_ago=0.1)
+
+        # Act
+        orphans = find_orphaned_running_reports(3600)
+
+        # Assert
+        assert list(orphans) == []
+
+    def test_pending_report_is_not_orphaned(self, mock_site_context: None) -> None:
+        # A PENDING row has no started_at, so nothing has claimed it yet.
+        # Arrange
+        GeneratedReportFactory(status=GeneratedReport.STATUS_PENDING)
+
+        # Act
+        orphans = find_orphaned_running_reports(3600)
+
+        # Assert
+        assert list(orphans) == []
+
+    def test_failed_report_is_not_orphaned(self, mock_site_context: None) -> None:
+        # Arrange
+        GeneratedReportFactory(
+            status=GeneratedReport.STATUS_FAILED,
+            started_at=timezone.now() - timedelta(hours=2),
+        )
+
+        # Act
+        orphans = find_orphaned_running_reports(3600)
+
+        # Assert
+        assert list(orphans) == []
+
+
+@pytest.mark.django_db
+class TestMarkOrphanedRunningReportsFailed:
+    def test_orphaned_report_is_marked_failed(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        report = _create_orphaned_report()
+
+        # Act
+        mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        report.refresh_from_db()
+        assert report.status == GeneratedReport.STATUS_FAILED
+
+    def test_orphaned_report_stamps_finished_at(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        report = _create_orphaned_report()
+
+        # Act
+        mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        report.refresh_from_db()
+        assert report.finished_at is not None
+
+    def test_orphaned_report_error_message_says_housekeeping_closed_it(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        report = _create_orphaned_report()
+
+        # Act
+        mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        report.refresh_from_db()
+        assert "fls_run_housekeeping" in report.error_message
+
+    def test_orphaned_report_frees_the_cohort_for_a_new_report(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # The point of the sweep: the partial unique index allows one pending or
+        # running report per cohort, so a stranded row blocks the cohort forever.
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        report = _create_orphaned_report()
+
+        # Act
+        mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        replacement = GeneratedReportFactory(
+            cohort=report.cohort, status=GeneratedReport.STATUS_PENDING
+        )
+        assert replacement.pk is not None
+
+    def test_recently_started_report_is_left_running(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        report = _create_orphaned_report(started_hours_ago=0.1)
+
+        # Act
+        mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        report.refresh_from_db()
+        assert report.status == GeneratedReport.STATUS_RUNNING
+
+    def test_every_report_marked_is_counted(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphaned_report()
+        _create_orphaned_report()
+
+        # Act
+        result = mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        assert result == OrphanReapResult(marked_failed=2, left_running=0)
+
+    def test_a_report_the_database_refuses_does_not_stop_the_rest(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Patched rather than provoked: a real DatabaseError poisons the test
+        # transaction and every later query in it.
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphaned_report()
+        _create_orphaned_report()
+        mocker.patch.object(
+            GeneratedReport, "save", side_effect=[DatabaseError("nope"), None]
+        )
+
+        # Act
+        result = mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        assert result == OrphanReapResult(marked_failed=1, left_running=1)
+
+    def test_each_orphaned_report_is_reported_to_sentry_separately(
+        self, mocker: MockerFixture, mock_site_context: None
+    ) -> None:
+        # Arrange
+        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphaned_report()
+        _create_orphaned_report()
+
+        # Act
+        mark_orphaned_running_reports_failed(3600)
+
+        # Assert
+        assert sentry.capture_message.call_count == 2
+
+
+@pytest.mark.django_db
+class TestOrphanedReportReporting:
+    def test_orphaned_report_is_closed_and_reported_but_fails_nothing(
+        self,
+        mocker: MockerFixture,
+        database_task_backend: None,
+        mock_site_context: None,
+    ) -> None:
+        # The sweep worked, so it fails nothing. What it found reaches an operator
+        # through Sentry, not by turning the housekeeping cron red every night.
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        _create_orphaned_report()
+
+        # Act
+        outcome = run_housekeeping_sweeps()
+
+        # Assert
+        assert outcome.sweep_failures == []
+        assert outcome.findings == []
+        assert any("cohort report(s) orphaned" in note for note in outcome.notes)
+
+    def test_report_reap_failure_is_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        # Arrange
+        sentry = mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.mark_orphaned_running_reports_failed",
+            side_effect=DatabaseError("the reports table is gone"),
+        )
+
+        # Act
+        outcome = run_housekeeping_sweeps()
+
+        # Assert
+        assert any(
+            "orphaned report sweep failed" in failure
+            for failure in outcome.sweep_failures
+        )
+        sentry.capture_exception.assert_called_once()
+
+    def test_reports_left_running_are_a_sweep_failure(
+        self, mocker: MockerFixture, database_task_backend: None
+    ) -> None:
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.mark_orphaned_running_reports_failed",
+            return_value=OrphanReapResult(marked_failed=0, left_running=1),
+        )
+
+        # Act
+        outcome = run_housekeeping_sweeps()
+
+        # Assert
+        assert any("still RUNNING" in failure for failure in outcome.sweep_failures)
+
+    def test_task_reap_failure_still_reaps_orphaned_reports(
+        self,
+        mocker: MockerFixture,
+        database_task_backend: None,
+        mock_site_context: None,
+    ) -> None:
+        # Sweep independence: one failing step must not skip the ones after it.
+        # Arrange
+        mocker.patch("freedom_ls.deployment.housekeeping.sentry_sdk")
+        mocker.patch(
+            "freedom_ls.deployment.housekeeping.mark_orphaned_running_tasks_failed",
+            side_effect=DatabaseError("the task table is gone"),
+        )
+        report = _create_orphaned_report()
+
+        # Act
+        run_housekeeping_sweeps()
+
+        # Assert
+        report.refresh_from_db()
+        assert report.status == GeneratedReport.STATUS_FAILED

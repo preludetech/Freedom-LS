@@ -14,9 +14,11 @@ class DeploymentSettings(AppSettings):
     SENTRY_SEND_DEFAULT_PII: bool
     WORKER_HEARTBEAT_PATH: str
     WORKER_HEARTBEAT_MAX_AGE_SECONDS: int
+    WORKER_MAX_TASK_SECONDS: int
     HOUSEKEEPING_HEARTBEAT_PATH: str
     HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS: int
     HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS: int
+    HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS: int
 
     declared_settings = {
         # PostHog: declared here to own the region-host default; the client-side
@@ -32,10 +34,18 @@ class DeploymentSettings(AppSettings):
         "SENTRY_SEND_DEFAULT_PII": Setting(default=False),
         # The worker's heartbeat: fls_run_worker touches the path once per poll and its
         # watchdog exits the process when the mtime falls behind the max age.
-        # Under /tmp because the image runs as a non-root user. The max age is
-        # also the longest a task may run before being killed mid-flight.
+        # Under /tmp because the image runs as a non-root user. The max age bounds
+        # how long the work loop may go quiet between tasks; how long a single task
+        # may run is WORKER_MAX_TASK_SECONDS, separately.
         "WORKER_HEARTBEAT_PATH": Setting(default="/tmp/heartbeat"),  # noqa: S108  # nosec B108
         "WORKER_HEARTBEAT_MAX_AGE_SECONDS": Setting(default=300),
+        # The longest a single task may run before the worker stops holding its
+        # heartbeat up for it. Past this the heartbeat is deliberately left to go
+        # stale so the watchdog kills the process mid-task, which is the whole
+        # reason the watchdog exists. The true ceiling on a task's life is this plus
+        # WORKER_HEARTBEAT_MAX_AGE_SECONDS plus one WATCHDOG_POLL_SECONDS, because
+        # the watchdog still has to notice.
+        "WORKER_MAX_TASK_SECONDS": Setting(default=1800),
         # The housekeeping command's heartbeat. A separate path setting from the worker's,
         # and a distinct default, so a deployment that co-locates the two processes is
         # safe without configuring anything: sharing one file, a daily sweep would keep
@@ -45,9 +55,16 @@ class DeploymentSettings(AppSettings):
         # How long a worker may hold a claimed task before housekeeping closes the row
         # as failed. Separate from the unpicked window because this one writes: set
         # below the longest legitimate task runtime it marks live work failed. Keep it
-        # at or above WORKER_HEARTBEAT_MAX_AGE_SECONDS, already the ceiling on how long
-        # a task may run before the watchdog kills the worker holding it.
+        # at or above the true task ceiling -- WORKER_MAX_TASK_SECONDS plus
+        # WORKER_HEARTBEAT_MAX_AGE_SECONDS plus one watchdog poll -- which is how long
+        # a task can still be running before the watchdog kills the worker holding it.
         "HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS": Setting(default=3600),
+        # How long a cohort report may sit in RUNNING before housekeeping closes it as
+        # failed. Its own window rather than the task one: a report render is the long
+        # task in this system, and while the row sits in RUNNING the partial unique
+        # index makes it the one in-flight report that cohort is allowed, so nobody can
+        # ask for another. Same ceiling rule as the task window above.
+        "HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS": Setting(default=3600),
     }
 
 

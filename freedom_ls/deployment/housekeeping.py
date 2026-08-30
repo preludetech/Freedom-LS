@@ -1,4 +1,5 @@
-"""Sweeps that keep the task queue and session table from growing without bound.
+"""Sweeps that keep the task queue and session table from growing without bound,
+and that close rows a dead worker left open behind it.
 
 Runs once per invocation from `fls_run_housekeeping`; the downstream deploy
 supplies the schedule (cron, a Kubernetes CronJob, or similar).
@@ -20,6 +21,7 @@ from django.db.models import Q, QuerySet
 from django.utils import timezone
 
 from freedom_ls.deployment.config import config
+from freedom_ls.reports.models import GeneratedReport
 
 
 class OrphanedTaskError(RuntimeError):
@@ -144,6 +146,71 @@ def mark_orphaned_running_tasks_failed(max_age_seconds: int) -> OrphanReapResult
     return OrphanReapResult(marked_failed=marked_failed, left_running=left_running)
 
 
+def find_orphaned_running_reports(max_age_seconds: int) -> QuerySet[GeneratedReport]:
+    """Cohort reports that have been RUNNING longer than the given window.
+
+    started_at is written once, by generate_cohort_report, in the same save that
+    sets RUNNING, so it is how long the render has been in flight. A row still
+    PENDING has no started_at and never satisfies the comparison, which is right:
+    nothing has claimed it yet.
+
+    _base_manager, not the site-aware `objects`: housekeeping runs from a
+    management command with no request to derive a site from, and every site's rows
+    are in scope.
+    """
+    cutoff = timezone.now() - timedelta(seconds=max_age_seconds)
+    return GeneratedReport._base_manager.filter(
+        status=GeneratedReport.STATUS_RUNNING, started_at__lte=cutoff
+    )
+
+
+def mark_orphaned_running_reports_failed(max_age_seconds: int) -> OrphanReapResult:
+    """Close every orphaned RUNNING report as FAILED. Bookkeeping, not recovery.
+
+    The render is never retried. What makes this worth sweeping is the partial
+    unique index on the model: while the row sits in RUNNING it *is* the one
+    in-flight report that cohort is allowed, so leaving it there blocks that cohort
+    from ever asking for another. Closing it says the render did not finish and
+    hands the cohort back.
+
+    Nothing was written to storage on this path, so there is no file to clean up.
+    """
+    # Materialised before the loop starts changing the status the query filters on.
+    orphans = list(find_orphaned_running_reports(max_age_seconds))
+    marked_failed = 0
+    left_running = 0
+
+    for report in orphans:
+        report.status = GeneratedReport.STATUS_FAILED
+        report.error_message = (
+            f"Started at {report.started_at} and still rendering "
+            f"{max_age_seconds}s later, so the worker rendering it died without "
+            f"finishing. fls_run_housekeeping marked this report failed to say so. "
+            f"The report was not re-rendered; ask for it again to retry."
+        )
+        report.finished_at = timezone.now()
+        try:
+            report.save(update_fields=["status", "error_message", "finished_at"])
+        except DatabaseError as exc:
+            sentry_sdk.capture_exception(exc)
+            left_running += 1
+        else:
+            marked_failed += 1
+            # A constant message, so every stranded report groups into one
+            # recurring Sentry issue. What varies per row rides on the scope.
+            with sentry_sdk.new_scope() as scope:
+                scope.set_extra("report_id", str(report.id))
+                scope.set_extra("cohort_id", str(report.cohort_id))
+                scope.set_extra("site_id", str(report.site_id))
+                scope.set_extra("started_at", str(report.started_at))
+                sentry_sdk.capture_message(
+                    "A cohort report was orphaned in RUNNING and has been marked "
+                    "failed. It was not re-rendered."
+                )
+
+    return OrphanReapResult(marked_failed=marked_failed, left_running=left_running)
+
+
 # The two ways a sweep can fail without being a bug in this command: the command
 # it delegates to reports failure, or the database refuses the work. Anything else
 # is a bug and propagates, where the management-command machinery turns it into a
@@ -212,6 +279,28 @@ def run_housekeeping_sweeps() -> HousekeepingOutcome:
             sweep_failures.append(
                 f"{reaped.left_running} orphaned task result(s) could not be closed "
                 f"and are still RUNNING."
+            )
+
+    # Last, on the same reasoning as the sweep above. Closing the task row does not
+    # close the report row: they are separate tables, and the report is the one a
+    # cohort's next request is blocked behind.
+    try:
+        reaped_reports = mark_orphaned_running_reports_failed(
+            config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS
+        )
+    except DatabaseError as exc:
+        sentry_sdk.capture_exception(exc)
+        sweep_failures.append(f"orphaned report sweep failed: {exc}")
+    else:
+        if reaped_reports.marked_failed:
+            notes.append(
+                f"Closed {reaped_reports.marked_failed} cohort report(s) orphaned "
+                f"in RUNNING."
+            )
+        if reaped_reports.left_running:
+            sweep_failures.append(
+                f"{reaped_reports.left_running} orphaned cohort report(s) could not "
+                f"be closed and are still RUNNING."
             )
 
     return HousekeepingOutcome(
