@@ -93,9 +93,17 @@ After applying the integration, run FreedomLS's system checks to catch configura
 
 ```
 uv run python manage.py check
+uv run python manage.py check --deploy --settings=<the project's production settings>
 ```
 
-No `--deploy` or `--tag` is needed — FLS registers no `deploy=True` checks, so a plain `check` already covers everything relevant. `migrate` and `makemigrations` already run this same check set internally, so this isn't the only place a failure would surface — running it directly here is about attribution (a configuration `Error` would otherwise read as a migration-gate failure) and warning visibility (only a direct `check` sets `display_num_errors`). Errors abort the run: stop and resolve them. Warnings do not abort, but read and act on them rather than skimming past.
+Both runs are needed. FLS registers checks in each group, and neither run is a superset of the other:
+
+- Plain `check` covers everything that is not deploy-gated, including `freedom_ls_accounts.E003`, which catches a `TRUSTED_PROXY_IP_HEADER` still holding the old `request.META` spelling.
+- `--deploy` is the only thing that runs `freedom_ls_deployment.E001` through `E006` — the five media-alias and cache checks, plus the one that catches the two client-IP header settings naming different headers. A pointer move that lands new storage aliases or a new cache backend is exactly the kind of drift they exist to catch, so skipping this run is how a misconfigured bucket reaches production silently.
+
+`--deploy` needs the production settings module, since the checks read settings that only exist there. If the environment this runs in cannot supply the production settings, say so and hand the `--deploy` run to the deploy pipeline rather than skipping it.
+
+`migrate` and `makemigrations` already run the non-deploy check set internally, so that half isn't the only place a failure would surface — running it directly here is about attribution (a configuration `Error` would otherwise read as a migration-gate failure) and warning visibility (only a direct `check` sets `display_num_errors`). Errors abort the run: stop and resolve them. Warnings do not abort, but read and act on them rather than skimming past.
 
 ## 3h. Post-flight conflict check
 

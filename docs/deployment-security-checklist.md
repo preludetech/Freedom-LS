@@ -125,6 +125,29 @@ Review and resolve all warnings. Common issues include:
 `freedom_ls_deployment.W001` (`SENTRY_DSN` set but `SENTRY_RELEASE` blank) can be silenced via
 `SILENCED_SYSTEM_CHECKS` if release tracking is intentionally disabled for an environment.
 
+FLS's own checks are split across the two runs, so run both:
+
+- [ ] `uv run manage.py check` — covers `freedom_ls_accounts.E003`, which catches a
+      `TRUSTED_PROXY_IP_HEADER` still holding the old `request.META` spelling (`HTTP_`-prefixed).
+      That value never matches, so the client IP silently falls back to the connecting address.
+- [ ] `uv run manage.py check --deploy` — the only run that executes
+      `freedom_ls_deployment.E001` through `E006`. See §10 for what each reports.
+
+## 9a. Deploy Sequence
+
+Order matters. These run before the application starts serving:
+
+- [ ] `manage.py migrate`
+- [ ] `manage.py createcachetable` — production uses a database-backed cache and **no migration
+      creates its table**. Miss this and nothing fails until the first request that touches the
+      cache, which is every login and signup attempt (allauth's rate limiting reads it), raising
+      `ProgrammingError` from inside the auth flow. It is idempotent. `freedom_ls_deployment.E005`
+      catches the gap at `check --deploy` time. Skip only if you set your own non-database `CACHES`.
+- [ ] `manage.py setup_initial_prod_data <admin-email>` — creates the site record, the administrative
+      account and its verified email address. Prints the generated password **once**, to stdout and
+      nowhere else. Record it then. Safe to re-run; it never resets an existing password.
+- [ ] `manage.py check --deploy` (see §9)
+
 ## 10. Environment Variables
 
 All required environment variables must be set in production. Never hardcode credentials.
@@ -136,6 +159,7 @@ All required environment variables must be set in production. Never hardcode cre
 | `SECRET_KEY` | Django secret key. Must be unique, random, and at least 50 characters. |
 | `WEBHOOK_ENCRYPTION_SALT` | Salt for webhook-secret Fernet encryption. Required in production — startup raises `ImproperlyConfigured` (crash-loops) when unset. |
 | `HOST_DOMAIN` | The production domain name (e.g., `example.com`). Used for `ALLOWED_HOSTS`. |
+| `TRUSTED_CLIENT_IP_HEADER` | The header your edge sets to the visitor's own address. Defaults to `CF-Connecting-IP`, which a Cloudflare tunnel sets. Sets both `TRUSTED_PROXY_IP_HEADER` and `ALLAUTH_TRUSTED_CLIENT_IP_HEADER`. Naming a header the edge does not send answers 403 to every login, and no check can detect that — verify with a real sign-in. Must be one the edge *sets* rather than appends, so it carries exactly one address. |
 
 ### Database
 
@@ -228,9 +252,27 @@ files the way its contents need.
 They carry separate ids so that a deployment serving media from local disk deliberately can silence
 E002 through `SILENCED_SYSTEM_CHECKS` without also giving up the other three.
 
-All four run only under `manage.py check --deploy`, not under plain `check`, `runserver` or
+Two further deploy checks cover the production cache and the edge:
+
+| Check | Reports |
+|---|---|
+| `freedom_ls_deployment.E005` | A database-backed cache alias whose table does not exist, because `createcachetable` was missed in the deploy sequence (§9a). No migration creates it. A database this check cannot reach reports nothing rather than a false error, so a build container with no database still passes. |
+| `freedom_ls_deployment.E006` | `ALLAUTH_TRUSTED_CLIENT_IP_HEADER` and `TRUSTED_PROXY_IP_HEADER` naming different headers, which would have allauth's rate limiting and django-axes' lockout keying their counters on two different addresses for the same visitor. |
+
+All six run only under `manage.py check --deploy`, not under plain `check`, `runserver` or
 `migrate`, so a deploy pipeline has to actually run `check --deploy` for any of them to catch a
-misconfigured bucket.
+misconfigured bucket, a missing cache table or a mismatched edge header.
+
+One FLS check is deliberately **not** deploy-gated. `freedom_ls_accounts.E003` errors when
+`TRUSTED_PROXY_IP_HEADER` holds an `HTTP_`-prefixed value, the `request.META` key form the setting
+used to take. Both readers now go through `request.headers`, where that value never matches, so the
+client IP falls back to the proxy's own address and lands in consent evidence and lockout keys with
+nothing to say it happened. It runs on `runserver` and `migrate` too, so a downstream carrying the
+old spelling meets it in development rather than at deploy time.
+
+No check can tell whether your edge actually sends the header you named. Naming one it does not send
+removes allauth's fallback to `REMOTE_ADDR` and answers 403 to every login, signup and password
+reset, so verify it with a real sign-in after deploying.
 
 ## 11. Legal Documents
 
