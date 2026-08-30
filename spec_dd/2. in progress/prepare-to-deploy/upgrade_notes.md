@@ -8,7 +8,7 @@ changed_settings:
   - TRUSTED_PROXY_IP_HEADER  # hard: meaning changed from a request.META key to an HTTP header name
   - ALLAUTH_TRUSTED_CLIENT_IP_HEADER  # hard: new in settings_prod; without it allauth 403s every login behind an edge
   - CACHES  # hard: production is now DatabaseCache; freedom_ls_deployment.E005 enforces the table at check --deploy
-  - AXES_LOCKOUT_PARAMETERS  # optional: now the nested [["ip_address", "username"]] form
+  - AXES_LOCKOUT_PARAMETERS  # optional: now two rules, the nested pair plus username alone
   - AXES_CLIENT_IP_CALLABLE  # optional
   - AXES_LOCKOUT_TEMPLATE  # optional
   - AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT  # optional
@@ -18,6 +18,8 @@ changed_settings:
   - HOUSEKEEPING_HEARTBEAT_PATH  # optional
   - HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS  # optional
   - HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS  # optional
+  - WORKER_MAX_TASK_SECONDS  # optional: new, caps how long the heartbeat is held up for one task
+  - HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS  # optional: new, closes reports stranded in RUNNING
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -30,11 +32,12 @@ requires_tailwind_rebuild: false
 ## Breaking changes
 
 **`TRUSTED_PROXY_IP_HEADER` changed meaning.** It used to hold a `request.META` key
-(`"HTTP_X_FORWARDED_FOR"`); it now holds a plain HTTP header name (`"X-Real-IP"`).
+(`"HTTP_X_FORWARDED_FOR"`); it now holds a plain HTTP header name (`"CF-Connecting-IP"`).
 `freedom_ls.accounts.utils.get_client_ip` reads `request.headers` rather than `request.META`, so a
 project that still sets the old spelling gets no match and silently falls back to `REMOTE_ADDR` —
 no error, just wrong client IPs in `LegalConsent` records and django-axes lockout keys. Rewrite the
-value if you set it.
+value if you set it. A system check, `freedom_ls_accounts.E003`, now catches the old spelling: any
+value starting with `HTTP_` is an error, raised on `runserver` as well as under `check --deploy`.
 
 The header must be one your edge **sets** rather than appends, so it carries exactly one address.
 The value is no longer comma-split, and a value that is not a single valid address (an appended
@@ -60,9 +63,13 @@ then raises `ProgrammingError` from inside the auth flow. A new system check,
 `freedom_ls_deployment.E005`, catches this at `manage.py check --deploy` time. If you set your own
 `CACHES` in production, this does not apply to you.
 
-**`AXES_LOCKOUT_PARAMETERS` takes the nested form** `[["ip_address", "username"]]`, so a lockout
-now needs address *and* username together rather than locking on either alone. If you override this
-setting, the flat form is a denial of service on a shared NAT — take the nested form too.
+**`AXES_LOCKOUT_PARAMETERS` takes two independent rules**,
+`[["ip_address", "username"], "username"]`. The nested entry needs address *and* username together,
+so one person's mistakes cannot lock out everyone behind a shared NAT. The flat `"username"` entry
+locks on the account alone, which is what caps a spray that rotates source addresses — the only cap
+on the Django admin login, which `ACCOUNT_RATE_LIMITS` does not wrap. If you override this setting,
+keep both: the nested entry alone leaves `/admin/login/` uncapped, and a bare flat pair
+(`["ip_address", "username"]`) is a denial of service on a shared NAT.
 `ACCOUNT_RATE_LIMITS` gains `"login_failed": "10/m/ip,5/5m/key"` as the faster layer above the
 lockout; it merges over allauth's defaults, so overriding the dict wholesale drops it.
 
@@ -75,13 +82,17 @@ lockout; it merges over allauth's defaults, so overriding the dict wholesale dro
    `freedom_ls_deployment.E005` (database-backed cache alias whose table is missing). A build
    container with no database reachable returns no error rather than a false one.
 3. **Set the edge header.** In production, `TRUSTED_PROXY_IP_HEADER` and
-   `ALLAUTH_TRUSTED_CLIENT_IP_HEADER` both default to `"X-Real-IP"`
-   (`freedom_ls.deployment.settings_defaults.TRUSTED_CLIENT_IP_HEADER`). Naming a header removes
-   allauth's own fallback to `REMOTE_ADDR`, so if your edge does not set `X-Real-IP`, every login,
-   signup and password reset answers 403 — point both settings at whichever header your edge does
-   set. Do **not** set `ALLAUTH_TRUSTED_PROXY_COUNT`; it selects the `X-Forwarded-For` path
-   instead. Make sure no route reaches the origin without traversing the proxy, or a client sets
-   the header itself and picks its own lockout key.
+   `ALLAUTH_TRUSTED_CLIENT_IP_HEADER` are both read from the `TRUSTED_CLIENT_IP_HEADER`
+   environment variable, defaulting to `"CF-Connecting-IP"`
+   (`freedom_ls.deployment.settings_defaults.TRUSTED_CLIENT_IP_HEADER`) — the header a Cloudflare
+   tunnel sets. Naming a header removes allauth's own fallback to `REMOTE_ADDR`, so if your edge
+   sets a different one, every login, signup and password reset answers 403. Set the environment
+   variable to whichever header your edge sets; no code change is needed. `freedom_ls_deployment.E006`
+   fails `check --deploy` if the two settings ever name different headers, but no check can tell
+   whether your edge actually sends the one you named — verify that with a real login. Do **not**
+   set `ALLAUTH_TRUSTED_PROXY_COUNT`; it selects the `X-Forwarded-For` path instead. Make sure no
+   route reaches the origin without traversing the proxy, or a client sets the header itself and
+   picks its own lockout key.
 4. **Swap your process commands.** Replace bare `manage.py db_worker` with
    `manage.py fls_run_worker` (all queues, heartbeat file, watchdog that exits the process when the
    main thread wedges). Replace any scheduled `prune_db_task_results` with
