@@ -1,6 +1,6 @@
 import os
 
-from freedom_ls.base.env import env_int
+from freedom_ls.base.env import env_int, env_str
 from freedom_ls.deployment import settings_defaults as fls_defaults
 from freedom_ls.deployment.storage import build_storages
 
@@ -79,7 +79,7 @@ DATABASES["default"]["CONN_MAX_AGE"] = env_int(
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = fls_defaults.CONN_HEALTH_CHECKS
 
 # Durable, database-backed task backend (django-tasks-db). Requires a running
-# `python manage.py db_worker` process; see settings_defaults.py for details.
+# `python manage.py fls_run_worker` process; see settings_defaults.py for details.
 TASKS = fls_defaults.DATABASE_TASKS
 
 CACHES = fls_defaults.DATABASE_CACHES
@@ -115,7 +115,16 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 # instead. Naming the header removes allauth's fallback to REMOTE_ADDR, so the
 # edge header becomes load-bearing for login and signup here in production; the
 # trust preconditions live beside the primitive in settings_defaults.py.
-TRUSTED_PROXY_IP_HEADER = fls_defaults.TRUSTED_CLIENT_IP_HEADER
+#
+# Read from the environment because the header is a property of whichever edge is
+# in front of this deployment, not of FLS: the default names the one cloudflared
+# sets, and an edge that sets a different one would otherwise 403 every login with
+# nothing to change short of a code edit. Both settings come from the one
+# expression so they cannot drift apart -- axes and allauth keying their counters
+# on different addresses is checked by freedom_ls_deployment.E006.
+TRUSTED_PROXY_IP_HEADER = env_str(
+    "TRUSTED_CLIENT_IP_HEADER", fls_defaults.TRUSTED_CLIENT_IP_HEADER
+)
 ALLAUTH_TRUSTED_CLIENT_IP_HEADER = TRUSTED_PROXY_IP_HEADER
 
 

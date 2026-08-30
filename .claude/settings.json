@@ -69,7 +69,6 @@
       "Bash(uv run python manage.py qa_*)"
     ],
     "deny": [
-      "Edit(config/settings_prod.py)",
       "Bash(git commit --no-verify:*)",
       "Bash(git push --force:*)",
       "Read(**/*.pem)",

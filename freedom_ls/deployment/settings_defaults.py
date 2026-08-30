@@ -63,8 +63,9 @@ CONN_HEALTH_CHECKS: bool = True
 SECURE_REDIRECT_EXEMPT: list[str] = [r"^health/"]
 
 # Durable, database-backed task backend for production (django-tasks-db, ORM/Postgres —
-# no Celery/Redis). HARD operational dependency: an out-of-process `python manage.py db_worker`
-# must be running, or enqueued tasks persist in the DB and never execute. Enqueue stays
+# no Celery/Redis). HARD operational dependency: an out-of-process
+# `python manage.py fls_run_worker` must be running, or enqueued tasks persist in the DB
+# and never execute. Enqueue stays
 # on-commit (Django default) so the worker sees the committed WebhookEvent row.
 DATABASE_TASKS: dict[str, dict[str, str]] = {
     "default": {"BACKEND": "django_tasks_db.DatabaseBackend"},
