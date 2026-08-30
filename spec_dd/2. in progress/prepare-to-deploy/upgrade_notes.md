@@ -87,6 +87,12 @@ lockout; it merges over allauth's defaults, so overriding the dict wholesale dro
    third new id, `freedom_ls_accounts.E003`, is deliberately not deploy-gated: it fires on
    `runserver`, `migrate` and plain `check` as well, so a carried-over `HTTP_`-prefixed header value
    is caught in development rather than at deploy time.
+
+   If you have never run `check --deploy` — FLS's own update command wrongly said a plain `check`
+   covered everything — expect the four pre-existing media-alias checks
+   (`freedom_ls_deployment.E001` through `E004`) to fire alongside the two new ones. Those are
+   long-standing storage misconfigurations surfacing for the first time, not something this change
+   broke. `docs/deployment-security-checklist.md` has a table of what each id reports.
 3. **Set the edge header.** In production, `TRUSTED_PROXY_IP_HEADER` and
    `ALLAUTH_TRUSTED_CLIENT_IP_HEADER` are both read from the `TRUSTED_CLIENT_IP_HEADER`
    environment variable, defaulting to `"CF-Connecting-IP"`

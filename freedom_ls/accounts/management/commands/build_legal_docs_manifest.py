@@ -12,7 +12,7 @@ Usage:
     uv run manage.py build_legal_docs_manifest > legal_docs.manifest.json
 
 …then point ``LEGAL_DOCS_MANIFEST_PATH`` at that file in production settings.
-See ``docs/deployment-security-checklist.md`` for the full deploy procedure.
+See ``docs/deployment-security-checklist.md`` section 10 for the full manifest procedure.
 """
 
 from __future__ import annotations

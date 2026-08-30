@@ -96,10 +96,7 @@ uv run python manage.py check
 uv run python manage.py check --deploy --settings=<the project's production settings>
 ```
 
-Both runs are needed. FLS registers checks in each group, and neither run is a superset of the other:
-
-- Plain `check` covers everything that is not deploy-gated, including `freedom_ls_accounts.E003`, which catches a `TRUSTED_PROXY_IP_HEADER` still holding the old `request.META` spelling.
-- `--deploy` is the only thing that runs `freedom_ls_deployment.E001` through `E006` — the five media-alias and cache checks, plus the one that catches the two client-IP header settings naming different headers. A pointer move that lands new storage aliases or a new cache backend is exactly the kind of drift they exist to catch, so skipping this run is how a misconfigured bucket reaches production silently.
+Both runs are needed. FLS registers checks in both groups and neither run is a superset of the other: the deploy-gated ones guard production-only configuration — storage, caches, proxy headers — and a pointer move is exactly what lands new configuration for them to catch, so skipping that run is how a misconfigured production setting reaches production silently. The spec's `upgrade_notes.md` names any check ids that spec adds or changes; FLS's own `docs/deployment-security-checklist.md` documents what every id reports.
 
 `--deploy` needs the production settings module, since the checks read settings that only exist there. If the environment this runs in cannot supply the production settings, say so and hand the `--deploy` run to the deploy pipeline rather than skipping it.
 

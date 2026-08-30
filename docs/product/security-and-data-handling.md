@@ -25,7 +25,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 **CI (built).** Pull requests run the test suite plus a security workflow covering static security analysis, dependency vulnerability auditing, and pattern-based scanning — and a job that runs Django's own `check --deploy` against the production settings, failing on warnings. This catches a weak or misconfigured production setting before it ships.
 
-**GitHub platform features (operational).** Branch protection, Dependabot alerts, secret scanning, and CodeQL are configuration, not code. See [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §12 — not duplicated here.
+**GitHub platform features (operational).** Branch protection, Dependabot alerts, secret scanning, and CodeQL are configuration, not code. See [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §11 — not duplicated here.
 
 ---
 
@@ -185,5 +185,5 @@ South Africa's Protection of Personal Information Act does not impose a blanket 
 
 ## References
 
-- [`../deployment-security-checklist.md`](../deployment-security-checklist.md) — pre-deployment checklist covering server hardening, TLS, HSTS rollout, firewall rules, backup encryption, log management, monitoring, GitHub security features, and environment variables. Referenced throughout; not duplicated here.
+- [`../deployment-security-checklist.md`](../deployment-security-checklist.md) — pre-deployment checklist covering server hardening, database and TLS configuration, HSTS rollout, firewall rules, backup encryption, log management, the Django deployment checks, security-relevant environment variables, legal-document integrity, and GitHub security features. Referenced throughout; not duplicated here.
 - [Deployment](./deployment.md) — the V1 architecture.

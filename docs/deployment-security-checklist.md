@@ -2,6 +2,12 @@
 
 Use this checklist before every production deployment to ensure the system is properly secured.
 
+Security controls only. The operational side of a deployment — the deploy sequence, background
+worker and housekeeping processes, health probes, uptime and error monitoring, backups as an
+operation — is in [product deployment documentation](./product/deployment.md). The complete,
+annotated set of environment variables is in `.env.example`; only the security-relevant ones are
+listed here.
+
 ---
 
 ## 1. Server Hardening
@@ -31,9 +37,11 @@ Use this checklist before every production deployment to ensure the system is pr
 - [ ] Strong cipher suites only (disable weak ciphers like RC4, 3DES)
 - [ ] HTTP requests are redirected to HTTPS (301 redirect)
 - [ ] SSL certificate is valid and not near expiration
+- [ ] Certificate expiration monitoring is active, so a lapse is caught before it drops traffic
 - [ ] Certificate chain is complete
 - [ ] OCSP stapling is enabled
 - [ ] If behind a reverse proxy (Nginx, Cloudflare, ALB), set `SECURE_PROXY_SSL_HEADER` in Django settings to avoid redirect loops
+- [ ] SMTP submission uses TLS (`EMAIL_USE_TLS=True`), so mail credentials and message bodies do not cross the network in the clear
 
 ## 4. HSTS Rollout
 
@@ -91,22 +99,12 @@ Submit domain to the [HSTS preload list](https://hstspreload.org/).
 ## 7. Log Management
 
 - [ ] Centralized logging is configured (e.g., ELK, CloudWatch, Datadog)
-- [ ] Log rotation is enabled to prevent disk exhaustion
 - [ ] Security events are logged (failed logins, permission denials, admin actions)
 - [ ] Logs do not contain sensitive data (passwords, tokens, PII)
 - [ ] Log retention policy complies with regulatory requirements
 - [ ] Alerts are configured for suspicious activity patterns
 
-## 8. Monitoring
-
-- [ ] Uptime checks are configured for the application URL
-- [ ] Error tracking is enabled (e.g., Sentry, Rollbar)
-- [ ] Performance monitoring is active (response times, throughput)
-- [ ] Disk, CPU, and memory alerts are configured
-- [ ] Database connection pool monitoring is in place
-- [ ] SSL certificate expiration monitoring is active
-
-## 9. Django Deployment Check
+## 8. Django Deployment Check
 
 Run the built-in Django deployment check before every release:
 
@@ -131,26 +129,13 @@ FLS's own checks are split across the two runs, so run both:
       `TRUSTED_PROXY_IP_HEADER` still holding the old `request.META` spelling (`HTTP_`-prefixed).
       That value never matches, so the client IP silently falls back to the connecting address.
 - [ ] `uv run manage.py check --deploy` — the only run that executes
-      `freedom_ls_deployment.E001` through `E006`. See §10 for what each reports.
+      `freedom_ls_deployment.E001` through `E006`. See §9 for what each reports.
 
-## 9a. Deploy Sequence
+## 9. Environment Variables
 
-Order matters. These run before the application starts serving:
-
-- [ ] `manage.py migrate`
-- [ ] `manage.py createcachetable` — production uses a database-backed cache and **no migration
-      creates its table**. Miss this and nothing fails until the first request that touches the
-      cache, which is every login and signup attempt (allauth's rate limiting reads it), raising
-      `ProgrammingError` from inside the auth flow. It is idempotent. `freedom_ls_deployment.E005`
-      catches the gap at `check --deploy` time. Skip only if you set your own non-database `CACHES`.
-- [ ] `manage.py setup_initial_prod_data <admin-email>` — creates the site record, the administrative
-      account and its verified email address. Prints the generated password **once**, to stdout and
-      nowhere else. Record it then. Safe to re-run; it never resets an existing password.
-- [ ] `manage.py check --deploy` (see §9)
-
-## 10. Environment Variables
-
-All required environment variables must be set in production. Never hardcode credentials.
+The security-relevant variables only. `.env.example` carries the complete annotated set, including
+the connection, mail and analytics settings that are configuration rather than controls. Never
+hardcode credentials.
 
 ### Core Django Settings
 
@@ -165,13 +150,8 @@ All required environment variables must be set in production. Never hardcode cre
 
 | Variable | Description |
 |---|---|
-| `DB_NAME` | PostgreSQL database name. |
-| `DB_USER` | PostgreSQL database user. |
 | `DB_PASSWORD` | PostgreSQL database password. Must be strong and randomly generated. |
-| `DB_HOST` | PostgreSQL host address. |
-| `DB_PORT` | PostgreSQL port (default: `5432`). |
 | `DB_SSLMODE` | libpq `sslmode` (default: `prefer`). Use `require`/`verify-full` for external/managed databases. |
-| `DB_CONN_MAX_AGE` | Persistent connection lifetime in seconds (default: `60`). Recommended 60-300s; never unlimited. |
 
 ### HSTS
 
@@ -191,19 +171,7 @@ All required environment variables must be set in production. Never hardcode cre
 
 | Variable | Description |
 |---|---|
-| `LEGAL_DOCS_MANIFEST_PATH` | Absolute path to the pre-built legal-docs manifest JSON. Required in deployments where `.git` is absent. Must point to a **read-only** location in the image filesystem. If set, the file MUST exist or startup raises `ImproperlyConfigured`. See section 11. |
-
-### Email
-
-| Variable | Description |
-|---|---|
-| `EMAIL_BACKEND` | Django email backend class path. |
-| `EMAIL_HOST` | SMTP server hostname. |
-| `EMAIL_PORT` | SMTP server port. |
-| `EMAIL_USE_TLS` | Whether to use TLS for email (`True`/`False`). |
-| `EMAIL_HOST_USER` | SMTP authentication username. |
-| `EMAIL_HOST_PASSWORD` | SMTP authentication password. |
-| `DEFAULT_FROM_EMAIL` | Default sender email address. |
+| `LEGAL_DOCS_MANIFEST_PATH` | Absolute path to the pre-built legal-docs manifest JSON. Required in deployments where `.git` is absent. Must point to a **read-only** location in the image filesystem. If set, the file MUST exist or startup raises `ImproperlyConfigured`. See §10. |
 
 ### AWS / S3 Storage
 
@@ -229,15 +197,8 @@ the shared secret signs every request with a key the secret does not match, and 
 can see that; a half-set pair therefore raises `ImproperlyConfigured` at startup rather than
 falling back.
 
-These three Django settings (not `AWS_*` environment variables) are read through `AppSettings` and
-name which `STORAGES` key each kind of file writes to. Renaming one means rebuilding `STORAGES`
-with the matching argument to `build_storages()`, or the key the setting names will not exist.
-
-| Setting | Names the alias for | Default |
-|---|---|---|
-| `REPORTS_STORAGE_ALIAS` | Cohort report PDFs | `"reports"` |
-| `ORGANISATION_LOGO_STORAGE_ALIAS` | Organisation logos | `"public"` |
-| `CONTENT_MEDIA_STORAGE_ALIAS` | Course images, PDFs and video | `"course_media"` |
+Which alias each kind of file writes to is configurable; see
+[configuration and extension](./product/configuration-and-extension.md).
 
 Four checks between them require every media alias to reach a bucket of its own and to serve its
 files the way its contents need.
@@ -256,7 +217,7 @@ Two further deploy checks cover the production cache and the edge:
 
 | Check | Reports |
 |---|---|
-| `freedom_ls_deployment.E005` | A database-backed cache alias whose table does not exist, because `createcachetable` was missed in the deploy sequence (§9a). No migration creates it. A database this check cannot reach reports nothing rather than a false error, so a build container with no database still passes. |
+| `freedom_ls_deployment.E005` | A database-backed cache alias whose table does not exist, because `createcachetable` was not run before the application started serving. No migration creates it; it belongs in the deploy sequence, described in [product deployment documentation](./product/deployment.md). A database this check cannot reach reports nothing rather than a false error, so a build container with no database still passes. |
 | `freedom_ls_deployment.E006` | `ALLAUTH_TRUSTED_CLIENT_IP_HEADER` and `TRUSTED_PROXY_IP_HEADER` naming different headers, which would have allauth's rate limiting and django-axes' lockout keying their counters on two different addresses for the same visitor. |
 
 All six run only under `manage.py check --deploy`, not under plain `check`, `runserver` or
@@ -274,7 +235,7 @@ No check can tell whether your edge actually sends the header you named. Naming 
 removes allauth's fallback to `REMOTE_ADDR` and answers 403 to every login, signup and password
 reset, so verify it with a real sign-in after deploying.
 
-## 11. Legal Documents
+## 10. Legal Documents
 
 The `accounts` app reads Terms / Privacy from the git blob at HEAD so a tampered
 working tree cannot affect what users see at signup or what is recorded as
@@ -304,7 +265,7 @@ build a manifest at image-build time:
 - [ ] Run `uv run manage.py check` and confirm no legal-doc system-check
       warnings before promoting the image
 
-## 12. GitHub Security Features
+## 11. GitHub Security Features
 
 - [ ] Dependabot is enabled for dependency vulnerability alerts
 - [ ] Dependabot security updates are configured for automatic PRs
