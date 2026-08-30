@@ -54,7 +54,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user) Decide what a locked-out visitor should see: whether to point AXES_LOCKOUT_TEMPLATE at a branded FLS template or set AXES_LOCKOUT_URL, whether the page discloses the one-hour cooloff, and whether it may link to password reset given ACCOUNT_PREVENT_ENUMERATION
 - [x] (user + cmd) Fix QA bug: account-lockout page is an unstyled plain-text dead end with no branding or route back (TDD — failing test first, then fix)
 - [x] (user) Raise the three deferred code-review findings with the infrastructure repo: the nested AXES_LOCKOUT_PARAMETERS trade-off under EDGE-12, whether a stalled worker should fail fls_run_housekeeping, and whether tasks orphaned in RUNNING need their own sweep (all three recorded in the spec's Open questions)
-- [ ] (cmd) Implement `4. plan.md` — carry the updated app-repo contract (EDGE-12 failure rate limits, COMPOSE-8 orphaned-task reap and heartbeat decoupling) into FLS
+- [x] (cmd) Implement `4. plan.md` — carry the updated app-repo contract (EDGE-12 failure rate limits, COMPOSE-8 orphaned-task reap and heartbeat decoupling) into FLS
 
 ## 10. Product documentation
 
