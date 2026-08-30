@@ -113,8 +113,9 @@ ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # Do not set ALLAUTH_TRUSTED_PROXY_COUNT; it selects the X-Forwarded-For path
 # instead. Naming the header removes allauth's fallback to REMOTE_ADDR, so the
-# edge header becomes load-bearing for login and signup here in production.
-TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+# edge header becomes load-bearing for login and signup here in production; the
+# trust preconditions live beside the primitive in settings_defaults.py.
+TRUSTED_PROXY_IP_HEADER = fls_defaults.TRUSTED_CLIENT_IP_HEADER
 ALLAUTH_TRUSTED_CLIENT_IP_HEADER = TRUSTED_PROXY_IP_HEADER
 
 

@@ -1,0 +1,40 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - link [ref=f16e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f16e4]
+      - heading "FirstClass" [level=1] [ref=f16e5]
+    - navigation [ref=f16e6]:
+      - generic [ref=f16e7]:
+        - link "Login" [ref=f16e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f16e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e10]:
+    - generic [ref=f16e11]:
+      - heading "Sign In" [level=1] [ref=f16e12]
+      - paragraph [ref=f16e13]:
+        - text: If you have not created an account yet, then please
+        - link "sign up" [ref=f16e14] [cursor=pointer]:
+          - /url: /accounts/signup/
+        - text: first.
+      - generic [ref=f16e15]:
+        - paragraph [ref=f16e16]:
+          - generic [ref=f16e17]: "Email:"
+          - textbox "Email:" [ref=f16e18]:
+            - /placeholder: Email address
+        - paragraph [ref=f16e19]:
+          - generic [ref=f16e20]: "Password:"
+          - textbox "Password:" [ref=f16e21]:
+            - /placeholder: Password
+          - link "Forgot your password?" [ref=f16e23] [cursor=pointer]:
+            - /url: /accounts/password/reset/
+        - paragraph [ref=f16e24]:
+          - generic [ref=f16e25]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f16e26] [cursor=pointer]
+        - button "Sign In" [ref=f16e27] [cursor=pointer]
+  - generic [ref=f16e28] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f16e30]: DJDT

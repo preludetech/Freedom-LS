@@ -1,9 +1,9 @@
 """Tests for the housekeeping sweeps and the fls_run_housekeeping command.
 
 Every test in this file overrides HOUSEKEEPING_HEARTBEAT_PATH to a path under
-tmp_path. The setting's real default is the literal /tmp/heartbeat, the same
-default the worker uses, so a test that left it alone would write a file
-outside tmp_path and could read the worker tests' own heartbeat mtime.
+tmp_path. The setting's real default is the literal /tmp/housekeeping-heartbeat,
+so a test that left it alone would write a file on the developer's machine that
+nothing cleans up.
 """
 
 from __future__ import annotations

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ipaddress
+
 from django.contrib.sites.models import Site
 from django.http import HttpRequest
 
@@ -12,14 +14,21 @@ from .models import SiteSignupPolicy
 
 
 def get_client_ip(request: HttpRequest) -> str:
-    """Return the client IP address.
+    """Return the client IP address: one valid address, or REMOTE_ADDR, or "".
 
     When `config.TRUSTED_PROXY_IP_HEADER` names a header (e.g. "X-Real-IP"),
-    returns that header's value verbatim. The header must be one the edge
+    that header's value is returned whole. The header must be one the edge
     *sets* rather than appends, so it carries exactly one address; the value
-    is never split. Falls back to REMOTE_ADDR when no header is configured
-    or the named header is absent, which is what keeps this correct on a
-    deployment with no proxy in front.
+    is never split, because the leftmost entry of an appended header is
+    whatever the visitor typed. A value that is not a single valid address
+    means the edge is misconfigured, so it is distrusted entirely rather than
+    picked apart. Falls back to REMOTE_ADDR then, and when no header is
+    configured or the named header is absent, which is what keeps this
+    correct on a deployment with no proxy in front.
+
+    The return value goes into GenericIPAddressField columns without a
+    full_clean, so an unparseable value would reach Postgres as an inet and
+    take the whole request down with it.
 
     This is the only sanctioned way to derive a client IP for LegalConsent
     records, django-axes lockouts and similar evidence trails.
@@ -28,10 +37,18 @@ def get_client_ip(request: HttpRequest) -> str:
 
     if header_name:
         value = request.headers.get(header_name, "")
-        if value:
+        if value and _is_ip_address(str(value)):
             return str(value)
 
     return str(request.META.get("REMOTE_ADDR", "") or "")
+
+
+def _is_ip_address(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return True
 
 
 def get_signup_policy_for_request(

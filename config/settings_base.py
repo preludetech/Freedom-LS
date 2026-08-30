@@ -330,6 +330,9 @@ AXES_RESET_ON_SUCCESS = True
 # trying holds its own lockout open for as long as it runs.
 AXES_RESET_COOL_OFF_ON_FAILURE_DURING_LOCKOUT = False
 AXES_CLIENT_IP_CALLABLE = "freedom_ls.accounts.utils.get_client_ip"
+# Without a template axes answers a locked-out sign-in with its own bare
+# plain-text body: no branding, no navigation and no way back.
+AXES_LOCKOUT_TEMPLATE = "accounts/lockout.html"
 
 # Header used to derive the real client IP behind a trusted proxy, e.g.
 # "X-Real-IP". Must be a header the edge *sets* rather than appends, so it

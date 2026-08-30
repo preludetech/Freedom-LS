@@ -30,6 +30,24 @@ from django.core.exceptions import ImproperlyConfigured
 # Django would treat plain-http requests as secure.
 SECURE_PROXY_SSL_HEADER: tuple[str, str] = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# The header the edge sets to the visitor's own address, read by get_client_ip for
+# django-axes lockout keys and LegalConsent records, and handed to allauth as
+# ALLAUTH_TRUSTED_CLIENT_IP_HEADER. It must be one the edge *sets* rather than
+# appends, so it carries exactly one address.
+#
+# It needs preconditions 1, 3 and 4 above just as much as X-Forwarded-Proto does:
+# any path that reaches the origin without traversing the proxy lets a client set
+# this header itself, and then it picks its own lockout key — rotating the value
+# per attempt so the failure counter never reaches AXES_FAILURE_LIMIT — and writes
+# whatever address it likes into the consent evidence trail.
+#
+# Naming a header also removes allauth's own fallback to REMOTE_ADDR, so this is
+# load-bearing in the other direction too: an edge that does not set it makes
+# allauth's get_client_ip return None, and every login, signup and password-reset
+# answers 403. A deployment whose edge sets a different header must point both
+# settings at that one rather than leaving this value in place.
+TRUSTED_CLIENT_IP_HEADER: str = "X-Real-IP"
+
 # Persistent DB connections. Recommended 60-300s; never None/unlimited, which would
 # let connections accumulate without bound under load.
 CONN_MAX_AGE: int = 60

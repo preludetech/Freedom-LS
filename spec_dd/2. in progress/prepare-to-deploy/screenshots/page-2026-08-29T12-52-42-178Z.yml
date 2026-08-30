@@ -1,0 +1,28 @@
+- generic [active] [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - link "Login" [ref=f4e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f4e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status:
+      - generic [ref=f4e10]:
+        - img "success" [ref=f4e12]
+        - paragraph [ref=f4e15]: You have signed out.
+        - button "Dismiss notification" [ref=f4e16]:
+          - img "close" [ref=f4e17]
+    - alert
+  - main [ref=f4e19]:
+    - generic [ref=f4e22]:
+      - heading "Teach the way your learners need." [level=1] [ref=f4e23]
+      - paragraph [ref=f4e24]: "Most learning platforms are digital textbooks — linear, rigid, and full of opinions about how learning should work. This is different: a learning system that flexes around your learners, not the other way around."
+      - link "Browse all courses" [ref=f4e26] [cursor=pointer]:
+        - /url: /courses/
+  - generic [ref=f4e27] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f4e29]: DJDT

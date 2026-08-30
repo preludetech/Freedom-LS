@@ -35,13 +35,47 @@ def test_get_client_ip_returns_configured_header_value_verbatim(settings):
     settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
     request = RequestFactory().get(
         "/",
+        headers={"x-real-ip": "198.51.100.42"},
+        REMOTE_ADDR="10.0.0.1",
+    )
+
+    assert get_client_ip(request) == "198.51.100.42"
+
+
+def test_get_client_ip_returns_configured_header_ipv6_value(settings):
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    request = RequestFactory().get(
+        "/",
+        headers={"x-real-ip": "2001:db8::1"},
+        REMOTE_ADDR="10.0.0.1",
+    )
+
+    assert get_client_ip(request) == "2001:db8::1"
+
+
+def test_get_client_ip_falls_back_when_header_carries_several_addresses(settings):
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    request = RequestFactory().get(
+        "/",
         headers={"x-real-ip": "198.51.100.42, 10.0.0.1"},
         REMOTE_ADDR="10.0.0.1",
     )
 
-    # A value containing a comma must come back whole: the header this reads is
-    # single-valued and set by the edge, never appended, so there is nothing to split.
-    assert get_client_ip(request) == "198.51.100.42, 10.0.0.1"
+    # Never split: the leftmost entry of an appended header is whatever the visitor
+    # typed. A comma means the edge appends rather than sets, so the value is
+    # distrusted whole. It would also fail as an inet on the way into LegalConsent.
+    assert get_client_ip(request) == "10.0.0.1"
+
+
+def test_get_client_ip_falls_back_when_header_is_not_an_address(settings):
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    request = RequestFactory().get(
+        "/",
+        headers={"x-real-ip": "not-an-address"},
+        REMOTE_ADDR="10.0.0.1",
+    )
+
+    assert get_client_ip(request) == "10.0.0.1"
 
 
 def test_get_client_ip_falls_back_to_empty_string_when_nothing_set(settings):
@@ -68,6 +102,11 @@ def test_axes_lockout_parameters_is_nested_form(settings):
 
 def test_axes_client_ip_callable_imports_to_get_client_ip(settings):
     assert import_string(settings.AXES_CLIENT_IP_CALLABLE) is get_client_ip
+
+
+def test_axes_lockout_template_is_configured(settings):
+    # Left unset, axes answers a lockout with its own bare plain-text body.
+    assert settings.AXES_LOCKOUT_TEMPLATE == "accounts/lockout.html"
 
 
 @pytest.mark.django_db

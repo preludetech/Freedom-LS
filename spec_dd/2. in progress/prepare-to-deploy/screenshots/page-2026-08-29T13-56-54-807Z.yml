@@ -1,0 +1,28 @@
+- generic [active] [ref=f20e1]:
+  - banner [ref=f20e2]:
+    - link [ref=f20e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f20e4]
+      - heading "FirstClass" [level=1] [ref=f20e5]
+    - navigation [ref=f20e6]:
+      - generic [ref=f20e7]:
+        - link "Login" [ref=f20e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f20e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f20e10]:
+    - generic [ref=f20e11]:
+      - heading "Password Reset" [level=1] [ref=f20e12]
+      - paragraph [ref=f20e13]: Forgotten your password? Enter your email address below, and we'll send you an email allowing you to reset it.
+      - generic [ref=f20e14]:
+        - paragraph [ref=f20e15]:
+          - generic [ref=f20e16]: "Email:"
+          - textbox "Email:" [ref=f20e17]:
+            - /placeholder: Email address
+        - button "Reset My Password" [ref=f20e18] [cursor=pointer]
+      - paragraph [ref=f20e19]: Please contact us if you have any trouble resetting your password.
+  - generic [ref=f20e20] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f20e22]: DJDT

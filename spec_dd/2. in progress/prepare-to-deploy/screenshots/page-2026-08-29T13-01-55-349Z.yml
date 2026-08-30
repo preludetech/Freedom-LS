@@ -1,0 +1,60 @@
+- generic [active] [ref=f41e1]:
+  - banner [ref=f41e2]:
+    - link [ref=f41e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f41e4]
+      - heading "FirstClass" [level=1] [ref=f41e5]
+    - navigation [ref=f41e6]:
+      - generic [ref=f41e7]:
+        - link "Login" [ref=f41e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f41e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f41e10]:
+    - generic [ref=f41e11]:
+      - heading "Sign Up" [level=1] [ref=f41e12]
+      - paragraph [ref=f41e13]:
+        - text: Already have an account? Then please
+        - link "sign in" [ref=f41e14] [cursor=pointer]:
+          - /url: /accounts/login/
+        - text: .
+      - generic [ref=f41e15]:
+        - paragraph [ref=f41e16]:
+          - generic [ref=f41e17]: "Email:"
+          - textbox "Email:" [ref=f41e18]:
+            - /placeholder: Email address
+        - paragraph [ref=f41e19]:
+          - generic [ref=f41e20]: "First name:"
+          - textbox "First name:" [ref=f41e21]
+        - paragraph [ref=f41e22]:
+          - generic [ref=f41e23]: "Last name:"
+          - textbox "Last name:" [ref=f41e24]
+        - paragraph:
+          - textbox [ref=f41e25]
+        - paragraph [ref=f41e26]:
+          - generic [ref=f41e27]: "Password:"
+          - textbox "Password:" [ref=f41e28]:
+            - /placeholder: Password
+        - paragraph [ref=f41e29]:
+          - generic [ref=f41e30]: "Password (again):"
+          - textbox "Password (again):" [ref=f41e31]:
+            - /placeholder: Password (again)
+        - generic [ref=f41e32]:
+          - generic [ref=f41e33]:
+            - checkbox "I accept the Terms and Conditions" [ref=f41e34] [cursor=pointer]
+            - generic [ref=f41e35]:
+              - text: I accept the
+              - link "Terms and Conditions" [ref=f41e36] [cursor=pointer]:
+                - /url: /accounts/legal/terms/
+          - generic [ref=f41e37]:
+            - checkbox "I accept the Privacy Policy" [ref=f41e38] [cursor=pointer]
+            - generic [ref=f41e39]:
+              - text: I accept the
+              - link "Privacy Policy" [ref=f41e40] [cursor=pointer]:
+                - /url: /accounts/legal/privacy/
+        - button "Sign Up" [ref=f41e41] [cursor=pointer]
+  - generic [ref=f41e42] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f41e44]: DJDT

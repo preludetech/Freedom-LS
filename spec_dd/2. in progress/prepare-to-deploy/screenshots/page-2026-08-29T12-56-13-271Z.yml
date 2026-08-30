@@ -1,0 +1,27 @@
+- generic [active] [ref=f27e1]:
+  - banner [ref=f27e2]:
+    - link [ref=f27e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f27e4]
+      - heading "FirstClass" [level=1] [ref=f27e5]
+    - navigation [ref=f27e6]:
+      - button "Open user menu for demodev_s2" [ref=f27e8] [cursor=pointer]:
+        - generic [ref=f27e9]: DE
+  - generic:
+    - status:
+      - generic [ref=f27e10]:
+        - img "success" [ref=f27e12]
+        - paragraph [ref=f27e15]: Successfully signed in as demodev_s2@email.com.
+        - button "Dismiss notification" [ref=f27e16]:
+          - img "close" [ref=f27e17]
+    - alert
+  - main [ref=f27e19]:
+    - generic [ref=f27e21]:
+      - generic [ref=f27e22]:
+        - paragraph [ref=f27e23]: Saturday, August 29, 2026
+        - heading "Welcome back, demodev_s2" [level=1] [ref=f27e24]
+      - generic [ref=f27e27]:
+        - heading "In Progress" [level=2] [ref=f27e28]
+        - paragraph [ref=f27e30]: You haven't signed up for any courses yet.
+  - generic [ref=f27e31] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f27e33]: DJDT

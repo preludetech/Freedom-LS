@@ -6,6 +6,7 @@ from django.core.checks import CheckMessage, registry
 from django.test import override_settings
 
 from freedom_ls.deployment.checks import (
+    check_database_cache_tables_exist,
     check_media_aliases_name_their_own_bucket,
     check_media_aliases_not_on_local_disk,
     check_media_aliases_not_shared_with_default,
@@ -535,3 +536,49 @@ def test_every_check_reads_the_aliases_under_their_configured_names(
             signing_errors, ("courseware", "user_uploads", "generated_reports")
         )
     ) == {"courseware", "user_uploads", "generated_reports"}
+
+
+DB_CACHE_TABLE = "test_django_cache_table"
+
+
+def _db_cache(table: str) -> dict[str, dict[str, str]]:
+    return {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": table,
+        }
+    }
+
+
+def test_database_cache_check_is_registered_via_app_ready() -> None:
+    assert check_database_cache_tables_exist in registry.registry.deployment_checks
+
+
+@pytest.mark.django_db
+def test_database_cache_without_its_table_returns_one_e005() -> None:
+    with override_settings(CACHES=_db_cache("no_such_cache_table")):
+        errors = check_database_cache_tables_exist()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E005"]
+    assert "no_such_cache_table" in errors[0].msg
+    hint = errors[0].hint
+    assert hint is not None
+    assert "createcachetable" in hint
+
+
+@pytest.mark.django_db
+def test_database_cache_with_its_table_returns_no_errors() -> None:
+    from django.core.management import call_command
+
+    with override_settings(CACHES=_db_cache(DB_CACHE_TABLE)):
+        call_command("createcachetable", verbosity=0)
+
+        assert check_database_cache_tables_exist() == []
+
+
+@pytest.mark.django_db
+def test_cache_that_is_not_database_backed_returns_no_errors() -> None:
+    locmem = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+
+    with override_settings(CACHES=locmem):
+        assert check_database_cache_tables_exist() == []

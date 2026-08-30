@@ -1,0 +1,28 @@
+- generic [ref=f9e1]:
+  - banner [ref=f9e2]:
+    - link [ref=f9e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f9e4]
+      - heading "FirstClass" [level=1] [ref=f9e5]
+    - navigation [ref=f9e6]:
+      - generic [ref=f9e7]:
+        - button "Open user menu for qa-admin@example.test" [expanded] [active] [ref=f9e8] [cursor=pointer]:
+          - generic [ref=f9e9]: QA
+        - menu "User menu" [ref=f9e35]:
+          - menuitem "Profile" [ref=f9e36] [cursor=pointer]
+          - menuitem "Educator Interface" [ref=f9e37] [cursor=pointer]
+          - menuitem "Admin Panel" [ref=f9e38] [cursor=pointer]
+          - menuitem "Sign Out" [ref=f9e39] [cursor=pointer]
+  - generic:
+    - status
+    - alert
+  - main [ref=f9e19]:
+    - generic [ref=f9e21]:
+      - generic [ref=f9e22]:
+        - paragraph [ref=f9e23]: Saturday, August 29, 2026
+        - heading "Welcome back, qa-admin@example.test" [level=1] [ref=f9e24]
+      - generic [ref=f9e27]:
+        - heading "In Progress" [level=2] [ref=f9e28]
+        - paragraph [ref=f9e30]: You haven't signed up for any courses yet.
+  - generic [ref=f9e31] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f9e33]: DJDT

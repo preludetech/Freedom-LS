@@ -1,0 +1,26 @@
+- generic [active] [ref=f17e1]:
+  - banner [ref=f17e2]:
+    - link [ref=f17e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f17e4]
+      - heading "FirstClass" [level=1] [ref=f17e5]
+    - navigation [ref=f17e6]:
+      - generic [ref=f17e7]:
+        - link "Login" [ref=f17e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f17e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status:
+      - generic [ref=f17e10]:
+        - img "info" [ref=f17e12]
+        - paragraph [ref=f17e15]: Confirmation email sent to qa-signup-1@example.test.
+        - button "Dismiss notification" [ref=f17e16]:
+          - img "close" [ref=f17e17]
+    - alert
+  - main [ref=f17e19]:
+    - generic [ref=f17e20]:
+      - heading "Verify Your Email Address" [level=1] [ref=f17e21]
+      - paragraph [ref=f17e22]: We have sent an email to you for verification. Follow the link provided to finalize the signup process. If you do not see the verification email in your main inbox, check your spam folder. Please contact us if you do not receive the verification email within a few minutes.
+  - generic [ref=f17e23] [cursor=pointer]: prepare-to-deploy
+  - generic "Show toolbar" [ref=f17e25]: DJDT

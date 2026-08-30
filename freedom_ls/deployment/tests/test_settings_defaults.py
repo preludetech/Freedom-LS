@@ -170,6 +170,11 @@ def test_secure_redirect_exempt_constant() -> None:
     assert settings_defaults.SECURE_REDIRECT_EXEMPT == [r"^health/"]
 
 
+def test_trusted_client_ip_header_constant() -> None:
+    # A header the edge sets rather than appends, so it carries one address.
+    assert settings_defaults.TRUSTED_CLIENT_IP_HEADER == "X-Real-IP"
+
+
 @override_settings(
     SECURE_SSL_REDIRECT=True,
     SECURE_REDIRECT_EXEMPT=settings_defaults.SECURE_REDIRECT_EXEMPT,

@@ -22,6 +22,9 @@ E003 — A media alias took its bucket from the shared AWS_STORAGE_BUCKET_NAME
 E004 — A media alias that must serve signed URLs resolves with querystring
        auth off, so its objects would be reachable by anyone holding the URL.
        Runs only under ``manage.py check --deploy``.
+E005 — A cache alias is database-backed but its table does not exist, because
+       ``createcachetable`` was missed in the deploy sequence. No migration
+       creates it. Runs only under ``manage.py check --deploy``.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 """
@@ -309,6 +312,60 @@ def check_private_media_aliases_sign_their_urls(
                     f"is meant to be anonymously readable."
                 ),
                 id="freedom_ls_deployment.E004",
+            )
+        )
+    return errors
+
+
+@register(Tags.caches, deploy=True)
+def check_database_cache_tables_exist(
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """E005: Error when a database-backed cache alias has no table.
+
+    Production runs DatabaseCache, whose LOCATION is a table name that no
+    migration creates: `createcachetable` makes it, as a step in the
+    downstream's deploy sequence. Miss that step and nothing fails until the
+    first request that touches the cache — allauth's rate limiting reads it on
+    every login and signup — which then raises ProgrammingError from deep
+    inside the auth flow rather than at deploy time.
+
+    A database this check cannot reach returns nothing rather than an error, so
+    `check --deploy` still runs in a build container with no database.
+    """
+    from django.conf import settings
+    from django.core.cache import InvalidCacheBackendError, caches
+    from django.core.cache.backends.db import BaseDatabaseCache
+    from django.db import DEFAULT_DB_ALIAS, DatabaseError, connections, router
+
+    errors: list[CheckMessage] = []
+    for alias in settings.CACHES:
+        try:
+            cache = caches[alias]
+        except InvalidCacheBackendError:
+            continue
+        if not isinstance(cache, BaseDatabaseCache):
+            continue
+        # LOCATION is the table name, and the only place the backend takes it
+        # from. cache_model_class is how the backend routes its reads.
+        table = str(settings.CACHES[alias].get("LOCATION", ""))
+        db = router.db_for_read(cache.cache_model_class) or DEFAULT_DB_ALIAS
+        connection = connections[db]
+        try:
+            with connection.cursor() as cursor:
+                table_names = connection.introspection.table_names(cursor)
+        except DatabaseError:
+            continue
+        if table in table_names:
+            continue
+        errors.append(
+            Error(
+                f"Cache alias {alias!r} is database-backed but its table "
+                f"{table!r} does not exist on the {db!r} database. Every "
+                f"request that touches the cache — allauth's login and signup "
+                f"rate limiting among them — would fail.",
+                hint="Run `manage.py createcachetable` in the deploy sequence.",
+                id="freedom_ls_deployment.E005",
             )
         )
     return errors

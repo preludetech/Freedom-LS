@@ -1,0 +1,28 @@
+{% extends "allauth/layouts/entrance.html" %}
+{% load i18n %}
+
+{% block head_title %}{% trans "Too many sign-in attempts" %}{% endblock head_title %}
+
+{% block content %}
+    <div class="space-y-6">
+        <header class="space-y-2">
+            <h1 class="text-3xl font-bold flex items-center gap-3">
+                <c-icon name="locked" class="size-8 text-muted" />
+                {% trans "Too many sign-in attempts" %}
+            </h1>
+            <p class="text-muted">
+                {% trans "Sign-in for this account is paused after too many failed attempts. Please try again later." %}
+            </p>
+        </header>
+
+        <c-button href="{% url 'account_login' %}" variant="primary">
+            {% trans "Back to sign in" %}
+        </c-button>
+
+        <p class="text-sm text-muted">
+            {% trans "Forgotten your password?" %}
+            <a href="{% url 'account_reset_password' %}" class="text-primary underline">{% trans "Reset it now" %}</a>
+            {% trans "— you will be able to sign in once the pause lifts." %}
+        </p>
+    </div>
+{% endblock content %}

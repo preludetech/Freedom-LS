@@ -35,10 +35,11 @@ class DeploymentSettings(AppSettings):
         # also the longest a task may run before being killed mid-flight.
         "WORKER_HEARTBEAT_PATH": Setting(default="/tmp/heartbeat"),  # noqa: S108  # nosec B108
         "WORKER_HEARTBEAT_MAX_AGE_SECONDS": Setting(default=300),
-        # The housekeeping command's heartbeat. A separate path setting from the worker's so a
-        # deployment that co-locates the two processes can split them; on one
-        # shared file a daily sweep would keep a dead worker's heartbeat fresh.
-        "HOUSEKEEPING_HEARTBEAT_PATH": Setting(default="/tmp/heartbeat"),  # noqa: S108  # nosec B108
+        # The housekeeping command's heartbeat. A separate path setting from the worker's,
+        # and a distinct default, so a deployment that co-locates the two processes is
+        # safe without configuring anything: sharing one file, a daily sweep would keep
+        # a dead worker's heartbeat fresh and the liveness probe green over it.
+        "HOUSEKEEPING_HEARTBEAT_PATH": Setting(default="/tmp/housekeeping-heartbeat"),  # noqa: S108  # nosec B108
         "HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS": Setting(default=3600),
     }
 

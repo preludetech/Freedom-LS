@@ -13,6 +13,7 @@ from django.core.management import CommandError, call_command
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.organisations.models import Organisation
 
@@ -147,6 +148,62 @@ def test_bootstrapped_site_serves_login_signup_and_password_reset_pages(
     assert login_response.status_code == 200
     assert signup_response.status_code == 200
     assert reset_response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_address_held_by_an_ordinary_account_refuses(mock_site_context: Site) -> None:
+    """An address that belongs to a learner is a failure, not a silent no-op.
+
+    Reporting success there would leave the deployment with no administrator.
+    """
+    UserFactory(email="learner@example.org")
+
+    with pytest.raises(ClickException):
+        _call_setup("learner@example.org", "--domain", "example.org")
+
+
+@pytest.mark.django_db
+def test_refusal_leaves_the_ordinary_account_email_unverified(
+    mock_site_context: Site,
+) -> None:
+    """The refusal comes before the EmailAddress write, so nothing is verified in passing."""
+    from allauth.account.models import EmailAddress
+
+    UserFactory(email="learner@example.org")
+
+    with pytest.raises(ClickException):
+        _call_setup("learner@example.org", "--domain", "example.org")
+
+    assert not EmailAddress.objects.filter(email="learner@example.org").exists()
+
+
+@pytest.mark.django_db
+def test_inactive_administrator_refuses(mock_site_context: Site) -> None:
+    """Staff and superuser are not enough on their own; a disabled account cannot log in."""
+    UserFactory(email="admin@example.org", superuser=True, is_active=False)
+
+    with pytest.raises(ClickException):
+        _call_setup("admin@example.org", "--domain", "example.org")
+
+
+@pytest.mark.django_db
+def test_mixed_case_address_is_stored_normalized(mock_site_context: Site) -> None:
+    """normalize_email lowercases the domain part before the row is written."""
+    _call_setup("Admin@Example.ORG", "--domain", "example.org")
+
+    assert User._base_manager.get(email="Admin@example.org")
+
+
+@pytest.mark.django_db
+def test_second_run_in_different_case_creates_no_second_row(
+    mock_site_context: Site,
+) -> None:
+    """The column is case-sensitive in Postgres, so the lookup must not be."""
+    _call_setup("admin@example.org", "--domain", "example.org")
+
+    _call_setup("ADMIN@example.org", "--domain", "example.org")
+
+    assert User._base_manager.filter(email__iexact="admin@example.org").count() == 1
 
 
 @pytest.mark.django_db

@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.utils.crypto import get_random_string
 
-from freedom_ls.accounts.models import User
+from freedom_ls.accounts.models import User, UserManager
 
 # 22 characters over get_random_string's 62-character alphabet is ~131 bits.
 GENERATED_PASSWORD_LENGTH = 22
@@ -28,14 +28,19 @@ GENERATED_PASSWORD_LENGTH = 22
 )
 def command(admin_email: str, domain: str | None, site_name: str | None) -> None:
     """Create the Site, the administrative User and its verified email address."""
+    # normalize_email lives on UserManager and is the only thing that lowercases the
+    # domain part. User.email is unique and case-sensitive in Postgres, so an address
+    # taken verbatim here would let a later signup create a second row for the same
+    # mailbox.
+    email = UserManager.normalize_email(admin_email)
     resolved_domain = _resolve_domain(domain)
     site = _get_or_create_site(resolved_domain, site_name or resolved_domain)
-    password = _get_or_create_admin_user(admin_email, site)
+    password = _get_or_create_admin_user(email, site)
     if password is not None:
-        click.echo(f"Created administrator {admin_email} with password: {password}")
+        click.echo(f"Created administrator {email} with password: {password}")
         click.echo("This password is shown once and is stored nowhere. Record it now.")
     else:
-        click.echo(f"Administrator {admin_email} already exists; password unchanged.")
+        click.echo(f"Administrator {email} already exists; password unchanged.")
 
 
 def _resolve_domain(domain: str | None) -> str:
@@ -63,12 +68,27 @@ def _get_or_create_admin_user(email: str, site: Site) -> str | None:
     set_password is reachable only on the create branch, so a second run never
     resets an existing administrator's credential.
 
+    An address already held by an ordinary account is a hard failure, not a
+    no-op: reporting success there would leave the deployment with no
+    administrator at all, and promoting the row instead would hand a superuser
+    to whoever a mistyped address belongs to. Raised before the EmailAddress
+    write, so a stranger's address is never marked verified on the way past.
+
     _base_manager, not the site-aware `objects`: email is globally unique, and a
     lookup that narrowed to an ambient site would miss an existing administrator
-    and try to create a second row with the same address.
+    and try to create a second row with the same address. The lookup is
+    case-insensitive because the column is not, so a row that predates
+    normalization is found rather than collided with.
     """
-    existing = User._base_manager.filter(email=email).first()
+    existing = User._base_manager.filter(email__iexact=email).first()
     if existing is not None:
+        if not (existing.is_staff and existing.is_superuser and existing.is_active):
+            raise click.ClickException(
+                f"An account already exists for {email}, but it is not an active "
+                f"administrator. Refusing to touch it. Give this command a "
+                f"different address, or grant that account staff, superuser and "
+                f"active status deliberately."
+            )
         _ensure_verified_email(existing)
         return None
 
