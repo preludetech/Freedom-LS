@@ -1,6 +1,6 @@
 # Cohort Reports
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-08-30_
 
 ## Summary
 
@@ -55,7 +55,7 @@ Free-text questions have no notion of a correct answer in FLS and are excluded f
 
 ## Generating and Downloading
 
-A report is requested from the Django admin by a staff member who can view the target cohort — through a permission granted on that cohort, or through a staff role on the cohort's organisation, the same two routes the [educator interface](./educator-interface.md#access-control) uses. Generation runs in the background rather than making the requester wait, and the report list shows how far along it is. Only one report can be in flight for a cohort at a time, so a second request while one is running does not start a duplicate. A failed generation surfaces its error in the list and the cohort can be retried straight away. The downloaded file is named for the organisation and cohort, and the PDF's own document properties name the organisation as author and the site as generator, so a copy passed on to a learner, employer or funder identifies itself as that organisation's record.
+A report is requested from the Django admin by a staff member who can view the target cohort — through a permission granted on that cohort, or through a staff role on the cohort's organisation, the same two routes the [educator interface](./educator-interface.md#access-control) uses. Generation runs in the background rather than making the requester wait, and the report list shows how far along it is. Only one report can be in flight for a cohort at a time, so a second request while one is running does not start a duplicate. A failed generation surfaces its error in the list and the cohort can be retried straight away. A report whose generation was interrupted, by a restart or a crash partway through rendering, is closed as failed by a scheduled sweep rather than being left in flight forever, so the cohort is not blocked from asking again. See [deployment](./deployment.md) for that sweep. The downloaded file is named for the organisation and cohort, and the PDF's own document properties name the organisation as author and the site as generator, so a copy passed on to a learner, employer or funder identifies itself as that organisation's record.
 
 See [admin interface](./admin-interface.md#cohort-progress-reports) for the admin flow, and [security and data handling](./security-and-data-handling.md) for the access and privacy posture — a generated report holds learner names, scores and individual answers, and is served through a permission-checked download rather than a media URL.
 
