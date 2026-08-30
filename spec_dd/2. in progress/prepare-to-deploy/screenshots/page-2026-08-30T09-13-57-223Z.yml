@@ -1,0 +1,91 @@
+- generic [active] [ref=f37e1]:
+  - banner [ref=f37e2]:
+    - link [ref=f37e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f37e4]
+      - heading "FirstClass" [level=1] [ref=f37e5]
+    - navigation [ref=f37e6]:
+      - button "Open user menu for demodev_s1" [ref=f37e8] [cursor=pointer]:
+        - generic [ref=f37e9]: DE
+  - generic:
+    - status:
+      - generic [ref=f37e10]:
+        - img "success" [ref=f37e12]
+        - paragraph [ref=f37e15]: Successfully signed in as demodev_s1@email.com.
+        - button "Dismiss notification" [ref=f37e16]:
+          - img "close" [ref=f37e17]
+    - alert
+  - main [ref=f37e19]:
+    - generic [ref=f37e21]:
+      - generic [ref=f37e22]:
+        - paragraph [ref=f37e23]: Sunday, August 30, 2026
+        - heading "Welcome back, demodev_s1" [level=1] [ref=f37e24]
+      - generic [ref=f37e27]:
+        - heading "In Progress" [level=2] [ref=f37e28]
+        - paragraph [ref=f37e30]: You haven't signed up for any courses yet.
+  - generic [ref=f37e31] [cursor=pointer]: prepare-to-deploy
+  - list [ref=f37e33]:
+    - listitem [ref=f37e34]:
+      - link "Hide »" [ref=f37e35] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e36]:
+      - link "Toggle Theme" [ref=f37e37] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e40]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e41] [cursor=pointer]
+      - link "History /" [ref=f37e42] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e43]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e44] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f37e45] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e47] [cursor=pointer]
+      - 'link "Time CPU: 43.90ms (78.62ms)" [ref=f37e48] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f37e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e50] [cursor=pointer]
+      - link "Settings" [ref=f37e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e53] [cursor=pointer]
+      - link "Headers" [ref=f37e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e56] [cursor=pointer]
+      - link "Request dashboard" [ref=f37e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e59] [cursor=pointer]
+      - link "SQL 15 queries in 31.54ms" [ref=f37e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e62] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f37e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e65] [cursor=pointer]
+      - link "Templates learner_interface/dashboard.html" [ref=f37e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e68] [cursor=pointer]
+      - link "Alerts" [ref=f37e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e71] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f37e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e74] [cursor=pointer]
+      - link "Signals 71 receivers of 15 signals" [ref=f37e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f37e77] [cursor=pointer]
+      - link "Community" [ref=f37e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f37e79]:
+      - checkbox "Enable for next and successive requests" [ref=f37e80] [cursor=pointer]
+      - generic [ref=f37e81]: Intercept redirects
+    - listitem [ref=f37e82]:
+      - checkbox "Enable for next and successive requests" [ref=f37e83] [cursor=pointer]
+      - generic [ref=f37e84]: Profiling

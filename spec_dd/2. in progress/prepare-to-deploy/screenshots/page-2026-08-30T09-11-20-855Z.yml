@@ -1,0 +1,92 @@
+- generic [active] [ref=f15e1]:
+  - banner [ref=f15e2]:
+    - link [ref=f15e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f15e4]
+      - heading "FirstClass" [level=1] [ref=f15e5]
+    - navigation [ref=f15e6]:
+      - generic [ref=f15e7]:
+        - link "Login" [ref=f15e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f15e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f15e10]:
+    - generic [ref=f15e11]:
+      - heading "Password Reset" [level=1] [ref=f15e12]
+      - paragraph [ref=f15e13]: Forgotten your password? Enter your email address below, and we'll send you an email allowing you to reset it.
+      - generic [ref=f15e14]:
+        - paragraph [ref=f15e15]:
+          - generic [ref=f15e16]: "Email:"
+          - textbox "Email:" [ref=f15e17]:
+            - /placeholder: Email address
+        - button "Reset My Password" [ref=f15e18] [cursor=pointer]
+      - paragraph [ref=f15e19]: Please contact us if you have any trouble resetting your password.
+  - generic [ref=f15e20] [cursor=pointer]: prepare-to-deploy
+  - list [ref=f15e22]:
+    - listitem [ref=f15e23]:
+      - link "Hide »" [ref=f15e24] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e25]:
+      - link "Toggle Theme" [ref=f15e26] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e29]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e30] [cursor=pointer]
+      - link "History /accounts/password/reset/" [ref=f15e31] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e32]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e33] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f15e34] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e35]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e36] [cursor=pointer]
+      - 'link "Time CPU: 24.79ms (37.73ms)" [ref=f15e37] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f15e38]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e39] [cursor=pointer]
+      - link "Settings" [ref=f15e40] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e41]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e42] [cursor=pointer]
+      - link "Headers" [ref=f15e43] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e44]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e45] [cursor=pointer]
+      - link "Request PasswordResetView" [ref=f15e46] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e47]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e48] [cursor=pointer]
+      - link "SQL 3 queries in 4.23ms" [ref=f15e49] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e50]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e51] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f15e52] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e53]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e54] [cursor=pointer]
+      - link "Templates account/password_reset.html" [ref=f15e55] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e56]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e57] [cursor=pointer]
+      - link "Alerts" [ref=f15e58] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e59]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e60] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f15e61] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e62]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e63] [cursor=pointer]
+      - link "Signals 71 receivers of 15 signals" [ref=f15e64] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e65]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e66] [cursor=pointer]
+      - link "Community" [ref=f15e67] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e68]:
+      - checkbox "Enable for next and successive requests" [ref=f15e69] [cursor=pointer]
+      - generic [ref=f15e70]: Intercept redirects
+    - listitem [ref=f15e71]:
+      - checkbox "Enable for next and successive requests" [ref=f15e72] [cursor=pointer]
+      - generic [ref=f15e73]: Profiling

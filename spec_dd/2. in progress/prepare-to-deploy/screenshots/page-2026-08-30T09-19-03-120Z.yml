@@ -1,0 +1,103 @@
+- generic [active] [ref=f48e1]:
+  - banner [ref=f48e2]:
+    - link [ref=f48e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f48e4]
+    - navigation [ref=f48e5]:
+      - generic [ref=f48e6]:
+        - link "Login" [ref=f48e7] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f48e8] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f48e9]:
+    - generic [ref=f48e10]:
+      - heading "Sign In" [level=1] [ref=f48e11]
+      - paragraph [ref=f48e12]:
+        - text: If you have not created an account yet, then please
+        - link "sign up" [ref=f48e13] [cursor=pointer]:
+          - /url: /accounts/signup/
+        - text: first.
+      - generic [ref=f48e14]:
+        - paragraph [ref=f48e15]:
+          - generic [ref=f48e16]: "Email:"
+          - textbox "Email:" [ref=f48e17]:
+            - /placeholder: Email address
+        - paragraph [ref=f48e18]:
+          - generic [ref=f48e19]: "Password:"
+          - textbox "Password:" [ref=f48e20]:
+            - /placeholder: Password
+          - link "Forgot your password?" [ref=f48e22] [cursor=pointer]:
+            - /url: /accounts/password/reset/
+        - paragraph [ref=f48e23]:
+          - generic [ref=f48e24]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f48e25] [cursor=pointer]
+        - button "Sign In" [ref=f48e26] [cursor=pointer]
+  - generic [ref=f48e27] [cursor=pointer]: prepare-to-deploy
+  - list [ref=f48e29]:
+    - listitem [ref=f48e30]:
+      - link "Hide »" [ref=f48e31] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e32]:
+      - link "Toggle Theme" [ref=f48e33] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e36]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e37] [cursor=pointer]
+      - link "History /accounts/login/" [ref=f48e38] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e39]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e40] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f48e41] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e42]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e43] [cursor=pointer]
+      - 'link "Time CPU: 33.17ms (45.30ms)" [ref=f48e44] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f48e45]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e46] [cursor=pointer]
+      - link "Settings" [ref=f48e47] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e48]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e49] [cursor=pointer]
+      - link "Headers" [ref=f48e50] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e51]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e52] [cursor=pointer]
+      - link "Request LoginView" [ref=f48e53] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e54]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e55] [cursor=pointer]
+      - link "SQL 3 queries in 4.06ms" [ref=f48e56] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e57]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e58] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f48e59] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e60]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e61] [cursor=pointer]
+      - link "Templates account/login.html" [ref=f48e62] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e63]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e64] [cursor=pointer]
+      - link "Alerts" [ref=f48e65] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e66]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e67] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f48e68] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e69]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e70] [cursor=pointer]
+      - link "Signals 71 receivers of 15 signals" [ref=f48e71] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e72]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f48e73] [cursor=pointer]
+      - link "Community" [ref=f48e74] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f48e75]:
+      - checkbox "Enable for next and successive requests" [ref=f48e76] [cursor=pointer]
+      - generic [ref=f48e77]: Intercept redirects
+    - listitem [ref=f48e78]:
+      - checkbox "Enable for next and successive requests" [ref=f48e79] [cursor=pointer]
+      - generic [ref=f48e80]: Profiling

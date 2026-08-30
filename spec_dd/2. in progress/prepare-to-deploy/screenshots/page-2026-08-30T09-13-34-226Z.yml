@@ -1,0 +1,90 @@
+- generic [active] [ref=f32e1]:
+  - banner [ref=f32e2]:
+    - link [ref=f32e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f32e4]
+      - heading "FirstClass" [level=1] [ref=f32e5]
+    - navigation [ref=f32e6]:
+      - button "Open user menu for demodev_s2" [ref=f32e8] [cursor=pointer]:
+        - generic [ref=f32e9]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f32e10]:
+    - generic [ref=f32e11]:
+      - generic [ref=f32e12]:
+        - heading "Sign Out" [level=1] [ref=f32e13]
+        - paragraph [ref=f32e14]: Are you sure you want to sign out?
+        - button "Sign Out" [ref=f32e16] [cursor=pointer]
+      - navigation [ref=f32e17]:
+        - link "Change Email" [ref=f32e18] [cursor=pointer]:
+          - /url: /accounts/email/
+        - link "Change Password" [ref=f32e19] [cursor=pointer]:
+          - /url: /accounts/password/change/
+        - button "Sign Out" [ref=f32e21] [cursor=pointer]
+  - generic [ref=f32e22] [cursor=pointer]: prepare-to-deploy
+  - list [ref=f32e24]:
+    - listitem [ref=f32e25]:
+      - link "Hide »" [ref=f32e26] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e27]:
+      - link "Toggle Theme" [ref=f32e28] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e31]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e32] [cursor=pointer]
+      - link "History /accounts/logout/" [ref=f32e33] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e34]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e35] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f32e36] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e37]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e38] [cursor=pointer]
+      - 'link "Time CPU: 37.70ms (61.03ms)" [ref=f32e39] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f32e40]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e41] [cursor=pointer]
+      - link "Settings" [ref=f32e42] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e43]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e44] [cursor=pointer]
+      - link "Headers" [ref=f32e45] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e47] [cursor=pointer]
+      - link "Request LogoutView" [ref=f32e48] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e50] [cursor=pointer]
+      - link "SQL 7 queries in 15.44ms" [ref=f32e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e53] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f32e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e56] [cursor=pointer]
+      - link "Templates account/logout.html" [ref=f32e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e59] [cursor=pointer]
+      - link "Alerts" [ref=f32e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e62] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f32e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e65] [cursor=pointer]
+      - link "Signals 71 receivers of 15 signals" [ref=f32e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e68] [cursor=pointer]
+      - link "Community" [ref=f32e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e70]:
+      - checkbox "Enable for next and successive requests" [ref=f32e71] [cursor=pointer]
+      - generic [ref=f32e72]: Intercept redirects
+    - listitem [ref=f32e73]:
+      - checkbox "Enable for next and successive requests" [ref=f32e74] [cursor=pointer]
+      - generic [ref=f32e75]: Profiling
