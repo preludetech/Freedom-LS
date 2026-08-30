@@ -70,7 +70,6 @@ ALLOWED_HOSTS: list[str] = []
 # Application definition
 
 INSTALLED_APPS = [
-    # "django.contrib.admin",
     "whitenoise.runserver_nostatic",
     "django_cotton.apps.SimpleAppConfig",
     "django.contrib.auth",
@@ -83,7 +82,10 @@ INSTALLED_APPS = [
     "django.contrib.postgres",
     "django.tasks",
     "django_tasks_db",
-    "unfold",  # before django.contrib.admin
+    # BasicAppConfig, not the "unfold" default: unfold's default config rebuilds
+    # an empty admin site on every app-registry repopulation. FreedomLSAdminConfig
+    # below names UnfoldAdminSite as the admin's default_site instead.
+    "unfold.apps.BasicAppConfig",
     "unfold.contrib.filters",  # optional, if special filters are needed
     "unfold.contrib.forms",  # optional, if special form elements are needed
     "unfold.contrib.inlines",  # optional, if special inlines are needed
@@ -92,7 +94,8 @@ INSTALLED_APPS = [
     "unfold.contrib.simple_history",  # optional, if django-simple-history package is used
     "unfold.contrib.location_field",  # optional, if django-location-field package is used
     "unfold.contrib.constance",  # optional, if django-constance package is used
-    "django.contrib.admin",  # required
+    # Installs django.contrib.admin with unfold's site class. Required.
+    "freedom_ls.base.admin_config.FreedomLSAdminConfig",
     "guardian",
     "health_check",
     # CUSTOM APPS

@@ -12,6 +12,7 @@ Prune an internal-tier route you have customised while keeping its app:
 from __future__ import annotations
 
 from ._registry import drop
+from .test_admin_site import test_admin_registry_survives_installed_apps_override
 from .test_migrations import test_migration_state_consistent
 from .test_settings import test_configured_backend_instantiates
 from .test_theme import test_active_icon_set_resolves, test_active_theme_resolves
@@ -21,6 +22,7 @@ __all__ = [
     "drop",
     "test_active_icon_set_resolves",
     "test_active_theme_resolves",
+    "test_admin_registry_survives_installed_apps_override",
     "test_configured_backend_instantiates",
     "test_fls_namespace_reverses",
     "test_migration_state_consistent",

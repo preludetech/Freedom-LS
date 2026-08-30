@@ -86,8 +86,10 @@ The template's `settings_base.py` begins with `from .customisation import *` (se
 - [ ] `whitenoise.runserver_nostatic`
 - [ ] `django_cotton.apps.SimpleAppConfig`
 - [ ] `django.contrib.auth`, `django.contrib.contenttypes`, `django.contrib.sessions`, `django.contrib.messages`, `django.contrib.staticfiles`, `django.contrib.sites`, `django.contrib.postgres`, `django.tasks`
-- [ ] `unfold` (before `django.contrib.admin`) and all `unfold.contrib.*` entries
-- [ ] `django.contrib.admin` (after unfold)
+- [ ] `unfold.apps.BasicAppConfig` and all `unfold.contrib.*` entries
+- [ ] `freedom_ls.base.admin_config.FreedomLSAdminConfig` — installs `django.contrib.admin` with unfold's site class
+
+      Not the plain `unfold` / `django.contrib.admin` pair unfold's README shows. Unfold's default app config builds a fresh, empty admin site in its `ready()`, and Django re-runs every `ready()` when the app registry is repopulated — which `override_settings(INSTALLED_APPS=...)` does. Registrations are then gone for the rest of the process and admin URLs stop reversing. `FreedomLSAdminConfig` names `UnfoldAdminSite` as the admin's `default_site`, which Django instantiates once. The conformance probe `test_admin_registry_survives_installed_apps_override` catches a project that gets this wrong.
 - [ ] `guardian`
 - [ ] All FLS apps: `freedom_ls.base`, `freedom_ls.icons`, `freedom_ls.markdown_rendering`, `freedom_ls.content_base`, `freedom_ls.content_engine`, `freedom_ls.form_engine`, `freedom_ls.accounts`, `freedom_ls.learner_management`, `freedom_ls.learner_progress`, `freedom_ls.site_aware_models`, `freedom_ls.panel_framework`, `freedom_ls.educator_interface`, `freedom_ls.role_based_permissions`, `freedom_ls.learner_interface`
 - [ ] `encrypted_fields`, `django_ace`, `freedom_ls.webhooks`, `allauth`, `allauth.account`, `axes`

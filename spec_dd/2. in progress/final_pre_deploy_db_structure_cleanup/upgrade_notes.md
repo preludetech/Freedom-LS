@@ -9,7 +9,7 @@ changed_template_paths:
   - freedom_ls/learner_interface/templates/learner_interface/partials/course_list.html
 requires_settings_change: true
 changed_settings:
-  - INSTALLED_APPS  # hard: add "freedom_ls.course_recommendations", drop "freedom_ls.app_authentication"
+  - INSTALLED_APPS  # hard: add "freedom_ls.course_recommendations", drop "freedom_ls.app_authentication", swap the unfold/admin pair
   - SILENCED_SYSTEM_CHECKS  # hard if you silence any icons check: the ids were renumbered
 requires_package_upgrade: false
 changed_packages: []
@@ -249,10 +249,34 @@ Every FLS `AppConfig` now sets `verbose_name`, so the admin index reads "Webhook
 recommendations" rather than "Freedom_Ls_Webhooks" and "Freedom_Ls_Course_Recommendations". If you
 set `verbose_name` on an FLS app config yourself as a workaround, yours still wins; you can drop it.
 
+### The admin site is installed through FLS's own `AppConfig`
+
+`INSTALLED_APPS` no longer carries `"unfold"` and `"django.contrib.admin"`. It carries
+`"unfold.apps.BasicAppConfig"` and `"freedom_ls.base.admin_config.FreedomLSAdminConfig"`, which
+installs `django.contrib.admin` with `UnfoldAdminSite` as its `default_site`.
+
+Unfold's default app config builds a fresh, empty `UnfoldAdminSite` in `ready()` and rebinds
+`django.contrib.admin.site` to it. Django re-runs every `ready()` whenever the app registry is
+repopulated, which `override_settings(INSTALLED_APPS=...)` does — and the `autodiscover()` that
+follows re-registers nothing, because each app's `admin` module is already imported. The admin
+registry is then empty for the rest of the process. Nothing is wrong at runtime, where the registry
+is never repopulated, but a test suite that has any `INSTALLED_APPS` override in it sees
+`NoReverseMatch` on `admin:*` names in whichever admin tests happen to run afterwards — with an
+order-dependence that makes it look intermittent.
+
+Naming the site as `default_site` hands it to `django.contrib.admin.sites.site`, which Django
+instantiates once and never rebuilds. The admin looks and behaves the same. A new conformance probe,
+`test_admin_registry_survives_installed_apps_override`, fails if a project puts the old pair back.
+
 ## Manual steps
 
 1. **Update `INSTALLED_APPS`.** Add `"freedom_ls.course_recommendations"`. Remove
-   `"freedom_ls.app_authentication"` if it is there, commented or not.
+   `"freedom_ls.app_authentication"` if it is there, commented or not. Replace `"unfold"` with
+   `"unfold.apps.BasicAppConfig"` and `"django.contrib.admin"` with
+   `"freedom_ls.base.admin_config.FreedomLSAdminConfig"`, each in place. If you run your own
+   `AdminSite` subclass, keep it — but subclass `unfold.sites.UnfoldAdminSite`, point an
+   `AdminConfig.default_site` at it, and install that config rather than letting unfold rebind
+   `admin.site`.
 2. **Check `SILENCED_SYSTEM_CHECKS`** for `freedom_ls.E001` to `E007` or `freedom_ls.W001` and
    rewrite them as `icons.*`. Then run `uv run manage.py check` and confirm nothing new fires.
 3. **Rebuild the database.** On a development database, dropping it and running

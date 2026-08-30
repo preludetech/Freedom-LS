@@ -22,6 +22,7 @@ import pytest
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.signals import setting_changed
 from django.db.migrations.loader import MigrationLoader
 from django.db.migrations.state import ProjectState
 from django.test import override_settings
@@ -31,6 +32,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 from freedom_ls.contrib.conformance._registry import _DROPPED, drop
+from freedom_ls.contrib.conformance.test_admin_site import (
+    test_admin_registry_survives_installed_apps_override as probe_admin_registry_survives,
+)
 from freedom_ls.contrib.conformance.test_migrations import (
     test_migration_state_consistent as probe_migration_state_consistent,
 )
@@ -145,3 +149,34 @@ def test_active_theme_probe_fails_when_active_theme_missing_from_dirs(
         pytest.raises(ImproperlyConfigured),
     ):
         probe_theme_resolves()
+
+
+def test_admin_registry_probe_passes_on_the_reference_config() -> None:
+    probe_admin_registry_survives()
+
+
+def test_admin_registry_probe_detects_a_wiped_registry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stands in for an AppConfig whose ready() rebinds `admin.site`.
+
+    The stub takes the real site's place so the wipe is visible to the probe
+    without emptying the registry every later test reverses admin URLs against.
+    """
+
+    class _StubSite:
+        def __init__(self) -> None:
+            self._registry: dict[object, object] = {object(): object()}
+
+    stub = _StubSite()
+    monkeypatch.setattr("django.contrib.admin.site", stub)
+
+    def _wipe_on_repopulate(**kwargs: object) -> None:
+        stub._registry = {}
+
+    setting_changed.connect(_wipe_on_repopulate)
+    try:
+        with pytest.raises(AssertionError):
+            probe_admin_registry_survives()
+    finally:
+        setting_changed.disconnect(_wipe_on_repopulate)
