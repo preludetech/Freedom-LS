@@ -29,10 +29,14 @@ role="menuitem"
 class="{{ computed_class }}"
 {{ attrs }}
 >
+{% comment %}These icons keep margins: the menu-item container above is a block,
+not a flex box, so the `gap` that spaces icons on the .btn path has nothing to
+act on here.{% endcomment %}
 {% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% else %}
+{% with size_class=size|yesno:"btn-sm," icon_class=size|yesno:"size-4,size-5" %}
 <{% if href %}a href="{{ href }}"{% else %}button{% endif %}
 {% if form %} form="{{ form }}"{% endif %}
 {% if id %} id="{{ id }}"{% endif %}
@@ -40,16 +44,17 @@ class="{{ computed_class }}"
 {% if value %} value="{{ value }}"{% endif %}
 {% if not href and type %} type="{{ type }}"{% endif %}
 {% if disabled %} disabled{% endif %}
-class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class }}"
+class="btn btn-{{ variant }} {{ size_class }} {{ class }}"
 {{ attrs }}
 >
 {% if loading %}
-<span class="htmx-hide-on-request">{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}</span>
-<span class="htmx-show-on-request"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
+<span class="htmx-hide-on-request">{% if icon_left %}<c-icon :name="icon_left" class="{{ icon_class }}" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="{{ icon_class }}" />{% endif %}</span>
+<span class="htmx-show-on-request"><c-icon name="loading" class="{{ icon_class }} animate-spin" /> {{ loading_text }}</span>
 {% else %}
-{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
+{% if icon_left %}<c-icon :name="icon_left" class="{{ icon_class }}" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="{{ icon_class }}" />{% endif %}
 {% endif %}
 </{% if href %}a{% else %}button{% endif %}>
+{% endwith %}
 {% endif %}
 
 {% comment %}
@@ -73,7 +78,9 @@ Usage Examples:
   <!-- Additional classes -->
   <c-button class="w-full">Full width button</c-button>
 
-  <!-- Small size -->
+  <!-- Small size. The only value `size` takes; anything else, including
+       omitting it, renders a default-size button. Small buttons get
+       size-4 icons, everything else size-5. -->
   <c-button size="small">Small button</c-button>
 
   <!-- Dropdown menu style. Only this variant is a menu item, so only it

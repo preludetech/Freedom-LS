@@ -12,6 +12,7 @@ and component classes the contract requires.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -75,3 +76,21 @@ def test_components_css_declares_alert_family() -> None:
     css = COMPONENTS_CSS.read_text()
     for cls in (".alert", ".alert-success", ".alert-error", ".alert-info"):
         assert cls in css
+
+
+def test_components_css_declares_btn_sm_as_single_class() -> None:
+    """`.btn-sm` is a single class so a theme can reach small-button padding."""
+    css = COMPONENTS_CSS.read_text()
+    assert ".btn.btn-sm" not in css
+    assert re.search(r"^\s*\.btn-sm\s*\{", css, re.MULTILINE) is not None
+
+
+# --- first_class theme contract --------------------------------------------
+
+
+def test_first_class_theme_declares_btn_sm() -> None:
+    """`.btn-sm` sits at equal specificity to `.btn`, so a theme reopening
+    `.btn` padding must reopen `.btn-sm` too or its small buttons take the
+    full-size padding."""
+    css = FIRST_CLASS_THEME_CSS.read_text()
+    assert re.search(r"^\s*\.btn-sm\s*\{", css, re.MULTILINE) is not None

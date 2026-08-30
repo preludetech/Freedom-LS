@@ -98,6 +98,10 @@
                     color 200ms cubic-bezier(0.22, 1, 0.36, 1);
     }
 
+    .btn-sm {
+        @apply px-3 py-2;
+    }
+
     .btn-secondary {
         @apply border-2;
     }
