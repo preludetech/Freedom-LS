@@ -94,10 +94,18 @@ def test_get_client_ip_falls_back_to_remote_addr_when_proxy_header_missing(setti
     assert get_client_ip(request) == "10.0.0.5"
 
 
-def test_axes_lockout_parameters_is_nested_form(settings):
-    # The flat form (two independent parameters) locks on address or username
-    # alone; the nested form requires both together.
-    assert settings.AXES_LOCKOUT_PARAMETERS == [["ip_address", "username"]]
+def test_axes_lockout_parameters_pairs_address_with_username_and_keeps_username(
+    settings,
+):
+    # Two independent rules. The nested entry needs address and username together,
+    # so one person's mistakes cannot lock out a shared NAT. The flat entry locks
+    # on username alone, which is the only cap on a spray that rotates addresses
+    # against one account at the Django admin login -- allauth's login_failed rate
+    # limit does not wrap that view.
+    assert settings.AXES_LOCKOUT_PARAMETERS == [
+        ["ip_address", "username"],
+        "username",
+    ]
 
 
 def test_axes_client_ip_callable_imports_to_get_client_ip(settings):

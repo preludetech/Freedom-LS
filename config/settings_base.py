@@ -321,9 +321,17 @@ AUTHENTICATION_BACKENDS = (
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # 1 hour
-# The nested form is one combined parameter, so a lockout needs address and
-# username together; the flat form locks on either alone.
-AXES_LOCKOUT_PARAMETERS = [["ip_address", "username"]]
+# Two independent rules. The nested entry is one combined parameter, so it locks
+# only when address and username fail together -- fast, and harmless to a shared
+# NAT, because one person's mistakes cannot lock out everyone behind their address.
+# The flat entry locks on username alone, which is what catches a spray that
+# rotates source addresses against one account. Without it that attack is uncapped
+# on the Django admin login: allauth's login_failed rate limit is the layer above
+# the lockout, but it only wraps allauth's own login view, not /admin/login/.
+AXES_LOCKOUT_PARAMETERS = [
+    ["ip_address", "username"],
+    "username",
+]
 AXES_RESET_ON_SUCCESS = True
 # axes' own default (True) measures the cool-off from the most recent attempt,
 # including attempts made while already locked out, so a script that keeps
@@ -405,13 +413,16 @@ ACCOUNT_FORMS = {"signup": "freedom_ls.accounts.forms.SiteAwareSignupForm"}
 ACCOUNT_PREVENT_ENUMERATION = True
 # Per-IP and per-key signup throttling. Disabled in dev (settings_dev.py).
 #
-# login_failed is the layer above the account lockout. A lockout needs address
-# and username together (AXES_LOCKOUT_PARAMETERS), so one address may try five
-# passwords against as many usernames as it likes, and enough addresses may work
-# one account five tries at a time. Ten failures a minute per address caps the
-# first, five in five minutes per account caps the second, and neither shuts
-# anyone out for an hour the way a lockout does. Written out rather than left to
-# allauth's default, which it derives from two deprecated settings.
+# login_failed is the layer above the account lockout, and the faster one: it
+# answers in minutes where a lockout holds for an hour. The lockout's combined
+# rule still lets one address try five passwords against as many usernames as it
+# likes, which is the gap ten failures a minute per address closes. Five in five
+# minutes per account is the shorter-lived twin of the username lockout rule.
+# Written out rather than left to allauth's default, which it derives from two
+# deprecated settings.
+#
+# Both limits are cache-backed, so the production cache has to be sized to hold
+# them under attack -- see MAX_ENTRIES in deployment/settings_defaults.py.
 ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
     "signup": "5/m/ip,3/m/key",
     "login_failed": "10/m/ip,5/5m/key",
