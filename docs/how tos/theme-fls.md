@@ -265,6 +265,10 @@ A theme extends a class by re-opening it inside `@layer components` in its `them
         @apply px-6 py-3 text-sm font-semibold rounded-md;
     }
 
+    .btn-sm {
+        @apply px-3 py-2;
+    }
+
     .btn-secondary {
         @apply border-2;
     }
@@ -273,7 +277,9 @@ A theme extends a class by re-opening it inside `@layer components` in its `them
 
 The cascade order in `tailwind.input.css` is: default tokens → component classes → active theme. Because the active theme's `theme.css` is imported last, its `@layer components` declarations win over the defaults without needing `!important`.
 
-The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_class/static/themes/first_class/theme.css` is the reference implementation for Tier-2 overrides. It overrides `.btn`, `.btn-secondary`, `.chip`, `.chip-*`, `.surface`, `.course-card`, `.signup-panel`, `.alert-*`, and `.header`.
+Reopening `.btn`'s padding means owning `.btn-sm` too. The two sit at equal specificity, and the theme is imported last, so a theme `.btn` that sets padding beats the default `.btn-sm` and every small button on the site takes the full-size padding. A theme that changes `.btn` padding must declare a `.btn-sm` beside it.
+
+The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_class/static/themes/first_class/theme.css` is the reference implementation for Tier-2 overrides. It overrides `.btn`, `.btn-sm`, `.btn-secondary`, `.chip`, `.chip-*`, `.surface`, `.course-card`, `.signup-panel`, `.alert-*`, and `.header`.
 
 ---
 
