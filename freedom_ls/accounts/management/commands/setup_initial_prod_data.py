@@ -105,6 +105,27 @@ def _get_or_create_admin_user(email: str, site: Site) -> str | None:
 
 
 def _ensure_verified_email(user: User) -> None:
-    EmailAddress.objects.get_or_create(
+    """Leave the administrator with a verified EmailAddress, creating it or not.
+
+    get_or_create applies `defaults` only on the create branch, so an address that
+    already exists keeps whatever it had. That is the case worth handling: an
+    account made through signup, or promoted to administrator afterwards, carries
+    an unverified row, and ACCOUNT_EMAIL_VERIFICATION is "mandatory" — so the
+    command would report success and exit 0 while the operator still could not log
+    in, with nothing on the way past to say why.
+
+    Verification is the half that matters; allauth authenticates against any
+    verified address, not only the primary one. Primacy is claimed through
+    set_as_primary(conditional=True) so an address already holding it keeps it:
+    EmailAddress constrains (user, primary) to be unique among primary rows, and a
+    bare write would raise IntegrityError instead.
+    """
+    email_address, created = EmailAddress.objects.get_or_create(
         user=user, email=user.email, defaults={"verified": True, "primary": True}
     )
+    if created:
+        return
+    if not email_address.verified:
+        email_address.verified = True
+        email_address.save(update_fields=["verified"])
+    email_address.set_as_primary(conditional=True)

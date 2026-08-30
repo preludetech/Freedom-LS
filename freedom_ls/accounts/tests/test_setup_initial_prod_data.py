@@ -226,3 +226,107 @@ def _call_setup(*args: str) -> str:
     with redirect_stdout(out):
         call_command("setup_initial_prod_data", *args)
     return out.getvalue()
+
+
+@pytest.mark.django_db
+def test_second_run_verifies_an_existing_unverified_email_address(
+    mock_site_context: Site,
+) -> None:
+    """An administrator promoted from an ordinary account can actually log in.
+
+    get_or_create applies its defaults only on the create branch, so an address
+    that already existed kept verified=False. With mandatory email verification
+    that left the command reporting success while the operator was locked out.
+    """
+    from allauth.account.models import EmailAddress
+
+    # Arrange
+    user = UserFactory(
+        email="admin@example.org", is_staff=True, is_superuser=True, is_active=True
+    )
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=False, primary=False
+    )
+
+    # Act
+    _call_setup("admin@example.org", "--domain", "example.org")
+
+    # Assert
+    email_address = EmailAddress.objects.get(user=user, email=user.email)
+    assert email_address.verified is True
+
+
+@pytest.mark.django_db
+def test_second_run_claims_primacy_when_no_other_address_holds_it(
+    mock_site_context: Site,
+) -> None:
+    from allauth.account.models import EmailAddress
+
+    # Arrange
+    user = UserFactory(
+        email="admin@example.org", is_staff=True, is_superuser=True, is_active=True
+    )
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=False, primary=False
+    )
+
+    # Act
+    _call_setup("admin@example.org", "--domain", "example.org")
+
+    # Assert
+    email_address = EmailAddress.objects.get(user=user, email=user.email)
+    assert email_address.primary is True
+
+
+@pytest.mark.django_db
+def test_second_run_leaves_an_already_verified_primary_address_alone(
+    mock_site_context: Site,
+) -> None:
+    from allauth.account.models import EmailAddress
+
+    # Arrange
+    user = UserFactory(
+        email="admin@example.org", is_staff=True, is_superuser=True, is_active=True
+    )
+    original = EmailAddress.objects.create(
+        user=user, email=user.email, verified=True, primary=True
+    )
+
+    # Act
+    _call_setup("admin@example.org", "--domain", "example.org")
+
+    # Assert
+    original.refresh_from_db()
+    assert (original.verified, original.primary) == (True, True)
+
+
+@pytest.mark.django_db
+def test_second_run_does_not_take_primacy_from_another_address(
+    mock_site_context: Site,
+) -> None:
+    """EmailAddress constrains (user, primary) among primary rows.
+
+    A bare primary=True write would raise IntegrityError here. Verification is
+    the half that matters anyway: allauth authenticates against any verified
+    address, not only the primary one.
+    """
+    from allauth.account.models import EmailAddress
+
+    # Arrange
+    user = UserFactory(
+        email="admin@example.org", is_staff=True, is_superuser=True, is_active=True
+    )
+    other = EmailAddress.objects.create(
+        user=user, email="other@example.org", verified=True, primary=True
+    )
+    EmailAddress.objects.create(
+        user=user, email=user.email, verified=False, primary=False
+    )
+
+    # Act
+    _call_setup("admin@example.org", "--domain", "example.org")
+
+    # Assert
+    other.refresh_from_db()
+    admin_address = EmailAddress.objects.get(user=user, email=user.email)
+    assert (other.primary, admin_address.verified) == (True, True)
