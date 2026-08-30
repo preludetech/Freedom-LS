@@ -1,5 +1,23 @@
 # Frontend QA report — Prepare to deploy
 
+> **This run predates `4. plan.md`.** It was executed against the code as it stood on 2026-08-29,
+> before the updated app-repo contract was carried into FLS. Its results still stand for what it
+> tested, with two exceptions, and one gap:
+>
+> - **§8.1 is stale.** `fls_run_housekeeping` still exits 1 under the development
+>   `ImmediateBackend`, but its stderr message now reads `Sweep failures: prune_db_task_results
+>   failed: …`. The recorded observation quotes the unlabelled message. The general note below about
+>   the command's output not showing whether the session sweep ran is also superseded: the test plan
+>   no longer expects that, and the command now writes a line to stdout for work it repaired itself.
+> - **§8.2 is incomplete rather than wrong.** It tested SIGINT. SIGTERM is now a bound property of
+>   the worker, and it is the signal a deploy actually sends.
+> - **The failure rate limit has no coverage here.** `ACCOUNT_RATE_LIMITS["login_failed"]` did not
+>   exist when this ran. It cannot be tested under the development settings module at all, because
+>   development sets `ACCOUNT_RATE_LIMITS = False`, so §5b of the test plan brings its own.
+>
+> §1 to §7 are unaffected: nothing in `4. plan.md` changes their behaviour under development
+> settings. A re-run needs §5b and §8 only.
+
 ## Verdict
 
 This run tested the three browser-reachable surfaces of the "prepare to deploy" change: the
