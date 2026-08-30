@@ -21,6 +21,17 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
+    /* The docked desktop panel is opened with dialog.show(), which runs the
+     * dialog focusing steps; with no autofocus in the subtree the <dialog>
+     * itself takes focus, so this paints on every page load. It is a real
+     * :focus-visible indicator, not a spurious ring. Replace it, never remove
+     * it. `outline` rather than a Tailwind ring-*, because ring-* compiles to
+     * box-shadow, which forced-colors mode suppresses outright. */
+    .side-panel-dialog:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: -2px;
+    }
+
     /* Mobile (< lg): modal overlay. UA gives [open] modal dialogs position:fixed.
      * Pin per variant and slide the whole dialog in/out via transform/opacity. */
     @media (max-width: 1023.98px) {
