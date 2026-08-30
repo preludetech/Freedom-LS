@@ -1,11 +1,11 @@
 # Authentication
 
-_Last updated: 2026-08-05_
+_Last updated: 2026-08-30_
 
 ## Summary
 
 - Email is the sole login identifier — there are no usernames. Email verification is mandatory before login is permitted.
-- Accounts are hardened with Argon2 hashing, brute-force lockout, signup rate limiting, email-enumeration prevention, and a 10-character minimum password.
+- Accounts are hardened with Argon2 hashing, brute-force lockout, login and signup rate limiting, email-enumeration prevention, and a 10-character minimum password.
 - Each site has its own signup policy controlling whether self-registration is open and what is collected, including additional registration forms shown after verification.
 - Every consent to a legal document is recorded in an append-only audit trail tied to the exact document version accepted.
 - A separate token-based system exists for machine-to-machine API access, but is not enabled in a default installation.
@@ -41,7 +41,9 @@ This is the canonical description of the consent trail; other docs link here. Ho
 
 **Password strength.** At registration and password change, passwords must be at least 10 characters and are rejected if numeric-only, on the common-password list, or too similar to the user's own details.
 
-**Brute-force lockout.** Five failed login attempts trigger a one-hour lockout, which resets on a successful login. IP address and username are tracked as independent lockout keys — either one reaching the limit locks.
+**Brute-force lockout.** Five failed login attempts against the same account from the same address trigger a one-hour lockout, which resets on a successful login. The address and the account are not independent lockout keys — both must fail together — so one person's mistakes cannot lock out a shared office address or a NAT gateway, and an attacker guessing from many addresses cannot lock a chosen learner out. Someone who does hit the lockout sees a branded page explaining the pause and pointing them to password reset, rather than a bare error.
+
+**Login failure rate limiting.** A shorter-lived limit sits above the lockout on the login form, capping failed attempts to about ten a minute from one address and about five within a few minutes against one account — enough to blunt both password spraying and a distributed attack on a single account, without shutting anyone out for the hour the lockout does. Like the lockout, it guards the ordinary login form only; the Django admin login has the lockout and nothing above it.
 
 **Signup rate limiting.** Signups are capped per minute, per IP address and per key.
 
