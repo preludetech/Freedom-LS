@@ -114,3 +114,38 @@ def check_legal_docs_present_when_required(
                 )
 
     return warnings
+
+
+@register(Tags.security)
+def check_trusted_proxy_ip_header_is_not_a_meta_key(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[Error]:
+    """E003: Error when TRUSTED_PROXY_IP_HEADER holds a request.META key.
+
+    The setting used to name a key in request.META and now names the header
+    itself, because both readers — get_client_ip here and allauth's own — go
+    through request.headers. A carried-over "HTTP_X_FORWARDED_FOR" is not found
+    there, so the lookup returns None and falls through to REMOTE_ADDR: the
+    proxy's own address, written into LegalConsent evidence and used as half of
+    every django-axes lockout key, with nothing to say it happened.
+
+    An HTTP_ prefix is unambiguous — no real header carries one — so this is an
+    Error rather than a Warning, and it runs outside --deploy so a downstream
+    meets it on runserver rather than at deploy time.
+    """
+    from .config import config
+
+    header_name = config.TRUSTED_PROXY_IP_HEADER
+    if not header_name or not header_name.startswith("HTTP_"):
+        return []
+    plain_name = header_name.removeprefix("HTTP_").replace("_", "-").title()
+    return [
+        Error(
+            f"TRUSTED_PROXY_IP_HEADER is {header_name!r}, which is a request.META "
+            f"key. The setting now names the HTTP header itself, so this value "
+            f"never matches and the client IP silently falls back to the "
+            f"connecting address.",
+            hint=f"Use the header name instead, e.g. {plain_name!r}.",
+            id="freedom_ls_accounts.E003",
+        )
+    ]

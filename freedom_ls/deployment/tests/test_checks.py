@@ -6,6 +6,7 @@ from django.core.checks import CheckMessage, registry
 from django.test import override_settings
 
 from freedom_ls.deployment.checks import (
+    check_client_ip_headers_agree,
     check_database_cache_tables_exist,
     check_media_aliases_name_their_own_bucket,
     check_media_aliases_not_on_local_disk,
@@ -582,3 +583,50 @@ def test_cache_that_is_not_database_backed_returns_no_errors() -> None:
 
     with override_settings(CACHES=locmem):
         assert check_database_cache_tables_exist() == []
+
+
+def test_client_ip_header_check_is_registered_via_app_ready() -> None:
+    assert check_client_ip_headers_agree in registry.registry.deployment_checks
+
+
+def test_matching_client_ip_headers_return_no_errors() -> None:
+    with override_settings(
+        ALLAUTH_TRUSTED_CLIENT_IP_HEADER="CF-Connecting-IP",
+        TRUSTED_PROXY_IP_HEADER="CF-Connecting-IP",
+    ):
+        errors = check_client_ip_headers_agree()
+
+    assert errors == []
+
+
+def test_disagreeing_client_ip_headers_return_one_e006() -> None:
+    # Each subsystem would key its counters on a different address, so the lockout
+    # and the rate limit meant to reinforce each other count two populations.
+    with override_settings(
+        ALLAUTH_TRUSTED_CLIENT_IP_HEADER="CF-Connecting-IP",
+        TRUSTED_PROXY_IP_HEADER="X-Real-IP",
+    ):
+        errors = check_client_ip_headers_agree()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E006"]
+
+
+def test_one_client_ip_header_set_without_the_other_returns_one_e006() -> None:
+    with override_settings(
+        ALLAUTH_TRUSTED_CLIENT_IP_HEADER="CF-Connecting-IP",
+        TRUSTED_PROXY_IP_HEADER=None,
+    ):
+        errors = check_client_ip_headers_agree()
+
+    assert [error.id for error in errors] == ["freedom_ls_deployment.E006"]
+
+
+def test_neither_client_ip_header_set_returns_no_errors() -> None:
+    # Both unset is the development default: REMOTE_ADDR is trusted directly, and
+    # allauth keeps its own fallback to it.
+    with override_settings(
+        ALLAUTH_TRUSTED_CLIENT_IP_HEADER=None, TRUSTED_PROXY_IP_HEADER=None
+    ):
+        errors = check_client_ip_headers_agree()
+
+    assert errors == []

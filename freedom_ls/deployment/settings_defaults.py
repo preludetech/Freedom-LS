@@ -44,9 +44,11 @@ SECURE_PROXY_SSL_HEADER: tuple[str, str] = ("HTTP_X_FORWARDED_PROTO", "https")
 # Naming a header also removes allauth's own fallback to REMOTE_ADDR, so this is
 # load-bearing in the other direction too: an edge that does not set it makes
 # allauth's get_client_ip return None, and every login, signup and password-reset
-# answers 403. A deployment whose edge sets a different header must point both
-# settings at that one rather than leaving this value in place.
-TRUSTED_CLIENT_IP_HEADER: str = "X-Real-IP"
+# answers 403. The default names the header cloudflared sets, matching the tunnel
+# the production settings already assume; an edge that sets a different one is
+# configured through the TRUSTED_CLIENT_IP_HEADER environment variable rather than
+# by editing this value.
+TRUSTED_CLIENT_IP_HEADER: str = "CF-Connecting-IP"
 
 # Persistent DB connections. Recommended 60-300s; never None/unlimited, which would
 # let connections accumulate without bound under load.
@@ -71,11 +73,18 @@ DATABASE_TASKS: dict[str, dict[str, str]] = {
 # Database-backed cache for production. LOCATION is a table name, not created by
 # migration: `createcachetable` makes it, idempotently, as part of the
 # downstream's deploy sequence.
+#
+# MAX_ENTRIES is sized for the cache's only production consumer, allauth's rate
+# limiting. DatabaseCache culls by deleting expired rows and then a third of what
+# remains ordered by cache_key -- blind to age or importance -- so a limit near the
+# working set lets a password spray evict the login_failed counters that are
+# tracking it. The entries are short-lived (60s to 5m windows), so expiry does most
+# of the work and this is headroom rather than a working size.
 DATABASE_CACHES: dict[str, dict[str, object]] = {
     "default": {
         "BACKEND": "django.core.cache.backends.db.DatabaseCache",
         "LOCATION": "django_cache_table",
-        "OPTIONS": {"MAX_ENTRIES": 5000},
+        "OPTIONS": {"MAX_ENTRIES": 50000},
     }
 }
 

@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from freedom_ls.accounts.checks import check_email_colour_tokens
+from django.core.checks import registry
+from django.test import override_settings
+
+from freedom_ls.accounts.checks import (
+    check_email_colour_tokens,
+    check_trusted_proxy_ip_header_is_not_a_meta_key,
+)
 
 # ---------------------------------------------------------------------------
 # check_email_colour_tokens
@@ -139,3 +145,48 @@ def test_check_is_registered_with_django() -> None:
 
     registered_names = [check.__name__ for check in registry.registry.registered_checks]
     assert "check_email_colour_tokens" in registered_names
+
+
+# ---------------------------------------------------------------------------
+# check_trusted_proxy_ip_header_is_not_a_meta_key
+#
+# The setting used to name a key in request.META and now names the header
+# itself. A carried-over "HTTP_X_FORWARDED_FOR" is never found in
+# request.headers, so the client IP silently becomes the proxy's own address.
+# ---------------------------------------------------------------------------
+
+
+def test_trusted_proxy_header_check_is_registered_via_app_ready() -> None:
+    assert (
+        check_trusted_proxy_ip_header_is_not_a_meta_key
+        in registry.registry.registered_checks
+    )
+
+
+def test_meta_key_form_of_trusted_proxy_header_returns_one_e003() -> None:
+    with override_settings(TRUSTED_PROXY_IP_HEADER="HTTP_X_FORWARDED_FOR"):
+        errors = check_trusted_proxy_ip_header_is_not_a_meta_key(None)
+
+    assert [error.id for error in errors] == ["freedom_ls_accounts.E003"]
+
+
+def test_meta_key_error_hints_at_the_plain_header_name() -> None:
+    with override_settings(TRUSTED_PROXY_IP_HEADER="HTTP_X_FORWARDED_FOR"):
+        errors = check_trusted_proxy_ip_header_is_not_a_meta_key(None)
+
+    assert "X-Forwarded-For" in str(errors[0].hint)
+
+
+def test_plain_header_name_returns_no_errors() -> None:
+    with override_settings(TRUSTED_PROXY_IP_HEADER="CF-Connecting-IP"):
+        errors = check_trusted_proxy_ip_header_is_not_a_meta_key(None)
+
+    assert errors == []
+
+
+def test_unset_trusted_proxy_header_returns_no_errors() -> None:
+    # Unset is the development default: REMOTE_ADDR is trusted directly.
+    with override_settings(TRUSTED_PROXY_IP_HEADER=None):
+        errors = check_trusted_proxy_ip_header_is_not_a_meta_key(None)
+
+    assert errors == []

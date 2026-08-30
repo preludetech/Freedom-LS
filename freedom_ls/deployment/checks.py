@@ -25,6 +25,10 @@ E004 — A media alias that must serve signed URLs resolves with querystring
 E005 — A cache alias is database-backed but its table does not exist, because
        ``createcachetable`` was missed in the deploy sequence. No migration
        creates it. Runs only under ``manage.py check --deploy``.
+E006 — ALLAUTH_TRUSTED_CLIENT_IP_HEADER and TRUSTED_PROXY_IP_HEADER name
+       different headers, so allauth's rate limiting and django-axes' lockout
+       would key on different addresses for the same visitor. Runs only under
+       ``manage.py check --deploy``.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 """
@@ -369,3 +373,42 @@ def check_database_cache_tables_exist(
             )
         )
     return errors
+
+
+@register(Tags.security, deploy=True)
+def check_client_ip_headers_agree(
+    **kwargs: object,
+) -> list[CheckMessage]:
+    """E006: Error when the two client-IP header settings name different headers.
+
+    Two subsystems derive the visitor's address, and they read it separately:
+    django-axes through TRUSTED_PROXY_IP_HEADER (accounts.utils.get_client_ip),
+    allauth through ALLAUTH_TRUSTED_CLIENT_IP_HEADER. Point them at different
+    headers and each keys its counters on a different address, so the lockout and
+    the rate limit that are meant to reinforce each other count two populations.
+
+    Only disagreement is checkable here. Whether the edge actually sends the named
+    header is not visible from inside the process — and getting that wrong is the
+    more serious failure, because naming a header removes allauth's own fallback to
+    REMOTE_ADDR and every login, signup and password reset then answers 403.
+    """
+    from django.conf import settings
+
+    allauth_header = getattr(settings, "ALLAUTH_TRUSTED_CLIENT_IP_HEADER", None)
+    axes_header = getattr(settings, "TRUSTED_PROXY_IP_HEADER", None)
+    if allauth_header == axes_header:
+        return []
+    return [
+        Error(
+            f"ALLAUTH_TRUSTED_CLIENT_IP_HEADER ({allauth_header!r}) and "
+            f"TRUSTED_PROXY_IP_HEADER ({axes_header!r}) name different headers, so "
+            f"allauth's rate limiting and django-axes' lockout would key on "
+            f"different addresses for the same visitor.",
+            hint=(
+                "Set both to the header your edge sets, from one expression. In "
+                "production that is the TRUSTED_CLIENT_IP_HEADER environment "
+                "variable."
+            ),
+            id="freedom_ls_deployment.E006",
+        )
+    ]

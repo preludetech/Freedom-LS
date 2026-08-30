@@ -171,8 +171,9 @@ def test_secure_redirect_exempt_constant() -> None:
 
 
 def test_trusted_client_ip_header_constant() -> None:
-    # A header the edge sets rather than appends, so it carries one address.
-    assert settings_defaults.TRUSTED_CLIENT_IP_HEADER == "X-Real-IP"
+    # A header the edge sets rather than appends, so it carries one address. The
+    # default names the one cloudflared sets, matching the edge prod assumes.
+    assert settings_defaults.TRUSTED_CLIENT_IP_HEADER == "CF-Connecting-IP"
 
 
 @override_settings(
@@ -266,8 +267,38 @@ def test_prod_settings_sets_trusted_proxy_ip_header(
 
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
-    assert prod.TRUSTED_PROXY_IP_HEADER == "X-Real-IP"
+    assert prod.TRUSTED_PROXY_IP_HEADER == "CF-Connecting-IP"
     assert prod.ALLAUTH_TRUSTED_CLIENT_IP_HEADER == prod.TRUSTED_PROXY_IP_HEADER
+
+
+def test_prod_settings_trusted_proxy_ip_header_is_overridable_by_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The header belongs to whichever edge is in front of the deployment, so an
+    # edge that sets a different one must not need a code change: naming the wrong
+    # header removes allauth's REMOTE_ADDR fallback and 403s every login.
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+    monkeypatch.setenv("TRUSTED_CLIENT_IP_HEADER", "X-Real-IP")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.TRUSTED_PROXY_IP_HEADER == "X-Real-IP"
+    assert prod.ALLAUTH_TRUSTED_CLIENT_IP_HEADER == "X-Real-IP"
+
+
+def test_prod_settings_blank_trusted_client_ip_header_env_falls_back_to_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+    monkeypatch.setenv("TRUSTED_CLIENT_IP_HEADER", "   ")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.TRUSTED_PROXY_IP_HEADER == settings_defaults.TRUSTED_CLIENT_IP_HEADER
 
 
 def test_database_caches_default_backend_path_is_importable() -> None:
@@ -282,7 +313,10 @@ def test_database_caches_location_and_max_entries_are_fixed() -> None:
     default_cache = settings_defaults.DATABASE_CACHES["default"]
 
     assert default_cache["LOCATION"] == "django_cache_table"
-    assert default_cache["OPTIONS"] == {"MAX_ENTRIES": 5000}
+    # Headroom, not a working size: DatabaseCache culls by cache_key order rather
+    # than by age, so a limit near allauth's rate-limit working set lets a spray
+    # evict the counters tracking it.
+    assert default_cache["OPTIONS"] == {"MAX_ENTRIES": 50000}
 
 
 def test_prod_settings_uses_database_cache_backend(
