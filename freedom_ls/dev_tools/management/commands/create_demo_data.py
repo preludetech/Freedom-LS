@@ -8,13 +8,15 @@ network. Never point this command at a Site with a real hostname.
 
 from typing import Any
 
+import djclick as click
 from allauth.account.models import EmailAddress
 
 from django.contrib.auth import get_user_model
 from django.contrib.sites.models import Site
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandParser
 
 from freedom_ls.accounts.models import User
+from freedom_ls.dev_tools.guard import require_dev_tools_enabled
 from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.utils import get_default_organisation
@@ -51,12 +53,34 @@ demo_sites: list[dict[str, Any]] = [
 ]
 
 
+def _demo_data_totals() -> dict[str, int]:
+    """Counts of records this command will ensure exist, from the fixed site list above.
+
+    An idempotent get_or_create leaves an existing row alone, so this is a
+    ceiling on what could be created, not a prediction of what will be new.
+    """
+    return {
+        "Sites": len(demo_sites),
+        "Admin users": len(demo_sites),
+        "Cohorts": sum(len(site["cohorts"]) for site in demo_sites),
+        "Learner accounts": sum(site.get("num_learners", 3) for site in demo_sites),
+    }
+
+
 class Command(BaseCommand):
     help = (
         "Create demo Sites, cohorts and accounts for local development. Writes "
         "loopback-only Site domains and accounts whose password equals their "
         "email address. Never run against a Site with a real hostname."
     )
+
+    def add_arguments(self, parser: CommandParser) -> None:
+        parser.add_argument(
+            "--yes",
+            "-y",
+            action="store_true",
+            help="Skip confirmation prompt and create demo data immediately",
+        )
 
     @staticmethod
     def _ensure_verified_email(user: User) -> None:
@@ -67,7 +91,27 @@ class Command(BaseCommand):
             defaults={"verified": True, "primary": True},
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: object, **options: object) -> None:
+        require_dev_tools_enabled()
+
+        click.secho(
+            "\nDemo data to be created or ensured present:", fg="yellow", bold=True
+        )
+        for name, count in _demo_data_totals().items():
+            click.secho(f"  {name}: {count}", fg="yellow")
+
+        if not options["yes"]:
+            click.secho(
+                "\nWARNING: this creates accounts, including superusers, whose "
+                "password equals their own email address. Never run this against "
+                "a Site with a real hostname.",
+                fg="red",
+                bold=True,
+            )
+            if not click.confirm("Are you sure you want to continue?"):
+                click.secho("Cancelled.", fg="green")
+                return
+
         user_model = get_user_model()
 
         # Create sites and users

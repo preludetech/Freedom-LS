@@ -48,7 +48,13 @@ INSTALLED_APPS = [
     # "django_watchfiles",
     "django_browser_reload",
     "freedom_ls.qa_helpers",
+    "freedom_ls.dev_tools",
 ]
+
+# Django's own test environment forces settings.DEBUG to False for the
+# duration of the suite, regardless of the True set above, so dev_tools'
+# commands need this to stay runnable under pytest.
+DEV_TOOLS_ENABLED = True
 
 _template_options = TEMPLATES[0]["OPTIONS"]  # noqa: F405
 _context_processors: list[str] = _template_options["context_processors"]  # type: ignore[index]

@@ -10,6 +10,7 @@ from freedom_ls.content_engine.models import (
     File,
     Topic,
 )
+from freedom_ls.dev_tools.guard import require_dev_tools_enabled
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
@@ -32,6 +33,8 @@ def command(yes: bool) -> None:
 
     WARNING: This is a destructive operation that cannot be undone!
     """
+    require_dev_tools_enabled()
+
     # Get counts before deletion
     models_to_delete = [
         ("Topics", Topic),
