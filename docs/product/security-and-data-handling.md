@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-08-30_
+_Last updated: 2026-08-31_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -113,7 +113,7 @@ No payment data, government ID, or biometric data is stored by FLS.
 
 ### Encryption in Transit
 
-TLS terminates at the reverse proxy (or the CDN edge) using Let's Encrypt certificates, and the application can enforce an HTTPS redirect. Database connection encryption is configurable and defaults to *preferred* — encrypted if the server offers it, plaintext otherwise — which suits the shipped same-host containerised PostgreSQL, since it does not run TLS. Strict modes that require or verify TLS are intended for external or managed databases and should be used there. For the shipped topology the control that actually matters is not publishing the database port to the host; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3.
+TLS terminates at the reverse proxy (or the CDN edge), with the certificate supplied by the deployment, and the application can enforce an HTTPS redirect. Database connection encryption is configurable and defaults to *preferred* — encrypted if the server offers it, plaintext otherwise — which suits the shipped same-host containerised PostgreSQL, since it does not run TLS. Strict modes that require or verify TLS are intended for external or managed databases and should be used there. For the shipped topology the control that actually matters is not publishing the database port to the host; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §3.
 
 ### Encryption at Rest
 

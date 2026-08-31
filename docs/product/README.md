@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-31_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
@@ -37,7 +37,7 @@ Each document labels its claims by actual state — built, operational (needs de
 | Doc | Description |
 |---|---|
 | [Configuration and Extension](./configuration-and-extension.md) | Branding, three-tier theming, two bundled themes and four icon sets, pluggable course-access backends, the host-project override model, and an opt-in conformance suite for verifying a downstream's wiring. |
-| [Deployment](./deployment.md) | V1 architecture — Vultr Johannesburg VPS, Docker Compose with Caddy, Gunicorn, and PostgreSQL. Database-backed background tasks requiring a worker process, object storage for media, health probes, and a partially automated backup strategy. |
+| [Deployment](./deployment.md) | What FLS requires of any host: database-backed background tasks needing a worker process, object storage for media, health probes, stdout-only logging, and the system libraries cohort reports need to render. |
 
 ## Roadmap
 
