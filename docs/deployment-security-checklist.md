@@ -21,7 +21,13 @@ listed here.
 
 ## 2. Database Security
 
-- [ ] Application uses a dedicated database user (not the superuser)
+- [ ] Application uses a dedicated database user (not the superuser). Topology-dependent: for
+      the same-host containerised Postgres this project ships with, the official image runs
+      `initdb --username="$POSTGRES_USER"`, so the application role is the cluster superuser by
+      construction, and the backup path authenticates as that role over the container's local
+      socket, which is what keeps the password off a command line `ps` would show. A separate
+      application role would break that backup. This item stands as written for an external or
+      managed database
 - [ ] Database user has only the minimum required privileges
 - [ ] Database password is strong (32+ characters, randomly generated)
 - [ ] Database is not publicly accessible (bound to private network only)
@@ -83,7 +89,10 @@ Submit domain to the [HSTS preload list](https://hstspreload.org/).
 
 - [ ] Only ports 80 (HTTP) and 443 (HTTPS) are publicly accessible
 - [ ] Database port (5432) is restricted to application servers only
-- [ ] SSH port (22) is restricted to known admin IPs or VPN
+- [ ] SSH port (22) is restricted to known admin IPs or VPN. Topology-dependent: a fleet whose
+      operators have no fixed address instead relies on key-based authentication (already
+      required above, with password auth disabled) plus `fail2ban` to block brute-force
+      attempts. Answer with whichever control applies
 - [ ] All other ports are blocked by default (deny-all policy)
 - [ ] Outbound traffic is restricted to required destinations only
 
@@ -98,7 +107,9 @@ Submit domain to the [HSTS preload list](https://hstspreload.org/).
 
 ## 7. Log Management
 
-- [ ] Centralized logging is configured (e.g., ELK, CloudWatch, Datadog)
+- [ ] Centralized logging is configured (e.g., ELK, CloudWatch, Datadog). Topology-dependent:
+      production logs to stdout only, capped at the container log driver, and errors also go to
+      Sentry, so a two-box fleet with no aggregator satisfies this differently
 - [ ] Security events are logged (failed logins, permission denials, admin actions)
 - [ ] Logs do not contain sensitive data (passwords, tokens, PII)
 - [ ] Log retention policy complies with regulatory requirements

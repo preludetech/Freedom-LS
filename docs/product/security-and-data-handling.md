@@ -175,7 +175,7 @@ The target deployment runs on **Vultr Johannesburg** (ISO/IEC 27001:2022 certifi
 | Vulnerability management | Operational — dependency scanning and static analysis run in CI; container image scanning and periodic penetration testing are not automated |
 | ISMS documentation (policy, risk assessment, statement of applicability) | Not yet built — operator responsibility |
 
-See [deployment](./deployment.md) for the full V1 architecture.
+See [deployment](./deployment.md) for what FLS requires of any host.
 
 ## POPIA Data Residency
 
@@ -186,4 +186,4 @@ South Africa's Protection of Personal Information Act does not impose a blanket 
 ## References
 
 - [`../deployment-security-checklist.md`](../deployment-security-checklist.md) — pre-deployment checklist covering server hardening, database and TLS configuration, HSTS rollout, firewall rules, backup encryption, log management, the Django deployment checks, security-relevant environment variables, legal-document integrity, and GitHub security features. Referenced throughout; not duplicated here.
-- [Deployment](./deployment.md) — the V1 architecture.
+- [Deployment](./deployment.md) — what FLS requires of any host.
