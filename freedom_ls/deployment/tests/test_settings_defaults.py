@@ -230,6 +230,21 @@ def test_prod_settings_uses_database_task_backend(
     assert prod.TASKS["default"]["BACKEND"] == "django_tasks_db.DatabaseBackend"
 
 
+def test_prod_settings_logging_has_no_rotating_file_handler(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    handler_classes = [
+        handler["class"] for handler in prod.LOGGING["handlers"].values()
+    ]
+    assert "logging.handlers.RotatingFileHandler" not in handler_classes
+
+
 def test_prod_settings_load_raises_when_webhook_salt_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

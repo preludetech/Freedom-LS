@@ -5,6 +5,7 @@ from __future__ import annotations
 import ipaddress
 
 from django.contrib.sites.models import Site
+from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest
 
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -14,17 +15,18 @@ from .models import SiteSignupPolicy
 
 
 def get_client_ip(request: HttpRequest) -> str:
-    """Return the client IP address: one valid address, or REMOTE_ADDR, or "".
+    """Return the client IP address: the configured header's value, or REMOTE_ADDR.
 
-    When `config.TRUSTED_PROXY_IP_HEADER` names a header (e.g. "X-Real-IP"),
-    that header's value is returned whole. The header must be one the edge
-    *sets* rather than appends, so it carries exactly one address; the value
-    is never split, because the leftmost entry of an appended header is
-    whatever the visitor typed. A value that is not a single valid address
-    means the edge is misconfigured, so it is distrusted entirely rather than
-    picked apart. Falls back to REMOTE_ADDR then, and when no header is
-    configured or the named header is absent, which is what keeps this
-    correct on a deployment with no proxy in front.
+    When `config.TRUSTED_PROXY_IP_HEADER` names a header (e.g. "X-Real-IP"), that
+    header is the only source: its value is returned whole, never split, because
+    the leftmost entry of an appended header is whatever the visitor typed. The
+    header must be one the edge *sets* rather than appends, so it carries exactly
+    one address. A missing header or a value that is not a single valid address
+    means the edge is misconfigured or was bypassed, so the request is refused
+    rather than credited with a fallback address that every other visitor behind
+    the same misconfigured edge would also get. REMOTE_ADDR is used only when no
+    header is configured at all, which is what keeps this correct on a deployment
+    with no proxy in front.
 
     The return value goes into GenericIPAddressField columns without a
     full_clean, so an unparseable value would reach Postgres as an inet and
@@ -32,13 +34,22 @@ def get_client_ip(request: HttpRequest) -> str:
 
     This is the only sanctioned way to derive a client IP for LegalConsent
     records, django-axes lockouts and similar evidence trails.
+
+    Raises:
+        PermissionDenied: the configured header is absent or its value is not a
+            single valid IP address. The message names the header, never the
+            rejected value, since that value is attacker-controlled and would
+            otherwise be written into logs.
     """
     header_name: str | None = config.TRUSTED_PROXY_IP_HEADER
 
     if header_name:
-        value = request.headers.get(header_name, "")
-        if value and _is_ip_address(str(value)):
-            return str(value)
+        value = str(request.headers.get(header_name, ""))
+        if not _is_ip_address(value):
+            raise PermissionDenied(
+                f"Client IP header {header_name!r} is missing or malformed."
+            )
+        return value
 
     return str(request.META.get("REMOTE_ADDR", "") or "")
 

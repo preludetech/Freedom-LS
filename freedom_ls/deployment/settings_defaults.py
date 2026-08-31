@@ -140,13 +140,12 @@ def build_logging_config(*, log_dir: Path | None = None) -> dict:
     """Return a Django LOGGING dict.
 
     Default (log_dir=None): stdout only, via a single StreamHandler shared by every
-    logger — container-friendly, no on-disk state.
+    logger — container-friendly, no on-disk state, and the mode production uses,
+    relying on the container log driver to cap and rotate what it collects.
 
     When log_dir is supplied: additionally writes rotating file handlers under
-    log_dir, reproducing the on-disk logging behaviour needed until the deployment's
-    container log driver caps its own max size/file count. Until then, omitting
-    log_dir would relocate the disk-fill risk onto an uncapped container log rather
-    than removing it.
+    log_dir, for a deployment that wants logs on disk regardless of what its
+    container log driver does.
     """
     formatters = {
         "verbose": {

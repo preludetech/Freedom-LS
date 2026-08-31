@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory
 from django.utils.module_loading import import_string
 
@@ -53,7 +54,7 @@ def test_get_client_ip_returns_configured_header_ipv6_value(settings):
     assert get_client_ip(request) == "2001:db8::1"
 
 
-def test_get_client_ip_falls_back_when_header_carries_several_addresses(settings):
+def test_get_client_ip_raises_when_header_carries_several_addresses(settings):
     settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
     request = RequestFactory().get(
         "/",
@@ -63,11 +64,12 @@ def test_get_client_ip_falls_back_when_header_carries_several_addresses(settings
 
     # Never split: the leftmost entry of an appended header is whatever the visitor
     # typed. A comma means the edge appends rather than sets, so the value is
-    # distrusted whole. It would also fail as an inet on the way into LegalConsent.
-    assert get_client_ip(request) == "10.0.0.1"
+    # distrusted whole rather than picked apart.
+    with pytest.raises(PermissionDenied):
+        get_client_ip(request)
 
 
-def test_get_client_ip_falls_back_when_header_is_not_an_address(settings):
+def test_get_client_ip_raises_when_header_is_not_an_address(settings):
     settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
     request = RequestFactory().get(
         "/",
@@ -75,7 +77,22 @@ def test_get_client_ip_falls_back_when_header_is_not_an_address(settings):
         REMOTE_ADDR="10.0.0.1",
     )
 
-    assert get_client_ip(request) == "10.0.0.1"
+    with pytest.raises(PermissionDenied):
+        get_client_ip(request)
+
+
+def test_get_client_ip_raises_when_header_value_not_disclosed_in_message(settings):
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    request = RequestFactory().get(
+        "/",
+        headers={"x-real-ip": "not-an-address"},
+        REMOTE_ADDR="10.0.0.1",
+    )
+
+    with pytest.raises(PermissionDenied) as excinfo:
+        get_client_ip(request)
+
+    assert "not-an-address" not in str(excinfo.value)
 
 
 def test_get_client_ip_falls_back_to_empty_string_when_nothing_set(settings):
@@ -87,11 +104,12 @@ def test_get_client_ip_falls_back_to_empty_string_when_nothing_set(settings):
     assert get_client_ip(request) == ""
 
 
-def test_get_client_ip_falls_back_to_remote_addr_when_proxy_header_missing(settings):
+def test_get_client_ip_raises_when_proxy_header_missing(settings):
     settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
     request = _request_with_meta(REMOTE_ADDR="10.0.0.5")
 
-    assert get_client_ip(request) == "10.0.0.5"
+    with pytest.raises(PermissionDenied):
+        get_client_ip(request)
 
 
 def test_axes_lockout_parameters_pairs_address_with_username_and_keeps_username(

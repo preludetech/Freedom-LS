@@ -90,9 +90,9 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")  # noqa: F405
 
 
 # Logging configuration
-# log_dir is temporary: drop it once container-level log size/rotation caps exist,
-# to move to stdout-only.
-LOGGING = fls_defaults.build_logging_config(log_dir=BASE_DIR / "logs")  # noqa: F405
+# Stdout only: the container log driver is what caps and rotates output, not this
+# process. Writing to disk here would let logs fill the container's own filesystem.
+LOGGING = fls_defaults.build_logging_config()
 
 # Email
 
