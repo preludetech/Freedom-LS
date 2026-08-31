@@ -44,3 +44,9 @@ def test_unknown_theme_slug_raises_improperly_configured() -> None:
 
     msg = str(exc.value)
     assert "does-not-exist" in msg
+
+
+def test_template_dirs_has_no_tmp_entry() -> None:
+    # Regression guard: TEMPLATES[0]["DIRS"] used to hardcode a world-writable
+    # scratch path. The literal below is an assertion target, not a path in use.
+    assert "/tmp" not in str(settings.TEMPLATES[0]["DIRS"])  # noqa: S108

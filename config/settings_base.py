@@ -169,11 +169,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        # "DIRS": [],
-        "DIRS": [
-            # BASE_DIR / "templates",
-            "/tmp/lms_templates"  # noqa: S108  # nosec B108
-        ],
+        "DIRS": [],
         # "APP_DIRS": True,
         "OPTIONS": {
             "loaders": [
@@ -327,7 +323,9 @@ AXES_COOLOFF_TIME = 1  # 1 hour
 # The flat entry locks on username alone, which is what catches a spray that
 # rotates source addresses against one account. Without it that attack is uncapped
 # on the Django admin login: allauth's login_failed rate limit is the layer above
-# the lockout, but it only wraps allauth's own login view, not /admin/login/.
+# the lockout, but it only wraps allauth's own login view, not /admin/login/. Keep
+# both entries: dropping the flat one would leave that admin-login spray uncapped
+# again.
 AXES_LOCKOUT_PARAMETERS = [
     ["ip_address", "username"],
     "username",
