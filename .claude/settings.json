@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "_comment_qa_commands": "The `manage.py` entries in the allow list are dev-database-only QA commands. danger_content_delete clears content inside the per-branch dev database and is strictly less destructive than dev_db_delete.sh, which drops that database outright and is already prompt-free via the scripts wildcard. migrate is deliberately excluded: a destructive migration is the one command here that can cost work someone wanted to keep.",
+    "_comment_qa_commands": "The `manage.py` entries in the allow list are dev-database-only QA commands. The danger_ commands live in freedom_ls.dev_tools and refuse to run unless DEBUG or DEV_TOOLS_ENABLED, so they only ever touch the per-branch dev database; that is strictly less destructive than dev_db_delete.sh, which drops that database outright and is already prompt-free via the scripts wildcard. migrate is deliberately excluded: a destructive migration is the one command here that can cost work someone wanted to keep.",
     "_comment_qa_scripts": "Any script placed in .claude/ds/scripts/ or .claude/fls-dev/scripts/ is thereby granted prompt-free QA execution with arbitrary arguments via the Bash(.claude/<plugin>/scripts/*.sh:*) wildcards (in both the direct and `bash <script>` invocation forms), and must be reviewed as security-sensitive — equivalent to adding an allow-list entry.",
     "_comment_env_files": "Only .env.example may be read or edited. The deny list carries the exact basenames Read(.env) and Edit(.env); every other .env.* basename is refused by the PreToolUse hooks, which exempt .env.example. A glob deny such as Edit(.env.*) cannot be used here: it matches .env.example too and fires before the hook gets a say. The Edit hook also covers Write and NotebookEdit; writes through Bash redirection are not covered by either mechanism.",
     "allow": [
@@ -62,6 +62,7 @@
       "Bash(bash .claude/fls-dev/scripts/*.sh:*)",
       "Bash(uv run python manage.py runserver:*)",
       "Bash(uv run python manage.py danger_content_delete:*)",
+      "Bash(uv run python manage.py danger_clear_all_course_progress:*)",
       "Bash(uv run python manage.py create_demo_data:*)",
       "Bash(uv run python manage.py content_save:*)",
       "Bash(uv run python manage.py recalculate_progress_percentages:*)",
