@@ -12,6 +12,7 @@ theme bundle and the cover logo before it renders, and those are exercised in te
 
 from __future__ import annotations
 
+import re
 from uuid import uuid4
 
 from django.template.loader import render_to_string
@@ -92,12 +93,12 @@ class TestFlagList:
 
         assert html.count("Has not started any course item.") == 1
         assert html.count("No activity recorded in over 7 days.") == 1
-        assert "No flags" not in html
+        assert "flag-list-empty" not in html
 
     def test_renders_no_flags_when_empty(self) -> None:
         html = render_to_string("reports/partials/flag_list.html", {"flags": []})
 
-        assert "No flags" in html
+        assert "flag-list-empty" in html
 
 
 class TestCapDisclosure:
@@ -229,8 +230,8 @@ class TestCompletionBar:
             {"percentage": 0, "completed": 0, "total": 0},
         )
 
-        assert "No course items" in html
-        assert "0 of 0" not in html
+        assert 'data-empty-state="course-items"' in html
+        assert "completion-ratio" not in html
         assert "✗" not in html
         assert "completion-bar-outer" not in html
 
@@ -338,7 +339,7 @@ class TestAtAGlance:
             "reports/partials/at_a_glance.html", {"data": data, "attention": attention}
         )
 
-        assert "No learners currently flagged." in html
+        assert "attention-list-empty" in html
 
 
 class TestContents:
@@ -395,7 +396,7 @@ class TestMethodology:
     def test_legend_defines_every_status_glyph_the_report_draws(self) -> None:
         html = render_to_string("reports/partials/methodology.html", {})
 
-        legend = html.split("Status legend")[1]
+        legend = html.split('class="legend"')[1]
         assert {"✓", "✗", "▲", "●", "○", "—"} <= set(legend)
 
     def test_states_the_rules_the_figures_are_read_under(self) -> None:
@@ -405,14 +406,19 @@ class TestMethodology:
         """
         html = render_to_string("reports/partials/methodology.html", {})
 
-        assert "Recomputed from progress records every time" in html
-        assert (
-            "<strong>latest</strong> completed attempt, not their best or first" in html
-        )
-        assert "<strong>first</strong> completed attempt at a quiz only" in html
-        assert "every correct option to be selected and no incorrect one" in html
-        assert "carries a score but no verdict" in html
-        assert "free-text questions carry no completion or correctness record" in html
+        stated = set(re.findall(r'data-methodology-rule="([^"]+)"', html))
+
+        assert {
+            "complete",
+            "quiz-score",
+            "attempt",
+            "cohort-analysis",
+            "multi-select-scoring",
+            "answers-given",
+            "pass-marks",
+            "excluded",
+            "covered",
+        } <= stated
 
 
 class TestCourseSummaryTable:
@@ -511,8 +517,8 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "No activity recorded" in html
-        assert "nothing completed yet" not in html
+        assert "no-activity" in html
+        assert "no-activity-started" not in html
 
     def test_renders_the_started_line_when_nothing_was_completed(self) -> None:
         """The section must never be an empty gap.
@@ -527,8 +533,6 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "Started, but nothing completed yet." in html
-        assert "No activity recorded" not in html
         # The line sits above a "No flags" panel, so it must not be drawn in
         # the error tint the never-started line carries.
         assert "no-activity-started" in html
@@ -547,8 +551,7 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "No activity recorded" not in html
-        assert "nothing completed yet" not in html
+        assert "no-activity" not in html
         assert "Intro Topic" in html
 
     def test_renders_activity_when_only_a_quiz_was_attempted(self) -> None:
@@ -582,7 +585,7 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "nothing completed yet" not in html
+        assert "no-activity" not in html
         assert "Voltage Quiz" in html
 
     def test_renders_activity_when_only_wrong_answers_were_recorded(self) -> None:
@@ -609,8 +612,9 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "nothing completed yet" not in html
-        assert "Incorrect answers — Erosion Quiz" in html
+        assert "no-activity" not in html
+        assert 'data-subhead="wrong-answers"' in html
+        assert "Erosion Quiz" in html
 
     def test_names_an_unanswered_question_rather_than_leaving_the_cell_blank(
         self,
@@ -639,7 +643,7 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "Not answered" in html
+        assert "no-answer" in html
 
     def test_an_option_chosen_on_more_than_one_attempt_carries_its_count(self) -> None:
         learner = learner_detail(
@@ -877,8 +881,13 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "Incorrect answers — Voltage Quiz" in html
-        assert "Incorrect answers — Erosion Quiz" in html
+        # One heading per quiz, each naming the quiz it introduces.
+        headings = re.findall(
+            r'data-subhead="wrong-answers"[^>]*>(.*?)</p>', html, re.S
+        )
+        assert len(headings) == 2
+        assert "Voltage Quiz" in headings[0]
+        assert "Erosion Quiz" in headings[1]
         assert "What is voltage?" in html
         assert "What is erosion?" in html
 
@@ -894,7 +903,7 @@ class TestLearnerDetail:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "Incorrect answers" not in html
+        assert 'data-subhead="wrong-answers"' not in html
 
 
 class TestLearnerDetails:
@@ -903,8 +912,7 @@ class TestLearnerDetails:
             "reports/partials/learner_details.html", {"learners": []}
         )
 
-        assert "no learners" in html
-        assert "empty-state" in html
+        assert 'data-empty-state="learner-details"' in html
 
     def test_renders_one_block_per_learner(self) -> None:
         learners = [
@@ -1027,12 +1035,12 @@ class TestConfusions:
         assert "Quiz Clean" not in html
         assert f'id="confusions-{quiz_with_confusion.form_id}"' in html
         assert f'id="confusions-{clean_quiz.form_id}"' not in html
-        assert "no incorrect answers to analyse" not in html
+        assert 'data-empty-state="confusions"' not in html
 
     def test_states_the_situation_when_there_are_no_courses(self) -> None:
         html = render_to_string("reports/partials/confusions.html", {"courses": []})
 
-        assert "No quiz in this report has any incorrect answers to analyse." in html
+        assert 'data-empty-state="confusions"' in html
 
     def test_states_the_situation_when_every_quiz_is_clean(self) -> None:
         clean_quiz = QuizColumn(
@@ -1049,7 +1057,7 @@ class TestConfusions:
             "reports/partials/confusions.html", {"courses": [section]}
         )
 
-        assert "No quiz in this report has any incorrect answers to analyse." in html
+        assert 'data-empty-state="confusions"' in html
 
     def test_no_empty_state_when_a_later_course_has_confusions(self) -> None:
         # The emptiness flag has to survive the loop that finds the match, not
@@ -1093,7 +1101,7 @@ class TestConfusions:
         )
 
         assert "Tricky?" in html
-        assert "no incorrect answers to analyse" not in html
+        assert 'data-empty-state="confusions"' not in html
 
     def test_emits_a_running_element_that_clears_the_learner_header(self) -> None:
         html = render_to_string("reports/partials/confusions.html", {"courses": []})
@@ -1208,7 +1216,7 @@ class TestQuizAttemptsTable:
             "reports/partials/learner_detail.html", {"learner": learner}
         )
 
-        assert "Quiz attempts" in html
+        assert 'data-subhead="quiz-attempts"' in html
         assert html.count("Orbit Quiz") == 2
         assert "30%" in html
         assert "90%" in html
@@ -1248,7 +1256,7 @@ class TestQuizAttemptsTable:
 
         # Scoped to the attempts table: the learner's own completion bar above
         # it carries a glyph of its own.
-        attempts_table = html.split("Quiz attempts")[1]
+        attempts_table = html.split('data-subhead="quiz-attempts"')[1]
         assert "○" in attempts_table
         assert "✓" not in attempts_table
         assert "✗" not in attempts_table
@@ -1295,7 +1303,7 @@ class TestCoverBranding:
 
         html = render_to_string("reports/partials/title_page.html", {"data": data})
 
-        assert "Powered by" in html
+        assert "band-powered-by" in html
         assert "Bright Academy" in html
 
     def test_the_band_is_blank_for_the_house_organisation(self) -> None:
@@ -1303,7 +1311,7 @@ class TestCoverBranding:
 
         html = render_to_string("reports/partials/title_page.html", {"data": data})
 
-        assert "Powered by" not in html
+        assert "band-powered-by" not in html
         assert "Bright Academy" not in html
 
     def test_the_band_carries_the_reversed_mark_beside_the_name(self) -> None:
@@ -1315,7 +1323,7 @@ class TestCoverBranding:
         )
 
         assert f'<img class="band-logo" src="{A_LOGO_FILE_URL}"' in html
-        assert "Powered by" in html
+        assert "band-powered-by" in html
 
     def test_the_band_carries_no_mark_without_a_reversed_variant(self) -> None:
         data = cohort_report_data(show_powered_by=True)
@@ -1326,7 +1334,7 @@ class TestCoverBranding:
         )
 
         assert "band-logo" not in html
-        assert "Powered by" in html
+        assert "band-powered-by" in html
 
     def test_the_house_organisation_gets_no_mark_even_with_a_variant(self) -> None:
         data = cohort_report_data(show_powered_by=False)
@@ -1337,7 +1345,7 @@ class TestCoverBranding:
         )
 
         assert "band-logo" not in html
-        assert "Powered by" not in html
+        assert "band-powered-by" not in html
 
     def test_course_card_states_each_course_scale(self) -> None:
         data = cohort_report_data(

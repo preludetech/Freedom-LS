@@ -20,7 +20,7 @@ course.listing_status. No per-status dispatch or leaf templates here.
 {% endpartialdef %}
 
 {% partialdef current-courses %}
-    <div class="space-y-4">
+    <div id="current-courses" class="space-y-4">
         {% with heading="In Progress" %}
             {% partial section-heading %}
         {% endwith %}
@@ -31,14 +31,16 @@ course.listing_status. No per-status dispatch or leaf templates here.
             {% endwith %}
         {% else %}
             <div class="space-y-3 text-center">
-                <p class="text-muted">
-                    {% if completed_courses %}
+                {% if completed_courses %}
+                    <p class="text-muted" data-testid="in-progress-empty-with-history">
                         No courses in progress — everything you're signed up for is finished
                         and waiting in your Learning History below.
-                    {% else %}
+                    </p>
+                {% else %}
+                    <p class="text-muted" data-testid="in-progress-empty-no-registrations">
                         You haven't signed up for any courses yet.
-                    {% endif %}
-                </p>
+                    </p>
+                {% endif %}
                 <!-- <c-button href="{% url 'learner_interface:courses' %}">
                     Browse courses
                 </c-button> -->

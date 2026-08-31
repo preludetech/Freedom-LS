@@ -269,8 +269,7 @@ def test_dashboard_available_section_renders_browse_all_link(
     assert response.status_code == 200
     body = response.content.decode()
 
-    assert "Available courses" in body
-    assert "Browse all courses" in body
+    assert 'id="available-courses"' in body
     # A real anchor pointing at the all-courses page.
     courses_url = reverse("learner_interface:courses")
     assert f'href="{courses_url}"' in body
@@ -280,7 +279,7 @@ def test_dashboard_available_section_renders_browse_all_link(
 def test_dashboard_available_section_hidden_when_empty(
     mock_site_context, courses, logged_in_client
 ):
-    """With no eligible courses, the whole section (heading + link) disappears."""
+    """With no eligible courses, the whole section disappears."""
     user = UserFactory()
     # Register two and recommend the third -> nothing left to surface.
     LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
@@ -292,36 +291,21 @@ def test_dashboard_available_section_hidden_when_empty(
     assert response.status_code == 200
     assert not response.context["available_courses"]
     body = response.content.decode()
-    assert "Available courses" not in body
-    assert "Browse all courses" not in body
+    assert 'id="available-courses"' not in body
 
 
 @pytest.mark.django_db
-def test_dashboard_old_all_courses_button_removed(
+def test_dashboard_empty_state_prompts_a_learner_with_no_registrations(
     mock_site_context, courses, logged_in_client
 ):
-    """The old bottom 'All Courses' button no longer renders."""
-    user = UserFactory()
-    client = logged_in_client(user)
-
-    response = client.get(reverse("learner_interface:dashboard"))
-    assert response.status_code == 200
-    assert "All Courses" not in response.content.decode()
-
-
-@pytest.mark.django_db
-def test_dashboard_empty_state_browse_courses_button_present(
-    mock_site_context, courses, logged_in_client
-):
-    """A learner with no registrations still sees the empty-state Browse button."""
+    """A learner with no registrations sees the never-registered empty state."""
     user = UserFactory()
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
     body = response.content.decode()
-    assert "You haven't signed up for any courses yet." in body
-    assert "Browse courses" in body
+    assert 'data-testid="in-progress-empty-no-registrations"' in body
 
 
 @pytest.mark.django_db
@@ -339,7 +323,7 @@ def test_dashboard_completed_course_in_history_not_available(
     assert courses[0] in response.context["completed_courses"]
     assert courses[0] not in response.context["available_courses"]
     body = response.content.decode()
-    assert "Learning History" in body
+    assert 'id="learning-history"' in body
 
 
 @pytest.mark.django_db
@@ -359,6 +343,6 @@ def test_dashboard_empty_in_progress_reads_differently_once_there_is_history(
 
     body = client.get(reverse("learner_interface:dashboard")).content.decode()
 
-    assert "You haven't signed up for any courses yet." not in body
-    assert "Learning History" in body
-    assert "No courses in progress" in body
+    assert 'data-testid="in-progress-empty-no-registrations"' not in body
+    assert 'data-testid="in-progress-empty-with-history"' in body
+    assert 'id="learning-history"' in body

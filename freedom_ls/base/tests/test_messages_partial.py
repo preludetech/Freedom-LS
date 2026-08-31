@@ -109,13 +109,22 @@ class TestMessagesPartialFullPage:
         assert "Saved" not in assertive
         assert "Heads up" not in assertive
 
-    def test_close_button_label(self, mock_site_context: object) -> None:
+    def test_close_button_carries_an_accessible_name(
+        self, mock_site_context: object
+    ) -> None:
+        """The dismiss control is icon-only, so its label is its only name.
+
+        The wording is the deployment's to change or translate; having one at
+        all is not.
+        """
         html = render_to_string(
             "partials/messages.html",
             {"messages": [Message(level=message_constants.SUCCESS, message="Hi")]},
         )
 
-        assert 'aria-label="Dismiss notification"' in html
+        buttons = re.findall(r"<button\b[^>]*>", html)
+        assert len(buttons) == 1
+        assert re.search(r'aria-label="[^"]+"', buttons[0]) is not None
 
     def test_no_oob_attribute_in_full_page_mode(
         self, mock_site_context: object

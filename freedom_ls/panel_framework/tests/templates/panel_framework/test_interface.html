@@ -10,6 +10,13 @@ This is only used in the tests.
 <script defer src="{% static 'panel_framework/js/alpine-components.js' %}"></script>
 {% endblock %}
 
+{% comment %}
+These tests run on their own ROOT_URLCONF, which registers no consumer app. The
+shared header reverses accounts: and educator_interface: URLs that urlconf does
+not carry, so the panel harness renders without it.
+{% endcomment %}
+{% block header %}{% endblock header %}
+
 {% block sidebar_storage_key %}sidebar-test{% endblock sidebar_storage_key %}
 
 {% block sidebar_content %}

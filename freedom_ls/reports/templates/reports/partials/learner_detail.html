@@ -53,7 +53,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   {% endif %}
 
   {% if learner.quiz_results %}
-  <p class="subhead">Quiz attempts <span class="subhead-note">every completed sitting, oldest first</span></p>
+  <p class="subhead" data-subhead="quiz-attempts">Quiz attempts <span class="subhead-note">every completed sitting, oldest first</span></p>
   <table class="attempts-table">
     <thead>
       <tr>
@@ -96,7 +96,7 @@ of its warning rule, so the first flag is the most serious one a learner has.
   would not survive greyscale printing.{% endcomment %}
   {% for quiz in learner.wrong_answers %}
   {% if quiz.answers %}
-  <p class="subhead">Incorrect answers — {{ quiz.title }} <span class="subhead-note">across all attempts</span></p>
+  <p class="subhead" data-subhead="wrong-answers">Incorrect answers — {{ quiz.title }} <span class="subhead-note">across all attempts</span></p>
   <table class="wrong-answers-table">
     <thead>
       <tr>

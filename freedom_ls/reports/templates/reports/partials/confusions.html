@@ -20,6 +20,6 @@ The empty span is a running element: print.css puts it in the running-header slo
   {% endfor %}
   {% endfor %}
   {% if not rendered_any %}
-  <p class="empty-state">No quiz in this report has any incorrect answers to analyse.</p>
+  <p class="empty-state" data-empty-state="confusions">No quiz in this report has any incorrect answers to analyse.</p>
   {% endif %}
 </section>

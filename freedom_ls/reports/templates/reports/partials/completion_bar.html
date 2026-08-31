@@ -16,7 +16,7 @@ of fifty.
     style="width: {{ percentage }}%;"></span></span>
   {% else %}
   {% comment %}No bar at all: "0% (0 of 0)" reads as a failure when in fact there is nothing for this learner to complete.{% endcomment %}
-  <span class="completion-bar-label">
+  <span class="completion-bar-label" data-empty-state="course-items">
     <span class="status-glyph status-na">—</span>
     No course items
   </span>

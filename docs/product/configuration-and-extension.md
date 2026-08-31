@@ -33,7 +33,7 @@ Each tier is independent and they can be combined.
 
 **Tier 2 — component slots.** Course card and course row components expose named slots (`eyebrow`, `footer`) a downstream template can fill without forking the component, and accept a mergeable `class` attribute for layout tweaks. Changes content and layout within a component while leaving its logic alone.
 
-**Tier 3 — whole-file shadowing.** Any FLS template can be replaced entirely by placing a file at the same relative path in the downstream project's theme template directory, which the template loader searches first. Use this when tiers 1 and 2 are not enough.
+**Tier 3 — whole-file shadowing.** Any FLS template can be replaced entirely by placing a file at the same relative path in the downstream project's theme template directory, which the template loader searches first. Use this when tiers 1 and 2 are not enough. A replacement file is expected to preserve the small set of structural markers FLS's shipped tests rely on; they are listed in the [theming how-to](../how%20tos/theme-fls.md).
 
 **Report typography.** The [cohort report](./reports.md) follows the same model: it names no colour and no font family of its own. It takes its colours from the built theme stylesheet, so it matches whichever theme is active, and its typefaces from settings. A downstream project rebrands the report by supplying its own font files and overriding those settings — no template changes needed. The settings are listed [below](#settings-reference).
 

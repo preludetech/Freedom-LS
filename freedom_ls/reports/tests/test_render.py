@@ -171,12 +171,12 @@ class TestDegenerateCohortEmptyStates:
     def test_cohort_with_no_courses_states_so_on_the_title_page(self) -> None:
         html = build_report_html(cohort_report_data(courses=[]))
 
-        assert "No courses are registered to this cohort." in html
+        assert 'data-empty-state="cover-courses"' in html
 
     def test_cohort_with_no_courses_states_so_under_summary_tables(self) -> None:
         html = build_report_html(cohort_report_data(courses=[]))
 
-        assert "There are no course registrations to summarise." in html
+        assert 'data-empty-state="summary-tables"' in html
 
     def test_course_with_no_learners_states_so_instead_of_a_bare_header_row(
         self,
@@ -185,7 +185,7 @@ class TestDegenerateCohortEmptyStates:
 
         html = build_report_html(data)
 
-        assert "This cohort has no learners." in html
+        assert 'data-empty-state="course-learners"' in html
 
 
 class TestBuildFontCss:
@@ -413,7 +413,7 @@ class TestBrandingOnTheCover:
         html = build_report_html(data)
 
         brand_slot = html.split('class="cover-brand"')[1].split("</div>")[0]
-        metadata_row = html.split("<dt>Organisation</dt>")[1].split("<dt>")[0]
+        metadata_row = html.split('data-meta="organisation"')[1].split("</dd>")[0]
         assert brand_slot.count("Northside College of Advanced Hydrology…") == 1
         assert A_LONG_ORGANISATION_NAME not in brand_slot
         assert A_LONG_ORGANISATION_NAME in metadata_row
@@ -465,14 +465,18 @@ class TestBrandingOnTheCover:
 
         html = build_report_html(data)
 
-        assert _body_of(html).count("Powered by") == 2
+        body = _body_of(html)
+        assert "band-powered-by" in body
+        assert "footer-powered-by" in body
 
     def test_the_house_organisation_gets_no_platform_mark(self) -> None:
         data = cohort_report_data(site_name="Bright Academy", show_powered_by=False)
 
         html = build_report_html(data)
 
-        assert "Powered by" not in _body_of(html)
+        body = _body_of(html)
+        assert "band-powered-by" not in body
+        assert "footer-powered-by" not in body
 
 
 @requires_tailwind_bundle
@@ -527,7 +531,8 @@ class TestThePlatformMarkOnTheReport:
         body = _body_of(html)
         assert "band-logo" not in body
         assert "footer-logo" not in body
-        assert body.count("Powered by") == 2
+        assert "band-powered-by" in body
+        assert "footer-powered-by" in body
 
     @override_settings(
         HEADER_LOGO_STATIC_PATH=LIGHT, HEADER_LOGO_ON_DARK_STATIC_PATH=DARK

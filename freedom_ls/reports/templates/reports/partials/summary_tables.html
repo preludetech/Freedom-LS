@@ -6,6 +6,6 @@
   {% for section in courses %}
   {% include "reports/partials/course_summary_table.html" with section=section only %}
   {% empty %}
-  <p class="empty-state">There are no course registrations to summarise.</p>
+  <p class="empty-state" data-empty-state="summary-tables">There are no course registrations to summarise.</p>
   {% endfor %}
 </section>

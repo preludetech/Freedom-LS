@@ -11,7 +11,7 @@
     <c-page>
         <div class="space-y-8 lg:space-y-12">
             {% if user.is_authenticated %}
-                <div x-data="dateEyebrow" class="text-left">
+                <div id="dashboard-greeting" x-data="dateEyebrow" class="text-left">
                     <p x-text="formatted" x-cloak class="text-sm text-muted"></p>
                     <h1 class="max-w-full">
                         <span class="block sm:inline">Welcome back,</span>

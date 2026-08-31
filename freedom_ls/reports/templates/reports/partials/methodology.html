@@ -5,15 +5,15 @@ Rendered inside contents.html rather than as a section of its own.
 <div class="methodology">
   <h2>Definitions and method</h2>
   <div class="definitions">
-    <p><strong>Complete.</strong> Recomputed from progress records every time the report is generated, never read from a cached percentage — a cached value can drift from what a learner has actually done.</p>
-    <p><strong>Quiz score.</strong> Always the learner's <strong>latest</strong> completed attempt, not their best or first.</p>
-    <p><strong>Attempt.</strong> Only completed attempts count; an attempt started and abandoned is neither counted nor scored.</p>
-    <p><strong>Cohort analysis.</strong> The question-level confusion tables analyse each learner's <strong>first</strong> completed attempt at a quiz only, so a question's difficulty reflects how the cohort met it fresh, not how retries wore it down.</p>
-    <p><strong>Multi-select scoring.</strong> Checkbox questions now require every correct option to be selected and no incorrect one. A stored score for a checkbox question answered before this change can disagree with the wrong-answer detail shown below it; historical attempts are not rescored.</p>
-    <p><strong>Answers given.</strong> In a learner's own section, every option they ticked is listed and marked individually: ✓ an option that was correct, ✗ one that was not, ○ one the course author never marked either way. A multi-select question is scored wrong as a whole, so a learner can have ticked correct options and still have the question counted against them.</p>
-    <p><strong>Pass marks.</strong> A quiz with no pass mark configured carries a score but no verdict — the learner sat it and the score is real, but nothing in the course says what counts as passing it.</p>
-    <p><strong>What is excluded.</strong> Activities and free-text questions carry no completion or correctness record in FLS, so they are excluded from both the completion figures and the question-level analysis.</p>
-    <p><strong>What is covered.</strong> Only courses registered to the cohort as a whole. A course a learner joined individually is not included.</p>
+    <p data-methodology-rule="complete"><strong>Complete.</strong> Recomputed from progress records every time the report is generated, never read from a cached percentage — a cached value can drift from what a learner has actually done.</p>
+    <p data-methodology-rule="quiz-score"><strong>Quiz score.</strong> Always the learner's <strong>latest</strong> completed attempt, not their best or first.</p>
+    <p data-methodology-rule="attempt"><strong>Attempt.</strong> Only completed attempts count; an attempt started and abandoned is neither counted nor scored.</p>
+    <p data-methodology-rule="cohort-analysis"><strong>Cohort analysis.</strong> The question-level confusion tables analyse each learner's <strong>first</strong> completed attempt at a quiz only, so a question's difficulty reflects how the cohort met it fresh, not how retries wore it down.</p>
+    <p data-methodology-rule="multi-select-scoring"><strong>Multi-select scoring.</strong> Checkbox questions now require every correct option to be selected and no incorrect one. A stored score for a checkbox question answered before this change can disagree with the wrong-answer detail shown below it; historical attempts are not rescored.</p>
+    <p data-methodology-rule="answers-given"><strong>Answers given.</strong> In a learner's own section, every option they ticked is listed and marked individually: ✓ an option that was correct, ✗ one that was not, ○ one the course author never marked either way. A multi-select question is scored wrong as a whole, so a learner can have ticked correct options and still have the question counted against them.</p>
+    <p data-methodology-rule="pass-marks"><strong>Pass marks.</strong> A quiz with no pass mark configured carries a score but no verdict — the learner sat it and the score is real, but nothing in the course says what counts as passing it.</p>
+    <p data-methodology-rule="excluded"><strong>What is excluded.</strong> Activities and free-text questions carry no completion or correctness record in FLS, so they are excluded from both the completion figures and the question-level analysis.</p>
+    <p data-methodology-rule="covered"><strong>What is covered.</strong> Only courses registered to the cohort as a whole. A course a learner joined individually is not included.</p>
   </div>
   <h3>Status legend</h3>
   <ul class="legend">

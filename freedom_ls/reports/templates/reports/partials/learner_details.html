@@ -6,6 +6,6 @@
   {% for learner in learners %}
   {% include "reports/partials/learner_detail.html" with learner=learner only %}
   {% empty %}
-  <p class="empty-state">This cohort has no learners, so there are no individual sections to show.</p>
+  <p class="empty-state" data-empty-state="learner-details">This cohort has no learners, so there are no individual sections to show.</p>
   {% endfor %}
 </section>
