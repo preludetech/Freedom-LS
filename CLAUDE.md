@@ -70,7 +70,7 @@ If you are told not to implement a feature immediately then that does not mean t
 - ORM only: no raw(), extra(), or RawSQL without security review.
 - HTMX CSRF: set globally via `<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>`
 - Use select_related()/prefetch_related() for all related-object queries.
-- Return HTTP 422 for HTMX validation errors. See `docs/templates_and_cotton.md` for full HTMX conventions.
+- Return HTTP 422 for HTMX validation errors. See `claude_plugins/fls-dev/resources/templates_and_cotton.md` for full HTMX conventions.
 - Always run `uv run manage.py makemigrations` after model changes, then `uv run manage.py migrate`
 - Never edit existing migration files — create new migrations instead
 - Avoid repeating code. If there is code being repeated then favor extracting it into a new function/class and calling it as needed

@@ -64,8 +64,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 12. Template repo
 
-- [ ] (cmd) Run `/fls-dev:update_template_repo` to update the template repo for new projects
-- [ ] (user) Review and commit the template repo changes (if any)
+- [ ] ~~(cmd) Run `/fls-dev:update_template_repo` to update the template repo for new projects~~
+- [ ] ~~(user) Review and commit the template repo changes (if any)~~
+
+Struck: this work (FLS-03) deleted `/fls-dev:update_template_repo` and the manifest it read, so
+this step no longer exists.
 
 ## 13. Author plugin sync
 

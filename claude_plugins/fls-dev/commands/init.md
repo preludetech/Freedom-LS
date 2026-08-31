@@ -28,7 +28,8 @@ not disposable.
 
 `fls-dev:init` is **plugin-bootstrap only.** It wires the `fls-dev` plugin into an existing project.
 It does NOT scaffold Django project structure — `config/`, `pyproject.toml`, Tailwind config, a
-`CLAUDE.md` skeleton, or a `.claude/settings.json` from scratch. Those come from the template repo.
+`CLAUDE.md` skeleton, or a `.claude/settings.json` from scratch. Those are scaffolded separately,
+before this command runs.
 
 It owns the `fls-dev` slice: its `enabledPlugins` key, its permissions, its `.claude/fls-dev/` config
 dir, and its dev/DB wrapper scripts. Into the shared `claude.sh` it adds **only its own**
@@ -264,9 +265,9 @@ where it is.
 1. If it does not exist, copy `${CLAUDE_PLUGIN_ROOT}/templates/config.local.md`.
 2. If it exists, add any key the template defines but the file lacks. Preserve everything present.
 
-This file carries machine-specific overrides, including the `## Template Repo` section where the user
-records the absolute path to their local clone of the concrete-project template repo.
-`/update_template_repo` reads that path; leave it blank if they don't maintain it locally.
+This file carries machine-specific overrides to `config.md`. The shipped template defines no
+default keys yet — it exists so a project has a gitignored place to add local overrides when it
+needs one.
 
 ## Step 5: Update `.gitignore`
 
@@ -334,5 +335,4 @@ of in-place edits.
 Print what was done, then the outstanding actions: every Step 0 WARN, every `CONFLICT` and `KEEP`
 from Step 2, every `KEEP-AND-HAND-OFF`, the "run `/ds:init` again" instruction if any file moved, and
 every report-only finding from **Step 1, item 5**. Point the user at `.claude/fls-dev/config.md` for the dev
-credentials and base URL, and at `.claude/fls-dev/config.local.md` for the optional template-repo
-path.
+credentials and base URL, and at `.claude/fls-dev/config.local.md` for local overrides.

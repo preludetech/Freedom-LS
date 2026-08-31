@@ -35,5 +35,9 @@ A plan that hardcodes its environment cannot be inherited unchanged.
 The five `research_*.md` files in this directory back all three ideas and stay here. Each idea names
 the ones that matter to it.
 
+`research_downstream_qa_inheritance.md` and `research_staging_reset_endpoint.md` cite
+`claude_plugins/fls-dev/resources/template_repo_manifest.md`, which `deploy_prep_2` (FLS-03) deleted.
+Read those citations as historical.
+
 If you move an idea into its own spec directory to start work on it, the research files it cites need
 to come with it or be reachable from it. `/sdd:spec_from_idea` reads the directory the idea sits in.

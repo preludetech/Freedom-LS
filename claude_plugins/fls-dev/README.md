@@ -24,10 +24,10 @@ Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-i
 `app-settings`, `frontend-styling`, `playwright-tests`, `template`, `testing`, `use-playwright`
 (all → `ds:*`), and `git-worktree-setup` (→ `sdd:git-worktree-setup`).
 
-### Commands (10 files)
+### Commands (9 files)
 
 Top level: `init`, `do_qa`, `plan_security_review`, `plan_structure_review`,
-`update_claude_plugin_fls_content`, `update_template_repo`, `update_product_docs`,
+`update_claude_plugin_fls_content`, `update_product_docs`,
 `update_upgrade_notes`.
 `concrete/`: `README`, `update_fls`.
 
@@ -58,9 +58,9 @@ setup and teardown.
 scratch-file teardown. They live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is
 per-plugin and their only callers are the `fls-dev` commands `do_qa` and `update_product_docs`.
 
-### Resources (11)
+### Resources (10)
 
-FLS-specific: `email_templates`, `template_repo_manifest`, `markdown_content`, `multi_tenant`.
+FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`.
 FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extends `ds`'s
 `admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`,
 `templates_and_cotton`, `testing`, `playwright-testing`.
