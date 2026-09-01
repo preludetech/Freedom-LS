@@ -12,6 +12,10 @@ Two states:
 CSRF is handled globally via the body hx-headers attribute — no per-request token.
 The hx-swap="outerHTML" swap visibly replaces the entire wrapper on each action.
 
+hx-disabled-elt disables the submit button while its request is in flight. Without
+it a second click landing before the swap escapes htmx and submits the form
+natively, which reloads the page instead of toggling the panel.
+
 Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10).
 {% endcomment %}
 <div id="express-interest-cta-{{ course.slug }}">
@@ -23,7 +27,8 @@ Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10
             </span>
             <form hx-post="{% url 'course_interest:remove_interest' course_slug=course.slug %}"
                   hx-target="#express-interest-cta-{{ course.slug }}"
-                  hx-swap="outerHTML">
+                  hx-swap="outerHTML"
+                  hx-disabled-elt="find button">
                 <c-button type="submit" variant="ghost" size="small">
                     Remove interest
                 </c-button>
@@ -33,7 +38,8 @@ Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10
     {% else %}
         <form hx-post="{% url 'course_interest:express_interest' course_slug=course.slug %}"
               hx-target="#express-interest-cta-{{ course.slug }}"
-              hx-swap="outerHTML">
+              hx-swap="outerHTML"
+              hx-disabled-elt="find button">
             <c-button type="submit" variant="primary" class="w-full">
                 I'm interested
             </c-button>

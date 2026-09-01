@@ -4,6 +4,8 @@ Covers:
 - Deferred-login flows via `@login_required`: anonymous access to
   `initiate_course_access` / `apply` redirects to login with `?next=` set,
   and after login the free/gated course flows land the learner correctly.
+- The signup arm of the same funnel: intent survives account creation and
+  email verification, not only sign-in.
 - Open-redirect rejection in the completion view's post-submit redirect.
 - The completion view re-emitting a safe `?next=` as a hidden form field.
 """
@@ -13,11 +15,13 @@ from __future__ import annotations
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
@@ -33,6 +37,26 @@ def _next_param(location: str) -> str | None:
     """Return the single `next` query-param value from a redirect Location, if any."""
     values = parse_qs(urlparse(location).query).get("next")
     return values[0] if values else None
+
+
+def _signup_payload(email: str, last_name: str, next_url: str) -> dict[str, str]:
+    """Return a signup form payload that passes validation, carrying `next_url`."""
+    return {
+        "email": email,
+        "password1": "TestPass123!xyz",  # pragma: allowlist secret
+        "password2": "TestPass123!xyz",  # pragma: allowlist secret
+        "first_name": "Signup",
+        "last_name": last_name,
+        "accept_terms": "on",
+        "accept_privacy": "on",
+        "next": next_url,
+    }
+
+
+def _confirm_url_for(email: str) -> str:
+    """Return the email-confirmation URL allauth would have emailed to `email`."""
+    token = EmailConfirmationHMAC(EmailAddress.objects.get(email=email))
+    return reverse("account_confirm_email", args=[token.key])
 
 
 @pytest.mark.django_db
@@ -208,6 +232,71 @@ def test_deferred_login_express_interest_repeat_visits_stay_idempotent(
     client.get(deferred_url)
 
     assert CourseInterest.objects.filter(user=user, course=course).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_signup_arm_express_interest_round_trip(mock_site_context):
+    """An anonymous express-interest click survives signing *up*, not just in.
+
+    The sign-in page offers a signup link, so the intent has to cross account
+    creation and email verification as well as login. The deferred view writes
+    only for the slug stashed in the session on the way out, so this also pins
+    that the stash survives the session-key cycling signup and confirmation
+    each perform.
+    """
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    client = Client()
+
+    express_interest_url = reverse(
+        "course_interest:express_interest", kwargs={"course_slug": course.slug}
+    )
+    response = client.post(express_interest_url)
+    next_url = _next_param(response["Location"])
+
+    email = "signup-arm@example.com"
+    client.post(
+        reverse("account_signup"),
+        _signup_payload(email, "Arm", next_url),
+    )
+
+    confirmed = client.post(_confirm_url_for(email), follow=True)
+
+    assert confirmed.status_code == 200
+    assert all(status != 405 for _, status in confirmed.redirect_chain)
+
+    user = User.objects.get(email=email)
+    assert CourseInterest.objects.filter(user=user, course=course).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_signup_arm_records_interest_only_for_the_stashed_course(mock_site_context):
+    """Signing up carries the clicked course through, and nothing else.
+
+    Guards the stash against widening into "record interest for whatever slug
+    the returning URL names" — a second coming-soon course stays untouched.
+    """
+    clicked = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    other = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    client = Client()
+
+    response = client.post(
+        reverse(
+            "course_interest:express_interest", kwargs={"course_slug": clicked.slug}
+        )
+    )
+    next_url = _next_param(response["Location"])
+
+    email = "signup-arm-scope@example.com"
+    client.post(
+        reverse("account_signup"),
+        _signup_payload(email, "Scope", next_url),
+    )
+
+    client.post(_confirm_url_for(email), follow=True)
+
+    user = User.objects.get(email=email)
+    assert CourseInterest.objects.filter(user=user, course=clicked).exists()
+    assert not CourseInterest.objects.filter(user=user, course=other).exists()
 
 
 # ---------------------------------------------------------------------------
