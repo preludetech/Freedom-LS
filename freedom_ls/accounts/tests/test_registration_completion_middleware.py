@@ -72,6 +72,62 @@ def test_user_with_incomplete_forms_redirected_to_completion(mock_site_context, 
 
 
 @pytest.mark.django_db
+def test_get_by_incomplete_user_carries_own_path_as_next(mock_site_context, site):
+    """A GET that gets bounced to completion carries its own path as `next`,
+    so the visitor lands back where they were once the form is done."""
+    SiteSignupPolicyFactory(
+        site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
+    )
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    profile_url = reverse("accounts:account_profile")
+    response = client.get(profile_url)
+
+    completion_url = reverse("accounts:complete_registration")
+    assert response.status_code == 302
+    assert response.url == f"{completion_url}?next={profile_url}"
+
+
+@pytest.mark.django_db
+def test_post_by_incomplete_user_redirects_without_next(mock_site_context, site):
+    """A POST cannot be safely replayed as `next`, so the redirect carries
+    none — replaying it would GET a URL that only accepts POST."""
+    SiteSignupPolicyFactory(
+        site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
+    )
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    response = client.post(reverse("accounts:account_profile"))
+
+    completion_url = reverse("accounts:complete_registration")
+    assert response.status_code == 302
+    assert response.url == completion_url
+
+
+@pytest.mark.django_db
+def test_htmx_incomplete_user_gets_204_with_hx_redirect(mock_site_context, site):
+    """An htmx request must not have a login page swapped into a fragment,
+    so it gets 204 + HX-Redirect instead of a 302 htmx would follow itself."""
+    SiteSignupPolicyFactory(
+        site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
+    )
+    user = UserFactory()
+    client = Client()
+    client.force_login(user)
+
+    profile_url = reverse("accounts:account_profile")
+    response = client.get(profile_url, HTTP_HX_REQUEST="true")
+
+    completion_url = reverse("accounts:complete_registration")
+    assert response.status_code == 204
+    assert response["HX-Redirect"] == f"{completion_url}?next={profile_url}"
+
+
+@pytest.mark.django_db
 def test_settings_default_drives_forms_when_no_policy(mock_site_context, settings):
     """settings.ADDITIONAL_REGISTRATION_FORMS is used when no policy exists."""
     settings.ADDITIONAL_REGISTRATION_FORMS = [ALWAYS_INCOMPLETE_PATH]

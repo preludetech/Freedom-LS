@@ -24,7 +24,6 @@ from typing import cast
 from django.conf import settings
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect
 from django.urls import Resolver404, resolve, reverse
 
 EXEMPT_URL_NAMES: frozenset[str] = frozenset(
@@ -99,6 +98,7 @@ class RegistrationCompletionMiddleware:
         from .utils import (
             get_effective_additional_registration_forms,
             get_signup_policy_for_request,
+            redirect_to_auth,
         )
 
         policy = get_signup_policy_for_request(request)
@@ -114,7 +114,15 @@ class RegistrationCompletionMiddleware:
             self._mark_complete(request, dotted_paths_hash)
             return self.get_response(request)
 
-        return redirect(reverse("accounts:complete_registration"))
+        completion_url = reverse("accounts:complete_registration")
+        # A GET/HEAD path is always safe to replay as `next` once the form is
+        # done. A POST is not: carrying it forward would recreate the same
+        # 405 this whole redirect exists to avoid.
+        if request.method in ("GET", "HEAD"):
+            return redirect_to_auth(
+                request, next_url=request.get_full_path(), auth_url=completion_url
+            )
+        return redirect_to_auth(request, auth_url=completion_url)
 
     # ------------------------------------------------------------------
     # Helpers
