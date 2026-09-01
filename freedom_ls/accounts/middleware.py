@@ -115,10 +115,12 @@ class RegistrationCompletionMiddleware:
             return self.get_response(request)
 
         completion_url = reverse("accounts:complete_registration")
-        # A GET/HEAD path is always safe to replay as `next` once the form is
-        # done. A POST is not: carrying it forward would recreate the same
-        # 405 this whole redirect exists to avoid.
-        if request.method in ("GET", "HEAD"):
+        # A full-page GET/HEAD path is safe to replay as `next` once the form
+        # is done. A POST is not: carrying it forward would recreate the same
+        # 405 this whole redirect exists to avoid. Nor is an htmx GET, whose
+        # path is a partial that renders as a bare fragment when the browser
+        # navigates to it full-page.
+        if request.method in ("GET", "HEAD") and not request.headers.get("HX-Request"):
             return redirect_to_auth(
                 request, next_url=request.get_full_path(), auth_url=completion_url
             )

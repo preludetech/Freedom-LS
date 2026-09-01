@@ -196,12 +196,14 @@ def test_deferred_login_express_interest_repeat_visits_stay_idempotent(
     """Landing on the deferred-express-interest URL twice records one CourseInterest."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
     user = UserFactory()
-    client.force_login(user)
 
-    deferred_url = reverse(
-        "course_interest:deferred_express_interest",
-        kwargs={"course_slug": course.slug},
+    express_interest_url = reverse(
+        "course_interest:express_interest", kwargs={"course_slug": course.slug}
     )
+    response = client.post(express_interest_url)
+    deferred_url = _next_param(response["Location"])
+
+    client.force_login(user)
     client.get(deferred_url)
     client.get(deferred_url)
 

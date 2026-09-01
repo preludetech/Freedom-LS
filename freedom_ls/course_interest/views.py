@@ -21,6 +21,7 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.models import CourseInterest
 
 _CTA_TEMPLATE = "course_interest/partials/express_interest_cta.html"
+_PENDING_INTEREST_SESSION_KEY = "course_interest_pending_slug"
 
 
 @require_POST
@@ -31,7 +32,8 @@ def partial_express_interest(request: HttpRequest, course_slug: str) -> HttpResp
     deferred_express_interest, the GET-safe view that records the interest
     once they return — resolved before the course lookup so an anonymous POST
     for any slug gets an identical redirect and confirms nothing about the
-    course.
+    course. The slug is stashed in the session so that view can tell a real
+    click from a bare GET of its URL.
 
     Returns 404 if the course is hidden and the user is not registered (never
     confirms a hidden course exists). Returns HTTP 422 if the course is not
@@ -44,6 +46,7 @@ def partial_express_interest(request: HttpRequest, course_slug: str) -> HttpResp
             "course_interest:deferred_express_interest",
             kwargs={"course_slug": course_slug},
         )
+        request.session[_PENDING_INTEREST_SESSION_KEY] = course_slug
         return redirect_to_auth(request, next_url=next_url)
 
     course = get_object_or_404(Course, slug=course_slug)
@@ -96,14 +99,20 @@ def partial_remove_interest(request: HttpRequest, course_slug: str) -> HttpRespo
 def deferred_express_interest(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Where an express-interest click lands once sign-in completes.
 
-    login_required sends an anonymous visitor here as `next`, and the browser
-    returns with a GET, so this view must be GET-safe rather than mirroring
-    partial_express_interest's POST-only contract.
+    The browser returns here with a GET, so this view cannot mirror
+    partial_express_interest's POST-only contract. It records the interest
+    only for the slug that view stashed in the session on the way out, so a
+    forged `<img src>` or a link prefetch of this URL writes nothing.
     """
     course = get_object_or_404(Course, slug=course_slug)
 
     raise_404_if_hidden_unregistered(request.user, course)
-    if course.visibility == CourseVisibility.COMING_SOON:
+
+    pending_slug = request.session.pop(_PENDING_INTEREST_SESSION_KEY, None)
+    if (
+        pending_slug == course_slug
+        and course.visibility == CourseVisibility.COMING_SOON
+    ):
         CourseInterest.objects.get_or_create(user=request.user, course=course)
 
     return redirect("learner_interface:course_detail", course_slug=course.slug)

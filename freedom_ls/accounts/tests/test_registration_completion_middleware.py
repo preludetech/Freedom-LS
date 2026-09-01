@@ -111,7 +111,10 @@ def test_post_by_incomplete_user_redirects_without_next(mock_site_context, site)
 @pytest.mark.django_db
 def test_htmx_incomplete_user_gets_204_with_hx_redirect(mock_site_context, site):
     """An htmx request must not have a login page swapped into a fragment,
-    so it gets 204 + HX-Redirect instead of a 302 htmx would follow itself."""
+    so it gets 204 + HX-Redirect instead of a 302 htmx would follow itself.
+
+    It carries no `next`: an htmx path is a partial, which renders as a bare
+    fragment if the browser navigates to it full-page after the form."""
     SiteSignupPolicyFactory(
         site=site, additional_registration_forms=[ALWAYS_INCOMPLETE_PATH]
     )
@@ -124,7 +127,7 @@ def test_htmx_incomplete_user_gets_204_with_hx_redirect(mock_site_context, site)
 
     completion_url = reverse("accounts:complete_registration")
     assert response.status_code == 204
-    assert response["HX-Redirect"] == f"{completion_url}?next={profile_url}"
+    assert response["HX-Redirect"] == completion_url
 
 
 @pytest.mark.django_db

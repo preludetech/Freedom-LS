@@ -393,3 +393,35 @@ class TestExpressInterestCTAContent:
         assert "notify" not in content
         assert "notification" not in content
         assert "we'll let you know" not in content
+
+
+# ---------------------------------------------------------------------------
+# deferred_express_interest view
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestDeferredExpressInterest:
+    """The deferred landing view only records interest for a click it started."""
+
+    def test_get_without_pending_click_creates_no_row(self, client, mock_site_context):
+        """A GET with nothing stashed in the session records nothing.
+
+        Guards against a forged `<img src>` or a link prefetch of this URL
+        creating interest rows for a signed-in visitor.
+        """
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(user)
+
+        url = reverse(
+            "course_interest:deferred_express_interest",
+            kwargs={"course_slug": course.slug},
+        )
+        response = client.get(url)
+
+        assert not CourseInterest.objects.filter(user=user, course=course).exists()
+        assert response.status_code == 302
+        assert response["Location"] == reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )

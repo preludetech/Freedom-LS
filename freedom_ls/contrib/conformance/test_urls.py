@@ -65,6 +65,12 @@ FLS_NAMESPACE_PROBES: list[_Probe] = [
         {"course_slug": "x"},
     ),
     _Probe(
+        "freedom_ls.course_interest",
+        "course_interest:deferred_express_interest",
+        True,
+        {"course_slug": "x"},
+    ),
+    _Probe(
         "freedom_ls.educator_interface",
         "educator_interface:interface",
         True,
