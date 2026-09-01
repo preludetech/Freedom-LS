@@ -48,6 +48,7 @@
 - [reference_detaching_a_cohort_membership.md](reference_detaching_a_cohort_membership.md) — Deleting ONE CohortMembership to make grant resolution fall through to the individual registration; nothing FKs to CohortMembership (no cascade, no ProtectedError); there is deliberately no post_delete, so the cohort-granted CourseProgress SURVIVES
 - [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest + second-org Learner + per-org cohorts for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
 - [reference_half_nulled_deadline_contenttype.md](reference_half_nulled_deadline_contenttype.md) — qa_create_half_nulled_deadlines: making `content_type IS NULL` + `object_id` populated deadline rows; ContentCollectionItem.child_type is CASCADE so deleting the Topic ContentType strips every topic out of every course — use the zero-instance Activity ContentType as the decoy target instead
+- [reference_qa_run_residue_cleanup.md](reference_qa_run_residue_cleanup.md) — Tearing down a manual QA run's residue (signup user + LegalConsent x2 + EmailAddress, CourseInterest, a self-service enrolment); Collector.fast_deletes hides half the cascade; CourseProgress PROTECTs LearnerCourseRegistration
 
 ## Recurring requests
 
@@ -227,3 +228,31 @@ signals, so each delete is exactly 1 row with zero cascade. Guard the delete wit
 `assert row.content_type_id is None and row.object_id is None` — genuine and half-nulled rows
 have **identical `__str__`** ("... - Whole course"), so only `object_id` tells them apart. See
 [[reference_half_nulled_deadline_contenttype]].
+
+The **"clear a CourseInterest row so the express-interest flow can be re-walked"** ask arrived
+once (bug-interested-login-405, Sep 2026). `CourseInterest` (app label
+`freedom_ls_course_interest`) has **no inbound relations at all** — `_meta.related_objects` is
+empty — and no delete signals, so the delete is exactly 1 row, zero cascade, and the User and
+Course are untouched. The deferred-login flow is idempotent (`get_or_create` on the unique
+`(site, user, course)` constraint), so a leftover row silently makes the "interest recorded"
+assertion pass on a re-run — deleting it is the correct way to re-arm the test, not a repair.
+The dev DB holds only a couple of these rows total, so `_base_manager` + print-every-row is a
+cheap way to prove the target is the right one; note the row seeded by
+`qa_create_admin_constraint_fixtures` (demodev@email.com / content-widgets-demo-reference) is a
+different fixture and must survive. `qa_create_course_visibility` deliberately pre-creates NO
+interest rows — see [[reference_course_visibility_command]].
+
+The **"clear the residue of the manual QA run"** teardown ask arrived once
+(bug-interested-login-405, Sep 2026) as the sequel to the single-CourseInterest delete noted just above —
+same branch, same day, now a whole-run list: the ad hoc signup user + its allauth/consent rows,
+an earlier run's user (absent), the interest row, and the "Enrol for free"
+`LearnerCourseRegistration`. Expect this shape after every browser-QA pass on a signup/interest
+flow. Full cascade shapes and the four field-name gotchas in
+[[reference_qa_run_residue_cleanup]]. The two that matter: a browser signup writes **two**
+`LegalConsent` rows (terms + privacy), and `CourseProgress.learner_registration` is **PROTECT**,
+so the enrolment cannot be deleted until its signal-minted progress row (plus any `TopicProgress`
+the tester created by opening a lesson) goes first. Size every delete with `Collector` but print
+`c.fast_deletes` as well as `c.data` — `c.data` alone under-reported the User delete by 2 rows.
+If a third teardown is asked for, wrap it in `qa_helpers` as
+`qa_clear_run_residue --user EMAIL --interest-user EMAIL --interest-course SLUG
+--unenrol-user EMAIL --unenrol-course SLUG`, with the constraint-fixture pk hard-guarded.
