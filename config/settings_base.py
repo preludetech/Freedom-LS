@@ -409,7 +409,13 @@ ACCOUNT_ADAPTER = "freedom_ls.accounts.allauth_account_adapter.AccountAdapter"
 ACCOUNT_FORMS = {"signup": "freedom_ls.accounts.forms.SiteAwareSignupForm"}
 # Don't differentiate signup/login responses for known vs. unknown emails.
 ACCOUNT_PREVENT_ENUMERATION = True
-# Per-IP and per-key signup throttling. Disabled in dev (settings_dev.py).
+# Per-IP signup throttling. Disabled in dev (settings_dev.py).
+#
+# signup carries no `key` rate. That scope needs a value from the calling view,
+# and allauth's signup view decorates dispatch with rate_limit(action="signup")
+# and passes none, so get_cache_key raises ImproperlyConfigured on every POST.
+# login_failed can carry one because its call site supplies the submitted
+# identifier.
 #
 # login_failed is the layer above the account lockout, and the faster one: it
 # answers in minutes where a lockout holds for an hour. The lockout's combined
@@ -422,7 +428,7 @@ ACCOUNT_PREVENT_ENUMERATION = True
 # Both limits are cache-backed, so the production cache has to be sized to hold
 # them under attack -- see MAX_ENTRIES in deployment/settings_defaults.py.
 ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
-    "signup": "5/m/ip,3/m/key",
+    "signup": "5/m/ip",
     "login_failed": "10/m/ip,5/5m/key",
 }
 
