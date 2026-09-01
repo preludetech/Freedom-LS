@@ -15,4 +15,9 @@ urlpatterns = [
         views.partial_remove_interest,
         name="remove_interest",
     ),
+    path(
+        "courses/<slug:course_slug>/deferred-express-interest/",
+        views.deferred_express_interest,
+        name="deferred_express_interest",
+    ),
 ]

@@ -19,6 +19,9 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 
 PHONE_FORM_PATH = "freedom_ls.accounts.tests._completion_view_fixtures.PhoneNumberForm"
@@ -149,6 +152,39 @@ def test_deferred_login_gated_course_lands_on_apply_page(
 
     # The apply GET shows the confirmation page (200), not an auto-submitted POST.
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Deferred-login flow: express interest via @login_required
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_deferred_login_express_interest_round_trip(mock_site_context, client):
+    """An anonymous express-interest click survives sign-in.
+
+    The anonymous POST redirects to login with a next the browser can GET.
+    After signing in, following that next records the interest and lands on
+    the course detail page, instead of GET-ing the POST-only endpoint.
+    """
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    user = UserFactory()
+
+    express_interest_url = reverse(
+        "course_interest:express_interest", kwargs={"course_slug": course.slug}
+    )
+    response = client.post(express_interest_url)
+    next_url = _next_param(response["Location"])
+
+    client.force_login(user)
+    followed = client.get(next_url)
+
+    assert followed.status_code != 405
+    assert CourseInterest.objects.filter(user=user, course=course).exists()
+    assert followed.status_code == 302
+    assert followed["Location"] == reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,8 @@ TDD: these tests are written before the implementation.
 
 from __future__ import annotations
 
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 from django.urls import reverse
@@ -15,6 +17,13 @@ from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
 from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+
+
+def _next_param(location: str) -> str | None:
+    """Return the single `next` query-param value from a redirect target, if any."""
+    values = parse_qs(urlparse(location).query).get("next")
+    return values[0] if values else None
+
 
 # ---------------------------------------------------------------------------
 # express_interest view
@@ -275,12 +284,17 @@ class TestExpressInterestGetRejected:
 
 @pytest.mark.django_db
 class TestExpressInterestAnonymousRedirect:
-    """Anonymous users are redirected to the login page."""
+    """Anonymous users are redirected to the login page.
 
-    def test_anonymous_express_interest_redirects_to_login(
+    An htmx request gets 204 + HX-Redirect, since htmx would otherwise follow
+    a 302 inside its own XHR and swap the login page into the CTA. A
+    non-htmx request gets a plain 302 the browser navigates on its own.
+    """
+
+    def test_anonymous_express_interest_htmx_gets_hx_redirect_to_login(
         self, client, mock_site_context
     ):
-        """Anonymous POST to express_interest redirects to login."""
+        """Anonymous htmx POST to express_interest gets 204 + HX-Redirect to login."""
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
 
         url = reverse(
@@ -288,13 +302,37 @@ class TestExpressInterestAnonymousRedirect:
         )
         response = client.post(url, HTTP_HX_REQUEST="true")
 
-        assert response.status_code == 302
-        assert "/accounts/" in response["Location"]
+        assert response.status_code == 204
+        assert "/accounts/" in response["HX-Redirect"]
+        deferred_url = reverse(
+            "course_interest:deferred_express_interest",
+            kwargs={"course_slug": course.slug},
+        )
+        assert _next_param(response["HX-Redirect"]) == deferred_url
 
-    def test_anonymous_remove_interest_redirects_to_login(
+    def test_anonymous_express_interest_non_htmx_gets_plain_redirect_to_login(
         self, client, mock_site_context
     ):
-        """Anonymous POST to remove_interest redirects to login."""
+        """Anonymous non-htmx POST to express_interest gets a plain 302 to login."""
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        url = reverse(
+            "course_interest:express_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url)
+
+        assert response.status_code == 302
+        assert "/accounts/" in response["Location"]
+        deferred_url = reverse(
+            "course_interest:deferred_express_interest",
+            kwargs={"course_slug": course.slug},
+        )
+        assert _next_param(response["Location"]) == deferred_url
+
+    def test_anonymous_remove_interest_htmx_gets_hx_redirect_to_login(
+        self, client, mock_site_context
+    ):
+        """Anonymous htmx POST to remove_interest gets 204 + HX-Redirect to login."""
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
 
         url = reverse(
@@ -302,8 +340,30 @@ class TestExpressInterestAnonymousRedirect:
         )
         response = client.post(url, HTTP_HX_REQUEST="true")
 
+        assert response.status_code == 204
+        assert "/accounts/" in response["HX-Redirect"]
+        detail_url = reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+        assert _next_param(response["HX-Redirect"]) == detail_url
+
+    def test_anonymous_remove_interest_non_htmx_gets_plain_redirect_to_login(
+        self, client, mock_site_context
+    ):
+        """Anonymous non-htmx POST to remove_interest gets a plain 302 to login."""
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        url = reverse(
+            "course_interest:remove_interest", kwargs={"course_slug": course.slug}
+        )
+        response = client.post(url)
+
         assert response.status_code == 302
         assert "/accounts/" in response["Location"]
+        detail_url = reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+        assert _next_param(response["Location"]) == detail_url
 
 
 # ---------------------------------------------------------------------------

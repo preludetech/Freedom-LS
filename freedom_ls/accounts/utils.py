@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import ipaddress
 
+from django.conf import settings
+from django.contrib.auth.views import redirect_to_login
 from django.contrib.sites.models import Site
 from django.core.exceptions import PermissionDenied
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import redirect, resolve_url
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -102,3 +105,35 @@ def get_effective_additional_registration_forms(
     if policy is not None:
         return list(policy.additional_registration_forms)
     return list(config.ADDITIONAL_REGISTRATION_FORMS)
+
+
+def redirect_to_auth(
+    request: HttpRequest,
+    *,
+    next_url: str | None = None,
+    auth_url: str | None = None,
+) -> HttpResponse:
+    """Send a visitor to an auth page, optionally returning them to next_url.
+
+    htmx follows a 302 inside its own XHR and swaps the target page's HTML
+    into the element that made the request, landing a login form inside a
+    button. An htmx request instead gets 204 with an HX-Redirect header, so
+    the browser performs a real navigation.
+
+    next_url must be GET-safe, since the browser returns to it with a GET
+    once auth completes. It must already be built server-side (e.g. with
+    reverse()) — passing through a next taken from user input would open a
+    redirect; validate with url_has_allowed_host_and_scheme first if that
+    ever changes. auth_url defaults to settings.LOGIN_URL, matching
+    login_required.
+    """
+    if next_url:
+        target = redirect_to_login(next_url, auth_url).url
+    else:
+        target = resolve_url(auth_url or settings.LOGIN_URL)
+
+    if request.headers.get("HX-Request"):
+        response = HttpResponse(status=204)
+        response["HX-Redirect"] = target
+        return response
+    return redirect(target)
