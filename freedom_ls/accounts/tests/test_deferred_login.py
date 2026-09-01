@@ -21,6 +21,8 @@ from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.tests._completion_view_fixtures import STORED_PHONE_NUMBERS
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_interest.models import CourseInterest
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 
@@ -185,6 +187,198 @@ def test_deferred_login_express_interest_round_trip(mock_site_context, client):
     assert followed["Location"] == reverse(
         "learner_interface:course_detail", kwargs={"course_slug": course.slug}
     )
+
+
+@pytest.mark.django_db
+def test_deferred_login_express_interest_repeat_visits_stay_idempotent(
+    mock_site_context, client
+):
+    """Landing on the deferred-express-interest URL twice records one CourseInterest."""
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    user = UserFactory()
+    client.force_login(user)
+
+    deferred_url = reverse(
+        "course_interest:deferred_express_interest",
+        kwargs={"course_slug": course.slug},
+    )
+    client.get(deferred_url)
+    client.get(deferred_url)
+
+    assert CourseInterest.objects.filter(user=user, course=course).count() == 1
+
+
+# ---------------------------------------------------------------------------
+# Deferred-login flow: apply via @login_required
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_deferred_login_apply_round_trip_creates_no_application(
+    mock_site_context, client
+):
+    """An anonymous apply click survives sign-in without auto-submitting.
+
+    The anonymous POST redirects to login with next set to the apply URL
+    itself. Following that next after signing in lands on the GET
+    confirmation page, not an auto-created application — apply's GET and
+    POST share one URL, so `next` alone can't force the POST branch.
+    """
+    course = CourseFactory()
+    user = UserFactory()
+
+    apply_url = reverse(
+        "course_applications:apply", kwargs={"course_slug": course.slug}
+    )
+    response = client.post(apply_url)
+    next_url = _next_param(response["Location"])
+
+    client.force_login(user)
+    followed = client.get(next_url)
+
+    assert followed.status_code == 200
+    assert not CourseApplication.objects.filter(user=user, course=course).exists()
+
+
+@pytest.mark.django_db
+def test_deferred_login_apply_repeat_submissions_stay_idempotent(
+    mock_site_context, client
+):
+    """A second POST to apply after signing in does not duplicate the application."""
+    course = CourseFactory()
+    user = UserFactory()
+    client.force_login(user)
+
+    apply_url = reverse(
+        "course_applications:apply", kwargs={"course_slug": course.slug}
+    )
+    client.post(apply_url)
+    client.post(apply_url)
+
+    assert CourseApplication.objects.filter(user=user, course=course).count() == 1
+
+
+# ---------------------------------------------------------------------------
+# Deferred-login flow: initiate_course_access on a coming-soon course
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_deferred_login_initiate_access_coming_soon_creates_no_registration(
+    mock_site_context, client
+):
+    """A coming-soon course is not enrollable, deferred login or not.
+
+    The anonymous GET redirects to login with next set to the access URL.
+    Following that next after signing in lands on the course detail page
+    without registering the learner, matching initiate_course_access's own
+    coming-soon fallback.
+    """
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    user = UserFactory()
+
+    access_url = reverse(
+        "learner_interface:initiate_course_access",
+        kwargs={"course_slug": course.slug},
+    )
+    response = client.get(access_url, follow=False)
+    next_url = _next_param(response["Location"])
+
+    client.force_login(user)
+    followed = client.get(next_url)
+
+    assert followed.status_code == 302
+    assert followed["Location"] == reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    assert not LearnerCourseRegistration.objects.filter(
+        learner__user=user, course=course
+    ).exists()
+
+
+# ---------------------------------------------------------------------------
+# Deferred-login flow: application_status ownership after sign-in
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_deferred_login_application_status_owner_sees_status_page(
+    mock_site_context, client
+):
+    """After the login round trip, the application owner reaches their status page."""
+    owner = UserFactory()
+    app = CourseApplicationFactory(user=owner)
+
+    status_url = reverse("course_applications:status", kwargs={"pk": app.pk})
+    response = client.get(status_url, follow=False)
+    next_url = _next_param(response["Location"])
+
+    client.force_login(owner)
+    followed = client.get(next_url)
+
+    assert followed.status_code == 200
+
+
+@pytest.mark.django_db
+def test_deferred_login_application_status_non_owner_gets_404(
+    mock_site_context, client
+):
+    """After the login round trip, a non-owner still gets 404 on someone else's status page."""
+    owner = UserFactory()
+    other_user = UserFactory()
+    app = CourseApplicationFactory(user=owner)
+
+    status_url = reverse("course_applications:status", kwargs={"pk": app.pk})
+    response = client.get(status_url, follow=False)
+    next_url = _next_param(response["Location"])
+
+    client.force_login(other_user)
+    followed = client.get(next_url)
+
+    assert followed.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Hidden courses: login redirect, never a 404 (no enumeration signal)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "url_name",
+    ["course_applications:apply", "learner_interface:initiate_course_access"],
+)
+def test_anonymous_access_to_hidden_course_redirects_to_login_not_404(
+    mock_site_context, url_name
+):
+    """login_required runs before any visibility check, so an anonymous visitor
+    to a hidden course's apply or access URL gets a login redirect rather than
+    the 404 that confirms a registered learner would eventually see."""
+    course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+    client = Client()
+
+    url = reverse(url_name, kwargs={"course_slug": course.slug})
+    response = client.get(url, follow=False)
+
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+
+@pytest.mark.django_db
+def test_anonymous_access_to_status_for_hidden_course_application_redirects_to_login(
+    mock_site_context,
+):
+    """The same holds for an application status page belonging to a hidden course."""
+    course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+    owner = UserFactory()
+    app = CourseApplicationFactory(user=owner, course=course)
+    client = Client()
+
+    url = reverse("course_applications:status", kwargs={"pk": app.pk})
+    response = client.get(url, follow=False)
+
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 # ---------------------------------------------------------------------------
