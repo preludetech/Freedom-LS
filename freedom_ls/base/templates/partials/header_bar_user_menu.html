@@ -24,7 +24,7 @@
         </c-button>
     {% endif %}
     {% if user.is_staff %}
-        <c-button dropdown="true" href="/admin/" hx-boost="false">
+        <c-button dropdown="true" href="{% url 'admin:index' %}" hx-boost="false">
             Admin Panel
         </c-button>
     {% endif %}
