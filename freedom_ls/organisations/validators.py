@@ -12,13 +12,18 @@ from __future__ import annotations
 
 import dataclasses
 import io
-import warnings
 
 from PIL import Image
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import UploadedFile
 from django.core.validators import FileExtensionValidator
+
+from freedom_ls.base.images import (
+    BOMB_FAILURES,
+    DECODE_FAILURES,
+    bomb_warnings_as_errors,
+)
 
 ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
 ALLOWED_FORMATS = {"PNG", "JPEG", "WEBP"}
@@ -69,15 +74,7 @@ def check_logo_safety(raw: bytes) -> SafeLogo:
             f"Image file is too large ({len(raw) / 1024 / 1024:.1f}MB; maximum is 2MB)."
         )
 
-    with warnings.catch_warnings():
-        # Pillow signals a bomb in two bands and neither reaches the caller on
-        # its own: past MAX_IMAGE_PIXELS it only warns, which does nothing in
-        # production unless escalated; past twice that it raises
-        # DecompressionBombError, which subclasses Exception rather than
-        # OSError and so would sail past the unreadable-image clause below as a
-        # 500. Both have to land on the same ValidationError.
-        # MAX_IMAGE_PIXELS stays at Pillow's default — never None.
-        warnings.simplefilter("error", Image.DecompressionBombWarning)
+    with bomb_warnings_as_errors():
         try:
             # verify() decodes the whole stream rather than only the header,
             # and it destroys the object it is called on — hence the second
@@ -88,16 +85,9 @@ def check_logo_safety(raw: bytes) -> SafeLogo:
             img = Image.open(io.BytesIO(raw))
             width, height = img.size
             image_format = img.format
-        except (Image.DecompressionBombWarning, Image.DecompressionBombError) as err:
+        except BOMB_FAILURES as err:
             raise ValidationError("Image is too large to process safely.") from err
-        except (OSError, Image.UnidentifiedImageError, SyntaxError, ValueError) as err:
-            # Pillow's plugins report a malformed structure with whatever
-            # exception the parser reached for, not one family: a PNG whose
-            # chunk checksum fails raises SyntaxError, one whose IHDR is too
-            # short raises ValueError, and only an unrecognisable or truncated
-            # body raises OSError. Catching OSError alone leaves the first two
-            # to escape as a 500 -- an admin upload rejected with a crash, and
-            # a stored logo that takes the whole report render down with it.
+        except DECODE_FAILURES as err:
             raise ValidationError("File is not a readable image.") from err
 
     mime_type = LOGO_MIME_TYPES.get(image_format or "")

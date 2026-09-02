@@ -9,8 +9,6 @@ did.
 
 from __future__ import annotations
 
-import io
-
 import pytest
 import time_machine
 from PIL import Image
@@ -76,7 +74,12 @@ from freedom_ls.reports.tests.conftest import (
     individual_progress_record,
     topic_progress,
 )
-from freedom_ls.tests.images import break_png_chunk_crc
+from freedom_ls.tests.images import (
+    break_png_chunk_crc,
+    gif_bytes,
+    jpeg_bytes,
+    png_bytes,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -85,26 +88,6 @@ def _attach(collection: object, child: object, order: int = 0) -> None:
     ContentCollectionItemFactory(
         collection_object=collection, child_object=child, order=order
     )
-
-
-def _png_bytes(width: int = 20, height: int = 20) -> bytes:
-    """A genuine, uncompressed-content PNG, so truncating it corrupts real data."""
-    buf = io.BytesIO()
-    Image.new("RGB", (width, height), color=(200, 30, 90)).save(buf, format="PNG")
-    return buf.getvalue()
-
-
-def _jpeg_bytes(width: int = 20, height: int = 20) -> bytes:
-    buf = io.BytesIO()
-    Image.new("RGB", (width, height), color=(30, 90, 200)).save(buf, format="JPEG")
-    return buf.getvalue()
-
-
-def _gif_bytes(width: int = 20, height: int = 20) -> bytes:
-    """A decodable image in a format the logo allowlist does not carry."""
-    buf = io.BytesIO()
-    Image.new("P", (width, height), color=3).save(buf, format="GIF")
-    return buf.getvalue()
 
 
 def _cohort_registered_for(
@@ -905,7 +888,7 @@ class TestLoadOrganisationLogoDataUri:
         self, mock_site_context, pathless_logo_storage
     ):
         organisation = OrganisationFactory()
-        organisation.logo.save("logo.png", ContentFile(_png_bytes()))
+        organisation.logo.save("logo.png", ContentFile(png_bytes()))
 
         data_uri = load_organisation_logo_data_uri(organisation)
 
@@ -921,7 +904,7 @@ class TestLoadOrganisationLogoDataUri:
 
     def test_a_missing_file_falls_back_to_none(self, mock_site_context):
         organisation = OrganisationFactory()
-        organisation.logo.save("logo.png", ContentFile(_png_bytes()))
+        organisation.logo.save("logo.png", ContentFile(png_bytes()))
         organisation.logo.storage.delete(organisation.logo.name)
 
         assert load_organisation_logo_data_uri(organisation) is None
@@ -948,7 +931,7 @@ class TestLoadOrganisationLogoDataUri:
         # organisations/tests/test_validators.py.
         monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
         organisation = OrganisationFactory()
-        organisation.logo.save("logo.png", ContentFile(_png_bytes(20, 20)))
+        organisation.logo.save("logo.png", ContentFile(png_bytes(20, 20)))
 
         assert load_organisation_logo_data_uri(organisation) is None
 
@@ -965,14 +948,14 @@ class TestLoadOrganisationLogoDataUri:
         monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
         organisation = OrganisationFactory()
         # 144px: over the ceiling, under twice it.
-        organisation.logo.save("logo.png", ContentFile(_png_bytes(12, 12)))
+        organisation.logo.save("logo.png", ContentFile(png_bytes(12, 12)))
 
         assert load_organisation_logo_data_uri(organisation) is None
 
     def test_dimensions_over_the_cap_return_none(self, mock_site_context):
         organisation = OrganisationFactory()
         organisation.logo.save(
-            "logo.png", ContentFile(_png_bytes(MAX_DIMENSION + 1, 10))
+            "logo.png", ContentFile(png_bytes(MAX_DIMENSION + 1, 10))
         )
 
         assert load_organisation_logo_data_uri(organisation) is None
@@ -981,7 +964,7 @@ class TestLoadOrganisationLogoDataUri:
         organisation = OrganisationFactory()
         # A real GIF: Pillow decodes it happily, but it is not one of the
         # formats the upload path allows, so it must not be embedded either.
-        organisation.logo.save("logo.gif", ContentFile(_gif_bytes()))
+        organisation.logo.save("logo.gif", ContentFile(gif_bytes()))
 
         assert load_organisation_logo_data_uri(organisation) is None
 
@@ -989,7 +972,7 @@ class TestLoadOrganisationLogoDataUri:
         organisation = OrganisationFactory()
         # Named .png despite genuine JPEG bytes: the mediatype must come from
         # decoding the bytes, not from the stored filename's extension.
-        organisation.logo.save("logo.png", ContentFile(_jpeg_bytes()))
+        organisation.logo.save("logo.png", ContentFile(jpeg_bytes()))
 
         data_uri = load_organisation_logo_data_uri(organisation)
 
@@ -1005,7 +988,7 @@ class TestLoadOrganisationLogoDataUri:
         """
         organisation = OrganisationFactory()
         organisation.logo.save(
-            "logo.png", ContentFile(break_png_chunk_crc(_png_bytes(64, 32)))
+            "logo.png", ContentFile(break_png_chunk_crc(png_bytes(64, 32)))
         )
 
         assert load_organisation_logo_data_uri(organisation) is None
@@ -1020,7 +1003,7 @@ class TestLoadOrganisationLogoDataUri:
         -- which is the entire cost the cap exists to avoid.
         """
         organisation = OrganisationFactory()
-        organisation.logo.save("logo.png", ContentFile(_png_bytes(64, 32)))
+        organisation.logo.save("logo.png", ContentFile(png_bytes(64, 32)))
         monkeypatch.setattr(pathless_logo_storage, "size", lambda name: MAX_BYTES + 1)
         monkeypatch.setattr(
             pathless_logo_storage,
@@ -1032,7 +1015,7 @@ class TestLoadOrganisationLogoDataUri:
 
     def test_a_truncated_image_body_returns_none(self, mock_site_context):
         organisation = OrganisationFactory()
-        truncated = _png_bytes(64, 64)
+        truncated = png_bytes(64, 64)
         truncated = truncated[: len(truncated) * 2 // 3]
         organisation.logo.save("logo.png", ContentFile(truncated))
 
