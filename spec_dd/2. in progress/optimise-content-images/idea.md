@@ -35,8 +35,15 @@ One image in, one image out. `File.file` holds the optimised bytes. No second co
   the lightbox at 2x pixel density, the widest the player ever renders an image.
 - **Quality chosen per image.** Photographs get lossy WebP. Screenshots, diagrams and anything else
   built from flat colour and hard edges get lossless, because lossy codecs put visible haloes around
-  text and course content is full of annotated screenshots. Counting distinct colours, which Pillow
-  does directly, tells the two classes apart.
+  text and course content is full of annotated screenshots.
+- **The source format decides which, and a second encode settles the rest.** A JPEG arriving means
+  the author already accepted lossy compression, and a camera model in the EXIF confirms it. A PNG
+  means someone chose lossless, which is what screenshot tools and diagram exports produce. Where
+  those signals disagree, encode the image both ways and keep the lossless result unless the lossy
+  one is substantially smaller. The second encode falls on a minority of images and buys a decision
+  with no threshold to tune. `research_formats_and_budgets.md` proposes counting distinct colours
+  instead; that is superseded here, because the antialiased text, shadows and gradients in a modern
+  screenshot read as photographic, which is the one case this split exists to protect.
 - **Never grow a file.** If the re-encode comes out no smaller than its source, keep the source.
 - **Orientation, colour and metadata.** The encoder applies EXIF rotation to the pixels before it
   resizes, so phone photos do not come out sideways, and it carries the ICC profile over, so
@@ -67,9 +74,15 @@ for logo uploads, and the exception set this needs is worked out and commented t
   the page still shifts as figures arrive. A real problem, a separate one, and no worse after this.
 - **The lightbox and the inline thumbnail still share one URL.** A learner who never opens the
   lightbox still pays for the larger image, but that is now around 120 KB rather than 5 MB.
-- **No per-image opt-out.** The passthrough rules and the never-grow guardrail already cover the
-  cases an author would reach for one. If a real case turns up, an attribute on `c-picture` is where
-  it belongs, alongside `alt` and `title`.
+- **No per-image opt-out.** The format signals, the passthrough rules and the never-grow guardrail
+  cover the cases an author would reach for one. If a real case turns up, the marker should name the
+  intent, something meaning keep this one crisp, rather than the genre. Photo and diagram map onto
+  lossy and lossless cleanly, but screenshot straddles both, so genre words ask the author a question
+  with no stable answer. Weigh two costs before adding one. An attribute on `c-picture` sits at the
+  reference while the encode happens once per file, and several topics can reference one image, so it
+  needs a rule for when they disagree. A filename or directory marker avoids that but changes the
+  relative source path, which is the key `<c-picture src="...">` resolves against, so adopting one
+  means editing every reference to every image that gets renamed.
 - **No skipping of unchanged files.** Every run re-encodes everything, tens of seconds for a few
   hundred images. The encode always starts from the pristine source on disk rather than from what
   was stored last time, so repeated runs produce identical bytes and there is no cumulative quality
