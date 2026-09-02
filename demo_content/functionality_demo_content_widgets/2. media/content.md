@@ -70,3 +70,5 @@ If you do not want a grid, you do not need a wrapper. Consecutive `c-picture` bl
 <c-picture src="images/portrait.svg" alt="A tall dark panel on a green background" title="A stacked figure, full width and centred"></c-picture>
 
 <c-picture src="../images/square.svg" alt="A dark circle centred on an orange background" title="A second stacked figure directly below the first"></c-picture>
+
+<c-picture src="../images/backyard-drone-flight.jpg" alt="A man stands in a back garden holding a handheld controller, looking up at a white quadcopter drone hovering above a wooden fence" title="A hobbyist flying a drone in his back garden"></c-picture>
