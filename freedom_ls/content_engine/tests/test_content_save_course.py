@@ -3,11 +3,18 @@ from pathlib import Path
 
 import pytest
 
+from django.core.files.base import ContentFile
+
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
 from freedom_ls.content_engine.models import Course, CoursePart, File, Topic
 from freedom_ls.form_engine.models import Form
+from freedom_ls.tests.images import (
+    break_png_chunk_crc,
+    photographic_jpeg_bytes,
+    png_bytes,
+)
 
 
 @pytest.mark.django_db
@@ -403,3 +410,154 @@ Deep content
         part = CoursePart.objects.get(title="Part One", site=site)
         part_children = part.items.all().order_by("order")
         assert [c.child.title for c in part_children] == ["Welcome", "Going Deeper"]
+
+
+def _write_intro_topic_with_image(
+    course_dir: Path,
+    *,
+    course_uuid: str,
+    topic_uuid: str,
+    image_name: str,
+    image_bytes: bytes,
+) -> None:
+    """A one-topic course whose topic carries a single image in its own images/."""
+    course_dir.mkdir()
+    (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Image Course
+uuid: {course_uuid}
+---
+""")
+    intro_dir = course_dir / "1. intro"
+    intro_dir.mkdir()
+    (intro_dir / "content.md").write_text(f"""---
+content_type: TOPIC
+title: Intro
+uuid: {topic_uuid}
+---
+
+<c-picture src="images/{image_name}"></c-picture>
+""")
+    images_dir = intro_dir / "images"
+    images_dir.mkdir()
+    (images_dir / image_name).write_bytes(image_bytes)
+
+
+@pytest.mark.django_db
+def test_jpeg_image_is_stored_as_optimised_webp(site, mock_site_context):
+    """A JPEG is re-encoded to WebP; its path and author-facing filename are untouched."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="40000000-0000-0000-0000-000000000001",
+            topic_uuid="40000000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=photographic_jpeg_bytes(),
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        file_obj = File.objects.get(site=site, file_path="1. intro/images/photo.jpg")
+        assert file_obj.mime_type == "image/webp"
+        assert file_obj.file.name.endswith(".webp")
+        assert file_obj.file_path == "1. intro/images/photo.jpg"
+        assert file_obj.original_filename == "photo.jpg"
+
+
+@pytest.mark.django_db
+def test_repeated_save_produces_identical_stored_bytes(site, mock_site_context):
+    """Two runs over the same tree each re-encode from the pristine source, so the stored bytes match."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="41000000-0000-0000-0000-000000000001",
+            topic_uuid="41000000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=photographic_jpeg_bytes(),
+        )
+
+        save_content_to_db(course_dir, site.name)
+        first_bytes = File.objects.get(
+            site=site, file_path="1. intro/images/photo.jpg"
+        ).file.read()
+
+        save_content_to_db(course_dir, site.name)
+        second_bytes = File.objects.get(
+            site=site, file_path="1. intro/images/photo.jpg"
+        ).file.read()
+
+        assert first_bytes == second_bytes
+
+
+@pytest.mark.django_db
+def test_upgrade_run_removes_the_superseded_jpg_object_from_storage(
+    site, mock_site_context
+):
+    """A .jpg stored before this feature shipped is gone once a run converts it to .webp."""
+    jpeg_source = photographic_jpeg_bytes()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="42000000-0000-0000-0000-000000000001",
+            topic_uuid="42000000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=jpeg_source,
+        )
+
+        pre_existing = File.objects.create(
+            site=site,
+            file_path="1. intro/images/photo.jpg",
+            file_type=File.FileType.IMAGE,
+            original_filename="photo.jpg",
+            mime_type="image/jpeg",
+        )
+        pre_existing.file.save("photo.jpg", ContentFile(jpeg_source), save=True)
+        storage = pre_existing.file.storage
+        old_name = pre_existing.file.name
+
+        save_content_to_db(course_dir, site.name)
+
+        assert storage.exists(old_name) is False
+
+
+@pytest.mark.django_db
+def test_corrupt_image_is_stored_unchanged_and_run_completes(site, mock_site_context):
+    """A corrupt image cannot be decoded, so its source bytes are stored as-is and the run does not abort."""
+    corrupt = break_png_chunk_crc(png_bytes())
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="43000000-0000-0000-0000-000000000001",
+            topic_uuid="43000000-0000-0000-0000-000000000002",
+            image_name="broken.png",
+            image_bytes=corrupt,
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        file_obj = File.objects.get(site=site, file_path="1. intro/images/broken.png")
+        assert file_obj.file.read() == corrupt
+
+
+@pytest.mark.django_db
+def test_svg_image_is_stored_byte_identical(site, mock_site_context):
+    """An SVG passes through by suffix alone, byte for byte."""
+    svg_bytes = b'<svg xmlns="http://www.w3.org/2000/svg"></svg>'
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="44000000-0000-0000-0000-000000000001",
+            topic_uuid="44000000-0000-0000-0000-000000000002",
+            image_name="pic.svg",
+            image_bytes=svg_bytes,
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        file_obj = File.objects.get(site=site, file_path="1. intro/images/pic.svg")
+        assert file_obj.file.read() == svg_bytes
