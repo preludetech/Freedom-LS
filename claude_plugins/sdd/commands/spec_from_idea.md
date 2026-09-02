@@ -119,3 +119,8 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 - `tick:"Run `/spec_from_idea` to generate the spec"`
 
 No new items to add.
+
+# Step 6: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `todo.md` beside it.

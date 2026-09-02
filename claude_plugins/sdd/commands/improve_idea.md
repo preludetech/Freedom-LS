@@ -73,3 +73,9 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 - `tick:"Optionally run `/improve_idea` to research and refine the idea"`
 
 No new items to add.
+
+## Step 5: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `research and refine the idea`. Tell it to stage the idea file and every
+`research_*.md` this run wrote.

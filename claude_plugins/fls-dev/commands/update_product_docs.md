@@ -195,3 +195,11 @@ Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instr
 > - `tick:"Run \`/update_product_docs\` to update docs/product/ for this feature"`
 
 The mechanic edits `todo.md` directly. It does not depend on `.sdd-work/`, so running it after the step-5 cleanup is correct.
+
+## Step 7: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `update the product docs`. Tell it to stage the edited files under
+`docs/product/`, any screenshots copied in there, and the `todo.md` in the spec directory.
+
+If Step 1 concluded no doc changes were needed, there is nothing to stage beyond the todo tick.

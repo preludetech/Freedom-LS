@@ -120,6 +120,12 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 - `tick:"Run `/plan_security_review` to check the plan for insecure design choices before implementation"`
 - For each `> **Security concern:**` callout you added to `2. plan.md`, pass one `add:"Plan security review|user|Resolve plan security concern: <short label>"`. If you added no callouts, omit `add:`.
 
+# Step 7: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `review the plan for security`. Tell it to stage `2. plan.md` and the
+`todo.md` beside it.
+
 # Out of scope
 
 - Do not review or write code — the code does not exist yet.

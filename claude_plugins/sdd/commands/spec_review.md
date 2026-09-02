@@ -1,6 +1,6 @@
 ---
 description: Check that the spec makes sense
-allowed-tools: Read, Glob, Grep, Edit, Skill
+allowed-tools: Read, Glob, Grep, Edit, Skill, Agent
 ---
 
 You are helping to refine a feature spec. The spec might have problems. You are doing a final check to make sure it can be implemented.
@@ -74,6 +74,12 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
 - `tick:"Run `/spec_review` to sanity-check the spec"`
 - For each unresolved question you raised that the user still needs to decide, pass `add:"Spec|user|Decide how to handle <short description of the question>"`. If everything was resolved during the review, omit `add:`.
+
+# Step 6: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `review and tighten the spec`. Tell it to stage `1. spec.md` and the
+`todo.md` beside it.
 
 # Out of scope
 

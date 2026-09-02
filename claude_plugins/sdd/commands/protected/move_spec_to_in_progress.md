@@ -36,7 +36,11 @@ Do not proceed until the spec directory is in `spec_dd/2. in progress/`.
 ## Step 3: Commit all changes
 
 Make a git commit with `uv run git commit` (per `CLAUDE.md`). This commit captures both the `todo.md`
-created in the previous `/sdd:start` step and the directory move.
+created in the previous `/sdd:start` step and the directory move. Lead the subject with the spec
+directory name, as every SDD commit does — e.g. `interested_login: start the spec`.
+
+Do not push. This runs on the current branch before any worktree exists, and that branch is usually
+`main`.
 
 Do **not** run pytest now: we only moved files that are not under test, so running the tests would be
 a waste of time.

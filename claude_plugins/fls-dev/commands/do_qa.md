@@ -613,3 +613,10 @@ commands (`/plan_from_spec` writes its own scratch there). The script refuses an
 `.sdd-work/`, refuses directories and non-regular files, and requires `CLAUDE_PROJECT_DIR`. If it
 exits non-zero, log the error but do not treat it as a hard failure — stale scratch files are
 harmless and already gitignored.
+
+## Step 17: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `run the frontend QA pass`. Tell it to stage the QA report, the
+`screenshots/` directory, and the `todo.md` beside them. The bugfixers' own commits are already in;
+this one carries the QA artifacts.

@@ -136,10 +136,12 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 4. **Target Claude Code version.** These files target the current **2.1.x** line — per-agent/per-command `model:` frontmatter, `AskUserQuestion`, non-nesting subagents, and "commands merged into skills" all hold here. There is no runtime version check; this is a documented target, not enforced.
 
-5. **Why it runs this way.** See the **`claude-code-authoring`** skill for the canonical reference on the Claude Code mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
+5. **Every artifact command commits and pushes itself.** Any command that writes or edits an SDD artifact ends by delegating a commit and push to `sdd:sdd-mechanic`, following `claude_plugins/sdd/resources/commit_and_push.md`. The commit subject always leads with the spec directory name, so `git log` reads as a per-spec history. Nothing is committed on `main`/`master`, and nothing unrelated is staged.
+
+6. **Why it runs this way.** See the **`claude-code-authoring`** skill for the canonical reference on the Claude Code mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
 
 ---
 
 ## The `todo.md` checklist
 
-`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you. The commit-and-push step runs straight after it.

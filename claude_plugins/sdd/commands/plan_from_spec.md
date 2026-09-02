@@ -100,3 +100,9 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
 - `tick:"Run `/plan_from_spec` to generate the implementation plan and QA plan"`
 - If you did **not** create a `3. frontend_qa.md` (because the feature has no frontend changes), also pass `add:"QA|user|No QA needed — feature has no frontend changes"`. Otherwise omit `add:`.
+
+# Step 9: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `write the implementation plan`. Tell it to stage `2. plan.md`, any
+`3. frontend_qa.md`, and the `todo.md` beside them.

@@ -134,3 +134,9 @@ Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instr
 > - `tick:"Run \`/update_upgrade_notes\` to author the structured upgrade_notes.md for downstream projects"`
 
 The mechanic edits `todo.md` directly.
+
+## Step 6: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `write the upgrade notes`. Tell it to stage `upgrade_notes.md` and the
+`todo.md` beside it.

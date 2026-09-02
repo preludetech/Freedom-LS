@@ -106,6 +106,12 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 - `tick:"Run `/plan_structure_review` to check for new cross-app dependencies"`
 - For each `> **Structure concern:**` callout you added to `2. plan.md`, pass one `add:"Plan structure review|user|Resolve structure concern: <short label>"`. If you added no callouts, omit `add:`.
 
+# Step 7: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `review the plan for cross-app dependencies`. Tell it to stage `2. plan.md`
+and the `todo.md` beside it.
+
 # Out of scope
 
 - Do not review or modify code — the code does not exist yet.

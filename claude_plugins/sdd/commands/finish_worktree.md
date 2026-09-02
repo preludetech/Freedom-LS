@@ -56,9 +56,11 @@ yyyy-mm-dd_HH:MM_{spec title}
 
 Invoke the `update-claude-project-settings` skill to promote any useful permissions accumulated in `.claude/settings.local.json` to the shared `.claude/settings.json`, and clean up redundant entries in the project settings.
 
-# Step 7: Commit
+# Step 7: Commit and push
 
-Delegate to `sdd:sdd-mechanic`: make a commit with the latest changes.
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `close out the worktree`. Tell it to stage the moved spec directory, the
+`todo.md` inside it, and any `.claude/settings.json` change from Step 6.
 
 # Step 8: Git Status
 

@@ -33,6 +33,8 @@ may re-run that one check to verify your fix. Nothing else — still no pytest, 
 no patch-mode diff.
 
 The commit message comes from the file list and the spec directory name, not from reading the diff.
+Lead the subject with the spec directory name, as every SDD commit does — e.g.
+`interested_login: add the cohort filter form`.
 
 ## Arguments
 

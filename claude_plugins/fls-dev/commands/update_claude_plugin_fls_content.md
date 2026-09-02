@@ -60,3 +60,11 @@ Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instr
 > - `tick:"Run \`/update_claude_plugin_fls_content\` to sync the course-author plugin if authoring functionality changed"`
 
 The mechanic edits `todo.md` directly.
+
+## Step 5: Commit and push
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
+steps with `<summary>`: `sync the fls-content author plugin`. Tell it to stage the edited files under
+`claude_plugins/fls-content/` and the `todo.md` in the spec directory.
+
+If Step 1 found no authoring-relevant changes, there is nothing to stage beyond the todo tick.
