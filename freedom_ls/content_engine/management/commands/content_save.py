@@ -7,7 +7,7 @@ import logging
 import mimetypes
 import re
 import uuid
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import djclick as click
@@ -17,12 +17,18 @@ import yaml
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.sites.models import Site
 from django.core.files import File as DjangoFile
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils.module_loading import import_string
 from django.utils.text import slugify
 
 from freedom_ls.content_base.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.config import config
+from freedom_ls.content_engine.images import (
+    ImageEncodeDecision,
+    ImageEncodeStatus,
+    optimise_image,
+)
 from freedom_ls.content_engine.models import (
     Activity,
     ContentCollectionItem,
@@ -456,16 +462,76 @@ def get_file_type_from_extension(file_path):
         return File.FileType.OTHER
 
 
-def save_file_to_db(file_path, site, base_path):
-    """Save a single file to the database."""
-    # Calculate relative path
+def _format_bytes(num_bytes: int) -> str:
+    """Render a byte count for the author, e.g. `5.1 MB` or `118 KB`.
+
+    One decimal place below 10 units, none above -- enough precision to show
+    the reduction without implying an accuracy the encoder doesn't have.
+    """
+    value = float(num_bytes)
+    unit = "B"
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            break
+        value /= 1024
+    if unit == "B":
+        return f"{int(value)} {unit}"
+    return f"{value:.1f} {unit}" if value < 10 else f"{value:.0f} {unit}"
+
+
+def _format_image_decision_line(decision: ImageEncodeDecision) -> str:
+    """The source-and-outcome line for one image decision, from the decision alone.
+
+    `OPTIMISED` is the only status with a source-to-target arrow; every other
+    status names the source, when Pillow got far enough to know it, and ends
+    in the status word so the four outcomes stay greppable.
+    """
+    # The ImageEncodeDecision contract sets source_size and stored_size
+    # together with data, and never leaves either None for this status.
+    if (
+        decision.status is ImageEncodeStatus.OPTIMISED
+        and decision.source_size is not None
+        and decision.stored_size is not None
+    ):
+        source_width, source_height = decision.source_size
+        stored_width, stored_height = decision.stored_size
+        lossy_word = "lossless" if decision.lossless else "lossy"
+        return (
+            f"{decision.source_format} {source_width}x{source_height} -> "
+            f"WebP {lossy_word} {stored_width}x{stored_height}"
+        )
+
+    if decision.source_format is None:
+        return f"{decision.status}."
+
+    if decision.source_size is None:
+        return f"{decision.source_format}, {decision.status}."
+
+    source_width, source_height = decision.source_size
+    reason = (
+        "re-encode not smaller, "
+        if decision.status is ImageEncodeStatus.KEPT_SOURCE
+        else ""
+    )
+    return f"{decision.source_format} {source_width}x{source_height}, {reason}{decision.status}."
+
+
+def save_file_to_db(
+    file_path: Path, site: Site, base_path: Path
+) -> ImageEncodeDecision | None:
+    """Save a single file to the database, optimising it first if it is an image."""
     relative_path = str(file_path.relative_to(base_path))
-
-    # Determine file type
     file_type = get_file_type_from_extension(file_path)
-
-    # Get mime type
     mime_type, _ = mimetypes.guess_type(str(file_path))
+
+    decision: ImageEncodeDecision | None = None
+    before_bytes: int | None = None
+    if file_type == File.FileType.IMAGE:
+        raw = file_path.read_bytes()
+        decision = optimise_image(raw, file_path.suffix)
+        before_bytes = len(raw)
+        if decision.data is not None:
+            mime_type = decision.mime_type
 
     # Get or create the File record (without the file field)
     file_obj, created = File.objects.get_or_create(
@@ -484,17 +550,41 @@ def save_file_to_db(file_path, site, base_path):
         file_obj.original_filename = file_path.name
         file_obj.mime_type = mime_type or ""
 
-    # Always update the actual file
-    with open(file_path, "rb") as f:
-        # Delete old file if it exists to avoid orphaned files
-        if file_obj.file:
-            file_obj.file.delete(save=False)
+    # course_media never overwrites an existing key, so the superseded object
+    # has to go first or it is left orphaned when the extension changes.
+    if file_obj.file:
+        file_obj.file.delete(save=False)
 
-        # Save new file to proper upload_to location
-        file_obj.file.save(file_path.name, DjangoFile(f), save=True)
+    if (
+        decision is not None
+        and decision.data is not None
+        and decision.suffix is not None
+    ):
+        file_obj.file.save(
+            file_path.with_suffix(decision.suffix).name,
+            ContentFile(decision.data),
+            save=True,
+        )
+    else:
+        with open(file_path, "rb") as f:
+            file_obj.file.save(file_path.name, DjangoFile(f), save=True)
 
     action = "Created" if created else "Updated"
-    logger.info(f"{action} {file_type} file: {relative_path}")
+    lines = [f"{action} {file_type} file: {relative_path}"]
+    if decision is not None:
+        lines.append(f"  {_format_image_decision_line(decision)}")
+        if decision.data is not None and before_bytes is not None:
+            after_bytes = len(decision.data)
+            percent = (after_bytes - before_bytes) / before_bytes * 100
+            lines.append(
+                f"  {_format_bytes(before_bytes)} -> {_format_bytes(after_bytes)} "
+                f"({percent:.1f}%), {decision.status}."
+            )
+        elif decision.status is ImageEncodeStatus.UNDECODABLE:
+            logger.warning(f"Could not decode {relative_path}: {decision.error}")
+    click.echo("\n".join(lines))
+
+    return decision
 
 
 @transaction.atomic
@@ -509,6 +599,7 @@ def save_content_to_db(path, site_name):
     # Parse all files using existing validation code
     all_files = get_all_files(path)
     all_parsed = []
+    image_decisions: list[ImageEncodeDecision] = []
 
     for file_path in all_files:
         if file_path.suffix in [".md", ".yaml", ".yml"]:
@@ -516,7 +607,9 @@ def save_content_to_db(path, site_name):
             all_parsed.extend(parsed_items)
         else:
             # Save non-content files (images, documents, etc.) to the database
-            save_file_to_db(file_path, site, path)
+            decision = save_file_to_db(file_path, site, path)
+            if decision is not None:
+                image_decisions.append(decision)
 
     # Group by content type
     grouped = defaultdict(list)
@@ -704,7 +797,14 @@ def save_content_to_db(path, site_name):
                     f"in collection '{collection.title}'"
                 )
 
-    logger.info(f"✓ Successfully saved all content for site: {site_name}")
+    click.echo(f"✓ Successfully saved all content for site: {site_name}")
+
+    counts = Counter(decision.status for decision in image_decisions)
+    per_status = ", ".join(
+        f"{counts[status]} {status}" for status in ImageEncodeStatus if status in counts
+    )
+    summary = f"Images: {len(image_decisions)} seen"
+    click.echo(f"{summary} ({per_status})." if per_status else f"{summary}.")
 
 
 @click.command()
