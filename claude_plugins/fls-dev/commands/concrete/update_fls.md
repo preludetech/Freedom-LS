@@ -164,6 +164,28 @@ After all completed specs have been integrated:
 2. If the submodule pointer moved further (i.e. there are commits after the last spec), run `uv sync` and commit the final pointer update.
 3. Run the portable contract test set one last time: `uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"`
 
+# Step 5: Commit and push
+
+This is the last step of the run. An integration that only exists locally is a submodule pointer nobody else's checkout can resolve, so the update is not finished until it is pushed.
+
+1. Confirm nothing is left uncommitted:
+
+   ```
+   git status
+   ```
+
+   Anything still outstanding belongs in a final commit before the push — a stray `uv.lock` or `package-lock.json`, a regenerated Tailwind bundle, the conformance test file added in 3i. Use `Update FLS: final sync` for it.
+
+2. Push the branch:
+
+   ```
+   git push
+   ```
+
+Only the concrete project is pushed. The submodule needs no push of its own: every commit the pointer now references is already on FLS's `origin/main`, which is what Step 1 fetched.
+
+Do not push while any spec is still mid-integration or a template override is still flagged for human review — finish or roll back first. If the run happened on the concrete project's default branch, move the commits onto a branch and open a PR rather than pushing to the default branch directly.
+
 # Rollback: recovering from a spec that fails mid-integration
 
 If a spec fails partway through Step 3 — tests won't pass, a system check fails, a migration conflicts, an override can't be reconciled — return to the last known-good state rather than committing a broken integration. The last good state is the previous `Update FLS: <spec-name>` commit (or the pre-update HEAD if this was the first spec).
@@ -213,4 +235,6 @@ for spec in pending_completed_specs (chronological):
     uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"  # test gate
     commit "Update FLS: <spec>"          # includes uv.lock
 # on failure mid-spec: follow the rollback procedure above
+
+commit any final sync leftovers, then git push   # last step of the run
 ```
