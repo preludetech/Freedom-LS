@@ -21,9 +21,21 @@ class TopicAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "file_path"]
     list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug",)
+    readonly_fields = ("slug", "content_preview")
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "slug", "content")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "slug",
+                    "content",
+                    "content_preview",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
@@ -31,6 +43,15 @@ class TopicAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, obj: Topic | None = None
     ) -> bool:
         return False
+
+    @admin.display(description="Content Preview")
+    def content_preview(self, obj: Activity) -> str:
+        from django.utils.safestring import mark_safe
+
+        if not obj.content:
+            return ""
+        # Safe: rendered_content() sanitizes via nh3.clean() with strict allowlist
+        return str(mark_safe(obj.rendered_content()))  # noqa: S308  # nosec B308 B703
 
 
 @admin.register(Activity)
