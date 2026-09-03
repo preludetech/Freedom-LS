@@ -8,6 +8,7 @@ import mimetypes
 import re
 import uuid
 from collections import Counter, defaultdict
+from functools import partial
 from pathlib import Path
 
 import djclick as click
@@ -550,24 +551,42 @@ def save_file_to_db(
         file_obj.original_filename = file_path.name
         file_obj.mime_type = mime_type or ""
 
-    # course_media never overwrites an existing key, so the superseded object
-    # has to go first or it is left orphaned when the extension changes.
-    if file_obj.file:
-        file_obj.file.delete(save=False)
-
     if (
         decision is not None
         and decision.data is not None
         and decision.suffix is not None
     ):
-        file_obj.file.save(
-            file_path.with_suffix(decision.suffix).name,
-            ContentFile(decision.data),
-            save=True,
-        )
+        stored_name = file_path.with_suffix(decision.suffix).name
+        encoded = ContentFile(decision.data)
+    else:
+        stored_name = file_path.name
+        encoded = None
+
+    # course_media never overwrites an existing key, so a superseded object
+    # has to be dealt with explicitly, and when depends on whether the key
+    # changes. file_upload_handler keys on the extension: a re-run at the
+    # same extension writes back to the same key, which has to be cleared
+    # first or the write is renamed and the key stops being stable across
+    # runs. An extension change writes to a different key, where deleting the
+    # old object inline would strand every File row still naming it if a
+    # later step rolled this atomic run back, so that delete waits for the
+    # commit instead.
+    superseded_name = file_obj.file.name
+    if superseded_name:
+        storage = file_obj.file.storage
+        if (
+            file_obj.file.field.generate_filename(file_obj, stored_name)
+            == superseded_name
+        ):
+            file_obj.file.delete(save=False)
+        else:
+            transaction.on_commit(partial(storage.delete, superseded_name))
+
+    if encoded is not None:
+        file_obj.file.save(stored_name, encoded, save=True)
     else:
         with open(file_path, "rb") as f:
-            file_obj.file.save(file_path.name, DjangoFile(f), save=True)
+            file_obj.file.save(stored_name, DjangoFile(f), save=True)
 
     action = "Created" if created else "Updated"
     lines = [f"{action} {file_type} file: {relative_path}"]
@@ -599,7 +618,10 @@ def save_content_to_db(path, site_name):
     # Parse all files using existing validation code
     all_files = get_all_files(path)
     all_parsed = []
-    image_decisions: list[ImageEncodeDecision] = []
+    # The statuses alone: an ImageEncodeDecision carries the encoded bytes,
+    # and holding one per image would keep every encode of the run in memory
+    # to produce a count.
+    image_statuses: list[ImageEncodeStatus] = []
 
     for file_path in all_files:
         if file_path.suffix in [".md", ".yaml", ".yml"]:
@@ -609,7 +631,7 @@ def save_content_to_db(path, site_name):
             # Save non-content files (images, documents, etc.) to the database
             decision = save_file_to_db(file_path, site, path)
             if decision is not None:
-                image_decisions.append(decision)
+                image_statuses.append(decision.status)
 
     # Group by content type
     grouped = defaultdict(list)
@@ -799,11 +821,11 @@ def save_content_to_db(path, site_name):
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
 
-    counts = Counter(decision.status for decision in image_decisions)
+    counts = Counter(image_statuses)
     per_status = ", ".join(
         f"{counts[status]} {status}" for status in ImageEncodeStatus if status in counts
     )
-    summary = f"Images: {len(image_decisions)} seen"
+    summary = f"Images: {len(image_statuses)} seen"
     click.echo(f"{summary} ({per_status})." if per_status else f"{summary}.")
 
 

@@ -493,7 +493,7 @@ def test_repeated_save_produces_identical_stored_bytes(site, mock_site_context):
 
 @pytest.mark.django_db
 def test_upgrade_run_removes_the_superseded_jpg_object_from_storage(
-    site, mock_site_context
+    site, mock_site_context, django_capture_on_commit_callbacks
 ):
     """A .jpg stored before this feature shipped is gone once a run converts it to .webp."""
     jpeg_source = photographic_jpeg_bytes()
@@ -518,9 +518,48 @@ def test_upgrade_run_removes_the_superseded_jpg_object_from_storage(
         storage = pre_existing.file.storage
         old_name = pre_existing.file.name
 
-        save_content_to_db(course_dir, site.name)
+        with django_capture_on_commit_callbacks(execute=True):
+            save_content_to_db(course_dir, site.name)
 
         assert storage.exists(old_name) is False
+
+
+@pytest.mark.django_db
+def test_superseded_jpg_object_survives_a_run_that_never_commits(
+    site, mock_site_context, django_capture_on_commit_callbacks
+):
+    """The superseded object outlives the run itself, so a rollback cannot strand a File row.
+
+    Capturing the callbacks without executing them is the shape of a run
+    that raises after this file: save_content_to_db is atomic, so the row
+    goes back to naming photo.jpg, and that object has to still be there.
+    """
+    jpeg_source = photographic_jpeg_bytes()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="45000000-0000-0000-0000-000000000001",
+            topic_uuid="45000000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=jpeg_source,
+        )
+
+        pre_existing = File.objects.create(
+            site=site,
+            file_path="1. intro/images/photo.jpg",
+            file_type=File.FileType.IMAGE,
+            original_filename="photo.jpg",
+            mime_type="image/jpeg",
+        )
+        pre_existing.file.save("photo.jpg", ContentFile(jpeg_source), save=True)
+        storage = pre_existing.file.storage
+        old_name = pre_existing.file.name
+
+        with django_capture_on_commit_callbacks(execute=False):
+            save_content_to_db(course_dir, site.name)
+
+        assert storage.exists(old_name) is True
 
 
 @pytest.mark.django_db

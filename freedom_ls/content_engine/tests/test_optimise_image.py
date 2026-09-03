@@ -8,6 +8,7 @@ from typing import cast
 import pytest
 from PIL import Image
 
+from freedom_ls.content_engine import images
 from freedom_ls.content_engine.images import (
     MAX_DIMENSION_PX,
     ImageEncodeStatus,
@@ -120,14 +121,16 @@ def test_comparison_winner_on_each_side_of_the_lossy_wins_divisor(
     assert decision.lossless is expected_lossless
 
 
-def test_exif_orientation_is_applied_before_storing_dimensions():
+def test_exif_orientation_is_applied_to_both_reported_dimensions():
     raw = exif_orientation_jpeg_bytes(width=30, height=20)
 
     decision = optimise_image(raw, ".jpg")
 
     # Orientation 6 is a 90-degree rotation: a viewer swaps the axes the
-    # raw buffer stored.
+    # raw buffer stored. Both halves of the pair the author is shown are in
+    # that display orientation, so the line cannot read as a ratio change.
     assert decision.stored_size == (20, 30)
+    assert decision.source_size == (20, 30)
 
 
 def test_icc_profile_survives_from_an_rgb_source():
@@ -239,6 +242,46 @@ def test_png_with_broken_chunk_crc_is_undecodable_after_the_format_is_known():
     assert decision.status is ImageEncodeStatus.UNDECODABLE
     assert decision.data is None
     assert decision.source_format == "PNG"
+    assert decision.error is not None
+    assert "OSError" in decision.error
+
+
+def test_no_truncation_of_an_animated_gif_escapes_as_an_exception():
+    """Every prefix of a multi-frame GIF comes back as a decision.
+
+    Counting a GIF's frames seeks through all of them, and Pillow's GIF
+    plugin reports a seek that runs off the end of the buffer as whichever
+    exception the read reached for: struct.error from a two-byte duration
+    field, IndexError from a one-byte block label. Every cut is tried
+    because which of the two a prefix hits depends on where it stops.
+    """
+    raw = animated_gif_bytes()
+
+    statuses = {optimise_image(raw[:cut], ".gif").status for cut in range(1, len(raw))}
+
+    assert statuses <= set(ImageEncodeStatus)
+    assert ImageEncodeStatus.UNDECODABLE in statuses
+
+
+def test_an_encode_failure_is_a_decision_rather_than_an_exception(monkeypatch):
+    """A failure on the way out is caught the same way as one on the way in.
+
+    libwebp reports a write it cannot complete as an OSError, which would
+    otherwise leave the encode as the one step of the pipeline still able to
+    abort a run over a whole content repository.
+    """
+
+    def fail(*args, **kwargs):
+        raise OSError("encoder error")
+
+    monkeypatch.setattr(images, "_encode", fail)
+
+    decision = optimise_image(photographic_jpeg_bytes(), ".jpg")
+
+    assert decision.status is ImageEncodeStatus.UNDECODABLE
+    assert decision.data is None
+    assert decision.source_format == "JPEG"
+    assert decision.source_size == (2000, 1500)
     assert decision.error is not None
     assert "OSError" in decision.error
 

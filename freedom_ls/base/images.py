@@ -7,6 +7,13 @@ SyntaxError, one whose IHDR is too short raises ValueError, and only an
 unrecognisable or truncated body raises OSError. Catching OSError alone lets
 the first two through as an unhandled exception.
 
+Seeking a truncated animated GIF's frames adds two more, because the plugin
+reads the fragment's remaining bytes without checking there are enough: a
+two-byte duration field goes through struct.unpack_from and raises
+struct.error, and a one-byte block label is read by index and raises
+IndexError. Which of the two a given truncation reaches depends on where it
+stops, so both belong in the family.
+
 A decompression bomb is a second, separate failure mode, signalled in two
 bands: past ``Image.MAX_IMAGE_PIXELS`` Pillow only warns, which does nothing
 in production unless escalated to an exception; past twice that it raises
@@ -17,12 +24,20 @@ in production unless escalated to an exception; past twice that it raises
 from __future__ import annotations
 
 import contextlib
+import struct
 import warnings
 from collections.abc import Iterator
 
 from PIL import Image
 
-DECODE_FAILURES = (OSError, Image.UnidentifiedImageError, SyntaxError, ValueError)
+DECODE_FAILURES = (
+    OSError,
+    Image.UnidentifiedImageError,
+    SyntaxError,
+    ValueError,
+    struct.error,
+    IndexError,
+)
 BOMB_FAILURES = (Image.DecompressionBombWarning, Image.DecompressionBombError)
 
 

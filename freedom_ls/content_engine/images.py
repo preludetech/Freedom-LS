@@ -74,6 +74,10 @@ SECOND_ENCODE_BYTES = 250 * 1024
 # comparison. Integer arithmetic on both sides, never floats.
 LOSSY_WINS_DIVISOR = 3
 
+# The EXIF orientations whose transform swaps the two axes: transpose,
+# rotate 90, transverse and rotate 270. The other four leave them alone.
+TRANSPOSED_ORIENTATIONS = frozenset({5, 6, 7, 8})
+
 # .svgz is deliberately absent: get_file_type_from_extension does not list
 # it, so a .svgz is never File.FileType.IMAGE and cannot reach this module.
 SVG_SUFFIXES = {".svg"}
@@ -129,10 +133,11 @@ def _encode(img: Image.Image, icc: bytes | None, *, lossless: bool) -> bytes:
 def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
     """Decide what to store for one content image.
 
-    Nothing raises out of this function: one bad file must neither abort a
-    run over a whole content repository nor vanish from it. See
-    freedom_ls/base/images.py for why the decompression-bomb warning band is
-    allowed to decode here rather than escalated as check_logo_safety does.
+    Nothing raises out of this function, from the decode through to the
+    encode: one bad file must neither abort a run over a whole content
+    repository nor vanish from it. See freedom_ls/base/images.py for why the
+    decompression-bomb warning band is allowed to decode here rather than
+    escalated as check_logo_safety does.
     """
     if suffix.lower() in SVG_SUFFIXES:
         # Pillow has no SVG codec. get_file_type_from_extension lowercases
@@ -189,53 +194,64 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
             camera_exif = bool(
                 tags.get(ExifTags.Base.Make) or tags.get(ExifTags.Base.Model)
             )
+            if tags.get(ExifTags.Base.Orientation) in TRANSPOSED_ORIENTATIONS:
+                # exif_transpose has just swapped the axes on img, and
+                # source_size was read off the raw buffer. Swap it too, or
+                # the author-facing line pairs a sideways source with an
+                # upright output and reads as an aspect-ratio change.
+                source_size = (source_size[1], source_size[0])
+
+        source_mode = img.mode
+        if source_mode not in ("RGB", "RGBA"):
+            # Resampling a P-mode image interpolates palette indices,
+            # inventing colours the source never had, so this has to happen
+            # before the resize rather than waiting for the encoder's own
+            # conversion.
+            img = img.convert("RGBA" if img.has_transparency_data else "RGB")
+            if source_mode not in {"RGB", "RGBX", "RGBA", "RGBa", "P", "PA"}:
+                # Image._new copies info through convert(), so a CMYK or
+                # greyscale profile would otherwise ride along describing a
+                # colour space the pixels have already left.
+                icc = None
+
+        # A square box makes this a longest-edge cap with no orientation
+        # branch. thumbnail() returns early when the image already fits, which
+        # is where "never upscale" comes from; ImageOps.contain has no such
+        # guard. Both default to BICUBIC, so LANCZOS is passed explicitly.
+        img.thumbnail((MAX_DIMENSION_PX, MAX_DIMENSION_PX), Image.Resampling.LANCZOS)
+
+        if source_format in ("JPEG", "MPO"):
+            # The pixels are already lossily compressed, so a lossless encode
+            # would preserve the existing artefacts bit-exactly at several
+            # times the bytes: not worth comparing.
+            encoded, lossless = _encode(img, icc, lossless=False), False
+        else:
+            candidate = _encode(img, icc, lossless=True)
+            if not camera_exif and len(candidate) <= SECOND_ENCODE_BYTES:
+                encoded, lossless = candidate, True
+            else:
+                # Lossy WebP always chroma-subsamples, which is what smears
+                # coloured text and thin lines, so raising LOSSY_QUALITY never
+                # fixes a screenshot. Gating this comparison behind the size
+                # floor above keeps screenshots out of it entirely and leaves
+                # the ratio below to arbitrate only large images, which are
+                # overwhelmingly photographs.
+                lossy = _encode(img, icc, lossless=False)
+                if len(lossy) * LOSSY_WINS_DIVISOR <= len(candidate):
+                    encoded, lossless = lossy, False
+                else:
+                    encoded, lossless = candidate, True
     except BOMB_FAILURES + DECODE_FAILURES as err:
+        # Deliberately spans the encode as well as the decode: libwebp
+        # reports a write it cannot complete as an OSError, and an
+        # unexpected mode conversion as a ValueError, so leaving the guard
+        # around Image.open alone would leave two ways to abort a run.
         return _store_source(
             ImageEncodeStatus.UNDECODABLE,
             source_format=source_format,
             source_size=source_size,
             error=f"{type(err).__name__}: {err}",
         )
-
-    source_mode = img.mode
-    if source_mode not in ("RGB", "RGBA"):
-        # Resampling a P-mode image interpolates palette indices, inventing
-        # colours the source never had, so this has to happen before the
-        # resize rather than waiting for the encoder's own conversion.
-        img = img.convert("RGBA" if img.has_transparency_data else "RGB")
-        if source_mode not in {"RGB", "RGBX", "RGBA", "RGBa", "P", "PA"}:
-            # Image._new copies info through convert(), so a CMYK or
-            # greyscale profile would otherwise ride along describing a
-            # colour space the pixels have already left.
-            icc = None
-
-    # A square box makes this a longest-edge cap with no orientation
-    # branch. thumbnail() returns early when the image already fits, which
-    # is where "never upscale" comes from; ImageOps.contain has no such
-    # guard. Both default to BICUBIC, so LANCZOS is passed explicitly.
-    img.thumbnail((MAX_DIMENSION_PX, MAX_DIMENSION_PX), Image.Resampling.LANCZOS)
-
-    if source_format in ("JPEG", "MPO"):
-        # The pixels are already lossily compressed, so a lossless encode
-        # would preserve the existing artefacts bit-exactly at several
-        # times the bytes: not worth comparing.
-        encoded, lossless = _encode(img, icc, lossless=False), False
-    else:
-        candidate = _encode(img, icc, lossless=True)
-        if not camera_exif and len(candidate) <= SECOND_ENCODE_BYTES:
-            encoded, lossless = candidate, True
-        else:
-            # Lossy WebP always chroma-subsamples, which is what smears
-            # coloured text and thin lines, so raising LOSSY_QUALITY never
-            # fixes a screenshot. Gating this comparison behind the size
-            # floor above keeps screenshots out of it entirely and leaves
-            # the ratio below to arbitrate only large images, which are
-            # overwhelmingly photographs.
-            lossy = _encode(img, icc, lossless=False)
-            if len(lossy) * LOSSY_WINS_DIVISOR <= len(candidate):
-                encoded, lossless = lossy, False
-            else:
-                encoded, lossless = candidate, True
 
     if len(encoded) >= len(raw):
         # Strict: a tie keeps the source rather than churning the extension
