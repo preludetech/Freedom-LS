@@ -40,10 +40,6 @@ def test_send_mail_injects_resolved_theme_values(mock_site_context):
             "freedom_ls.accounts.allauth_account_adapter.allauth_context"
         ) as mock_ctx,
         patch(
-            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-            return_value=mock_site_context,
-        ),
-        patch(
             "freedom_ls.accounts.allauth_account_adapter.get_email_theme",
             return_value=_SENTINEL_THEME,
         ),

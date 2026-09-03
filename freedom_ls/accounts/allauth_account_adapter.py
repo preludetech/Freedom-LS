@@ -2,24 +2,24 @@ import email.policy
 from dataclasses import asdict
 from email.mime.base import MIMEBase
 
+from allauth.account import app_settings as allauth_account_settings
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.core import context as allauth_context
 
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import EmailMessage
 from django.http import HttpRequest
 from django.templatetags.static import static
+from django.utils.encoding import force_str
 
 from freedom_ls.accounts.email_utils import (
     email_logo_dimensions,
     get_email_theme,
     resolved_email_logo_path,
 )
-from freedom_ls.site_aware_models.config import config as site_aware_config
-from freedom_ls.site_aware_models.models import get_cached_site
+from freedom_ls.site_aware_models.models import get_cached_site, site_display_name
 
 from .config import config
 from .models import SiteSignupPolicy, User
@@ -59,7 +59,7 @@ class AccountAdapter(DefaultAccountAdapter):
         # injects email_logo_url / email_label for branded email templates.
         # If upgrading allauth, verify this stays in sync with the parent.
         request = allauth_context.request
-        current_site = get_current_site(request)
+        current_site = get_cached_site(request)
 
         # asdict(get_email_theme()) keys match the email-template contract
         # (color_primary, font_family, button_radius, ...). Both the branding
@@ -76,6 +76,22 @@ class AccountAdapter(DefaultAccountAdapter):
         msg = self.render_mail(template_prefix, email, ctx)
         _set_8bit_encoding(msg)
         msg.send()
+
+    def format_email_subject(self, subject: str) -> str:
+        """Prefix the subject with the tenant's display name.
+
+        DefaultAccountAdapter prefixes with the raw ``Site.name`` resolved from
+        the HTTP host. Both halves are wrong here. The name disagrees with the
+        body, which is HEADER_TITLE-first, and on an installation whose Site row
+        was never given a display name that name is the bare domain. The host
+        lookup ignores FORCE_SITE_NAME, so a pinned single-tenant install could
+        be named after whichever host the mail happened to be triggered from.
+        """
+        prefix: str | None = allauth_account_settings.EMAIL_SUBJECT_PREFIX
+        if prefix is None:
+            site = get_cached_site(allauth_context.request)
+            prefix = f"[{site_display_name(site)}] "
+        return prefix + force_str(subject)
 
     def _email_branding_context(
         self, request: HttpRequest | None, current_site: Site | RequestSite
@@ -96,7 +112,7 @@ class AccountAdapter(DefaultAccountAdapter):
 
         return {
             "email_logo_url": email_logo_url,
-            "email_label": site_aware_config.HEADER_TITLE or current_site.name,
+            "email_label": site_display_name(current_site),
             "email_logo_width": email_logo_width,
             "email_logo_height": email_logo_height,
         }

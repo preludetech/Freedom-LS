@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from allauth.core.context import request_context
 
+from django.contrib.sites.models import Site
 from django.core import mail
 from django.test import RequestFactory
 
@@ -141,10 +142,6 @@ def test_send_mail_logo_url_uses_request_absolute_uri(
 
     with (
         patch.object(adapter, "render_mail", side_effect=capture_ctx),
-        patch(
-            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-            return_value=mock_site_context,
-        ),
         request_context(request),
     ):
         adapter.send_mail("account/email/login_code", "user@example.com", {})
@@ -181,10 +178,6 @@ def test_send_mail_logo_url_uses_absolute_static_url_verbatim(
         patch(
             "freedom_ls.accounts.allauth_account_adapter.allauth_context"
         ) as mock_ctx,
-        patch(
-            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-            return_value=mock_site_context,
-        ),
     ):
         mock_ctx.request = None
         adapter.send_mail("account/email/login_code", "user@example.com", {})
@@ -224,10 +217,6 @@ def test_send_mail_logo_url_is_none_when_static_lookup_fails(
             "freedom_ls.accounts.allauth_account_adapter.allauth_context"
         ) as mock_ctx,
         patch(
-            "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-            return_value=mock_site_context,
-        ),
-        patch(
             "freedom_ls.accounts.allauth_account_adapter.static",
             side_effect=ValueError("Missing staticfiles manifest entry"),
         ),
@@ -257,3 +246,77 @@ def test_send_mail_message_accepts_policy_kwarg(mock_site_context) -> None:
     mime = sent.message(policy=email.policy.SMTP)
     parts = _body_parts(mime)
     assert all(part["Content-Transfer-Encoding"] == "8bit" for part in parts)
+
+
+@pytest.mark.django_db
+class TestFormatEmailSubject:
+    """The subject prefix must name the tenant the way the rest of FLS does.
+
+    allauth's default prefixes with the raw ``Site.name`` resolved by HTTP host.
+    That disagrees with the email body, which names the tenant HEADER_TITLE-first,
+    and it ignores FORCE_SITE_NAME. On an installation whose Site row was created
+    without a display name, ``Site.name`` is the bare domain, so the subject read
+    "[learn.example.com] ..." while the body read the product's name.
+    """
+
+    SUBJECT = "Confirm your email address"
+
+    @staticmethod
+    def _format(subject: str) -> str:
+        """Format a subject with no request in context (mail sent off-request)."""
+        adapter = AccountAdapter(request=None)
+        with patch(
+            "freedom_ls.accounts.allauth_account_adapter.allauth_context"
+        ) as mock_ctx:
+            mock_ctx.request = None
+            return adapter.format_email_subject(subject)
+
+    def test_prefix_uses_header_title_when_set(
+        self, mock_site_context: Site, settings
+    ) -> None:
+        settings.HEADER_TITLE = "MyProduct"
+
+        assert self._format(self.SUBJECT) == f"[MyProduct] {self.SUBJECT}"
+
+    def test_prefix_falls_back_to_site_name_without_header_title(
+        self, mock_site_context: Site, settings
+    ) -> None:
+        settings.HEADER_TITLE = ""
+
+        assert self._format(self.SUBJECT) == f"[TestSite] {self.SUBJECT}"
+
+    def test_prefix_honours_forced_site_name(
+        self, mock_site_context: Site, settings
+    ) -> None:
+        """A single-tenant install pinned with FORCE_SITE_NAME gets that site."""
+        settings.HEADER_TITLE = ""
+        Site.objects.create(domain="pinned.example.test", name="PinnedSite")
+        settings.FORCE_SITE_NAME = "PinnedSite"
+
+        assert self._format(self.SUBJECT) == f"[PinnedSite] {self.SUBJECT}"
+
+    def test_explicit_subject_prefix_setting_still_wins(
+        self, mock_site_context: Site, settings
+    ) -> None:
+        """allauth's own escape hatch keeps working."""
+        settings.HEADER_TITLE = "MyProduct"
+        settings.ACCOUNT_EMAIL_SUBJECT_PREFIX = "[Fixed] "
+
+        assert self._format(self.SUBJECT) == f"[Fixed] {self.SUBJECT}"
+
+    def test_sent_email_carries_the_display_name_in_its_subject(
+        self, mock_site_context: Site, settings
+    ) -> None:
+        """End to end through render_mail, not just the prefix helper."""
+        settings.HEADER_TITLE = "MyProduct"
+        user = UserFactory()
+        adapter = AccountAdapter()
+        context = {
+            "password_reset_url": "http://testsite/account/password/reset/key/x/",  # pragma: allowlist secret
+            "user": user,
+        }
+
+        with request_context(RequestFactory().get("/")):
+            adapter.send_mail("account/email/password_reset_key", user.email, context)
+
+        assert mail.outbox[0].subject == "[MyProduct] Reset your password"

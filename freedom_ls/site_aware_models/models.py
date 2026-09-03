@@ -16,11 +16,18 @@ _thread_locals = local()
 _CACHED_SITE_ATTR = "_cached_site"
 
 
-def get_cached_site(request: HttpRequest) -> Site | RequestSite:
-    """Get the current site, cached on the request for performance."""
-    cached: Site | RequestSite | None = getattr(request, _CACHED_SITE_ATTR, None)
-    if cached is not None:
-        return cached
+def get_cached_site(request: HttpRequest | None) -> Site | RequestSite:
+    """Get the current site, cached on the request for performance.
+
+    The request is optional because outbound email is not always sent from one.
+    Without a request there is nothing to cache on and no host to resolve, so
+    only FORCE_SITE_NAME can answer; anything else falls through to Django's own
+    resolution and its own error.
+    """
+    if request is not None:
+        cached: Site | RequestSite | None = getattr(request, _CACHED_SITE_ATTR, None)
+        if cached is not None:
+            return cached
 
     force_name = config.FORCE_SITE_NAME
     site: Site | RequestSite
@@ -36,8 +43,27 @@ def get_cached_site(request: HttpRequest) -> Site | RequestSite:
     else:
         site = get_current_site(request)
 
-    setattr(request, _CACHED_SITE_ATTR, site)
+    if request is not None:
+        setattr(request, _CACHED_SITE_ATTR, site)
     return site
+
+
+def site_display_name(site: Site | RequestSite | int) -> str:
+    """The tenant's own display name: HEADER_TITLE, else the Site row's own name.
+
+    The one answer to "what is this installation called", shared by the site
+    header, outbound email and the cohort reports, so a project that renamed
+    itself in one place is not still called something else in another.
+
+    A pk is resolved to its row only when HEADER_TITLE is unset, so a configured
+    installation pays no query for a name it never reads.
+    """
+    header_title = config.HEADER_TITLE
+    if header_title:
+        return header_title
+    if isinstance(site, int):
+        site = Site.objects.get(pk=site)
+    return site.name
 
 
 class SiteAwareManager(models.Manager):
