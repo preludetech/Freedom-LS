@@ -104,6 +104,10 @@ Submit domain to the [HSTS preload list](https://hstspreload.org/).
 - [ ] Backups are stored in a geographically separate location
 - [ ] Backup retention policy is defined and enforced
 - [ ] Regular restore drills are scheduled (at least quarterly)
+- [ ] Dumps are treated as carrying live credentials: outgoing email is queued in the
+      database, so a dump taken inside the prune window contains unexpired password-reset
+      and signup-verification links. See
+      [security and data handling](./product/security-and-data-handling.md).
 
 ## 7. Log Management
 

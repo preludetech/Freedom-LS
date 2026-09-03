@@ -344,3 +344,55 @@ def test_prod_settings_uses_database_cache_backend(
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
     assert prod.CACHES == settings_defaults.DATABASE_CACHES
+
+
+def test_queued_email_backend_constant_resolves_to_the_backend_class() -> None:
+    # django-tasks-db stores the task's dotted path on every queued row, so a
+    # rename that this constant did not follow would orphan in-flight mail.
+    from django.utils.module_loading import import_string
+
+    from freedom_ls.deployment.mail import QueuedEmailBackend
+
+    assert import_string(settings_defaults.QUEUED_EMAIL_BACKEND) is QueuedEmailBackend
+
+
+def test_email_timeout_default_is_a_positive_int() -> None:
+    assert isinstance(settings_defaults.EMAIL_TIMEOUT_SECONDS, int)
+    assert settings_defaults.EMAIL_TIMEOUT_SECONDS > 0
+
+
+def test_email_timeout_is_well_inside_the_worker_task_ceiling() -> None:
+    # A hung SMTP socket holds the single worker for this long. Anywhere near
+    # WORKER_MAX_TASK_SECONDS and one wedged mail host stalls the whole queue.
+    from freedom_ls.deployment.config import config
+
+    assert settings_defaults.EMAIL_TIMEOUT_SECONDS < config.WORKER_MAX_TASK_SECONDS / 10
+
+
+def test_prod_settings_queues_email_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+    monkeypatch.delenv("EMAIL_BACKEND", raising=False)
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.EMAIL_BACKEND == settings_defaults.QUEUED_EMAIL_BACKEND
+    assert prod.EMAIL_TIMEOUT == settings_defaults.EMAIL_TIMEOUT_SECONDS
+
+
+def test_prod_settings_still_lets_a_deployment_opt_out_of_queueing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The escape hatch for a deployment that runs no worker: without it, mail
+    # would be accepted and never sent.
+    monkeypatch.setenv("HOST_DOMAIN", "example.test")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key")
+    monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
+    monkeypatch.setenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+
+    prod = importlib.reload(importlib.import_module("config.settings_prod"))
+
+    assert prod.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"

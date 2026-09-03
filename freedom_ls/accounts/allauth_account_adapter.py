@@ -1,6 +1,4 @@
-import email.policy
 from dataclasses import asdict
-from email.mime.base import MIMEBase
 
 from allauth.account import app_settings as allauth_account_settings
 from allauth.account.adapter import DefaultAccountAdapter
@@ -9,7 +7,6 @@ from allauth.core import context as allauth_context
 from django.conf import settings
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
-from django.core.mail import EmailMessage
 from django.http import HttpRequest
 from django.templatetags.static import static
 from django.utils.encoding import force_str
@@ -19,38 +16,11 @@ from freedom_ls.accounts.email_utils import (
     get_email_theme,
     resolved_email_logo_path,
 )
+from freedom_ls.base.email_encoding import set_8bit_encoding
 from freedom_ls.site_aware_models.models import get_cached_site, site_display_name
 
 from .config import config
 from .models import SiteSignupPolicy, User
-
-
-def _set_8bit_encoding(msg: EmailMessage) -> None:
-    """Set Content-Transfer-Encoding to 8bit on an EmailMessage.
-
-    Prevents Python's email library from using quoted-printable encoding,
-    which wraps lines at 76 characters and corrupts long URLs.
-    """
-    original_message = msg.message
-
-    def patched_message(
-        *, policy: email.policy.Policy = email.policy.default
-    ) -> MIMEBase:
-        mime_msg: MIMEBase = original_message(policy=policy)
-        for part in mime_msg.walk():
-            if part.get_content_type() in ("text/plain", "text/html"):
-                decoded_payload = part.get_payload(decode=True)
-                if isinstance(decoded_payload, bytes):
-                    charset = part.get_content_charset() or "utf-8"
-                    del part["Content-Transfer-Encoding"]
-                    part["Content-Transfer-Encoding"] = "8bit"
-                    part.set_payload(decoded_payload.decode(charset), charset)
-                    # set_payload with charset re-encodes, so override again
-                    del part["Content-Transfer-Encoding"]
-                    part["Content-Transfer-Encoding"] = "8bit"
-        return mime_msg
-
-    object.__setattr__(msg, "message", patched_message)
 
 
 class AccountAdapter(DefaultAccountAdapter):
@@ -74,7 +44,7 @@ class AccountAdapter(DefaultAccountAdapter):
         }
         ctx.update(context)
         msg = self.render_mail(template_prefix, email, ctx)
-        _set_8bit_encoding(msg)
+        set_8bit_encoding(msg)
         msg.send()
 
     def format_email_subject(self, subject: str) -> str:

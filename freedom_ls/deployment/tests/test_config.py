@@ -74,3 +74,18 @@ class TestHousekeepingHeartbeatDefaults:
             _longest_a_task_can_run()
             <= config.HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS
         )
+
+
+class TestEmailUpstreamBackendDefault:
+    def test_defaults_to_djangos_smtp_backend(self) -> None:
+        assert (
+            config.EMAIL_UPSTREAM_BACKEND
+            == "django.core.mail.backends.smtp.EmailBackend"
+        )
+
+    def test_the_default_is_never_the_queueing_backend(self) -> None:
+        # A default that pointed at the queue would make every deployment that
+        # did not override it enqueue mail forever without sending any.
+        from freedom_ls.deployment.settings_defaults import QUEUED_EMAIL_BACKEND
+
+        assert config.EMAIL_UPSTREAM_BACKEND != QUEUED_EMAIL_BACKEND

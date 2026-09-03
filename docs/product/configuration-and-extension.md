@@ -138,6 +138,7 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `CONTENT_MEDIA_STORAGE_ALIAS` | Storage course file assets are written to. See [deployment](./deployment.md). |
 | `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |
 | `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
+| `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message has been taken off the request. Django's own `EMAIL_BACKEND` names the queue; this names what is behind it. See [deployment](./deployment.md). |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
 | `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
 | `REPORTS_FONT_DISPLAY` | Font stack for the report's headings. |

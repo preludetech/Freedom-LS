@@ -1,13 +1,12 @@
 a few manual fixes to a few different files and functions. We'll do more interactive coding in this one instead of following SDD
 
 -[ ] Email
-    - [ ] subject: Site name
-    - [ ] slow in prod
+    - [x] subject: Site name
+    - [x] slow in prod
 -[ ] Report bug: background color
--[ ] Admin polish
-    -[ ] remove lots of content things
-    -[ ] Organisation->Cohorts
-    -[ ] Maybe ORganisation->Learners
+-[x] Admin polish
+    -[x] Organisation->Cohorts
+    -[x] Maybe ORganisation->Learners
 -[ ] Widgets:
     -[ ] pretty flashcard
     -[ ] accordion
