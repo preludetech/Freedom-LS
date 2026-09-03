@@ -19,6 +19,7 @@ class DeploymentSettings(AppSettings):
     HOUSEKEEPING_UNPICKED_TASK_MAX_AGE_SECONDS: int
     HOUSEKEEPING_ORPHANED_TASK_MAX_AGE_SECONDS: int
     HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS: int
+    EMAIL_UPSTREAM_BACKEND: str
 
     declared_settings = {
         # PostHog: declared here to own the region-host default; the client-side
@@ -65,6 +66,15 @@ class DeploymentSettings(AppSettings):
         # index makes it the one in-flight report that cohort is allowed, so nobody can
         # ask for another. Same ceiling rule as the task window above.
         "HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS": Setting(default=3600),
+        # The backend the worker actually sends through, once QueuedEmailBackend has
+        # taken the message off the request. FLS's own setting, not one of Django's:
+        # Django's EMAIL_BACKEND names the queue, this names what is behind it. SMTP
+        # by default because every deployment that queues mail is sending real mail --
+        # dev included, where Mailpit is SMTP on localhost. Pointing this back at the
+        # queueing backend would re-enqueue every message forever, which E007 catches.
+        "EMAIL_UPSTREAM_BACKEND": Setting(
+            default="django.core.mail.backends.smtp.EmailBackend"
+        ),
     }
 
 

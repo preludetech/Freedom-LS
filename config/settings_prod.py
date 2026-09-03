@@ -96,9 +96,15 @@ LOGGING = fls_defaults.build_logging_config()
 
 # Email
 
-EMAIL_BACKEND = os.getenv(
-    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
-)
+# Queued by default: an SMTP session against a hosted provider costs seconds and the
+# sender waits for all of it, so QueuedEmailBackend hands the message to the task queue
+# and fls_run_worker sends it through EMAIL_UPSTREAM_BACKEND. Still env-overridable --
+# setting EMAIL_BACKEND back to the SMTP backend restores synchronous in-request
+# sending for a deployment that runs no worker. To keep queueing but send through a
+# provider's own backend, set EMAIL_UPSTREAM_BACKEND (see deployment/config.py) rather
+# than this.
+EMAIL_BACKEND = env_str("EMAIL_BACKEND", fls_defaults.QUEUED_EMAIL_BACKEND)
+EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", fls_defaults.EMAIL_TIMEOUT_SECONDS)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
