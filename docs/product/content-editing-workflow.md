@@ -1,12 +1,13 @@
 # Content Editing Workflow
 
-_Last updated: 2026-08-29_
+_Last updated: 2026-09-03_
 
 ## Summary
 
 - All course content is authored as plain Markdown and YAML under version control; git provides the full history — timestamps, diffs, and rollback.
 - Content is loaded into the database by the `content_save` command, which validates first and then idempotently upserts each item by UUID. Re-running it is safe.
 - Markdown renders through a four-stage pipeline: Markdown → sanitiser → content-widget compilation → template render.
+- Course images are re-encoded to WebP at ingest, so authors can commit camera and screenshot output as-is; filenames and `c-picture` references keep working unchanged.
 - Legal documents are versioned alongside content, and the exact version a user accepted is recorded on their consent record.
 - There is **no browser-based content editor**. All authoring happens in files, and content cannot be deleted from the admin either.
 
@@ -117,6 +118,8 @@ Admonition types default to note, tip, important, warning, danger, key takeaways
 Binary assets — images, PDFs, audio, video — are uploaded and stored by `content_save` alongside text content, and tracked against the content items that reference them.
 
 **Obsidian image syntax.** `content_save` translates `![[image.jpg]]` and `![[image.jpg | title]]` into image widgets at save time, so authors can use standard Obsidian-compatible notation.
+
+**Image optimisation.** Raster images — photographs, screenshots — are re-encoded to WebP when `content_save` loads them, and scaled down to 1600 px on the longest edge if they exceed it. Authors can commit camera and screenshot output as-is rather than pre-optimising or resizing it first. The file an author references keeps working unchanged, name and all, including any `<c-picture src="...">` in content; only the stored bytes and format change. SVGs and already-small images pass through untouched, and a corrupt or undecodable image is stored as-is with a warning naming it rather than failing the run.
 
 ## `fls-content` Authoring Plugin
 
