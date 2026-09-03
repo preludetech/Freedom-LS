@@ -26,6 +26,8 @@ from freedom_ls.learner_management.admin import (
     CohortMembershipInline,
     LearnerAdmin,
     LearnerCohortDeadlineOverrideInline,
+    OrganisationLearnerInline,
+    organisation_learner_search_link,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -42,6 +44,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 
 ADD_URL_NAME = "admin:freedom_ls_learner_management_learner_add"
 AUTOCOMPLETE_URL_NAME = "admin:autocomplete"
@@ -551,3 +554,167 @@ class TestDeadlineOverrideChangePageWithAnOutOfCohortLearner:
         assert not LearnerCohortDeadlineOverride.objects.filter(
             learner=non_member
         ).exists()
+
+
+ORGANISATION_CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"
+
+
+def _organisation_payload(organisation: Organisation, **extra: str) -> dict[str, str]:
+    """A change-page submission that leaves both contributed formsets empty."""
+    payload = {
+        "name": organisation.name,
+        "cohort_set-TOTAL_FORMS": "0",
+        "cohort_set-INITIAL_FORMS": "0",
+        "cohort_set-MIN_NUM_FORMS": "0",
+        "cohort_set-MAX_NUM_FORMS": "1000",
+        "learner_set-TOTAL_FORMS": "0",
+        "learner_set-INITIAL_FORMS": "0",
+        "learner_set-MIN_NUM_FORMS": "0",
+        "learner_set-MAX_NUM_FORMS": "0",
+    }
+    payload.update(extra)
+    return payload
+
+
+@pytest.mark.django_db
+class TestOrganisationCohortInline:
+    def test_a_cohort_can_be_added_from_the_organisation_page(
+        self, staff_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+
+        response = staff_client.post(
+            url,
+            _organisation_payload(
+                organisation,
+                **{
+                    "cohort_set-TOTAL_FORMS": "1",
+                    "cohort_set-0-name": "Evening Group",
+                    "cohort_set-0-id": "",
+                    "cohort_set-0-organisation": str(organisation.pk),
+                },
+            ),
+        )
+
+        assert response.status_code == 302
+        cohort = Cohort.objects.get(name="Evening Group")
+        assert cohort.organisation == organisation
+        # `site` is off the form entirely; SiteAwareModelBase.save supplies it.
+        assert cohort.site == organisation.site
+
+    def test_the_inline_lists_only_this_organisations_cohorts(
+        self, staff_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        CohortFactory(organisation=organisation, name="Belongs Here")
+        CohortFactory(organisation=OrganisationFactory(), name="Belongs Elsewhere")
+        url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+
+        html = staff_client.get(url).content.decode()
+
+        assert "Belongs Here" in html
+        assert "Belongs Elsewhere" not in html
+
+
+@pytest.mark.django_db
+class TestOrganisationLearnerInline:
+    def test_the_inline_offers_no_way_to_add_or_delete(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        LearnerFactory(organisation=organisation)
+        url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+
+        html = staff_client.get(url).content.decode()
+
+        assert 'name="learner_set-0-DELETE"' not in html
+        assert 'name="learner_set-__prefix__-user"' not in html
+
+    def test_the_inline_lists_only_this_organisations_learners(
+        self, staff_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        LearnerFactory(
+            organisation=organisation, user=UserFactory(email="here@example.com")
+        )
+        LearnerFactory(
+            organisation=OrganisationFactory(),
+            user=UserFactory(email="elsewhere@example.com"),
+        )
+        url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+
+        html = staff_client.get(url).content.decode()
+
+        assert "here@example.com" in html
+        assert "elsewhere@example.com" not in html
+
+    def test_the_inline_pages_without_repeating_or_skipping_a_learner(
+        self, staff_client
+    ) -> None:
+        """The whole point of the pagination: every learner appears exactly once
+        across the pages, which is what an unordered queryset would break."""
+        organisation = OrganisationFactory()
+        per_page = OrganisationLearnerInline.per_page
+        emails = [f"learner{index:03d}@example.com" for index in range(per_page + 5)]
+        for email in emails:
+            LearnerFactory(organisation=organisation, user=UserFactory(email=email))
+        url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+
+        first = staff_client.get(url).content.decode()
+        second = staff_client.get(f"{url}?learner_set-page=2").content.decode()
+
+        on_first = [email for email in emails if email in first]
+        on_second = [email for email in emails if email in second]
+        assert len(on_first) == per_page
+        assert len(on_second) == 5
+        assert not set(on_first) & set(on_second)
+        assert set(on_first) | set(on_second) == set(emails)
+
+    def test_paginating_raises_no_unordered_warning(self, staff_client) -> None:
+        organisation = OrganisationFactory()
+        for index in range(OrganisationLearnerInline.per_page + 1):
+            LearnerFactory(
+                organisation=organisation,
+                user=UserFactory(email=f"warn{index:03d}@example.com"),
+            )
+        url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            staff_client.get(url)
+
+        assert not [
+            warning
+            for warning in caught
+            if issubclass(warning.category, UnorderedObjectListWarning)
+        ]
+
+
+@pytest.mark.django_db
+class TestOrganisationLearnerSearchLink:
+    def test_the_link_filters_the_learner_changelist_to_the_organisation(
+        self, mock_site_context
+    ) -> None:
+        organisation = OrganisationFactory()
+        LearnerFactory(organisation=organisation)
+
+        rendered = organisation_learner_search_link(organisation)
+
+        changelist = reverse(LEARNER_CHANGELIST_URL_NAME)
+        assert f'href="{changelist}?organisation__id__exact={organisation.pk}"' in (
+            rendered
+        )
+        assert "1 learner<" in rendered
+
+    def test_an_organisation_with_no_learners_gets_no_link(
+        self, mock_site_context
+    ) -> None:
+        organisation = OrganisationFactory()
+
+        assert organisation_learner_search_link(organisation) == "No learners yet"
+
+    def test_the_count_is_scoped_to_the_organisation(self, mock_site_context) -> None:
+        organisation = OrganisationFactory()
+        LearnerFactory(organisation=organisation)
+        LearnerFactory(organisation=OrganisationFactory())
+
+        assert "1 learner<" in organisation_learner_search_link(organisation)

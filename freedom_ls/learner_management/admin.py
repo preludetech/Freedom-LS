@@ -10,7 +10,15 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.db import models
 from django.http import HttpRequest
+from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.translation import ngettext
 
+from freedom_ls.organisations.admin import (
+    ORGANISATION_SUMMARIES,
+    OrganisationAdmin,
+)
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.admin import (
     GuardedSiteAwareModelAdmin,
     SiteAwareModelAdmin,
@@ -442,3 +450,89 @@ class LearnerCohortDeadlineOverrideAdmin(SiteAwareModelAdmin):
     @admin.display(description="Content Item")
     def get_content_item(self, obj: LearnerCohortDeadlineOverride) -> str:
         return str(obj.content_item) if obj.content_item else "Whole course"
+
+
+class OrganisationCohortInline(TabularInline):
+    """An organisation's cohorts, editable from its own admin page.
+
+    Contributed to OrganisationAdmin at the bottom of this module. A cohort's
+    members and course registrations stay on the cohort's own page, which
+    `show_change_link` reaches from each row.
+    """
+
+    model = Cohort
+    fields = ["name"]
+    # per_page hands the queryset to a Paginator, which reorders nothing of its
+    # own: without an order here its pages would repeat and skip rows.
+    ordering = ["name"]
+    extra = 0
+    per_page = 20
+    show_count = True
+    show_change_link = True
+    tab = True
+
+
+class OrganisationLearnerInline(TabularInline):
+    """An organisation's learners, read-only and paginated.
+
+    One organisation can hold thousands, so the rows page rather than render in
+    a single block, and `organisation_learner_search_link` covers finding a
+    particular one -- an inline has no search of its own. Read-only because a
+    learner is edited on their own page, which each row links to; this list is
+    for looking.
+    """
+
+    model = Learner
+    fields = ["user", "is_active", "created_at"]
+    readonly_fields = fields
+    ordering = ["user__email"]
+    extra = 0
+    max_num = 0
+    can_delete = False
+    per_page = 25
+    show_count = True
+    show_change_link = True
+    tab = True
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: Organisation | None = None
+    ) -> bool:
+        return False
+
+    def get_queryset(self, request: HttpRequest) -> models.QuerySet[Learner]:
+        # Every row renders its learner's user, and the row title renders it
+        # again -- one query per row without this.
+        learners: models.QuerySet[Learner] = super().get_queryset(request)
+        return learners.select_related("user")
+
+
+def organisation_learner_search_link(organisation: Organisation) -> str:
+    """A link to the Learners changelist, narrowed to this organisation.
+
+    The inline above pages through learners but cannot search them.
+    `LearnerAdmin.list_filter` already carries `organisation`, so the changelist
+    -- which does search, filtering and bulk actions -- is one link away.
+    """
+    count = Learner.objects.filter(organisation=organisation).count()
+    if not count:
+        return "No learners yet"
+    label = ngettext(
+        "Search this organisation's 1 learner",
+        "Search this organisation's %(count)d learners",
+        count,
+    ) % {"count": count}
+    query = urlencode({"organisation__id__exact": str(organisation.pk)})
+    return format_html(
+        '<a href="{}?{}" class="text-primary-600 dark:text-primary-500">{}</a>',
+        reverse("admin:freedom_ls_learner_management_learner_changelist"),
+        query,
+        label,
+    )
+
+
+# Cohorts and learners on the Organisation change page, through the two seams
+# OrganisationAdmin declares for it. The wiring runs from here rather than from
+# `organisations`, which sits below this app in docs/app_structure.md and cannot
+# import Cohort or Learner without making the dependency a cycle.
+OrganisationAdmin.inlines = [OrganisationCohortInline, OrganisationLearnerInline]
+ORGANISATION_SUMMARIES.append(organisation_learner_search_link)
