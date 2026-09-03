@@ -23,10 +23,13 @@ GENERATED_PASSWORD_LENGTH = 22
 )
 @click.option(
     "--site-name",
-    default=None,
-    help="The Site's display name. Defaults to the resolved domain.",
+    required=True,
+    help=(
+        "The Site's display name, shown in email subject lines, the site header "
+        "and cohort reports."
+    ),
 )
-def command(admin_email: str, domain: str | None, site_name: str | None) -> None:
+def command(admin_email: str, domain: str | None, site_name: str) -> None:
     """Create the Site, the administrative User and its verified email address."""
     # normalize_email lives on UserManager and is the only thing that lowercases the
     # domain part. User.email is unique and case-sensitive in Postgres, so an address
@@ -34,7 +37,7 @@ def command(admin_email: str, domain: str | None, site_name: str | None) -> None
     # mailbox.
     email = UserManager.normalize_email(admin_email)
     resolved_domain = _resolve_domain(domain)
-    site = _get_or_create_site(resolved_domain, site_name or resolved_domain)
+    site = _get_or_create_site(resolved_domain, site_name)
     password = _get_or_create_admin_user(email, site)
     if password is not None:
         click.echo(f"Created administrator {email} with password: {password}")

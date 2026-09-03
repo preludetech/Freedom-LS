@@ -640,8 +640,8 @@ class TestAdapterSendMailContext:
         """Run AccountAdapter.send_mail with no request and return the rendered context.
 
         render_mail is patched to capture the context dict the adapter composes,
-        get_current_site returns the test Site, and the allauth request context
-        is forced to None (mail sent outside a web request).
+        the mock_site_context fixture resolves the site, and the allauth request
+        context is forced to None (mail sent outside a web request).
         """
         from unittest.mock import MagicMock, patch
 
@@ -655,10 +655,6 @@ class TestAdapterSendMailContext:
             patch(
                 "freedom_ls.accounts.allauth_account_adapter.allauth_context"
             ) as mock_ctx,
-            patch(
-                "freedom_ls.accounts.allauth_account_adapter.get_current_site",
-                return_value=mock_site_context,
-            ),
         ):
             mock_ctx.request = None
 

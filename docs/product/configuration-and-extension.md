@@ -21,7 +21,7 @@ These settings control visual and email branding without any template change. Al
 | `HEADER_LOGO_STATIC_PATH` | Logo in the navigation bar |
 | `HEADER_LOGO_ON_DARK_STATIC_PATH` | Reversed logo variant, used where the platform mark sits on a strong colour fill — today, the [cohort report](./reports.md) cover band |
 | `FAVICON_STATIC_PATH` | Browser tab favicon |
-| `HEADER_TITLE` | Text in the navigation bar, alongside or instead of the logo |
+| `HEADER_TITLE` | What the installation calls itself. Shown in the navigation bar alongside or instead of the logo, and used as the display name in outbound email subject lines and bodies and on [cohort reports](./reports.md). Falls back to the `Site` record's name where it is unset |
 | `HEADER_TITLE_STYLE` | Inline CSS applied to the header title |
 | `EMAIL_LOGO_STATIC_PATH` | Logo embedded in outbound emails |
 

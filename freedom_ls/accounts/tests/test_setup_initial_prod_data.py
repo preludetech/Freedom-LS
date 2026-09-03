@@ -113,6 +113,24 @@ def test_existing_site_keeps_its_name_when_domain_matches(
     assert site.domain == mock_site_context.domain
 
 
+@pytest.mark.django_db
+def test_missing_site_name_refuses_rather_than_naming_the_site_after_its_domain(
+    mock_site_context: Site,
+) -> None:
+    """Without --site-name the Site would be named after its own domain.
+
+    The display name is what allauth's email subject prefix, the site header and
+    the cohort reports all show, so a deployment that skipped the flag branded
+    itself "learn.example.com" everywhere the product's name belonged.
+    """
+    with pytest.raises((ClickException, CommandError, SystemExit)):
+        call_command(
+            "setup_initial_prod_data", "admin@example.org", "--domain", "example.org"
+        )
+
+    assert not Site.objects.filter(domain="example.org").exists()
+
+
 def test_missing_domain_under_settings_with_no_host_domain_raises_click_exception() -> (
     None
 ):
@@ -221,7 +239,13 @@ def test_create_site_superuser_command_no_longer_exists() -> None:
 
 
 def _call_setup(*args: str) -> str:
-    """Call setup_initial_prod_data and return stdout."""
+    """Call setup_initial_prod_data and return stdout.
+
+    --site-name is required by the command, so a caller that does not care about
+    the display name gets a placeholder rather than repeating the flag.
+    """
+    if "--site-name" not in args:
+        args = (*args, "--site-name", "Test Site")
     out = StringIO()
     with redirect_stdout(out):
         call_command("setup_initial_prod_data", *args)
