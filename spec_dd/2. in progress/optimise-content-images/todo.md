@@ -64,7 +64,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 12. Author plugin sync
 
-- [ ] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
+- [x] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
 
 ## 13. Pull request
 

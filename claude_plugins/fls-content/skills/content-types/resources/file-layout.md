@@ -102,3 +102,10 @@ Paths in `c-picture`, `c-pdf-embed`, and `c-file-download` are stored relative t
 - A shared image at the course root, from `02. going-deeper/content.md`:
   `src="../images/logo.svg"` → stored as `images/logo.svg`.
 - A shared image from inside a form subdirectory: `src="../images/graph.svg"`.
+
+**Never write `src=` with a `.webp` extension because that is what you see in the database or the
+storage bucket.** `content_save` re-encodes most raster images (JPEG, PNG, GIF, BMP) to WebP when it
+stores them, but the path `src=` resolves against always keeps the extension of the file you
+authored: `src="images/photo.jpg"` stays correct even though the stored object is renamed
+`photo.webp`. Only the stored object's name changes. See `c-picture` in the
+`fls-content:widget-reference` skill for what happens to the image itself.
