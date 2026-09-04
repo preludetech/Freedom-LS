@@ -233,17 +233,18 @@
         {% comment %}=== NAVIGATION ==={% endcomment %}
         <div class="mt-8 flex flex-col sm:flex-row justify-center gap-3">
             {% if quiz_verdict == "failed" %}
-                <c-button href="{{ retry_url }}" icon_left="retry">
+                <c-button href="{{ retry_url }}" icon_left="retry" size="small">
                     Retry quiz
                 </c-button>
             {% else %}
                 {% if next_url %}
-                    <c-button href="{{ next_url }}" icon_right="next">
+                    <c-button href="{{ next_url }}" icon_right="next" size="small">
                         Continue
                     </c-button>
                 {% else %}
                     <c-button href="{% url 'learner_interface:view_course_item' course_slug=course.slug index=1 %}"
-                              icon_right="home">
+                              icon_right="home"
+                              size="small">
                         Return to course
                     </c-button>
                 {% endif %}
