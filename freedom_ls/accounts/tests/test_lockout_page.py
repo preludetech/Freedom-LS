@@ -42,6 +42,16 @@ def test_lockout_serves_the_branded_page(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
+def test_lockout_renders_the_shared_error_panel(mock_site_context) -> None:
+    """Lockout and 429.html must render the same panel."""
+    user = UserFactory()
+
+    response = _lock_out(Client(), user.email)
+
+    assert "Error 429" in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_lockout_page_offers_a_route_forward(mock_site_context) -> None:
     """A locked-out visitor must not land on a dead end."""
     user = UserFactory()
