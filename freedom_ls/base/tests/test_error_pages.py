@@ -16,14 +16,24 @@ children.
 
 from __future__ import annotations
 
+import re
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 import pytest
 
+import django
 from django.core.cache import cache
 from django.template.loader import get_template
 from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+
+if TYPE_CHECKING:
+    # Stub-only: the test client's response carries `templates`, which a plain
+    # HttpResponse does not.
+    from django.test.client import _MonkeyPatchedWSGIResponse
 
 ERROR_PAGES_URLCONF = "freedom_ls.base.tests.error_pages_urls"
 
@@ -214,3 +224,170 @@ def test_500_end_to_end_renders_the_standalone_page(mock_site_context) -> None:
     assert response.status_code == 500
     assert "500.html" in [template.name for template in response.templates]
     assert "Sorry, there is a problem with this page" in response.content.decode()
+
+
+# --- Cross-cutting behaviours, pinned once across all eight error surfaces ---
+#
+# Each renderer below reaches its page the same way the per-page tests above
+# do (a real 404, a real CSRF failure, allauth's own rate limiter, axes'
+# own lockout, `get_template().render()` for the two standalone pages) and
+# returns (status_code, template_name, body) so the tests that follow can
+# check one behaviour across every page without re-deriving how to reach it.
+
+
+def _lock_out_account(client: Client, email: str) -> _MonkeyPatchedWSGIResponse:
+    """Submit failed logins until the pair is locked, and return that response."""
+    login_url = reverse("account_login")
+    credentials = {
+        "login": email,
+        "password": "wrong-password",  # pragma: allowlist secret
+    }
+    responses = [client.post(login_url, credentials) for _ in range(5)]
+    return responses[-1]
+
+
+def _render_404_page() -> tuple[int, str, str]:
+    response = Client().get("/no-such-page/")
+    return response.status_code, "404.html", response.content.decode()
+
+
+def _render_403_page() -> tuple[int, str, str]:
+    with override_settings(ROOT_URLCONF=ERROR_PAGES_URLCONF):
+        response = Client().get(reverse("test_403"))
+    return response.status_code, "403.html", response.content.decode()
+
+
+def _render_400_page() -> tuple[int, str, str]:
+    with override_settings(ROOT_URLCONF=ERROR_PAGES_URLCONF):
+        response = Client().get(reverse("test_400"))
+    return response.status_code, "400.html", response.content.decode()
+
+
+def _render_403_csrf_page() -> tuple[int, str, str]:
+    client = Client(enforce_csrf_checks=True)
+    response = client.post(
+        reverse("account_login"),
+        {
+            "login": "nobody@example.com",
+            "password": "wrong-password",  # pragma: allowlist secret
+        },
+    )
+    return response.status_code, "403_csrf.html", response.content.decode()
+
+
+def _render_429_page() -> tuple[int, str, str]:
+    cache.clear()
+    client = Client()
+    with override_settings(ACCOUNT_RATE_LIMITS={"signup": "1/m/ip"}):
+        _post_signup(client, "cross-cutting-429-a@example.com")
+        response = _post_signup(client, "cross-cutting-429-b@example.com")
+    return response.status_code, "429.html", response.content.decode()
+
+
+def _render_500_page() -> tuple[int, str, str]:
+    with override_settings(ROOT_URLCONF=ERROR_PAGES_URLCONF, DEBUG=False):
+        response = Client(raise_request_exception=False).get(reverse("test_500"))
+    return response.status_code, "500.html", response.content.decode()
+
+
+def _render_503_page() -> tuple[int, str, str]:
+    body = get_template("503.html").render()
+    return 503, "503.html", body
+
+
+def _render_lockout_page() -> tuple[int, str, str]:
+    user = UserFactory()
+    response = _lock_out_account(Client(), user.email)
+    return response.status_code, "accounts/lockout.html", response.content.decode()
+
+
+PAGE_RENDERERS: dict[str, Callable[[], tuple[int, str, str]]] = {
+    "404": _render_404_page,
+    "403": _render_403_page,
+    "400": _render_400_page,
+    "403_csrf": _render_403_csrf_page,
+    "429": _render_429_page,
+    "500": _render_500_page,
+    "503": _render_503_page,
+    "lockout": _render_lockout_page,
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("page_name", sorted(PAGE_RENDERERS))
+def test_every_page_offers_a_route_forward(mock_site_context, page_name: str) -> None:
+    _, _, body = PAGE_RENDERERS[page_name]()
+
+    assert 'class="btn' in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("page_name", sorted(PAGE_RENDERERS))
+def test_every_page_carries_noindex(mock_site_context, page_name: str) -> None:
+    _, _, body = PAGE_RENDERERS[page_name]()
+
+    assert 'content="noindex"' in body
+
+
+@pytest.mark.django_db
+def test_every_page_has_a_distinct_title(mock_site_context) -> None:
+    """Several pages reuse the same wording for `<title>` and `<h1>`, so a
+    body-text assertion alone would not notice a deleted or duplicated
+    title block.
+    """
+    titles = []
+    for page_name, render in PAGE_RENDERERS.items():
+        _, _, body = render()
+        match = re.search(r"<title>(.*?)</title>", body, re.DOTALL)
+        assert match is not None, f"{page_name} has no <title>"
+        titles.append(match.group(1).strip())
+
+    assert len(titles) == len(set(titles))
+
+
+@pytest.mark.django_db
+def test_no_page_echoes_its_own_trigger_path(mock_site_context) -> None:
+    """404 already pins this on its own. 403 and 400 use synthetic paths
+    that appear nowhere else, so they are safe to check the same way; 429's
+    trigger path is `account_signup`, a real route the site header already
+    links to on every page, so checking for its absence would fail on the
+    header, not on a leak. 403_csrf and lockout are excluded for the same
+    reason as 429, plus both deliberately link back to `account_login`, the
+    path that triggered them, as their primary action. 503 has no
+    triggering path at all.
+    """
+    trigger_paths = {
+        "403": "/test-403/",
+        "400": "/test-400/",
+        "500": "/test-500/",
+    }
+
+    for page_name, path in trigger_paths.items():
+        _, _, body = PAGE_RENDERERS[page_name]()
+        assert path not in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("page_name", sorted(PAGE_RENDERERS))
+def test_no_page_leaks_internal_detail(mock_site_context, page_name: str) -> None:
+    _, _, body = PAGE_RENDERERS[page_name]()
+
+    assert "Traceback" not in body
+    assert "deliberate failure" not in body
+    assert "RuntimeError" not in body
+    assert django.get_version() not in body
+    assert "Reference:" not in body
+    assert "Error ID" not in body
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("page_name", sorted(PAGE_RENDERERS))
+def test_no_page_shows_a_countdown_or_rate_figure(
+    mock_site_context, page_name: str
+) -> None:
+    _, _, body = PAGE_RENDERERS[page_name]()
+
+    assert (
+        re.search(r"\d+\s*(second|minute|hour|attempt|request)", body, re.IGNORECASE)
+        is None
+    )
