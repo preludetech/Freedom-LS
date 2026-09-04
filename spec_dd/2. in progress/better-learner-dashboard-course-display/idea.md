@@ -42,31 +42,59 @@ Canvas, Thinkific, Udemy) makes the learner's own registrations the first screen
 Progress to one row keeps the headline group inside the first two screenfuls anyway.
 `research_dashboard_grouping_ux.md` holds the reference survey and the fold data behind this.
 
-## How the grouping is configured
+## Categories
 
-Two halves, and the authoring half already exists.
-
-Courses name their category. `Course.category` is a free-text field the authoring schema already
-accepts and the content loader already writes through, so `category: Technical` in a `course.md`
-front-matter block works today with no code change. Nothing groups, filters or sorts by it. It is
-already displayed verbatim on the course-detail hero and on the educator course details panel, so
-populating it changes those two surfaces as a side effect.
-
-The site orders the categories. A new `CourseCategory` model, per site, says where a category name
-sits on the dashboard and what heading it renders under.
+`CourseCategory` is a new content type. It is a `SiteAwareModel`, unique on `(site, slug)`.
 
 | Field | Means |
 | --- | --- |
-| `name` | matches `Course.category`, compared as a slug so capitalisation and spacing drift do not split a category |
-| `heading` | the display heading, when it should differ from the name |
+| `slug` | the reference key a course names, and the stable identity of the category |
+| `title` | the section heading on the dashboard |
+| `description` | the line under the heading |
 | `order` | position on the dashboard. The lowest is the headline section |
 
-It carries no foreign key to `Course`. Courses match by name, so content stays portable between
-sites and neither model can break the other, the same standalone and additive shape as
-`RecommendedCourse` and `CourseInterest`. It is a `SiteAwareModel`, which is what gives a two-site
-install two independent orderings for free.
+`Course.category` becomes a foreign key to it, replacing today's free-text field. A course may have
+no category, and those courses fall into a catch-all section. What a course may not have is a
+category slug matching nothing.
 
-Three things are deliberately absent from that table.
+### Categories are authored, like the courses that reference them
+
+A category is a content file in the content repo, carrying the four fields above plus the usual
+`uuid`. Courses name one by slug in front matter, keeping the existing `category:` key. The key is
+tightened on the `Course` schema only, not on the shared content base that topics, activities and
+course parts also inherit, whose `category` stays free text and keeps its current meaning.
+
+Files rather than admin rows, because the guarantee the strict foreign key is for only exists in
+files. `content_validate` takes no site argument, so an admin-managed vocabulary cannot be checked
+before a load at all. With categories in the repo, a bad slug is caught by `content_validate`, by
+`content_save`, and by the bundled offline validator that runs with no Django and no database. Admin
+rows would move the typo to a surface with worse feedback rather than remove it, and they would make
+a content repo unloadable on its own until somebody hand-typed matching rows into every site.
+
+This is not a new pattern for FLS. A content repo already declares its own `access_types` and
+`admonition_types`, and course files already name them by a typed key with an error that names the
+file, the bad value and the valid set. Categories are the same pattern with richer per-term data.
+
+The admin may edit a category but may not create or delete one, matching the existing rule that
+content cannot be deleted from the admin. The file wins on every field, including `order`, so an
+admin edit lasts until the next content load. One consequence to state plainly: ordering is
+authored, so two sites loading the same content repo get the same ordering, and an admin edit is a
+temporary override rather than per-site configuration.
+
+`research_category_authoring_workflow.md` carries the comparison against Astro, Hugo, Sanity,
+Contentful, Payload, Strapi and Wagtail, and the reasoning behind each rejected workflow.
+
+### A typo is an error, before anything is written
+
+An unknown slug fails during validation, ahead of any database write, so a content load either
+applies whole or not at all. The message must name the file, quote the bad slug, list the slugs the
+repo does declare with the file declaring each, and say that adding a category file is as valid a
+fix as correcting the typo. Naming the wrong file is worse than saying nothing, so the message is
+built from the parsed file path the validator already carries.
+
+An absent category is not an error and gets no message. Only a non-empty slug matching nothing fails.
+
+Three things are deliberately absent from the model.
 
 **No `is_featured`.** The headline section is the category with the lowest `order`. A distinct
 visual treatment for it is a design decision rather than a data one, and it only earns its place
@@ -78,15 +106,6 @@ disclosure control, because content behind a collapse is content most learners n
 
 **No many-to-many.** A course sits in exactly one category. Two categories means the same card
 renders twice on one page, which is the thing this work exists to prevent.
-
-A per-site ordering cannot live in `AppSettings`, which resolves against Django settings and is
-therefore per-project. That, rather than admin convenience, is what makes this a model.
-`research_course_grouping_data_model.md` carries the comparison against Moodle, Open edX, Canvas and
-Thinkific, and the reasoning behind each rejected alternative.
-
-Courses whose category has no `CourseCategory` row are never dropped. They fall into a catch-all
-section rendered after the configured ones. A typo in front matter must not silently remove a course
-from the dashboard, and nothing anywhere would signal that it had.
 
 ## Every section needs a stable order first
 
@@ -105,6 +124,16 @@ with no progress at all, so a learner bulk-registered onto a cohort's courses cu
 cards mixed in with the one course they are actually reading. Without started-before-unstarted,
 pagination will faithfully bury the course the learner came back for on page two.
 
+## The section header
+
+![A category section headed "Open courses" with its description beneath, a count of 1 to 3 of 12
+with previous and next chevrons and a "Browse all" link on the right, above a row of three course
+cards](image.png)
+
+The category title and its description sit on the left. The count, the previous and next controls
+and a "Browse all" link sit on the right. "Browse all" goes to the existing flat catalogue at
+`/courses/`, which this work does not change.
+
 ## Pagination
 
 Each section pages independently, in place, without a trip to the catalogue.
@@ -112,15 +141,13 @@ Each section pages independently, in place, without a trip to the catalogue.
 The dashboard gets a new, lightweight control. The existing `<c-pagination>` component renders
 numbered pages with First and Last on desktop and belongs to the educator tables. Five numbered
 paginators stacked down a dashboard is more controls than cards. This one has no page numbers, just
-previous and next, with the position stated in text ("Showing 4 to 6 of 19 courses"). Design work
-decides where the controls sit relative to each section, so do not assume a footer strip.
-`<c-pagination>` is left alone.
+previous and next, with the position stated in text ("1 to 3 of 12"). `<c-pagination>` is left alone.
 
 Page state lives in the URL, one namespaced query parameter per section behind a fixed prefix,
 written only when a section is not on page one. A learner paging one section produces one short
-parameter, not one per section. Parameter names derive from a validated slug, never from an
-administrator-edited heading, and an unrecognised one is ignored rather than raising an error. A
-bookmark taken before a category was renamed must still render the dashboard.
+parameter, not one per section. Parameter names derive from the category slug, and an unrecognised
+one is ignored rather than raising an error. A bookmark taken before a category was renamed must
+still render the dashboard.
 
 The controls stay real links with a working `href`, enhanced with HTMX to swap a single section.
 That keeps the paged content reachable without JavaScript and by a crawler, which matters because
@@ -169,25 +196,27 @@ two-hundred-course site have to get a sensible page out of the same configuratio
 
 ## The default has to be indistinguishable from today
 
-No existing installation has a `CourseCategory` row, and no course in this repository sets
-`category`. In that state every course falls into the catch-all, and if the catch-all carries the
-same limit the code hard-codes today, the dashboard renders exactly as it does now. That is the bar.
-Not "acceptable on upgrade" but the same. The failure to design against is the opposite default,
-where a site that has configured nothing suddenly renders its entire catalogue on its home page.
+No content repository in this project declares a category, and nothing populates `Course.category`.
+In that state every course falls into the catch-all, and if the catch-all carries the same limit the
+code hard-codes today, the dashboard renders exactly as it does now. That is the bar. Not
+"acceptable on upgrade" but the same. The failure to design against is the opposite default, where a
+site that has configured nothing suddenly renders its entire catalogue on its home page.
 
-Administrators need a way to find out what category names authors have used, since nothing
-auto-creates rows. Surfacing `category` in the course admin, which does not expose it at all today,
-is the obvious answer.
+The course admin does not show `category` at all today. It should, so a builder can see where a
+course has landed without opening the content repo.
 
 ## What this does not do
 
-**The catalogue is untouched.** It stays a flat list with no category filter, which means a category
-has no filtered destination to link to. Pagination covers that instead, since a section pages
-through its own courses on the dashboard. A section that routinely runs past about four pages is a
-sign the site should reconfigure, not a sign we need deeper pagination.
+**The catalogue is untouched.** It stays a flat list, so "Browse all" goes to every course rather
+than to that category's courses. Filtering and sorting the catalogue is a separate future feature.
+Within the dashboard, pagination is how a learner sees the rest of a category.
 
 **In Progress, Recommended Courses and Learning History are not split by category.** They come from
 the learner's registrations, progress and recommendations. Categories slice the discovery pool only.
+
+**No tooling for the foreign-key upgrade.** A downstream site that populated the old free-text field
+gets an upgrade note describing the trap and the manual fix, not a command. Nothing in this project
+populates the field, so the number of affected installations may well be zero.
 
 **The learner gets no control of their own.** Every reference product lets a learner shrink their own
 dashboard by favouriting, starring, archiving or hiding. This work gives that power to the builder
@@ -202,16 +231,40 @@ without moving them is a different model, and not what is being asked for.
 
 ## Constraints this work inherits
 
+**The loader would clobber an authored slug.** `content_save` derives `slug` from `title` for any
+model carrying both, de-duplicating with a numeric suffix. For a category whose slug every course
+names, that would ignore the authored slug and would move the slug out from under every referencing
+course whenever the title changed. This type needs an explicit opt-out, and it is the sharpest
+implementation hazard in the idea.
+
+**Cross-file validation is a new shape.** Validation checks one file at a time today and throws the
+parsed models away. A category reference needs a second pass over everything parsed, because a
+category file later in the walk must still satisfy a course seen earlier. The load itself is already
+safe: content saves in hard-coded phases by type rather than in file order, so a category phase
+ahead of the course phase is a guarantee rather than a sort.
+
+**Site is explicit on the command line.** There is no ambient request during a content load, so the
+site-aware manager does not filter and every category lookup must pass the site explicitly. A lookup
+that omits it would resolve against the wrong site's rows on a multi-site database.
+
+**Category files must live outside course directories**, or the child auto-discovery walk will try to
+adopt one as a course child.
+
+**Converting the field breaks the next content load, not the migration.** A data migration can create
+one category per distinct existing value, but no file declares those categories, so the following
+content load fails every course referencing them. It also cannot invent titles or descriptions, and
+it cannot merge near-duplicates. This is what the upgrade note has to say.
+
 **The dashboard is expensive per registered course.** Annotating "next up" builds the full player
 index for every course in In Progress, roughly fifteen queries each, unbounded, with no test pinning
 it. Capping and paginating In Progress is therefore the largest performance win available here, and
 this work is the moment to put a query-count bound on the page.
 
-**Pagination cannot reach the database.** Both dashboard sequences are Python lists assembled after
-per-learner work, and matching categories by name keeps the partition in Python. Every render pays
-an O(all courses) floor regardless of which page any section is on, so pagination saves per-card
-rendering rather than queries. That is fine at a few hundred courses and is the assumption this idea
-makes.
+**In Progress cannot page in the database, but the category sections now can.** In Progress is a
+Python list assembled after per-learner progress work, so paging it saves rendering rather than
+queries. The foreign key changes that for the discovery sections: a category's courses are a real
+queryset, so those sections can page in the database instead of loading every course on the site
+into memory the way the current code does.
 
 **`Course.access_config` is backend-private.** No grouping rule may read it. A rule that wants to
 tell free courses from gated ones goes through the access backend's badge signal.
@@ -229,7 +282,10 @@ work, and it also changes what existing tests assert.
 - `research_current_dashboard_behaviour.md` covers what the dashboard does today, what it costs per
   render, which tests pin it, and the landmines.
 - `research_course_grouping_data_model.md` covers how comparable systems model course taxonomy, why
-  one category per course, and why the ordering is a model rather than a setting.
+  one category per course, and the rejected alternatives. It was written before the foreign key was
+  chosen and argues for free-text matching, which this idea supersedes.
+- `research_category_authoring_workflow.md` covers who creates categories and how, the content
+  pipeline's load phases, the auto-slug hazard, and the upgrade story.
 - `research_dashboard_grouping_ux.md` covers the reference dashboards, the above-the-fold reasoning,
   and the failure modes of many small sections.
 - `research_dashboard_pagination.md` covers several paginated grids on one page, the URL-state
