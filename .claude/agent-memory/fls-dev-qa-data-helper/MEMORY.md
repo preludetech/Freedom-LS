@@ -49,6 +49,7 @@
 - [reference_admin_constraint_fixtures_command.md](reference_admin_constraint_fixtures_command.md) — qa_create_admin_constraint_fixtures: webhook endpoint/secret + CourseInterest + second-org Learner + per-org cohorts for uniqueness-constraint admin QA; WebhookSecret names forbid hyphens
 - [reference_half_nulled_deadline_contenttype.md](reference_half_nulled_deadline_contenttype.md) — qa_create_half_nulled_deadlines: making `content_type IS NULL` + `object_id` populated deadline rows; ContentCollectionItem.child_type is CASCADE so deleting the Topic ContentType strips every topic out of every course — use the zero-instance Activity ContentType as the decoy target instead
 - [reference_qa_run_residue_cleanup.md](reference_qa_run_residue_cleanup.md) — Tearing down a manual QA run's residue (signup user + LegalConsent x2 + EmailAddress, CourseInterest, a self-service enrolment); Collector.fast_deletes hides half the cascade; CourseProgress PROTECTs LearnerCourseRegistration
+- [reference_organisation_admin_summary_counts.md](reference_organisation_admin_summary_counts.md) — Organisation change-page learner-count summary (ngettext 0/1/N): it lives in learner_management/admin.py via ORGANISATION_SUMMARIES, counts inactive learners too, and how to seed an exact-1 org + render the wording headlessly
 
 ## Recurring requests
 
