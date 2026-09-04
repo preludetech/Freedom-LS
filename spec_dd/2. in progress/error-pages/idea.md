@@ -22,7 +22,7 @@ theme. We take the layout and the tone from them. We do not take the functionali
 | Page | Served when | Shell | Way forward |
 | --- | --- | --- | --- |
 | 404 | Dead link, renamed content, mistyped URL | Full | Dashboard; browse courses |
-| 403 | Permission denied on something the visitor knows exists | Full | My courses; sign in as another account |
+| 403 | Permission denied on something the visitor knows exists | Full | Browse courses; sign in as another account |
 | 400 | Malformed or suspicious request | Full | Dashboard |
 | 403 CSRF | Form posted on a stale session | Full | Sign in again, then retry |
 | 429 | Any rate limit or lockout | Full | Wait, then try again |
@@ -73,9 +73,12 @@ appears as a small secondary label. A 404 is low-stakes and asks the visitor to 
 and no redirecting misses to the dashboard.
 
 **Accessibility is part of the page, not a pass over it.** A distinct `<title>` per page, exactly one
-`<h1>`, icons hidden from assistive technology, and colour never the only signal of severity. Every
-page still has to read correctly with no stylesheet. On a page that exists because something broke,
-that is a live possibility.
+`<h1>` in the page's own content, icons hidden from assistive technology, and colour never the only
+signal of severity. `partials/header_bar.html` renders the site title as an `<h1>` on every page that
+extends `_base.html`, so the five shell pages carry that one too. It is pre-existing and site-wide,
+every other FLS page already has it, and this work does not touch it. Every page still has to read
+correctly with no stylesheet. On a page that exists because something broke, that is a live
+possibility.
 
 Several of the designs' icons have no FLS semantic name. Add the few these pages need to the icon
 registry and address them through `<c-icon>` as usual, never a raw icon-set class.
