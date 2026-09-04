@@ -90,7 +90,7 @@ def test_closed_spotlight_is_inert_and_trigger_is_clickable(
     expect(spotlight).to_be_hidden()
 
     # The trigger is reachable (not occluded by a closed dialog) and opens it.
-    page.get_by_role("button", name="Open image").click()
+    page.get_by_role("button", name="Expand").click()
     expect(spotlight).to_be_visible()
 
 
@@ -129,7 +129,7 @@ def test_background_does_not_scroll_while_spotlight_open(
     page.wait_for_function("window.scrollY > 0")
     page.evaluate("window.scrollTo(0, 0)")
 
-    page.get_by_role("button", name="Open image").click()
+    page.get_by_role("button", name="Expand").click()
     spotlight = page.get_by_role("dialog", name="Scroll lock image")
     expect(spotlight).to_be_visible()
 
@@ -164,7 +164,7 @@ def test_long_description_keeps_spotlight_heading_reachable(
     page.set_viewport_size({"width": 375, "height": 360})
     page.goto(url)
 
-    page.get_by_role("button", name="Open image").click()
+    page.get_by_role("button", name="Expand").click()
     heading = page.get_by_role("heading", name="Detailed schematic")
     expect(heading).to_be_visible()
 
