@@ -114,15 +114,13 @@ source of truth and keyboard/AT behaviour is untouched.
 
 {% partialdef form-question %}
     <fieldset class="space-y-3 border-0 p-0">
-        <legend class="font-semibold text-on-surface w-full float-left px-0 flex flex-wrap items-baseline gap-x-1">
+        <legend class="font-semibold text-on-surface w-full float-left px-0 [&>p]:inline">
             <span data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
-            {{ question.rendered_question }}
-            {% if question.required %}
-                <span class="text-error ml-1"
-                      data-testid="required-indicator-{{ question.question_number }}"
-                      aria-hidden="true">*</span>
-                <span class="sr-only">(required)</span>
-            {% endif %}
+            {% comment %}
+            The `&nbsp;` keeps the asterisk attached to the last word of the
+            question so it can never wrap onto a line of its own.
+            {% endcomment %}
+            {{ question.rendered_question }}{% if question.required %}&nbsp;<span class="text-error" data-testid="required-indicator-{{ question.question_number }}" aria-hidden="true">*</span><span class="sr-only">(required)</span>{% endif %}
         </legend>
 
         {% if question.type == "checkboxes" %}
