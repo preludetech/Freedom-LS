@@ -18,6 +18,8 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "in_progress",
     "complete",
     "locked",
+    "rate_limit",
+    "maintenance",
     "not_started",
     # Actions
     "check",
