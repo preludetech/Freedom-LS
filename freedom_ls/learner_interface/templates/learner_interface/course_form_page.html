@@ -460,7 +460,7 @@ examRunnerForm scope (no intermediate x-data between them).
                     {% comment %}Previous: plain GET link — does NOT save answers{% endcomment %}
                     {% if previous_page_url %}
                         <a href="{{ previous_page_url }}"
-                           class="btn btn-ghost w-full sm:w-auto flex items-center justify-center gap-2">
+                           class="btn btn-ghost btn-sm w-full sm:w-auto flex items-center justify-center gap-2">
                             <c-icon name="previous" class="size-5" />
                             Previous
                         </a>
@@ -478,7 +478,7 @@ examRunnerForm scope (no intermediate x-data between them).
                             {% endcomment %}
                             <button type="submit"
                                     form="runner-page-form"
-                                    class="btn btn-primary w-full sm:w-auto flex items-center justify-center gap-2">
+                                    class="btn btn-primary btn-sm w-full sm:w-auto flex items-center justify-center gap-2">
                                 Next
                                 <c-icon name="next" class="size-5" />
                             </button>
@@ -494,7 +494,7 @@ examRunnerForm scope (no intermediate x-data between them).
                             {% endcomment %}
                             <button type="submit"
                                     form="runner-page-form"
-                                    class="btn btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
+                                    class="btn btn-primary btn-sm w-full sm:w-auto flex items-center justify-center gap-2"
                                     x-on:click.prevent="openSubmitDialog($el)">
                                 Next
                                 <c-icon name="next" class="size-5" />
