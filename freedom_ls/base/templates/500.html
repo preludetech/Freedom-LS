@@ -1,0 +1,27 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <meta name="robots" content="noindex" />
+        <title>Sorry, there is a problem with this page</title>
+        <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}" />
+    </head>
+    <body>
+        <main>
+            {% url 'learner_interface:dashboard' as dashboard_url %}
+            <c-error-page status="500" level="error" icon="warning"
+                          heading="Sorry, there is a problem with this page">
+                <p>The problem is on our side. It is not your account, your device or your connection.</p>
+                <p>Anything you were part-way through may not have been saved.</p>
+                <div class="flex flex-wrap gap-3">
+                    <a href="" class="btn btn-primary">Try again</a>
+                    {% if dashboard_url %}
+                        <c-button href="{{ dashboard_url }}" variant="secondary">Go to your dashboard</c-button>
+                    {% endif %}
+                </div>
+            </c-error-page>
+        </main>
+    </body>
+</html>

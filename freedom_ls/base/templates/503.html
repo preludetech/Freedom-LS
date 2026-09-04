@@ -1,0 +1,22 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <meta name="robots" content="noindex" />
+        <title>Sorry, the service is unavailable</title>
+        <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}" />
+    </head>
+    <body>
+        <main>
+            <c-error-page status="503" level="info" icon="maintenance"
+                          heading="Sorry, the service is unavailable">
+                <p>Maintenance is in progress. You will be able to use the service again later.</p>
+                <div class="flex flex-wrap gap-3">
+                    <a href="" class="btn btn-primary">Try again</a>
+                </div>
+            </c-error-page>
+        </main>
+    </body>
+</html>
