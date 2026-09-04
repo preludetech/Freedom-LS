@@ -114,6 +114,20 @@
     --fls-card-hero-height: 7rem;   /* was h-28 */
     --fls-card-padding: 1rem;       /* was p-4 */
 
+    /* Flashcard back face — the answer side reads as a quiet brand-tinted
+     * panel, just enough to tell it apart from the question face. Both stops
+     * are mixed from primary into the surface, so the tint follows the brand
+     * without ever fighting the prose sitting on it. A theme wanting a bolder
+     * answer face overrides the gradient and its paired foregrounds together. */
+    --fls-flashcard-back-gradient: linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--color-primary) 6%, var(--color-surface)),
+        color-mix(in oklab, var(--color-primary) 13%, var(--color-surface))
+    );
+    --fls-flashcard-back-fg: var(--color-on-surface);
+    --fls-flashcard-back-accent: var(--color-primary);
+    --fls-flashcard-back-border: color-mix(in oklab, var(--color-primary) 25%, transparent);
+
     /* Shape tokens — FLS namespace. */
     --fls-radius-sm: 0.25rem;
     --fls-radius-md: 0.375rem;

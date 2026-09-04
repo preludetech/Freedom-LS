@@ -22,6 +22,10 @@ Accessibility:
   buttons that are visually hidden by the 3-D rotation — tabindex="-1" on a
   wrapper div does not propagate to its children.
 
+  The corner label and the flip hint are decorative: the button's aria-label
+  and aria-pressed already carry the interaction, so both are aria-hidden to
+  avoid announcing it twice.
+
 CSS:
   Static 3D geometry lives in hand-authored .flashcard-* rules in
   tailwind.components.css — not dynamically-assembled Tailwind classes, which
@@ -30,6 +34,8 @@ CSS:
   The CSS transition is gated behind @media (prefers-reduced-motion: no-preference)
   so the flip still applies instantly when motion is reduced; only the animation
   is dropped, not the state change.
+  The back face is painted from the --fls-flashcard-back-* theme tokens, with
+  scoped rules repainting its prose to match whatever those tokens resolve to.
 {% endcomment %}
 
 <div x-data="flashcard" class="my-6 lg:max-w-2xl lg:mx-auto">
@@ -63,8 +69,12 @@ CSS:
                  x-bind:aria-hidden="flipped"
                  x-bind:style="frontStyle()">
                 <div class="flashcard-face-content">
-                    <div class="flashcard-face-label" aria-hidden="true">Front</div>
+                    <div class="flashcard-face-label" aria-hidden="true">Question</div>
                     {% markdown front %}
+                    <div class="flashcard-flip-hint" aria-hidden="true">
+                        <c-icon name="retry" class="size-4" />
+                        Tap to flip
+                    </div>
                 </div>
             </div>
 
@@ -73,8 +83,12 @@ CSS:
                  x-bind:aria-hidden="!flipped"
                  x-bind:style="backStyle()">
                 <div class="flashcard-face-content">
-                    <div class="flashcard-face-label" aria-hidden="true">Back</div>
+                    <div class="flashcard-face-label" aria-hidden="true">Answer</div>
                     {% markdown back %}
+                    <div class="flashcard-flip-hint" aria-hidden="true">
+                        <c-icon name="retry" class="size-4" />
+                        Tap to flip
+                    </div>
                 </div>
             </div>
 
