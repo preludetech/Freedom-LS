@@ -20,10 +20,11 @@ Animation:
   is gated behind @media (prefers-reduced-motion: no-preference) so users who
   prefer reduced motion see an instant reveal with no animation.
 
-Chevron:
+Open state:
   A CSS rotate driven by the details[open] selector flips the chevron icon
-  when the disclosure opens. The rotation transition is also gated behind
-  prefers-reduced-motion.
+  when the disclosure opens, and the summary row shifts from the default text
+  colour to the brand primary so an open accordion reads as active at a
+  glance. Both transitions are also gated behind prefers-reduced-motion.
 
 Editorial note:
   Accordions are for elective depth — supplementary detail, optional context,
@@ -33,14 +34,14 @@ Editorial note:
 {% endcomment %}
 
 <details{% if open != "__unset__" %} open{% endif %} class="accordion my-6 border border-border rounded-lg bg-surface">
-    <summary class="accordion-summary flex items-center justify-between px-4 py-3 cursor-pointer select-none list-none font-semibold text-on-surface">
-        <span>{{ title }}</span>
+    <summary class="accordion-summary">
+        <span class="accordion-title">{{ title }}</span>
         <span class="accordion-chevron" aria-hidden="true">
-            <c-icon name="dropdown" class="size-5 text-muted" />
+            <c-icon name="dropdown" class="size-5" />
         </span>
     </summary>
     <div class="accordion-body">
-        <div class="accordion-body-inner px-4 pb-4 space-y-4">
+        <div class="accordion-body-inner">
             {% markdown slot %}
         </div>
     </div>

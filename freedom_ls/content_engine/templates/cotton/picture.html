@@ -14,14 +14,16 @@ Attributes:
                Decorative images should use alt="".
   title        Optional visible title shown in the thumbnail figcaption
                and as the spotlight heading + bottom caption.
-  description  Optional longer description shown only in the spotlight
-               below the title. Not shown in the thumbnail.
-  number       Optional figure number → "Figure N" prefix in the title.
+  description  Optional longer description shown in the figure caption and
+               again in the spotlight below the title.
+  number       Optional figure number → "Figure N" label on the caption.
 
 Authoring note: `alt` describes the image for screen-reader users;
 `title` is the visible caption. Don't duplicate them.
-`description` adds a paragraph of explanatory text in the spotlight —
-use it for annotations, context, or detailed captions.
+`description` adds a paragraph of explanatory text below the caption —
+use it for annotations, context, or detailed captions. It reads as visible
+prose on the page, so write it for every learner, not just the ones who
+open the image.
 {% endcomment %}
 
 {% unique_id "spotlight-title" as heading_id %}
@@ -37,16 +39,15 @@ use it for annotations, context, or detailed captions.
                      class="w-full h-auto"
                      loading="lazy" />
                 <c-slot name="footer">
-                    <div class="flex items-center justify-between gap-4">
-                        <span class="text-muted text-sm">
+                    {# items-start keeps the trigger at the top of a title that #}
+                    {# runs to several lines.                                   #}
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="picture-figure-title">
                             {% if number %}
-                                <span class="font-semibold">Figure {{ number }}</span>
-                                {% if title %}
-                                    :
-                                {% endif %}
+                                <span class="picture-figure-ref shrink-0">Figure {{ number }}</span>
                             {% endif %}
-                            {{ title }}
-                        </span>
+                            <span class="text-on-surface font-medium">{{ title }}</span>
+                        </p>
                         {# Real button so the spotlight trigger is keyboard-accessible. #}
                         <c-button type="button"
                                   variant="secondary"
@@ -55,9 +56,16 @@ use it for annotations, context, or detailed captions.
                                   x-ref="trigger"
                                   @click="open"
                                   class="shrink-0">
-                            Open image
+                            Expand
                         </c-button>
                     </div>
+                    {# Outside the title row so the prose runs the full width of #}
+                    {# the card instead of stopping short at the button.         #}
+                    {% if description %}
+                        <p class="text-muted text-sm mt-3">
+                            {{ description }}
+                        </p>
+                    {% endif %}
                 </c-slot>
             </c-media-card>
 
@@ -74,7 +82,13 @@ use it for annotations, context, or detailed captions.
                 {% if title %}
                     <h2 id="{{ heading_id }}"
                         class="absolute inset-x-0 top-0 w-full m-0 py-4 pl-6 pr-18 bg-black/40 backdrop-blur-xl font-semibold text-base sm:text-lg leading-snug">
-                        <span class="block text-accent">{% if number %}Figure {{ number }}{% else %}Figure:{% endif %}</span>
+                        <span class="block text-accent">
+                            {% if number %}
+                                Figure {{ number }}
+                            {% else %}
+                                Figure:
+                            {% endif %}
+                        </span>
                         <span class="text-white">{{ title }}</span>
                     </h2>
                 {% endif %}
@@ -106,7 +120,7 @@ use it for annotations, context, or detailed captions.
                 {% if description %}
                     <div class="absolute inset-x-0 bottom-0 w-full py-4 px-6 bg-black/40 backdrop-blur-xl">
                         {% if title %}
-                            <p class="font-semibold text-accent">
+                            <p class="font-mono text-xs font-medium tracking-wide text-accent">
                                 {{ title }}
                             </p>
                         {% endif %}

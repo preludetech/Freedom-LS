@@ -251,6 +251,17 @@ An optional `--fls-course-accent-pattern` token adds a texture layer above every
 | `--fls-card-hero-height` | `7rem` | Height of the hero colour band |
 | `--fls-card-padding` | `1rem` | Body padding inside cards |
 
+### Flashcard tokens
+
+The flashcard's answer face is a quiet brand-tinted panel. Override these to reshape it — move all four together, since a bolder gradient needs its foregrounds to follow.
+
+| Token | Default | Notes |
+|-------|---------|-------|
+| `--fls-flashcard-back-gradient` | 6% → 13% `primary` mixed into `surface` | Background of the answer face |
+| `--fls-flashcard-back-fg` | `var(--color-on-surface)` | Prose colour on that face |
+| `--fls-flashcard-back-accent` | `var(--color-primary)` | Its kicker, links and bold text |
+| `--fls-flashcard-back-border` | 25% `primary`, transparent | Its stroke and inner rules |
+
 ---
 
 ## Tier 2 — Re-opening component classes

@@ -18,13 +18,13 @@ The picture widget renders an image with an accessible lightbox — click or foc
 
 - `alt` describes the image for people who cannot see it. It is read by screen readers and never shown on screen.
 - `title` is the visible text printed under the image in the page and as the heading in the full-screen lightbox.
-- `description` (optional) adds a longer caption block below the title in the lightbox only — useful for detailed annotations that would clutter the inline view.
+- `description` (optional) adds a longer caption block below the title, both in the page and in the full-screen lightbox — useful for detailed annotations that do not fit in a one-line title.
 
 Do not duplicate `alt` and `title`. The alt text should stand in for the image; the title adds context a sighted reader still benefits from. Purely decorative images should use `alt=""` so screen readers skip them.
 
 Add a `number` to prefix the title with "Figure N":
 
-<c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right" title="A titled, numbered figure with a click-to-zoom lightbox" description="Clicking the image opens a full-screen lightbox where this description appears beneath the title." number="1"></c-picture>
+<c-picture src="../images/landscape.svg" alt="A blue sky over a dark horizon with a yellow sun in the upper right" title="A titled, numbered figure with a click-to-zoom lightbox, and a really long title" description="This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox." number="1"></c-picture>
 
 ## Annotated diagrams
 
