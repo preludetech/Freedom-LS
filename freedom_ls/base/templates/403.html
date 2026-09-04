@@ -1,0 +1,26 @@
+{% extends "_base.html" %}
+
+{% block head_title %}You do not have access to this page{% endblock head_title %}
+
+{% block extra_head %}<meta name="robots" content="noindex" />{% endblock extra_head %}
+
+{% block content %}
+    {% url 'learner_interface:courses' as courses_url %}
+    {% url 'account_logout' as logout_url %}
+    {% url 'account_login' as login_url %}
+    <c-error-page status="403" level="warning" icon="locked"
+                  heading="You do not have access to this page">
+        <p>Your account does not have permission to open it. If you think that is wrong, ask an
+           administrator to check your account.</p>
+        <div class="flex flex-wrap gap-3">
+            {% if courses_url %}
+                <c-button href="{{ courses_url }}" variant="primary">Browse courses</c-button>
+            {% endif %}
+            {% if logout_url and login_url %}
+                <c-button href="{{ logout_url }}?next={{ login_url }}" variant="secondary">
+                    Sign in as a different account
+                </c-button>
+            {% endif %}
+        </div>
+    </c-error-page>
+{% endblock content %}
