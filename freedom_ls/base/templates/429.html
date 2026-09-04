@@ -1,0 +1,15 @@
+{% extends "_base.html" %}
+
+{% block head_title %}You have made too many attempts{% endblock head_title %}
+
+{% block extra_head %}<meta name="robots" content="noindex" />{% endblock extra_head %}
+
+{% block content %}
+    <c-error-page status="429" level="warning" icon="rate_limit"
+                  heading="You have made too many attempts">
+        <p>Access is paused for a short while. Wait a few minutes, then try again.</p>
+        <div class="flex flex-wrap gap-3">
+            <a href="" class="btn btn-primary">Try again</a>
+        </div>
+    </c-error-page>
+{% endblock content %}

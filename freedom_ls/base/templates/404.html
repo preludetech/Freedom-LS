@@ -1,0 +1,23 @@
+{% extends "_base.html" %}
+
+{% block head_title %}We cannot find that page{% endblock head_title %}
+
+{% block extra_head %}<meta name="robots" content="noindex" />{% endblock extra_head %}
+
+{% block content %}
+    {% url 'learner_interface:dashboard' as dashboard_url %}
+    {% url 'learner_interface:courses' as courses_url %}
+    <c-error-page status="404" level="neutral" icon="unknown"
+                  heading="We cannot find that page">
+        <p>The web address may be wrong, or the page may have moved or been taken down.
+           Check the address for mistakes.</p>
+        <div class="flex flex-wrap gap-3">
+            {% if dashboard_url %}
+                <c-button href="{{ dashboard_url }}" variant="primary">Go to your dashboard</c-button>
+            {% endif %}
+            {% if courses_url %}
+                <c-button href="{{ courses_url }}" variant="secondary">Browse courses</c-button>
+            {% endif %}
+        </div>
+    </c-error-page>
+{% endblock content %}
