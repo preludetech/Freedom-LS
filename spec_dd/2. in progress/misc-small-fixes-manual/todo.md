@@ -19,7 +19,7 @@ apply, keeping the standard section numbering so the SDD commands find their hea
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (user) Merge the PR once approved
 
 ## 14. Cleanup
