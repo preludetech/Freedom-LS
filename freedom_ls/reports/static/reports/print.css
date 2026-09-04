@@ -9,8 +9,8 @@ report.html's <head>.
 Two rules hold everywhere below, and both exist so a downstream project can
 rebrand the report without touching this file:
 
-  * Every colour is `var(--color-...)` — no hex values, no brand or
-    marketing colour names.
+  * Every colour is `var(--color-...)`, with the two exceptions declared
+    immediately below — no hex values, no brand or marketing colour names.
   * Every typeface is `var(--report-font-...)` — no family names. The
     @font-face rules and those three custom properties are generated from
     settings by render.build_font_css() and inlined ahead of this file.
@@ -26,6 +26,21 @@ partial, in the same order as the includes in report.html. Each section's
 block only contains rules scoped under that section's own root class, so a
 section's styling can be read or changed without tracing what else it
 touches. */
+
+/* The report's own two neutrals, and the only hex values in this file.
+
+The theme's surface tokens are screen colours: a theme is free to tint them,
+and first_class does — its surface is a blue-grey, which on a sheet of paper
+reads as a shaded panel laid over the page rather than as the page. The
+report is printed, so the page is white and the fills that structure it are a
+neutral grey no theme can push off-white.
+
+Named in the `--report-*` namespace the font stacks already use, so a rule
+below still says what a colour is for rather than naming a shade. */
+:root {
+  --report-paper: #FFFFFF;
+  --report-fill: #F2F2F2;
+}
 
 /* ===================================================================
    PAGE FURNITURE
@@ -193,7 +208,7 @@ body {
      drawn to bleed off all three edges -- and it pushes the full-sheet cover
      past the bottom of the sheet, clipping that band. */
   margin: 0;
-  background: var(--color-surface);
+  background: var(--report-paper);
 }
 
 h1,
@@ -306,7 +321,7 @@ thead th {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--color-muted);
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   /* The one place a heavier rule stands in for a second border colour. */
   border-bottom: 1pt solid var(--color-border);
 }
@@ -358,7 +373,7 @@ th.numeric {
 }
 .status-no-verdict-cell,
 .status-na-cell {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   color: var(--color-muted);
 }
 .status-pass-cell .status-pass,
@@ -409,7 +424,7 @@ th.numeric {
   color: var(--color-on-error-light);
 }
 .chip-neutral {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   color: var(--color-muted);
 }
 /* Chips quoting an answer carry a verdict glyph as well as a tint, so the
@@ -435,7 +450,7 @@ th.numeric {
    from pushing the fill off-centre inside its height.
 
    The track is outlined, not merely filled: inside a summary table it sits on
-   rows banded in the same surface, and on a greyscale print the fill and the
+   rows banded in the same fill, and on a greyscale print the fill and the
    band are the same grey. Without the rule a 0% bar disappears entirely on a
    banded row and a partial bar loses the length it is a fraction of. The rule
    is drawn in the muted grey rather than the border colour because the border
@@ -449,7 +464,7 @@ th.numeric {
   width: 100%;
   height: 2.5mm;
   line-height: 0;
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   border: 0.4pt solid var(--color-muted);
   margin-top: 1.2mm;
 }
@@ -627,7 +642,7 @@ h3.confusion-heading {
   string-set: none;
 }
 .title-page .cover-card {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   padding: 10pt 12pt;
   width: 120mm;
   margin-bottom: 12pt;
@@ -735,7 +750,7 @@ h3.confusion-heading {
   margin: 6pt -8pt 14pt;
 }
 .at-a-glance .glance-stats td {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   border: none;
   padding: 9pt 11pt;
 }
@@ -916,7 +931,7 @@ h3.confusion-heading {
   margin-left: 2pt;
 }
 .summary-tables tbody tr:nth-child(even) td {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
 }
 /* Status tints after the banding so they win on a banded row. */
 .summary-tables tbody tr:nth-child(even) td.status-pass-cell {
@@ -979,7 +994,7 @@ h3.confusion-heading {
   padding-top: 5pt;
 }
 .learner-section .flags-panel {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   padding: 6pt 9pt;
   margin-bottom: 8pt;
   break-inside: avoid;
@@ -1004,9 +1019,9 @@ h3.confusion-heading {
 }
 /* A learner who opened something but finished nothing carries no at-risk flag,
    so this line sits above a "No flags" panel. The error tint the unstarted line
-   uses would contradict it; the neutral surface states the position instead. */
+   uses would contradict it; the neutral fill states the position instead. */
 .learner-section .no-activity-started {
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   color: var(--color-on-surface);
 }
 /* Two columns of completed items rather than one long list: a course of
@@ -1153,7 +1168,7 @@ h3.confusion-heading {
   width: 100%;
   height: 2.5mm;
   line-height: 0;
-  background: var(--color-surface-2);
+  background: var(--report-fill);
   margin-top: 1.5mm;
 }
 .quiz-confusion .ratio-bar-fill {

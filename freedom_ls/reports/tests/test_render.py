@@ -97,7 +97,7 @@ class TestExtractThemeTokens:
             "--color-on-warning-light:",
             "--color-on-error-light:",
             "--color-on-info-light:",
-            "--color-surface:",
+            "--color-on-surface:",
             "--color-muted:",
         ]
 

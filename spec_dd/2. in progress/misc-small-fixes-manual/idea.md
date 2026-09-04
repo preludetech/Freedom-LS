@@ -15,4 +15,4 @@ a few manual fixes to a few different files and functions. We'll do more interac
     -[x] required * is on the next line ![alt text](image.png). Also the number is one line up
     -[x] form "Next" button is a different size to standard content next
     -[x] form complete page "next" button incorrect, no "previous" button
-- [ ] Report weird shading
+- [x] Report weird shading
