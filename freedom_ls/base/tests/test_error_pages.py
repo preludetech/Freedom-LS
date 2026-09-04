@@ -1,9 +1,17 @@
-"""Contract tests for the five shell error pages: 404, 403, 400, 403 CSRF and 429.
+"""Contract tests for the FLS error pages.
 
-Each test drives the real machinery — the test client against a live URL, an
-actual `PermissionDenied`/`BadRequest`, a real CSRF check, or allauth's own
-rate limiter — rather than `render_to_string`, so a template that fails to
-load or a handler that silently falls back to a bare string shows up here.
+The five shell pages (404, 403, 400, 403 CSRF and 429) are driven through the
+real machinery — the test client against a live URL, an actual
+`PermissionDenied`/`BadRequest`, a real CSRF check, or allauth's own rate
+limiter — rather than `render_to_string`, so a template that fails to load or
+a handler that silently falls back to a bare string shows up here.
+
+The two standalone pages (500, 503) are driven the way Django's own
+`server_error` view drives `500.html`: `get_template(name).render()` with no
+arguments at all, so no `RequestContext` is built and no context processor
+runs. Neither needs `django_db` or `mock_site_context` — that is the whole
+point of shipping them as standalone documents rather than `_base.html`
+children.
 """
 
 from __future__ import annotations
@@ -11,6 +19,7 @@ from __future__ import annotations
 import pytest
 
 from django.core.cache import cache
+from django.template.loader import get_template
 from django.test import Client, override_settings
 from django.urls import reverse
 
@@ -150,3 +159,58 @@ def test_403_secondary_action_signs_out_and_reaches_login(mock_site_context) -> 
     assert "account/login.html" in [
         template.name for template in anonymous_response.templates
     ]
+
+
+def test_500_renders_from_a_bare_context_with_no_site_setup() -> None:
+    """Pins the asymmetry: `500.html` needs neither `django_db` nor
+    `mock_site_context`, unlike every shell-page test above. `server_error`
+    calls `template.render()` with no arguments at all, so this is the exact
+    call it makes.
+    """
+    body = get_template("500.html").render()
+
+    assert "Sorry, there is a problem with this page" in body
+    assert "vendor/tailwind.output.css" in body
+    assert 'class="header"' not in body
+    assert "hx-headers" not in body
+    assert body.count("<h1") == 1
+    assert "noindex" in body
+
+
+def test_503_renders_from_a_bare_context_with_no_site_setup() -> None:
+    body = get_template("503.html").render()
+
+    assert "Sorry, the service is unavailable" in body
+    assert "vendor/tailwind.output.css" in body
+    assert 'class="header"' not in body
+    assert "hx-headers" not in body
+    assert body.count("<h1") == 1
+    assert "noindex" in body
+
+
+def test_503_has_no_dashboard_link_or_navigation() -> None:
+    """A maintenance page must not carry anything that implies the service
+    is up.
+    """
+    body = get_template("503.html").render()
+
+    assert "dashboard" not in body.lower()
+    assert "<nav" not in body
+
+
+@pytest.mark.django_db
+@override_settings(ROOT_URLCONF=ERROR_PAGES_URLCONF, DEBUG=False)
+def test_500_end_to_end_renders_the_standalone_page(mock_site_context) -> None:
+    """Drives an actual raised exception through Django's real `handler500`
+    machinery, the way `django.views.defaults.server_error` is reached in
+    production, rather than calling the template directly. `DEBUG` has to be
+    off, or Django's own debug page intercepts the exception before
+    `server_error` ever runs.
+    """
+    client = Client(raise_request_exception=False)
+
+    response = client.get(reverse("test_500"))
+
+    assert response.status_code == 500
+    assert "500.html" in [template.name for template in response.templates]
+    assert "Sorry, there is a problem with this page" in response.content.decode()
