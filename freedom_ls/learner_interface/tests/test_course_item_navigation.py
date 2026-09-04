@@ -8,14 +8,21 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import (
+    ContentCollectionItemFactory,
     CourseFactory,
     CoursePartFactory,
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, CoursePart
+from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.learner_progress.models import TopicProgress
 
-from .conftest import course_progress_record
+from .conftest import (
+    course_progress_record,
+    form_attempt,
+    register_user_for_course,
+    topic_completion,
+)
 
 
 @pytest.fixture
@@ -221,3 +228,99 @@ def test_last_item_of_course_has_no_next_url(two_part_course, authenticated_clie
 
     assert response.status_code == 200
     assert response.context["next_url"] is None
+
+
+@pytest.fixture
+def topic_then_form_course(mock_site_context):
+    """
+    Course shape:
+      - Topic "Intro" (index 1)
+      - Form "Feedback" (index 2)
+    """
+    course: Course = CourseFactory(title="Topic then form", slug="topic-then-form")
+    topic = TopicFactory(title="Intro", slug="intro", content="intro")
+    form = FormFactory(title="Feedback", slug="feedback")
+
+    ContentCollectionItemFactory(collection_object=course, child_object=topic, order=0)
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=1)
+
+    return {"course": course, "topic": topic, "form": form}
+
+
+@pytest.fixture
+def client_on_completed_form(topic_then_form_course):
+    """A learner who has finished the intro topic and sat the form at index 2.
+
+    The intro topic has to be completed or the sequential-unlock gate redirects
+    the form away before the start page ever renders.
+    """
+    course = topic_then_form_course["course"]
+    user = UserFactory()
+    register_user_for_course(course, user)
+    topic_completion(
+        course, user, topic_then_form_course["topic"], complete_time=timezone.now()
+    )
+    form_attempt(
+        course, user, topic_then_form_course["form"], completed_time=timezone.now()
+    )
+
+    client = Client()
+    client.force_login(user)
+    return client
+
+
+@pytest.mark.django_db
+def test_form_item_previous_url_points_at_the_preceding_item(
+    topic_then_form_course, client_on_completed_form
+):
+    """The form start page gets the same previous_url a topic at index 2 would."""
+    course = topic_then_form_course["course"]
+
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 2},
+    )
+    response = client_on_completed_form.get(url)
+
+    assert response.status_code == 200
+    assert response.context["previous_url"] == reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+@pytest.mark.django_db
+def test_completed_form_start_page_renders_a_previous_button(
+    topic_then_form_course, client_on_completed_form
+):
+    """The form footer offers the way back, as every topic footer does."""
+    course = topic_then_form_course["course"]
+
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 2},
+    )
+    response = client_on_completed_form.get(url)
+
+    assert 'data-testid="previous-button"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_first_item_form_start_page_has_no_previous_button(mock_site_context):
+    """A form at index 1 has nothing behind it, so the footer offers no way back."""
+    form = FormFactory(title="Only item", slug="only-item")
+    course: Course = CourseFactory(title="Form first", slug="form-first")
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
+    user = UserFactory()
+    register_user_for_course(course, user)
+
+    client = Client()
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert 'data-testid="previous-button"' not in response.content.decode()
