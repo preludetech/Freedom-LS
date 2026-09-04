@@ -50,6 +50,8 @@
 - [reference_half_nulled_deadline_contenttype.md](reference_half_nulled_deadline_contenttype.md) — qa_create_half_nulled_deadlines: making `content_type IS NULL` + `object_id` populated deadline rows; ContentCollectionItem.child_type is CASCADE so deleting the Topic ContentType strips every topic out of every course — use the zero-instance Activity ContentType as the decoy target instead
 - [reference_qa_run_residue_cleanup.md](reference_qa_run_residue_cleanup.md) — Tearing down a manual QA run's residue (signup user + LegalConsent x2 + EmailAddress, CourseInterest, a self-service enrolment); Collector.fast_deletes hides half the cascade; CourseProgress PROTECTs LearnerCourseRegistration
 - [reference_organisation_admin_summary_counts.md](reference_organisation_admin_summary_counts.md) — Organisation change-page learner-count summary (ngettext 0/1/N): it lives in learner_management/admin.py via ORGANISATION_SUMMARIES, counts inactive learners too, and how to seed an exact-1 org + render the wording headlessly
+- [reference_form_first_course_command.md](reference_form_first_course_command.md) — qa_create_form_first_course: course whose item 1 is a Form (no-Previous-button branch of the form start page); FormProgress has a direct `user` FK; last_accessed_item is a plain FK; sequential unlock IS enforced by URL now
+- [reference_shell_savepoint_does_not_roll_back.md](reference_shell_savepoint_does_not_roll_back.md) — `transaction.savepoint()` is a NO-OP in `manage.py shell` (autocommit): the "rolled-back probe" pattern silently COMMITS; use `transaction.atomic()` + raise, and re-read the field to prove the restore
 
 ## Recurring requests
 
@@ -257,3 +259,11 @@ the tester created by opening a lesson) goes first. Size every delete with `Coll
 If a third teardown is asked for, wrap it in `qa_helpers` as
 `qa_clear_run_residue --user EMAIL --interest-user EMAIL --interest-course SLUG
 --unenrol-user EMAIL --unenrol-course SLUG`, with the constraint-fixture pk hard-guarded.
+
+The **"seed a course shaped so template branch X is reachable in a browser"** ask arrived once
+(form at index 1, so `course_form.html` renders no Previous button — misc-small-fixes-manual,
+Sep 2026). The shape is always: read the template's `{% if %}`, read the pytest that covers the
+same branch, then build the smallest course whose item ORDER produces it. Building it as a
+`qa_helpers` command took no longer than a shell script and left the branch re-seedable. Do NOT
+reorder an existing demo course to get the shape — seed a dedicated one.
+See [[reference_form_first_course_command]].
