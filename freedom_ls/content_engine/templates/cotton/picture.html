@@ -42,9 +42,15 @@ open the image.
                     {# items-start keeps the trigger at the top of a title that #}
                     {# runs to several lines.                                   #}
                     <div class="flex items-start justify-between gap-2">
-                        <p class="picture-figure-title">
+                        {# The vertical padding is the small button's own padding plus #}
+                        {# its border (py-1.5 + 1px), which centres the first line of   #}
+                        {# the title against the button however many lines it takes.    #}
+                        <p class="flex items-baseline min-w-0 text-sm py-[calc(0.375rem+1px)]">
                             {% if number %}
-                                <span class="picture-figure-ref shrink-0">Figure {{ number }}</span>
+                                {# Mono and brand-coloured so the reference reads as a #}
+                                {# label rather than part of the caption sentence —    #}
+                                {# colour and face do the separating, not punctuation. #}
+                                <span class="shrink-0 font-mono text-xs font-medium tracking-wide text-primary mr-2">Figure {{ number }}</span>
                             {% endif %}
                             <span class="text-on-surface font-medium">{{ title }}</span>
                         </p>
@@ -71,14 +77,36 @@ open the image.
 
             {# Native modal dialog — showModal() provides focus-trap, Escape, #}
             {# inert background and focus-restore to the trigger for free.     #}
+            {#                                                                 #}
+            {# A full-viewport, transparent dialog, so backdrop clicks land on #}
+            {# the dialog element itself and the click-target close guard can  #}
+            {# tell them apart from clicks on the card. The dark blurred scrim #}
+            {# comes from .modal-backdrop-host's ::backdrop. Chrome text uses  #}
+            {# fixed light colours because it sits on that theme-neutral scrim,#}
+            {# not on a themed surface.                                        #}
+            {#                                                                 #}
+            {# `display` is deliberately only set under open: a closed dialog  #}
+            {# keeps the UA's `dialog:not([open]) { display: none }` and stays  #}
+            {# inert. Setting it unconditionally made closed dialogs blanket    #}
+            {# the viewport and swallow pointer events over the page beneath.   #}
+            {# overlay and display are transitioned with transition-discrete so #}
+            {# the dialog stays in the top layer through the leave animation.   #}
             <dialog x-ref="dialog"
-                    class="modal-backdrop-host spotlight-dialog bg-transparent p-0 m-0 border-0 max-w-none max-h-none w-full h-full"
+                    class="modal-backdrop-host
+                           fixed inset-0 w-full h-full box-border
+                           flex-col items-center justify-center-safe overflow-y-auto gap-4
+                           bg-transparent p-0 m-0 border-0 max-w-none max-h-none
+                           opacity-0 scale-95
+                           open:flex open:opacity-100 open:scale-100
+                           starting:open:opacity-0 motion-safe:starting:open:scale-95
+                           transition-[opacity,scale,overlay,display] duration-200
+                           ease-[ease] transition-discrete
+                           motion-reduce:transition-[opacity,overlay,display]
+                           motion-reduce:scale-100"
                     @click="onBackdropClick"
                     {% if title %}aria-labelledby="{{ heading_id }}"{% else %}aria-label="{{ alt }}"{% endif %}>
 
-                {# top-left: figure number (accent) over title (white). Chrome    #}
-                {# text sits on the dark scrim so fixed colours are used — NOT a  #}
-                {# theme token like text-on-surface.                             #}
+                {# top-left: figure number (accent) over title (white). #}
                 {% if title %}
                     <h2 id="{{ heading_id }}"
                         class="absolute inset-x-0 top-0 w-full m-0 py-4 pl-6 pr-18 bg-black/40 backdrop-blur-xl font-semibold text-base sm:text-lg leading-snug">

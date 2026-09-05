@@ -15,16 +15,22 @@ Attributes:
 
 Animation:
   The open/close transition uses a CSS grid-template-rows trick driven by the
-  details[open] attribute selector. No JavaScript is needed — the browser
-  toggles the open attribute natively, and CSS responds to it. The transition
-  is gated behind @media (prefers-reduced-motion: no-preference) so users who
-  prefer reduced motion see an instant reveal with no animation.
+  details[open] attribute selector, reached from the markup as an arbitrary
+  `[[open]>&]` variant. No JavaScript is needed — the browser toggles the open
+  attribute natively, and CSS responds to it. Every transition is gated behind
+  `motion-safe:` so users who prefer reduced motion see an instant reveal with
+  no animation.
+
+  Each of those variants names the full child path from the <details> rather
+  than any-descendant, so an accordion nested inside another accordion's body
+  answers to its own open state and not its parent's.
 
 Open state:
-  A CSS rotate driven by the details[open] selector flips the chevron icon
-  when the disclosure opens, and the summary row shifts from the default text
-  colour to the brand primary so an open accordion reads as active at a
-  glance. Both transitions are also gated behind prefers-reduced-motion.
+  A rotate driven by the same variant flips the chevron icon when the
+  disclosure opens. `rotate-180` sets the `rotate` property rather than
+  `transform`, so the chevron's transition names `rotate` — naming `transform`
+  compiles fine and silently snaps instead of animating. and the summary row shifts from the default text colour
+  to the brand primary so an open accordion reads as active at a glance.
 
 Editorial note:
   Accordions are for elective depth — supplementary detail, optional context,
@@ -33,15 +39,41 @@ Editorial note:
   needs to see. Required content must always be visible without interaction.
 {% endcomment %}
 
-<details{% if open != "__unset__" %} open{% endif %} class="accordion my-6 border border-border rounded-lg bg-surface">
-    <summary class="accordion-summary">
-        <span class="accordion-title">{{ title }}</span>
-        <span class="accordion-chevron" aria-hidden="true">
+<details{% if open != "__unset__" %} open{% endif %}
+         class="my-6 overflow-hidden border border-border rounded-lg bg-surface">
+    {% comment %}
+    `list-none`, `marker:hidden` and the ::-webkit-details-marker reset between
+    them remove the UA disclosure triangle across engines, leaving the chevron
+    as the only indicator.
+    {% endcomment %}
+    <summary class="flex items-center gap-4 px-5 py-4 cursor-pointer select-none
+                    list-none marker:hidden [&::-webkit-details-marker]:hidden
+                    font-display font-semibold text-on-surface
+                    hover:bg-surface-2 [[open]>&]:text-primary
+                    focus-visible:outline-none focus-visible:ring-2
+                    focus-visible:ring-focus-ring focus-visible:ring-inset
+                    motion-safe:transition-colors motion-safe:duration-200
+                    motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]">
+        {% comment %}flex-auto + min-w-0 lets a long title wrap rather than crushing the chevron.{% endcomment %}
+        <span class="flex-auto min-w-0">{{ title }}</span>
+        <span class="ml-auto shrink-0 inline-flex text-muted
+                     [[open]>summary>&]:text-primary [[open]>summary>&]:rotate-180
+                     motion-safe:transition-[rotate,color] motion-safe:duration-240
+                     motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]"
+              aria-hidden="true">
             <c-icon name="dropdown" class="size-5" />
         </span>
     </summary>
-    <div class="accordion-body">
-        <div class="accordion-body-inner">
+    {% comment %}
+    The grid row animates between 0fr (closed) and 1fr (open). The padding sits
+    on the inner wrapper rather than the animated element, or it would clip
+    during the reveal.
+    {% endcomment %}
+    <div class="grid grid-rows-[0fr] overflow-hidden [[open]>&]:grid-rows-[1fr]
+                motion-safe:transition-[grid-template-rows] motion-safe:duration-280
+                motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]">
+        {% comment %}min-h-0 is what lets a grid child collapse inside a 0fr row.{% endcomment %}
+        <div class="min-h-0 overflow-hidden px-5 pb-5 space-y-4">
             {% markdown slot %}
         </div>
     </div>

@@ -9,10 +9,39 @@ This addendum extends the generic `ds` `frontend_styling.md` resource (pulled in
 | File | Holds |
 |---|---|
 | `freedom_ls/themes/default/static/themes/default/theme.css` | The default theme's tokens — the always-on baseline |
-| `tailwind.components.css` | Reusable component classes (`.btn`, `.surface`, …) plus the `@layer base` element styling |
-| `tailwind.base_interface.css` | Single-use side-panel layout for `_base_interface.html` |
-| `tailwind.picture_spotlight.css` | Single-use `<dialog>` animation for `cotton/picture.html` |
+| `tailwind.components.css` | The `@layer base` element styling, plus the component classes a theme is expected to reopen |
 | `tailwind.active_theme.css` | **Generated, gitignored.** Written each build by `manage.py write_active_theme_css`, which resolves `FLS_THEME` through Django settings and re-imports that theme's `theme.css`. When `FLS_THEME=default` it re-imports the baseline (a no-op on the cascade); for any other slug the active theme's redeclarations win. |
+
+That is the whole list. There are no per-widget stylesheets, and adding one is the
+wrong move — see below.
+
+## Where a style goes: the stylesheet or the template
+
+`tailwind.components.css` holds three things and nothing else:
+
+1. `@layer base` element rules — headings, prose, lists, tables, form controls.
+2. The **themable primitives**: the classes a theme reopens in its own `theme.css`.
+   Today that is `.btn*`, `.chip*`, `.alert*`, `.surface`, `.signup-panel`, `.header`,
+   `.course-card`, `.course-accent-*`, `.course-progress-*` and `.modal-backdrop*`.
+3. Classes the markdown renderer emits at render time, which no template can own —
+   `.task-list*` from `pymdownx.tasklist`.
+
+**Everything else belongs to a component and lives in that component's own template.**
+Inside a template, reach for Tailwind utilities on the markup first; they cost nothing to
+repeat because each one is compiled into the bundle exactly once however many instances
+render. Fall back to a `<style>` block only where there is no utility form, where the
+selector has to reach markdown-generated descendants the template cannot class, or where a
+utility would land in the `utilities` layer and beat a rule that must stay beatable. Wrap
+any such block in `@layer components { }` so it keeps its place in the cascade.
+
+`cotton/flashcard.html` is the worked example: geometry as utilities, and one `<style>`
+block for the answer-face prose, which `{% markdown back %}` generates.
+
+The reason is override-ability. A component whose styling lives with its markup is
+replaced wholesale by shadowing one file at
+`themes/<slug>/templates/cotton/<name>.html`. Split across a stylesheet, a downstream
+project has to shadow the template *and* re-open the classes, and it inherits a CSS
+contract it never asked for.
 
 So a theme's real token values are in its own file, not in the generated one:
 
@@ -68,9 +97,13 @@ FLS declares these under `--fls-*` and aliases them into Tailwind's slots via `@
 
 ### Tokens consumed by component classes, not utilities
 
-`--fls-card-radius`, `--fls-card-hero-height`, `--fls-card-padding`, and the `--fls-course-accent-*` series (five gradient slots, mapping 1:1 to `freedom_ls.content_engine.course_accent.PALETTE`) are read by the `.course-accent-N` and card rules in `tailwind.components.css`. They generate no utility classes. Themes rebrand course cards by overriding the `-from`/`-to`/`-icon` stops; the `-gradient` and `-soft` composites follow automatically. A theme may also set `--fls-course-accent-pattern` (all slots) or `--fls-course-accent-N-pattern` (one slot) to composite a texture layer above the gradient.
+The `--fls-course-accent-*` series (five gradient slots, mapping 1:1 to `freedom_ls.content_engine.course_accent.PALETTE`) is read by the `.course-accent-N` and `.course-progress-N` rules in `tailwind.components.css`. It generates no utility classes. Themes rebrand course cards by overriding the `-from`/`-to`/`-icon` stops; the `-gradient` and `-soft` composites follow automatically. A theme may also set `--fls-course-accent-pattern` (all slots) or `--fls-course-accent-N-pattern` (one slot) to composite a texture layer above the gradient.
 
-`--fls-flashcard-back-gradient`, `--fls-flashcard-back-fg`, `--fls-flashcard-back-accent` and `--fls-flashcard-back-border` paint the flashcard's answer face (`.flashcard-back` in `tailwind.components.css`). The gradient defaults to two low-percentage mixes of `primary` into `surface`, so every theme gets a quiet brand-tinted panel for free; `-fg` is the prose colour on it, `-accent` the kicker, links and bold text, `-border` its stroke and inner rules. Override all four together — a bolder gradient needs its paired foregrounds to move with it.
+This is the only series of its kind, and deliberately so. A token exists here because it is
+brand-level — something a theme genuinely wants to set. A value that only one component
+reads is not a token; it belongs in that component's template, where it can be changed by
+shadowing the file. `--fls-flashcard-back-*` and `--fls-card-*` used to live here and were
+removed for exactly that reason.
 
 ## Hover tokens
 

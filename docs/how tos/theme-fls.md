@@ -5,10 +5,12 @@ FreedomLS ships a three-tier theming model. Each tier is cheaper than the next, 
 | Tier | What it changes | When to use it |
 |------|-----------------|----------------|
 | 1 — CSS tokens | Colours, radii, fonts | 80% of rebrands. Write one `theme.css`, point `FLS_THEME` at it, rebuild. |
-| 2 — Component classes | Button shape/size, chip style, alert colour, surface appearance | The token values are right but a component's structure needs adjusting. |
-| 3 — Template overrides | Cotton component markup, page-shell blocks, full HTML structure | When neither tokens nor classes can get you there. Escape hatch only. |
+| 2 — Component classes | Button shape/size, chip style, alert colour, surface appearance, the page header, the course card | The token values are right but one of the shared primitives needs adjusting. |
+| 3 — Template overrides | Cotton component markup and styling, page-shell blocks, full HTML structure | Anything specific to one component — including how it looks. |
 
-Defaults stay in the FLS main project: component classes live in `tailwind.components.css`, and generic templates live in `freedom_ls/base/templates/` and their owning apps. A theme is sparse — it only ships what it overrides.
+Defaults stay in the FLS main project: the shared primitives live in `tailwind.components.css`, and generic templates live in `freedom_ls/base/templates/` and their owning apps. A theme is sparse — it only ships what it overrides.
+
+**Tier 2 covers the shared primitives, not every component.** A component that is not on the Tier-2 list below keeps its styling in its own template, so Tier 3 is the way you restyle it — not a last resort, just the right tier. Content widgets such as the flashcard, the accordion and the picture are all in that group; so is the side panel in the interface shell.
 
 ---
 
@@ -243,30 +245,15 @@ The composite `--fls-course-accent-N` gradient and `--fls-course-accent-N-soft` 
 
 An optional `--fls-course-accent-pattern` token adds a texture layer above every accent gradient (e.g. a repeating grid). Set it to a CSS `background-image` value. `--fls-course-accent-N-pattern` targets a single slot.
 
-### Course-card shape tokens
-
-| Token | Default | Notes |
-|-------|---------|-------|
-| `--fls-card-radius` | `1rem` | Corner radius of cards |
-| `--fls-card-hero-height` | `7rem` | Height of the hero colour band |
-| `--fls-card-padding` | `1rem` | Body padding inside cards |
-
-### Flashcard tokens
-
-The flashcard's answer face is a quiet brand-tinted panel. Override these to reshape it — move all four together, since a bolder gradient needs its foregrounds to follow.
-
-| Token | Default | Notes |
-|-------|---------|-------|
-| `--fls-flashcard-back-gradient` | 6% → 13% `primary` mixed into `surface` | Background of the answer face |
-| `--fls-flashcard-back-fg` | `var(--color-on-surface)` | Prose colour on that face |
-| `--fls-flashcard-back-accent` | `var(--color-primary)` | Its kicker, links and bold text |
-| `--fls-flashcard-back-border` | 25% `primary`, transparent | Its stroke and inner rules |
-
 ---
 
 ## Tier 2 — Re-opening component classes
 
-FLS component classes (`.btn`, `.btn-primary`, `.chip`, `.chip-success`, `.surface`, `.alert`, `.course-card`, `.header`, etc.) are defined in `tailwind.components.css` at the FLS repo root. Their defaults live there — not in any theme.
+The Tier-2 surface is exactly the set of classes in `tailwind.components.css` at the FLS repo root. Their defaults live there — not in any theme. That set is:
+
+`.btn` and its variants, `.chip` and its variants, `.alert` and its variants, `.surface`, `.signup-panel`, `.header`, `.course-card`, `.course-accent-1`–`5`, `.course-progress-1`–`5`, and `.modal-backdrop` / `.modal-backdrop-host`.
+
+Nothing else is re-openable this way. A component whose styling lives in its own template — every content widget, and the interface shell's side panel — is restyled at Tier 3 instead. A `theme.css` rule aiming at one of those loses: the template's own `<style>` block sits later in document order than the compiled bundle, so it wins within the same layer.
 
 A theme extends a class by re-opening it inside `@layer components` in its `theme.css`:
 
@@ -291,6 +278,8 @@ The `first_class` theme's `@layer components` block in `freedom_ls/themes/first_
 ## Tier 3 — Template overrides
 
 Template overrides let a theme replace an individual cotton component, partial, or full page shell. Defaults live in the owning FLS app — not in the `default` theme — so Tier 3 is purely additive in a theme directory.
+
+Because a component carries its own styling, one file is the whole component: shadowing `cotton/flashcard.html` replaces its markup *and* its look together. That is the intended way to restyle any component outside the Tier-2 list, and it is why those components have no theme tokens of their own to override.
 
 Because `configure_theme` prepends the active theme's `templates/` directory to Django's template search path, a file placed at `themes/<slug>/templates/cotton/<name>.html` resolves before the FLS app's version of the same component.
 

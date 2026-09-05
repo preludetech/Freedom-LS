@@ -162,11 +162,15 @@ project may already express this as a component prop (e.g. a `loading` / `loadin
 button component) or as a pair of CSS utility classes — **check what exists before adding either.** If
 nothing exists, the underlying mechanism is:
 
-```css
-/* in @layer components, in a stylesheet imported by tailwind.input.css */
-.htmx-request .htmx-hide-on-request { display: none; }
-.htmx-show-on-request { display: none; }
-.htmx-request .htmx-show-on-request { display: inline; }
+HTMX adds `.htmx-request` to the element that triggered the request, so both spans key off an
+ancestor. Express that with a descendant variant on the markup rather than a pair of classes in a
+stylesheet — the styling then belongs to the button component that uses it:
+
+```html
+<span class="[.htmx-request_&]:hidden">Save</span>
+<span class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2">
+  <!-- spinner --> Saving…
+</span>
 ```
 
 ## Separation of Concerns

@@ -26,26 +26,80 @@ Accessibility:
   and aria-pressed already carry the interaction, so both are aria-hidden to
   avoid announcing it twice.
 
-CSS:
-  Static 3D geometry lives in hand-authored .flashcard-* rules in
-  tailwind.components.css — not dynamically-assembled Tailwind classes, which
-  would be purged. Dynamic rotation is applied via x-bind:style returning a
-  style object (frontStyle / backStyle) for the same reason.
-  The CSS transition is gated behind @media (prefers-reduced-motion: no-preference)
-  so the flip still applies instantly when motion is reduced; only the animation
-  is dropped, not the state change.
-  The back face is painted from the --fls-flashcard-back-* theme tokens, with
-  scoped rules repainting its prose to match whatever those tokens resolve to.
+Styling:
+  The card owns its own styling. The 3-D geometry is Tailwind utilities on the
+  markup below; dynamic rotation is applied via x-bind:style returning a style
+  object (frontStyle / backStyle) so no class name is assembled at runtime for
+  Tailwind to purge. The flip transition is gated behind `motion-safe:` so the
+  state change still applies instantly when motion is reduced — only the
+  animation is dropped.
+
+  The answer face needs the one <style> block below: the back slot is rendered
+  markdown, so the template cannot put classes on the prose it generates, and
+  that prose has to be repainted off the tinted panel. Retune the four custom
+  properties to restyle the answer face — every descendant rule follows them.
 {% endcomment %}
 
+<style>
+@layer components {
+    .flashcard-back {
+        /* The answer side reads as a quiet brand-tinted panel, just enough to
+         * tell it apart from the question face. Both gradient stops are mixed
+         * from primary into the surface, so the tint follows the brand without
+         * ever fighting the prose sitting on it. */
+        --flashcard-fg: var(--color-on-surface);
+        --flashcard-accent: var(--color-primary);
+        --flashcard-border: color-mix(in oklab, var(--color-primary) 25%, transparent);
+        --flashcard-hint: color-mix(in oklab, var(--flashcard-fg) 60%, transparent);
+
+        background-image: linear-gradient(
+            135deg,
+            color-mix(in oklab, var(--color-primary) 6%, var(--color-surface)),
+            color-mix(in oklab, var(--color-primary) 13%, var(--color-surface))
+        );
+        border-color: var(--flashcard-border);
+        color: var(--flashcard-fg);
+
+        /* Pre-hydration initial state: the back starts rotated away. Once
+         * Alpine binds, backStyle() owns the transform. */
+        transform: rotateY(180deg);
+    }
+
+    /* The @layer base element rules paint prose against `surface`; the answer
+     * face is its own tinted panel, so these repaint the subtree from the
+     * face's own properties. Being in @layer components they win over
+     * @layer base whatever the specificity. */
+    .flashcard-back :is(p, li, dd, td, th, blockquote, h1, h2, h3, h4, h5, h6) {
+        color: var(--flashcard-fg);
+    }
+
+    .flashcard-back :is(strong, a, dt) {
+        color: var(--flashcard-accent);
+    }
+
+    .flashcard-back :is(hr, tbody tr, th, td) {
+        border-color: var(--flashcard-border);
+    }
+
+    .flashcard-back :is(code, pre) {
+        background-color: color-mix(in oklab, var(--flashcard-fg) 8%, transparent);
+        color: var(--flashcard-fg);
+    }
+}
+</style>
+
 <div x-data="flashcard" class="my-6 lg:max-w-2xl lg:mx-auto">
-    <div class="relative flashcard-scene">
+    <div class="relative perspective-[1400px] min-h-11">
         {% comment %}
-        Full-surface flip trigger. Positioned above both faces (z-index in
-        .flashcard-trigger) so any click anywhere on the card flips it.
+        Full-surface flip trigger, stacked above both faces so a click
+        anywhere on the card flips it.
         {% endcomment %}
         <button type="button"
-                class="flashcard-trigger"
+                class="absolute inset-0 w-full h-full min-w-11 min-h-11 z-10
+                       bg-transparent border-none cursor-pointer p-0
+                       focus-visible:outline-none focus-visible:ring-2
+                       focus-visible:ring-focus-ring focus-visible:ring-offset-2
+                       focus-visible:rounded-lg"
                 x-on:click="flip()"
                 x-bind:aria-pressed="flipped"
                 aria-label="Flip card">
@@ -55,37 +109,65 @@ CSS:
         {% comment %}
         CSS-grid single-cell stack: both faces share one grid area so the
         card container is sized to the larger face, not whichever renders
-        first. perspective is set on .flashcard-scene (parent).
+        first. The perspective is set on the parent.
         {% endcomment %}
-        <div class="flashcard-stack">
+        <div class="grid grid-cols-[1fr] grid-rows-[1fr] transform-3d">
 
             {% comment %}
             inert removes the hidden face's subtree from tab order, pointer
             events, and AT — tabindex="-1" on a wrapper div does not
             propagate to descendant focusable elements, so inert is needed.
+
+            backface-hidden is what makes each face disappear once it rotates
+            past 90°; the -webkit- prefix carries older Safari.
             {% endcomment %}
-            <div class="flashcard-face flashcard-front"
+            <div class="col-start-1 row-start-1 relative
+                        backface-hidden [-webkit-backface-visibility:hidden]
+                        rounded-lg border border-border bg-surface shadow-sm
+                        motion-safe:transition-transform motion-safe:duration-560
+                        motion-safe:ease-[cubic-bezier(0.65,0,0.35,1)]"
                  x-bind:inert="flipped"
                  x-bind:aria-hidden="flipped"
                  x-bind:style="frontStyle()">
-                <div class="flashcard-face-content">
-                    <div class="flashcard-face-label" aria-hidden="true">Question</div>
+                {% comment %}
+                h-full fills the face, which the grid stack sizes to whichever
+                face is taller — without it the shorter face's content centres
+                against its own min-height and rides high on the card. The
+                generous vertical padding clears the absolutely-placed kicker
+                and flip hint.
+                {% endcomment %}
+                <div class="flex flex-col items-center justify-center gap-3 text-center
+                            h-full min-h-52 px-7 py-13">
+                    <div class="absolute top-4 left-5 font-mono text-xs font-medium
+                                uppercase tracking-widest text-muted"
+                         aria-hidden="true">Question</div>
                     {% markdown front %}
-                    <div class="flashcard-flip-hint" aria-hidden="true">
+                    <div class="absolute bottom-3.5 right-5 flex items-center gap-1.5
+                                text-xs text-muted"
+                         aria-hidden="true">
                         <c-icon name="retry" class="size-4" />
                         Tap to flip
                     </div>
                 </div>
             </div>
 
-            <div class="flashcard-face flashcard-back"
+            <div class="flashcard-back col-start-1 row-start-1 relative
+                        backface-hidden [-webkit-backface-visibility:hidden]
+                        rounded-lg border shadow-sm
+                        motion-safe:transition-transform motion-safe:duration-560
+                        motion-safe:ease-[cubic-bezier(0.65,0,0.35,1)]"
                  x-bind:inert="!flipped"
                  x-bind:aria-hidden="!flipped"
                  x-bind:style="backStyle()">
-                <div class="flashcard-face-content">
-                    <div class="flashcard-face-label" aria-hidden="true">Answer</div>
+                <div class="flex flex-col items-center justify-center gap-3 text-center
+                            h-full min-h-52 px-7 py-13">
+                    <div class="absolute top-4 left-5 font-mono text-xs font-medium
+                                uppercase tracking-widest text-(--flashcard-accent)"
+                         aria-hidden="true">Answer</div>
                     {% markdown back %}
-                    <div class="flashcard-flip-hint" aria-hidden="true">
+                    <div class="absolute bottom-3.5 right-5 flex items-center gap-1.5
+                                text-xs text-(--flashcard-hint)"
+                         aria-hidden="true">
                         <c-icon name="retry" class="size-4" />
                         Tap to flip
                     </div>

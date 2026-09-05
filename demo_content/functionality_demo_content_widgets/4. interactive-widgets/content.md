@@ -114,6 +114,46 @@ Authentication comes first. Authorisation is meaningless without it.
 </c-slot>
 </c-flashcard>
 
+An answer face can hold anything markdown can express. The face is a tinted panel rather
+than the plain page surface, so every kind of prose on it — headings, links, inline and
+fenced code, tables, rules — is repainted to stay legible against the tint.
+
+<c-flashcard>
+<c-slot name="front">
+
+**Which HTTP status codes should a REST API use for a failed write?**
+
+</c-slot>
+<c-slot name="back">
+
+### It depends on who got it wrong
+
+Use a `4xx` when the client can fix the request, and a `5xx` when it cannot.
+
+| Code | Meaning | Client should |
+| --- | --- | --- |
+| `400` | Malformed request | Fix the payload |
+| `401` | Not authenticated | Log in |
+| `403` | Authenticated, not permitted | Stop |
+| `409` | Conflicts with current state | Re-read, retry |
+| `422` | Well-formed but semantically invalid | Fix the values |
+
+---
+
+A validation failure is **not** a `500`. Reserve `5xx` for faults the caller cannot act on,
+and always return a body the caller can read:
+
+```json
+{"errors": {"email": ["Enter a valid email address."]}}
+```
+
+- `400` is for syntax; `422` is for meaning.
+- Never return `200` with an error body — it breaks every generic client.
+- See [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) for the full list.
+
+</c-slot>
+</c-flashcard>
+
 ---
 
 ## Accordion
@@ -140,4 +180,17 @@ Use an accordion when the content is:
 - A worked example that extends a concept already explained in the main flow.
 
 Use a callout (admonition) instead when the content must be noticed — a warning, a constraint, or a key takeaway. Hiding required information behind a click is an accessibility and instructional design problem, not just a layout choice.
+</c-accordion>
+
+A summary long enough to wrap — the title takes the room it needs and the chevron stays pinned to the right of the row:
+
+<c-accordion title="Why does a long accordion summary have to wrap rather than push the chevron off the end of the row, and what happens on a narrow screen?">
+The summary is a flex row of two children: the title, which is allowed to grow and to shrink below its content width, and the chevron, which is not allowed to shrink at all.
+
+Without that pairing a long title pushes the chevron out of the row, and on a narrow screen it disappears off the edge entirely — leaving the accordion with no visible affordance that it opens.
+
+| Screen | Title | Chevron |
+| --- | --- | --- |
+| Wide | One line | Right of the row |
+| Narrow | Wraps to two or three lines | Still right, still aligned to the first line |
 </c-accordion>

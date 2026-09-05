@@ -44,8 +44,10 @@ class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class 
 {{ attrs }}
 >
 {% if loading %}
-<span class="htmx-hide-on-request">{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}</span>
-<span class="htmx-show-on-request"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
+{# HTMX puts .htmx-request on the element that triggered the request, which #}
+{# is an ancestor of these spans, so both states are driven from there.     #}
+<span class="[.htmx-request_&]:hidden">{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}</span>
+<span class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
 {% else %}
 {% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
 {% endif %}
@@ -89,8 +91,8 @@ Usage Examples:
   <!-- With loading indicator (shows spinner during HTMX request).
        Note: loading only works when the HTMX attribute (e.g. hx-post) is on an
        ancestor element (like a <form>), not on the button itself. HTMX adds the
-       htmx-request class to the triggering element, and the CSS uses a descendant
-       selector (.htmx-request .htmx-hide-on-request). -->
+       htmx-request class to the triggering element, and the two spans respond to
+       it with a [.htmx-request_&] descendant variant. -->
   <c-button type="submit" loading="true">Save</c-button>
   <c-button type="submit" variant="error" loading="true" loading_text="Deleting...">Delete</c-button>
 {% endcomment %}

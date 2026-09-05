@@ -18,9 +18,24 @@ apply, keeping the standard section numbering so the SDD commands find their hea
 - [x] (user + cmd) Fix QA bug: form completion page has no Previous button and does not use the player footer (TDD — failing test first, then fix)
 - [x] (user + cmd) Re-run `/fls-dev:do_qa` for sections 1, 2, 10.2-10.3, 11.2, 11.4, 12 and the mobile/tablet passes once the dev database is back — they never ran this time
 
+## 10. Component styling moves into the components
+
+Added after the first QA pass: component styling moved out of the shared stylesheets and into the
+component templates. Meant to be visually inert.
+
+- [x] (cmd) Move each component's styling into its own template; delete the two per-widget stylesheets
+- [x] (cmd) Remove the `--fls-flashcard-back-*` and `--fls-card-*` tokens
+- [x] (cmd) Record the placement rule in the ds and fls-dev styling skills, the cotton resource, the theming how-to and the product docs
+- [x] (cmd) Write `upgrade_notes.md` — deleting two `@import`s downstream is a breaking change
+- [x] (cmd) Add demo content that actually exercises the flashcard answer face and a wrapping accordion title
+- [x] (cmd) Extend the QA plan: rewritten §5, new §14, wider §12.8
+- [ ] (user + cmd) Capture the §5.25 "before" screenshots from the pre-restyle commit, then re-run `/fls-dev:do_qa` for §5, §6, §12.8 and §14 on both themes
+- [ ] (user) Review the QA report and fix anything it finds with TDD
+
 ## 13. Pull request
 
 - [x] (user) Open a pull request
+- [ ] (user) Update the PR description to cover the styling move and its downstream upgrade notes
 - [ ] (user) Merge the PR once approved
 
 ## 14. Cleanup

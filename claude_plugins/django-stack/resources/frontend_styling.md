@@ -56,10 +56,35 @@ Rules that hold whatever the theme is named:
 - **Prefer semantic tokens over raw palette tokens** when the theme offers both, so a re-skin only
   touches the theme CSS.
 
-## Where new CSS goes — the layer convention
+## Where new CSS goes
+
+Two questions, in this order: **which file**, then **which layer**.
+
+### Which file — the stylesheet or the component's template
+
+A project stylesheet earns its place for three kinds of rule:
+
+- element-selector base styling, which no single template owns;
+- classes a theme is expected to reopen, which is the project's theming surface;
+- classes generated at render time (a markdown renderer's output, say) that no template can put
+  a class on.
+
+**Everything else is one component's private implementation and belongs in that component's own
+template.** Inside a template, reach for utilities on the markup first — they repeat for free,
+because each utility is compiled into the bundle exactly once however many instances render. Fall
+back to a `<style>` block in the template only where there is genuinely no utility form
+(`@starting-style`, `::backdrop`, a selector reaching generated descendants), or where a utility
+would land in the `utilities` layer and beat a rule that has to stay beatable.
+
+Never add a per-widget stylesheet. Splitting one component across a template and a stylesheet of
+its own means anyone overriding it has to find and replace both, and the split has no rule behind
+it that the next person can apply.
+
+### Which layer
 
 Tailwind v4 declares `@layer theme, base, components, utilities;`. Every rule you add goes in one of
-them:
+them — including a `<style>` block inside a template, which must wrap its rules in
+`@layer components { }` to keep its place against the utilities in your markup:
 
 | What you're adding | Where it goes |
 |---|---|
@@ -70,11 +95,32 @@ them:
 
 **Never write an unlayered rule.** In the CSS cascade, unlayered declarations beat every layered one,
 so a bare `h1 { font-size: 3rem }` outside a layer overrides `text-2xl` on that heading and no class in
-the markup can win. Layering it as `base` keeps utilities on top, which is the whole point.
+the markup can win. Layering it as `base` keeps utilities on top, which is the whole point. This
+applies with double force to a `<style>` block in a template: it sits later in document order than
+the linked bundle, so unlayered it would beat everything.
 
 The corollary for markup: because base styles already size and colour the elements, **don't restate
 them** — adding `text-4xl font-bold` to an `<h1>` the base layer already sizes fights the stylesheet
 and drifts out of sync with it.
+
+### Moving a hand-written rule to utilities
+
+Converting existing CSS to utilities is where silent breakage lives — an unrecognised class compiles
+to nothing at all, and a wrong-but-valid one compiles to something that never fires. Two habits:
+
+- **Check the compiled bundle, not the build exit code.** The build succeeds either way. Grep the
+  output for each new class you introduced; if it is absent, the utility name was wrong.
+- **Transitions must name the property the utility actually sets.** In Tailwind v4 `rotate-*` and
+  `scale-*` set the `rotate` and `scale` properties, not `transform`. `transition-transform` on a
+  `rotate-180` compiles cleanly and then snaps with no animation. Read back the computed
+  `transitionProperty` in the browser rather than trusting the class name.
+
+### A value only one component reads is not a design token
+
+Tokens are for values a theme genuinely wants to set. Promoting a single component's internal
+values to `@theme` gives the project a public contract to keep in sync for no benefit — define them
+as custom properties on the component's own root element instead, where whoever overrides the
+template can retune them in place.
 
 ## Example
 

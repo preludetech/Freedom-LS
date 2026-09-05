@@ -10,7 +10,8 @@ Cascade contract (Phase 2 of themable-implementations):
 
     - ``tailwind.input.css`` imports the default theme as the always-on
       baseline.
-    - It then imports ``tailwind.components.css``.
+    - It then imports ``tailwind.components.css`` — the element styling and
+      the component classes a theme may reopen.
     - It then imports the generated ``tailwind.active_theme.css`` so the
       active theme's tokens win on cascade. When ``FLS_THEME=default``, this
       import is a re-import of the same file (a no-op against the baseline).

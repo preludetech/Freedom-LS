@@ -17,12 +17,12 @@ Mergeable `class` prop allows callers to append extra utility classes
 to the article element without forking the shell.
 {% endcomment %}
 <article class="course-card surface border-gray-200 h-full relative p-0 overflow-hidden flex flex-col {% if clickable %}cursor-pointer {% endif %}{{ class }}">
-    <div class="course-accent-{{ accent_slot_key }} course-card-hero flex items-center justify-center"
+    <div class="course-accent-{{ accent_slot_key }} h-28 flex items-center justify-center"
          aria-hidden="true">
         {% course_icon icon icon_fallback css_class="size-12" aria_label=title %}
     </div>
 
-    <div class="course-card-body flex-1 flex flex-col space-y-2">
+    <div class="p-4 flex-1 flex flex-col space-y-2">
         {% comment %}Wrapper keeps the eyebrow's content in block flow: as a direct
         flex child an inline chip is blockified and stretched to the card width.{% endcomment %}
         {% if eyebrow %}<div>{{ eyebrow }}</div>{% endif %}

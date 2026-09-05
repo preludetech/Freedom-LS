@@ -15,16 +15,17 @@
  * shadowing `themes/default/` at `BASE_DIR` will not be picked up here. */
 @import "./freedom_ls/themes/default/static/themes/default/theme.css";
 
-/* Component classes — depend on tokens; main-project source of truth. */
+/* Element styling and the themable component classes. This is the whole of
+ * the project's own CSS: `@layer base` element rules, the classes a theme is
+ * expected to reopen in its theme.css, and the handful of classes the markdown
+ * renderer emits at render time that no template can own.
+ *
+ * Anything else a component needs lives in that component's own template —
+ * Tailwind utilities on the markup, or a <style> block wrapped in
+ * `@layer components` where there is no utility form. There are no per-widget
+ * stylesheets; a component and its styling stay together so that shadowing the
+ * template carries both. */
 @import "./tailwind.components.css";
-
-/* Side-panel layout for the shared interface shell (_base_interface.html).
- * Single-use layout, kept out of the reusable-primitives file above. */
-@import "./tailwind.base_interface.css";
-
-/* Spotlight <dialog> animation for the image spotlight (cotton/picture.html).
- * Single-use dialog, kept out of the reusable-primitives file above. */
-@import "./tailwind.picture_spotlight.css";
 
 /* Active theme — generated each build by `manage.py write_active_theme_css`
  * keyed on the `FLS_THEME` env var. When FLS_THEME=default this re-imports

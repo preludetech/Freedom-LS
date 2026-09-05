@@ -16,7 +16,7 @@ target. Pass `clickable="true"` for the modal-trigger variant so the cursor
 signals the row opens something.
 
 The accent icon box reuses `course-accent-{n}` + `{% course_icon %}` but
-is compact (no course-card-hero full band). The details column uses the
+is compact (no full-width hero band). The details column uses the
 same named slot contract as course-card-shell so leaves are straightforward
 to read side-by-side.
 
@@ -42,8 +42,7 @@ the stretched link.
         {% course_icon icon icon_fallback css_class="size-9" aria_label=title %}
     </div>
 
-    {% comment %}Right: details column — course-card-body provides token-backed padding.{% endcomment %}
-    <div class="course-card-body flex-1 min-w-0 space-y-1">
+    <div class="p-4 flex-1 min-w-0 space-y-1">
         {% if eyebrow %}
             {{ eyebrow }}
         {% endif %}

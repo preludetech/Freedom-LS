@@ -27,6 +27,11 @@ Use this skill when:
   selectors, `@layer components {}` for reusable classes, `@utility` for a new utility. Never write an
   unlayered rule: unlayered CSS beats every layered rule in the cascade, so it silently overrides the
   utility classes in your markup.
+- **A component's own styling lives with the component.** A stylesheet is for element-level base
+  rules, for classes a theme is meant to reopen, and for classes generated at render time that no
+  template can own. Styling that serves exactly one component belongs in that component's template:
+  utilities on the markup first, and a `<style>` block only where no utility form exists. Never add a
+  per-widget stylesheet — it splits one component across two files and makes it harder to override.
 - Reuse before you write: check the project's existing cotton components (`<c-*>`) and the component
   classes in its stylesheets before adding new styling.
 - Use Tailwind utility classes exclusively — no custom CSS unless absolutely necessary

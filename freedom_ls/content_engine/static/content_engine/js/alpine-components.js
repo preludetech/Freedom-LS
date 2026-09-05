@@ -51,10 +51,9 @@ document.addEventListener("alpine:init", () => {
     // rotation transforms are applied via x-bind:style, bypassing Tailwind
     // purging entirely.
     //
-    // The CSS transition between faces is gated behind
-    // @media (prefers-reduced-motion: no-preference) in tailwind.components.css
-    // so the state change (flip) always happens; only the animation is dropped
-    // for users who prefer reduced motion.
+    // The transition between faces is gated behind the `motion-safe:` variant
+    // on the face markup, so the state change (flip) always happens; only the
+    // animation is dropped for users who prefer reduced motion.
     Alpine.data("flashcard", () => ({
         flipped: false,
         flip() { this.flipped = !this.flipped; },
