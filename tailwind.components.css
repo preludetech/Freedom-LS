@@ -355,7 +355,7 @@
      *
      * Static 3-D layout rules for the two-sided flip card. Dynamic rotation
      * is applied via Alpine's x-bind:style (frontStyle / backStyle) so these
-     * rules handle only the fixed geometry and the back-face hide.
+     * rules handle only the fixed geometry, the back-face hide, and the look.
      *
      * CSS transition is gated behind prefers-reduced-motion so the flip still
      * applies instantly when the user prefers reduced motion — only the
@@ -368,12 +368,14 @@
      *                      grid area so the card is sized to the larger face.
      * .flashcard-face    — individual face; backface-visibility:hidden means
      *                      each face disappears when rotated past 90°.
-     * .flashcard-face-content — inner wrapper with padding/prose styling.
-     * .flashcard-face-label  — small "Front" / "Back" label in the corner.
+     * .flashcard-face-content — centred column; the padding reserves the two
+     *                      corners the kicker and the flip hint sit in.
+     * .flashcard-face-label  — "Question" / "Answer" kicker, top-left corner.
+     * .flashcard-flip-hint   — "Tap to flip" affordance, bottom-right corner.
      */
 
     .flashcard-scene {
-        perspective: 800px;
+        perspective: 1400px;
         min-height: 44px;
     }
 
@@ -403,6 +405,7 @@
     .flashcard-face {
         grid-column: 1;
         grid-row: 1;
+        position: relative;
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
         @apply rounded-lg border border-border bg-surface shadow-sm;
@@ -411,7 +414,7 @@
     /* Animate the rotation only when reduced-motion is not preferred. */
     @media (prefers-reduced-motion: no-preference) {
         .flashcard-face {
-            transition: transform 0.5s ease;
+            transition: transform 560ms cubic-bezier(0.65, 0, 0.35, 1);
         }
     }
 
@@ -419,18 +422,86 @@
         /* Back starts rotated 180° so it faces away; Alpine's backStyle()
            rotates it to 0° when flipped. The front starts at 0° by default. */
         transform: rotateY(180deg);
+        background-image: var(--fls-flashcard-back-gradient);
+        border-color: var(--fls-flashcard-back-border);
     }
 
     .flashcard-face-content {
-        @apply p-6 space-y-3;
+        @apply flex flex-col items-center justify-center gap-3 text-center;
+        /* height:100% fills the face, which the grid stack sizes to whichever
+         * face is taller — without it the shorter face's content centres
+         * against its own min-height and rides high on the card. */
+        height: 100%;
+        min-height: 13rem;
+        /* Top and bottom padding clear the absolutely-placed kicker and hint. */
+        padding: 3.25rem 1.75rem;
     }
 
     .flashcard-trigger:focus-visible {
-        @apply outline-none ring-2 ring-primary ring-offset-2 rounded-lg;
+        @apply outline-none ring-2 ring-focus-ring ring-offset-2 rounded-lg;
     }
 
     .flashcard-face-label {
-        @apply text-xs font-semibold uppercase tracking-wide text-muted mb-2;
+        position: absolute;
+        top: 1rem;
+        left: 1.25rem;
+        @apply font-mono text-xs font-medium uppercase tracking-widest text-muted;
+    }
+
+    .flashcard-flip-hint {
+        position: absolute;
+        bottom: 0.875rem;
+        right: 1.25rem;
+        @apply flex items-center gap-1.5 text-xs text-muted;
+    }
+
+    /* Answer-face prose. The @layer base element rules paint prose against
+     * `surface`; the answer face is its own tinted panel, so these repaint
+     * the subtree from the face's own tokens. Being in @layer components they
+     * win over @layer base whatever the specificity, which keeps a theme that
+     * swaps the gradient for a dark one legible without touching the markup.
+     * Muted values are mixed from the face's own foreground so they follow. */
+    .flashcard-back,
+    .flashcard-back :is(p, li, dd, td, th, blockquote, h1, h2, h3, h4, h5, h6) {
+        color: var(--fls-flashcard-back-fg);
+    }
+
+    .flashcard-back :is(strong, a, dt),
+    .flashcard-back .flashcard-face-label {
+        color: var(--fls-flashcard-back-accent);
+    }
+
+    .flashcard-back .flashcard-flip-hint {
+        color: color-mix(in oklab, var(--fls-flashcard-back-fg) 60%, transparent);
+    }
+
+    .flashcard-back :is(hr, tbody tr, th, td) {
+        border-color: var(--fls-flashcard-back-border);
+    }
+
+    .flashcard-back :is(code, pre) {
+        background-color: color-mix(in oklab, var(--fls-flashcard-back-fg) 8%, transparent);
+        color: var(--fls-flashcard-back-fg);
+    }
+
+    /* ── Picture widget (cotton/picture.html) ────────────────────────────
+     *
+     * The figure reference ("Figure 3") that opens an image's caption. Mono
+     * and brand-coloured so it reads as a label rather than as part of the
+     * caption sentence — colour and face do the separating, not punctuation.
+     */
+    .picture-figure-ref {
+        @apply font-mono text-xs font-medium tracking-wide text-primary mr-2;
+    }
+
+    /* The title line, which shares a row with the small expand button. Flex
+     * so the figure ref keeps its own gutter and a title running to several
+     * lines hangs indented under its first line. The vertical padding is the
+     * small button's own padding plus its border (py-1.5 + 1px), which centres
+     * the first line of the title against the button no matter how many lines
+     * the title takes. */
+    .picture-figure-title {
+        @apply flex items-baseline min-w-0 text-sm py-[calc(0.375rem+1px)];
     }
 
     /* ── Accordion widget (cotton/accordion.html) ────────────────────────
@@ -439,14 +510,18 @@
      * <details> element manages open/closed state; CSS responds to the
      * browser-set [open] attribute with no JavaScript needed.
      *
-     * .accordion          — the <details> host; border and background.
-     * .accordion-summary  — the <summary> row with title and chevron.
+     * .accordion          — the <details> host; clips the summary hover tint
+     *                       to the host's corner radius.
+     * .accordion-summary  — the <summary> row: title, chevron, hover tint,
+     *                       and the open-state colour shift to primary.
+     * .accordion-title    — grows to fill the row so long titles wrap rather
+     *                       than crushing the chevron.
      * .accordion-body     — grid wrapper that animates the row height
      *                       between 0 (closed) and auto (open).
      * .accordion-body-inner — inner padding wrapper; must not be on the
      *                         animated element or the padding clips during
      *                         the reveal transition.
-     * .accordion-chevron  — rotates 180° when the disclosure is open.
+     * .accordion-chevron  — rotates 180° and turns primary when open.
      *
      * All transitions are gated behind prefers-reduced-motion so the
      * state change still applies instantly when motion is reduced.
@@ -455,11 +530,46 @@
      * on <details>, making the native element the single source of truth.
      */
 
+    .accordion {
+        overflow: hidden;
+    }
+
+    .accordion-summary {
+        @apply flex items-center gap-4 px-5 py-4 cursor-pointer select-none
+               list-none font-display font-semibold text-on-surface;
+    }
+
     .accordion-summary::-webkit-details-marker,
     .accordion-summary::marker {
         /* Remove the default browser-provided triangle so the custom
          * chevron icon is the only disclosure indicator. */
         display: none;
+    }
+
+    .accordion-summary:hover {
+        @apply bg-surface-2;
+    }
+
+    /* Inset so the ring is not clipped by the host's overflow: hidden. */
+    .accordion-summary:focus-visible {
+        @apply outline-none ring-2 ring-focus-ring ring-inset;
+    }
+
+    .accordion[open] > .accordion-summary,
+    .accordion[open] > .accordion-summary .accordion-chevron {
+        @apply text-primary;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .accordion-summary {
+            transition: background-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+                        color 200ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+    }
+
+    .accordion-title {
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .accordion-body {
@@ -474,7 +584,7 @@
 
     @media (prefers-reduced-motion: no-preference) {
         .accordion-body {
-            transition: grid-template-rows 0.25s ease;
+            transition: grid-template-rows 280ms cubic-bezier(0.22, 1, 0.36, 1);
         }
     }
 
@@ -482,11 +592,13 @@
     .accordion-body-inner {
         min-height: 0;
         overflow: hidden;
+        @apply px-5 pb-5 space-y-4;
     }
 
     .accordion-chevron {
         display: inline-flex;
         transition: none;
+        @apply ml-auto shrink-0 text-muted;
     }
 
     .accordion[open] .accordion-chevron {
@@ -495,7 +607,8 @@
 
     @media (prefers-reduced-motion: no-preference) {
         .accordion-chevron {
-            transition: transform 0.25s ease;
+            transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                        color 200ms cubic-bezier(0.22, 1, 0.36, 1);
         }
     }
 

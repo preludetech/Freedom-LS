@@ -23,7 +23,18 @@ class TopicAdmin(SiteAwareModelAdmin):
     search_fields = ("title", "subtitle", "description")
     readonly_fields = ("slug",)
     fieldsets = (
-        (None, {"fields": ("title", "subtitle", "description", "slug", "content")}),
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "slug",
+                    "content",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 
@@ -38,7 +49,7 @@ class ActivityAdmin(SiteAwareModelAdmin):
     list_display = ["title", "category", "level", "file_path"]
     list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug", "content_preview")
+    readonly_fields = ("slug",)
     fieldsets = (
         (
             None,
@@ -49,7 +60,6 @@ class ActivityAdmin(SiteAwareModelAdmin):
                     "description",
                     "slug",
                     "content",
-                    "content_preview",
                 )
             },
         ),
@@ -60,15 +70,6 @@ class ActivityAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, obj: Activity | None = None
     ) -> bool:
         return False
-
-    @admin.display(description="Content Preview")
-    def content_preview(self, obj: Activity) -> str:
-        from django.utils.safestring import mark_safe
-
-        if not obj.content:
-            return ""
-        # Safe: rendered_content() sanitizes via nh3.clean() with strict allowlist
-        return str(mark_safe(obj.rendered_content()))  # noqa: S308  # nosec B308 B703
 
 
 class ContentCollectionItemInline(GenericTabularInline):

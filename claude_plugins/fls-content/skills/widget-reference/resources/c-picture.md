@@ -11,7 +11,7 @@ Responsive image with keyboard-accessible lightbox modal.
 | `src` | Yes | — | File path (resolved from DB via `get_file_by_path`) |
 | `alt` | Yes | — | Alt text for screen readers; use `alt=""` for decorative images |
 | `title` | No | `""` | Visible caption under thumbnail and lightbox heading |
-| `description` | No | `""` | Longer description shown only in the lightbox |
+| `description` | No | `""` | Longer description shown under the caption and again in the lightbox |
 | `number` | No | `""` | Figure number; prefixes `title` with "Figure N" |
 
 ```markdown

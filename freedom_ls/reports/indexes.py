@@ -23,7 +23,6 @@ from datetime import datetime
 from typing import TypedDict, cast
 from uuid import UUID
 
-from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db.models import Count, F, Window
 from django.db.models.functions import RowNumber
@@ -51,7 +50,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.validators import MAX_BYTES, check_logo_safety
 from freedom_ls.reports.config import config
 from freedom_ls.reports.report_data import ReportTooLargeError
-from freedom_ls.site_aware_models.config import config as site_config
+from freedom_ls.site_aware_models.models import site_display_name
 
 
 @dataclasses.dataclass(frozen=True)
@@ -693,10 +692,8 @@ def load_organisation_logo_data_uri(organisation: Organisation) -> str | None:
 def resolve_site_name(site_id: int) -> str:
     """The tenant's own display name -- who the report is from.
 
-    HEADER_TITLE first, mirroring how the site header and outbound email
-    resolve the same name, so a project that renamed itself in one place is
-    not still called something else on its reports. The Site row is read only
-    when HEADER_TITLE is unset: the one conditional query in the report
-    pipeline, and the `or` is what keeps it conditional.
+    The same resolution the site header and outbound email use, so a project
+    that renamed itself in one place is not still called something else on its
+    reports.
     """
-    return site_config.HEADER_TITLE or Site.objects.get(pk=site_id).name
+    return site_display_name(site_id)

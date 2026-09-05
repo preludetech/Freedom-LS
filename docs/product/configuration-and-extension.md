@@ -21,7 +21,7 @@ These settings control visual and email branding without any template change. Al
 | `HEADER_LOGO_STATIC_PATH` | Logo in the navigation bar |
 | `HEADER_LOGO_ON_DARK_STATIC_PATH` | Reversed logo variant, used where the platform mark sits on a strong colour fill — today, the [cohort report](./reports.md) cover band |
 | `FAVICON_STATIC_PATH` | Browser tab favicon |
-| `HEADER_TITLE` | Text in the navigation bar, alongside or instead of the logo |
+| `HEADER_TITLE` | What the installation calls itself. Shown in the navigation bar alongside or instead of the logo, and used as the display name in outbound email subject lines and bodies and on [cohort reports](./reports.md). Falls back to the `Site` record's name where it is unset |
 | `HEADER_TITLE_STYLE` | Inline CSS applied to the header title |
 | `EMAIL_LOGO_STATIC_PATH` | Logo embedded in outbound emails |
 
@@ -138,6 +138,7 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `CONTENT_MEDIA_STORAGE_ALIAS` | Storage course file assets are written to. See [deployment](./deployment.md). |
 | `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |
 | `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
+| `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message has been taken off the request. Django's own `EMAIL_BACKEND` names the queue; this names what is behind it. See [deployment](./deployment.md). |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
 | `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
 | `REPORTS_FONT_DISPLAY` | Font stack for the report's headings. |

@@ -2,6 +2,7 @@ import os
 import sys
 
 from freedom_ls.base.git_utils import branch_to_db_name, get_current_branch
+from freedom_ls.deployment import settings_defaults as fls_defaults
 
 from .settings_base import *  # noqa: F403
 
@@ -73,7 +74,12 @@ HEADLESS_SERVE_SPECIFICATION = True
 # Development email is captured by Mailpit (see dev_db/docker-compose.yaml).
 # Browse the inbox at http://localhost:8025
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# The same queueing backend production uses. Dev's TASKS is ImmediateBackend, so the
+# task runs inline and Mailpit still receives the mail within the request -- what this
+# buys is that every manual QA session exercises the serialise/rebuild round-trip
+# rather than leaving it to run first in production.
+EMAIL_BACKEND = fls_defaults.QUEUED_EMAIL_BACKEND
+EMAIL_UPSTREAM_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 
@@ -122,5 +128,5 @@ HEADER_TITLE = "FirstClass"
 HEADER_TITLE_STYLE = "font-style: italic;"
 
 
-OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = False
-OVERRIDE_COURSE_ACCESS_TO_FREE = False
+OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True
+OVERRIDE_COURSE_ACCESS_TO_FREE = True

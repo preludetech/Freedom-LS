@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import re
 from urllib.parse import unquote
 
 import pytest
@@ -14,10 +15,36 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.organisations.admin import OrganisationAdmin
+from freedom_ls.organisations.admin import (
+    ORGANISATION_SUMMARIES,
+    SUMMARIES_FIELD,
+    OrganisationAdmin,
+)
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
 ADD_URL_NAME = "admin:freedom_ls_organisations_organisation_add"
+CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"
+
+_FORMSET_PREFIX = re.compile(r'name="([\w-]+)-TOTAL_FORMS"')
+
+
+def empty_inline_data(client: Client, url: str) -> dict[str, str]:
+    """Management-form keys for whatever inlines other apps have contributed.
+
+    A browser sends these with every change-page submission and the view rejects
+    a payload without them. The prefixes are read off the rendered page rather
+    than named here, because the inlines belong to apps this one cannot import.
+
+    Every formset comes back empty, which submits no inline changes at all --
+    existing rows are left alone, since deleting one needs its own checkbox.
+    """
+    html = client.get(url).content.decode()
+    return {
+        f"{prefix}-{key}": "0"
+        for prefix in _FORMSET_PREFIX.findall(html)
+        for key in ("TOTAL_FORMS", "INITIAL_FORMS", "MIN_NUM_FORMS", "MAX_NUM_FORMS")
+    }
 
 
 @pytest.fixture
@@ -111,7 +138,9 @@ class TestOrganisationAdminSave:
             "admin:freedom_ls_organisations_organisation_change", args=[organisation.pk]
         )
 
-        response = staff_client.post(url, {"name": "Westbrook"})
+        response = staff_client.post(
+            url, {"name": "Westbrook", **empty_inline_data(staff_client, url)}
+        )
 
         assert response.status_code == 302
 
@@ -207,3 +236,75 @@ class TestOrganisationAdminLogoUpload:
         organisation = Organisation.objects.get(name="Westbrook")
         assert organisation.logo.name != organisation.logo_on_dark.name
         assert organisation.logo_on_dark.name.endswith("-on-dark.png")
+
+
+@pytest.mark.django_db
+class TestContributedExtras:
+    """What other apps add to this page, without naming any of them.
+
+    `organisations` cannot import the apps that contribute here, so these tests
+    assert the shape of the seam -- present on the change page, absent on the
+    add page -- and leave the contributed content itself to be tested by the app
+    that owns it.
+    """
+
+    def test_the_add_page_offers_no_contributed_inlines(
+        self, admin_instance: OrganisationAdmin
+    ) -> None:
+        assert admin_instance.get_inlines(request=None, obj=None) == []
+
+    def test_the_change_page_offers_every_contributed_inline(
+        self, admin_instance: OrganisationAdmin, mock_site_context
+    ) -> None:
+        organisation = OrganisationFactory()
+
+        assert (
+            admin_instance.get_inlines(request=None, obj=organisation)
+            == OrganisationAdmin.inlines
+        )
+
+    def test_something_is_actually_contributed(
+        self, admin_instance: OrganisationAdmin, mock_site_context
+    ) -> None:
+        """Guards every other test here from passing on an empty seam."""
+        organisation = OrganisationFactory()
+
+        assert admin_instance.get_inlines(request=None, obj=organisation)
+        assert ORGANISATION_SUMMARIES
+
+    def test_the_change_page_keeps_the_summaries_row(
+        self, admin_instance: OrganisationAdmin, mock_site_context
+    ) -> None:
+        organisation = OrganisationFactory()
+
+        assert SUMMARIES_FIELD in admin_instance.get_fields(
+            request=None, obj=organisation
+        )
+
+    def test_the_add_page_leaves_out_the_summaries_row(
+        self, admin_instance: OrganisationAdmin
+    ) -> None:
+        fields = admin_instance.get_fields(request=None, obj=None)
+
+        assert SUMMARIES_FIELD not in fields
+        assert "name" in fields
+
+    def test_the_summaries_row_goes_away_when_nothing_contributes_one(
+        self, admin_instance: OrganisationAdmin, mock_site_context, monkeypatch
+    ) -> None:
+        """An empty row would otherwise sit on the page of a project that
+        installs organisations without any of the apps that fill it."""
+        organisation = OrganisationFactory()
+        monkeypatch.setattr("freedom_ls.organisations.admin.ORGANISATION_SUMMARIES", [])
+
+        assert SUMMARIES_FIELD not in admin_instance.get_fields(
+            request=None, obj=organisation
+        )
+
+    def test_the_change_page_renders(self, staff_client) -> None:
+        """A smoke test for the contributed inlines: a broken one 500s here."""
+        organisation = OrganisationFactory()
+
+        response = staff_client.get(reverse(CHANGE_URL_NAME, args=[organisation.pk]))
+
+        assert response.status_code == 200

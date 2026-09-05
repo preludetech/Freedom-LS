@@ -1,0 +1,42 @@
+<c-vars previous_url="" class="" />
+
+{% comment %}
+The course player's footer bar. Previous sits on the left, whatever carries the
+learner forward sits on the right. Topics, form start pages and form completion
+pages all use it, so the three footers stay identical.
+
+Wraps c-player-nav, which supplies the HTMX boost config, so a click swaps the
+player column instead of reloading the document.
+
+The left slot renders even when there is no previous_url. That empty div is what
+holds the forward button flush right under justify-between. Drop it and a lone
+child slides over to the left.
+
+Props:
+  previous_url - where Previous goes. Pass it dynamically, as
+                 :previous_url="previous_url", so a None from the view stays
+                 falsy. A course's first item has nothing behind it and renders
+                 no Previous button.
+  class        - extra classes for the footer bar.
+
+Usage:
+<c-player-footer :previous_url="previous_url">
+    <c-button href="{{ next_url }}" icon_right="next" size="small">Next</c-button>
+</c-player-footer>
+{% endcomment %}
+
+<c-player-nav class="flex items-center justify-between pt-4 border-t border-border gap-3 {{ class }}">
+    <div>
+        {% if previous_url %}
+            <c-button href="{{ previous_url }}"
+                      variant="secondary"
+                      icon_left="previous"
+                      size="small"
+                      data-testid="previous-button">
+                Previous
+            </c-button>
+        {% endif %}
+    </div>
+
+    {{ slot }}
+</c-player-nav>

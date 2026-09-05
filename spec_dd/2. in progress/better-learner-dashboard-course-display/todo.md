@@ -5,7 +5,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [x] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
+- [ ] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
@@ -62,22 +62,18 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
-## 12. Template repo
-
-- [ ] (cmd) Run `/fls-dev:update_template_repo` to update the template repo for new projects
-- [ ] (user) Review and commit the template repo changes (if any)
-
-## 13. Author plugin sync
+## 12. Author plugin sync
 
 - [ ] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
 
-## 14. Pull request
+## 13. Pull request
 
 - [ ] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
+- [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
 
-## 15. Cleanup
+## 14. Cleanup
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to clean up the worktree
 - [ ] (user) Move the spec directory to `spec_dd/3. done/` if not already moved

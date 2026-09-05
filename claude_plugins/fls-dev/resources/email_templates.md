@@ -149,13 +149,18 @@ next server restart. Tests that override the theme must call
 
 ## Previewing Emails in Development
 
-Dev settings (`config/settings_dev.py`) send mail to Mailpit's SMTP listener:
+Dev settings (`config/settings_dev.py`) queue mail and send it to Mailpit's SMTP listener:
 
 ```python
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = fls_defaults.QUEUED_EMAIL_BACKEND
+EMAIL_UPSTREAM_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025
 ```
+
+Dev's task backend is the inline one, so the queued send runs within the same request
+and Mailpit receives the mail immediately — the queue costs you nothing here, it just
+means development exercises the same path production does.
 
 Start Mailpit via the `dev_db` composition (`cd dev_db && docker compose up`), trigger an email flow (signup, password reset, etc.), then open `http://localhost:8025` to view it.
 

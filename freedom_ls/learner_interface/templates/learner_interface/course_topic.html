@@ -12,15 +12,7 @@
                 {{ topic.rendered_content }}
             </c-markdown-container>
 
-            <c-player-nav class="flex items-center justify-between pt-4 border-t border-border gap-3">
-                <div>
-                    {% if previous_url %}
-                        <c-button href="{{ previous_url }}" variant="secondary" icon_left="previous" size="small">
-                            Previous
-                        </c-button>
-                    {% endif %}
-                </div>
-
+            <c-player-footer :previous_url="previous_url">
                 {% comment %}Nothing grants this learner the course, so there is no record to
                 mark against — the plain Next below carries them on instead.{% endcomment %}
                 {% if can_record_progress and not is_complete %}
@@ -56,7 +48,7 @@
                         </c-button>
                     {% endif %}
                 {% endif %}
-            </c-player-nav>
+            </c-player-footer>
         </div>
     </c-page>
 {% endblock %}

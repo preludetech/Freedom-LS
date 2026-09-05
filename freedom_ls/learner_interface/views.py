@@ -765,6 +765,7 @@ def view_course_item(request, course_slug, index):
             index=index,
             is_last_item=is_last_item,
             next_url=next_url,
+            previous_url=previous_url,
             player_context=player_context,
             collection_item=current_collection_item,
             course_progress=course_progress,
@@ -917,6 +918,7 @@ def view_form(
     index,
     is_last_item=False,
     next_url=None,
+    previous_url=None,
     player_context: dict | None = None,
     *,
     collection_item: ContentCollectionItem,
@@ -967,6 +969,7 @@ def view_form(
         "page_number": page_number,
         "buttons": buttons,
         "next_url": next_url,
+        "previous_url": previous_url,
         **(player_context or {}),
         "question_count": count_form_questions(form),
         "page_count": form.pages.count(),
@@ -1329,6 +1332,18 @@ def course_form_complete(request, course_slug, index):
         kwargs={"course_slug": course_slug, "index": index},
     )
 
+    # Previous means the item before this one in the course, the same as it does
+    # in every other player footer. Stepping back into this form is the retry
+    # button's job, not this one's.
+    previous_url = (
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course_slug, "index": index - 1},
+        )
+        if index > 1
+        else None
+    )
+
     context = {
         "course": course,
         "form": form,
@@ -1339,6 +1354,7 @@ def course_form_complete(request, course_slug, index):
         "stored_score_outdated": stored_score_outdated,
         "quiz_verdict": quiz_verdict,
         "next_url": next_url,
+        "previous_url": previous_url,
         "retry_url": retry_url,
         # Player chrome (outline panel + breadcrumb).
         **_player_chrome_context(
