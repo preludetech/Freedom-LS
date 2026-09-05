@@ -1,324 +1,421 @@
 # Frontend QA report: error pages
 
+This run exercised the eight branded error surfaces introduced on the `error-pages` branch: the
+django-axes lockout page, the four Django-served error pages (404, 403, 400, 403 CSRF), the two
+standalone pages (500, 503), and every allauth rate-limit scope that can reach the 429 template. It
+also checked accessibility, no-stylesheet resilience, regressions on unrelated pages, and responsive
+behaviour at mobile and tablet widths. All 54 test records in this run passed. No bugs were found.
+
 ## Methodology
 
-This run used Playwright MCP driving a real browser against the running FLS dev stack.
-Screenshots were collected into `screenshots/` beside this report; every image referenced
-below was verified to exist in that directory before writing this report.
+This run used two servers, both on port 8988. Server A was the ordinary dev server
+(`uv run python manage.py runserver`), used for the django-axes lockout page and the branch-badge
+check, both of which require `DEBUG=True` behaviour or are unaffected by the `DEBUG` flag. Server B
+was the same port restarted under `config.settings_qa_check`, with `DEBUG=False`, used for the six
+pages Django will not render while `DEBUG=True` (404, 403, 403 CSRF, 400, 500, 503, and the 429
+template reached through allauth's rate limits).
 
-The plan requires two servers on the same port, because six of the eight error pages never
-render under `DEBUG=True` — Django serves its own yellow traceback / technical debug pages
-for `handler404`/`handler403`/`handler400`/`handler500` instead of the project's branded
-templates. Only `403_csrf.html` and `429.html` render under `DEBUG=True`.
+Two throwaway scaffolding files, `config/settings_qa_check.py` and `config/urls_qa_check.py`, were
+created for this run to provide `DEBUG=False` settings with restored allauth rate limits and to expose
+otherwise-unreachable routes for a deliberate 403, 400, 500 and 503. Both files were deleted after the
+run and neither was committed.
 
-- **Server A** was the ordinary dev server (`DEBUG=True`). It was used only for §1, the
-  axes lockout page (`accounts/lockout.html` is reached through an ordinary
-  `render(..., status=429)`, not through an error handler, so it works either way), and for
-  the `#debug-branch-badge` check, which only appears when `DEBUG=True`.
-- **Server B** then replaced Server A on the same port with `DEBUG=False`, via the
-  throwaway `config/settings_qa_check.py` and `config/urls_qa_check.py` scaffolding
-  described in the plan's §0.4. This restored `ACCOUNT_RATE_LIMITS` (zeroed under
-  `settings_dev`), re-enabled the WhiteNoise finders so static files kept serving without a
-  `STATIC_ROOT` build, and added `/qa-error/{400,403,500,503}/` routes for pages Django
-  never exposes through a real FLS URL.
-
-The session cookie and database were unchanged across the Server A → Server B swap, so the
-sign-in made on Server A survived into Server B without re-authenticating.
-
-The dev database was unseeded at the start of the run (only the `example.com` Site existed,
-which 500'd the dashboard with `Site.DoesNotExist` for `FORCE_SITE_NAME='DemoDev'`). This was
-fixed by running `uv run python manage.py create_demo_data --yes`. A demo course was also
-loaded with `content_save` so the course-player test (§6.3) could run. Both are routine QA
-data setup, not findings.
+Screenshots were collected into `spec_dd/2. in progress/error-pages/screenshots/`. Every image
+referenced in this report exists beside it. No PNG exceeded the compression threshold, so no
+compression was needed.
 
 ## Diff scoping
 
-Class **FULL**, triggered by the changed template/test/support files:
+This run classified as **FULL**. The changed files that triggered a full run were:
 
 - `freedom_ls/accounts/templates/accounts/lockout.html`
-- `freedom_ls/accounts/tests/test_lockout_page.py`
-- `freedom_ls/base/templates/400.html`, `403.html`, `403_csrf.html`, `404.html`, `429.html`, `500.html`, `503.html`
+- `freedom_ls/base/templates/400.html`
+- `freedom_ls/base/templates/403.html`
+- `freedom_ls/base/templates/403_csrf.html`
+- `freedom_ls/base/templates/404.html`
+- `freedom_ls/base/templates/429.html`
+- `freedom_ls/base/templates/500.html`
+- `freedom_ls/base/templates/503.html`
 - `freedom_ls/base/templates/cotton/error-page.html`
-- `freedom_ls/base/tests/error_pages_urls.py`
-- `freedom_ls/base/tests/test_error_page_component.py`
-- `freedom_ls/base/tests/test_error_pages.py`
+- `freedom_ls/icons/backend.py`
 - `freedom_ls/icons/mappings.py`
 - `freedom_ls/icons/semantic_names.py`
+- tests and spec docs
 
-Nothing was skipped. Desktop, mobile (375x812) and tablet (768x1024) passes all ran in full.
+Nothing was skipped as a result of this classification: desktop, mobile and tablet passes all ran in
+full.
 
 ## Smoke gate
 
-**Passed.** Pages checked: `http://127.0.0.1:8237/` and
-`http://127.0.0.1:8237/accounts/password/change/`.
-
-## Coverage
-
-### §1 — Lockout page, Server A
-
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 1.1 | desktop | pass | Fifth wrong-password submission for `qa-lockout@example.com` returns HTTP 429 with the restyled lockout page (header, "Error 429" label, heading, body, "Back to sign in", "Reset it now"). No countdown/cooldown/attempts-remaining figure; mark is `aria-hidden`. |
-| 1.2 | desktop | pass | "Back to sign in" and "Reset it now" both load working forms; neither is a dead end. |
-| 1.3 | desktop | pass | Re-submitting the locked address still 429s; `demodev@email.com` with the correct password signs in normally — lockout is keyed on the credential pair, not the IP. |
-| 1.4 | desktop | pass | `axes_reset` cleared the lockout; signed back in as `demodev@email.com`. |
-
-### §2 — Server swap / branch badge
-
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 2 | desktop | pass | Server B (`DEBUG=False`, `config.settings_qa_check`) serves a fully styled, signed-in dashboard on the same port; stylesheet loads via WhiteNoise finders; session survived the swap; branch badge gone as expected per plan §0.1. |
-
-### §3 — The four Django-served pages
-
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 3.1 | desktop | pass | 404 signed in: correct chrome, copy, actions; requested path not present in HTML; `noindex`. |
-| 3.2 | desktop | pass | 404 signed out: same panel, signed-out header; both buttons work. |
-| 3.3 | desktop | pass | 404's two buttons both go somewhere real. |
-| 3.4 | desktop | pass | 403: warning mark, correct copy, no specific admin/course/resource named. |
-| 3.4-mobile | mobile | pass | 403 at 375x812: heading wraps, buttons stack, no overflow. |
-| 3.5 | desktop | pass | Critical branch: "Sign in as a different account" while signed in shows sign-out confirmation, then the login form — does not bounce back to dashboard. |
-| 3.6 | desktop | pass | Same action while signed out lands directly on the login form. |
-| 3.7 | desktop | pass | 400 from raised `BadRequest`: correct copy, single action, no retry affordance. |
-| 3.8 | desktop | pass | 400 from real `DisallowedHost`: same branded page through real middleware. Deviation from plan's prediction — see General notes. |
-| 3.9 | desktop | pass | CSRF 403: correct copy and action; Django's stock CSRF fallback strings absent; site header/stylesheet present. |
-| 3.10 | desktop | pass | 500: standalone treatment (no header/logo/user menu), correct copy, no reference code/support link/traceback. |
-| 3.10-tablet | tablet | pass | 500 at 768x1024: no header, panel 672px wide, no overflow, actions side by side. |
-| 3.11 | desktop | pass | "Try again" reloads the same failing URL and 500s again — no silent 200. |
-| 3.12 | desktop | pass | 500's "Go to your dashboard" loads the real dashboard, still signed in. |
-| 3.13 | desktop | pass | 503: same standalone treatment, correct copy, single action, nothing implies the service is up. |
-| 3.13-mobile | mobile | pass | 503 at 375x812: heading fits one line, single action, no overflow. |
-| 3.1-tablet | tablet | pass | 404 at 768x1024: desktop header, panel in max-w-2xl column, actions side by side. |
+The smoke gate passed. Two pages were loaded to confirm the environment was serving the branch before
+the full test plan began: `http://127.0.0.1:8988/` and
+`http://127.0.0.1:8988/accounts/password/change/`. No failure was recorded.
 
-### §4.1 — The seven hard-429 scopes
+## Results
 
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 4.1-row1-change_password | desktop | pass | Third submission 429s inside the signed-in shell (user menu present); branded page, not allauth's fallback. |
-| 4.1-row2-manage_email | desktop | pass | Third "Add email" submission 429s inside the signed-in shell; same branded page. |
-| 4.1-row3-reauthenticate | desktop | pass | Third wrong-password submission 429s inside the signed-in shell; same branded page. |
-| 4.1-row4-reset_password_from_key | desktop | pass | Reset link collected from Mailpit; third mismatched-password submission 429s in the signed-out shell. |
-| 4.1-row5-reset_password | desktop | pass | Second submission 429s (row 4's setup request had already consumed one of the allowance); signed-out shell. |
-| 4.1-row6-signup | desktop | pass | Sixth submission 429s, signed-out shell. Signup-form checkbox gotcha noted — see General notes. |
-| 4.1-row7-login | desktop | pass | Fourth submission 429s, signed-out shell; not allauth's stylesheet-less fallback. |
-| 4.1-tablet | tablet | pass | 429 from account settings re-verified at 768x1024, desktop header/user-menu avatar, no overflow. Scope had reset since the desktop pass (one-minute window) and needed re-tripping — see General notes. |
+### §1 The lockout page
 
-### §4.2 — The six that do not render this page
+**1.1 — pass.** Fifth wrong-password submission for qa-lockout@example.com returns HTTP 429 with the
+restyled lockout page: site header, circular warning-tinted hand mark, 'Error 429' label, heading 'Too
+many sign-in attempts', body copy, 'Back to sign in' primary button and a 'Reset it now'
+password-reset link. No countdown, no 'try again in N minutes', no attempts-remaining figure.
 
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 4.2-3-login_failed | desktop | pass | Not a 429: ordinary login form re-renders at 200 with the inline "not correct" message. Verified structurally that this scope cannot render the error page in this configuration — see General notes. |
-| 4.2-9-confirm_email | desktop | pass | Silent by design: repeat resend inside the window changes nothing on screen. |
-| 4.2-10-request_login_code | desktop | skip | Not reachable — `LOGIN_BY_CODE_ENABLED` is off. Recorded per the plan; no browser check required. |
-| 4.2-11-verify_phone | desktop | skip | Not reachable — no phone field in signup or login. |
-| 4.2-12-change_phone | desktop | skip | Not reachable — same reason as verify_phone. |
-| 4.2-13-axes_lockout | desktop | pass | Covered in §1 on Server A (tests 1.1–1.4); not re-run here, per the plan. |
+![](screenshots/page-2026-09-05T09-28-29-184Z.png)
 
-### §4.3 — What must never appear on any 429
+**1.2 — pass.** 'Back to sign in' loads the login form; the 'Reset it now' href
+`/accounts/password/reset/` loads the password-reset form.
 
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 4.3 | desktop | pass | Checked every 429 reached (all seven hard-429 scopes plus the axes lockout page). No countdown, ticking timer, "unlocks in N minutes", limit figure, attempts-remaining count, or automatic retry on any of them. Only action is a manual "Try again" (or "Back to sign in" on the lockout page). |
+**1.3 — pass.** Re-submitting qa-lockout@example.com still returns 429 with the lockout heading.
+demodev@email.com with the correct password signs in normally from the same browser, so the axes
+lockout is keyed on the username/IP pair, not the address alone.
 
-### §5 — Accessibility and resilience
+**1.4 — pass.** axes_reset removed 1 attempt; signed back in as demodev@email.com.
 
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 5.1 | desktop | pass | All eight page titles collected and distinct. |
-| 5.2 | desktop | pass | Standalone 500/503 each have exactly one `<h1>`; shell pages have two (site-title + error heading), which is the expected FLS header pattern. |
-| 5.3 | desktop | pass | Status mark is wrapped `aria-hidden="true"` and absent from the accessibility snapshot on all pages checked (404, 403, 500, 503, 429); severity is readable from the label and heading alone. |
-| 5.4 | desktop | pass | Status label and heading text alone distinguish 404 from 500 with no reliance on colour. |
-| 5.5 | desktop | **fail** | Bug **B1** — see Per-bug sections below. |
-| 5.6 | desktop | pass | `meta name=robots content=noindex` confirmed present on 404, 403, 400, 403_csrf, 429, 500 and 503. |
-| 5.7 | mobile | pass | 404 at 375x812: no horizontal overflow, heading wraps, actions stack, touch targets 40–42px. |
-| 5.7-500 | mobile | pass | Standalone 500 at 375x812: no overflow, heading wraps, actions stack, panel starts at the top with no header, as designed. |
+### §2 Server swap
 
-### §6 — Side-effects on things that already worked
+**2 — pass.** Server B (DEBUG=False, config.settings_qa_check) serves the signed-in dashboard fully
+styled: `/static/vendor/tailwind.output.css` loads and the header renders its brand blue. Session
+survived the server swap. The debug branch badge is absent, as §0.1 predicts.
 
-| Test | Viewport | Status | Summary |
-| --- | --- | --- | --- |
-| 6.1 | desktop | pass | Dashboard, course catalogue, course detail and `/accounts/password/change/` all render unchanged; account pages around the changed `lockout.html` layout still look right. |
-| 6.2 | desktop | pass | Lockout page and 429 page match — same mark, label treatment, heading scale, button styling, differing only in words. (Lockout screenshot shows the debug-toolbar panel because it was taken on Server A under `DEBUG=True` — expected, not a finding.) |
-| 6.3 | desktop | pass | Both address-bar navigation and a boosted `htmx.ajax` request to a bad course-item index land on the real 404 with the site header, no stale `#interface-main`. |
-| 6.4 | desktop | pass | Known gap confirmed as the idea document names it, not as a regression: an htmx 404 outside `#interface-main` changes nothing on screen. |
-| 6.5 | desktop | pass | Saving a profile change still raises the usual green "Profile saved" toast; toast system untouched. |
+### §3 The four Django-served pages
 
-## Evidence
+**3.1 — pass.** HTTP 404 with the site header and user menu, a neutral-grey circular question mark,
+'Error 404', heading 'We cannot find that page', body copy and both buttons ('Go to your dashboard' ->
+/, 'Browse courses' -> /courses/). The requested path 'does-not-exist-abc123' appears nowhere in the
+rendered HTML. meta robots=noindex present.
 
-Every screenshot taken during the run, grouped by what it shows. All twenty-one live in
-`screenshots/` beside this report.
+![](screenshots/page-2026-09-05T09-29-56-071Z.png)
 
-### The eight pages, desktop (1920x1080)
+**3.2 — pass.** Same 404 panel signed out; the header swaps the user menu for the Login / Sign up
+prompt. Both buttons still render and both still resolve (dashboard and course catalogue are public).
 
-404 — neutral-grey mark, two actions, and no trace of the requested path:
+![](screenshots/page-2026-09-05T09-30-17-089Z.png)
 
-![](screenshots/page-2026-09-05T06-38-59-704Z.png)
+**3.3 — pass.** 'Go to your dashboard' loads the dashboard; 'Browse courses' loads the course
+catalogue.
 
-403 — warning-tinted mark, copy naming "an administrator" generically:
+**3.4 — pass.** HTTP 403 with a warning-tinted padlock mark, 'Error 403', heading 'You do not have
+access to this page', body copy naming 'an administrator' generically. No specific administrator,
+course or refused resource is named. Primary 'Browse courses', secondary 'Sign in as a different
+account'.
 
-![](screenshots/page-2026-09-05T06-39-35-741Z.png)
+![](screenshots/page-2026-09-05T09-30-40-128Z.png)
 
-400 from a real `DisallowedHost`, produced by the actual middleware rather than a test view.
-Note it rendered styled, contrary to the plan's prediction — see General notes:
+**3.5 — pass.** Signed in, 'Sign in as a different account' points at
+`/accounts/logout/?next=/accounts/login/`. Clicking it gives the sign-out confirmation page, and
+confirming lands on the login form. It does not bounce back to the dashboard.
 
-![](screenshots/page-2026-09-05T06-40-42-785Z.png)
+**3.6 — pass.** Signed out, the same button lands directly on the login form with no sign-out step.
 
-403 CSRF — none of Django's stock "CSRF verification failed" / "Request aborted" wording:
+**3.7 — pass.** Raised BadRequest returns HTTP 400: 'Error 400', heading 'We could not handle that
+request', body copy, a single 'Go to your dashboard' button. No retry affordance. meta robots=noindex
+present.
 
-![](screenshots/page-2026-09-05T06-39-54-509Z.png)
+![](screenshots/page-2026-09-05T09-31-16-339Z.png)
 
-500 — the standalone treatment: no header, no logo, no user menu, still styled:
+**3.8 — pass.** `http://localhost:8988/` raises a real DisallowedHost and renders the same branded 400
+page at status 400 through the real middleware. Deviation from the plan's prediction: the page renders
+fully styled rather than unstyled, because WhiteNoise serves `/static/` before Django's host
+validation runs. Not a defect - the page is better than predicted. §5.5 still covers the deliberate
+no-stylesheet read.
 
-![](screenshots/page-2026-09-05T06-41-03-045Z.png)
+![](screenshots/page-2026-09-05T09-31-20-354Z.png)
 
-503 — same standalone treatment, info-tinted mark, single action:
+**3.9 — pass.** Clearing the csrftoken cookie and submitting the login form returns HTTP 403 with
+'Error 403', heading 'The form was not sent', copy explaining the session expired and that nothing was
+sent or saved, and a 'Sign in again' button. Django's fallback strings 'CSRF verification failed',
+'Request aborted', 'Help' and 'More information is available with DEBUG=True' are all absent; the page
+carries the site header and the theme stylesheet.
 
-![](screenshots/page-2026-09-05T06-41-23-833Z.png)
+![](screenshots/page-2026-09-05T09-31-54-193Z.png)
 
-429 reached from account settings, rendering inside the signed-in shell:
+**3.10 — pass.** HTTP 500 renders standalone: no site header, no logo, no user menu, zero `<img>`
+elements, exactly one `<h1>`. Error-tinted circular warning mark, 'Error 500', heading 'Sorry, there
+is a problem with this page', two paragraphs (the second warning work may not have been saved), 'Try
+again' primary and 'Go to your dashboard' secondary. Styled. No reference code, no 'the team has been
+paged', no support or status link, no progress claim.
 
-![](screenshots/page-2026-09-05T06-42-17-606Z.png)
+![](screenshots/page-2026-09-05T09-32-14-882Z.png)
 
-429 from the `login` scope, signed-out shell:
+**3.11 — pass.** 'Try again' is `<a href="">`, which re-requests the current URL. The second response
+is also HTTP 500, not a silent 200.
 
-![](screenshots/page-2026-09-05T06-54-57-981Z.png)
+**3.12 — pass.** 'Go to your dashboard' from the 500 loads the real dashboard, still signed in, with
+the header back.
 
-### §6.2 — the lockout page and the 429 page side by side
+**3.13 — pass.** HTTP 503 gets the same standalone treatment as the 500: no header, no navigation.
+Info-tinted blue circular spanner mark, 'Error 503', heading 'Sorry, the service is unavailable', one
+line of body copy, a single 'Try again' action. No user menu, no dashboard link, no maintenance
+window, no 'back in N minutes', no status-page link.
 
-The two faces of the same status code. Same mark, same label treatment, same heading scale,
-same button styling; only the words differ. The lockout shot carries the django-debug-toolbar
-panel because it was taken on Server A under `DEBUG=True`:
+![](screenshots/page-2026-09-05T09-32-42-911Z.png)
 
-![](screenshots/page-2026-09-05T06-37-09-224Z.png)
+### §4 Every rate limit
 
-![](screenshots/page-2026-09-05T06-42-17-606Z.png)
+#### §4.1 The seven hard-429 scopes
 
-### Mobile (375x812)
+**4.1-6-change_password — pass.** Scope 6 change_password. Third submission of
+`/accounts/password/change/` returns HTTP 429 with the branded page: warning-tinted hand mark, 'Error
+429', heading 'You have made too many attempts', body copy and a single 'Try again' action. Rendered
+inside the signed-in shell - the header shows the QT user menu, not the sign-in prompt. Not allauth's
+bare '429 Too Many Requests' fallback.
 
-404, 500, 403 and 503 — no horizontal overflow, headings wrap rather than clip, paired
-actions stack:
+![](screenshots/page-2026-09-05T09-33-32-570Z.png)
 
-![](screenshots/page-2026-09-05T06-47-22-911Z.png)
+**4.1-7-manage_email — pass.** Scope 7 manage_email. Third 'Add email' submission on
+`/accounts/email/` returns HTTP 429 carrying the branded heading and the site header, inside the
+signed-in shell. Bare allauth fallback absent.
 
-![](screenshots/page-2026-09-05T06-47-31-129Z.png)
+**4.1-8-reauthenticate — pass.** Scope 8 reauthenticate. Third wrong-password submission of
+`/accounts/reauthenticate/` returns HTTP 429 with the branded page inside the signed-in shell (header
+reads 'FirstClass / QT').
 
-![](screenshots/page-2026-09-05T06-47-42-537Z.png)
+**4.1-5-reset_password_from_key — pass.** Scope 5 reset_password_from_key. Reset link collected from
+Mailpit and opened; three mismatched set-password submissions - the third returns HTTP 429 with the
+branded page in the signed-out shell (header shows Login / Sign up). meta robots=noindex present.
 
-![](screenshots/page-2026-09-05T06-47-48-655Z.png)
+**4.1-4-reset_password — pass.** Scope 4 reset_password. Third submission of
+`/accounts/password/reset/` returns HTTP 429 with the branded page.
 
-### Tablet (768x1024)
+![](screenshots/page-2026-09-05T09-35-24-362Z.png)
 
-404 and 500 take the desktop header and sit in their `max-w-2xl` column; the 429 keeps the
-signed-in shell:
+**4.1-1-signup — pass.** Scope 1 signup. Sixth submission of `/accounts/signup/` returns HTTP 429
+carrying the branded heading 'You have made too many attempts'. Verified by POST because the signup
+form's required fields and type=email input make a sixth browser-native submit impossible to force;
+the response body was checked directly.
 
-![](screenshots/page-2026-09-05T06-48-07-619Z.png)
+**4.1-2-login — pass.** Scope 2 login. Fourth submission of `/accounts/login/` inside a minute returns
+HTTP 429 with the branded page in the signed-out shell.
 
-![](screenshots/page-2026-09-05T06-48-14-754Z.png)
+![](screenshots/page-2026-09-05T09-38-36-722Z.png)
 
-![](screenshots/page-2026-09-05T06-48-43-955Z.png)
+#### §4.2 The six that do not render this page
 
-### §2 and §6 — the server swap and the untouched surfaces
+**4.2-3-login_failed — pass.** Scope 3 login_failed behaves as specified and is NOT wired to the error
+page. Six failed logins against one email inside five minutes (three, then axes_reset to keep
+django-axes out of the way, then three more after a 65s wait so the login scope did not trip first):
+the sixth re-renders the ordinary login page at status 200 with the inline message 'Too many failed
+login attempts. Try again later.' Neither the 429 page nor a 429 status.
 
-Server B serving a styled, signed-in dashboard after the swap; the course catalogue and
-course detail unchanged; the toast system still raising the usual green success toast:
+**4.2-10-request_login_code — pass.** Scope 10 request_login_code is unreachable: allauth
+app_settings reports LOGIN_BY_CODE_ENABLED = False under the QA settings. Recorded as not reachable;
+no browser check, per the plan.
 
-![](screenshots/page-2026-09-05T06-38-31-543Z.png)
+**4.2-11-verify_phone — pass.** Scope 11 verify_phone is unreachable: SIGNUP_FIELDS is
+email/password1/password2/first_name/last_name and the rendered signup and login forms carry no phone
+field. Recorded as not reachable.
 
-![](screenshots/page-2026-09-05T06-45-03-590Z.png)
+**4.2-12-change_phone — pass.** Scope 12 change_phone is unreachable for the same reason - no phone
+field anywhere in the account surfaces.
 
-![](screenshots/page-2026-09-05T06-45-11-688Z.png)
+**4.2-13-axes — pass.** Scope 13 django-axes lockout is covered by §1 on Server A and was not re-run
+here.
 
-![](screenshots/page-2026-09-05T06-46-36-297Z.png)
+![](screenshots/page-2026-09-05T09-28-29-184Z.png)
 
-## Per-bug sections
+**4.2-9-confirm_email — pass.** Scope 9 confirm_email is silent by design. Two 'Re-send Verification'
+submissions for the same unverified address inside three minutes both returned status 200 with no
+error page and no failure toast, and Mailpit received only ONE confirmation email for the pair - the
+second resend was swallowed silently. (A third POST returned the branded 429, but that is the
+manage_email scope tripping at 2/m/user, not confirm_email.)
 
-### B1 — Status mark's svg has no intrinsic size, so it fills the viewport when the stylesheet is missing
+#### §4.3 What must never appear on any 429
 
-**Manifestations:**
+**4.3 — pass.** Across every 429 reached, the rendered text is exactly 'Error 429 / <heading> / Access
+is paused for a short while. Wait a few minutes, then try again. / Try again'. Regex sweep for a
+numeric duration, 'unlocks in', 'attempts remaining' and 'N requests per' found nothing, and there is
+no meta http-equiv=refresh, so no automatic retry.
 
-- 5.5 (desktop)
+### §5 Accessibility and resilience
 
-**Screenshot:**
+**5.1 — pass.** All eight tab titles collected and all eight are distinct: 404 'We cannot find that
+page'; 403 'You do not have access to this page'; 403_csrf 'The form was not sent'; 400 'We could not
+handle that request'; 429 'You have made too many attempts'; 500 'Sorry, there is a problem with this
+page'; 503 'Sorry, the service is unavailable'; lockout 'Too many sign-in attempts'.
 
-![](screenshots/page-2026-09-05T06-43-37-490Z.png)
+**5.2 — pass.** Shell pages carry two `<h1>` - the site-title 'FirstClass' in the header, which every
+FLS page has, plus the error heading. The standalone 500 and 503 each have exactly one `<h1>`, the
+error heading.
 
-**Expected:** With the stylesheet gone, the error page still reads top to bottom and its
-actions are reachable without scrolling past a decorative element — the deliberate check in
-plan §5.5, and the real-world case plan §3.8 raises.
+**5.3 — pass.** The circular status mark does not appear in the accessibility snapshot of the 404, the
+500 or the 429 at all - no image node, no label. On the 404 the only img in the tree is the site logo
+in the banner. Severity is readable from the 'Error NNN' paragraph and the heading alone.
 
-**Actual:** The mark's inline `svg` carries only `viewBox="0 0 24 24"` and the Tailwind class
-`size-8`. With no CSS the class does nothing, and the `svg` has no `width`/`height`
-attributes to fall back on, so it scales to fill its container: measured 1904x1904px on a
-1920x1080 viewport. On the 500 page the "Error 500" label, heading, body and both actions
-land at y=1971–2098; on the 404 the error heading lands at y=2324. Source order is correct
-and nothing is `display:none` or `visibility:hidden`, so this does **not** breach the letter
-of §5.5's "nothing may be hidden" wording — but it defeats the intent of that check, because
-the visitor sees only a full-viewport black triangle and must scroll roughly two screens to
-reach any text or action. It affects all eight pages via the shared `c-error-page`/`c-icon`
-mark, and the root cause — `c-icon` emitting no intrinsic dimensions — is app-wide, not
-confined to the error pages.
+**5.4 — pass.** Side by side, the 500 and the 404 are told apart by text alone: 'Error 500 / Sorry,
+there is a problem with this page' against 'Error 404 / We cannot find that page'. Colour only
+reinforces what the words already say. The 500 also drops the site header entirely, a second
+non-colour signal.
+
+![](screenshots/page-2026-09-05T09-32-14-882Z.png)
+
+**5.5 — pass.** With every stylesheet and style element removed, the 500 still reads top to bottom in
+source order: mark, 'Error 500', heading, both paragraphs, then 'Try again' and 'Go to your dashboard'.
+Every element measures visible (non-zero box, display not none, visibility visible, opacity 1) and
+both links stay clickable. Nothing is hidden. The icon also keeps a sane intrinsic size with no CSS.
+
+![](screenshots/page-2026-09-05T09-40-40-829Z.png)
+
+**5.6 — pass.** meta name=robots content=noindex confirmed in the rendered DOM of the 404, 403,
+403_csrf, 400, 429, 500 and 503, and confirmed present in all eight templates including
+accounts/lockout.html.
+
+### §6 Side-effects on things that already worked
+
+**6.1 — pass.** Dashboard, course catalogue, course detail and `/accounts/password/change/` all render
+as before - header, layout and spacing unshifted. The change-password page is byte-for-byte the same
+rendering on Server A (before the DEBUG flip) and Server B, so nothing about the account pages around
+accounts/lockout.html moved.
+
+![](screenshots/page-2026-09-05T09-41-15-413Z.png)
+
+**6.2 — pass.** The §1 axes lockout page and the §4.1 change_password 429 are indistinguishable apart
+from their words: identical pale-warning circular hand mark at the same position and size, identical
+small-caps 'Error 429' label, identical heading scale and weight, identical primary button styling.
+Two faces of the same status code.
+
+![](screenshots/page-2026-09-05T09-33-32-570Z.png)
+
+**6.3 — pass.** Tested both ways. Typing a bad course-item index in the address bar under the same
+course gives a full-page 404 with the site header. More importantly, a boosted click from inside the
+running player (#interface-main present, hx-boost=true, htmx-processed link to
+`/courses/functionality-demo-course-parts/9999/`) also produces a full-page reload onto the real 404:
+header back, #interface-main gone, no silently stale player.
+
+**6.4 — pass.** Known gap observed, not a regression. An htmx GET that 404s with a target outside
+#interface-main leaves the target content untouched ('ORIGINAL' before and after), the URL unchanged,
+and no toast. The visitor sees no error page at all. This is the gap the idea document names.
+
+**6.5 — pass.** Saving a profile change raises the ordinary success toast unchanged: #toast-container
+bottom-right on desktop, the polite live region carrying 'Profile saved', and the toast itself styled
+bg-surface with a border-l-4 border-success accent. The assertive region stays empty. Toast markup and
+classes are untouched by this diff.
+
+### Responsive passes (mobile and tablet)
+
+#### Mobile
+
+**5.7-404 — pass.** 404 at 375x812: document scrollWidth equals the 375px viewport, so no horizontal
+overflow. The heading wraps rather than clipping (scrollWidth equals clientWidth). The two actions
+stack vertically - 'Go to your dashboard' at y=376 and 'Browse courses' at y=428 - rather than crushing
+side by side. Touch targets measure 40 and 42px high.
+
+![](screenshots/page-2026-09-05T09-43-43-539Z.png)
+
+**5.7-500 — pass.** 500 at 375x812: no header, as designed. No horizontal overflow, the heading wraps
+over two lines, and 'Try again' (y=388) and 'Go to your dashboard' (y=440) stack. Touch targets 40 and
+42px high.
+
+![](screenshots/page-2026-09-05T09-43-56-005Z.png)
+
+**8-nav — pass.** Header navigation on a shell error page works at mobile width: the user-menu button
+opens the Alpine dropdown (Profile, Educator Interface, Admin Panel, Sign Out) and the panel stays
+inside the 375px viewport rather than spilling off-screen.
+
+![](screenshots/page-2026-09-05T09-44-10-138Z.png)
+
+**8-403 — pass.** 403 at mobile: panel fits, heading wraps over two lines, both actions stack. Header
+shows the user menu.
+
+![](screenshots/page-2026-09-05T09-44-19-235Z.png)
+
+**8-503 — pass.** 503 at mobile: no horizontal overflow, heading not clipped, still no header - the
+standalone treatment survives the narrow viewport.
+
+**8-429 — pass.** 429 from change_password at mobile renders inside the signed-in shell with the user
+menu in the header, the mark, the wrapped heading and the single 'Try again' action. No overflow.
+
+![](screenshots/page-2026-09-05T09-44-44-180Z.png)
+
+**8-lockout — pass.** The axes lockout page at mobile (reached by spacing five failed sign-ins so the
+allauth login scope did not trip first): header with the signed-out prompt, mark, 'Error 429', wrapped
+heading, 'Back to sign in' button and the reset-link sentence wrapping cleanly. No overflow.
+
+![](screenshots/page-2026-09-05T09-46-26-713Z.png)
+
+#### Tablet
+
+**9-404 — pass.** 404 at 768x1024 gets the desktop header, not a mobile drawer: the brand wordmark
+shows and the nav renders 'Login' and 'Sign up' as full links with no hamburger. The panel sits at a
+comfortable measure, the heading fits on one line and the two actions sit side by side.
+
+![](screenshots/page-2026-09-05T09-46-52-473Z.png)
+
+**9-500 — pass.** 500 at tablet keeps the standalone treatment - no header, no navigation - with both
+actions side by side and the heading on one line. Nothing crowds the panel.
+
+![](screenshots/page-2026-09-05T09-47-02-120Z.png)
+
+**9-403 — pass.** 403 at tablet: no horizontal overflow, heading not clipped, desktop nav ('Login |
+Sign up', no hamburger), and the two actions sit side by side at x=64 and x=242, both 42px high.
+
+**9-503 — pass.** 503 at tablet: no overflow, heading not clipped, still no header.
 
 ## Bug status
 
-| Bug | Status |
-| --- | --- |
-| B1 | **RESOLVED** — icons now carry their own `width`/`height`, so the status mark stays 24x24 with no stylesheet |
-
-B1 was triaged to the **red lane** during the run because the fix scope was a product decision:
-the root cause sat in `freedom_ls/icons`, not in the error pages, so any fix reached beyond the
-feature under test.
-
-That decision was taken after the run: fix it app-wide. `build_svg()` in
-`freedom_ls/icons/backend.py` now emits `width`/`height` alongside the `viewBox`, taken from the
-icon set's own dimensions rather than a fixed guess, so a non-24 downstream set keeps its aspect
-ratio. `freedom_ls/base/templates/cotton/error-page.html` is untouched.
-
-The narrower alternative — constraining the mark inside `c-error-page` alone — was rejected: it
-would have left every other icon in the app with the same fragility.
-
-Re-verified in the browser on the CSRF 403 page at 1920x1080 with every stylesheet and `<style>`
-removed. The mark measures 24x24 (32x32 with the stylesheet, so the `size-8` class still wins);
-"Error 403" sits at y=402, the heading at y=441 and "Sign in again" at y=534, all above the fold.
-The oversized svgs still on that screenshot belong to django-debug-toolbar, which does not go
-through `c-icon` and does not ship outside `DEBUG=True`:
-
-![](screenshots/b1-fixed-no-stylesheet.png)
-
-Covered by three regression tests: `test_svg_has_intrinsic_width_and_height` and
-`test_intrinsic_size_tracks_the_icon_sets_own_dimensions` in
-`freedom_ls/icons/tests/test_renderer.py`, and `test_status_mark_svg_has_intrinsic_size` in
-`freedom_ls/base/tests/test_error_page_component.py`.
+No bugs were found in this run. There is nothing to track.
 
 ## General notes
 
-- **§3.8 deviation.** The plan predicted the `DisallowedHost` 400 would render unstyled.
-  Instead it rendered fully styled: WhiteNoise serves `/static/` ahead of the
-  `ALLOWED_HOSTS` check, so the stylesheet request is never rejected. This is not a defect —
-  it means §3.8 did not double as the "reads with no stylesheet" check after all, and §5.5
-  carried that check alone (and is where B1 was found).
-- **Handler wiring.** `config/urls.py` defines no `handler400`/`handler403`/`handler404`/
-  `handler500` and no `handler429`. The error pages are reached purely by Django's
-  template-name convention (`400.html`, `403.html`, `403_csrf.html`, `404.html`, `500.html`)
-  and by allauth's default `handler429`, which renders `429.html`. The QA scaffolding's
-  `ROOT_URLCONF` swap (`config.urls_qa_check`) therefore masked nothing — the wiring is
-  identical under `config.urls` and `config.urls_qa_check`.
-- **Signup gotcha for future runs.** FLS's signup form has required `accept_terms`/
-  `accept_privacy` checkboxes. A submission that leaves them unticked is blocked by
-  client-side validation and never reaches the server, so it does not consume the rate
-  limit. Both must be ticked for each attempt to count.
-- **`login_failed` could not be driven to its inline-limit message in this configuration.**
-  `AXES_FAILURE_LIMIT=5` locks the credential pair before allauth's `5/5m/key` scope needs a
-  6th failure, and the `login` scope's `3/m/ip` cap makes the `10/m/ip` route unreachable
-  first. It was therefore verified structurally instead: allauth's
-  `DefaultAccountAdapter.pre_authenticate` raises `self.validation_error("too_many_login_attempts")`
-  — a form validation error rendered inline at 200 — and never calls `respond_429`, so this
-  scope cannot render the error page in this configuration.
-- **Rate-limit window resets between passes.** The allauth rate-limit window is one minute,
-  so the `change_password` scope tripped on the desktop pass had reset by the tablet pass
-  (test `4.1-tablet`) and needed re-tripping with three fresh submissions before the tablet
-  screenshot could be taken.
+### Plan deviation, §3.8
+
+The plan predicted the DisallowedHost 400 would render unstyled because the stylesheet request would
+be rejected on the same grounds. It renders fully styled instead: WhiteNoise intercepts `/static/`
+before Django validates the Host header, so the theme loads even on a rejected host. The page is
+better than predicted, not worse, and §5.5 still exercised the deliberate no-stylesheet read.
+
+### Plan deviation, §4.2 row 3
+
+The throwaway QA settings lower the allauth login scope to 3/m/ip, which makes login_failed
+unreachable by simply repeating a form submission - the login scope trips at the fourth attempt and
+django-axes locks out at the fifth. The scope was still exercised honestly, by spacing three failed
+sign-ins per minute across two minutes and running axes_reset in between so neither of the other two
+mechanisms fired first.
+
+### Plan deviation, §4.1 row 6
+
+The sixth signup submission could not be forced through the browser's own form: the signup form's
+required fields and its type=email input make the browser refuse to submit invalid data. The scope was
+verified by POSTing directly and reading the response body, which carried the branded 'You have made
+too many attempts' heading at status 429.
+
+### Server B restart
+
+Server B was restarted once, after the whole §4.1 table was finished, exactly as §4.1 permits. This
+cleared the allauth counters so §4.2 row 9, §5 and §6 could run against a signed-in session.
+
+### Tangential - allauth account templates
+
+The allauth account pages (`/accounts/password/change/`, `/accounts/profile/`, `/accounts/email/`)
+render full-bleed with no container, no max-width and no vertical rhythm - the heading sits flush
+against the viewport edge. This is pre-existing and unchanged: the rendering is identical on Server A
+before the DEBUG flip and on Server B after it, and these templates are not in the diff. Noted only
+because §6.1 asks whether the pages around accounts/lockout.html still look right. They do - they look
+exactly as unpolished as they did before.
+
+### Tangential - CSP report-only violations
+
+Every page logs report-only Content-Security-Policy violations for htmx, two Alpine plugins and
+chart.js loaded from cdn.jsdelivr.net against a script-src of 'self' 'unsafe-inline'. Pre-existing,
+unrelated to this diff, and report-only so nothing is blocked. Recorded as an observation only.
+
+### Touch targets
+
+At 375px the error-panel actions measure 40-42px high. That is under the 44px commonly recommended for
+touch, but it is the shared .btn sizing used across FLS rather than anything this feature introduced,
+so it is not a finding against these pages.
+
+### Not tested
+
+Scopes 10 (request_login_code), 11 (verify_phone) and 12 (change_phone) were recorded as unreachable
+rather than driven in the browser, as the plan directs: LOGIN_BY_CODE_ENABLED is False and no phone
+field exists in SIGNUP_FIELDS or in the rendered signup and login forms.
+
+### Dev-data residue cleared
+
+Two unverified addresses (qa-add-1@example.com, qa-add-2@example.com) left on the demodev account by
+an earlier QA run were found during §4 and removed as part of this run's cleanup, along with the axes
+rows this run created. No human action is needed.
 
 ---
 status: ok
-reason: 1 bug — 1 fixed, 0 unresolved; report rendered, 22 screenshots verified
+reason: report rendered, 0 bugs, 28 screenshots collected
