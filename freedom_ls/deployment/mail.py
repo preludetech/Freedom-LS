@@ -80,12 +80,18 @@ def _serialise_attachment(
     """Reduce one attachment to base64, or refuse it.
 
     ``attach()`` puts a live MIMEPart or MIMEBase on the list when handed one,
-    and neither has a ``(filename, content, mimetype)`` form to reduce. Detected
-    by trying to unpack rather than by isinstance, so both are caught without
-    depending on their unrelated class hierarchies. Nothing in FLS attaches
+    and neither has a ``(filename, content, mimetype)`` form to reduce. Caught by
+    type: both iterate over their header names, so unpacking one succeeds
+    whenever it carries three headers -- which a real attachment part, with a
+    content type, an encoding and a disposition, does. Nothing in FLS attaches
     anything to an email today; this guards a future caller against silently
     losing its attachment.
     """
+    if isinstance(attachment, MIMEPart | MIMEBase):
+        raise UnserialisableMessageError(
+            f"{type(attachment).__name__} attachments have no JSON representation."
+        )
+    # A caller appending to `attachments` by hand rather than through attach().
     try:
         filename, content, mimetype = attachment
     except (TypeError, ValueError) as exc:

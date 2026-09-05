@@ -64,6 +64,23 @@ def _body_parts(mime_msg: object) -> list:
     ]
 
 
+def _raw_attachment_part() -> MIMEPart:
+    """A raw MIME attachment built the way a caller would really build one.
+
+    Carries a content type, an encoding and a disposition -- exactly three
+    headers, which is what a bare part set up in a test does not have.
+    """
+    part = MIMEPart()
+    part.set_content(
+        b"%PDF-1.4 \x00\x01\x02",
+        maintype="application",
+        subtype="pdf",
+        disposition="attachment",
+        filename="report.pdf",
+    )
+    return part
+
+
 class TestSerialisation:
     def test_payload_is_json_serialisable(self) -> None:
         # The real constraint: DBTaskResult stores task arguments in a JSONField.
@@ -136,6 +153,19 @@ class TestSerialisation:
         part = MIMEPart()
         part.set_content("attached")
         message.attach(part)
+
+        with pytest.raises(UnserialisableMessageError):
+            serialise_message(message)
+
+    def test_a_raw_mime_attachment_with_three_headers_is_refused(self) -> None:
+        """A MIMEPart iterates over its header names, not over a payload.
+
+        A real attachment part carries three of them, so unpacking one as
+        (filename, content, mimetype) succeeds and hands back header names --
+        which would queue an attachment called "Content-Type" and drop the file.
+        """
+        message = _message()
+        message.attach(_raw_attachment_part())
 
         with pytest.raises(UnserialisableMessageError):
             serialise_message(message)
@@ -219,6 +249,25 @@ class TestQueuedEmailBackend:
         assert sent == 1
         backend.enqueue.assert_not_called()
         assert len(mail.outbox) == 1
+
+    def test_a_real_attachment_takes_the_inline_path_with_its_file_intact(
+        self, mocker
+    ) -> None:
+        """The case the fallback exists for, with a part built as callers build one."""
+        backend = mocker.patch("freedom_ls.deployment.mail.default_task_backend")
+        message = _message()
+        message.attach(_raw_attachment_part())
+
+        sent = QueuedEmailBackend().send_messages([message])
+
+        assert sent == 1
+        backend.enqueue.assert_not_called()
+        assert len(mail.outbox) == 1
+        # The file itself, not just an attachment-shaped object: the bug this
+        # covers queued a text part named "Content-Type" and dropped the PDF.
+        attachment = mail.outbox[0].attachments[0]
+        assert attachment.get_filename() == "report.pdf"
+        assert attachment.get_content() == b"%PDF-1.4 \x00\x01\x02"
 
     def test_an_unreachable_queue_raises(self, mocker) -> None:
         # The database being down means whatever triggered the mail has already

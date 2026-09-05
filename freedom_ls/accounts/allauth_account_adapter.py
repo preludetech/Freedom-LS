@@ -17,7 +17,11 @@ from freedom_ls.accounts.email_utils import (
     resolved_email_logo_path,
 )
 from freedom_ls.base.email_encoding import set_8bit_encoding
-from freedom_ls.site_aware_models.models import get_cached_site, site_display_name
+from freedom_ls.site_aware_models.models import (
+    get_cached_site,
+    site_display_name,
+    site_display_name_for_request,
+)
 
 from .config import config
 from .models import SiteSignupPolicy, User
@@ -59,8 +63,8 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         prefix: str | None = allauth_account_settings.EMAIL_SUBJECT_PREFIX
         if prefix is None:
-            site = get_cached_site(allauth_context.request)
-            prefix = f"[{site_display_name(site)}] "
+            name = site_display_name_for_request(allauth_context.request)
+            prefix = f"[{name}] "
         return prefix + force_str(subject)
 
     def _email_branding_context(
