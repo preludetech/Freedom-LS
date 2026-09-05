@@ -114,8 +114,16 @@ source of truth and keyboard/AT behaviour is untouched.
 
 {% partialdef form-question %}
     <fieldset class="space-y-3 border-0 p-0">
-        <legend class="font-semibold text-on-surface w-full float-left px-0 [&>p]:inline">
-            <span data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
+        {% comment %}
+        Only the last rendered paragraph goes inline. That is what keeps the
+        asterisk on the question's last word. Earlier paragraphs stay blocks, so
+        a two-paragraph question reads as two paragraphs instead of running
+        together. The number floats because of those blocks: a block sibling
+        would otherwise strand it on a line of its own above the question.
+        {% endcomment %}
+        <legend class="font-semibold text-on-surface w-full float-left px-0 [&>p:last-of-type]:inline">
+            <span class="float-left mr-1"
+                  data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
             {% comment %}
             The `&nbsp;` keeps the asterisk attached to the last word of the
             question so it can never wrap onto a line of its own.
