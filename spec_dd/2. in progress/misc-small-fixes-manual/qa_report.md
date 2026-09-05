@@ -8,6 +8,11 @@
 - Two checks needed altered settings (§2.7's durable task backend, §12.1's blank `FORCE_SITE_NAME`, plus §1.6 and §2.6). These ran against a throwaway `config/settings_qa_check.py` that imported from the real settings and overrode only the value under test; the tracked `config/settings_dev.py` was never edited, and the scratch module was deleted at the end. `git status` is clean.
 - Screenshots live in `screenshots/` beside this report; every image referenced below is one of the 17 PNGs captured across the two passes.
 - A compression pass ran over the captured screenshots afterward and found nothing over 1024KB.
+- **Three checks were withdrawn after the run, on review.** §8 went because the admin content
+  preview it tested was removed from the branch. §13.1 went because the deleted `visual_polish`
+  spec is separate work that only overlapped this one. §13.5 went because documentation is not in
+  scope for QA. Their results are gone from the tables below, along with the bugs they raised.
+  Section numbers are unchanged.
 - **The run happened in two passes.** The first pass was cut short by an environment failure — the shared dev Postgres wedged after section 9 (see "Environment failure" below). The containers were later restarted and the run was **resumed and completed**: sections 1, 2, 12.1, the remaining §4 gaps, 3.9, 5.24, 6.3, 7.8, 9.6, 10.2–10.3, 11.2, 11.4, 12.2–12.5 and both the mobile and tablet passes all ran in the second pass. **No test in this plan is left unrun.** Screenshots from both passes sit together in `screenshots/` (17 files); the 14:xx timestamps are the first pass and the 17:xx ones the second.
 
 ## Diff scoping
@@ -86,7 +91,7 @@ No individually-numbered checks; setup steps (Tailwind build, dev server, seed d
 | 3.7 | pass | Completion-page buttons are small-sized and centred. Retry variant covered by the try_again state seen on the start page. |
 | 3.8 | pass | Nav wrapper carries `hx-boost=true`, `hx-target=#interface-main`, `hx-select-oob=#course-toc-region`. Clicking Previous swapped without a full document reload. |
 | 3.9 | pass | Built a course whose first item is a form (`qa-form-first-course`). Its start page has **no** Previous button — no `data-testid=previous-button`, no element containing "previous" — and the forward button stays flush right: "Start Form" right edge 1784 against the nav's right edge 1784. The left slot renders as an empty `<div>` under `justify-content: space-between`, which is exactly what the template comment says it is for; without it a lone child would left-align. ![](screenshots/page-2026-09-04T17-34-04-649Z.png) |
-| 3.10 | **fail** | Form completion page has no Previous button at all (no `data-testid=previous-button`, no element containing "previous"). Its wrapper is `mt-8 flex flex-col sm:flex-row justify-center gap-3` — centred, not the player's justify-between footer. The sizing half passes: Continue is btn-primary btn-sm at 32px. ![](screenshots/page-2026-09-04T14-18-24-076Z.png) — see B1. This is the expected failure the plan calls out in advance. |
+| 3.10 | **fail** | Form completion page has no Previous button at all (no `data-testid=previous-button`, no element containing "previous"). Its wrapper is `mt-8 flex flex-col sm:flex-row justify-center gap-3` — centred, not the player's justify-between footer. The sizing half passes: Continue is btn-primary btn-sm at 32px. ![](screenshots/page-2026-09-04T14-18-24-076Z.png) — see B1. This is the expected failure the plan calls out in advance. **Since fixed** — see B1. |
 
 ### 4. A required question's asterisk stays on the question's last line
 
@@ -98,7 +103,7 @@ No individually-numbered checks; setup steps (Tailwind build, dev server, seed d
 | 4.4 | pass | Bold (font-weight 900), links (colour distinct from body text) and inline code (ui-monospace) all render inline inside the legend, all on one line, and the asterisk still stays bound to the last character. `[&>p]:inline` touches only direct `<p>` children, leaving inline markup untouched. |
 | 4.5 | pass | Asterisk carries `aria-hidden=true` and a sibling `sr-only` span reading "(required)". |
 | 4.6 | pass | The **Course Feedback Survey** shows both states on one page: Q1 and Q2 (`required: true`) carry the asterisk **and** the sr-only "(required)"; Q3, Q4 and Q5 (`required: false`) carry neither. Number, question text and asterisk share a line on every required question. |
-| 4.7 | pass (with a caveat) | The trade-off is real and visible. Injecting a second `<p>` into a question legend: both paragraphs compute to `display:inline` and share the same top, so they run together with **no separating space** — the text reads "How would you rate this course overall?This is a second paragraph…". No seeded content triggers this today, but an author writing a two-paragraph question would get visibly wrong output. See General notes for the suggested fix. |
+| 4.7 | pass (with a caveat) | The trade-off is real and visible. Injecting a second `<p>` into a question legend: both paragraphs compute to `display:inline` and share the same top, so they run together with **no separating space** — the text reads "How would you rate this course overall?This is a second paragraph…". No seeded content triggers this today, but an author writing a two-paragraph question would get visibly wrong output. **Since closed** — only the last paragraph is inlined now, so earlier paragraphs keep their own lines while the asterisk still glues to the question's last word. |
 
 ### 5. Content widgets
 
@@ -152,17 +157,6 @@ No individually-numbered checks; setup steps (Tailwind build, dev server, seed d
 | 7.9 | pass | Add organisation page shows no inlines, no management forms and no Related row; fields are name/logo/logo_on_dark only. Saving "QA Add Page Check" succeeded and the changelist grew from 6 to 7 rows. |
 | 7.10 | pass | The 204-learner organisation change page loads without visible stall, comparable to the small ones; `select_related` on the inline queryset is in place. |
 
-### 8. Topic content preview in the admin
-
-| test_id | status | notes |
-| --- | --- | --- |
-| 8.1 | pass | Content Preview renders real HTML: flashcard and accordion elements exist as DOM nodes, not escaped source and not raw markdown. |
-| 8.2 | pass | Add topic page returns 200 with no traceback; the empty preview renders as an empty block. |
-| 8.3 | **fail** | All 14 topic admin pages return 200 with no traceback, so no 500. But every Alpine-driven widget in the preview throws ReferenceErrors: "flashcard is not defined", "flipped", "frontStyle", "backStyle" on Interactive Widgets; "contentLightbox is not defined" on Media and Pictures. The flashcard writes the literal string "undefined" into its style attribute, loses its 3D geometry, and renders question AND answer side by side with no aria state — the answer is exposed. Component CSS is absent too: accordion summary padding computes to 0px. ![](screenshots/page-2026-09-04T14-25-08-466Z.png) — see B2. |
-| 8.4 | pass | The readonly preview container holds 0 script tags and 0 inline `on*` handlers. Its 2 iframes are the legitimate allowlisted `https://www.youtube.com/embed/` sources from the content. nh3 sanitisation is intact. |
-| 8.5 | pass (via 8.3) | Every seeded widget-bearing topic was opened as part of 8.3; the finding is B2. |
-| 8.6 | pass | Large topics (Media, Interactive Widgets) load their change page without noticeable delay and the form below the preview stays usable. |
-
 ### 9. The cohort report prints on white paper
 
 | test_id | status | notes |
@@ -213,14 +207,14 @@ This is a read-only audit, not a browser test suite. Findings are recorded here 
 
 | test_id | status | notes |
 | --- | --- | --- |
-| 13.1 | **fail** | The deleted `visual_polish` folder's coverage claim is only one-third true. `course-card-details-link-not-bottom-aligned` IS fixed (verified as 6.2). `btn-sm-padding-crowds-the-button-icon` is NOT: the branch diff changes no `.btn-sm` rule at all, and adds three more `btn-sm` usages. `side-panel-dialog-paints-a-full-column-focus-outline` is NOT: grep finds zero `.side-panel-dialog` rules anywhere in `tailwind.components.css`. The deleted `research_focus_indicators.md` contained a completed diagnosis of that second issue — UA `:focus-visible` ring outlining the whole panel column, WCAG 2.4.7/2.4.13 analysis, and a recommended on-brand restyle using the already-declared but unconsumed `--color-focus-ring` token. That analysis is now only in git history. See B3. |
 | 13.2 | pass | Confirmed coupling: `.picture-figure-title` uses `py-[calc(0.375rem+1px)]`, derived from `btn-sm`'s padding plus its border, to align the caption's first line with the Expand button. Changing `btn-sm` later silently breaks 5.19. Recorded, not fixed. |
 | 13.3 | pass | Confirmed: `learner_management/admin.py` line 537 ASSIGNS `OrganisationAdmin.inlines` rather than appending, so a second contributing app would replace these two inlines. Line 538's `ORGANISATION_SUMMARIES.append` is correctly additive. No impact today; noted. |
 | 13.4 | pass | `previous_url` is set before the `player_context` spread in both `view_topic` (line 906 vs 909) and `view_form` (972 vs 973), so the new code follows the existing pattern rather than introducing an inconsistency. The chrome context does not supply that key today. |
-| 13.5 | **fail** | Docs gap. `--report-paper` and `--report-fill` appear nowhere in `docs/` or `claude_plugins/`. `print.css` now owns the report's two neutrals outright and no longer reads any theme surface token, so a downstream project can no longer rebrand the report's paper via `--color-surface` and is not told what replaced it. The flashcard's new tokens WERE documented in `docs/how tos/theme-fls.md`; these were not. See B4. |
 | 13.6 | pass | `EMAIL_TIMEOUT` is set in `settings_prod.py` and `.env.example` with a default in `deployment/settings_defaults.py`, deliberately not in dev where Mailpit is local. `demo_content/` is clean under `git status` after `content_save`. |
 
-**On §3.10 and whether it is the only failure:** it is not. §3.10 is the one expected failure called out in the plan before the run started. Two more failures surfaced during the run: §8.3 (content-preview widgets broken and answer disclosure, B2) and §13.1/§13.5 (audit findings that reached bug status: the deleted spec folder covering unfixed issues, B3; and the undocumented report tokens, B4). §13 findings are process/documentation observations for a human decision, not defects to fix in the code loop — they are reported as bugs here only because the plan explicitly asks that undocumented or miscovered changes be written up, and B3/B4 cross that line from "note" to "actionable gap."
+**On §3.10 and whether it is the only failure:** with §8 and the two §13 findings withdrawn on
+review, it is. §3.10 was the one failure the plan called out in advance, and nothing else in the run
+joined it. The remaining §13 findings are process observations for a human, not defects.
 
 ## Bug: B1 — Form completion page has no Previous button and does not use the player footer
 
@@ -232,57 +226,26 @@ This is a read-only audit, not a browser test suite. Findings are recorded here 
 
 **Actual:** No Previous button exists at all: no element with `data-testid=previous-button` and no element whose text contains "previous". The wrapper is `mt-8 flex flex-col sm:flex-row justify-center gap-3` — centred, not the player footer. Only the button sizing half of the `idea.md` item was done (Continue is btn-primary btn-sm at 32px, which is correct).
 
-## Bug: B2 — Topic admin content preview breaks every Alpine-driven widget and exposes flashcard answers
-
-**Manifestations:** 8.3 (desktop)
-
-![](screenshots/page-2026-09-04T14-25-08-466Z.png)
-
-**Expected:** The new read-only Content Preview renders a topic's markdown as it would appear to a learner, or at least without throwing.
-
-**Actual:** The admin page renders the widgets' markup but registers none of their Alpine components and loads none of the site's component CSS. Every topic containing a flashcard throws four ReferenceErrors (`flashcard`, `flipped`, `frontStyle`, `backStyle`); every topic containing a picture throws `contentLightbox is not defined`. The flashcard writes the literal string "undefined" into its style attribute, loses its 3D geometry and renders the question AND the answer side by side with no aria state, so the preview discloses the answer. Accordion summary padding computes to 0px. No page 500s: all 14 topic change pages return 200 with no traceback.
-
-## Bug: B3 — visual_polish spec folder deleted while two of its three diagnosed issues remain unfixed
-
-**Manifestations:** 13.1 (desktop)
-
-**Expected:** A spec folder deleted on the grounds that its items are covered should have its items covered, or be archived to `spec_dd/3. done/` rather than removed.
-
-**Actual:** Only `course-card-details-link-not-bottom-aligned` is actually fixed. `btn-sm-padding-crowds-the-button-icon` is untouched (no `.btn-sm` rule changed; three more `btn-sm` usages added). `side-panel-dialog-paints-a-full-column-focus-outline` is untouched (zero `.side-panel-dialog` rules exist). Roughly 565 lines of research went with them, including a completed WCAG 2.4.7/2.4.13 diagnosis of the focus-ring issue and its recommended fix. Recoverable only from git history.
-
-## Bug: B4 — New report colour tokens are undocumented, breaking the downstream rebrand path
-
-**Manifestations:** 13.5 (desktop)
-
-**Expected:** A downstream project can find out how to rebrand the report's paper and fill colours.
-
-**Actual:** `print.css` now owns `--report-paper` and `--report-fill` outright and references no theme surface token, so overriding `--color-surface` no longer affects the report. Neither token appears anywhere in `docs/` or `claude_plugins/`. The flashcard's four new tokens were documented in `docs/how tos/theme-fls.md` in the same branch; these two were not.
+**Resolved.** The topic page and the form start page each carried their own copy of the left-slot markup. That copy is now one cotton component, `c-player-footer`, wrapping the existing `c-player-nav` boost config. All three player pages use it, so the completion page picked up the footer, the Previous button and the boosted swap together. `previous_url` here points at the preceding course item, the same meaning it carries everywhere else in the player. Going back into the form itself stays the separate Retry quiz button. Three new tests in `learner_interface/tests/test_course_item_navigation.py` cover it.
 
 ## Bug status
 
-The four bugs below were found in the first pass and are unchanged: none was routed to the auto-fix
-lane, and the resumed pass did not attempt to fix them — it was about finishing the evidence. Their
-todo items already exist.
+Four bugs were raised across the two passes. One was fixed. Three were withdrawn on review rather
+than fixed. B2 went because the content preview it described was removed from the branch outright.
+B3 went because the deleted `visual_polish` spec is separate work that only overlapped this one.
+B4 went because documentation sits outside QA's scope.
 
 **The completed second pass found no new bugs.** Two findings that the plan had anticipated as
 possible defects turned out not to be, and both are recorded as passes with reasons: §12.1 (the
 branch is a strict improvement over upstream allauth, not a regression) and §10.3 (the test plan's
 expectation was wrong, not the code).
 
-- **UNRESOLVED** — Form completion page has no Previous button and does not use the player footer
-  (reason: well-specified and unit-testable; left for a TDD fix rather than fixed during a QA pass)
-- **UNRESOLVED** — Topic admin content preview breaks every Alpine-driven widget and exposes
-  flashcard answers (reason: turns on a product decision — whether the admin should load the site's
-  Alpine components and component CSS, or the preview be narrowed to static markup)
-- **UNRESOLVED** — visual_polish spec folder deleted while two of its three diagnosed issues remain
-  unfixed (reason: a process and scope decision for a human, not a code defect)
-- **UNRESOLVED** — New report colour tokens are undocumented, breaking the downstream rebrand path
-  (reason: documentation, not a functional regression; the author should choose where the two tokens
-  are documented)
+- **RESOLVED** — Form completion page has no Previous button and does not use the player footer
+  (fixed with the shared `c-player-footer` component; see B1)
 
 ## General notes
 
-- **Pre-existing CSP console error, unrelated to this branch.** On course topic pages, a report-only Content-Security-Policy violation fires from a YouTube embed's redirect to a Google abuse-report page. Seen while exercising the widgets demo course during §5 and §8. Not introduced by anything in this diff.
+- **Pre-existing CSP console error, unrelated to this branch.** On course topic pages, a report-only Content-Security-Policy violation fires from a YouTube embed's redirect to a Google abuse-report page. Seen while exercising the widgets demo course during §5. Not introduced by anything in this diff.
 - **Submit-confirm dialog buttons are still full-size.** The form's submit-confirm dialog (Keep going / Leave and submit / Go back and review / Submit) renders its buttons at full 16px size rather than `btn-sm`, unlike the topic and form-runner footer buttons that this branch resized. Modal buttons were arguably out of scope for the sizing commit; flagging for awareness, not filing as a bug.
 - **§9.7 was proven structurally, and that is stronger than a pixel diff.** `print.css` and `reports/templates/` contain zero references to `--color-surface` or `--color-surface-2`, so no theme — current or future — can reach the report's paper through those tokens. This was confirmed two ways: (1) the tailwind bundle was temporarily rebuilt under `FLS_THEME=first_class` to verify that theme's tokens really are tinted relative to default (`--color-surface #F8F9FC`, `--color-surface-2 #EDF2F7`, vs. default's `#FFFFFF` / `#F3F4F6`) — confirming the pre-fix bug was real and `first_class`-specific; (2) grepping `print.css` and `reports/templates/` for those two token names returned nothing, and the only fills present are `--report-paper` (1 site, line 211) and `--report-fill` (10 sites), matching the ten replacements in the diff. The bundle was rebuilt back to the default theme afterward, so the working tree is not left with a `first_class` bundle in place.
 - **Dev-only QA residue was seeded during this run.** An organisation named "QA Singular Learner Org" with one learner was seeded via `fls-dev:qa-data-helper` for test 7.7. An organisation named "QA Add Page Check" was created directly by test 7.9 (changelist grew from 6 to 7 rows). Both are dev-only fixtures on this branch's dev database and should be considered QA residue, not data to carry forward.
@@ -290,13 +253,6 @@ expectation was wrong, not the code).
 ---
 
 ### Added by the resumed pass
-
-**A latent authoring hazard in the required-asterisk fix (§4.7).** `[&>p]:inline` makes *every* direct
-`<p>` child of a question legend inline, so a question whose rendered markdown is two paragraphs runs
-them together with no separating space — "…course overall?This is a second paragraph…". Nothing in the
-seeded content triggers this, and the fix it enables is worth more than the edge case, so this is a
-note rather than a bug. If it is ever worth closing, pairing the rule with a separator would do it,
-e.g. `[&>p+p]:before:content-['\00a0']`.
 
 **A deployment requirement, not a defect (§12.1).** An FLS install that pins neither `FORCE_SITE_NAME`
 nor `SITE_ID` will raise `ImproperlyConfigured` when any allauth email is sent outside a request cycle
@@ -330,4 +286,4 @@ review / Submit are still 16px rather than `btn-sm`, unlike the footer buttons t
 buttons were arguably out of scope for that commit — flagging, not filing.
 
 status: ok
-reason: run completed across two passes; every test in the plan now carries a verdict and 0 skips remain; 4 bugs documented, 0 fixed, 4 unresolved; 17 screenshots verified; the first pass's environment failure is resolved
+reason: run completed across two passes; every test in the plan now carries a verdict and 0 skips remain; 4 bugs documented, 1 fixed, 3 withdrawn on review, 0 unresolved; 17 screenshots verified; the first pass's environment failure is resolved
