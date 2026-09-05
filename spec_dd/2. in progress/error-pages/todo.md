@@ -51,8 +51,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: error-page status mark fills the viewport when the stylesheet is missing (TDD — failing test first, then fix)
-- [ ] (user) Decide whether the missing intrinsic svg size is fixed app-wide in `c-icon` or only in `c-error-page`, then apply that scope to the fix above
+- [x] (user + cmd) Fix QA bug: error-page status mark fills the viewport when the stylesheet is missing (TDD — failing test first, then fix)
+- [x] (user) Decide whether the missing intrinsic svg size is fixed app-wide in `c-icon` or only in `c-error-page`, then apply that scope to the fix above
 
 ## 10. Product documentation
 

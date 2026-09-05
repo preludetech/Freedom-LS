@@ -263,22 +263,32 @@ confined to the error pages.
 
 | Bug | Status |
 | --- | --- |
-| B1 | **UNRESOLVED** — Status mark's svg has no intrinsic size, so it fills the viewport when the stylesheet is missing (reason: red lane — the fix turns on a product/UX decision, see below) |
+| B1 | **RESOLVED** — icons now carry their own `width`/`height`, so the status mark stays 24x24 with no stylesheet |
 
-B1 was triaged to the **red lane** and no automatic fix was attempted. It fails the green-lane
-conditions on two counts:
+B1 was triaged to the **red lane** during the run because the fix scope was a product decision:
+the root cause sat in `freedom_ls/icons`, not in the error pages, so any fix reached beyond the
+feature under test.
 
-- **A product/UX decision is required.** The root cause is `c-icon` emitting no intrinsic
-  `width`/`height`, which is app-wide. Giving it a fallback size changes the degraded-mode
-  rendering of *every* icon in the codebase, and picking that fallback (`1em`, `24`, or
-  matching each call site's `size-*` class) is a design call for the team, not for QA.
-- **The root cause is not confined to one app.** The mark is composed in
-  `freedom_ls/base/templates/cotton/error-page.html`, but the missing dimensions originate in
-  `freedom_ls/icons`. Fixing only the error-page wrapper would leave the same fragility
-  everywhere else in the app; fixing `c-icon` reaches well beyond the feature under test.
+That decision was taken after the run: fix it app-wide. `build_svg()` in
+`freedom_ls/icons/backend.py` now emits `width`/`height` alongside the `viewBox`, taken from the
+icon set's own dimensions rather than a fixed guess, so a non-24 downstream set keeps its aspect
+ratio. `freedom_ls/base/templates/cotton/error-page.html` is untouched.
 
-A narrower alternative exists — constraining the mark inside `c-error-page` alone — but
-choosing between that and the app-wide fix is exactly the decision above.
+The narrower alternative — constraining the mark inside `c-error-page` alone — was rejected: it
+would have left every other icon in the app with the same fragility.
+
+Re-verified in the browser on the CSRF 403 page at 1920x1080 with every stylesheet and `<style>`
+removed. The mark measures 24x24 (32x32 with the stylesheet, so the `size-8` class still wins);
+"Error 403" sits at y=402, the heading at y=441 and "Sign in again" at y=534, all above the fold.
+The oversized svgs still on that screenshot belong to django-debug-toolbar, which does not go
+through `c-icon` and does not ship outside `DEBUG=True`:
+
+![](screenshots/b1-fixed-no-stylesheet.png)
+
+Covered by three regression tests: `test_svg_has_intrinsic_width_and_height` and
+`test_intrinsic_size_tracks_the_icon_sets_own_dimensions` in
+`freedom_ls/icons/tests/test_renderer.py`, and `test_status_mark_svg_has_intrinsic_size` in
+`freedom_ls/base/tests/test_error_page_component.py`.
 
 ## General notes
 
@@ -311,4 +321,4 @@ choosing between that and the app-wide fix is exactly the decision above.
 
 ---
 status: ok
-reason: 1 bug — 0 fixed, 1 unresolved (red lane, no fix attempted); report rendered, 21 screenshots verified
+reason: 1 bug — 1 fixed, 0 unresolved; report rendered, 22 screenshots verified

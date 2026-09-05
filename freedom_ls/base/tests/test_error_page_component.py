@@ -54,6 +54,23 @@ class TestErrorPageComponent:
         )
         assert re.search(r'<span aria-hidden="true"[^>]*>\s*<svg', result)
 
+    def test_status_mark_svg_has_intrinsic_size(self) -> None:
+        """The mark must stay small when the stylesheet fails to load.
+
+        Its size-8 class is the only thing holding it back otherwise, so a
+        missing stylesheet lets it grow to fill the viewport and buries the
+        heading and actions below the fold.
+        """
+        result = _render(
+            '<c-error-page status="500" level="error" '
+            'heading="Sorry, there is a problem with this page">'
+            "<p>Body</p></c-error-page>"
+        )
+        mark_svg = re.search(r'<span aria-hidden="true"[^>]*>\s*(<svg[^>]*>)', result)
+        assert mark_svg is not None
+        assert "width=" in mark_svg.group(1)
+        assert "height=" in mark_svg.group(1)
+
     def test_slot_content_is_rendered(self) -> None:
         result = _render(
             '<c-error-page status="404" heading="We cannot find that page">'
