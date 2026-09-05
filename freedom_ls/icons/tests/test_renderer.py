@@ -28,6 +28,29 @@ class TestRenderIcon:
         assert re.search(r'viewBox="0 0 \d+ \d+"', result)
         assert "</svg>" in result
 
+    def test_svg_has_intrinsic_width_and_height(self) -> None:
+        """Without a stylesheet, only the width/height attributes bound the icon."""
+        result = render_icon("success")
+        assert 'width="24"' in result
+        assert 'height="24"' in result
+
+    @override_settings(FREEDOM_LS_ICON_SET="heroicons")
+    def test_intrinsic_size_tracks_the_icon_sets_own_dimensions(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        real_data = load_iconify_data("heroicons")
+        fake_heroicons = {**real_data, "width": 20, "height": 20}
+        monkeypatch.setattr(
+            "freedom_ls.icons.backend.load_iconify_data",
+            lambda set_name: fake_heroicons if set_name == "heroicons" else real_data,
+        )
+
+        result = render_icon("success")
+
+        assert 'width="20"' in result
+        assert 'height="20"' in result
+        assert 'width="24"' not in result
+
     @override_settings(FREEDOM_LS_ICON_SET="heroicons")
     def test_returns_svg_with_non_24_viewbox_when_active_set_glyphs_differ(
         self, monkeypatch: pytest.MonkeyPatch
