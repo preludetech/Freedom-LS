@@ -37,21 +37,33 @@ Most learning platforms are digital textbooks — they assume learning is linear
 
 ### Palette
 
-| Name     | Hex       | Tailwind Class         | Role                                      |
-|----------|-----------|------------------------|--------------------------------------------|
-| Midnight | `#1A2332` | `[#1A2332]`            | Primary dark: backgrounds, headings, text on light |
-| Ocean    | `#2B6CB0` | `blue-700` (close) or `[#2B6CB0]` | Primary blue: logo, headings, links, primary buttons |
-| Horizon  | `#4A9BD9` | `[#4A9BD9]`            | Secondary blue: hover states, highlights, secondary actions |
-| Chalk    | `#F7F8FA` | `gray-50` (close) or `[#F7F8FA]` | Light background: page bg, card surfaces |
-| Signal   | `#E8553D` | `[#E8553D]`            | Warm accent: alerts, destructive actions, inline code text |
-| Forest   | `#38A169` | `green-500` (close) or `[#38A169]` | Success: progress, completion, positive CTAs |
-| Sand     | `#F6E05E` | `yellow-300` (close) or `[#F6E05E]` | Warning: callouts, non-critical alerts. Never for text. |
-| Slate    | `#4A5568` | `gray-600` (close) or `[#4A5568]` | Body text, secondary text, icons |
-| White    | `#FFFFFF` | `white`                | Backgrounds, text on dark |
+These are the brand's colours and what each one means. **Never write a hex value or a raw
+palette utility into a template.** FLS is themed: every colour reaches markup through a role
+token, and the `default` theme is what maps the brand to those tokens. Use the token column.
+
+| Name     | Hex       | Use in markup                | Role                                      |
+|----------|-----------|------------------------------|--------------------------------------------|
+| Midnight | `#1A2332` | `text-on-surface`            | Primary dark: headings and body text on light |
+| Ocean    | `#2B6CB0` | `bg-primary` / `text-primary` | Primary blue: logo, headings, links, primary buttons |
+| Chalk    | `#F7F8FA` | `bg-surface-2`               | Secondary surface: table headers, tinted panels |
+| Signal   | `#E8553D` | `bg-error` / `text-error`    | Warm accent: alerts, destructive actions |
+| Forest   | `#38A169` | `bg-success` / `text-success` | Success: progress, completion, positive CTAs |
+| Sand     | `#F6E05E` | `bg-warning`                 | Warning: callouts, non-critical alerts. Never for text. |
+| Slate    | `#4A5568` | `text-muted`                 | Secondary text, captions, icons |
+| White    | `#FFFFFF` | `bg-surface`                 | Primary surface, text on dark (`text-on-primary`) |
+
+Two brand names have no token of their own, because the theme does not implement them: **Horizon**
+`#4A9BD9` (hover states are derived automatically — use `hover:bg-primary-hover`) and the amber
+`accent` role `#F59E0B`, which the theme adds for highlights and has no brand name yet.
+
+The theme also carries roles this palette predates — `secondary`, `info`, the near-white `-light`
+status tints with their own `on-*-light` foregrounds, `border`, and `focus-ring`. Read
+`freedom_ls/themes/default/static/themes/default/theme.css` for the authoritative list; a theme
+may repoint any of them, which is the whole reason to go through tokens rather than hexes.
 
 ### Accessible Pairings (WCAG AA minimum)
 
-Always use these tested combinations for text:
+Always use these tested combinations for text. The theme encodes them as `on-*` pairings, so using the declared foreground for a background gets you the tested ratio without looking it up:
 
 | Text Colour         | Background      | Ratio  | Use For                    |
 |---------------------|-----------------|--------|----------------------------|
@@ -62,48 +74,59 @@ Always use these tested combinations for text:
 | White `#FFFFFF`      | Ocean `#2B6CB0`  | 5.1:1  | Primary buttons            |
 | Midnight `#1A2332`  | Sand `#F6E05E`   | 10.8:1 | Warning callouts           |
 
-**Never** use Sand, Horizon, or Forest as text colours on light backgrounds — they fail contrast.
+The ratios are quoted against the brand hexes. The `default` theme renders Chalk a shade darker
+(`--color-surface-2: #F3F4F6`), which moves Midnight to ~14.3:1 and Slate to ~6.8:1 — both still
+well clear of AA. Recheck if a theme repoints `surface-2` further.
+
+**Never** use Sand or Forest as text colours on light backgrounds — they fail contrast. `bg-warning`
+and `bg-success` are background roles; for text on a near-white tint use the `-light` pair
+(`bg-warning-light` with `text-on-warning-light`).
 
 ## Typography
 
 All fonts are open-source and available on Google Fonts.
 
-| Role              | Font             | Weight          | Tailwind `font-family`         |
-|-------------------|------------------|-----------------|--------------------------------|
-| Headings, UI, nav | Inter            | Bold / Semibold / Medium | `font-['Inter']` or configure as `font-heading` |
-| Body text         | Source Sans 3    | Regular / Semibold | `font-['Source_Sans_3']` or configure as `font-body` |
-| Code (block + inline) | Source Code Pro | Regular        | `font-mono` (set as default mono) |
+| Role              | Font             | Weight          | Use in markup |
+|-------------------|------------------|-----------------|---------------|
+| Headings, UI, nav | Inter            | Bold / Semibold / Medium | `font-display` |
+| Body text         | Source Sans 3    | Regular / Semibold | `font-sans` (the default — rarely needs stating) |
+| Code (block + inline) | Source Code Pro | Regular        | `font-mono` |
+
+**These faces are the brand's intent, not what is loaded today.** No shipped theme configures
+them: `default` uses system stacks and `first_class` uses DM Sans / Outfit / IBM Plex Mono. Always
+style with `font-display` / `font-sans` / `font-mono`, never with a named face — the utilities
+resolve through `--fls-font-*`, so a theme that does adopt Inter gets it everywhere for free, and
+`font-['Inter']` would fight that.
 
 ### Type Scale
 
 | Element          | Font + Weight         | Size (Tailwind)      | Colour    |
 |------------------|-----------------------|----------------------|-----------|
-| Page title / H1  | Inter Bold            | `text-3xl` to `text-4xl` | Midnight |
-| Section / H2     | Inter Semibold        | `text-xl` to `text-2xl`  | Ocean    |
-| Sub-heading / H3 | Inter Medium          | `text-lg` to `text-xl`   | Midnight |
-| Body             | Source Sans 3 Regular | `text-base`              | Slate    |
-| Small / caption  | Source Sans 3 Regular | `text-sm`                | Slate    |
+| Page title / H1  | Inter Bold            | `text-3xl` to `text-4xl` | `text-on-surface` |
+| Section / H2     | Inter Semibold        | `text-xl` to `text-2xl`  | `text-on-surface` |
+| Sub-heading / H3 | Inter Medium          | `text-lg` to `text-xl`   | `text-on-surface` |
+| Body             | Source Sans 3 Regular | `text-base`              | `text-on-surface` |
+| Small / caption  | Source Sans 3 Regular | `text-sm`                | `text-muted` |
 | UI labels        | Inter Medium          | `text-sm` to `text-base` | Context  |
-| Code blocks      | Source Code Pro       | `text-sm`                | Midnight on Chalk bg |
-| Inline code      | Source Code Pro       | Inherit                  | Signal text, Chalk bg |
+| Code blocks      | Source Code Pro       | `text-sm`                | `text-on-surface` on `bg-surface-2` |
+| Inline code      | Source Code Pro       | Inherit                  | `text-error` on `bg-surface-2` |
 
-### Tailwind Font Config
+### Where the fonts are configured
 
-```js
-const { fontFamily } = require('tailwindcss/defaultTheme');
+FLS is on Tailwind v4, which is CSS-first — there is no `tailwind.config.js`. A theme declares
+the faces as tokens in its own `theme.css`, and the default theme aliases them into Tailwind's
+slots so the `font-*` utilities resolve:
 
-module.exports = {
-  theme: {
-    extend: {
-      fontFamily: {
-        heading: ['Inter', ...fontFamily.sans],
-        body: ['Source Sans 3', ...fontFamily.sans],
-        mono: ['Source Code Pro', ...fontFamily.mono],
-      },
-    },
-  },
-};
+```css
+@theme {
+    --fls-font-sans: "Source Sans 3", system-ui, sans-serif;
+    --fls-font-display: "Inter", system-ui, sans-serif;
+    --fls-font-mono: "Source Code Pro", ui-monospace, monospace;
+}
 ```
+
+Adopting the brand faces means editing a theme file and shipping the webfonts — not adding a
+config block. See `docs/how tos/theme-fls.md`.
 
 ### Google Fonts Import
 
@@ -127,22 +150,30 @@ Apply these rules when making any interface decision:
 
 ### Component Patterns
 
-When building UI components for FreedomLS:
+**FLS already builds all of these. Don't hand-roll them** — reach for the component or the class,
+which is where the brand decisions above are actually encoded. Follow `Skill(fls-dev:frontend-styling)`
+for the full inventory.
 
-- **Buttons (primary)**: `bg-ocean text-white` with `hover:bg-horizon`. Rounded with `rounded-md`. Use Inter Medium at `text-sm` or `text-base`.
-- **Buttons (secondary)**: `border border-ocean text-ocean bg-white` with `hover:bg-chalk`.
-- **Buttons (destructive)**: `bg-signal text-white` — use sparingly and only for irreversible actions.
-- **Cards**: `bg-white rounded-lg` with generous padding (`p-6`). No shadows by default; use `shadow-sm` only if cards overlap or float.
-- **Links**: `text-ocean hover:text-horizon underline` in body text. No underline in navigation.
-- **Inline code**: `font-mono text-signal bg-chalk rounded px-1.5 py-0.5`
-- **Code blocks**: `font-mono text-sm text-midnight bg-chalk rounded-lg p-4`
-- **Alerts (info)**: `bg-chalk border-l-4 border-ocean text-midnight`
-- **Alerts (warning)**: `bg-sand/20 border-l-4 border-sand text-midnight`
-- **Alerts (error)**: `bg-signal/10 border-l-4 border-signal text-midnight`
-- **Alerts (success)**: `bg-forest/10 border-l-4 border-forest text-midnight`
-- **Progress indicators**: Use Forest `#38A169` for completed, Horizon `#4A9BD9` for in-progress, Chalk for incomplete.
-- **Form inputs**: `border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-ocean focus:border-ocean`
-- **Headings in templates**: H1 uses `text-midnight font-heading font-bold`, H2 uses `text-ocean font-heading font-semibold`
+| You need | Use |
+|---|---|
+| A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly |
+| A destructive action | `variant="error"` — sparingly, and only when irreversible |
+| A card or panel | `.surface`, or `<c-media-card>` for one with an image |
+| A status badge | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` |
+| A callout in a page | `<c-callout level="info\|warning\|error\|success" title="…">` |
+| A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
+| A page wrapper | `<c-page width="wide\|narrow">` |
+| A progress bar | `<c-course-progress-bar>` — tinted to the course's own accent, not a fixed colour |
+| A modal | `<c-modal>`; a native `<dialog>` gets the shared scrim from `.modal-backdrop-host` |
+
+**Headings, body text, links, lists, tables and form inputs need no classes at all.** The
+`@layer base` block in `tailwind.components.css` already sizes and colours every one of them —
+`<h1>Title</h1>`, not `<h1 class="text-3xl font-bold text-on-surface">`. Restating base styles in
+markup fights the stylesheet and drifts out of sync with it.
+
+Where you do write utilities: prefer whitespace over borders and shadows for structure, keep to
+Tailwind's spacing scale, and use `rounded-md` (`--fls-radius-md`) unless the component says
+otherwise.
 
 ---
 
@@ -214,7 +245,7 @@ Use conventional commit style. Be specific about what changed and why:
 - **Product name**: Always `FreedomLS` — capital F, capital L, capital S, no space. In code/URLs: `freedomls`.
 - **Feature/module names**: Plain, descriptive Django app names. `progress`, `enrolment`, `content`. Never extend the "freedom" metaphor into features (no "FreedomFlow", "LibertyAuth", "Emancipate").
 - **Release naming**: Semantic versioning (`v1.2.0`). Optional: major releases get short code names from places known for learning or free expression (e.g., "Alexandria", "Timbuktu"). Keep subtle.
-- **CSS/Tailwind classes**: Use the configured brand colour names (`bg-midnight`, `text-ocean`). Never use raw hex in templates when a named class exists.
+- **CSS/Tailwind classes**: Style through the role tokens (`bg-primary`, `text-on-surface`, `text-muted`) — see the palette table for the brand name each one carries. The brand names are vocabulary for talking about the design, not class names: there is no `bg-midnight` or `text-ocean`. Never put a raw hex or a raw palette utility in a template.
 
 ---
 
@@ -254,61 +285,45 @@ Use conventional commit style. Be specific about what changed and why:
 
 ## Quick Reference Card
 
-Copy-paste starter for a FreedomLS Django template or page:
+A page template. Note how little of it is styling: the base layer handles the prose, the
+components handle the chrome, and the fonts come from the active theme rather than a `<link>`.
 
 ```html
-<!-- Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+{% extends "_base.html" %}
 
-<!-- Example page structure -->
-<body class="bg-chalk text-slate font-body">
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            {# No classes: the base layer sizes and colours headings and prose. #}
+            <h1>Page Title</h1>
+            <h2>Section Heading</h2>
+            <p>
+                Body text. Links inside prose are already
+                <a href="#">styled by the base layer</a> too.
+            </p>
 
-  <!-- Navigation -->
-  <nav class="bg-midnight text-white px-6 py-4">
-    <span class="font-heading font-bold text-lg">FreedomLS</span>
-  </nav>
+            <c-button href="https://github.com/…" variant="primary">
+                Fork it on GitHub
+            </c-button>
 
-  <!-- Page content -->
-  <main class="max-w-4xl mx-auto px-6 py-12">
-    <h1 class="font-heading font-bold text-3xl text-midnight mb-4">Page Title</h1>
-    <h2 class="font-heading font-semibold text-xl text-ocean mb-3">Section Heading</h2>
-    <p class="text-base leading-relaxed mb-4">
-      Body text in Source Sans 3, coloured Slate on Chalk background.
-    </p>
+            <c-callout level="info" title="Note">
+                FreedomLS uses Django's Sites framework for multi-tenancy.
+            </c-callout>
 
-    <!-- Primary button -->
-    <a href="#" class="inline-block bg-ocean text-white font-heading font-medium px-5 py-2.5 rounded-md hover:bg-horizon transition-colors">
-      Fork It on GitHub
-    </a>
-
-    <!-- Code block -->
-    <pre class="font-mono text-sm text-midnight bg-white rounded-lg p-4 mt-6 border border-gray-200">
-course:
-  title: "Introduction to Django"
-  format: markdown
-  path: ./content/
-    </pre>
-
-    <!-- Inline code in text -->
-    <p class="text-base leading-relaxed mb-4">
-      Run <code class="font-mono text-signal bg-white rounded px-1.5 py-0.5 text-sm">uv run manage.py runserver</code> to start the dev server.
-    </p>
-
-    <!-- Alert -->
-    <div class="bg-white border-l-4 border-ocean p-4 rounded-r-md mb-4">
-      <p class="text-midnight font-heading font-medium text-sm">Note</p>
-      <p class="text-slate text-sm mt-1">FreedomLS uses Django's Sites framework for multi-tenancy.</p>
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="bg-midnight text-white/70 text-sm px-6 py-8 mt-16">
-    <p>FreedomLS — an open-source learning system by Prelude.tech</p>
-  </footer>
-</body>
+            {# A panel, when content needs to sit apart from the page. #}
+            <div class="surface space-y-2">
+                <h3>Enrolment</h3>
+                <p class="text-muted text-sm">Secondary text uses the muted role.</p>
+                <c-chip variant="success" size="xs">Complete</c-chip>
+            </div>
+        </div>
+    </c-page>
+{% endblock content %}
 ```
+
+Three things this deliberately does not do: load webfonts (the active theme declares
+`--fls-font-*`, and the `_base.html` shell links the compiled bundle), name a colour outside the
+role tokens, or restate a style the base layer already applies.
 
 ---
 
