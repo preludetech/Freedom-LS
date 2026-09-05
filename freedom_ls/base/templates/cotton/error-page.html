@@ -1,0 +1,51 @@
+<c-vars status="" heading="" icon="warning" level="neutral" class="" />
+
+{% partialdef error-panel %}
+<div class="mx-auto max-w-2xl px-4 py-12 space-y-6 {{ class }}" {{ attrs }}>
+    <span aria-hidden="true"
+          class="inline-flex size-16 items-center justify-center rounded-full {{ mark }}">
+        <c-icon :name="icon" class="size-8" />
+    </span>
+    <div class="space-y-2">
+        <p class="text-sm font-medium text-muted">Error {{ status }}</p>
+        <h1>{{ heading }}</h1>
+    </div>
+    <div class="space-y-6">{{ slot }}</div>
+</div>
+{% endpartialdef %}
+
+{% if level == "error" %}
+    {% with mark="bg-error-light text-on-error-light" %}{% partial error-panel %}{% endwith %}
+{% elif level == "warning" %}
+    {% with mark="bg-warning-light text-on-warning-light" %}{% partial error-panel %}{% endwith %}
+{% elif level == "info" %}
+    {% with mark="bg-info-light text-on-info-light" %}{% partial error-panel %}{% endwith %}
+{% else %}
+    {% with mark="bg-surface-2 text-muted" %}{% partial error-panel %}{% endwith %}
+{% endif %}
+
+{% comment %}
+Usage:
+
+  <c-error-page status="404" level="neutral" icon="unknown"
+                heading="We cannot find that page">
+      <p>The web address may be wrong, or the page may have moved or been taken down.</p>
+      <c-button href="{{ dashboard_url }}" variant="primary">Go to your dashboard</c-button>
+  </c-error-page>
+
+  <!-- heading can also be a slot, e.g. for i18n-wrapped text -->
+  <c-error-page status="429" level="warning" icon="rate_limit">
+      <c-slot name="heading">{% trans "Too many sign-in attempts" %}</c-slot>
+      <a href="" class="btn btn-primary">Try again</a>
+  </c-error-page>
+
+Retry links use a plain anchor with an empty href, never <c-button>: an empty href resolves
+against the document URL, so it reloads the current page with no JavaScript and no request
+object. <c-button> only ever emits a real <a> when href is truthy, so it cannot express this.
+
+The mark always pairs a *-light background with its own on-*-light foreground, never
+text-warning. Under the default theme --color-warning is a pale yellow tuned to sit behind
+white text, not to be read as foreground text on a light page; first_class's warning is a
+saturated amber where text-warning would look fine, which is exactly what makes the mistake
+easy to reintroduce by eye in that theme and only that theme.
+{% endcomment %}

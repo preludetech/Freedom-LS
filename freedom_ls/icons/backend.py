@@ -55,8 +55,13 @@ def build_svg(
 
     label = escape(aria_label)
 
+    # width/height are the icon's only intrinsic size. Without them a
+    # viewBox-only svg falls back to width:100% and fills its container
+    # whenever the size-* class is unavailable. CSS beats these attributes,
+    # so the class still wins once the stylesheet loads.
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
+        f'width="{width}" height="{height}" '
         f'class="inline {escape(css_class)}" role="img" aria-label="{label}">'
         f"{body}</svg>"
     )
