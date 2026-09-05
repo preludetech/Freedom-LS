@@ -34,9 +34,10 @@ class OrganisationAdmin(GuardedSiteAwareModelAdmin):
     search_fields = ["name"]
     readonly_fields = ["slug", SUMMARIES_FIELD]
     fields = ["name", "slug", "logo", "logo_on_dark", SUMMARIES_FIELD]
-    # Appended to by other apps, for the reason given on ORGANISATION_SUMMARIES.
-    # Declared here rather than inherited so a contributor never mutates the
-    # list shared with every other ModelAdmin.
+    # Added to by other apps, for the reason given on ORGANISATION_SUMMARIES: a
+    # contributor keeps what is already here rather than replacing it. Declared
+    # on this class rather than inherited so nothing reaches the list shared
+    # with every other ModelAdmin.
     inlines = []
 
     @admin.display(description="Related")

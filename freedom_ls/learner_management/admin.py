@@ -534,5 +534,12 @@ def organisation_learner_search_link(organisation: Organisation) -> str:
 # OrganisationAdmin declares for it. The wiring runs from here rather than from
 # `organisations`, which sits below this app in docs/app_structure.md and cannot
 # import Cohort or Learner without making the dependency a cycle.
-OrganisationAdmin.inlines = [OrganisationCohortInline, OrganisationLearnerInline]
+#
+# Both seams add rather than replace: another app contributing an inline keeps
+# these two, the way appending to ORGANISATION_SUMMARIES keeps the summary below.
+OrganisationAdmin.inlines = [
+    *OrganisationAdmin.inlines,
+    OrganisationCohortInline,
+    OrganisationLearnerInline,
+]
 ORGANISATION_SUMMARIES.append(organisation_learner_search_link)

@@ -278,6 +278,20 @@ class TestFormatEmailSubject:
 
         assert self._format(self.SUBJECT) == f"[MyProduct] {self.SUBJECT}"
 
+    def test_header_title_answers_without_resolving_a_site(
+        self, settings, django_assert_num_queries
+    ) -> None:
+        """No mock_site_context here, deliberately.
+
+        Mail is not always sent from a request, and FLS pins no SITE_ID, so
+        there is nothing for Django to resolve a site from -- it raises. A name
+        HEADER_TITLE already answers must not need one, or cost a query.
+        """
+        settings.HEADER_TITLE = "MyProduct"
+
+        with django_assert_num_queries(0):
+            assert self._format(self.SUBJECT) == f"[MyProduct] {self.SUBJECT}"
+
     def test_prefix_falls_back_to_site_name_without_header_title(
         self, mock_site_context: Site, settings
     ) -> None:

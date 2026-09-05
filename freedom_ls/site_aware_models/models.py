@@ -66,6 +66,20 @@ def site_display_name(site: Site | RequestSite | int) -> str:
     return site.name
 
 
+def site_display_name_for_request(request: HttpRequest | None) -> str:
+    """The display name for a caller holding only a request.
+
+    HEADER_TITLE answers on its own, so the site is resolved only when the name
+    has to come from the Site row. Outbound mail is not always sent from a
+    request, and without one there is no host to resolve -- an installation that
+    has already said what it is called should not need one to name itself.
+    """
+    header_title = config.HEADER_TITLE
+    if header_title:
+        return header_title
+    return site_display_name(get_cached_site(request))
+
+
 class SiteAwareManager(models.Manager):
     def get_queryset(self):
         queryset = super().get_queryset()
