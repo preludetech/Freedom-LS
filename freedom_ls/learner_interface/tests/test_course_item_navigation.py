@@ -324,3 +324,63 @@ def test_first_item_form_start_page_has_no_previous_button(mock_site_context):
 
     assert response.status_code == 200
     assert 'data-testid="previous-button"' not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_form_completion_page_previous_url_points_at_the_preceding_item(
+    topic_then_form_course, client_on_completed_form
+):
+    """Previous means the previous course item here too, not the form's own start page."""
+    course = topic_then_form_course["course"]
+
+    url = reverse(
+        "learner_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 2},
+    )
+    response = client_on_completed_form.get(url)
+
+    assert response.status_code == 200
+    assert response.context["previous_url"] == reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    assert 'data-testid="previous-button"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_form_completion_page_footer_is_boosted_like_the_rest_of_the_player(
+    topic_then_form_course, client_on_completed_form
+):
+    """The completion page shares the player's footer, so it swaps rather than reloads."""
+    course = topic_then_form_course["course"]
+
+    url = reverse(
+        "learner_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 2},
+    )
+    response = client_on_completed_form.get(url)
+
+    assert 'hx-select-oob="#course-toc-region"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_first_item_form_completion_page_has_no_previous_button(mock_site_context):
+    """A form at index 1 has nothing behind it, so its completion page offers no way back."""
+    form = FormFactory(title="Only item", slug="only-item-complete")
+    course: Course = CourseFactory(title="Form first", slug="form-first-complete")
+    ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
+    user = UserFactory()
+    register_user_for_course(course, user)
+    form_attempt(course, user, form, completed_time=timezone.now())
+
+    client = Client()
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    assert response.context["previous_url"] is None
+    assert 'data-testid="previous-button"' not in response.content.decode()

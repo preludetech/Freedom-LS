@@ -31,25 +31,8 @@
             {% comment %}=== PREVIOUS ATTEMPTS ==={% endcomment %}
             {% include "learner_interface/partials/exam_previous_attempts.html" %}
 
-            {% comment %}
-            === CTA ===
-            Same shape as the topic player's footer (course_topic.html): the
-            left slot is always rendered so the forward button stays right-
-            aligned on a form that has nothing behind it.
-            {% endcomment %}
-            <c-player-nav class="flex items-center justify-between pt-4 border-t border-border gap-3">
-                <div>
-                    {% if previous_url %}
-                        <c-button href="{{ previous_url }}"
-                                  variant="secondary"
-                                  icon_left="previous"
-                                  size="small"
-                                  data-testid="previous-button">
-                            Previous
-                        </c-button>
-                    {% endif %}
-                </div>
-
+            {% comment %}=== CTA ==={% endcomment %}
+            <c-player-footer :previous_url="previous_url">
                 {% for button in buttons %}
                     {% if button.action == "continue" %}
                         <c-button href="{% url 'learner_interface:form_fill_page' course.slug index page_number %}"
@@ -88,7 +71,7 @@
                         </c-button>
                     {% endif %}
                 {% endfor %}
-            </c-player-nav>
+            </c-player-footer>
         </div>
     </c-page>
 {% endblock %}
