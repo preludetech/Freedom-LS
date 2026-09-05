@@ -21,7 +21,7 @@ class TopicAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "file_path"]
     list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug", "content_preview")
+    readonly_fields = ("slug",)
     fieldsets = (
         (
             None,
@@ -32,7 +32,6 @@ class TopicAdmin(SiteAwareModelAdmin):
                     "description",
                     "slug",
                     "content",
-                    "content_preview",
                 )
             },
         ),
@@ -44,22 +43,13 @@ class TopicAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
-    @admin.display(description="Content Preview")
-    def content_preview(self, obj: Activity) -> str:
-        from django.utils.safestring import mark_safe
-
-        if not obj.content:
-            return ""
-        # Safe: rendered_content() sanitizes via nh3.clean() with strict allowlist
-        return str(mark_safe(obj.rendered_content()))  # noqa: S308  # nosec B308 B703
-
 
 @admin.register(Activity)
 class ActivityAdmin(SiteAwareModelAdmin):
     list_display = ["title", "category", "level", "file_path"]
     list_filter = (ContentTagListFilter,)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug", "content_preview")
+    readonly_fields = ("slug",)
     fieldsets = (
         (
             None,
@@ -70,7 +60,6 @@ class ActivityAdmin(SiteAwareModelAdmin):
                     "description",
                     "slug",
                     "content",
-                    "content_preview",
                 )
             },
         ),
@@ -81,15 +70,6 @@ class ActivityAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, obj: Activity | None = None
     ) -> bool:
         return False
-
-    @admin.display(description="Content Preview")
-    def content_preview(self, obj: Activity) -> str:
-        from django.utils.safestring import mark_safe
-
-        if not obj.content:
-            return ""
-        # Safe: rendered_content() sanitizes via nh3.clean() with strict allowlist
-        return str(mark_safe(obj.rendered_content()))  # noqa: S308  # nosec B308 B703
 
 
 class ContentCollectionItemInline(GenericTabularInline):
