@@ -7,13 +7,13 @@
 {% block content %}
     {% url 'learner_interface:dashboard' as dashboard_url %}
     {% url 'learner_interface:courses' as courses_url %}
-    <c-error-page status="404" level="neutral" icon="unknown"
+    <c-error-page status="404" status_label="Not found" level="neutral" icon="unknown"
                   heading="We cannot find that page">
         <p>The web address may be wrong, or the page may have moved or been taken down.
            Check the address for mistakes.</p>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap justify-center gap-3 pt-3">
             {% if dashboard_url %}
-                <c-button href="{{ dashboard_url }}" variant="primary">Go to your dashboard</c-button>
+                <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to your dashboard</c-button>
             {% endif %}
             {% if courses_url %}
                 <c-button href="{{ courses_url }}" variant="secondary">Browse courses</c-button>

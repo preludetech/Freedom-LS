@@ -6,13 +6,13 @@
 
 {% block content %}
     {% url 'learner_interface:dashboard' as dashboard_url %}
-    <c-error-page status="400" level="warning" icon="warning"
+    <c-error-page status="400" status_label="Bad request" level="warning" icon="warning"
                   heading="We could not handle that request">
         <p>Part of the request was malformed, so it was stopped before it reached the page.
            Check the web address for mistakes.</p>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap justify-center gap-3 pt-3">
             {% if dashboard_url %}
-                <c-button href="{{ dashboard_url }}" variant="primary">Go to your dashboard</c-button>
+                <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to your dashboard</c-button>
             {% endif %}
         </div>
     </c-error-page>

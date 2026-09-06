@@ -8,16 +8,16 @@
     {% url 'learner_interface:courses' as courses_url %}
     {% url 'account_logout' as logout_url %}
     {% url 'account_login' as login_url %}
-    <c-error-page status="403" level="warning" icon="locked"
+    <c-error-page status="403" status_label="Forbidden" level="warning" icon="locked"
                   heading="You do not have access to this page">
         <p>Your account does not have permission to open it. If you think that is wrong, ask an
            administrator to check your account.</p>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap justify-center gap-3 pt-3">
             {% if courses_url %}
                 <c-button href="{{ courses_url }}" variant="primary">Browse courses</c-button>
             {% endif %}
             {% if logout_url and login_url %}
-                <c-button href="{{ logout_url }}?next={{ login_url }}" variant="secondary">
+                <c-button href="{{ logout_url }}?next={{ login_url }}" variant="secondary" icon_left="user">
                     Sign in as a different account
                 </c-button>
             {% endif %}

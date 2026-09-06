@@ -6,17 +6,17 @@
 {% block extra_head %}<meta name="robots" content="noindex" />{% endblock extra_head %}
 
 {% block content %}
-    <c-error-page status="429" level="warning" icon="rate_limit">
+    <c-error-page status="429" status_label="Account locked" level="warning" icon="rate_limit">
         <c-slot name="heading">{% trans "Too many sign-in attempts" %}</c-slot>
         <p>
             {% trans "Sign-in for this account is paused after too many failed attempts. Wait a few minutes, then try again." %}
         </p>
-        <div class="flex flex-wrap gap-3">
-            <c-button href="{% url 'account_login' %}" variant="primary">
+        <div class="flex flex-wrap justify-center gap-3 pt-3">
+            <c-button href="{% url 'account_login' %}" variant="primary" icon_left="user">
                 {% trans "Back to sign in" %}
             </c-button>
         </div>
-        <p class="text-sm text-muted">
+        <p class="mt-8 border-t border-border pt-4 text-sm text-muted">
             {% trans "Forgotten your password?" %}
             <a href="{% url 'account_reset_password' %}" class="text-primary underline">{% trans "Reset it now" %}</a>
             {% trans "— you will be able to sign in once the pause lifts." %}

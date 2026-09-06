@@ -5,11 +5,11 @@
 {% block extra_head %}<meta name="robots" content="noindex" />{% endblock extra_head %}
 
 {% block content %}
-    <c-error-page status="429" level="warning" icon="rate_limit"
+    <c-error-page status="429" status_label="Too many requests" level="warning" icon="rate_limit"
                   heading="You have made too many attempts">
         <p>Access is paused for a short while. Wait a few minutes, then try again.</p>
-        <div class="flex flex-wrap gap-3">
-            <a href="" class="btn btn-primary">Try again</a>
+        <div class="flex flex-wrap justify-center gap-3 pt-3">
+            <a href="" class="btn btn-primary"><c-icon name="retry" class="size-5 mr-2" />Try again</a>
         </div>
     </c-error-page>
 {% endblock content %}

@@ -9,16 +9,16 @@
         <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}" />
     </head>
     <body>
-        <main>
+        <main class="flex min-h-screen flex-col justify-center">
             {% url 'learner_interface:dashboard' as dashboard_url %}
-            <c-error-page status="500" level="error" icon="warning"
+            <c-error-page status="500" status_label="Internal server error" level="error" icon="warning"
                           heading="Sorry, there is a problem with this page">
                 <p>The problem is on our side. It is not your account, your device or your connection.</p>
                 <p>Anything you were part-way through may not have been saved.</p>
-                <div class="flex flex-wrap gap-3">
-                    <a href="" class="btn btn-primary">Try again</a>
+                <div class="flex flex-wrap justify-center gap-3 pt-3">
+                    <a href="" class="btn btn-primary"><c-icon name="retry" class="size-5 mr-2" />Try again</a>
                     {% if dashboard_url %}
-                        <c-button href="{{ dashboard_url }}" variant="secondary">Go to your dashboard</c-button>
+                        <c-button href="{{ dashboard_url }}" variant="secondary" icon_left="home">Go to your dashboard</c-button>
                     {% endif %}
                 </div>
             </c-error-page>

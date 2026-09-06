@@ -9,12 +9,12 @@
         <link rel="stylesheet" type="text/css" href="{% static 'vendor/tailwind.output.css' %}" />
     </head>
     <body>
-        <main>
-            <c-error-page status="503" level="info" icon="maintenance"
+        <main class="flex min-h-screen flex-col justify-center">
+            <c-error-page status="503" status_label="Service unavailable" level="info" icon="maintenance"
                           heading="Sorry, the service is unavailable">
                 <p>Maintenance is in progress. You will be able to use the service again later.</p>
-                <div class="flex flex-wrap gap-3">
-                    <a href="" class="btn btn-primary">Try again</a>
+                <div class="flex flex-wrap justify-center gap-3 pt-3">
+                    <a href="" class="btn btn-primary"><c-icon name="retry" class="size-5 mr-2" />Try again</a>
                 </div>
             </c-error-page>
         </main>

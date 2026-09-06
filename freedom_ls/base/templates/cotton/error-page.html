@@ -1,43 +1,54 @@
-<c-vars status="" heading="" icon="warning" level="neutral" class="" />
+<c-vars status="" status_label="" heading="" icon="warning" level="neutral" class="" />
 
 {% partialdef error-panel %}
-<div class="mx-auto max-w-2xl px-4 py-12 space-y-6 {{ class }}" {{ attrs }}>
-    <span aria-hidden="true"
-          class="inline-flex size-16 items-center justify-center rounded-full {{ mark }}">
-        <c-icon :name="icon" class="size-8" />
-    </span>
-    <div class="space-y-2">
-        <p class="text-sm font-medium text-muted">Error {{ status }}</p>
-        <h1>{{ heading }}</h1>
+<div class="flex min-h-[70vh] items-center justify-center px-4 py-16 {{ class }}" {{ attrs }}>
+    <div class="w-full max-w-lg text-center">
+        <span aria-hidden="true"
+              class="mx-auto mb-5 inline-flex size-14 items-center justify-center rounded-full ring-8 {{ mark }}">
+            <c-icon :name="icon" class="size-7" />
+        </span>
+        <p class="font-mono text-xs uppercase tracking-[0.14em] text-muted">
+            {{ status }}{% if status_label %} · {{ status_label }}{% endif %}
+        </p>
+        <h1 class="mt-2.5 text-2xl font-semibold tracking-tight sm:text-3xl">{{ heading }}</h1>
+        <div class="mt-4 space-y-4 [&_p]:leading-relaxed [&_p]:text-muted">{{ slot }}</div>
     </div>
-    <div class="space-y-6">{{ slot }}</div>
 </div>
 {% endpartialdef %}
 
 {% if level == "error" %}
-    {% with mark="bg-error-light text-on-error-light" %}{% partial error-panel %}{% endwith %}
+    {% with mark="bg-error-light text-on-error-light ring-error/10" %}{% partial error-panel %}{% endwith %}
 {% elif level == "warning" %}
-    {% with mark="bg-warning-light text-on-warning-light" %}{% partial error-panel %}{% endwith %}
+    {% with mark="bg-warning-light text-on-warning-light ring-warning/10" %}{% partial error-panel %}{% endwith %}
 {% elif level == "info" %}
-    {% with mark="bg-info-light text-on-info-light" %}{% partial error-panel %}{% endwith %}
+    {% with mark="bg-info-light text-on-info-light ring-info/10" %}{% partial error-panel %}{% endwith %}
 {% else %}
-    {% with mark="bg-surface-2 text-muted" %}{% partial error-panel %}{% endwith %}
+    {% with mark="bg-surface-2 text-muted ring-muted/10" %}{% partial error-panel %}{% endwith %}
 {% endif %}
 
 {% comment %}
 Usage:
 
-  <c-error-page status="404" level="neutral" icon="unknown"
+  <c-error-page status="404" status_label="Not found" level="neutral" icon="unknown"
                 heading="We cannot find that page">
       <p>The web address may be wrong, or the page may have moved or been taken down.</p>
-      <c-button href="{{ dashboard_url }}" variant="primary">Go to your dashboard</c-button>
+      <div class="flex flex-wrap justify-center gap-3 pt-3">
+          <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to your dashboard</c-button>
+      </div>
   </c-error-page>
 
   <!-- heading can also be a slot, e.g. for i18n-wrapped text -->
-  <c-error-page status="429" level="warning" icon="rate_limit">
+  <c-error-page status="429" status_label="Too many requests" level="warning" icon="rate_limit">
       <c-slot name="heading">{% trans "Too many sign-in attempts" %}</c-slot>
       <a href="" class="btn btn-primary">Try again</a>
   </c-error-page>
+
+status_label is the short name of the status, rendered after the code as
+"404 · NOT FOUND". It is optional; without it the eyebrow is just the code.
+
+Slot paragraphs are coloured and spaced by the wrapper's [&_p]: variants rather than by
+classes on each <p>, so a page only writes its copy. The utilities layer beats the
+`p { text-on-surface }` rule that tailwind.components.css sets in @layer base.
 
 Retry links use a plain anchor with an empty href, never <c-button>: an empty href resolves
 against the document URL, so it reloads the current page with no JavaScript and no request

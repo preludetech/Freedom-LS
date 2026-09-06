@@ -6,13 +6,13 @@
 
 {% block content %}
     {% url 'account_login' as login_url %}
-    <c-error-page status="403" level="warning" icon="deadline"
+    <c-error-page status="403" status_label="Session expired" level="warning" icon="deadline"
                   heading="The form was not sent">
         <p>Your session expired while the form was open, so nothing was sent and nothing was
            saved. Sign in again, then fill the form in once more.</p>
-        <div class="flex flex-wrap gap-3">
+        <div class="flex flex-wrap justify-center gap-3 pt-3">
             {% if login_url %}
-                <c-button href="{{ login_url }}" variant="primary">Sign in again</c-button>
+                <c-button href="{{ login_url }}" variant="primary" icon_left="user">Sign in again</c-button>
             {% endif %}
         </div>
     </c-error-page>
