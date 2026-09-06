@@ -29,8 +29,9 @@ component templates. Meant to be visually inert.
 - [x] (cmd) Write `upgrade_notes.md` — deleting two `@import`s downstream is a breaking change
 - [x] (cmd) Add demo content that actually exercises the flashcard answer face and a wrapping accordion title
 - [x] (cmd) Extend the QA plan: rewritten §5, new §14, wider §12.8
-- [ ] (user + cmd) Capture the §5.25 "before" screenshots from the pre-restyle commit, then re-run `/fls-dev:do_qa` for §5, §6, §12.8 and §14 on both themes
 - [ ] (user) Review the QA report and fix anything it finds with TDD
+- [ ] (user + cmd) Fix QA bug: a flashcard whose answer holds a table or code block overflows the viewport on mobile (TDD — failing test first, then fix)
+- [ ] (user) Decide how a flashcard answer face should handle content wider than the card — shrink and clip, scroll inside the face, or disallow tables and code blocks there — then fix the overflow accordingly
 
 ## 13. Pull request
 
