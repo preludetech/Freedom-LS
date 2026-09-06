@@ -85,3 +85,48 @@ Re-run the locating queries and print: total `CourseInterest` count, `exists()` 
 (plus `EmailAddress`/`LegalConsent` by email, which proves the cascade actually fired), remaining
 registrations for the seed learner, and untouched-fixture assertions (course `visibility`, the
 seed user still `is_active`, `Course._base_manager.count()`).
+
+## 4. Secondary `EmailAddress` rows on a KEPT user (Sep 2026, error-pages)
+
+Variant ask: delete the extra unverified addresses a QA run added at `/accounts/email/`, but keep
+the user and the primary verified row. Nothing cascades - the delete is exactly
+`(2, {'account.EmailAddress': 2})`, and `EmailConfirmation` is **0 rows** (confirmed again: there
+is no `ACCOUNT_EMAIL_CONFIRMATION_HMAC` override in settings, so allauth's HMAC default holds and
+confirmations are stateless). Don't hunt for confirmation rows to clean up; just show the count is
+0 and say so.
+
+Delete by **explicit pk list** plus assertions that each row has `user_id == <kept user>`,
+`primary is False`, `verified is False`, and an email in the target set. An `email__in=[...]`
+delete would also take a matching row belonging to some other user; the pk list plus guards cannot.
+
+The best verification for this shape is the rendered page, not just a row count:
+
+```python
+client = Client(SERVER_NAME="127.0.0.1"); client.force_login(user)
+html = client.get(reverse("account_email")).content.decode()
+```
+
+`force_login` is a false positive for *proving login works*
+([[reference_proving_allauth_login_works]]) but is fine here - the claim under test is page
+content, not authentication. If you regex the page for email-like strings, note it also picks up
+npm package specifiers from the asset tags (htmx and csp versions); ignore those.
+
+## The security-guard hook fails with an EMPTY error message
+
+`claude_plugins/django-stack/scripts/hooks/security-guard.sh` scans the *entire* Bash command
+string against a denylist and exits non-zero with **no stderr**, so it reads as an infrastructure
+fault rather than a policy block. Read the hook the first time a shell call fails with an empty
+error - the denylist is short and plainly listed at the top of the file.
+
+Two consequences worth remembering:
+
+1. It matches a substring anywhere in the command, including inside a heredoc. Writing *prose*
+   that quotes a denylisted string trips it, which is confusing because the command itself is
+   harmless. Paraphrase instead of quoting.
+2. One entry is a regex for private-key/certificate file suffixes. Allauth's `EmailConfirmation`
+   has a token attribute whose dotted access matches that regex, so printing it from a shell
+   one-liner is blocked. Print `created` / `sent` / `email_address_id` instead - for this cleanup
+   the token was never needed anyway.
+
+Do not try to smuggle a denylisted literal past the hook by splitting it into concatenated
+fragments; that is hook evasion and the permission classifier correctly refuses it.
