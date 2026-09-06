@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import cast
 from urllib.parse import urlencode
 from uuid import UUID
@@ -6,12 +7,13 @@ from unfold.admin import TabularInline
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.options import InlineModelAdmin
 from django.contrib.admin.sites import AdminSite
 from django.contrib.admin.widgets import AutocompleteSelect
 from django.db import models
 from django.http import HttpRequest
 from django.urls import reverse
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.utils.translation import ngettext
 
 from freedom_ls.organisations.admin import (
@@ -40,6 +42,19 @@ from .models import (
     LearnerCourseRegistration,
     LearnerDeadline,
 )
+
+#: Read-only summaries other apps add to the Learner change page. Each one
+#: takes the learner and returns a row of HTML.
+#:
+#: This and ``LearnerAdmin.inlines`` are the two seams an app uses to put a
+#: learner's own records on their page. The wiring can only run in that
+#: direction: ``learner_management`` sits below every app that owns such records
+#: (docs/app_structure.md) and must stay installable without them, so it cannot
+#: import their models. Both are read on every request, so an app appending from
+#: its own admin module at import time reaches the registered admin.
+LEARNER_SUMMARIES: list[Callable[[Learner], str]] = []
+
+LEARNER_SUMMARIES_FIELD = "contributed_summaries"
 
 SCOPE_TO_ORGANISATION_OF_COHORT = "organisation_of_cohort"
 SCOPE_TO_MEMBERS_OF_COHORT = "members_of_cohort"
@@ -106,18 +121,132 @@ class ScopedLearnerAutocompleteSelect(AutocompleteSelect):
         return f"{super().get_url()}?{urlencode({self.scope: str(self.cohort_id)})}"
 
 
+class ReadOnlyLearnerRecordInline(TabularInline):
+    """One kind of record belonging to a learner, listed on their own page.
+
+    Read-only and paginated for the reason `OrganisationLearnerInline` is: a
+    learner well into a course has more of these than a change page should
+    render at once, each row is edited on its own page, and a record whose
+    completion timestamp drives a percentage recalculation must not be
+    rewritten from a summary panel.
+    """
+
+    extra = 0
+    max_num = 0
+    can_delete = False
+    per_page = 25
+    show_count = True
+    show_change_link = True
+    tab = True
+
+    def has_add_permission(
+        self, request: HttpRequest, obj: Learner | None = None
+    ) -> bool:
+        return False
+
+
+class LearnerCohortMembershipInline(ReadOnlyLearnerRecordInline):
+    """The cohorts this learner belongs to."""
+
+    model = CohortMembership
+    fields = ["cohort", "created_at"]
+    readonly_fields = fields
+    ordering = ["cohort__name"]
+
+    verbose_name = "Cohort"
+    verbose_name_plural = "Cohorts"
+
+    def get_queryset(self, request: HttpRequest) -> models.QuerySet[CohortMembership]:
+        # Every row renders its cohort, and the row title renders it again.
+        memberships: models.QuerySet[CohortMembership] = super().get_queryset(request)
+        return memberships.select_related("cohort")
+
+
+class LearnerRegistrationInline(ReadOnlyLearnerRecordInline):
+    """The courses this learner was registered for individually.
+
+    Cohort-granted access is not listed here -- it hangs off the cohort, not the
+    learner. The course progress panel below shows both, since a record names
+    the registration that granted it.
+    """
+
+    model = LearnerCourseRegistration
+    fields = ["course", "is_active", "registered_at"]
+    readonly_fields = fields
+    ordering = ["course__title"]
+
+    verbose_name = "Course Registration"
+    verbose_name_plural = "Course Registrations"
+
+    def get_queryset(
+        self, request: HttpRequest
+    ) -> models.QuerySet[LearnerCourseRegistration]:
+        registrations: models.QuerySet[LearnerCourseRegistration] = (
+            super().get_queryset(request)
+        )
+        return registrations.select_related("course")
+
+
 @admin.register(Learner)
 class LearnerAdmin(SiteAwareModelAdmin):
     form = LearnerAdminForm
     list_display = ["user", "organisation", "is_active", "created_at"]
     list_filter = ["organisation", "is_active"]
-    readonly_fields = ["created_at"]
+    # Both render on every row.
+    list_select_related = ["user", "organisation"]
+    readonly_fields = ["created_at", LEARNER_SUMMARIES_FIELD]
+    fields = [
+        "user",
+        "organisation",
+        "is_active",
+        "created_at",
+        LEARNER_SUMMARIES_FIELD,
+    ]
     search_fields = ["user__first_name", "user__last_name", "user__email"]
     autocomplete_fields = ["user", "organisation"]
     # Matches the "<email> - <organisation>" label a learner dropdown renders.
     # The autocomplete endpoint paginates, so without a stable order its second
     # page can repeat or skip a learner.
     ordering = ["user__email", "organisation__name"]
+    # Added to by other apps, for the reason given on LEARNER_SUMMARIES: a
+    # contributor keeps what is already here rather than replacing it. Declared
+    # on this class rather than inherited so nothing reaches the list shared
+    # with every other ModelAdmin.
+    inlines = [LearnerCohortMembershipInline, LearnerRegistrationInline]
+
+    @admin.display(description="Related")
+    def contributed_summaries(self, obj: Learner) -> str:
+        # One block per summary, rather than a separator: a separator would have
+        # to be marked safe. Each summary escapes its own content already.
+        return format_html_join(
+            "",
+            "<div>{}</div>",
+            ((summary(obj),) for summary in LEARNER_SUMMARIES),
+        )
+
+    def get_inlines(
+        self, request: HttpRequest, obj: Learner | None = None
+    ) -> list[type[InlineModelAdmin]]:
+        """The record panels, on the change page only.
+
+        They all list things belonging to a learner, and the add page has no
+        learner yet to list them for. Leaving them on would also make the create
+        form refuse any submission not carrying their management forms.
+        """
+        return list(super().get_inlines(request, obj)) if obj is not None else []
+
+    def get_fields(
+        self, request: HttpRequest, obj: Learner | None = None
+    ) -> list[str | list[str] | tuple[str, ...]]:
+        """Drop the summaries row unless there is something to put in it.
+
+        Nothing to summarise on the add page, for the same reason as
+        `get_inlines`, and nothing at all when no app has contributed a summary.
+        """
+        fields = list(super().get_fields(request, obj))
+        if obj is not None and LEARNER_SUMMARIES:
+            return fields
+        return [field for field in fields if field != LEARNER_SUMMARIES_FIELD]
 
     def has_delete_permission(
         self, request: HttpRequest, obj: Learner | None = None

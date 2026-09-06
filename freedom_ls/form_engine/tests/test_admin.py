@@ -8,6 +8,7 @@ import pytest
 
 from django.contrib import admin
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.form_engine.admin import (
     FormAdmin,
@@ -103,3 +104,31 @@ class TestTheLockdownReachesTheAdminUi:
         )
 
         assert not re.search(r'name="[^"]*-DELETE"', response.content.decode())
+
+
+@pytest.mark.django_db
+class TestFormProgressChangelist:
+    """The changelist that answers "who has finished this form, and when"."""
+
+    CHANGELIST_URL_NAME = "admin:freedom_ls_form_engine_formprogress_changelist"
+
+    def test_it_renders_with_rows_present(self, staff_client) -> None:
+        FormProgressFactory()
+
+        response = staff_client.get(reverse(self.CHANGELIST_URL_NAME))
+
+        assert response.status_code == 200
+
+    def test_the_completion_filter_separates_finished_from_unfinished(
+        self, staff_client
+    ) -> None:
+        finished = FormProgressFactory(completed_time=timezone.now())
+        unfinished = FormProgressFactory(completed_time=None)
+        url = reverse(self.CHANGELIST_URL_NAME)
+
+        def visible(completion: str) -> list:
+            response = staff_client.get(url, {"completion": completion})
+            return [row.pk for row in response.context["cl"].result_list]
+
+        assert visible("complete") == [finished.pk]
+        assert visible("incomplete") == [unfinished.pk]

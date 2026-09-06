@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-08-29_
+_Last updated: 2026-09-06_
 
 ## Summary
 
@@ -8,6 +8,7 @@ _Last updated: 2026-08-29_
 - Administrators grant educators access to specific cohorts through per-object permissions.
 - Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
+- A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away. Every progress changelist filters by whether the item is finished, by learner, course, cohort and organisation, and by when it was finished.
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
@@ -44,6 +45,35 @@ Removing a learner is soft: it suspends their access to courses held through tha
 The same restraint extends to course registrations: once a registration has recorded [progress](./learner-tracking.md), the admin refuses to delete it and lists the progress standing in the way. Deleting a cohort cascades to its registrations, so that delete is blocked too, and a course cannot be deleted here at all. Deactivating a registration, removing a cohort member, or marking a learner removed all stay available and leave the recorded progress intact.
 
 There is no bulk add or remove, no CSV import, and no view showing one person's associations across every organisation at once.
+
+## Learner Progress
+
+A learner's own page is where their journey is read. Alongside the fields that
+describe the association itself, it carries three panels: the cohorts they
+belong to, the courses they were registered for individually, and their
+progress through every course they can reach — including access granted through
+a cohort, since a progress record names the registration that granted it. Each
+panel shows a count, pages rather than rendering everything at once, and links
+each row to its own page. All three are read-only: a completion timestamp is
+what drives the percentage recalculation, so it is corrected on the record
+itself rather than from a summary panel. Below the panels sit links into this
+learner's topic progress and form attempts across all their courses at once.
+
+One course progress record opens onto the items underneath it — which topics
+were opened and which of those are finished, and every form attempt with its
+score and whether it was passed. A record shows as **Not started**, **In
+progress** or **Complete**: it exists from registration onward, so "not
+complete" alone would hide the difference between someone halfway through and
+someone who has never opened the course.
+
+The progress changelists are for the same questions asked across many learners
+at once. Each filters by whether the item is finished, by learner, by course,
+by the learner's organisation and by their cohort, and by the date the item was
+finished. Course progress adds a percentage slider, a filter on when the
+learner was last active — which is what finds the people who have gone quiet —
+and the not-started state. Form attempts sat outside any course are read on the
+form progress list, which says for each attempt which course it was sat in, or
+nothing at all when it was sat on its own.
 
 ## Course Interest
 

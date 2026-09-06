@@ -1,8 +1,14 @@
+from unfold.contrib.filters.admin import (
+    AutocompleteSelectFilter,
+    RangeDateTimeFilter,
+)
+
 from django.contrib import admin
 from django.http import HttpRequest
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin_filters import CompletionListFilter
 
 from .models import (
     Form,
@@ -188,19 +194,40 @@ class QuestionAnswerInline(admin.TabularInline):
     readonly_fields = ("updated_at",)
 
 
+class FormProgressCompletionFilter(CompletionListFilter):
+    completion_field = "completed_time"
+
+
 @admin.register(FormProgress)
 class FormProgressAdmin(SiteAwareModelAdmin):
     list_display = [
         "user",
         "form",
+        "in_course",
         "start_time",
         "last_updated_time",
         "completed_time",
         "is_complete",
     ]
-    list_filter = ("completed_time", "form", "start_time")
+    list_filter = [
+        FormProgressCompletionFilter,
+        ("form", AutocompleteSelectFilter),
+        ("completed_time", RangeDateTimeFilter),
+        ("start_time", RangeDateTimeFilter),
+    ]
+    # The range filters only narrow anything once they are applied.
+    list_filter_submit = True
+    date_hierarchy = "completed_time"
     search_fields = ("user__email", "form__title")
     ordering = ("-start_time",)
+    # The user and the form render on every row. `course_attempt` is a reverse
+    # one-to-one and only `in_course` reads it, so it is fetched for the
+    # changelist and nowhere else.
+    list_select_related = (
+        "user",
+        "form",
+        "course_attempt__course_progress__course",
+    )
     # completed_time is read-only because only FormProgress.complete() may finish an
     # attempt: it scores the attempt and sends form_attempt_completed, which is what
     # keeps CourseProgress.progress_percentage up to date. Stamping the field
@@ -222,6 +249,18 @@ class FormProgressAdmin(SiteAwareModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="In course")
+    def in_course(self, obj: FormProgress) -> str | None:
+        """The course this attempt was sat inside, or None when it was not.
+
+        A form can be sat outside any course, and the absence of the reverse
+        one-to-one is exactly what records that -- so the empty-value dash here
+        means "sat on its own", not "unknown".
+        """
+        if not hasattr(obj, "course_attempt"):
+            return None
+        return str(obj.course_attempt.course_progress.course)
 
     @admin.display(boolean=True, description="Complete")
     def is_complete(self, obj):

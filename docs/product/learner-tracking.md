@@ -1,6 +1,6 @@
 # Learner Tracking
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-09-06_
 
 ## Summary
 
@@ -35,7 +35,7 @@ Bulk database updates that bypass the normal save path do not trigger recalculat
 
 ## Who Can Read Tracking Data
 
-- **Administrators** — full read access to all progress and answer records in the Django admin, and can generate a [cohort progress report](./reports.md) for any cohort.
+- **Administrators** — full read access to all progress and answer records in the Django admin, and can generate a [cohort progress report](./reports.md) for any cohort. A learner's admin page gathers their cohorts, registrations and per-course progress, with the topics and form attempts behind each course a click away; the progress lists filter by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. See [admin interface](./admin-interface.md#learner-progress).
 - **Educators** — completion status, quiz scores, and deadline information for learners in their cohorts, via the course-progress matrix. Which cohorts and learners an educator can reach this way is bounded by the organisation they are currently viewing as well as by their access grants. See [educator interface](./educator-interface.md#access-control). An educator with access to a cohort under either of those routes can also generate that cohort's [progress report](./reports.md), from the Django admin.
 - **Learners** — their own progress, shown indirectly through course player status indicators, dashboard sections, and quiz feedback. There is no raw data export for learners.
 

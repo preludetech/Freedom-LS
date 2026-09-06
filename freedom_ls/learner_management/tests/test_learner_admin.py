@@ -33,6 +33,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
@@ -43,6 +44,12 @@ from freedom_ls.learner_management.models import (
     LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_progress.admin import learner_progress_links
+from freedom_ls.learner_progress.factories import (
+    CourseProgressFactory,
+    TopicProgressFactory,
+)
+from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
@@ -718,3 +725,83 @@ class TestOrganisationLearnerSearchLink:
         LearnerFactory(organisation=OrganisationFactory())
 
         assert "1 learner<" in organisation_learner_search_link(organisation)
+
+
+@pytest.mark.django_db
+class TestLearnerChangePagePanels:
+    """The learner's own records, on their own page.
+
+    The course progress panel and the progress links are contributed from
+    `learner_progress`, which imports this app and so can reach back into
+    `LearnerAdmin.inlines` and `LEARNER_SUMMARIES`. The wiring only runs at
+    import time, so a test that opens the page is what proves it ran.
+    """
+
+    def test_the_page_lists_the_learners_cohorts_and_registrations(
+        self, staff_client, mock_site_context
+    ) -> None:
+        learner = LearnerFactory()
+        membership = CohortMembershipFactory(learner=learner)
+        registration = LearnerCourseRegistrationFactory(learner=learner)
+
+        response = staff_client.get(
+            reverse(
+                "admin:freedom_ls_learner_management_learner_change", args=[learner.pk]
+            )
+        )
+
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert membership.cohort.name in body
+        assert registration.course.title in body
+
+    def test_the_page_lists_the_learners_course_progress(
+        self, staff_client, mock_site_context
+    ) -> None:
+        learner = LearnerFactory()
+        record = CourseProgressFactory(learner=learner)
+
+        response = staff_client.get(
+            reverse(
+                "admin:freedom_ls_learner_management_learner_change", args=[learner.pk]
+            )
+        )
+
+        inline_models = {
+            formset.formset.model
+            for formset in response.context["inline_admin_formsets"]
+        }
+        assert CourseProgress in inline_models
+        assert record.course.title in response.content.decode()
+
+    def test_the_panels_are_absent_from_the_add_page(
+        self, staff_client, mock_site_context
+    ) -> None:
+        """There is no learner yet to list anything for."""
+        response = staff_client.get(
+            reverse("admin:freedom_ls_learner_management_learner_add")
+        )
+
+        assert response.status_code == 200
+        assert response.context["inline_admin_formsets"] == []
+
+    def test_the_summary_links_to_this_learners_topic_progress(
+        self, staff_client, mock_site_context
+    ) -> None:
+        learner = LearnerFactory()
+        TopicProgressFactory(course_progress=CourseProgressFactory(learner=learner))
+
+        summary = learner_progress_links(learner)
+
+        expected = (
+            reverse("admin:freedom_ls_learner_progress_topicprogress_changelist")
+            + "?course_progress__learner__id__exact="
+            + str(learner.pk)
+        )
+        assert expected in summary
+        assert "1 topic progress record" in summary
+
+    def test_the_summary_says_so_when_there_is_no_progress(
+        self, mock_site_context
+    ) -> None:
+        assert learner_progress_links(LearnerFactory()) == "No progress recorded yet"
