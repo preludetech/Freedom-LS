@@ -145,6 +145,9 @@ flowchart TB
     webhooks --> base
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
+    accounts -.-> content_engine
+    accounts -.-> course_applications
+    accounts -.-> course_interest
     accounts -.-> learner_management
     accounts -.-> organisations
     base -.-> accounts
@@ -178,7 +181,7 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, markdown_rendering, site_aware_models, webhooks | learner_management, organisations |
+| accounts | base, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, learner_management, organisations |
 | base | — | accounts, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | — |
