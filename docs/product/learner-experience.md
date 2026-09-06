@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-09-06_
 
 ## Summary
 
@@ -11,6 +11,7 @@ _Last updated: 2026-08-27_
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - Hard deadlines lock uncompleted content after expiry; soft deadlines are shown to the learner but never lock anything.
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
+- Failures — a dead link, a refused permission, an expired form session, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
 
 ## Dashboard
 
@@ -127,6 +128,14 @@ This intent is preserved even through the new-user signup path that requires com
 Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, and whether the course is accessible for free). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs.
 
 The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. The sitemap follows the same visibility rules as the catalogue: hidden courses are excluded, while coming-soon courses (whose detail pages are publicly reachable) are included. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
+
+## Error Pages
+
+When a visitor hits a dead link, is refused access to a page, submits a form after their session has expired, or trips a rate limit, FLS shows a branded error page in the site's own theme rather than a generic, unstyled framework page. Each one returns its real HTTP status code, is excluded from search indexing, and offers at least one route back into the app — the dashboard or the course catalogue — so a visitor is never left at a dead end. The pages carry no support contact and no reference code.
+
+![Branded 404 page with the site header and dashboard and catalogue actions](screenshots/learner_error_page_404.png)
+
+**Limitation: full-page loads only.** Outside the course player, a background request that fails leaves the page looking unchanged rather than showing one of these pages. Inside the course player, a failed background request forces a full reload onto the real error page.
 
 ## Self-Registration
 
