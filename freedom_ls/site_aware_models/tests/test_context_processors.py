@@ -57,3 +57,22 @@ def test_site_config_header_title_falls_back_to_site_name(mock_site_context):
 
     assert context["header_title"] == context["site_title"] == "TestSite"
     assert context["header_title_style"] is None
+
+
+@pytest.mark.django_db
+@override_settings(
+    ALLOWED_HOSTS=["testserver"], FORCE_SITE_NAME=None, HEADER_TITLE=None
+)
+def test_site_config_degrades_for_a_rejected_host():
+    """A host outside ALLOWED_HOSTS yields blank branding rather than raising.
+
+    Django's 400 handler renders with a full RequestContext, so this processor
+    runs for a request whose Host header was already rejected. Raising here
+    would turn that 400 into a 500.
+    """
+    request = RequestFactory().get("/", HTTP_HOST="not-an-allowed-host.example.com")
+
+    context = site_config(request)
+
+    assert context["site_name"] == ""
+    assert context["header_title"] == ""

@@ -94,6 +94,29 @@ def test_400_renders_the_error_page(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
+@override_settings(DEBUG=False, ALLOWED_HOSTS=["testserver"], FORCE_SITE_NAME=None)
+def test_400_from_a_rejected_host_stays_a_400() -> None:
+    """A `Host` Django has already rejected must not become a 500.
+
+    `bad_request` renders with a full `RequestContext`, so every context
+    processor runs whatever the template body references, and two of ours
+    resolve the site from `request.get_host()` — which raises `DisallowedHost`
+    a second time. Django catches that, fires `got_request_exception` and
+    degrades to `handler500`, so every bot hitting the host by address would
+    generate an error mail.
+
+    No `mock_site_context`: that fixture patches `get_current_site`, which is
+    exactly the call that fails here, so taking it would hide the regression.
+    """
+    response = Client(raise_request_exception=False).get(
+        "/", HTTP_HOST="not-an-allowed-host.example.com"
+    )
+
+    assert response.status_code == 400
+    assert "400.html" in [template.name for template in response.templates]
+
+
+@pytest.mark.django_db
 def test_csrf_failure_renders_the_error_page(mock_site_context) -> None:
     client = Client(enforce_csrf_checks=True)
 
@@ -169,6 +192,32 @@ def test_403_secondary_action_signs_out_and_reaches_login(mock_site_context) -> 
     assert "account/login.html" in [
         template.name for template in anonymous_response.templates
     ]
+
+
+@pytest.mark.django_db
+def test_403_csrf_action_signs_out_before_reaching_login(mock_site_context) -> None:
+    """The CSRF page routes through logout for the same reason `403.html` does.
+
+    Its likeliest visitor is a *signed-in* user posting a form whose token
+    rotated under them, and the page carries only one action — a bare login
+    link would drop that user on their dashboard with neither a form nor a
+    route back to what they lost.
+    """
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(UserFactory())
+
+    response = client.post(
+        reverse("account_login"),
+        {
+            "login": "nobody@example.com",
+            "password": "wrong-password",  # pragma: allowlist secret
+        },
+    )
+
+    forward_url = f"{reverse('account_logout')}?next={reverse('account_login')}"
+
+    assert response.status_code == 403
+    assert f'href="{forward_url}"' in response.content.decode()
 
 
 def test_500_renders_from_a_bare_context_with_no_site_setup() -> None:
@@ -313,12 +362,29 @@ PAGE_RENDERERS: dict[str, Callable[[], tuple[int, str, str]]] = {
 }
 
 
+# The actions each page promises. Asserting on the labels, rather than on
+# `class="btn`, is what makes the test below bite: the header bar `_base.html`
+# renders already carries buttons of its own, so a class assertion passes on
+# every shell page whether or not the panel offers anything at all.
+PAGE_ACTIONS: dict[str, tuple[str, ...]] = {
+    "404": ("Go to your dashboard", "Browse courses"),
+    "403": ("Browse courses", "Sign in as a different account"),
+    "400": ("Go to your dashboard",),
+    "403_csrf": ("Sign in again",),
+    "429": ("Try again",),
+    "500": ("Try again", "Go to your dashboard"),
+    "503": ("Try again",),
+    "lockout": ("Back to sign in", "Reset it now"),
+}
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("page_name", sorted(PAGE_RENDERERS))
 def test_every_page_offers_a_route_forward(mock_site_context, page_name: str) -> None:
     _, _, body = PAGE_RENDERERS[page_name]()
 
-    assert 'class="btn' in body
+    for label in PAGE_ACTIONS[page_name]:
+        assert label in body
 
 
 @pytest.mark.django_db
@@ -381,7 +447,9 @@ def test_no_page_leaks_internal_detail(mock_site_context, page_name: str) -> Non
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("page_name", sorted(PAGE_RENDERERS))
+@pytest.mark.parametrize(
+    "page_name", sorted(page for page in PAGE_RENDERERS if page != "lockout")
+)
 def test_no_page_shows_a_countdown_or_rate_figure(
     mock_site_context, page_name: str
 ) -> None:
@@ -391,3 +459,19 @@ def test_no_page_shows_a_countdown_or_rate_figure(
         re.search(r"\d+\s*(second|minute|hour|attempt|request)", body, re.IGNORECASE)
         is None
     )
+
+
+@pytest.mark.django_db
+def test_lockout_names_its_pause_but_never_a_countdown(mock_site_context) -> None:
+    """The one page exempt from the rule above, and only so far as the rule's
+    reason reaches. A remaining time is unknowable — nothing can read how much
+    of a cool-off is left — but the *length* of the pause is just
+    `AXES_COOLOFF_TIME`, so the lockout page names it. What it must not do is
+    turn that into a countdown, which is what would stop matching the moment
+    the visitor failed again mid-pause.
+    """
+    _, _, body = PAGE_RENDERERS["lockout"]()
+
+    assert "paused for about 1\xa0hour" in body
+    assert "Try again in" not in body
+    assert "remaining" not in body.lower()

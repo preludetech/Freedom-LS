@@ -6,6 +6,7 @@ from threading import local
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.exceptions import DisallowedHost
 from django.db import models
 from django.http import HttpRequest
 
@@ -14,6 +15,18 @@ from .config import config
 _thread_locals = local()
 
 _CACHED_SITE_ATTR = "_cached_site"
+
+
+class UnknownSite(RequestSite):
+    """The site of a request whose Host header Django has already rejected.
+
+    Deliberately not a `Site`: callers that need a real row check
+    `isinstance(site, Site)` and fall back to their own default rather than
+    query against this.
+    """
+
+    def __init__(self) -> None:
+        self.domain = self.name = ""
 
 
 def get_cached_site(request: HttpRequest) -> Site | RequestSite:
@@ -34,7 +47,16 @@ def get_cached_site(request: HttpRequest) -> Site | RequestSite:
                 f"Available sites: {available}"
             ) from err
     else:
-        site = get_current_site(request)
+        try:
+            site = get_current_site(request)
+        except DisallowedHost:
+            # A host outside ALLOWED_HOSTS resolves to no site at all, and the
+            # only thing that renders such a request is Django's 400 handler.
+            # That handler builds a full RequestContext, so every context
+            # processor runs -- including the two that land here -- and raising
+            # would turn the 400 into a 500 plus an error mail for every bot
+            # that reaches the server by address.
+            site = UnknownSite()
 
     setattr(request, _CACHED_SITE_ATTR, site)
     return site

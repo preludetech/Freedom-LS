@@ -62,3 +62,19 @@ def test_lockout_page_offers_a_route_forward(mock_site_context) -> None:
     assert AXES_DEFAULT_BODY not in body
     assert reverse("account_login") in body
     assert reverse("account_reset_password") in body
+
+
+@pytest.mark.django_db
+def test_lockout_page_promises_the_configured_cool_off(
+    mock_site_context, settings
+) -> None:
+    """The wait the page names must follow AXES_COOLOFF_TIME, not a fixed
+    guess: a page that says "a few minutes" beside an hour-long cool-off sends
+    the visitor back to a sign-in form that still rejects them.
+    """
+    settings.AXES_COOLOFF_TIME = 2
+    user = UserFactory()
+
+    response = _lock_out(Client(), user.email)
+
+    assert "paused for about 2\xa0hours" in response.content.decode()

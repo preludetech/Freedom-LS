@@ -1,5 +1,6 @@
 {% extends "_base.html" %}
 {% load i18n %}
+{% load fls_base_filters %}
 
 {% block head_title %}{% trans "Too many sign-in attempts" %}{% endblock head_title %}
 
@@ -8,8 +9,20 @@
 {% block content %}
     <c-error-page status="429" status_label="Account locked" level="warning" icon="rate_limit">
         <c-slot name="heading">{% trans "Too many sign-in attempts" %}</c-slot>
+        {% comment %}
+        axes puts cooloff_timedelta in the context from AXES_COOLOFF_TIME, so the length
+        of the pause follows the setting instead of going stale beside it. It names how
+        long the pause lasts, never how much of it is left: the remaining time is not
+        knowable here, and a visitor who fails again mid-pause would be told a figure
+        that no longer matches. The setting can also be None, which means the lockout
+        does not lift on its own.
+        {% endcomment %}
         <p>
-            {% trans "Sign-in for this account is paused after too many failed attempts. Wait a few minutes, then try again." %}
+            {% if cooloff_timedelta %}
+                {% blocktrans with pause=cooloff_timedelta|duration %}Sign-in for this account is paused for about {{ pause }} after too many failed attempts.{% endblocktrans %}
+            {% else %}
+                {% trans "Sign-in for this account is paused after too many failed attempts. Please try again later." %}
+            {% endif %}
         </p>
         <div class="flex flex-wrap justify-center gap-3 pt-3">
             <c-button href="{% url 'account_login' %}" variant="primary" icon_left="user">

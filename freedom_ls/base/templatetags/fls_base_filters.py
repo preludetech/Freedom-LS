@@ -1,6 +1,21 @@
+from datetime import timedelta
+
 from django import template
+from django.utils import timezone
+from django.utils.timesince import timesince
 
 register = template.Library()
+
+
+@register.filter
+def duration(value: timedelta) -> str:
+    """
+    Template filter to render a timedelta as human-readable text, e.g. "1 hour".
+
+    Usage: {{ my_timedelta|duration }}
+    """
+    now = timezone.now()
+    return timesince(now, now + value)
 
 
 @register.filter
