@@ -449,6 +449,52 @@ This is **bold** text
         assert "<table" in result
         assert "<caption" not in result
 
+    @pytest.mark.parametrize(
+        ("opening", "closing"),
+        [
+            ('<c-accordion title="Detail">', "</c-accordion>"),
+            (
+                '<c-flashcard>\n<c-slot name="back">',
+                "</c-slot>\n</c-flashcard>",
+            ),
+        ],
+        ids=["accordion", "flashcard"],
+    )
+    def test_c_table_wrapper_is_stripped_inside_a_markdown_slot(
+        self, mock_request, opening, closing
+    ):
+        """A nested c-table loses its scroll wrapper, so authors must not nest it.
+
+        Components whose body is author markdown emit it with
+        ``{% markdown slot %}``. Cotton has already rendered any nested
+        component into that slot, so the second markdown pass runs nh3 over
+        finished component markup and strips it — ``div`` carries no allowed
+        attributes. The table survives; its focusable scroll region, caption
+        styling and ``role="group"`` label do not.
+
+        c-image-grid dodges this by emitting ``{{ slot }}``, which the accordion
+        and flashcard cannot do: their bodies really are markdown.
+        """
+        standalone = render_markdown(
+            '<c-table caption="Plan comparison">\n'
+            "| Plan | Price |\n|------|-------|\n| Free | 0 |\n"
+            "</c-table>",
+            mock_request,
+        )
+        nested = render_markdown(
+            f'{opening}\n\n<c-table caption="Plan comparison">\n\n'
+            "| Plan | Price |\n|------|-------|\n| Free | 0 |\n\n"
+            f"</c-table>\n\n{closing}",
+            mock_request,
+        )
+
+        assert "overflow-x-auto" in standalone
+        assert 'role="group"' in standalone
+
+        assert "<table" in nested
+        assert "overflow-x-auto" not in nested
+        assert 'role="group"' not in nested
+
     def test_c_image_grid_preserves_nested_picture_lightbox(self, mock_request, site):
         """The grid wrapper preserves each nested c-picture's lightbox button."""
         self._make_image_file(site, "images/a.png")

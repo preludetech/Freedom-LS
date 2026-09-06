@@ -10,6 +10,11 @@ Attribute:
   caption  Optional. Splices a real <caption> into the table and names the
            scroll region.
 
+Top level only. A component whose body is author markdown emits it with
+{% markdown slot %}, which re-sanitises this already-rendered wrapper and
+strips its classes, tabindex and role. Inside an accordion, flashcard slot or
+admonition, write a plain markdown table instead.
+
 Independent of the base app's c-data-table / scrollTableLabels.
 {% endcomment %}
 

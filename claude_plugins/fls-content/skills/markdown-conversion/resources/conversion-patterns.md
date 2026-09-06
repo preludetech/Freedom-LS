@@ -34,7 +34,7 @@
 - Ordered and unordered lists
 - Hyperlinks `[text](url)` (unless it is a YouTube URL as above)
 - Standard fenced code blocks ` ``` ` (leave as fenced unless a title is needed — FLS renders them natively)
-- GFM tables (leave as-is unless a caption exists nearby; then wrap in `<c-table caption="...">`)
+- GFM tables (leave as-is unless a caption exists nearby; then wrap in `<c-table caption="...">`, but only at the top level — `c-table` does not survive nesting inside another widget)
 - Horizontal rules `---`
 - Any existing `c-*` widget that is already correct
 
