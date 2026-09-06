@@ -106,7 +106,7 @@ FLS stores, in its PostgreSQL database:
 - Legal consent records — which document and version was accepted, when, from what IP address, and by what method.
 - Learning activity — course progress, quiz answers, and scores.
 - Webhook delivery logs, which may contain user data inside the delivered payload.
-- Fully rendered outgoing email — subject and both bodies — held as a row on the task queue until it is sent and then pruned. This includes the single-use links in signup-verification and password-reset messages. See [queued email](#queued-email).
+- Fully rendered outgoing email — subject and both bodies — where a deployment has turned email queueing on, held as a row on the task queue until it is sent and then pruned. This includes the single-use links in signup-verification and password-reset messages. See [queued email](#queued-email).
 
 Outside the database, FLS stores generated [cohort progress reports](./reports.md) as PDF files. Each holds real learner names, completion history, and individual quiz scores and answers, and is not anonymised — the audience is internal staff, by design. See [generated cohort reports](#generated-cohort-reports).
 
@@ -126,13 +126,13 @@ TLS terminates at the reverse proxy (or the CDN edge), with the certificate supp
 
 ### Queued Email
 
-Outgoing email is not sent inside the request that triggers it. The rendered message is written to the task-results table and a background worker sends it, which is what stops a slow mail host from holding a page open. See [deployment](./deployment.md).
+This section applies only to a deployment that has set `EMAIL_BACKEND` to the queueing backend. By default mail is sent inside the request and nothing about it is stored. With queueing on, the rendered message is written to the task-results table and a background worker sends it, which is what stops a slow mail host from holding a page open. See [deployment](./deployment.md).
 
 **What this means for the data.** The stored row holds the finished message, so for the two transactional emails that matter it holds a live credential: the signup-verification link and the password-reset link. These are single-use and expire on their own schedule, but within that window they are enough to take over an account. There is no application-level encryption on the row — it has the same protection as the rest of the database, which is to say whatever the host provides. Anyone with database read access, or a copy of an unencrypted dump, can read a pending or recently-sent reset link and use it while the token is still valid. Treat a database dump accordingly; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §6.
 
 **The retention control** is `fls_run_housekeeping`'s prune of finished task results, which defaults to fourteen days. A deployment that wants a shorter exposure window shortens that. Note the prune only removes *finished* rows: if the worker stops, unsent rows accumulate and are not pruned, which is a second reason to alert on the unpicked-task report rather than only on the missing mail.
 
-This is a deliberate trade, taken knowingly: the alternative is sending in the request, which is what made signup and password reset slow.
+This is the trade a deployment accepts when it turns queueing on. Leaving it off keeps the credential out of the database and pays for that with a signup and password reset that wait on the mail host.
 
 ### Error Tracking and Personal Data
 

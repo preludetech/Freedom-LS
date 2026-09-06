@@ -68,10 +68,11 @@ class DeploymentSettings(AppSettings):
         "HOUSEKEEPING_ORPHANED_REPORT_MAX_AGE_SECONDS": Setting(default=3600),
         # The backend the worker actually sends through, once QueuedEmailBackend has
         # taken the message off the request. FLS's own setting, not one of Django's:
-        # Django's EMAIL_BACKEND names the queue, this names what is behind it. SMTP
-        # by default because every deployment that queues mail is sending real mail --
-        # dev included, where Mailpit is SMTP on localhost. Pointing this back at the
-        # queueing backend would re-enqueue every message forever, which E007 catches.
+        # Read only where EMAIL_BACKEND names the queue: that setting names the queue,
+        # this one names what is behind it. SMTP by default because a deployment that
+        # has opted into queueing is sending real mail -- dev included, where Mailpit
+        # is SMTP on localhost. Pointing this back at the queueing backend would
+        # re-enqueue every message forever, which E007 catches.
         "EMAIL_UPSTREAM_BACKEND": Setting(
             default="django.core.mail.backends.smtp.EmailBackend"
         ),

@@ -346,16 +346,6 @@ def test_prod_settings_uses_database_cache_backend(
     assert prod.CACHES == settings_defaults.DATABASE_CACHES
 
 
-def test_queued_email_backend_constant_resolves_to_the_backend_class() -> None:
-    # django-tasks-db stores the task's dotted path on every queued row, so a
-    # rename that this constant did not follow would orphan in-flight mail.
-    from django.utils.module_loading import import_string
-
-    from freedom_ls.deployment.mail import QueuedEmailBackend
-
-    assert import_string(settings_defaults.QUEUED_EMAIL_BACKEND) is QueuedEmailBackend
-
-
 def test_email_timeout_default_is_a_positive_int() -> None:
     assert isinstance(settings_defaults.EMAIL_TIMEOUT_SECONDS, int)
     assert settings_defaults.EMAIL_TIMEOUT_SECONDS > 0
@@ -369,9 +359,11 @@ def test_email_timeout_is_well_inside_the_worker_task_ceiling() -> None:
     assert settings_defaults.EMAIL_TIMEOUT_SECONDS < config.WORKER_MAX_TASK_SECONDS / 10
 
 
-def test_prod_settings_queues_email_by_default(
+def test_prod_settings_send_email_in_the_request_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # The default has to work for a deployment running nothing but the web process:
+    # queued mail with no worker behind it is accepted and never sent.
     monkeypatch.setenv("HOST_DOMAIN", "example.test")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
@@ -379,20 +371,20 @@ def test_prod_settings_queues_email_by_default(
 
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
-    assert prod.EMAIL_BACKEND == settings_defaults.QUEUED_EMAIL_BACKEND
+    assert prod.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
     assert prod.EMAIL_TIMEOUT == settings_defaults.EMAIL_TIMEOUT_SECONDS
 
 
-def test_prod_settings_still_lets_a_deployment_opt_out_of_queueing(
+def test_prod_settings_let_a_deployment_opt_into_queueing(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # The escape hatch for a deployment that runs no worker: without it, mail
-    # would be accepted and never sent.
+    # The other half of the choice: a deployment that runs fls_run_worker turns
+    # queueing on here and keeps the SMTP round trip out of the request.
     monkeypatch.setenv("HOST_DOMAIN", "example.test")
     monkeypatch.setenv("SECRET_KEY", "test-secret-key")
     monkeypatch.setenv("WEBHOOK_ENCRYPTION_SALT", "test-webhook-salt")
-    monkeypatch.setenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+    monkeypatch.setenv("EMAIL_BACKEND", "freedom_ls.deployment.mail.QueuedEmailBackend")
 
     prod = importlib.reload(importlib.import_module("config.settings_prod"))
 
-    assert prod.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"
+    assert prod.EMAIL_BACKEND == "freedom_ls.deployment.mail.QueuedEmailBackend"

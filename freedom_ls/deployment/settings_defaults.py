@@ -74,18 +74,12 @@ DATABASE_TASKS: dict[str, dict[str, str]] = {
 }
 
 
-# Outgoing mail is handed to the task queue rather than sent in the request: an SMTP
-# session against a hosted provider costs seconds, and the sender waits for all of it.
-# A dotted string rather than an import, per this module's stdlib-only rule. Both
-# settings modules point EMAIL_BACKEND here; EMAIL_UPSTREAM_BACKEND (declared in this
-# app's config.py) is what the worker actually sends through.
-QUEUED_EMAIL_BACKEND: str = "freedom_ls.deployment.mail.QueuedEmailBackend"
-
 # Socket timeout for each SMTP operation, in seconds. Unset, smtplib inherits Python's
-# global default of None and a black-holed connection hangs forever -- which, now that
-# the send happens on the worker, would stall every other queued task behind it until
-# the watchdog killed the process. Ten seconds absorbs a slow TLS handshake without
-# failing legitimate sends, and stays far inside WORKER_MAX_TASK_SECONDS.
+# global default of None and a black-holed connection hangs forever -- holding the
+# request open when mail is sent in the request, and stalling every other queued task
+# behind it when a deployment has opted into QueuedEmailBackend. Ten seconds absorbs a
+# slow TLS handshake without failing legitimate sends, and stays far inside
+# WORKER_MAX_TASK_SECONDS.
 EMAIL_TIMEOUT_SECONDS: int = 10
 
 # Database-backed cache for production. LOCATION is a table name, not created by

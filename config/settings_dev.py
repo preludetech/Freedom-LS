@@ -2,7 +2,6 @@ import os
 import sys
 
 from freedom_ls.base.git_utils import branch_to_db_name, get_current_branch
-from freedom_ls.deployment import settings_defaults as fls_defaults
 
 from .settings_base import *  # noqa: F403
 
@@ -74,11 +73,11 @@ HEADLESS_SERVE_SPECIFICATION = True
 # Development email is captured by Mailpit (see dev_db/docker-compose.yaml).
 # Browse the inbox at http://localhost:8025
 
-# The same queueing backend production uses. Dev's TASKS is ImmediateBackend, so the
-# task runs inline and Mailpit still receives the mail within the request -- what this
-# buys is that every manual QA session exercises the serialise/rebuild round-trip
-# rather than leaving it to run first in production.
-EMAIL_BACKEND = fls_defaults.QUEUED_EMAIL_BACKEND
+# Dev opts into queueing, which production does not do by default. Dev's TASKS is
+# ImmediateBackend, so the task runs inline and Mailpit still receives the mail within
+# the request -- what this buys is that manual QA exercises the serialise/rebuild
+# round-trip, which is the part a deployment that turns queueing on depends on.
+EMAIL_BACKEND = "freedom_ls.deployment.mail.QueuedEmailBackend"
 EMAIL_UPSTREAM_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025

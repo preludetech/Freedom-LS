@@ -1,11 +1,12 @@
 """Queue outgoing email onto the background worker.
 
-Both settings modules point EMAIL_BACKEND here, so every ``send()`` in the
-project returns as soon as the message is on the queue rather than blocking the
-request on an SMTP round trip. ``fls_run_worker`` rebuilds the message and sends
-it through EMAIL_UPSTREAM_BACKEND, which is what actually talks to the mail
-server. A deployment that runs no worker sets EMAIL_BACKEND back to Django's SMTP
-backend; otherwise its mail would be accepted and never sent.
+Pointing EMAIL_BACKEND here makes every ``send()`` in the project return as soon
+as the message is on the queue rather than blocking the request on an SMTP round
+trip. ``fls_run_worker`` rebuilds the message and sends it through
+EMAIL_UPSTREAM_BACKEND, which is what actually talks to the mail server. Dev
+settings select this backend; production sends in the request unless a deployment
+opts in, because choosing it commits that deployment to running a worker.
+Without one the mail is accepted and never sent.
 
 No call site changes to make this work: ``EmailMessage.send()`` resolves its
 connection through ``get_connection()``, so pinning the setting catches every

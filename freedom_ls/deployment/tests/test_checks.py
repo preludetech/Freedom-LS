@@ -644,8 +644,9 @@ class QueuedEmailBackendSubclass(QueuedEmailBackend):
 
 
 def test_email_upstream_backend_check_is_registered() -> None:
-    # Not deploy=True: dev queues mail too, so this must fail runserver rather
-    # than waiting for check --deploy. That puts it in registered_checks.
+    # Not deploy=True: dev is the configuration that queues by default, so this
+    # must fail runserver rather than waiting for check --deploy. That puts it in
+    # registered_checks.
     assert (
         check_email_upstream_backend_is_not_the_queue
         in registry.registry.registered_checks

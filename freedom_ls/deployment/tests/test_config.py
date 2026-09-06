@@ -85,7 +85,8 @@ class TestEmailUpstreamBackendDefault:
 
     def test_the_default_is_never_the_queueing_backend(self) -> None:
         # A default that pointed at the queue would make every deployment that
-        # did not override it enqueue mail forever without sending any.
-        from freedom_ls.deployment.settings_defaults import QUEUED_EMAIL_BACKEND
-
-        assert config.EMAIL_UPSTREAM_BACKEND != QUEUED_EMAIL_BACKEND
+        # queues mail and did not override it enqueue forever without sending any.
+        assert (
+            config.EMAIL_UPSTREAM_BACKEND
+            != "freedom_ls.deployment.mail.QueuedEmailBackend"
+        )

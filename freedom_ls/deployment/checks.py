@@ -31,7 +31,8 @@ E006 — ALLAUTH_TRUSTED_CLIENT_IP_HEADER and TRUSTED_PROXY_IP_HEADER name
        ``manage.py check --deploy``.
 E007 — EMAIL_UPSTREAM_BACKEND resolves to the queueing backend itself, so the
        worker would re-enqueue every message instead of sending it. Runs
-       everywhere, not only under ``--deploy``: dev queues mail too.
+       everywhere, not only under ``--deploy``, because it fires wherever the
+       queueing backend is selected, dev included.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
 """
@@ -429,8 +430,9 @@ def check_email_upstream_backend_is_not_the_queue(
     grows until the disk does not, under the immediate backend it recurses on the
     spot. No mail is delivered either way, and nothing else reports it.
 
-    Not a --deploy check: dev runs the queueing backend too, so a developer should
-    meet this at runserver rather than at release time.
+    Not a --deploy check: it only fires where the queueing backend is actually
+    selected, which is dev by default and production once a deployment opts in, so
+    a developer should meet this at runserver rather than at release time.
     """
     from django.conf import settings
     from django.utils.module_loading import import_string
