@@ -68,7 +68,11 @@ class SiteAwareManager(models.Manager):
         request = getattr(_thread_locals, "request", None)
         if request:
             site = get_cached_site(request)
-            return queryset.filter(site=site)
+            # A rejected Host resolves to UnknownSite, which is not a row and
+            # cannot be filtered against. Fall through unfiltered rather than
+            # raise: the only thing that renders such a request is the 400 page.
+            if isinstance(site, Site):
+                return queryset.filter(site=site)
         return queryset
 
 
@@ -93,9 +97,12 @@ class SiteAwareModelBase(models.Model):
         if not self.site_id:
             request = getattr(_thread_locals, "request", None)
             if request:
-                # In practice, get_cached_site always returns Site when
-                # django.contrib.sites is installed (which it always is).
-                self.site = get_cached_site(request)  # type: ignore[assignment]
+                site = get_cached_site(request)
+                # UnknownSite is not a row, and assigning it raises ValueError
+                # from the descriptor. Leaving site unset instead lets the save
+                # fail on the plain "this field cannot be null" path.
+                if isinstance(site, Site):
+                    self.site = site
 
 
 class SiteAwareModel(SiteAwareModelBase):

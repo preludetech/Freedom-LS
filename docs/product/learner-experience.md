@@ -11,7 +11,7 @@ _Last updated: 2026-09-06_
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
 - Hard deadlines lock uncompleted content after expiry; soft deadlines are shown to the learner but never lock anything.
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
-- Failures — a dead link, a refused permission, an expired form session, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
+- Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
 
 ## Dashboard
 
@@ -131,7 +131,7 @@ The installation serves a dynamic per-site `sitemap.xml` listing the catalogue a
 
 ## Error Pages
 
-When a visitor hits a dead link, is refused access to a page, submits a form after their session has expired, or trips a rate limit, FLS shows a branded error page in the site's own theme rather than a generic, unstyled framework page. Each one returns its real HTTP status code, is excluded from search indexing, and offers at least one route back into the app — the dashboard or the course catalogue — so a visitor is never left at a dead end. The pages carry no support contact and no reference code.
+When a visitor hits a dead link, is refused access to a page, submits a form the site cannot verify, or trips a rate limit, FLS shows a branded error page in the site's own theme rather than a generic, unstyled framework page. Each one returns its real HTTP status code, is excluded from search indexing, and offers at least one route back into the app — the dashboard or the course catalogue — so a visitor is never left at a dead end. The pages carry no support contact and no reference code.
 
 ![Branded 404 page with the site header and dashboard and catalogue actions](screenshots/learner_error_page_404.png)
 

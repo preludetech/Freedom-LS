@@ -48,7 +48,10 @@ add `handler400`/`handler403`/`handler404`/`handler500` to your URLconf or set
   500. `UnknownSite` is deliberately *not* a `Site` row. Downstream code that calls
   `get_cached_site` and then queries against the result must guard with
   `isinstance(site, Site)` and fall back to its own default, as FLS's own callers do; code
-  that relied on the exception propagating will no longer see it.
+  that relied on the exception propagating will no longer see it. `SiteAwareManager` and
+  `SiteAwareModelBase` carry that guard themselves, so under a rejected host a site-aware
+  queryset comes back unfiltered and `save()` leaves `site` unset, rather than either
+  raising from inside the ORM.
 
 - **Rendered icon SVGs now carry `width` and `height` attributes.**
   `freedom_ls.icons.backend.build_svg` emits the icon set's intrinsic dimensions alongside

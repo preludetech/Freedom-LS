@@ -54,6 +54,12 @@ Retry links use a plain anchor with an empty href, never <c-button>: an empty hr
 against the document URL, so it reloads the current page with no JavaScript and no request
 object. <c-button> only ever emits a real <a> when href is truthy, so it cannot express this.
 
+That reload is always a GET, so only a page whose triggering URL is known to accept one may
+offer it. 429 qualifies (allauth's login, signup and password-change forms all render on
+GET) and so does 503 (nothing is up to POST to). 500 does not, and offers a dashboard link
+instead: it renders with no context at all, so it cannot tell a failed POST from a failed
+GET, and a POST-only endpoint would answer the reload with a bare 405.
+
 The mark always pairs a *-light background with its own on-*-light foreground, never
 text-warning. Under the default theme --color-warning is a pale yellow tuned to sit behind
 white text, not to be read as foreground text on a light page; first_class's warning is a

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from django.conf import settings
 from django.test import Client
 from django.urls import reverse
 
@@ -27,7 +28,9 @@ def _lock_out(client: Client, email: str) -> _MonkeyPatchedWSGIResponse:
         "login": email,
         "password": "wrong-password",  # pragma: allowlist secret
     }
-    responses = [client.post(login_url, credentials) for _ in range(5)]
+    responses = [
+        client.post(login_url, credentials) for _ in range(settings.AXES_FAILURE_LIMIT)
+    ]
     return responses[-1]
 
 

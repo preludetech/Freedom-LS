@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 import django
+from django.conf import settings
 from django.core.cache import cache
 from django.template.loader import get_template
 from django.test import Client, override_settings
@@ -220,6 +221,30 @@ def test_403_csrf_action_signs_out_before_reaching_login(mock_site_context) -> N
     assert f'href="{forward_url}"' in response.content.decode()
 
 
+@pytest.mark.django_db
+def test_403_csrf_reload_action_points_at_the_form_that_failed(
+    mock_site_context,
+) -> None:
+    """Reloading is the fix for the likeliest cause of a CSRF rejection, a token
+    that rotated under an open tab, and it only works if the page can name the
+    path whose POST was refused. `csrf_failure` renders with a request, so it
+    can. The query string comes along too, or a login would lose its `next`.
+    """
+    client = Client(enforce_csrf_checks=True)
+    failing_url = f"{reverse('account_login')}?next=/somewhere/"
+
+    response = client.post(
+        failing_url,
+        {
+            "login": "nobody@example.com",
+            "password": "wrong-password",  # pragma: allowlist secret
+        },
+    )
+
+    assert response.status_code == 403
+    assert f'href="{failing_url}"' in response.content.decode()
+
+
 def test_500_renders_from_a_bare_context_with_no_site_setup() -> None:
     """Pins the asymmetry: `500.html` needs neither `django_db` nor
     `mock_site_context`, unlike every shell-page test above. `server_error`
@@ -291,7 +316,9 @@ def _lock_out_account(client: Client, email: str) -> _MonkeyPatchedWSGIResponse:
         "login": email,
         "password": "wrong-password",  # pragma: allowlist secret
     }
-    responses = [client.post(login_url, credentials) for _ in range(5)]
+    responses = [
+        client.post(login_url, credentials) for _ in range(settings.AXES_FAILURE_LIMIT)
+    ]
     return responses[-1]
 
 
@@ -370,9 +397,9 @@ PAGE_ACTIONS: dict[str, tuple[str, ...]] = {
     "404": ("Go to your dashboard", "Browse courses"),
     "403": ("Browse courses", "Sign in as a different account"),
     "400": ("Go to your dashboard",),
-    "403_csrf": ("Sign in again",),
+    "403_csrf": ("Reload the form", "Sign in again"),
     "429": ("Try again",),
-    "500": ("Try again", "Go to your dashboard"),
+    "500": ("Go to your dashboard",),
     "503": ("Try again",),
     "lockout": ("Back to sign in", "Reset it now"),
 }
@@ -418,8 +445,9 @@ def test_no_page_echoes_its_own_trigger_path(mock_site_context) -> None:
     trigger path is `account_signup`, a real route the site header already
     links to on every page, so checking for its absence would fail on the
     header, not on a leak. 403_csrf and lockout are excluded for the same
-    reason as 429, plus both deliberately link back to `account_login`, the
-    path that triggered them, as their primary action. 503 has no
+    reason as 429, plus both deliberately link back to the path that triggered
+    them: lockout to `account_login`, and 403_csrf to the very path whose POST
+    failed, so that reloading it hands the visitor a fresh token. 503 has no
     triggering path at all.
     """
     trigger_paths = {
@@ -462,16 +490,23 @@ def test_no_page_shows_a_countdown_or_rate_figure(
 
 
 @pytest.mark.django_db
-def test_lockout_names_its_pause_but_never_a_countdown(mock_site_context) -> None:
+def test_lockout_names_its_pause_but_never_a_countdown(
+    mock_site_context, settings
+) -> None:
     """The one page exempt from the rule above, and only so far as the rule's
     reason reaches. A remaining time is unknowable — nothing can read how much
     of a cool-off is left — but the *length* of the pause is just
     `AXES_COOLOFF_TIME`, so the lockout page names it. What it must not do is
     turn that into a countdown, which is what would stop matching the moment
     the visitor failed again mid-pause.
+
+    The cool-off is pinned here rather than read from the deployment's own
+    setting, so the assertion holds whatever a downstream configures.
     """
+    settings.AXES_COOLOFF_TIME = 2
+
     _, _, body = PAGE_RENDERERS["lockout"]()
 
-    assert "paused for about 1\xa0hour" in body
+    assert "paused for about 2\xa0hours" in body
     assert "Try again in" not in body
     assert "remaining" not in body.lower()

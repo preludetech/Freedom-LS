@@ -7,13 +7,24 @@
 {% block content %}
     {% url 'account_logout' as logout_url %}
     {% url 'account_login' as login_url %}
-    <c-error-page status="403" status_label="Session expired" level="warning" icon="deadline"
+    <c-error-page status="403" status_label="Verification failed" level="warning" icon="deadline"
                   heading="The form was not sent">
-        <p>Your session expired while the form was open, so nothing was sent and nothing was
-           saved. Sign in again, then fill the form in once more.</p>
+        <p>We could not verify the form, so nothing was sent and nothing was saved. This
+           usually happens when a form has been open for a long time, or when your browser
+           is blocking cookies.</p>
+        {% comment %}
+        A reload is the whole fix for the likeliest visitor, a signed-in one whose token
+        rotated under an open tab: it hands back a fresh token without costing them their
+        session. Signing out is kept for what a reload cannot mend. Unlike the two
+        standalone pages, this one renders with a request, so it can name the path whose
+        POST was refused; get_full_path rather than path, or a login loses its next.
+        {% endcomment %}
         <div class="flex flex-wrap justify-center gap-3 pt-3">
+            <c-button href="{{ request.get_full_path }}" variant="primary" icon_left="retry">
+                Reload the form
+            </c-button>
             {% if logout_url and login_url %}
-                <c-button href="{{ logout_url }}?next={{ login_url }}" variant="primary" icon_left="user">
+                <c-button href="{{ logout_url }}?next={{ login_url }}" variant="secondary" icon_left="user">
                     Sign in again
                 </c-button>
             {% endif %}

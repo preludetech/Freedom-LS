@@ -15,10 +15,14 @@
                           heading="Sorry, there is a problem with this page">
                 <p>The problem is on our side. It is not your account, your device or your connection.</p>
                 <p>Anything you were part-way through may not have been saved.</p>
+                {% comment %}
+                No retry link here, unlike 429 and 503. server_error renders this page with
+                no context at all, so it cannot tell whether the request that failed was a
+                POST, and an empty href would re-request it as a GET.
+                {% endcomment %}
                 <div class="flex flex-wrap justify-center gap-3 pt-3">
-                    <a href="" class="btn btn-primary"><c-icon name="retry" class="size-5 mr-2" />Try again</a>
                     {% if dashboard_url %}
-                        <c-button href="{{ dashboard_url }}" variant="secondary" icon_left="home">Go to your dashboard</c-button>
+                        <c-button href="{{ dashboard_url }}" variant="primary" icon_left="home">Go to your dashboard</c-button>
                     {% endif %}
                 </div>
             </c-error-page>
