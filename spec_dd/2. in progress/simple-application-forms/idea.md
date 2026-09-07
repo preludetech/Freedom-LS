@@ -121,10 +121,61 @@ are spoken for by the review spec, and adding either now is exactly the pre-buil
 The read-only-once-submitted check belongs in the `course_applications` view, so that when review
 lands and read-only-ness follows `state` instead, one call site changes.
 
-The applicant does not get the exam runner. Its chrome is built for a timed, scored test: the
+The applicant does not get the exam runner. Its chrome is built for a timed, scored test. The
 leaving-will-submit-and-score dialog, the answered count framed as exam progress, the unload guard.
-None of that is true of an application. The four question-input partials render a `FormQuestion` and
-nothing else, so they are reused directly. The shell around them is new and plain.
+None of that is true of an application. The shell around the questions is new and plain. The
+questions inside it are the same four inputs the runner already draws, but they cannot be reused
+where they currently sit, and neither can the code that drives them.
+
+## The runner has to be split before either flow can share it
+
+`form_fill_page` is one 210-line view doing two unrelated jobs. Course access, the blocked-item gate,
+the player chrome and the course-shaped URL reversing are course logic. Picking the page, gathering
+its questions, finding the required ones the POST left blank, saving, deciding whether to advance or
+complete or re-render, building the page-link list and counting answers are form logic, and they
+mention a course only because every URL they build is `learner_interface:form_fill_page` with a
+`course_slug` and an `index`. The application flow needs all of the second job and none of the first.
+
+Copying the second job into `course_applications` is the cheap move and the wrong one. The required
+check, the resume rule and the page-jump accessibility rule would then exist twice and drift, and two
+of the three are already wrong today. The resume rule is a defect listed below; the required check is
+per-page and misses a question on a page nobody visited. Duplicating either means fixing it twice, or
+noticing once. So the form half moves into
+`form_engine` and both flows call it. Instantiate a sitting on a page, feed it POST data, ask it what
+is missing, save it, ask where to go next. Ordinary form things, and none of them need a course.
+
+The page links are the only piece carrying a URL, so they take a URL-building callable and each flow
+reverses its own route. `has_submitted_answer` and `page_questions` already live in `form_engine`, so
+this joins them rather than opening a new home. `_unanswered_required_message` goes too. It is a
+sentence about question numbers with no course anywhere in it.
+
+`learner_interface` keeps the access redirect, `_blocked_item_redirect`, `_player_chrome_context`,
+the `get_or_create_incomplete` and `get_latest_incomplete` and `finalise_stale_incomplete` helpers,
+the submit-on-exit safety net, and the exam Alpine components. `form_fill_page` still does all of
+that and calls into `form_engine` for the middle. Its behaviour does not change, and its existing
+tests are what says so.
+
+The templates are the more awkward half. The four question inputs and the `form-question` wrapper
+that dispatches on `question.type` are `{% partialdef %}` blocks inside `course_form_page.html`, a
+598-line template that also carries the exit dialog, the page dots and the exam top bar. Reusing them
+in place means `course_applications` including a `learner_interface` template by path, which is an
+app edge pointing the wrong way and one rename away from breaking quietly. They move to
+`freedom_ls/form_engine/templates/form_engine/`, one file per question type plus the dispatcher, and
+both flows include them from there. `course_form_page.html` keeps everything else. The file-upload
+input joins them as a fifth, which is what makes it a question type rather than an application
+feature, and its two endpoints are `form_engine`'s for the same reason.
+
+Those are `form_engine`'s first templates, and they bring template-level edges on `base` and `icons`
+for `c-callout` and `c-icon`. Both are leaf apps, `content_engine` already depends on both and
+neither points back, so the graph stays acyclic. It is still a new edge and worth saying out loud,
+because the way to dodge it is to inline an SVG in a form template, which is worse.
+
+One thing in those partials is not self-contained. The required-checkbox hint is a hidden paragraph
+revealed by `examRunnerForm`, a `learner_interface` Alpine component, because a browser will not
+validate a checkbox group on its own. Under the application shell there is no such component and the
+hint never appears. Nothing goes unvalidated, because the server-side required check rejects the page
+either way and names the question. The applicant gets that message a round trip later than the exam
+candidate does, and that is the whole cost.
 
 ## Question types
 
@@ -264,7 +315,9 @@ application-shaped, so they get fixed there and both flows benefit.
 question, required or not. Skip an optional question on page two, answer everything after it, come
 back tomorrow, and you land on page two again. Every session, forever. The runner already computes a
 corrected furthest page for its page-jump links, with a comment explaining exactly this, but never
-applies it to the resume redirect.
+applies it to the resume redirect. Both computations land in `form_engine` together under the split
+above, which is what makes fixing this a one-line change in one place instead of a rule to keep in
+sync across two flows.
 
 **Explicit `children:` lists silently drop everything.** The loader compares the author's path against
 a map keyed on the content-root walk, and normalises neither, so the relative form the authoring docs
@@ -291,9 +344,15 @@ work and is not made worse by it, but it now applies to application answers too.
   instructor every course's applicants.
 - **A pluggable form-context backend.** §12 of the extraction spec reserved one. There is one consumer
   here, not a plugin point. The applicant's view is keyed on the application, resolves the form from
-  it, and 404s on non-owners the way the status page already does.
-  `research_form_context_backend.md` holds the design for whoever turns out to need it, including why
-  one setting cannot serve both contexts.
+  it, and 404s on non-owners the way the status page already does. The split above is not that
+  backend and does not become one: it moves paging, validation and saving into `form_engine` and
+  leaves each flow to answer "may this person fill this in, and what wraps it" for itself, in its own
+  view. `research_form_context_backend.md` holds the design for whoever turns out to need the
+  pluggable version, including why one setting cannot serve both contexts.
+- **A rewrite of the exam runner.** Only the form half moves. The exit dialog, the unload guard, the
+  live answered tally, the start screen and the results screen stay where they are, in
+  `learner_interface`, wired to the same Alpine components as today. If the split changes anything an
+  exam candidate can see, it has gone wrong.
 - **The first deployment's actual questions.** Provinces, nationality, dealer referral. These ship in
   the concrete project. FLS ships the mechanism and at most a demo form.
 - **Referral prefill.** Prefilling "Dealer — [name]" needs referral capture, which is its own idea with
