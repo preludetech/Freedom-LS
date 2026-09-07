@@ -1,14 +1,14 @@
-from unfold.contrib.filters.admin import (
-    AutocompleteSelectFilter,
-    RangeDateTimeFilter,
-)
+from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
 from django.http import HttpRequest
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
-from freedom_ls.site_aware_models.admin_filters import CompletionListFilter
+from freedom_ls.site_aware_models.admin_filters import (
+    CompletionListFilter,
+    InclusiveRangeDateTimeFilter,
+)
 
 from .models import (
     Form,
@@ -212,8 +212,8 @@ class FormProgressAdmin(SiteAwareModelAdmin):
     list_filter = [
         FormProgressCompletionFilter,
         ("form", AutocompleteSelectFilter),
-        ("completed_time", RangeDateTimeFilter),
-        ("start_time", RangeDateTimeFilter),
+        ("completed_time", InclusiveRangeDateTimeFilter),
+        ("start_time", InclusiveRangeDateTimeFilter),
     ]
     # The range filters only narrow anything once they are applied.
     list_filter_submit = True

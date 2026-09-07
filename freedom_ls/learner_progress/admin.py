@@ -5,7 +5,6 @@ from urllib.parse import urlencode
 from unfold.admin import TabularInline
 from unfold.contrib.filters.admin import (
     AutocompleteSelectFilter,
-    RangeDateTimeFilter,
     RelatedDropdownFilter,
     SliderNumericFilter,
 )
@@ -24,7 +23,10 @@ from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_management.admin import LEARNER_SUMMARIES, LearnerAdmin
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
-from freedom_ls.site_aware_models.admin_filters import CompletionListFilter
+from freedom_ls.site_aware_models.admin_filters import (
+    CompletionListFilter,
+    InclusiveRangeDateTimeFilter,
+)
 
 from .models import CourseFormAttempt, CourseProgress, TopicProgress
 
@@ -175,7 +177,7 @@ class TopicProgressAdmin(SiteAwareModelAdmin):
         ("course_progress__course", AutocompleteSelectFilter),
         ("course_progress__learner__organisation", RelatedDropdownFilter),
         ("course_progress__cohort_registration__cohort", RelatedDropdownFilter),
-        ("complete_time", RangeDateTimeFilter),
+        ("complete_time", InclusiveRangeDateTimeFilter),
     ]
     # The date and range filters only narrow anything once they are applied.
     list_filter_submit = True
@@ -231,8 +233,8 @@ class CourseProgressAdmin(SiteAwareModelAdmin):
         ("learner__organisation", RelatedDropdownFilter),
         ("cohort_registration__cohort", RelatedDropdownFilter),
         ("progress_percentage", SliderNumericFilter),
-        ("completed_time", RangeDateTimeFilter),
-        ("last_accessed_time", RangeDateTimeFilter),
+        ("completed_time", InclusiveRangeDateTimeFilter),
+        ("last_accessed_time", InclusiveRangeDateTimeFilter),
     ]
     list_filter_submit = True
     date_hierarchy = "created_at"
@@ -320,7 +322,7 @@ class CourseFormAttemptAdmin(SiteAwareModelAdmin):
         ("course_progress__course", AutocompleteSelectFilter),
         ("course_progress__learner__organisation", RelatedDropdownFilter),
         ("course_progress__cohort_registration__cohort", RelatedDropdownFilter),
-        ("form_progress__completed_time", RangeDateTimeFilter),
+        ("form_progress__completed_time", InclusiveRangeDateTimeFilter),
     ]
     list_filter_submit = True
     search_fields = (
