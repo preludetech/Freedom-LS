@@ -152,7 +152,7 @@ next server restart. Tests that override the theme must call
 Dev settings (`config/settings_dev.py`) queue mail and send it to Mailpit's SMTP listener:
 
 ```python
-EMAIL_BACKEND = "freedom_ls.deployment.mail.QueuedEmailBackend"
+EMAIL_BACKEND = "freedom_ls.mail.backends.QueuedEmailBackend"
 EMAIL_UPSTREAM_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "localhost"
 EMAIL_PORT = 1025

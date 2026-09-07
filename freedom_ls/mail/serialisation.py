@@ -1,46 +1,20 @@
-"""Queue outgoing email onto the background worker.
-
-Pointing EMAIL_BACKEND here makes every ``send()`` in the project return as soon
-as the message is on the queue rather than blocking the request on an SMTP round
-trip. ``fls_run_worker`` rebuilds the message and sends it through
-EMAIL_UPSTREAM_BACKEND, which is what actually talks to the mail server. Dev
-settings select this backend; production sends in the request unless a deployment
-opts in, because choosing it commits that deployment to running a worker.
-Without one the mail is accepted and never sent.
-
-No call site changes to make this work: ``EmailMessage.send()`` resolves its
-connection through ``get_connection()``, so pinning the setting catches every
-sender, allauth's transactional mail included.
+"""Reduce an outgoing message to primitives, and rebuild it from them.
 
 The task queue stores its arguments as JSON, so a message has to be reduced to
-primitives. That reduction is also what discards the bound ``message`` patch
-``set_8bit_encoding`` installs, which is why the worker reapplies it after
-rebuilding rather than relying on the sender having done it.
+primitives before it can be enqueued. That reduction is also what discards the
+bound ``message`` patch ``set_8bit_encoding`` installs, which is why the worker
+reapplies it after rebuilding rather than relying on the sender having done it.
 """
 
 from __future__ import annotations
 
 import base64
-from collections.abc import Sequence
 from email.message import MIMEPart
 from email.mime.base import MIMEBase
 from typing import TypedDict
 
-from django.core.mail import EmailMultiAlternatives, get_connection
-from django.core.mail.backends.base import BaseEmailBackend
+from django.core.mail import EmailMultiAlternatives
 from django.core.mail.message import EmailAttachment, EmailMessage
-from django.db import DatabaseError
-from django.tasks import default_task_backend, task
-
-from freedom_ls.base.email_encoding import set_8bit_encoding
-from freedom_ls.deployment.config import config
-
-# Ahead of the default 0 that webhook delivery and report rendering enqueue at.
-# django-tasks-db orders its queue by priority descending, so a person waiting on
-# a password reset is not stuck behind a cohort report that happened to be asked
-# for first. It does not preempt a report already running -- see the deployment
-# docs for the separate-worker escape hatch.
-EMAIL_TASK_PRIORITY = 10
 
 
 class UnserialisableMessageError(Exception):
@@ -172,67 +146,3 @@ def deserialise_message(payload: SerialisedMessage) -> EmailMultiAlternatives:
             attachment["mimetype"],
         )
     return message
-
-
-def send_serialised_email(payload: SerialisedMessage) -> None:
-    """Rebuild a queued message and send it through the upstream backend.
-
-    Failures propagate rather than being swallowed. The worker marks the task
-    result FAILED and the task framework's own task_finished receiver logs that
-    at ERROR with the traceback attached, which reaches the console handler and,
-    where a DSN is configured, Sentry. Swallowing here would instead mark the
-    task successful and drop the mail with no signal anywhere.
-    """
-    message = deserialise_message(payload)
-    set_8bit_encoding(message)
-    connection = get_connection(backend=config.EMAIL_UPSTREAM_BACKEND)
-    connection.send_messages([message])
-
-
-@task(priority=EMAIL_TASK_PRIORITY)
-def _send_email_task(payload: SerialisedMessage) -> None:
-    send_serialised_email(payload)
-
-
-class QueuedEmailBackend(BaseEmailBackend):
-    """Put each message on the task queue instead of sending it in-process."""
-
-    def send_messages(self, email_messages: Sequence[EmailMessage]) -> int:
-        return sum(1 for message in email_messages if self._queue_or_send(message))
-
-    def _queue_or_send(self, message: EmailMessage) -> bool:
-        # Mirrors the SMTP backend, which declines to open a connection for a
-        # message addressed to nobody.
-        if not message.recipients():
-            return False
-
-        try:
-            payload = serialise_message(message)
-        except UnserialisableMessageError:
-            # Sendable, just not expressible as JSON. Paying the SMTP latency
-            # here beats dropping the message, and FLS's own mail never reaches
-            # this path.
-            return self._send_now(message)
-
-        try:
-            default_task_backend.enqueue(_send_email_task, args=[payload], kwargs={})
-        except DatabaseError:
-            # The queue is the database, so this means the database is down, in
-            # which case whatever triggered the mail has already failed -- there
-            # is no account for a verification link to confirm. Deliberately not
-            # falling back to an inline send, which would deliver a link to a row
-            # that was never written. Raising leaves the caller as badly off as it
-            # is today when SMTP fails, which is the right amount.
-            if not self.fail_silently:
-                raise
-            return False
-        return True
-
-    def _send_now(self, message: EmailMessage) -> bool:
-        """Send through the upstream backend, bypassing the queue."""
-        set_8bit_encoding(message)
-        connection = get_connection(
-            backend=config.EMAIL_UPSTREAM_BACKEND,
-            fail_silently=self.fail_silently,
-        )
-        return bool(connection.send_messages([message]))

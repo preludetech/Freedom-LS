@@ -16,7 +16,7 @@ from freedom_ls.accounts.email_utils import (
     get_email_theme,
     resolved_email_logo_path,
 )
-from freedom_ls.base.email_encoding import set_8bit_encoding
+from freedom_ls.mail.encoding import set_8bit_encoding
 from freedom_ls.site_aware_models.models import (
     get_cached_site,
     site_display_name,

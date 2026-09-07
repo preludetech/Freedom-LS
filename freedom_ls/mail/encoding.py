@@ -1,8 +1,8 @@
 """Force 8bit transfer encoding on outgoing mail.
 
-Lives in ``base`` because both the allauth adapter (``accounts``) and the
-queueing email backend (``deployment``) apply it, and ``base`` is the only app
-either of those may import without inverting a dependency.
+Applied in two places: the allauth adapter (``accounts``) sets it on the message
+it builds, and the queueing backend reapplies it to a message rebuilt from a
+queued payload.
 """
 
 from __future__ import annotations

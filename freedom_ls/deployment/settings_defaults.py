@@ -73,15 +73,6 @@ DATABASE_TASKS: dict[str, dict[str, str]] = {
     "default": {"BACKEND": "django_tasks_db.DatabaseBackend"},
 }
 
-
-# Socket timeout for each SMTP operation, in seconds. Unset, smtplib inherits Python's
-# global default of None and a black-holed connection hangs forever -- holding the
-# request open when mail is sent in the request, and stalling every other queued task
-# behind it when a deployment has opted into QueuedEmailBackend. Ten seconds absorbs a
-# slow TLS handshake without failing legitimate sends, and stays far inside
-# WORKER_MAX_TASK_SECONDS.
-EMAIL_TIMEOUT_SECONDS: int = 10
-
 # Database-backed cache for production. LOCATION is a table name, not created by
 # migration: `createcachetable` makes it, idempotently, as part of the
 # downstream's deploy sequence.

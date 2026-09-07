@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     # xapi_learning_record_store
     "freedom_ls.base",
     "freedom_ls.deployment",
+    "freedom_ls.mail",
     "freedom_ls.health",
     "freedom_ls.icons",
     "freedom_ls.markdown_rendering",

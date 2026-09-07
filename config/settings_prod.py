@@ -3,6 +3,7 @@ import os
 from freedom_ls.base.env import env_int, env_str
 from freedom_ls.deployment import settings_defaults as fls_defaults
 from freedom_ls.deployment.storage import build_storages
+from freedom_ls.mail import settings_defaults as mail_defaults
 
 from .settings_base import *  # noqa: F403
 
@@ -99,12 +100,12 @@ LOGGING = fls_defaults.build_logging_config()
 # Sent inside the request by default, because that needs nothing running but the web
 # process. An SMTP session against a hosted provider costs seconds and the sender waits
 # for all of it, so a deployment that runs fls_run_worker should turn queueing on:
-# set EMAIL_BACKEND to freedom_ls.deployment.mail.QueuedEmailBackend and the message
+# set EMAIL_BACKEND to freedom_ls.mail.backends.QueuedEmailBackend and the message
 # goes to the task queue instead, with the worker sending it through
-# EMAIL_UPSTREAM_BACKEND (see deployment/config.py). Without a worker that mail would
-# be accepted and never sent, which is why it is not the default.
+# EMAIL_UPSTREAM_BACKEND (see freedom_ls/mail/config.py). Without a worker that mail
+# would be accepted and never sent, which is why it is not the default.
 EMAIL_BACKEND = env_str("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", fls_defaults.EMAIL_TIMEOUT_SECONDS)
+EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", mail_defaults.EMAIL_TIMEOUT_SECONDS)
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"

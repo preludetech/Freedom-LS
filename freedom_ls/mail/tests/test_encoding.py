@@ -13,7 +13,7 @@ import pytest
 
 from django.core.mail import EmailMultiAlternatives
 
-from freedom_ls.base.email_encoding import set_8bit_encoding
+from freedom_ls.mail.encoding import set_8bit_encoding
 
 LONG_URL = "https://example.test/account/password/reset/key/" + "a" * 80 + "/"
 
