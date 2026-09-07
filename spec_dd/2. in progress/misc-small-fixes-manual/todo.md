@@ -20,8 +20,8 @@ apply, keeping the standard section numbering so the SDD commands find their hea
 - [x] (user + cmd) Fix QA bug: allauth mail sent outside a request raises ImproperlyConfigured when neither FORCE_SITE_NAME nor SITE_ID is set (TDD — failing test first, then fix)
 - [x] (user) Decide what an install that pins neither FORCE_SITE_NAME nor SITE_ID should get when allauth mail is sent outside a request — a default-Site fallback, a clearer FLS-specific error, or a system check that requires FORCE_SITE_NAME — then fix the resolver accordingly
 - [x] (user + cmd) Fix QA bug: upgrade_notes.md omits the new freedom_ls/mail app — a downstream is not told to add it to INSTALLED_APPS, nor to rewrite a silenced freedom_ls_deployment.E007 to freedom_ls_mail.E001 (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: the dev preview overrides relabel courses as well as ungating them — an application-gated course wears a Free chip and a coming-soon course stops presenting as coming-soon (TDD — failing test first, then fix)
-- [ ] (user) Decide whether OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE and OVERRIDE_COURSE_ACCESS_TO_FREE should change badge labelling at all or only gating, then either fix get_access_badge/is_coming_soon_for_display or rewrite the plan's §10.3 expectation to match
+- [x] (user + cmd) Fix QA bug: the dev preview overrides relabel courses as well as ungating them — an application-gated course wears a Free chip and a coming-soon course stops presenting as coming-soon (TDD — failing test first, then fix)
+- [x] (user) Decide whether OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE and OVERRIDE_COURSE_ACCESS_TO_FREE should change badge labelling at all or only gating, then either fix get_access_badge/is_coming_soon_for_display or rewrite the plan's §10.3 expectation to match
 
 ## 10. Component styling moves into the components
 

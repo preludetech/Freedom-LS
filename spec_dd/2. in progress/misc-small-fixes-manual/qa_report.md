@@ -2,8 +2,8 @@
 
 This pass ran 176 checks against `3. frontend_qa.md` across desktop, mobile and tablet viewports, under
 both mail backends and both themes where the plan called for it. 175 checks passed and 1 failed. The
-one failure is a genuine product disagreement between the shipped preview-override behaviour and the
-plan's requirement, not a code defect with an obvious fix — see B1 below.
+one failure turned out to be a wrong expectation in the plan rather than a defect: §10.3 has since been
+rewritten to match the shipped preview-override behaviour, and B1 is closed — see below.
 
 ## Methodology
 
@@ -60,31 +60,36 @@ reachable before the full pass began: `http://127.0.0.1:8623/` and
 Section 8 was withdrawn from the plan — the admin's read-only topic content preview was removed from
 the branch before this pass, so there is nothing there to test.
 
-## B1: The dev preview overrides relabel courses, not just ungate them
+## B1: The dev preview overrides relabel courses, not just ungate them — closed, not a defect
 
 **Manifestations:** 10.3 (desktop)
 
 ![](screenshots/page-2026-09-07T06-26-07-259Z.png)
 
-**Expected:** Per §10.3, the badges on `/courses/` keep reporting each course's declared visibility and
-access. `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` and `OVERRIDE_COURSE_ACCESS_TO_FREE` are meant to
-change gating, not labelling.
+**Expected, per §10.3 as written at the time of the pass:** the badges on `/courses/` keep reporting
+each course's declared visibility and access, because the overrides change gating and not labelling.
 
-**Actual:** Both overrides also change what the listing says. With them on (as committed in
+**Actual:** both overrides also change what the listing says. With them on (as committed in
 `settings_dev.py`) an application-gated course wears the same "Free" chip as a genuinely free course
 beside it, and a coming-soon course no longer presents as coming-soon. Toggling the settings isolates
 the cause exactly: overrides off gives badge "By application" and `coming_soon=True`; overrides on
-gives "Free" and `coming_soon=False`. Both behaviours are deliberate in code —
-`CourseVisibilityOverrideBackend.get_access_badge` returns the Free badge with the comment "badge reads
-Free regardless of the real access model," and `is_coming_soon_for_display()` returns `False` whenever
-the visibility override is on. The shipped code and the plan's requirement genuinely disagree, and
-which one is correct is a product decision rather than a defect with an obvious fix.
+gives "Free" and `coming_soon=False`.
+
+**Resolution:** the code is right and the check was wrong. Relabelling is what the overrides were
+specified to do. `spec_dd/3. done/2026-07-11_16:24_override_course_access_and_details_page/1. spec.md`
+says a `coming_soon` course under the visibility override must "look fully published — no 'Coming soon'
+badge, no 'I'm interested' CTA" (§157), devotes a section to suppressing exactly those cosmetic reads
+(§200-212), and specifies `get_access_badge` returning the "Free" badge under the access override
+(§238). That spec's own QA pass signed both off (its B2 and B4). Nothing on this branch touched
+`freedom_ls/course_access/`. §10.3 of this plan was written from first principles rather than from the
+override spec, and inverted the requirement; it has been rewritten to the shipped behaviour, with a new
+§10.3b covering the revert when the settings go back to `False`. No code change.
 
 ## Bug status
 
 | Bug | Status |
 | --- | --- |
-| B1 | **UNRESOLVED** — The dev preview overrides relabel courses, not just ungate them |
+| B1 | **CLOSED, not a defect** — relabelling is the overrides' specified behaviour; plan §10.3 was wrong and has been rewritten |
 
 ## General notes
 
