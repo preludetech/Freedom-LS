@@ -1,27 +1,38 @@
 {% extends "learner_interface/_course_base.html" %}
 
-{% block item_head_title %}{{ form.title }}{% endblock %}
+{% block item_head_title %}
+    {{ form.title }}
+{% endblock %}
 
 {% block content %}
     <c-page flush="true" class="pt-2 lg:pt-4">
         <div class="mx-auto max-w-xl text-center space-y-6" x-data="coursePlayer">
 
             {% comment %}Badge{% endcomment %}
-            <div class="mx-auto flex size-16 items-center justify-center rounded-lg bg-secondary text-on-secondary" aria-hidden="true">
+            <div class="mx-auto flex size-16 items-center justify-center rounded-2xl bg-secondary text-on-secondary"
+                 aria-hidden="true">
                 <c-icon name="form" class="size-8" />
             </div>
 
             {% comment %}Eyebrow + title{% endcomment %}
             <div class="space-y-2">
                 {% if form.subtitle %}
-                    <p class="font-mono text-xs uppercase tracking-widest text-muted">{{ form.subtitle }}</p>
+                    <p class="font-mono text-xs uppercase tracking-widest text-muted">
+                        {{ form.subtitle }}
+                    </p>
                 {% endif %}
-                <h1>{{ form.title }}</h1>
+                <h1>
+                    {{ form.title }}
+                </h1>
             </div>
 
-            {% comment %}Authored intro: only paragraphs centre, other blocks stay left-aligned{% endcomment %}
+            {% comment %}
+                Authored intro: body copy reads left-aligned, only headings centre with the
+                title. Long code lines scroll inside their own block and long tokens break,
+                so neither can widen the page.
+            {% endcomment %}
             {% if form.rendered_content %}
-                <c-markdown-container class="text-left [&>p]:text-center">
+                <c-markdown-container class="text-left break-words [&_:is(h1,h2,h3,h4,h5,h6)]:text-center [&_pre]:overflow-x-auto">
                     {{ form.rendered_content }}
                 </c-markdown-container>
             {% endif %}

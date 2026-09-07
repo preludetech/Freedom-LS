@@ -1413,20 +1413,20 @@ def test_exit_dialog_leave_and_submit_targets_the_runner_page_form(
 
 
 # ---------------------------------------------------------------------------
-# rendered_content markdown container centring: only direct-child <p> centred
+# rendered_content markdown container: body left-aligned, only headings centred
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_form_start_intro_markdown_container_centres_only_direct_child_paragraphs(
+def test_form_start_intro_body_is_left_aligned_with_only_headings_centred(
     mock_site_context, client
 ):
-    """The intro markdown container must use the child-combinator selector so
-    that only its own top-level <p> elements are centred. A descendant
-    selector would also centre <p> elements nested inside <blockquote> and
-    loose <li> elements, breaking their left alignment."""
+    """Body copy in the authored intro reads left-aligned; only its headings
+    centre, matching the page title above them. Centred body copy wraps ragged
+    on both edges and is hard to read, so no paragraph-centring selector may
+    survive on the container."""
     user = UserFactory()
-    form = FormFactory(content="An intro paragraph.")
+    form = FormFactory(content="## A heading\n\nAn intro paragraph.")
     course = course_with_form(form)
     register_user_for_course(course, user)
 
@@ -1439,8 +1439,33 @@ def test_form_start_intro_markdown_container_centres_only_direct_child_paragraph
 
     assert response.status_code == 200
     content = html.unescape(response.content.decode())
-    assert "[&>p]:text-center" in content
+    assert "[&_:is(h1,h2,h3,h4,h5,h6)]:text-center" in content
+    # Neither the child-combinator nor the descendant paragraph selector.
+    assert "[&>p]:text-center" not in content
     assert "[&_p]:text-center" not in content
+
+
+@pytest.mark.django_db
+def test_form_start_intro_cannot_widen_the_page(mock_site_context, client):
+    """A long code line or an unbreakable token in the authored intro must not
+    push the narrow card sideways: code blocks scroll within their own block
+    and long tokens break rather than overflowing the column."""
+    user = UserFactory()
+    form = FormFactory(content="Intro with a code block.")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    content = html.unescape(response.content.decode())
+    assert "[&_pre]:overflow-x-auto" in content
+    assert "break-words" in content
 
 
 # ---------------------------------------------------------------------------
