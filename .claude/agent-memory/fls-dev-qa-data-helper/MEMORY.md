@@ -55,6 +55,7 @@
 - [reference_standalone_form_sitting.md](reference_standalone_form_sitting.md) — qa_create_standalone_form_sitting: the dev DB's only FormProgress with NO CourseFormAttempt, so FormProgressAdmin's "In course" dash (= "sat standalone") is browser-reachable
 - [reference_legend_edge_cases_command.md](reference_legend_edge_cases_command.md) — qa_create_legend_edge_cases: one-form course stressing the question <legend> (wrapping asterisk, inline markdown, 2-paragraph question, optional-no-asterisk); render the `#form-question` partial via render_to_string to check markup WITHOUT starting a FormProgress
 - [reference_org_cohort_inline_pagination.md](reference_org_cohort_inline_pagination.md) — qa_create_org_cohort_pagination: padding one Organisation to 46 cohorts so the admin Cohorts tab spans 3 pages; the admin-inline paginator family (Cohort@20 / Learner@25) and zero-padded names straddling a boundary
+- [reference_form_count_edge_cases_command.md](reference_form_count_edge_cases_command.md) — qa_create_form_count_edge_cases: the 1-question/1-page and 0-question/0-page forms that make the start page's pluralised fact pills reachable; a Form with ZERO FormPages is legal; ALLOWED_HOSTS trap for rolled-back Client() probes
 
 ## Recurring requests
 
@@ -62,6 +63,14 @@
 misc-small-fixes-manual): deleting the single `FormProgress` takes its `CourseFormAttempt`
 with it, but NOT the stale `CourseProgress.progress_percentage` — recompute that too.
 Recipe + why `qa_reset_learner_progress` is the blunter tool: [[reference_form_first_course_command]].
+
+**Form start-page content variations are now a recurring ask.** The `better-form-start-page`
+branch QA needs one fixture per render branch of `course_form.html` (counts, subtitle, markdown
+intro, previous-attempts list). `qa_create_form_count_edge_cases` covers the two *count* branches
+(singular and zero). If the next ask is "a form with a subtitle" or "a form with a long markdown
+intro", ADD a scenario to that command rather than starting a new one — it is already the
+"start-page render variations" fixture and its `_report()` helper prints the pill text.
+See [[reference_form_count_edge_cases_command]].
 
 The **quiz-marking browser QA pass** (multi-select scoring fix) has now been set up twice. The full
 recipe is: `qa_create_form_question_types DemoDev`, `qa_create_multiselect_quiz_scoring`,
