@@ -386,12 +386,48 @@ putting `aria-hidden=true` on the badge wrapper div.
 
 ## Bug status
 
-- **FIXED** (commit: 04d1ae19) — B1 Blockquote and loose list items are centred by the `[&_p]:text-center` descendant selector
-- **UNRESOLVED** — B2 Long code blocks and unbreakable URLs in the intro make the page scroll horizontally (reason: needs a scope decision — constrain it locally in `course_form.html` or give the shared `c-markdown-container` overflow handling for every markdown surface)
-- **UNRESOLVED** — B3 Pill icons wash out under the first_class theme (1.75:1 contrast) (reason: choosing the replacement icon colour is a visual design decision)
+- **FIXED** (commits: 04d1ae19, then superseded by 69767613) — B1 Blockquote and loose list items are centred by the `[&_p]:text-center` descendant selector
+- **FIXED** (commit: 69767613) — B2 Long code blocks and unbreakable URLs in the intro make the page scroll horizontally
+- **UNRESOLVED** — B3 Pill icons wash out under the first_class theme (1.75:1 contrast) (reason: choosing the replacement icon colour is a visual design decision; explicitly deferred by the author)
 - **FIXED** (commit: 28698e76) — B4 Decorative badge icon announces itself to screen readers
 
-### Verification of the two fixes
+### Follow-up: intro body alignment reversed on review
+
+Reviewing the §4 screenshot, the author rejected centred body copy outright: centred paragraphs
+wrap ragged on both edges and read badly in a 576px column. The intended treatment is that
+**markdown headings centre with the page title, and all body copy reads left-aligned.**
+
+Commit `69767613` implements that and supersedes B1's narrower fix. The container class moved from
+`text-left [&>p]:text-center` to:
+
+```
+text-left break-words [&_:is(h1,h2,h3,h4,h5,h6)]:text-center [&_pre]:overflow-x-auto
+```
+
+B1 is still resolved by this — no paragraph-centring selector survives, so the nested-`<p>`
+problem it described cannot recur. B1's regression test was replaced by
+`test_form_start_intro_body_is_left_aligned_with_only_headings_centred`, which asserts that
+neither the descendant nor the child paragraph selector is present.
+
+The same commit closes **B2**, per the author's direction that code blocks should scroll rather
+than push the page. Re-verified in the browser at 1920px with a long code line and an unbreakable
+URL in the intro:
+
+- page `scrollWidth` 1920 == `clientWidth` 1920 — the horizontal scrollbar is gone (it was 2018px)
+- `<pre>` computes `overflow-x: auto` with `clientWidth` 576 and `scrollWidth` 1162, so the code
+  scrolls inside its own block and stays within the column
+- the long-URL paragraph computes `overflow-wrap: break-word` and its `scrollWidth` is now 576,
+  matching its box
+- heading computes `text-align: center`; every `<p>`, `<li>`, `<ul>`, `<blockquote>` and `<pre>`
+  computes `text-align: left`
+
+Full suite green at 3377 passed.
+
+The same authored intro that produced the §4 screenshot, after the change:
+
+![](screenshots/page-2026-09-07T08-26-18-154Z.png)
+
+### Verification of the earlier fixes
 
 Both fixes were made under TDD (failing test first) and each ran the full pytest suite green — 3375 passed for B1, 3376 passed for B4. Both were then re-driven in the browser against the running dev server:
 
@@ -430,4 +466,4 @@ These are observations from the run, not bugs, and are not counted against the c
 
 ---
 
-status: ok · reason: 4 bugs — 2 fixed (B1, B4) and re-verified in the browser, 2 unresolved (B2, B3) pending decisions; report rendered, 17 screenshots verified
+status: ok · reason: 4 bugs — 3 fixed (B1, B2, B4) and re-verified in the browser, 1 unresolved (B3, deferred by the author); intro body alignment reversed to left-aligned with centred headings on review; report rendered, 18 screenshots verified
