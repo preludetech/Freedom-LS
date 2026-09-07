@@ -45,13 +45,16 @@
                 inset: 0;
                 width: 100%;
                 height: 100%;
-                /* Clears the UA's own cap on a modal dialog, which would otherwise
-                 * hold the full-height drawer a couple of dozen pixels short. It
-                 * belongs here rather than as a max-h-none utility on the element:
-                 * utilities are a later cascade layer than this one, so as a
-                 * utility it also beat the bottom sheet's 85vh below and left that
-                 * sheet free to grow past the screen. */
+                /* Clears the UA's own caps on a modal dialog, which would
+                 * otherwise hold the full-height drawer a couple of dozen pixels
+                 * short. They belong here rather than as max-h-none / max-w-none
+                 * utilities on the element: utilities are a later cascade layer
+                 * than this one, so as utilities they also beat the per-variant
+                 * caps below -- the bottom sheet's 85vh and the side drawer's
+                 * 24rem -- leaving the sheet free to grow past the screen and the
+                 * drawer free to take 80% of any viewport. */
                 max-height: none;
+                max-width: none;
                 opacity: 0;
                 transition:
                     transform 200ms ease,
@@ -165,12 +168,13 @@
             would shadow the inherited one and pin the docked panel at top: 0).
             {% endcomment %}
             {% comment %}
-            border-0/p-0/m-0/max-w-none/bg-transparent/text-inherit reset the
-            default <dialog> UA chrome so it lays out cleanly in both the
-            docked-desktop and modal-mobile modes. The UA's max-height is reset
+            border-0/p-0/m-0/bg-transparent/text-inherit reset the default
+            <dialog> UA chrome so it lays out cleanly in both the docked-desktop
+            and modal-mobile modes. The UA's max-height and max-width are reset
             alongside them but in the <style> block at the top of this file, where
-            the mobile sheet's own cap can still override it — as a utility here it
-            outranked that cap and the sheet grew off the top of the screen.
+            each variant's own cap can still override them — as utilities here they
+            outranked those caps, and the sheet grew off the top of the screen
+            while the drawer ignored its 24rem width.
 
             h-full is desktop-only: the docked panel has a definite height to
             fill, while the mobile sheet sizes by flex against its cap.
@@ -180,7 +184,7 @@
             {% endcomment %}
             <dialog x-ref="panelDialog"
                     data-variant="{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}"
-                    class="side-panel-dialog modal-backdrop-host border-0 p-0 m-0 max-w-none bg-transparent text-inherit"
+                    class="side-panel-dialog modal-backdrop-host border-0 p-0 m-0 bg-transparent text-inherit"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
                 <div class="side-panel-body bg-sidepanel lg:h-full overflow-y-auto overscroll-contain">
                     {% comment %}

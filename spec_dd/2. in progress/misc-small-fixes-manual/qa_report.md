@@ -61,6 +61,16 @@ affected today. A fix means deciding how to keep `max-w-none`'s real job — cle
 default `<dialog>` max-width — while letting the drawer's own cap win, which is a design call
 rather than a mechanical edit.
 
+**Fixed.** The file's own precedent settled it: `max-w-none` was dropped from the dialog's class
+list and re-declared as `max-width: none` beside the existing `max-height: none` in the mobile
+`.side-panel-dialog` rule, inside `@layer components`. The UA cap this clears is on `dialog:modal`,
+and the panel is modal only below `lg`, so mobile is the right scope; the desktop panel is docked
+via `dialog.show()` and never had a UA cap to clear. The drawer's `max-width: 24rem` now wins on
+specificity within the same layer. Covered by
+`test_side_drawer_variant_honours_its_width_cap` in
+`freedom_ls/learner_interface/tests/playwright/test_course_toc.py`, which sets the variant on the
+element the same way this pass reached it.
+
 ### B2 — Allauth mail sent outside a request raises `ImproperlyConfigured` when neither `FORCE_SITE_NAME` nor `SITE_ID` is set
 
 **Manifestations:** §12.1 (desktop).
@@ -81,6 +91,25 @@ the request before enqueueing and the worker only rebuilds serialised MIME; dev 
 because it pins `FORCE_SITE_NAME`. The fix is a product decision — fall back to a default Site,
 raise a clearer FLS-specific error, or require `FORCE_SITE_NAME` via a system check — which is why
 this is not auto-fixable.
+
+**Fixed.** First, a correction to the severity above: *no shipped FLS path reaches this*. Every
+allauth email is triggered from an allauth view, and `AccountMiddleware` populates
+`allauth_context.request` for the whole cycle. Both management commands that touch `EmailAddress`
+(`setup_initial_prod_data.py:126`, `create_demo_data.py:88`) create pre-verified rows and send
+nothing, and no signal, admin action, cron or factory sends allauth mail. This finding was produced
+by §12.1's own `manage.py shell` probe. It is a latent hazard, worth closing because
+`spec_dd/1. next/retry-sent-emails/` assumes off-request senders, and because downstream projects
+may call allauth's `EmailAddress.send_confirmation()` (whose `request` defaults to `None`) from a
+script.
+
+`get_cached_site` now resolves a request-less caller as `FORCE_SITE_NAME`, else `SITE_ID`, else —
+when the installation holds exactly one `Site` — that site. A default-Site guess was rejected for
+the multi-site case: mail carries the tenant's name, logo and domain, so branding a password reset
+with the wrong tenant is worse than refusing. A system check requiring `FORCE_SITE_NAME` was
+rejected too, since a correct multi-tenant install has no forced name. Multi-site installs with
+nothing pinned now raise `SiteResolutionError`, naming the two real ways out rather than Django's
+`SITE_ID` advice, which would break multi-tenancy. Covered by `TestGetCachedSiteWithoutARequest`
+and by `test_a_single_site_install_names_itself_with_nothing_pinned`.
 
 ### B3 — `upgrade_notes.md` documents the styling move but says nothing about the new `freedom_ls/mail` app
 
@@ -104,9 +133,9 @@ folded in here rather than counted as a second bug.
 
 ## Bug status
 
-**UNRESOLVED** — Side-panel drawer variant's 24rem width cap is defeated by the `max-w-none` utility
+**FIXED** — Side-panel drawer variant's 24rem width cap is defeated by the `max-w-none` utility
 
-**UNRESOLVED** — Allauth mail sent outside a request raises `ImproperlyConfigured` when neither `FORCE_SITE_NAME` nor `SITE_ID` is set
+**FIXED** — Allauth mail sent outside a request raises `ImproperlyConfigured` when neither `FORCE_SITE_NAME` nor `SITE_ID` is set
 
 **UNRESOLVED** — `upgrade_notes.md` documents the styling move but says nothing about the new `freedom_ls/mail` app
 

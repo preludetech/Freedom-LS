@@ -71,6 +71,19 @@ disagreed with the email body and ignored `FORCE_SITE_NAME`. If you assert on su
 lines in your own tests, they will need updating. Setting
 `ACCOUNT_EMAIL_SUBJECT_PREFIX` still wins outright, as before.
 
+### Resolving the site without a request no longer raises `ImproperlyConfigured`
+
+Code that sends mail — or otherwise calls `get_cached_site()` — from outside a request now
+resolves the tenant as: `FORCE_SITE_NAME`, else `SITE_ID`, else the sole `Site` if the
+installation holds exactly one. Only a multi-site installation with nothing pinned still
+fails, and it now raises `freedom_ls.site_aware_models.models.SiteResolutionError` instead
+of Django's `ImproperlyConfigured` — whose advice, to set `SITE_ID`, is the one fix that
+breaks multi-tenancy.
+
+Nothing in FLS reaches this today; every allauth email is sent inside a request. It matters
+if you send mail from a management command or a cron. If you catch `ImproperlyConfigured`
+around such a call, catch `SiteResolutionError` instead.
+
 ### Two stylesheets were deleted
 
 `tailwind.base_interface.css` and `tailwind.picture_spotlight.css` are gone; their rules

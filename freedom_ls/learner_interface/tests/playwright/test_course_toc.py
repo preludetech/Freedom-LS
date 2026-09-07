@@ -311,6 +311,66 @@ def test_mobile_outline_sheet_stays_within_the_viewport(
 @pytest.mark.playwright
 # transaction=True so the Playwright browser (separate connection) sees committed data
 @pytest.mark.django_db(transaction=True)
+def test_side_drawer_variant_honours_its_width_cap(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+):
+    """The drawer presentation caps at 24rem instead of taking 80% of any screen.
+
+    Regression (QA bug B1): the cap lives in the shell's `@layer components`
+    block while the dialog carried a `max-w-none` utility, and utilities are a
+    later cascade layer, so the cap never applied. At 900px the drawer measured
+    720px. This is the width twin of the max-height trap the same file already
+    documents.
+
+    No shipped page selects this variant -- every consumer takes the
+    bottom-sheet default -- so the variant is switched on the element, which is
+    exactly how the QA pass reached it. The CSS rule is what is under test.
+    """
+    course = CourseFactory(title="Drawer Course", slug="drawer-course")
+    LearnerCourseRegistrationFactory(
+        learner__user=logged_in_user, course=course, is_active=True
+    )
+    ContentCollectionItemFactory(
+        collection_object=course,
+        child_object=TopicFactory(title="Topic One", slug="topic-one"),
+        order=0,
+    )
+
+    item_url = reverse_url(
+        live_server,
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+    # Below lg, so the panel opens modal; wide enough that 80% (720px) and the
+    # 24rem cap (384px) are far apart.
+    viewport_width = 900
+    logged_in_page.set_viewport_size({"width": viewport_width, "height": 812})
+    logged_in_page.goto(item_url)
+
+    dialog = logged_in_page.locator(".side-panel-dialog")
+    dialog.evaluate("el => el.setAttribute('data-variant', 'side-drawer')")
+    logged_in_page.get_by_role("button", name="Open course outline").click()
+    expect(dialog).to_be_visible()
+    # The drawer slides in on open; measuring mid-flight reads a transient offset.
+    expect(dialog).to_have_css("transform", "none")
+
+    assert dialog.evaluate("el => getComputedStyle(el).maxWidth") == "384px"
+
+    box = dialog.bounding_box()
+    assert box is not None
+    assert box["width"] <= 384, (
+        f"drawer renders {box['width']}px on a {viewport_width}px viewport"
+    )
+    # It really is the cap doing the work, not a narrow viewport.
+    assert box["width"] < viewport_width * 0.8
+
+
+@pytest.mark.playwright
+# transaction=True so the Playwright browser (separate connection) sees committed data
+@pytest.mark.django_db(transaction=True)
 def test_course_part_toggle_does_not_announce_chevron_state(
     live_server,
     logged_in_page: Page,

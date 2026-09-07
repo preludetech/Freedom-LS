@@ -6,7 +6,7 @@ from threading import local
 from django.contrib.sites.models import Site
 from django.contrib.sites.requests import RequestSite
 from django.contrib.sites.shortcuts import get_current_site
-from django.core.exceptions import DisallowedHost
+from django.core.exceptions import DisallowedHost, ImproperlyConfigured
 from django.db import models
 from django.http import HttpRequest
 
@@ -29,13 +29,45 @@ class UnknownSite(RequestSite):
         self.domain = self.name = ""
 
 
+class SiteResolutionError(RuntimeError):
+    """No request, and nothing pinned that could name the tenant instead."""
+
+
+def _site_without_a_request() -> Site | RequestSite:
+    """Resolve the tenant for a caller holding no request.
+
+    Django answers this itself when the installation pins SITE_ID, so ask it
+    first. Without SITE_ID it raises, and its message points at SITE_ID -- the
+    one fix that would break a multi-tenant install, which is the shape FLS is
+    built for. An installation holding exactly one Site has only one possible
+    answer, so give it. Anything else would be guessing which tenant a password
+    reset is branded as, and a wrong guess is worse than a refusal.
+    """
+    try:
+        return get_current_site(None)
+    except ImproperlyConfigured as err:
+        # Two rows are enough to know the answer is ambiguous; the exact count
+        # is only worth a second query on the way to raising.
+        sites = list(Site.objects.all()[:2])
+        if len(sites) == 1:
+            return sites[0]
+        raise SiteResolutionError(
+            "Cannot resolve the current Site: this call has no request to "
+            "resolve one from, and the installation pins neither "
+            f"FORCE_SITE_NAME nor SITE_ID. {Site.objects.count()} Site rows "
+            "exist, so there is no single answer. Pass the request through, or "
+            "pin FORCE_SITE_NAME to the tenant this process sends as."
+        ) from err
+
+
 def get_cached_site(request: HttpRequest | None) -> Site | RequestSite:
     """Get the current site, cached on the request for performance.
 
     The request is optional because outbound email is not always sent from one.
     Without a request there is nothing to cache on and no host to resolve, so
-    only FORCE_SITE_NAME can answer; anything else falls through to Django's own
-    resolution and its own error.
+    the answer comes from FORCE_SITE_NAME, else SITE_ID, else the sole Site of a
+    single-tenant install -- and where none of those answers, a caller that
+    cannot know its tenant is told so rather than sent to the wrong one.
     """
     if request is not None:
         cached: Site | RequestSite | None = getattr(request, _CACHED_SITE_ATTR, None)
@@ -53,7 +85,7 @@ def get_cached_site(request: HttpRequest | None) -> Site | RequestSite:
                 f"FORCE_SITE_NAME={force_name!r} does not match any Site. "
                 f"Available sites: {available}"
             ) from err
-    else:
+    elif request is not None:
         try:
             site = get_current_site(request)
         except DisallowedHost:
@@ -64,6 +96,8 @@ def get_cached_site(request: HttpRequest | None) -> Site | RequestSite:
             # would turn the 400 into a 500 plus an error mail for every bot
             # that reaches the server by address.
             site = UnknownSite()
+    else:
+        site = _site_without_a_request()
 
     if request is not None:
         setattr(request, _CACHED_SITE_ATTR, site)

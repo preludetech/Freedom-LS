@@ -309,6 +309,24 @@ class TestFormatEmailSubject:
 
         assert self._format(self.SUBJECT) == f"[PinnedSite] {self.SUBJECT}"
 
+    def test_a_single_site_install_names_itself_with_nothing_pinned(
+        self, settings
+    ) -> None:
+        """The QA §12.1 case: no request, and nothing pinned to stand in for one.
+
+        Deliberately no ``mock_site_context`` -- that fixture patches the site
+        resolution this exercises. With HEADER_TITLE unset, FORCE_SITE_NAME
+        None and no SITE_ID, a single-tenant install still has exactly one
+        possible name, and mail sent from a command or a cron gets it instead
+        of Django's ImproperlyConfigured about SITE_ID.
+        """
+        settings.HEADER_TITLE = ""
+        only_site = Site.objects.get()
+        only_site.name = "OnlyTenant"
+        only_site.save(update_fields=["name"])
+
+        assert self._format(self.SUBJECT) == f"[OnlyTenant] {self.SUBJECT}"
+
     def test_explicit_subject_prefix_setting_still_wins(
         self, mock_site_context: Site, settings
     ) -> None:

@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-09-07_
 
 ## Summary
 
@@ -16,6 +16,12 @@ _Last updated: 2026-08-27_
 Each site corresponds to a domain, using Django's sites framework. When a request arrives, FLS resolves which site it belongs to from the request's host header, and every database query made while serving that request is filtered to that site. Records created during the request are assigned to it automatically, so no application code has to set the site by hand.
 
 Deployments serving a single site can pin the site explicitly with the `FORCE_SITE_NAME` setting, which skips host-based resolution. This is also how tests run.
+
+### Work that runs outside a request
+
+A management command, a scheduled job or a queue worker has no request, and so no host to resolve a site from. FLS resolves the tenant for such a caller in this order: `FORCE_SITE_NAME` if pinned, then Django's `SITE_ID` if the installation sets one, then — when the installation holds exactly one site — that site, because there is only one possible answer.
+
+An installation holding several sites gets an error rather than a guess. Outbound mail carries the tenant's name, logo and domain, so branding a password reset with the wrong tenant is worse than refusing to send it. Code in that position must either pass the request through or pin `FORCE_SITE_NAME` to the tenant the process sends as.
 
 ## What Is Isolated
 
