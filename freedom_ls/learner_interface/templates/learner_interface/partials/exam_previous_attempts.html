@@ -6,14 +6,14 @@ form (Form model instance).
 No "View all" link.
 {% endcomment %}
 {% if completed_form_progress %}
-<section class="space-y-3" aria-labelledby="previous-attempts-heading">
+<section class="text-left space-y-3" aria-labelledby="previous-attempts-heading">
     <h2 id="previous-attempts-heading" class="text-base font-semibold font-display text-on-surface">
         Previous attempts
     </h2>
 
     <div class="space-y-2">
         {% for progress in completed_form_progress %}
-            <div class="flex items-center justify-between rounded-lg border border-border bg-white px-4 py-3"
+            <div class="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
                  data-testid="previous-submission-score">
 
                 {% comment %}Date{% endcomment %}
@@ -24,7 +24,7 @@ No "View all" link.
                 {% comment %}Score (QUIZ only) or completion indicator{% endcomment %}
                 {% if form.strategy == "QUIZ" and progress.scores %}
                     <div class="flex items-center gap-2">
-                        <span class="text-sm font-semibold text-on-surface">
+                        <span class="text-sm font-mono font-semibold text-on-surface">
                             {% widthratio progress.scores.score progress.scores.max_score 100 as attempt_pct %}
                             {{ attempt_pct }}%
                         </span>
