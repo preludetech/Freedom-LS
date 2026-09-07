@@ -1441,3 +1441,33 @@ def test_form_start_intro_markdown_container_centres_only_direct_child_paragraph
     content = html.unescape(response.content.decode())
     assert "[&>p]:text-center" in content
     assert "[&_p]:text-center" not in content
+
+
+# ---------------------------------------------------------------------------
+# Decorative badge icon must be hidden from assistive technology
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_form_start_badge_wrapper_is_hidden_from_assistive_technology(
+    mock_site_context, client
+):
+    """The decorative badge icon next to the form title carries no
+    information the title doesn't already convey, so its wrapper must be
+    marked aria-hidden to keep it out of the accessibility tree."""
+    user = UserFactory()
+    form = FormFactory()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+    content = response.content.decode()
+
+    badge_match = re.search(r"<div[^>]*\bbg-secondary\b[^>]*>", content)
+    assert badge_match is not None
+    assert 'aria-hidden="true"' in badge_match.group(0)
