@@ -8,7 +8,8 @@ why.
 
 ## Methodology
 
-Screenshots were collected into `screenshots/` beside this report: 88 PNGs. Most carry Playwright's
+Screenshots were collected into `screenshots/` beside this report: 89 PNGs — 88 from the pass, plus
+one capturing the B1 fix verified afterwards. Most carry Playwright's
 default timestamped names (`page-<timestamp>.png`, `element-<timestamp>.png`); the exceptions are
 the report rasterisations, named `9.8-report-default-NN.png`, `9.12-report-greyscale-NN.png` and
 `9.11-report-first-class-NN.png`. Where a check's own notes say "Capture named X in the plan", the
@@ -399,8 +400,33 @@ cohort, the percentage slider, and the topic-progress date drill-down) are unaff
 
 ## Bug status
 
-**UNRESOLVED** — Admin date-range filters silently ignore a date with no time, so filtering by date
-alone returns the whole list
+**FIXED** (commit: `1031097c`) — Admin date-range filters silently ignore a date with no time, so
+filtering by date alone returns the whole list
+
+Fixed after the pass, on the decision that these stay datetime filters with a blank time filled in
+rather than becoming date-only ones. `InclusiveRangeDateTimeFilter` in
+`freedom_ls/site_aware_models/admin_filters.py` now starts the lower bound at the beginning of its
+day and runs the upper bound to the end of its day, so naming two dates covers both of them; a time
+that is filled still wins. All five usages across `learner_progress` and `form_engine` were swapped
+to it.
+
+Six tests were added to `freedom_ls/site_aware_models/tests/test_admin_filters.py` covering the
+date-only window, the inclusive end day, a lower bound alone, an explicit lower time, an explicit
+upper time, and both bounds blank. Three of them failed against the old filter before the change.
+
+Re-verified in the browser against the dev database, driving the drawer the way the bug was
+originally found — two dates typed, both time boxes left empty, Apply Filters pressed:
+
+![](screenshots/page-2026-09-07T14-39-44-761Z.png)
+
+| Filter | Before | After |
+| --- | --- | --- |
+| Course progress `completed_time`, 4–5 Sept | 160 (unfiltered) | 16 results (160 total) |
+| Course progress `completed_time`, impossible 2019 window | 160 | 0 results |
+| Course progress `last_accessed_time`, impossible 2019 window | 160 | 0 results |
+| Topic progress `complete_time`, single day 4 Sept | 742 | 12 results |
+| Course form attempts `form_progress__completed_time`, 2019 | 431 | 0 results |
+| Form progress `completed_time` / `start_time`, 2019 | 432 | 0 results |
 
 ## General notes
 
@@ -454,4 +480,4 @@ Observations with no fix attached, and corrections for the plan's maintainer.
 ## Rendering status
 
 status: ok
-reason: 1 bug — 0 fixed, 1 unresolved (red lane: fix spans two apps and turns on a product decision); report rendered, 88 screenshots referenced and verified present
+reason: 1 bug — 1 fixed in 1031097c, 0 unresolved; report rendered, 89 screenshots referenced and verified present

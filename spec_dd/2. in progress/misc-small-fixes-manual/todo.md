@@ -24,8 +24,8 @@ apply, keeping the standard section numbering so the SDD commands find their hea
 - [x] (user) Decide whether OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE and OVERRIDE_COURSE_ACCESS_TO_FREE should change badge labelling at all or only gating, then either fix get_access_badge/is_coming_soon_for_display or rewrite the plan's §10.3 expectation to match
 - [x] (cmd) Extend the QA plan with the evidence the first pass never captured: §9.8-§9.13 rasterise the cohort report and measure the white-paper fix off the pixels, and a new §16 names a capture for every admin surface this branch changed
 - [x] (cmd) Run the 23 new checks; all pass, and the 24 images are in `screenshots/`
-- [ ] (user + cmd) Fix QA bug: admin date-range filters ignore a date with no time, so filtering by date alone returns the whole list (TDD — failing test first, then fix)
-- [ ] (user) Decide whether the admin progress date filters should be date-only (unfold's RangeDateFilter) or datetime with a blank time defaulting to start/end of day, then change the five RangeDateTimeFilter usages in learner_progress/admin.py and form_engine/admin.py accordingly
+- [x] (user + cmd) Fix QA bug: admin date-range filters ignore a date with no time, so filtering by date alone returns the whole list (TDD — failing test first, then fix)
+- [x] (user) Decide whether the admin progress date filters should be date-only (unfold's RangeDateFilter) or datetime with a blank time defaulting to start/end of day, then change the five RangeDateTimeFilter usages in learner_progress/admin.py and form_engine/admin.py accordingly
 - [ ] (user) Run `manage.py check --deploy` against config.settings_prod for QA plan §11.4 — it could not be run in the QA session because the project security-guard hook blocks supplying a production environment and no allow-listed wrapper exists
 
 ## 10. Component styling moves into the components
