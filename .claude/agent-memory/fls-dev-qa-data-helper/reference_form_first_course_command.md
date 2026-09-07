@@ -37,3 +37,29 @@ Reused helpers rather than re-writing them: `_get_site` / `_get_learner` from
   `view_course_item`): a GET of item 2 before the form is completed returns **302** to
   course_detail. This contradicts the older note in [[reference_quiz_progression_block_command]];
   re-check that view before repeating "the player does not enforce unlock by URL".
+
+## Clearing the leftover attempt (Sep 2026, this branch)
+
+Ask: put `demodev@email.com` back to "Start Form" on `qa-form-first-course` without losing the
+registration. The whole sitting is **one row**: delete the `FormProgress` and the
+`CourseFormAttempt` follows (`form_progress` is a `OneToOneField(on_delete=CASCADE)`), so the
+delete returns `(2, {'...CourseFormAttempt': 1, '...FormProgress': 1})`. `QuestionAnswer` is also
+CASCADE off `FormProgress`; an unanswered attempt has 0.
+
+- The start-page button state is driven **only** by `CourseFormAttempt` rows for
+  `(course_progress, collection_item)` — `learner_progress/attempts.py`, never by `(user, form)`.
+  Verify headlessly with `get_latest_incomplete` + `completed_attempts` +
+  `form_start_page_buttons(...)` instead of GETting the player, which stamps
+  `CourseProgress.last_accessed_time`.
+- `qa_reset_learner_progress --learner ... --course-slug qa-form-first-course` would also have
+  done it, but it filters `FormProgress` via `course_attempt__course_progress__learner__user`, so
+  it **cannot see a standalone attempt** (no `CourseFormAttempt`), and it additionally nulls
+  `started_at` / `last_accessed_item` on `CourseProgress`. Use a targeted pk delete when the
+  caller asked only for the attempts.
+- **The percentage does not follow the delete.** There is no post_delete recalculation, so the
+  record kept `progress_percentage=50` with zero completions. Recompute the truthful value with
+  `calculate_course_progress_percentage(cp.course, completed_collection_item_ids(cp))` and save
+  it (it came back 0), rather than hardcoding.
+- `qa-form-first-form` is also sat by **`qa-standalone-form@example.com`** — the
+  [[reference_standalone_form_sitting]] fixture, the dev DB's only `FormProgress` with no
+  `CourseFormAttempt`. Never delete by `form=` alone here; guard on `user_id` too.
