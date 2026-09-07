@@ -98,7 +98,7 @@ These widgets are available inside Markdown content:
 | `c-youtube` | Embed a YouTube video by ID |
 | `c-picture` | Responsive image with optional lightbox |
 | `c-admonition` | Typed callout box (`type`, optional `title`) |
-| `c-flashcard` | Two-sided flip card; front and back are supplied as named slots |
+| `c-flashcard` | Two-sided flip card; front and back are supplied as named slots, optional `size` |
 | `c-accordion` | Collapsible disclosure widget (`title`, optional `open`) |
 | `c-card` | Content panel with optional header image, `title`, and `size` |
 | `c-content-link` | Internal link to another content item |

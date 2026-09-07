@@ -44,7 +44,7 @@ c-image-grid:     columns
 c-table:          caption
 c-code-block:     title, language, wrap
 c-admonition:     type, title
-c-flashcard:      (none)
+c-flashcard:      size
 c-accordion:      title, open
 c-card:           src, alt, title, size
 c-slot:           name

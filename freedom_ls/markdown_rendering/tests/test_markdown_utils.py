@@ -14,6 +14,17 @@ def mock_request(site_aware_request):
     return site_aware_request.get("/")
 
 
+def _flashcard(*, size: str | None = None) -> str:
+    """A minimal two-slot flashcard, optionally carrying a size attribute."""
+    attrs = f' size="{size}"' if size is not None else ""
+    return (
+        f"<c-flashcard{attrs}>"
+        '<c-slot name="front">Question</c-slot>'
+        '<c-slot name="back">Answer</c-slot>'
+        "</c-flashcard>"
+    )
+
+
 @pytest.mark.django_db
 class TestRenderMarkdownCustomTags:
     """Tests for custom cotton tag handling in render_markdown."""
@@ -302,6 +313,77 @@ This is **bold** text
         assert "{#" not in result
         assert "Full-surface flip trigger" not in result
         assert "single-cell stack" not in result
+
+    def test_c_flashcard_defaults_to_the_standard_width(self, mock_request):
+        """With no size attribute the card keeps the standard large-screen cap."""
+        result = render_markdown(_flashcard(), mock_request)
+
+        assert "lg:max-w-2xl" in result
+        assert "lg:max-w-4xl" not in result
+
+    def test_c_flashcard_size_wide_widens_the_card(self, mock_request):
+        """size="wide" lifts the large-screen cap so a table has room to read.
+
+        The attribute has to survive nh3 as well as reach the template, so this
+        also pins the ``c-flashcard`` entry in ``MARKDOWN_ALLOWED_TAGS``.
+        """
+        result = render_markdown(_flashcard(size="wide"), mock_request)
+
+        assert "lg:max-w-4xl" in result
+        assert "lg:max-w-2xl" not in result
+
+    def test_c_flashcard_wide_answer_face_is_left_aligned(self, mock_request):
+        """A wide card's faces read left-aligned — a centred table is unreadable."""
+        result = render_markdown(_flashcard(size="wide"), mock_request)
+
+        assert "text-left" in result
+        assert "text-center" not in result
+
+    def test_c_flashcard_unknown_size_falls_back_to_standard(self, mock_request):
+        """An unrecognised size renders the standard card rather than erroring."""
+        result = render_markdown(_flashcard(size="enormous"), mock_request)
+
+        assert "lg:max-w-2xl" in result
+        assert "lg:max-w-4xl" not in result
+
+    def test_c_flashcard_faces_cannot_be_widened_by_their_content(self, mock_request):
+        """The faces must be free to shrink below their content's min-content width.
+
+        Regression (QA bug B1): both faces were grid items in a ``1fr`` track with
+        the default ``min-width: auto``, so a table or code block on the answer
+        face set a floor the card could not go below and it ran off a 375px
+        viewport, taking the whole page's horizontal scroll with it.
+        """
+        result = render_markdown(_flashcard(), mock_request)
+
+        assert "grid-cols-[minmax(0,1fr)]" in result
+        # One min-w-0 per face, plus one per face's inner content box.
+        assert result.count("min-w-0") == 4
+
+    def test_c_flashcard_wide_answer_content_scrolls_inside_the_face(
+        self, mock_request
+    ):
+        """A table or code block too wide for the face scrolls rather than stretching it."""
+        result = render_markdown(_flashcard(), mock_request)
+
+        assert ".flashcard-face :is(table, pre)" in result
+        assert "overflow-x: auto" in result
+
+    def test_c_flashcard_scrollable_content_stays_clickable_under_the_flip_trigger(
+        self, mock_request
+    ):
+        """The faces let clicks through to the flip button, except on scrollers.
+
+        The trigger covers the whole card. It has to sit *below* the face
+        stack so a swipe on a scrolling table reaches the table, and the stack
+        has to be transparent to pointer events so a tap on prose still reaches
+        the trigger and flips the card.
+        """
+        result = render_markdown(_flashcard(), mock_request)
+
+        assert "z-10" not in result
+        assert result.count("pointer-events-none") == 1
+        assert "pointer-events: auto" in result
 
     def _make_image_file(self, site, file_path="images/cat.png"):
         """Create a site-scoped File row so c-picture can resolve it."""

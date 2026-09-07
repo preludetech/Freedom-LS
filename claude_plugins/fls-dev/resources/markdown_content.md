@@ -36,6 +36,10 @@ Available: `admonition.html`, `flashcard.html`, `accordion.html`, `youtube.html`
   <c-slot name="front">What is the question?</c-slot>
   <c-slot name="back">This is the answer.</c-slot>
 </c-flashcard>
+<c-flashcard size="wide">
+  <c-slot name="front">A question whose answer is a table.</c-slot>
+  <c-slot name="back">A wider card, left-aligned faces.</c-slot>
+</c-flashcard>
 <c-accordion title="Optional detail">Hidden until expanded.</c-accordion>
 <c-accordion title="Open by default" open>Starts expanded.</c-accordion>
 <c-youtube video_id="abc123"></c-youtube>
@@ -70,7 +74,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-table": {"caption"},
     "c-code-block": {"title", "language", "wrap"},
     "c-admonition": {"type", "title"},
-    "c-flashcard": set(),
+    "c-flashcard": {"size"},
     "c-accordion": {"title", "open"},
     "c-slot": {"name"},
 }

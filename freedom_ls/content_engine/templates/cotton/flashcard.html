@@ -1,7 +1,14 @@
+<c-vars size="standard" />
+
 {% load content_tags %}
 
 {% comment %}
 Flashcard component — a two-sided flip card for question/answer content.
+
+Attributes:
+  size   standard (default) | wide. A wide card lifts the large-screen width
+         cap and left-aligns both faces, so an answer holding a table or a code
+         block reads properly. An unknown size falls back to standard.
 
 Named slots:
   front  The question / prompt face (markdown rendered).
@@ -25,6 +32,15 @@ Accessibility:
   The corner label and the flip hint are decorative: the button's aria-label
   and aria-pressed already carry the interaction, so both are aria-hidden to
   avoid announcing it twice.
+
+Layering:
+  The flip trigger sits *below* the face stack, and the stack is transparent to
+  pointer events. A click on prose therefore falls through to the trigger and
+  flips the card, while a scrolling table or code block — the only descendants
+  that take pointer events back — can be swiped without the trigger swallowing
+  the gesture. Putting the trigger on top instead makes those scrollers
+  unreachable: each face has a transform, so it is a stacking context, and no
+  z-index on a descendant can lift it above a sibling of the face.
 
 Styling:
   The card owns its own styling. The 3-D geometry is Tailwind utilities on the
@@ -65,6 +81,25 @@ Styling:
         transform: rotateY(180deg);
     }
 
+    /* A rendered table or fenced code block sets a min-content width the face
+     * would otherwise have to grow to, pushing the whole card off a narrow
+     * viewport. Each becomes its own scroll container instead, capped at the
+     * face, and takes pointer events back so the scroll is actually reachable
+     * past the flip trigger underneath. c-table's scroll wrapper is no help
+     * here — it is stripped inside a markdown slot. */
+    .flashcard-face :is(table, pre) {
+        max-width: 100%;
+        overflow-x: auto;
+        pointer-events: auto;
+    }
+
+    /* A table has to stop being a table box before it can scroll; max-content
+     * keeps the columns from collapsing once it does. */
+    .flashcard-face table {
+        display: block;
+        width: max-content;
+    }
+
     /* The @layer base element rules paint prose against `surface`; the answer
      * face is its own tinted panel, so these repaint the subtree from the
      * face's own properties. Being in @layer components they win over
@@ -88,14 +123,16 @@ Styling:
 }
 </style>
 
-<div x-data="flashcard" class="my-6 lg:max-w-2xl lg:mx-auto">
+<div x-data="flashcard"
+     class="my-6 lg:mx-auto {% if size == 'wide' %}lg:max-w-4xl{% else %}lg:max-w-2xl{% endif %}">
     <div class="relative perspective-[1400px] min-h-11">
         {% comment %}
-        Full-surface flip trigger, stacked above both faces so a click
-        anywhere on the card flips it.
+        Full-surface flip trigger. It stays first in the DOM and carries no
+        z-index so the faces, which come later and are positioned, paint over
+        it — see "Layering" above.
         {% endcomment %}
         <button type="button"
-                class="absolute inset-0 w-full h-full min-w-11 min-h-11 z-10
+                class="absolute inset-0 w-full h-full min-w-11 min-h-11
                        bg-transparent border-none cursor-pointer p-0
                        focus-visible:outline-none focus-visible:ring-2
                        focus-visible:ring-focus-ring focus-visible:ring-offset-2
@@ -110,8 +147,17 @@ Styling:
         CSS-grid single-cell stack: both faces share one grid area so the
         card container is sized to the larger face, not whichever renders
         first. The perspective is set on the parent.
+
+        The track is minmax(0,1fr) rather than 1fr, and each face carries
+        min-w-0, so neither the track nor the items inherit a min-content
+        floor from the prose inside them.
+
+        pointer-events-none goes on the stack rather than on each face: the
+        stack is itself a box covering the whole card, so leaving it opaque
+        would take the click meant for the trigger underneath.
         {% endcomment %}
-        <div class="grid grid-cols-[1fr] grid-rows-[1fr] transform-3d">
+        <div class="grid grid-cols-[minmax(0,1fr)] grid-rows-[1fr] transform-3d
+                    pointer-events-none">
 
             {% comment %}
             inert removes the hidden face's subtree from tab order, pointer
@@ -121,7 +167,7 @@ Styling:
             backface-hidden is what makes each face disappear once it rotates
             past 90°; the -webkit- prefix carries older Safari.
             {% endcomment %}
-            <div class="col-start-1 row-start-1 relative
+            <div class="flashcard-face col-start-1 row-start-1 relative min-w-0
                         backface-hidden [-webkit-backface-visibility:hidden]
                         rounded-lg border border-border bg-surface shadow-sm
                         motion-safe:transition-transform motion-safe:duration-560
@@ -136,8 +182,9 @@ Styling:
                 generous vertical padding clears the absolutely-placed kicker
                 and flip hint.
                 {% endcomment %}
-                <div class="flex flex-col items-center justify-center gap-3 text-center
-                            h-full min-h-52 px-7 py-13">
+                <div class="flex flex-col justify-center gap-3 min-w-0
+                            h-full min-h-52 px-7 py-13
+                            {% if size == 'wide' %}items-stretch text-left{% else %}items-center text-center{% endif %}">
                     <div class="absolute top-4 left-5 font-mono text-xs font-medium
                                 uppercase tracking-widest text-muted"
                          aria-hidden="true">Question</div>
@@ -151,7 +198,7 @@ Styling:
                 </div>
             </div>
 
-            <div class="flashcard-back col-start-1 row-start-1 relative
+            <div class="flashcard-face flashcard-back col-start-1 row-start-1 relative min-w-0
                         backface-hidden [-webkit-backface-visibility:hidden]
                         rounded-lg border shadow-sm
                         motion-safe:transition-transform motion-safe:duration-560
@@ -159,8 +206,9 @@ Styling:
                  x-bind:inert="!flipped"
                  x-bind:aria-hidden="!flipped"
                  x-bind:style="backStyle()">
-                <div class="flex flex-col items-center justify-center gap-3 text-center
-                            h-full min-h-52 px-7 py-13">
+                <div class="flex flex-col justify-center gap-3 min-w-0
+                            h-full min-h-52 px-7 py-13
+                            {% if size == 'wide' %}items-stretch text-left{% else %}items-center text-center{% endif %}">
                     <div class="absolute top-4 left-5 font-mono text-xs font-medium
                                 uppercase tracking-widest text-(--flashcard-accent)"
                          aria-hidden="true">Answer</div>

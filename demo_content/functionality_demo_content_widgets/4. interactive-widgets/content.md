@@ -118,7 +118,12 @@ An answer face can hold anything markdown can express. The face is a tinted pane
 than the plain page surface, so every kind of prose on it — headings, links, inline and
 fenced code, tables, rules — is repainted to stay legible against the tint.
 
-<c-flashcard>
+Set `size="wide"` when the answer needs the room. A wide card fills more of the content
+column and left-aligns both faces, so a table reads as a table. Anything still too wide for
+the card — on a phone, that is most tables — scrolls sideways inside the face rather than
+dragging the card off the screen.
+
+<c-flashcard size="wide">
 <c-slot name="front">
 
 **Which HTTP status codes should a REST API use for a failed write?**
@@ -192,5 +197,5 @@ Without that pairing a long title pushes the chevron out of the row, and on a na
 | Screen | Title | Chevron |
 | --- | --- | --- |
 | Wide | One line | Right of the row |
-| Narrow | Wraps to two or three lines | Still right, still aligned to the first line |
+| Narrow | Wraps to two or three lines | Still right, centred against the wrapped title |
 </c-accordion>
