@@ -1,469 +1,429 @@
 # Frontend QA report — better form start page
 
-This run manually exercised the restyled form start page (the screen a learner sees before
-beginning a `Form` in the course player) against the test plan in `3. frontend_qa.md`. 34 tests
-were executed across desktop, tablet and mobile viewports and both project themes: 30 passed and
-4 failed. The 4 failures group into 4 distinct root-cause bugs (one bug per failing test, 1:1 in
-this run): a markdown descendant-selector bug that over-centres blockquote and loose-list content,
-a horizontal-overflow bug triggered by long code lines and unbreakable URLs, a WCAG non-text
-contrast failure on the fact-pill icons under the `first_class` theme, and a decorative badge icon
-that announces itself redundantly to screen readers.
+## Summary
+
+This report covers manual QA of the restyled learner-facing form start page: `course_form.html`,
+deletion of the `exam_meta_grid.html` partial, and a restyle of the `exam_previous_attempts.html`
+partial. 26 tests were executed against the test plan's nine sections (golden path, previous
+attempts, every start-page state, real content, both themes, responsive, HTMX navigation,
+failure/permission branches, accessibility). Every executed test recorded status **pass**: the
+restyle itself holds up across both themes, all three viewports and all five CTA states, and the
+`bg-white` row problem it set out to fix is genuinely fixed.
+
+One bug is open, and it is not a regression in the new markup. Bug **B1** records that the fact-pill
+icon contrast under the `first_class` theme still measures 1.75:1, the same figure a previous QA run
+filed as bug B3, even though the `todo.md` item covering it is ticked as decided and applied. No
+commit on this branch changed that colour. It needs a human decision, so it was not auto-fixed.
+
+A separate set of observations (pre-existing issues, a test-data gap, a by-design navigation
+behaviour, and a tooling deviation) is recorded in General notes below; none of those are regressions
+caused by this change.
 
 ## Methodology
 
-The run was driven manually through the Playwright MCP against a dev server on `127.0.0.1:8229`.
-Screenshots were collected into `screenshots/` beside this report; every image referenced below
-exists in that directory. Screenshot compression was run afterwards and reported `ok`: no PNG in
-`spec_dd/` exceeded 1024KB, so nothing needed compressing.
+Testing was done manually through Playwright MCP against a dev server running on port 8066.
+Screenshots were collected into `screenshots/` beside this report; every image referenced by this
+report exists in that directory. Sections 1–4 and 6–9 ran under the `default` theme. For section 5,
+the CSS was rebuilt and the server restarted under `FLS_THEME=first_class`, checked, then rebuilt
+and restarted back under `default` to confirm the reverse.
 
 ## Diff scoping
 
-Scoping class: **FULL**. Changed files that triggered it:
+Scoping class: **FULL**.
+
+Changed files that triggered this class:
 
 - `freedom_ls/learner_interface/templates/learner_interface/course_form.html`
 - `freedom_ls/learner_interface/templates/learner_interface/partials/exam_meta_grid.html`
 - `freedom_ls/learner_interface/templates/learner_interface/partials/exam_previous_attempts.html`
 - `freedom_ls/learner_interface/tests/test_form_runner_views.py`
-- `spec_dd/2. in progress/better-form-start-page/2. plan.md`
-- `spec_dd/2. in progress/better-form-start-page/3. frontend_qa.md`
-- `spec_dd/2. in progress/better-form-start-page/research_design_source.md`
-- `spec_dd/2. in progress/better-form-start-page/todo.md`
+- `freedom_ls/qa_helpers/management/commands/qa_create_form_count_edge_cases.py`
 
-Skipped: nothing. Because the class was FULL, the desktop, mobile and tablet passes all ran in
-full — nothing was skipped on account of scoping.
+Because the class is FULL, nothing was skipped: desktop, mobile and tablet passes all ran.
 
 ## Smoke gate
 
-Result: **pass**. Pages loaded during the gate:
+Status: **pass**. Pages checked before the full matrix:
 
-- `http://127.0.0.1:8229/`
-- `http://127.0.0.1:8229/courses/qa-progression-block-course/2/`
+- `http://127.0.0.1:8066/`
+- `http://127.0.0.1:8066/courses/qa-progression-block-course/2/`
 
-No failure URL or failure reason was recorded.
+No failure was recorded.
 
 ## Results by test-plan section
 
-### §1 The first-time start page — the golden path
+### §1 Golden path
 
-- **1.1** — pass. First-time start page, default theme, 1920x1080. Centred column measured at
-  exactly 576px (`mx-auto max-w-xl`), inside the 560-580px expectation; `scrollWidth == clientWidth`,
-  no horizontal overflow. Rounded-square badge (`size-16`, `rounded-lg`, `bg-secondary`/
-  `text-on-secondary`) holds a single outline "form" pencil icon, solid fill, no gradient, no glow.
-  Title renders as a large bold display heading. Pills read "4 questions" and "1 page", verified
-  against the DB (1 page, 4 questions); singular "page" confirms the pluralize filter works. Single
-  centred primary "Start Form" button. Old two-cell meta grid is gone (`exam_meta_grid.html` deleted,
-  zero remaining references in the tree) and there is no left-aligned page title above the card.
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 1.1 Golden path start page | desktop | pass |
+| 1.2 No attempts, no subtitle, no intro | desktop | pass |
+| 1.3 Singular pluralisation | desktop | pass |
 
-  ![](screenshots/page-2026-09-07T06-53-06-405Z.png)
+**1.1** — Centred column measured at 576px (`mx-auto max-w-xl`), inside the 560–580px expectation.
+Rounded-square badge with a solid slate secondary fill and a single white outline pencil icon: no
+gradient, no coloured glow. Eyebrow "KNOWLEDGE CHECK" renders small, monospace, uppercase, widely
+tracked, muted grey. Large bold display title, authored intro paragraph centred beneath it. Pills "4
+questions" and "1 page" each carry a small muted icon; counts were verified against the fixture (3
+single-select + 1 checkbox on 1 page). A single centred primary "Start Form" button. The old two-cell
+bordered meta grid is gone; there is no left-aligned page title at top-left. The badge glyph (pencil)
+differs from the questions pill glyph (document), so it is not the same icon appearing twice.
 
-- **1.2-icons** — pass. Badge uses `c-icon name='form'`, the questions pill uses `notes` and the
-  pages pill uses `course_part` — three distinct glyphs, so the duplicate-glyph failure mode the
-  plan warns about does not occur.
+![](screenshots/page-2026-09-07T14-37-48-022Z.png)
+Golden path start page: badge, eyebrow, title, intro, pills, centred "Start Form" button.
 
-- **1.3-pluralisation** — pass. Built a form with exactly one page and one question
-  (`qa-single-question-course`). Pills read "1 question" and "1 page" — singular in both cases, so
-  the pluralize filter is applied to both counts, not just one.
+**1.2** — A fresh learner (after `qa_reset_learner_progress`) sees the "Start Form" CTA and no
+previous-attempts section at all, not an empty heading. Layout stayed balanced with no subtitle and
+no intro present at this point.
 
-### §2 The returning learner — previous attempts still work
+![](screenshots/page-2026-09-07T14-37-09-810Z.png)
+Fresh learner state: no previous-attempts section.
 
-- **2.1** — pass. Returning learner after one deliberately-failed attempt. Previous attempts
-  section renders below the card and is left-aligned (computed `text-align: left` on the section)
-  while the card above stays centred. Row shows the date on the left and "0%" plus "(0 / 4)" on the
-  right. Section keeps `aria-labelledby='previous-attempts-heading'` and the `h2` carries that id,
-  so the heading association survived the restyle. CTA changed to "Try Again" and is still centred.
+**1.3** — `qa-single-question-course` renders "1 question" / "1 page", the correct singular rather
+than "1 questions". Fixture seeded by `qa_create_form_count_edge_cases` (added on this branch).
 
-  ![](screenshots/page-2026-09-07T06-55-09-412Z.png)
+### §2 Previous attempts
 
-- **2.2-row-bg** — pass. Row background is the class `bg-surface` (was hardcoded `bg-white`).
-  Computed to `rgb(255,255,255)` under the default theme, which is that theme's surface token — so
-  it matches the page ground rather than fighting it. Token-vs-hardcode is confirmed for real in the
-  `first_class` theme pass (5.2), where the same class must resolve to a different colour.
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 2.1 Previous attempts present | desktop | pass |
+| 2.2 Row background follows the surface token | desktop | pass |
+| 2.3 List grows then slices to 5 | desktop | pass |
 
-- **2.3-slice** — pass. Took six real attempts through the runner with deliberately varied scores.
-  The list grows as attempts accumulate and, after the sixth, exactly five rows render — the oldest
-  (0%) has dropped off, confirming the view's slice to 5. Rows read newest-first (25/25/25/75/50)
-  and stay readable: date left, percentage and raw score right, consistent row height, no horizontal
-  overflow (`scrollWidth == clientWidth`).
+**2.1** — The previous-attempts section is present below the card and is left-aligned (section class
+`text-left`, computed `textAlign: left` on the rows) rather than centred. Each row shows the date on
+the left and, for the QUIZ, the percentage plus the raw score/max_score on the right, e.g. "7 Sep
+2026  100% (4/4)". Rows are ordered newest first. The heading keeps its
+`aria-labelledby="previous-attempts-heading"` association.
 
-  ![](screenshots/page-2026-09-07T06-57-18-971Z.png)
+![](screenshots/page-2026-09-07T14-49-19-176Z.png)
+Previous attempts list, left-aligned rows with date and score.
+
+**2.2** — This is the specific fix under test. Attempt rows now carry `border border-border
+bg-surface` instead of a hardcoded `bg-white`. Under the default theme `--color-surface` is `#FFFFFF`
+so the computed background is white, correct token behaviour rather than a hardcoded value; the
+first_class theme check in §5 confirms the row follows the theme rather than staying white.
+
+**2.3** — Six attempts were taken in sequence. After three the list showed three rows (25%, 50%,
+75%) and stayed readable. After six attempts exactly five rows render (100%, 50%, 0%, 25%, 50%): the
+oldest 75% attempt drops off, confirming the view's slice to 5. This was independently corroborated
+at session start, where seven attempts left in the database by an earlier run also rendered exactly
+five rows.
+
+![](screenshots/page-2026-09-07T14-48-25-448Z.png)
+Previous-attempts list after six attempts, sliced to the five most recent rows.
 
 ### §3 Every start-page state
 
-- **3.1-no-attempts** — pass. Fresh learner with no attempts: CTA is "Start Form" and the
-  previous-attempts section is absent from the DOM entirely (the partial's
-  `{% if completed_form_progress %}` guard holds) — not an empty heading. Card does not look
-  half-empty; the `space-y-6` stack collapses cleanly.
+| State | Test | Viewport | Verdict |
+| --- | --- | --- | --- |
+| Mid-attempt | 3.1 | desktop | pass |
+| Failed quiz | 3.2 | desktop | pass |
+| Passed quiz | 3.3 | desktop | pass |
+| Last item / finish course | 3.4 | desktop | pass |
 
-  ![](screenshots/page-2026-09-07T06-53-06-405Z.png)
+**3.1** — Started the quiz, answered a question, left without submitting (the runner raises its own
+`beforeunload` confirm, which is expected). Back on the start page the CTA reads "Continue Form" and
+links to `/fill_form/1`; clicking it resumes on the correct page. No previous-attempts section shows
+while the attempt is still open. Card layout is unchanged and never looks half-empty.
 
-- **3.2-mid-attempt** — pass. Started the two-page survey, answered page 1, advanced to page 2, then
-  left without submitting. Returning to the start page gives CTA "Continue Form"
-  (`data-testid=continue-form-button`) pointing at `/courses/qa-free-text-survey-course/1/fill_form/2`.
-  Clicking it lands on page 2 with the indicator reading "Page 2 of 2", so it resumes on the right
-  page. Layout holds and no previous-attempts section shows for an unsubmitted attempt.
+![](screenshots/page-2026-09-07T14-45-42-303Z.png)
+Mid-attempt state: "Continue Form" CTA.
 
-  ![](screenshots/page-2026-09-07T06-58-12-663Z.png)
+**3.2** — Submitted 3/4 = 75% against a pass mark of 80%. CTA becomes "Try Again", single and
+centred. The outline marks item 2 "Needs retry" and item 3 stays "Locked" and is not a link, so the
+restyle did not change unlocking.
 
-- **3.3-failed-quiz** — pass. Failed-quiz branch: CTA is "Try Again". Outline shows item 2 as "Needs
-  retry" and item 3 as "Locked" with no link element at all. Hitting
-  `/courses/qa-progression-block-course/3/` directly redirects to the course detail page, so the
-  restyle did not weaken unlocking.
+![](screenshots/page-2026-09-07T14-46-22-591Z.png)
+Failed quiz: "Try Again" CTA, following topic locked in the outline.
 
-- **3.4-passed-quiz** — pass. Submitted all-correct answers: 100% (4/4). CTA becomes "Next" (href
-  `/courses/qa-progression-block-course/3/`) and item 3 flips from Locked to "Not started" and
-  becomes a link. Card stays centred with the five-row attempt list below it.
+**3.3** — Submitted 4/4 = 100%. CTA becomes "Next", single and centred, linking to
+`/courses/qa-progression-block-course/3/`. The outline then shows item 2 "Completed" and item 3
+unlocked.
 
-  ![](screenshots/page-2026-09-07T06-58-56-458Z.png)
+![](screenshots/page-2026-09-07T14-49-19-176Z.png)
+Passed quiz: "Next" CTA, five attempt rows visible below.
 
-- **3.5-last-item** — pass. `qa-free-text-survey-course` has the form as its only item. After
-  submitting, the CTA reads "Finish Course" (href `/courses/qa-free-text-survey-course/finish/`),
-  single and centred. This also exercises the non-QUIZ branch of the attempts partial: the
-  `CATEGORY_VALUE_SUM` strategy renders a green check plus "Completed" instead of a percentage,
-  which is the intended else branch.
+**3.4** — `qa-single-question-course` has a single item which is the form, so the form is the last
+item. After completing it the CTA reads "Finish Course", single and centred, and clicking it goes to
+`/courses/qa-single-question-course/finish/` ("Course complete"). The card holds its shape with no
+subtitle and no intro: badge, title, pills, CTA, one attempt row, and never looks half-empty.
 
-  ![](screenshots/page-2026-09-07T06-58-36-430Z.png)
+![](screenshots/page-2026-09-07T14-54-56-237Z.png)
+Last item in the course: "Finish Course" CTA.
 
 ### §4 Real content, not lorem
 
-- **4.1-long-content** — pass. Gave the form a 17-word title, a 139-character subtitle and rich
-  intro markdown. The title wraps to 4 lines inside the 576px column with
-  `scrollWidth == clientWidth` (no overflow). The eyebrow wraps to 3 lines and computes to
-  uppercase, `ui-monospace`, 1.2px letter-spacing, muted — it does not push the page sideways. Page
-  has no horizontal scrollbar (`documentElement scrollWidth` 1920 == `clientWidth` 1920). Heading,
-  code block and the `ul`/`ol` elements themselves are left-aligned.
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 4.1/4.2 Long content | desktop | pass |
+| 4.3 No subtitle | desktop | pass |
+| 4.4 No content | desktop | pass |
 
-  ![](screenshots/page-2026-09-07T07-00-55-416Z.png)
+**4.1/4.2** — The form was given a 12-word title, a long subtitle and intro markdown containing a
+heading, bullet list, numbered list, code block and blockquote. The long title wraps cleanly inside
+the 576px column with no overflow. The eyebrow wraps rather than pushing the page sideways. The
+bullet list, code block and blockquote are all left-aligned (computed `textAlign: left`); the specific
+failure mode of centred list items does not occur. The intro heading is centred, which is the
+intended design (per "Left-align form start intro body, centre only its headings"). No horizontal
+scrolling occurred: `documentElement.scrollWidth == innerWidth` at every width tested.
 
-- **4.2-block-alignment** — **fail** (see bug B1). `course_form.html` applies `[&_p]:text-center` to
-  `c-markdown-container`, a descendant selector, so it centres every `<p>` anywhere inside the
-  authored intro, not just top-level paragraphs. Confirmed via `getComputedStyle`: the `<p>` inside
-  `<blockquote>` computes `text-align:center`, and the `<p>` the markdown renderer emits inside loose
-  `<li>` elements also computes center. Result: the blockquote body is centred, and list items
-  rendered as loose (wrapped in `<p>`) are centred while tight ones are not — a single list appears
-  half-centred and half-left. The `<ul>`/`<ol>`/`<li>`/`<pre>` elements themselves are correctly
-  `text-align:left`; only their nested `<p>` children are wrong.
+![](screenshots/page-2026-09-07T14-39-31-292Z.png)
+Long-content form: wrapped title, left-aligned list/code/blockquote, centred intro heading.
 
-  ![](screenshots/page-2026-09-07T07-00-55-416Z.png)
+**4.3** — Subtitle cleared: the eyebrow paragraph is not rendered at all, and there is no empty gap
+where it was. The title block's measured height (120px) equals the h1's height exactly, and the
+badge-to-title gap is the normal 24px space-y step, so the title moves up cleanly. No zero-height
+children anywhere in the card.
 
-- **4.3-no-subtitle** — pass. Cleared the subtitle. The eyebrow `<p>` is absent from the DOM and the
-  `space-y-2` wrapper's height collapses to exactly the `h1` height (160px == 160px), so there is no
-  empty gap — the title moves up cleanly and the badge-to-title gap is the normal 24px of the
-  `space-y-6` stack.
-
-- **4.4-no-content** — pass. Cleared the form's markdown content. The card's direct children are
-  exactly badge, title wrapper, pills row and CTA — the `c-markdown-container` is not emitted at
-  all, so there is no stray empty container between the title and the pills. Horizontal overflow
-  also disappears with the content removed, which confirms the 4.5 overflow comes from authored
-  content rather than from the card layout itself.
-
-- **4.5-overflow** — **fail** (see bug B2). Authored intro containing a long code line and an
-  unbreakable URL makes the whole page scroll horizontally: `documentElement scrollWidth` 2018 vs
-  `clientWidth` 1920. The `<pre>` computes `white-space:pre` with `overflow-x:visible` and a
-  `scrollWidth` of 1162px inside a 576px column, so it spills out of the card and widens the
-  document. The long URL paragraph also overflows (`scrollWidth` 784 in a 576px box,
-  `overflow-wrap:normal`). `c-markdown-container` is only `space-y-4` and has never carried overflow
-  handling, so the underlying weakness predates this change — but the old start page gave that
-  container the full 1280px content column, where a 1162px code line still fitted. Narrowing to
-  576px is what makes it reachable, and the plan explicitly requires no horizontal scrolling.
-
-  ![](screenshots/page-2026-09-07T07-02-43-906Z.png)
+**4.4** — Intro markdown cleared: the `{% if form.rendered_content %}` guard drops the markdown
+container entirely rather than leaving an empty box. The card renders exactly four children — badge
+(64px), title block (120px), pills row (28px), CTA (40px) — with no stray empty container between the
+title and the pills and no zero-height elements.
 
 ### §5 Both themes
 
-- **5.1-first-class-theme** — pass. Rebuilt CSS and restarted the server under
-  `FLS_THEME=first_class`. Every token followed the theme, with no value stranded from the default
-  brand: badge fill `rgb(71,85,105)` slate -> `rgb(0,206,201)` teal; badge foreground white ->
-  `rgb(26,26,46)` navy; badge radius 8px -> 12px; pill radius 8px -> 9999px; pill icon slate -> teal;
-  button `rgb(43,108,176)` ocean -> `rgb(40,53,147)` indigo with radius 6px -> 8px; heading font
-  `ui-sans-serif` -> Outfit and body -> DM Sans. Badge is a flat fill in both themes
-  (`background-image none`, `box-shadow none`), so no gradient and no coloured glow. Card width
-  stays 576px.
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 5.1 first_class theme | desktop | pass |
+| 5.2 Row follows theme | desktop | pass |
+| 5.3 default theme (rebuilt back) | desktop | pass |
 
-  ![](screenshots/page-2026-09-07T07-09-41-700Z.png)
+**5.1** — Rebuilt and served under `FLS_THEME=first_class`. The indigo/teal brand comes through:
+badge fill `#00CEC9` teal (`--color-secondary`) with a `#1A1A2E` dark-navy icon
+(`--color-on-secondary`), button `#283593` indigo (`--color-primary`), h1 in Outfit and body in DM
+Sans, and chunkier radii — pills fully rounded (`9999px`) and button `8px`. The badge is a solid fill
+with `background-image: none` and `box-shadow: none`, so no gradient and no coloured glow.
 
-- **5.2-surface-token** — pass. This is the fix the plan singles out. The previous-attempt row
-  background moved from `rgb(255,255,255)` under default to `rgb(248,249,252)` under `first_class`,
-  and its border from `rgb(209,213,219)` to `rgb(226,232,240)`. A hardcoded `bg-white` would have
-  stayed pure white; `bg-surface` tracks the theme, so the rows sit on the page ground instead of
-  reading as a hard white block.
+![](screenshots/page-2026-09-07T14-53-00-553Z.png)
+first_class theme: teal badge, indigo button, Outfit/DM Sans type.
 
-  ![](screenshots/page-2026-09-07T07-09-41-700Z.png)
+**5.2** — This is the decisive check for the `bg-white` fix. Under first_class, `--color-surface` is
+`#F8F9FC` and the attempt rows compute to `rgb(248,249,252)`, following the theme instead of staying
+white. Under default, `--color-surface` is `#FFFFFF` and the same rows compute to white. A hardcoded
+`bg-white` would have stayed `rgb(255,255,255)` in both cases. Nothing on the page kept a colour from
+the other theme: badge, button, pill icon, row background and both fonts all changed.
 
-- **5.3-icon-contrast** — **fail** (see bug B3). The pill icon / pill background pair is mismatched
-  under `first_class`. The icons carry `text-secondary` while `c-chip variant='muted'` supplies a
-  near-white background, so under `first_class` a teal `rgb(0,206,201)` glyph sits on
-  `rgb(237,242,247)`: a computed contrast ratio of 1.75:1, far below the 3:1 WCAG 1.4.11 threshold
-  for non-text contrast, and the icons visibly wash out. The same pairing is fine under default
-  because that theme's secondary is dark slate. The badge is the opposite and correct: its icon is
-  `text-on-secondary` against `bg-secondary`, measuring 8.67:1 under `first_class`. Pill text
-  (15.14:1) and button text (10.39:1) are both fine.
+**5.3** — Rebuilt and served back under the default theme. The blue/slate brand is restored: badge
+`#475569` slate with a white icon, button `#2B6CB0` ocean blue, system font stack, tighter radii
+(pill `8px`, button `6px`). Every element is legible and nothing disappears into its background.
+Foreground/background pairs are correct in both themes; the badge uses `--color-secondary` with
+`--color-on-secondary` rather than a fixed ink colour.
 
-  ![](screenshots/element-2026-09-07T07-10-26-066Z.png)
-
-- **5.4-default-theme** — pass. Rebuilt and restarted under the default theme. Everything returned
-  to the blue/slate brand: badge `rgb(71,85,105)` slate, button `rgb(43,108,176)` ocean blue, system
-  font (`ui-sans-serif`), rows back to `rgb(255,255,255)`. Nothing carried over from `first_class`.
-  Contrast under default is healthy on both pairs the plan names: badge icon vs badge fill 7.58:1
-  and pill icon vs pill background 6.89:1, which is what makes the 1.75:1 `first_class` pill result a
-  theme-specific defect rather than a general one.
-
-  ![](screenshots/page-2026-09-07T06-53-06-405Z.png)
+![](screenshots/page-2026-09-07T14-54-13-938Z.png)
+default theme rebuilt back: slate badge, ocean-blue button, system font.
 
 ### §6 Responsive
 
-- **6.1-mobile-375** — pass. At 375x812 the card fills the width at 343px with an even 16px gutter
-  each side. No horizontal scrollbar (`scrollWidth` 375 == `clientWidth` 375). Both pills sit on one
-  row (122px + 91px + gap inside 343px) without squashing or overflowing; the row carries `flex-wrap`
-  so longer labels would wrap rather than overflow. CTA is 83x40, fully inside the viewport and not
-  clipped. The five attempt rows stay full-width and readable with date left and score right.
+| Test | Viewport | Width | Verdict |
+| --- | --- | --- | --- |
+| 6.1 mobile | mobile | 375px | pass |
+| 6.2 tablet | tablet | 768px | pass |
+| 6.3 desktop, outline open | desktop | 1440px | pass |
 
-  ![](screenshots/page-2026-09-07T07-07-33-738Z.png)
+**6.1** — At 375x812 with the long-content form: the card is 343px wide with even 16px side padding.
+No horizontal scrollbar (`scrollWidth 375 == innerWidth 375`). Both pills fit on one line inside the
+column and neither squashes nor overflows; the container is flex-wrap so they would wrap if
+narrower. Button is 128x40, centred, fully reachable and not clipped. The eyebrow wraps to two lines.
+The code block scrolls inside its own box (`scrollWidth 461 > clientWidth 343`, `overflow-x: auto`)
+exactly as the template intends, so it never widens the page.
 
-- **6.1b-mobile-nav** — pass. The course outline collapses behind a 44x48 toggle at this width.
-  Tapping it opens the outline as a bottom sheet over a dimmed backdrop, with the progress bar and
-  all three items listed and the current item highlighted. Touch targets in the drawer are
-  full-width rows.
+![](screenshots/page-2026-09-07T14-41-04-630Z.png)
+375px mobile viewport: card at 343px with 16px side padding.
 
-  ![](screenshots/page-2026-09-07T07-08-00-459Z.png)
+**6.2** — At 768x1024, the course outline is collapsed behind the toggle button in the content
+header, and the card stays centred in the content area. Long title, lists, code block and blockquote
+all render at a comfortable width with no clipping and no horizontal scroll.
 
-- **6.2-tablet-768** — pass. At 768x1024 the course outline is behind the toggle (the persistent
-  `lg` sidebar is not in flow, measured width 0) and the card is still centred in the content area —
-  card centre 384px against content-well centre 384px. Card holds its 576px width inside the 720px
-  well, pills stay on one row, the attempt rows keep date-left/score-right and do not crowd. No
-  horizontal scrollbar. Forms and the CTA render at a sensible width rather than stretching.
+![](screenshots/page-2026-09-07T14-41-28-469Z.png)
+768px tablet viewport: outline collapsed, card centred.
 
-  ![](screenshots/page-2026-09-07T07-08-23-409Z.png)
+**6.3** — At 1440x900 with the course outline panel open, the card stays a narrow 576px column: it
+does not stretch to fill the wide content well, so the max-width survived. The card centre measured
+at x=904, exactly the centre of the remaining content well (400..1408), not the viewport centre
+(720). The card therefore re-centres in the space left by the outline rather than appearing
+off-centre.
 
-- **6.3-desktop-1440** — pass. At 1440x900 the card stays a narrow 576px column — it does not
-  stretch to fill the 1008px content well, so the max-width survived. The course outline is a
-  permanent 320px sidebar at this width (its toggle button is `lg:hidden`). Measured card centre
-  904px against content-well centre 904px: the card re-centres in the space remaining beside the
-  outline rather than centring to the full viewport, whose centre would be 720px. No horizontal
-  scrollbar.
+![](screenshots/page-2026-09-07T14-41-47-514Z.png)
+1440px desktop viewport with outline open: card re-centred in the remaining content well.
 
-  ![](screenshots/page-2026-09-07T07-07-01-404Z.png)
+### §7 HTMX navigation
 
-### §7 Navigation still behaves (HTMX)
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 7.1 HTMX boost navigation | desktop | pass |
+| 7.2 Browser back button | desktop | pass |
+| 7.3 Direct reload (F5) | desktop | pass |
 
-- **7.1-htmx-boost** — pass. The CTA's boost ancestor carries `hx-boost=true`,
-  `hx-target=#interface-main`, `hx-select=#interface-main`,
-  `hx-swap='outerHTML show:window:top'`. Set a window-scoped marker before clicking "Next"; after
-  navigation the marker was still present, which proves the swap happened in place rather than as a
-  full document load (a full reload would have discarded it). URL updated to `/3/` and the outline
-  highlight moved to item 3.
+**7.1** — A window-level marker was set on the start page, then the "Next" CTA inside `c-player-nav`
+was clicked (`hx-boost="true"`, `hx-target`/`hx-select="#interface-main"`,
+`hx-select-oob="#course-toc-region"`). The marker survived the navigation, proving only the content
+column swapped and the document was never replaced, so no full white flash occurred. The URL updated
+to `/3/` and the outline updated its highlight out of band (item 2 flipped to "Completed" and became
+a link).
 
-- **7.2-back-and-reload** — pass. Browser back returns to the start page fully rendered — badge SVG
-  present, heading, both pills, CTA and all five attempt rows, card still measured at 576px. A
-  direct reload of the same URL produces an identical page. No blank or half-rendered card, so the
-  boost target/select pair is intact.
+**7.2** — Browser back from the topic lands on the start page fully rendered: badge, eyebrow, title,
+intro, both pills, the centred CTA and all five attempt rows. Nothing was blank or half-rendered, so
+the boost target and select are intact. Loading the same URL directly rendered identically.
+
+![](screenshots/page-2026-09-07T14-49-48-973Z.png)
+Start page after browser back navigation, fully rendered.
+
+**7.3** — Pressed F5 on the start page (performance navigation type "navigate"). The page comes back
+identical: badge, eyebrow, title, both pills, the "Next" CTA and all five attempt rows, six card
+children in total. No blank or half-rendered state.
 
 ### §8 Failure and permission branches
 
-- **8.1-unregistered** — pass. Hit a form start page for a course the logged-in learner is not
-  registered for (`demodev_quizqa@email.com` against `qa-question-types-course`). The app redirects
-  to `/courses/qa-question-types-course/detail/` and renders that page normally — no broken start
-  page, no traceback, no 500. Used this learner/course pair rather than the plan's `demodev_s1`
-  because `qa_create_course_player_learner` is not in the §0 seed list; it exercises the same
-  registration-check branch.
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 8.1 Not registered | desktop | pass |
+| 8.2 Logged out | desktop | pass |
+| 8.3 Locked item | desktop | pass |
+| 8.4 Zero counts | desktop | pass |
 
-- **8.2-logged-out** — pass. Signed out and requested the quiz start page directly. Redirected to
-  `/accounts/login/?next=/courses/qa-progression-block-course/2/` — the normal login redirect with
-  the `next` parameter preserved, not a stack trace.
+**8.1** — Logged in as `demodev_s1@email.com`, a plain non-staff learner with no registration for
+`qa-progression-block-course`, and hit the quiz URL directly. The existing access behaviour holds:
+redirected to the course detail/preview page showing the outline and an "Enrol for free" CTA. No
+broken start page and no server error.
 
-- **8.3-locked-item** — pass. Locked following topic is not clickable in the outline and direct URL
-  access redirects to `/courses/qa-progression-block-course/detail/` rather than rendering the item.
+![](screenshots/page-2026-09-07T14-51-09-497Z.png)
+Unregistered learner redirected to course preview.
 
-- **8.4-zero-counts** — pass. Built a form with zero pages and zero questions
-  (`qa-empty-form-course`). The start page renders "0 questions" / "0 pages" without crashing,
-  plurals correct, and the layout is not mangled — badge, title, pills and CTA stay centred in the
-  576px column with the stack simply shorter.
+**8.2** — Signed out and requested the quiz URL: clean redirect to
+`/accounts/login/?next=/courses/qa-progression-block-course/2/` with the sign-in form rendered. No
+stack trace.
 
-  ![](screenshots/page-2026-09-07T07-05-52-103Z.png)
+**8.3** — With a failed quiz on `qa-progression-block-course`, the following topic renders as "3.
+Locked" and is not a link, so it cannot be clicked through. After passing, the same item unlocks. The
+restyle did not change unlocking. The first observation of this looked wrong because a
+`TopicProgress` from an earlier QA run survived a form-only reset; it was re-run after
+`qa_reset_learner_progress --include-topics` and behaved correctly.
+
+**8.4** — `qa-empty-form-course` (0 pages, 0 questions) renders "0 questions" / "0 pages" without
+crashing and without a mangled layout; CTA is "Start Form". Note: first load showed "Continue Form"
+because a stale in-progress `FormProgress` row was left by an earlier QA run; this was cleared with
+`qa_reset_learner_progress` and re-checked (a test-data issue, not a defect).
+
+![](screenshots/page-2026-09-07T14-38-52-548Z.png)
+Zero-count form: "0 questions" / "0 pages", "Start Form" CTA.
 
 ### §9 Accessibility spot-check
 
-- **9.1-focus-ring** — pass. Tabbing from the top of the document reaches the primary CTA. It
-  matches `:focus-visible` and paints a two-layer ring via `box-shadow` — white 2px then
-  `rgb(43,108,176)` 4px — so the ring is clearly visible against the card. `outline` is suppressed
-  in favour of that `box-shadow`, which is the project's normal pattern.
+| Test | Viewport | Verdict |
+| --- | --- | --- |
+| 9.1 Focus ring | desktop | pass |
+| 9.2 Heading association | desktop | pass |
+| 9.3 Decorative badge | desktop | pass |
+| 9.4 200% zoom | desktop | pass |
 
-- **9.2-heading-association** — pass. The previous-attempts `<section>` keeps
-  `aria-labelledby='previous-attempts-heading'` and the `h2` inside it still carries that exact id,
-  so the heading is still programmatically associated with the section after the restyle.
+**9.1** — A real Tab keypress from the preceding focusable moves focus to the primary CTA (an anchor
+with `tabIndex 0`, in natural document order). The focus indicator is clearly visible: a two-tone
+ring drawn with `box-shadow`, white 2px inner plus primary blue 4px outer.
 
-- **9.3-decorative-badge** — **fail** (see bug B4). The new badge icon announces itself as
-  meaningful content. `c-icon` renders through `freedom_ls/icons/backend.py`, which always emits
-  `role='img'` `aria-label='<semantic name>'` and offers no decorative mode. The badge therefore
-  announces "form, image" immediately before the `h1` that already names the form — exactly the
-  redundancy the plan says to watch for. The badge is a new element introduced by this change, so
-  the redundant announcement is new even though the icon component's always-labelled behaviour is
-  pre-existing. Fixable in this template alone by putting `aria-hidden='true'` on the badge wrapper
-  div.
+![](screenshots/page-2026-09-07T14-52-03-430Z.png)
+Focus ring on the primary CTA after Tab.
 
-- **9.4-zoom-200** — pass. Simulated 200% zoom by halving the 1920 viewport to 960 CSS px. The card
-  reflows rather than clipping: it keeps its 576px max-width, sits fully inside the viewport (192px
-  to 768px), the CTA is entirely within bounds, no attempt row is clipped past the right edge, and
-  `scrollWidth` still equals `clientWidth`.
+**9.2** — The previous-attempts section is a `<section aria-labelledby="previous-attempts-heading">`
+and that id resolves to the `<h2>` reading "Previous attempts", so the heading/section association
+survived the restyle.
+
+**9.3** — The badge wrapper carries `aria-hidden="true"` and contains no text, so the decorative icon
+does not announce itself next to the title that already names the form.
+
+**9.4** — At the 200% zoom equivalent (960 CSS px viewport) the card reflows rather than clipping: no
+horizontal scroll (`scrollWidth 960 == innerWidth 960`), every attempt row fits its box, and no
+descendant of the card overflows a visible-overflow container.
 
 ## Bugs
 
-### B1 — Blockquote and loose list items are centred by the `[&_p]:text-center` descendant selector
+### B1 — Fact-pill icon contrast under first_class is still 1.75:1, though the todo item covering it is ticked as applied
 
-Manifestations:
-- `4.2-block-alignment` (desktop)
+Manifestation: test 5.1 (`first_class` theme), desktop.
 
-Screenshots:
+**Expected.** The previous QA run filed this as bug B3, and `todo.md` §9 carries a **ticked** item
+reading "Decide the replacement colour for the form start page's fact-pill icons (QA bug B3:
+text-secondary on a muted chip measures 1.75:1 under the first_class theme, below the 3:1 WCAG
+non-text minimum), then apply it". A ticked item implies a colour was chosen and applied, so the
+icons should no longer measure 1.75:1.
 
-![](screenshots/page-2026-09-07T07-00-55-416Z.png)
-![](screenshots/page-2026-09-07T07-02-43-906Z.png)
+**Actual.** Both fact-pill icons still carry `class="size-4 text-secondary"` (`course_form.html`
+lines 43 and 47). Under `FLS_THEME=first_class` that resolves to teal `#00CEC9` on the chip's
+`#EDF2F7` background, measured at **1.75:1** — the exact figure the earlier report cited.
+`git log main...HEAD -- course_form.html` returns four commits and none of them changed the pill icon
+colour; `text-secondary` has been on those icons since the first batch commit `8c210ad0`.
 
-**Expected:** Only top-level paragraphs of the authored intro are centred. Bullet lists, numbered
-lists, code blocks and blockquotes stay left-aligned, per section 4 of the test plan.
+So either the decision was to keep `text-secondary` and the todo wording is now stale, or the fix was
+never applied. Under the default theme the same token is slate `#475569` and contrast is strong, so
+this affects the first_class theme only.
 
-**Actual:** `course_form.html` applies `[&_p]:text-center` to `c-markdown-container`. Being a
-descendant selector it also matches `<p>` inside `<blockquote>` and `<p>` inside loose `<li>`
-elements, so the blockquote body renders centred and any list item the markdown renderer wraps in
-`<p>` renders centred. A single list ends up half-centred and half-left, which looks broken. The
-child selector `[&>p]:text-center` would centre only top-level paragraphs.
+Worth noting for whoever picks this up: the icons are decorative and sit beside their own text labels
+("4 questions", "1 page"), which is a recognised WCAG 1.4.11 exemption, so classing this as a hard
+accessibility failure is arguable. The part that is not arguable is the mismatch between a ticked
+todo and unchanged code.
 
-### B2 — Long code blocks and unbreakable URLs in the intro make the page scroll horizontally
+![](screenshots/page-2026-09-07T14-53-00-553Z.png)
+first_class theme: the teal pill icons at 1.75:1 against the chip background.
 
-Manifestations:
-- `4.5-overflow` (desktop)
-
-Screenshots:
-
-![](screenshots/page-2026-09-07T07-02-43-906Z.png)
-
-**Expected:** No horizontal scrolling on the start page whatever the authored intro contains, per
-section 4 of the test plan.
-
-**Actual:** With a long code line and an unbreakable URL in the intro, `documentElement scrollWidth`
-reaches 2018px against a 1920px `clientWidth`. The `<pre>` is `white-space:pre` with
-`overflow-x:visible` and a 1162px `scrollWidth` inside the 576px column, so it escapes the card and
-widens the document; the long-URL paragraph overflows too (784px in a 576px box).
-`c-markdown-container` is only `space-y-4` and has never had overflow handling, so the weakness
-predates this change — but the old start page gave that container the full 1280px content column,
-where the same code line still fitted. Narrowing to `max-w-xl` is what exposes it. Fixing it needs a
-scope decision: constrain it locally in `course_form.html`, or give the shared
-`c-markdown-container` proper overflow handling for every markdown surface.
-
-### B3 — Pill icons wash out under the first_class theme (1.75:1 contrast)
-
-Manifestations:
-- `5.3-icon-contrast` (desktop)
-
-Screenshots:
-
-![](screenshots/element-2026-09-07T07-10-26-066Z.png)
-![](screenshots/page-2026-09-07T07-09-41-700Z.png)
-
-**Expected:** Every element stays legible in both themes; in particular the pill icon reads clearly
-against the pill background, per section 5 of the test plan.
-
-**Actual:** The fact-pill icons carry `text-secondary` while `c-chip variant=muted` gives them a
-near-white background. Under `first_class` that is teal `rgb(0,206,201)` on `rgb(237,242,247)` — a
-measured 1.75:1, well under the 3:1 WCAG 1.4.11 non-text minimum — and the icons visibly wash out.
-Under default the same pairing measures 6.89:1 because that theme's secondary is dark slate, so the
-bug only appears when the theme is swapped. The badge does it correctly with `text-on-secondary` on
-`bg-secondary` (8.67:1 under `first_class`). Choosing the replacement colour is a visual design call.
-
-### B4 — Decorative badge icon announces itself to screen readers
-
-Manifestations:
-- `9.3-decorative-badge` (desktop)
-
-Screenshots: none captured for this bug.
-
-**Expected:** The badge is purely decorative next to a title that already names the form, so it
-should not announce itself as meaningful content, per section 9 of the test plan.
-
-**Actual:** `c-icon` always renders `role=img` with an `aria-label` taken from the semantic name, so
-the new badge announces "form, image" immediately before the `h1` that names the form. The badge
-element is new in this change, so the redundant announcement is new even though the icon
-component's always-labelled behaviour is pre-existing. It can be fixed in this template alone by
-putting `aria-hidden=true` on the badge wrapper div.
+**Triage.** Red lane, not auto-fixed: picking the replacement colour is a product/UX decision, which
+fails the green-lane gate. No fixer was spawned.
 
 ## Bug status
 
-- **FIXED** (commits: 04d1ae19, then superseded by 69767613) — B1 Blockquote and loose list items are centred by the `[&_p]:text-center` descendant selector
-- **FIXED** (commit: 69767613) — B2 Long code blocks and unbreakable URLs in the intro make the page scroll horizontally
-- **UNRESOLVED** — B3 Pill icons wash out under the first_class theme (1.75:1 contrast) (reason: choosing the replacement icon colour is a visual design decision; explicitly deferred by the author)
-- **FIXED** (commit: 28698e76) — B4 Decorative badge icon announces itself to screen readers
-
-### Follow-up: intro body alignment reversed on review
-
-Reviewing the §4 screenshot, the author rejected centred body copy outright: centred paragraphs
-wrap ragged on both edges and read badly in a 576px column. The intended treatment is that
-**markdown headings centre with the page title, and all body copy reads left-aligned.**
-
-Commit `69767613` implements that and supersedes B1's narrower fix. The container class moved from
-`text-left [&>p]:text-center` to:
-
-```
-text-left break-words [&_:is(h1,h2,h3,h4,h5,h6)]:text-center [&_pre]:overflow-x-auto
-```
-
-B1 is still resolved by this — no paragraph-centring selector survives, so the nested-`<p>`
-problem it described cannot recur. B1's regression test was replaced by
-`test_form_start_intro_body_is_left_aligned_with_only_headings_centred`, which asserts that
-neither the descendant nor the child paragraph selector is present.
-
-The same commit closes **B2**, per the author's direction that code blocks should scroll rather
-than push the page. Re-verified in the browser at 1920px with a long code line and an unbreakable
-URL in the intro:
-
-- page `scrollWidth` 1920 == `clientWidth` 1920 — the horizontal scrollbar is gone (it was 2018px)
-- `<pre>` computes `overflow-x: auto` with `clientWidth` 576 and `scrollWidth` 1162, so the code
-  scrolls inside its own block and stays within the column
-- the long-URL paragraph computes `overflow-wrap: break-word` and its `scrollWidth` is now 576,
-  matching its box
-- heading computes `text-align: center`; every `<p>`, `<li>`, `<ul>`, `<blockquote>` and `<pre>`
-  computes `text-align: left`
-
-Full suite green at 3377 passed.
-
-The same authored intro that produced the §4 screenshot, after the change:
-
-![](screenshots/page-2026-09-07T08-26-18-154Z.png)
-
-### Verification of the earlier fixes
-
-Both fixes were made under TDD (failing test first) and each ran the full pytest suite green — 3375 passed for B1, 3376 passed for B4. Both were then re-driven in the browser against the running dev server:
-
-- **B1** — with an intro containing a top-level paragraph, a loose list item and a blockquote, `getComputedStyle` now reports `text-align: center` for the container's direct-child `<p>` and `text-align: left` for the `<p>` nested inside `<li>` and inside `<blockquote>`. That is exactly the intended split.
-  Note: the new `[&>p]:text-center` class only reaches the browser after `npm run tailwind_build`, because Tailwind generates arbitrary-variant classes by scanning template source at build time. The re-verification above was done after rebuilding. The built CSS is gitignored, so this is a build-step consequence rather than anything missing from the commit.
-- **B4** — the badge wrapper now carries `aria-hidden="true"` while remaining visually present and still filled with the theme's secondary colour. The two fact-pill icons were deliberately left untouched.
-
-Re-checking each fix after the other had landed confirmed neither regressed the other.
+**UNRESOLVED** — Fact-pill icon contrast under first_class is still 1.75:1 though its todo item is
+ticked as applied (reason: needs a colour decision, so red lane; no auto-fix attempted)
 
 ## General notes
 
-These are observations from the run, not bugs, and are not counted against the change:
+**Pre-existing: numbered lists render as bullets.** Authored markdown containing an ordered list
+renders with disc bullets, not numbers. This is not caused by the restyle: the `content_engine`
+markdown renderer emits no `<ol>` at all — `Form.rendered_content()` for a source containing "1. /
+2. / 3." after a bullet list returns a single merged `<ul>` with six `<li>`. This was verified
+directly against the model, with no template involved. The restyle's own requirement (list items
+must be left-aligned, not centred) is met. Affects all authored markdown site-wide, not just the form
+start page.
 
-- The empty-form fixture's "Start Form" button leads to a 404 at
-  `/courses/qa-empty-form-course/1/fill_form/1`. This is pre-existing view logic:
-  `FormProgress.get_current_page_number()` returns 1 for a form with no pages, and
-  `form_fill_page` then raises `Http404` because `page_number` (1) > `total_pages` (0). No Python
-  changed in this diff, so it is not a regression from this work — but a zero-page form is currently
-  unstartable.
-- `c-markdown-container` is only `space-y-4` and carries no overflow handling anywhere in the app;
-  bug B2 is where that first becomes visible.
-- `c-icon` always emits `role="img"` with an `aria-label` from the semantic name and has no
-  decorative mode, so every icon in the app announces itself. The pill icons announce "notes" and
-  "course_part" ("course_part" leaking an internal slug), but the deleted meta-grid partial used
-  those same two icon names, so that part is not a regression.
-- Two markdown lists written back-to-back with only a blank line between them get merged into a
-  single `<ul>` by the markdown renderer. Separating them with a paragraph produces a correct
-  `<ol>`. This is markdown-renderer behaviour upstream of this template, unrelated to this diff.
-- The dev database for this worktree was empty at the start of the run and had to be seeded from
-  scratch (`create_demo_data` plus the plan's §0 fixtures). The `DemoDev` Site's domain was
-  repointed from `127.0.0.1:8000` to `127.0.0.1:8229` so host-based site resolution would work on
-  the run's port.
-- Two edge-case fixtures were built for this run because no existing fixture covered them:
-  `qa-single-question-course` (1 page, 1 question) and `qa-empty-form-course` (0 pages, 0
-  questions). They are seeded by a new reusable command `qa_create_form_count_edge_cases`.
+**Pre-existing: markdown blockquote and code block have no visual styling.** The renderer does emit
+`<blockquote>` and `<pre><code>`, but they render with no left border, no background, no indent and
+no italic, visually identical to body copy apart from the monospace face. The cause is that
+`c-markdown-container` (`freedom_ls/base/templates/cotton/markdown-container.html`) is just `<div
+class="space-y-4">` with no prose/typography styles, and that component is untouched by this branch
+— the old template used the same component. Pre-existing and site-wide. The restyle's own
+requirement (these blocks must be left-aligned) is met, and long code lines correctly scroll inside
+their own box via `[&_pre]:overflow-x-auto` rather than widening the page.
 
----
+**Pre-existing: focus outline drawn around the course outline panel.** On a direct page load the
+course-outline side panel sometimes shows a thin black rectangle around it. It is the user-agent
+default focus ring (`outline: 1px auto rgb(16,16,16)`) on the `<dialog class="side-panel-dialog">`,
+which has `tabIndex -1` and becomes `document.activeElement` when opened. That component lives in the
+course player shell, not in any file this branch changed, and it appears on topic pages too.
+Cosmetic and pre-existing.
 
-status: ok · reason: 4 bugs — 3 fixed (B1, B2, B4) and re-verified in the browser, 1 unresolved (B3, deferred by the author); intro body alignment reversed to left-aligned with centred headings on review; report rendered, 18 screenshots verified
+**Low-contrast pill icon under the first_class theme.** Measured at 1.75:1 and raised as bug B1
+above, because `todo.md` §9 carries a ticked item saying a replacement colour was chosen and applied.
+See the B1 section for the full evidence.
+
+**Test-data gap: no seeded form exercises the eyebrow or the intro.** Every seeded form
+(`qa-progression-block-quiz`, `qa-free-text-survey-form`, `qa-all-question-types-form`,
+`qa-single-question-form`, `qa-empty-form`) ships with `subtitle=''` and `content=''`. The eyebrow and
+the authored-intro branches of the new template are therefore unreachable from the fixtures as
+seeded. These fields were set by hand to run §1 and §4, then restored to the fixture state. Worth
+closing in the fixtures so a future run gets these states for free.
+
+**start_form CTA does a full page load, by design.** Clicking "Start Form"/"Try Again" issues a
+boosted HTMX request (`hx-request: true`, `hx-boosted: true`) to `/start_form`, which 302-redirects
+into the form runner. The runner is a separate full-screen shell with no `#interface-main`, so the
+browser completes a normal document navigation. That is architectural, not a regression — the "Next"
+CTA, which links straight to a player URL, swaps in place with the document preserved (verified with
+a window-level marker that survived, see §7.1). The restyle did not change `c-player-nav`'s boost
+attributes.
+
+**Screenshot collection deviation.** This Playwright MCP build writes accessibility snapshots
+(`.yml`) and console logs (`.log`) into the same `qa-screenshots/` output directory as the PNGs, 66
+and 32 of them respectively this run. `qa_collect_screenshots.sh` moves every regular file, so run
+as-is it would have committed 98 transient files into the spec directory. The `.yml` and `.log` files
+were deleted from `qa-screenshots/` first (targeted `find -delete` on those two extensions, no
+recursive or force flags) so only the 20 report screenshots were collected. Worth teaching the script
+to filter by extension.
+
+status: ok · reason: 26 tests recorded across 3 viewports, all pass; 1 bug — 0 fixed, 1 unresolved (red lane, needs a colour decision); report rendered, screenshots verified

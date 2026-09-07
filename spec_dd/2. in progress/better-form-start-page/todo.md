@@ -53,6 +53,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug B2: authored intro with a long code block or unbreakable URL makes the form start page scroll horizontally — decide whether to constrain it locally in course_form.html or give the shared c-markdown-container overflow handling, then fix (TDD — failing test first, then fix)
 - [x] (user) Decide the replacement colour for the form start page's fact-pill icons (QA bug B3: text-secondary on a muted chip measures 1.75:1 under the first_class theme, below the 3:1 WCAG non-text minimum), then apply it
+- [ ] (user) Decide whether the form start page's fact-pill icons keep `text-secondary` (measured 1.75:1 under the first_class theme) or move to a darker token, then either apply the new colour or correct the stale ticked B3 item that says a colour was already applied
+- [ ] (user + cmd) Fix QA bug: fact-pill icon contrast under first_class still measures 1.75:1 though its todo item is ticked as applied (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
