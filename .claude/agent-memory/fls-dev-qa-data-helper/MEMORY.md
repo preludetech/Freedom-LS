@@ -53,6 +53,8 @@
 - [reference_form_first_course_command.md](reference_form_first_course_command.md) — qa_create_form_first_course: course whose item 1 is a Form (no-Previous-button branch of the form start page); FormProgress has a direct `user` FK; last_accessed_item is a plain FK; sequential unlock IS enforced by URL now
 - [reference_shell_savepoint_does_not_roll_back.md](reference_shell_savepoint_does_not_roll_back.md) — `transaction.savepoint()` is a NO-OP in `manage.py shell` (autocommit): the "rolled-back probe" pattern silently COMMITS; use `transaction.atomic()` + raise, and re-read the field to prove the restore
 - [reference_standalone_form_sitting.md](reference_standalone_form_sitting.md) — qa_create_standalone_form_sitting: the dev DB's only FormProgress with NO CourseFormAttempt, so FormProgressAdmin's "In course" dash (= "sat standalone") is browser-reachable
+- [reference_legend_edge_cases_command.md](reference_legend_edge_cases_command.md) — qa_create_legend_edge_cases: one-form course stressing the question <legend> (wrapping asterisk, inline markdown, 2-paragraph question, optional-no-asterisk); render the `#form-question` partial via render_to_string to check markup WITHOUT starting a FormProgress
+- [reference_org_cohort_inline_pagination.md](reference_org_cohort_inline_pagination.md) — qa_create_org_cohort_pagination: padding one Organisation to 46 cohorts so the admin Cohorts tab spans 3 pages; the admin-inline paginator family (Cohort@20 / Learner@25) and zero-padded names straddling a boundary
 
 ## Recurring requests
 
@@ -279,3 +281,15 @@ course — the fix was to call `FormProgressFactory` on its own.
 See [[reference_standalone_form_sitting]]. Generalise: whenever a QA plan says "every row shows X,
 I cannot see the empty case", check whether the seeding factory is a *join-row* factory that makes
 the absent case unreachable by construction.
+
+The **"an admin paginator has too few rows to page"** ask arrived once (misc-small-fixes-manual,
+Sep 2026: `OrganisationCohortInline` at `per_page = 20` with 16 cohorts). It is the
+[[reference_form_first_course_command]] shape one more layer out — read the paginator's own
+`per_page`/`ordering` off the class instead of hardcoding it, then seed the SMALLEST, emptiest
+rows that satisfy the ordering. Two things carry forward: **zero-pad** the scaffolding numbers,
+because under an alphabetical `ordering` an unpadded `10` sorts before `2` and looks exactly like
+the skipped row under test; and aim the padded block to STRADDLE a page boundary so both sides of
+it are individually identifiable. Verify by rebuilding the `Paginator` under a thread-local
+request and asserting the concatenated pages equal the flat queryset — never by eyeballing the
+tab. `qa_create_org_cohort_pagination` wraps it and generalises to any organisation/prefix/count;
+see [[reference_org_cohort_inline_pagination]].
