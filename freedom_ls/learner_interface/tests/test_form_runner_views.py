@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 
 import pytest
@@ -1409,3 +1410,34 @@ def test_exit_dialog_leave_and_submit_targets_the_runner_page_form(
     assert f'formaction="{exit_url}"' in button
     # Leaving must not be blocked by the browser's required-field validation.
     assert "formnovalidate" in button
+
+
+# ---------------------------------------------------------------------------
+# rendered_content markdown container centring: only direct-child <p> centred
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_form_start_intro_markdown_container_centres_only_direct_child_paragraphs(
+    mock_site_context, client
+):
+    """The intro markdown container must use the child-combinator selector so
+    that only its own top-level <p> elements are centred. A descendant
+    selector would also centre <p> elements nested inside <blockquote> and
+    loose <li> elements, breaking their left alignment."""
+    user = UserFactory()
+    form = FormFactory(content="An intro paragraph.")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+
+    assert response.status_code == 200
+    content = html.unescape(response.content.decode())
+    assert "[&>p]:text-center" in content
+    assert "[&_p]:text-center" not in content

@@ -21,7 +21,7 @@
 
             {% comment %}Authored intro: only paragraphs centre, other blocks stay left-aligned{% endcomment %}
             {% if form.rendered_content %}
-                <c-markdown-container class="text-left [&_p]:text-center">
+                <c-markdown-container class="text-left [&>p]:text-center">
                     {{ form.rendered_content }}
                 </c-markdown-container>
             {% endif %}
