@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-07_
 
 ## Summary
 
@@ -8,7 +8,7 @@ _Last updated: 2026-09-06_
 - Administrators grant educators access to specific cohorts through per-object permissions.
 - Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
-- A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away. Every progress changelist filters by whether the item is finished, by learner, course, cohort and organisation, and by when it was finished.
+- A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
@@ -28,7 +28,7 @@ Each cohort's admin detail page carries a permissions tab, where an administrato
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, uploads a logo, and assigns staff to it. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, uploads a logo, and assigns staff to it. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
 There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
 
@@ -48,32 +48,9 @@ There is no bulk add or remove, no CSV import, and no view showing one person's 
 
 ## Learner Progress
 
-A learner's own page is where their journey is read. Alongside the fields that
-describe the association itself, it carries three panels: the cohorts they
-belong to, the courses they were registered for individually, and their
-progress through every course they can reach — including access granted through
-a cohort, since a progress record names the registration that granted it. Each
-panel shows a count, pages rather than rendering everything at once, and links
-each row to its own page. All three are read-only: a completion timestamp is
-what drives the percentage recalculation, so it is corrected on the record
-itself rather than from a summary panel. Below the panels sit links into this
-learner's topic progress and form attempts across all their courses at once.
+A learner's own admin page gathers their cohorts, their individual course registrations, and their progress through every course they can reach either way, with that course's topics and form attempts a click away — and separate links to their topic progress and form attempts across every course at once. The panels are read-only summaries; a progress record is corrected on its own page, not from here.
 
-One course progress record opens onto the items underneath it — which topics
-were opened and which of those are finished, and every form attempt with its
-score and whether it was passed. A record shows as **Not started**, **In
-progress** or **Complete**: it exists from registration onward, so "not
-complete" alone would hide the difference between someone halfway through and
-someone who has never opened the course.
-
-The progress changelists are for the same questions asked across many learners
-at once. Each filters by whether the item is finished, by learner, by course,
-by the learner's organisation and by their cohort, and by the date the item was
-finished. Course progress adds a percentage slider, a filter on when the
-learner was last active — which is what finds the people who have gone quiet —
-and the not-started state. Form attempts sat outside any course are read on the
-form progress list, which says for each attempt which course it was sat in, or
-nothing at all when it was sat on its own.
+The progress changelists ask the same questions across many learners at once, filtering by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. Course progress additionally filters by completion percentage and by when the learner was last active, for finding learners who have gone quiet. Form attempts sat outside any course are read on the form progress list, which names the course each was sat in, or nothing when it was sat on its own. Full tracking semantics — what a progress record means and how it is derived — are covered in [learner tracking](./learner-tracking.md).
 
 ## Course Interest
 

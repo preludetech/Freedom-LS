@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-09-03_
+_Last updated: 2026-09-07_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -126,13 +126,9 @@ TLS terminates at the reverse proxy (or the CDN edge), with the certificate supp
 
 ### Queued Email
 
-This section applies only to a deployment that has set `EMAIL_BACKEND` to the queueing backend. By default mail is sent inside the request and nothing about it is stored. With queueing on, the rendered message is written to the task-results table and a background worker sends it, which is what stops a slow mail host from holding a page open. See [deployment](./deployment.md).
+This section applies only to a deployment that has set `EMAIL_BACKEND` to the queueing backend — see [deployment](./deployment.md) for what queueing does. By default mail is sent inside the request and nothing about it is stored. With queueing on, the fully rendered message is stored until it is sent, and housekeeping prunes it afterwards, so the exposure window is bounded rather than indefinite.
 
-**What this means for the data.** The stored row holds the finished message, so for the two transactional emails that matter it holds a live credential: the signup-verification link and the password-reset link. These are single-use and expire on their own schedule, but within that window they are enough to take over an account. There is no application-level encryption on the row — it has the same protection as the rest of the database, which is to say whatever the host provides. Anyone with database read access, or a copy of an unencrypted dump, can read a pending or recently-sent reset link and use it while the token is still valid. Treat a database dump accordingly; see [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §6.
-
-**The retention control** is `fls_run_housekeeping`'s prune of finished task results, which defaults to fourteen days. A deployment that wants a shorter exposure window shortens that. Note the prune only removes *finished* rows: if the worker stops, unsent rows accumulate and are not pruned, which is a second reason to alert on the unpicked-task report rather than only on the missing mail.
-
-This is the trade a deployment accepts when it turns queueing on. Leaving it off keeps the credential out of the database and pays for that with a signup and password reset that wait on the mail host.
+**What this means for the data.** For the two transactional emails that matter, the stored message holds a live credential — the signup-verification link and the password-reset link. Both are single-use and expire on their own schedule, but within that window they are enough to take over an account, and the stored message carries no application-level encryption beyond whatever the database itself provides. Anyone with database read access, or a copy of an unencrypted dump, can use a pending or recently-sent link while it is still valid. See [`../deployment-security-checklist.md`](../deployment-security-checklist.md) §6 for dump handling.
 
 ### Error Tracking and Personal Data
 

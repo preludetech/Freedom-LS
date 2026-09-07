@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-09-07_
 
 ## Summary
 
@@ -21,7 +21,7 @@ These settings control visual and email branding without any template change. Al
 | `HEADER_LOGO_STATIC_PATH` | Logo in the navigation bar |
 | `HEADER_LOGO_ON_DARK_STATIC_PATH` | Reversed logo variant, used where the platform mark sits on a strong colour fill — today, the [cohort report](./reports.md) cover band |
 | `FAVICON_STATIC_PATH` | Browser tab favicon |
-| `HEADER_TITLE` | What the installation calls itself. Shown in the navigation bar alongside or instead of the logo, and used as the display name in outbound email subject lines and bodies and on [cohort reports](./reports.md). Falls back to the `Site` record's name where it is unset |
+| `HEADER_TITLE` | The installation's display name — shown in the navigation bar, and used in outbound email subject lines and bodies and on [cohort reports](./reports.md) |
 | `HEADER_TITLE_STYLE` | Inline CSS applied to the header title |
 | `EMAIL_LOGO_STATIC_PATH` | Logo embedded in outbound emails |
 
@@ -35,9 +35,9 @@ Each tier is independent and they can be combined.
 
 **Tier 3 — whole-file shadowing.** Any FLS template can be replaced entirely by placing a file at the same relative path in the downstream project's theme template directory, which the template loader searches first. A replacement file is expected to preserve the small set of structural markers FLS's shipped tests rely on; they are listed in the [theming how-to](../how%20tos/theme-fls.md).
 
-Each component carries its own styling in its own template, so one file is the whole component: shadowing it replaces the markup and the look together. That makes Tier 3 the normal way to restyle an individual component — a content widget, say — rather than a last resort. Only the shared primitives the whole interface draws on (buttons, chips, alerts, surfaces, the page header, the course card) are styled centrally and restyled through the theme stylesheet instead.
+Each component carries its own styling in its own template, so one file is the whole component: shadowing it replaces the markup and the look together. That makes Tier 3 the normal way to restyle an individual component — a content widget, say — rather than a last resort. Only a handful of shared primitives the whole interface draws on are still styled centrally, through the theme stylesheet; the [theming how-to](../how%20tos/theme-fls.md) names them.
 
-**Report typography.** The [cohort report](./reports.md) follows the same model: it names no colour and no font family of its own. It takes its colours from the built theme stylesheet, so it matches whichever theme is active, and its typefaces from settings. A downstream project rebrands the report by supplying its own font files and overriding those settings — no template changes needed. The settings are listed [below](#settings-reference).
+**Report typography.** The [cohort report](./reports.md) follows a similar model for typefaces and most of its colour: it names no font family of its own, and takes most of its palette from the built theme stylesheet so it matches whichever theme is active. Its page and table backgrounds are the one exception — they stay a fixed white and light grey whatever the active theme, because on paper a tinted surface colour reads as a panel laid over the page rather than as the page itself. A downstream project rebrands the report by supplying its own font files and overriding the font settings — no template changes needed. The settings are listed [below](#settings-reference).
 
 ## Themes and Icons
 
@@ -136,11 +136,12 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `FORCE_SITE_NAME` | Pins the installation to one site instead of resolving by host. |
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for the client IP behind a reverse proxy. |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
+| `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message is queued — read only when `EMAIL_BACKEND` names the queue. See [deployment](./deployment.md). |
+| `EMAIL_TIMEOUT` | Socket timeout for outgoing SMTP, recommended whether or not email is queued; left unset, a stalled mail host can hang the request or worker indefinitely. See [deployment](./deployment.md). |
 | `REPORTS_STORAGE_ALIAS` | Storage the cohort report PDF is written to. See [security and data handling](./security-and-data-handling.md). |
 | `CONTENT_MEDIA_STORAGE_ALIAS` | Storage course file assets are written to. See [deployment](./deployment.md). |
 | `ORGANISATION_LOGO_STORAGE_ALIAS` | Storage an organisation's logo is written to. See [deployment](./deployment.md). |
 | `REPORTS_MAX_LEARNERS` | Caps the cohort size a report will generate for, bounding render time and memory. |
-| `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message has been taken off the request. Read only where `EMAIL_BACKEND` names the queue; this names what is behind it. See [deployment](./deployment.md). |
 | `REPORTS_MAX_QUIZ_COLUMNS` | Caps how many quiz columns a course's landscape summary table carries before splitting into a continued table. |
 | `REPORTS_FONT_FACES` | The font files embedded in the report PDF. |
 | `REPORTS_FONT_DISPLAY` | Font stack for the report's headings. |

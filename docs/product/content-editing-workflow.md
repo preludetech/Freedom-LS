@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-09-03_
+_Last updated: 2026-09-07_
 
 ## Summary
 
@@ -110,6 +110,8 @@ These widgets are available inside Markdown content:
 | `c-table` | Accessible table wrapper |
 | `c-code-block` | Syntax-highlighted code block |
 | `c-slot` | Fills a named slot inside a widget that declares one (`name`) — this is how `c-flashcard`'s front and back are supplied |
+
+`c-table` only renders its scrolling, styled wrapper when it sits directly in a topic or activity body. Nested inside `c-accordion`, a `c-flashcard` slot, or `c-admonition`, it falls back to a plain, unstyled table — use a plain markdown table there instead.
 
 Admonition types default to note, tip, important, warning, danger, key takeaways, and checklist, and are configurable per deployment — as is the widget list itself. See [configuration and extension](./configuration-and-extension.md).
 

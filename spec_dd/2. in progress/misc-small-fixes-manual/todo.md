@@ -37,6 +37,10 @@ component templates. Meant to be visually inert.
 - [x] (user) Decide how a flashcard answer face should handle content wider than the card — shrink and clip, scroll inside the face, or disallow tables and code blocks there — then fix the overflow accordingly
 - [x] (user + cmd) Fix QA bug: the side-panel drawer variant's 24rem width cap is defeated by the max-w-none utility, so it renders 720px at a 900px viewport (TDD — failing test first, then fix)
 
+## 11. Product docs
+
+- [x] (cmd) Run `/update_product_docs` to update docs/product/ for this feature
+
 ## 13. Pull request
 
 - [x] (user) Open a pull request
