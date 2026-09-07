@@ -47,10 +47,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug B2: authored intro with a long code block or unbreakable URL makes the form start page scroll horizontally — decide whether to constrain it locally in course_form.html or give the shared c-markdown-container overflow handling, then fix (TDD — failing test first, then fix)
+- [ ] (user) Decide the replacement colour for the form start page's fact-pill icons (QA bug B3: text-secondary on a muted chip measures 1.75:1 under the first_class theme, below the 3:1 WCAG non-text minimum), then apply it
 
 ## 10. Product documentation
 
