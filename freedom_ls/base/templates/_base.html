@@ -1,5 +1,6 @@
 {% load static %}
 {% load i18n %}
+{% load base_tags %}
 
 <!DOCTYPE html>
 <html lang="en">
@@ -10,13 +11,41 @@
               content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta http-equiv="X-UA-Compatible" content="IE=edge" />
         <meta name="description"
-              content="{% block meta_description %}Learning management system{% endblock meta_description %}" />
+              content="{% block meta_description %}{{ meta_description|default:'Learning management system' }}{% endblock meta_description %}" />
         <meta name="keywords"
               content="{% block meta_keywords %}learning, education, courses{% endblock meta_keywords %}" />
         <title>
             {% block head_title %}
             {% endblock head_title %}
         </title>
+
+        {% comment %}
+        Error pages replace this whole block with a bare noindex: the canonical
+        URL and og:url both echo the request path, and an error page must not
+        reflect back the path that triggered it. On a page reached with a
+        rejected Host header, build_absolute_uri would also raise DisallowedHost
+        while rendering the 400.
+        {% endcomment %}
+        {% block head_seo %}
+            {% canonical_url as canonical_url %}
+            {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}" />{% endif %}
+            <meta name="robots"
+                  content="{% block meta_robots %}index, follow{% endblock meta_robots %}" />
+
+            {% block social_meta %}
+                <meta property="og:type" content="{% block og_type %}website{% endblock og_type %}" />
+                <meta property="og:site_name" content="{{ site_title }}" />
+                {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}" />{% endif %}
+                <meta property="og:title"
+                      content="{% block og_title %}{{ site_title }}{% endblock og_title %}" />
+                <meta property="og:description"
+                      content="{% block og_description %}{{ meta_description|default:'Learning management system' }}{% endblock og_description %}" />
+                {% block og_image %}
+                {% endblock og_image %}
+                <meta name="twitter:card"
+                      content="{% block twitter_card %}summary{% endblock twitter_card %}" />
+            {% endblock social_meta %}
+        {% endblock head_seo %}
 
         {% if favicon_static_path %}
             <link rel="icon" href="{% static favicon_static_path %}" />

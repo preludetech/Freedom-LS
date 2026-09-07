@@ -1,6 +1,7 @@
 import uuid
 
 from django import template
+from django.http import HttpRequest
 
 register = template.Library()
 
@@ -23,3 +24,17 @@ def toast_uid() -> str:
     Then use {{ uid }} in id="toast-{{ uid }}".
     """
     return uuid.uuid4().hex
+
+
+@register.simple_tag(takes_context=True)
+def canonical_url(context: template.Context) -> str:
+    """Absolute URL for the current page, with the query string stripped.
+
+    Usage: {% canonical_url as canonical_url %}
+
+    Returns an empty string when the template is rendered without a request.
+    """
+    request: HttpRequest | None = context.get("request")
+    if request is None:
+        return ""
+    return request.build_absolute_uri(request.path)
