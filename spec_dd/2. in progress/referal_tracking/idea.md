@@ -8,8 +8,13 @@ partner's claim that they sent the traffic.
 
 ## What we are building
 
-One `SignupAttribution` row per signed-up `User`, recording where that person came from, written
-once at signup and read only in the Django admin.
+Two things, both read only in the Django admin.
+
+One `SignupAttribution` row per signed-up `User`, recording where that person came from, written once
+at signup. And a `FirstTouchCount`, a daily tally of how many people arrived through each campaign,
+advert and partner in the first place. The tally is what makes the attribution rows mean anything:
+without it you know a campaign produced eleven signups but not whether that came off a hundred
+arrivals or ten thousand.
 
 Arrivals come from two places the operator controls:
 
@@ -121,15 +126,13 @@ attribution row held only a foreign key. So the row stores both the code string 
 `Organisation` it resolved to at the time.
 
 An unrecognised code is never attributed to a learner and never prefilled, so a stranger cannot
-credit themselves to a partner by inventing one. The attempt is still counted in aggregate, by code,
-with a last-seen date and nothing per-visitor. That is the only way anyone finds out that a partner's
-print run has a typo in it, or that a flyer bearing a code retired eighteen months ago is still
-pulling traffic. Dropping the attempt silently throws that signal away.
+credit themselves to a partner by inventing one. The attempt is still counted, in the first-touch
+tally below.
 
-Counting those attempts is what forces the code to be checked at landing rather than at signup. It is
-the one database read on the capture path, it happens only on requests carrying a referrer code, and
-it needs the current site already resolved, since `Organisation` is scoped to one. A code that fails
-the check never enters the cookie.
+Checking the code at landing rather than at signup is what makes that counting possible. It is the
+only database read on the capture path, it happens only on requests carrying a referrer code, and it
+needs the current site already resolved, since `Organisation` is scoped to one. A code that fails the
+check never enters the cookie.
 
 No reward is attached to a referrer code, so most of what the referral literature worries about does
 not apply. Guessing a valid code misattributes a signup rather than paying anyone, and a partner
@@ -145,6 +148,42 @@ The trade-off is that the admin shows `P5H2B3C8` rather than "September Facebook
 mistyped code looks the same as a real one. A table can be added later without changing what is
 captured.
 
+## Counting first touches
+
+`SignupAttribution` exists only for people who signed up, so by itself it has no denominator. A
+`FirstTouchCount` row supplies one: per site, per day, per attribution key, incremented once each
+time a new attribution cookie is minted.
+
+Because the cookie is minted exactly once per visitor per 90 days, the tally counts unique first
+touches rather than raw hits, which is the denominator worth having. Signups from
+`SignupAttribution` over first touches from `FirstTouchCount`, both grouped by campaign, gives
+conversion rate per campaign. That is the question people ask most and the one this feature would
+otherwise have had no answer to.
+
+It holds no personal data. No visitor identifier, no IP, no user agent, no row per person. That is
+the point of doing it this way. A landing record keyed to an individual would be pseudonymous data
+about someone who never signed up, never saw a privacy notice, and has no account to hang a deletion
+request on, which is a worse position than the one this feature is already in rather than a better
+one. The tally also costs one write per cookie mint instead of one per landing.
+
+It subsumes the unrecognised-code problem too. A referrer code that fails validation never enters the
+cookie, but it still increments a row recording the code as seen and the fact that it did not
+resolve. That is how anyone finds out a partner's print run has a typo in it, or that a flyer bearing
+a code retired eighteen months ago is still pulling traffic.
+
+Two things about the tally need deciding in the spec.
+
+**The key can be forced to explode.** It includes campaign values typed by whoever crafted the URL.
+Someone sending random `utm_campaign` values while discarding cookies between requests mints a fresh
+first touch every time and creates a new row every time. The key space has to be bounded somehow,
+whether by capping distinct new keys per day, counting only values matching a known advert or
+referrer code, or something else.
+
+**Bots inflate it.** Crawlers and link unfurlers mostly discard cookies, so each visit reads as
+another first touch. The denominator runs high and conversion rate therefore reads low. It is a
+usable number for comparing campaigns against each other, not an accurate absolute one, and the admin
+should not dress it up as more than that.
+
 ## The admin is the whole interface
 
 There is no report, no dashboard and no partner-facing view. The changelist and its export are what
@@ -155,7 +194,9 @@ and organisation, and search across the learner's email, the campaign and the re
 identifiers, cookie values, IP and user agent are near-unique per visitor. They belong on the detail
 view, never in a filter.
 
-The row is read-only in the admin, the way `LegalConsent` is.
+The tally gets its own changelist, filtered and date-hierarchied the same way, so "how many people
+did this campaign bring in" and "how many of them signed up" are two screens rather than a report
+someone has to build. Both are read-only in the admin, the way `LegalConsent` is.
 
 **The export has to escape formula characters.** A value beginning with `=`, `+`, `-` or `@` executes
 when the CSV is opened in Excel or Sheets, and `utm_campaign`, the landing path, the `Referer` and
@@ -165,11 +206,15 @@ from.
 
 ## What this deliberately cannot answer
 
-One row per signed-up user, and nothing at all about visitors who did not sign up. So there is no
-denominator and no conversion rate, no multi-touch path, and no time from first click to signup.
-Counting questions are answerable. Efficiency and comparative-performance questions are not. This is
-the thing people most often assume attribution data gives them, so it is worth knowing before someone
-asks for it.
+Conversion rate per campaign works, off the tally. Anything needing a per-person history does not.
+There is no multi-touch path and no time from first click to signup, because nothing connects a
+particular landing to the particular person who later signed up. The denominator also cannot be
+sliced by anything outside the tally's own key, so questions like "what is the conversion rate for
+people who landed on this specific page" have no answer.
+
+All of that is the deliberate consequence of not keeping per-visitor landing records. It is worth
+knowing before someone asks, because the missing pieces are the ones people assume attribution data
+comes with.
 
 Joining forward to outcomes stays possible. Which channel produced learners who registered for a
 course, started one, or finished it can be answered later, because the row keys on the user and the
@@ -217,6 +262,7 @@ citations.
 | Term | Status | Meaning |
 | --- | --- | --- |
 | `SignupAttribution` | coined | The write-once row recording where one signed-up `User` came from. No existing FLS noun covers it. |
+| `FirstTouchCount` | coined | The daily tally of first touches per attribution key. Holds no personal data. |
 | referrer code | coined | The code issued to a partner, held on `Organisation`. Distinct from `slug`. |
 | advert code | coined | The opaque identifier naming one advert. Free text, no table. |
 | first touch | coined | The visitor's first landing within the cookie's 90 days. Everything in the row describes that one visit. |
