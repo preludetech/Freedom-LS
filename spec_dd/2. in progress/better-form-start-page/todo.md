@@ -52,7 +52,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug B2: authored intro with a long code block or unbreakable URL makes the form start page scroll horizontally — decide whether to constrain it locally in course_form.html or give the shared c-markdown-container overflow handling, then fix (TDD — failing test first, then fix)
-- [ ] (user) Decide the replacement colour for the form start page's fact-pill icons (QA bug B3: text-secondary on a muted chip measures 1.75:1 under the first_class theme, below the 3:1 WCAG non-text minimum), then apply it
+- [x] (user) Decide the replacement colour for the form start page's fact-pill icons (QA bug B3: text-secondary on a muted chip measures 1.75:1 under the first_class theme, below the 3:1 WCAG non-text minimum), then apply it
 
 ## 10. Product documentation
 
@@ -61,7 +61,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 11. Upgrade notes
 
-- [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
+- [x] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
 ## 12. Author plugin sync
