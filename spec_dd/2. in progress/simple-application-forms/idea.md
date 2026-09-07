@@ -61,25 +61,28 @@ nothing. There is no "hide this" flag to invent, because absence from `ContentCo
 already the mechanism. `research_application_form_authoring.md` traces the loader and shows why a
 reserved subdirectory inside a course directory cannot work without changing it.
 
-A course names its form by slug in `Course.access_config`, the backend-private JSON blob that already
-carries `access_type: application_gated`. `ApplicationCourseAccessBackend` validates the new key's
-shape at content load, where it cannot check existence, because the loader saves courses before forms
-in the same transaction. A system check after load verifies existence, following the E002 precedent,
-and the applicant's view resolves the form defensively so a dangling slug gives a 404 rather than a
-500.
+A course names its form by path, the way `children:` names a child, and the loader resolves that path
+to a real `Course.application_form` foreign key. This works because the loader parses every file
+before it saves any of them, then resolves collection children last against a path-to-object map it
+has already built. Binding an application form is one more lookup in that same phase.
 
-Binding by slug rather than by the stable UUID is a knowing trade. Renaming a form's title changes its
-slug on the next save and breaks the reference. Binding by UUID instead would need a two-pass
-authoring workflow that has no precedent anywhere in FLS. The system check is what makes the trade
-safe.
+Path beats slug because a path survives a rename and a slug does not. Resolution also happens inside
+the load transaction, so a broken reference shows up immediately instead of needing a system check
+after the fact.
+
+The cost is one application-shaped field on `Course`, which otherwise knows nothing about
+applications. That is a real cost and worth naming, but it buys the rename-safety, and the foreign key
+adds no app edge, because `content_engine` already depends on `form_engine`. The alternative, keeping
+the binding in `access_config`, would have the loader writing into JSON it is explicitly not allowed
+to interpret. `access_config` keeps `access_type: application_gated` and nothing more.
 
 One form may serve several courses. That is useful, one intake questionnaire for a family of
 programmes, and it forces the next decision.
 
 ## `CourseApplication` owns the link to its answers
 
-`CourseApplication` gains two fields. `form` is resolved from the course's configured slug once, when
-the application is created. `form_progress` is the sitting holding that applicant's answers.
+`CourseApplication` gains two fields. `form` is resolved from `course.application_form` once, when the
+application is created. `form_progress` is the sitting holding that applicant's answers.
 
 Resolving the sitting by `(user, form)` instead would be a bug waiting for the first shared form.
 `FormProgress` has no uniqueness on that pair, so an applicant to two courses sharing one form would
@@ -147,6 +150,13 @@ question, required or not. Skip an optional question on page two, answer everyth
 back tomorrow, and you land on page two again. Every session, forever. The runner already computes a
 corrected furthest page for its page-jump links, with a comment explaining exactly this, but never
 applies it to the resume redirect.
+
+**Explicit `children:` lists silently drop everything.** The loader compares the author's path against
+a map keyed on the content-root walk, and normalises neither, so the relative form the authoring docs
+document never matches. Probed against a real load, two documented children resolved to nothing. The
+loader logged a warning for each and carried on. No demo course uses `children:` and no test covers an
+explicit list, which is how it stayed hidden. Path binding needs this fixed anyway, and fixing it
+makes `children:` work as documented.
 
 **`FormAdmin` cannot mint a slug.** `slug` is read-only there and there is no save override, so a form
 created through the admin saves with an empty slug and the second one collides on the per-site unique

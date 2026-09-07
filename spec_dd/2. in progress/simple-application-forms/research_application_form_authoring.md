@@ -93,6 +93,14 @@ FLS-side special-casing required. FLS's own at-most-one demo form, if shipped, l
 
 ## 2. How a course names its application form
 
+**Superseded.** This section recommends binding by slug in `access_config`; the idea binds by path,
+resolved by the loader to a `Course.application_form` foreign key. A path survives a title rename and
+resolves inside the load transaction, so the slug-instability trade and the post-load system check
+below are both moot. The rejection of a foreign key here also rests on a mistake: it treats
+`content_engine` depending on `form_engine` as a new edge, and `docs/app_structure.md` already has it.
+The rest of this section, on why a foreign key from `Form` to `Course` is wrong and on how
+`validate_course_config` works, still holds.
+
 ### Candidates weighed
 
 - **A key in `Course.access_config` naming a form slug — recommended.** `Course.access_config` is
