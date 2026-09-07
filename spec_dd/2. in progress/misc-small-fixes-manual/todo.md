@@ -22,6 +22,8 @@ apply, keeping the standard section numbering so the SDD commands find their hea
 - [x] (user + cmd) Fix QA bug: upgrade_notes.md omits the new freedom_ls/mail app — a downstream is not told to add it to INSTALLED_APPS, nor to rewrite a silenced freedom_ls_deployment.E007 to freedom_ls_mail.E001 (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: the dev preview overrides relabel courses as well as ungating them — an application-gated course wears a Free chip and a coming-soon course stops presenting as coming-soon (TDD — failing test first, then fix)
 - [x] (user) Decide whether OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE and OVERRIDE_COURSE_ACCESS_TO_FREE should change badge labelling at all or only gating, then either fix get_access_badge/is_coming_soon_for_display or rewrite the plan's §10.3 expectation to match
+- [x] (cmd) Extend the QA plan with the evidence the first pass never captured: §9.8-§9.13 rasterise the cohort report and measure the white-paper fix off the pixels, and a new §16 names a capture for every admin surface this branch changed
+- [x] (cmd) Run the 23 new checks; all pass, and the 24 images are in `screenshots/`
 
 ## 10. Component styling moves into the components
 
