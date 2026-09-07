@@ -5,8 +5,8 @@ An application-gated course can already be applied to. `ApplicationCourseAccessB
 received. Nobody is ever asked anything. Give each gated course a questionnaire the applicant fills
 in, so there is something to review when review lands.
 
-Forms differ per course. They are ordinary questionnaires, a handful of questions each, with no file
-uploads and no scoring.
+Forms differ per course. They are short and unscored, and some of them ask the applicant to upload a
+document.
 
 ## Reuse `form_engine`
 
@@ -128,8 +128,8 @@ nothing else, so they are reused directly. The shell around them is new and plai
 
 ## Question types
 
-One new type, a number, for questions like age. It joins the free-text family, so it is a small
-addition rather than a new answer shape.
+A number type, for questions like age. It joins the free-text family, so it is a small addition rather
+than a new answer shape. A file-upload type is the other addition, and it has a section to itself.
 
 No dropdown type and no boolean type. A dropdown is a rendering choice about an existing type, not a
 new one, and a yes/no question is a two-option multiple choice. Both can be added the day a form is
@@ -139,6 +139,121 @@ form onto the resulting set.
 There are no conditional questions. `form_engine` has no mechanism for one, and a follow-up like "how
 did you hear about us, tell us more" is shown always rather than revealed. Building conditionals for
 one optional text box is not worth it.
+
+## File uploads
+
+An applicant may be asked to upload a scan or photo of an ID or passport. That is the most sensitive
+thing FLS accepts, from the least trusted source it has, so this path carries more design than the
+rest of the form together.
+
+`QuestionType` gains `FILE_UPLOAD`. This is the same shape of decision as `UNSCORED` and holds for the
+same reason: a file-upload question is a question `form_engine` can render and store an answer for,
+and an ID scan is one use of it. A survey asking for a photo of a finished project is another.
+
+The cost is worth naming. `form_engine` today has no object storage, no private bucket, no quarantine
+state and no per-user erasure surface, and it gains all four permanently, for every deployment,
+whether or not that deployment ever asks anyone for a file. Reusing `form_engine` saved work on the
+question, answer and paging side. It saves nothing here, because there was nothing to reuse.
+
+### Where the bytes go
+
+The `user_uploads` alias already exists for exactly this, in the private user-data bucket, with no
+consumer yet. This is its first. The key is namespaced away from the reports prefix sharing that
+bucket, prefixed by the uploading user so erasure is a scoped delete rather than a bucket scan, and
+leafed on a UUID rather than the applicant's filename, which is attacker-controlled and can carry path
+segments. The user prefix is deliberately predictable: it names a scope, not an object.
+
+A new `QuestionAnswerFile` in `form_engine` holds the file one-to-one with the `QuestionAnswer` it
+answers, carrying the stored file, the original filename for display, and the scan state. Those three
+columns on `QuestionAnswer` itself would widen a table shared by every quiz answer in the system to
+hold nulls for very nearly every row it will ever have.
+
+### The upload never rides the page POST
+
+`save_answers` deletes the answer row for any question arriving blank. That is correct and
+load-bearing for the four existing types, because a cleared text box has to lose its row or the
+answered tally counts it and hides what is still outstanding. A file input sends nothing on a page
+re-post, since no browser refills one, so a file question reads as blank every time the applicant
+revisits its page. Left alone, `save_answers` deletes the row holding an uploaded ID scan and cascades
+the file record away with it, on the most ordinary action available: leaving and coming back. The
+bytes orphan in the bucket and the applicant is given no reason their upload vanished.
+
+Two requirements, both load-bearing rather than belt and braces. Upload and removal each go to their
+own endpoint in their own request, so a page submit has no opinion about the file either way; because
+the attached state renders no file input, the page form posts nothing for that question and stays an
+ordinary urlencoded form. And `save_answers` skips file questions outright, never inspecting their
+rows. That second one lands in `form_engine`, so it is a property of the question type rather than
+anything application-aware, and it holds even if someone later puts a file question on a page form.
+
+### The widget has two states, and the filled one matters more
+
+Empty is a file picker. Attached shows the applicant's own filename and the size, with two separate
+controls.
+
+Remove is its own action, not a side effect of replace. An applicant who uploaded the wrong document
+and does not have the right one to hand needs to be rid of it now, rather than stuck with it until
+they find a replacement.
+
+Remove deletes the stored object, not just the row. Django does not delete from storage when a row
+goes, so a removed file still sitting in the bucket is the worst outcome here: the applicant is told
+it is gone and their ID scan is not. A receiver on `QuestionAnswerFile` makes that true however the
+row was removed, including a cascade from deleting the user, which is also what makes the erasure
+prefix mean anything.
+
+Removing a file from a required question puts the application back into an incomplete state. That is
+correct, and the widget says so where it happens rather than letting the applicant find out on the
+review page.
+
+One invariant ties the widget to the rest of the form: a `QuestionAnswer` row exists if and only if
+its question has a real answer. Remove deletes the row rather than blanking a field, and nothing
+creates the parent row without a file. Break it and the required check reads an empty row as answered,
+and the resume rule drags the applicant back to a page they already finished.
+
+### What happens to the bytes
+
+Checks run cheapest first: extension, declared size, a bounded read, then the real type from magic
+bytes. The browser's content type and the original filename are both applicant-controlled and neither
+is evidence of anything. Images are decoded and re-encoded through Pillow, which strips EXIF, since a
+phone photo of an ID carries the coordinates of where it was taken, and forces a full decode of the
+pixel stream, which is what catches an image that parses at the header and not beyond. One operation
+buys both, at the cost of some detail that a reviewer reading a passport page will not see. No new
+dependency: Pillow is already here and does more than a MIME sniffer would, and the PDF check is five
+magic bytes. JPEG, PNG and PDF are accepted. Not WebP, which no camera or scanner produces, and not
+HEIC, which would need another dependency to decode.
+
+Uploads are quarantined. A file is pending when stored and becomes clean or rejected. FLS ships the
+seam and a default scanner that clears nothing, because a default that cleared everything would let
+every deployment believe files were scanned when they were not. A downstream project points the
+setting at a real scanner, and a system check warns when production is still running the no-op.
+
+In a stock install, the thing that clears a file is a superuser, deliberately, through a logged admin
+action. That has to exist from the first day, or stock FLS has a review queue nobody can ever open.
+
+The applicant sees none of this. A scan state offers them no action, submission is not gated on it,
+and telling them their document is pending raises a question they cannot answer.
+
+### Reading one back
+
+A reviewer reaches a file through an admin-gated view that streams it, mirroring the report download
+that already does this: permission checked on every request, sent as an attachment, never cached. It
+differs in one line, refusing anything not marked clean.
+
+A signed bucket URL is the wrong tool even though the bucket supports one. It is minted once and
+carries no session, so it can neither re-check the scan state on each fetch nor express superuser
+only. A file reclassified as rejected stays fetchable for the rest of the signature's life, and the
+link works for whoever ends up holding it. The applicant can re-open their own upload from the review
+page through the same view with its own ownership check, because they already own the document.
+
+Production caps a request at 5 MB in two pinned places, the production settings and a Caddy directive
+tracked as a deployment conformance item. A phone photo is routinely 2 to 8 MB, and a body over the
+cap is refused at the edge before Django runs, so there is no friendly error to be had. Both move to 8
+MB, still pinned, with FLS's own per-file limit at 6 MB so an oversized file gets a proper in-form
+message and the rest of the request still fits underneath. The browser checks size before sending, so
+the common case never reaches a bare rejection at the edge.
+
+One gap stays open, and is better stated than discovered. Nothing FLS runs inspects the inside of a
+PDF, so a payload embedded in a well-formed one passes every check here. The quarantine scanner is the
+only control for it, and FLS ships none.
 
 ## Defects this work sits on top of
 
@@ -184,7 +299,10 @@ work and is not made worse by it, but it now applies to application answers too.
 - **Referral prefill.** Prefilling "Dealer — [name]" needs referral capture, which is its own idea with
   nothing built. The question ships as an ordinary one, and the prefill arrives with the spec that
   owns it.
-- **File uploads, encryption at rest, virus scanning, a retention scheduler.** The June research
-  designed all four for a separate-model system with document uploads. This form has no files, and
-  database and backup encryption are already handled at the infrastructure layer. The only obligation
-  carried forward is not choosing a deletion behaviour that forecloses a targeted purge later.
+- **Encryption at rest, a shipped virus scanner, a retention scheduler.** Database and backup
+  encryption are handled at the infrastructure layer already and cover these rows like any other.
+  Scanning gets a seam and no scanner. Uploads are deletable by design and by hand, and nothing
+  expires on a timer.
+- **Client-side image downscaling, and per-question upload limits.** The size ceiling moves instead,
+  and the allowed types and sizes are one set of constants rather than per-question configuration.
+  There is one use case; either can be built the day a second one disagrees with it.
