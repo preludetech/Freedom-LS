@@ -26,6 +26,8 @@ A photograph, from the demo content:
 
 **Do not duplicate `alt` and `title`.** `alt` is for screen readers; `title` is visible text for all users.
 
+**`description` is visible prose on the page**, not lightbox-only text — it sits below the caption in the page and again beneath the title in the lightbox. Write it for every learner, not just the ones who open the image.
+
 Image paths are relative to the content file (resolved to the course root by `content_save`).
 
 ## What `content_save` does to the image

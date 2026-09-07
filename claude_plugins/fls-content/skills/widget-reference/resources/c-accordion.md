@@ -13,6 +13,8 @@ Native collapsible disclosure widget (`<details>`/`<summary>`). Body is markdown
 
 Write `open` as a bare attribute with no value. The sanitiser normalises it to `open=""` and the template handles it correctly.
 
+**Accordions are for elective depth** — supplementary detail, optional context, or reference material that not every learner needs. Do not hide content that is required reading or forms part of assessed material; required content must be visible without interaction.
+
 ```markdown
 <c-accordion title="Why does Python use indentation?">
 Python uses indentation to define code blocks rather than braces or keywords.
