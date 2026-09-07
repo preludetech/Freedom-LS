@@ -52,6 +52,7 @@
 - [reference_organisation_admin_summary_counts.md](reference_organisation_admin_summary_counts.md) — Organisation change-page learner-count summary (ngettext 0/1/N): it lives in learner_management/admin.py via ORGANISATION_SUMMARIES, counts inactive learners too, and how to seed an exact-1 org + render the wording headlessly
 - [reference_form_first_course_command.md](reference_form_first_course_command.md) — qa_create_form_first_course: course whose item 1 is a Form (no-Previous-button branch of the form start page); FormProgress has a direct `user` FK; last_accessed_item is a plain FK; sequential unlock IS enforced by URL now
 - [reference_shell_savepoint_does_not_roll_back.md](reference_shell_savepoint_does_not_roll_back.md) — `transaction.savepoint()` is a NO-OP in `manage.py shell` (autocommit): the "rolled-back probe" pattern silently COMMITS; use `transaction.atomic()` + raise, and re-read the field to prove the restore
+- [reference_standalone_form_sitting.md](reference_standalone_form_sitting.md) — qa_create_standalone_form_sitting: the dev DB's only FormProgress with NO CourseFormAttempt, so FormProgressAdmin's "In course" dash (= "sat standalone") is browser-reachable
 
 ## Recurring requests
 
@@ -267,3 +268,14 @@ same branch, then build the smallest course whose item ORDER produces it. Buildi
 `qa_helpers` command took no longer than a shell script and left the branch re-seedable. Do NOT
 reorder an existing demo course to get the shape — seed a dedicated one.
 See [[reference_form_first_course_command]].
+
+The **"seed a row so an admin list_display method's None/empty-value branch is reachable"** ask
+arrived once (FormProgressAdmin's "In course" dash, misc-small-fixes-manual, Sep 2026). It is the
+[[reference_form_first_course_command]] template-branch ask one layer down: read the
+`@admin.display` method, find which relation it returns `None` for, and seed a row that simply
+LACKS that relation rather than one that has it deleted. Here every fixture command had gone
+through `CourseFormAttemptFactory`, which always mints the join row, so 406/406 rows named a
+course — the fix was to call `FormProgressFactory` on its own.
+See [[reference_standalone_form_sitting]]. Generalise: whenever a QA plan says "every row shows X,
+I cannot see the empty case", check whether the seeding factory is a *join-row* factory that makes
+the absent case unreachable by construction.
