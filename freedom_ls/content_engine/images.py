@@ -12,7 +12,11 @@ from enum import StrEnum
 
 from PIL import ExifTags, Image, ImageOps
 
-from freedom_ls.base.images import BOMB_FAILURES, DECODE_FAILURES
+from freedom_ls.base.images import (
+    BOMB_FAILURES,
+    DECODE_FAILURES,
+    truncated_images_rejected,
+)
 
 
 class ImageEncodeStatus(StrEnum):
@@ -151,7 +155,10 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
     source_format: str | None = None
     source_size: tuple[int, int] | None = None
     try:
-        with Image.open(io.BytesIO(raw)) as opened:
+        with (
+            truncated_images_rejected(),
+            Image.open(io.BytesIO(raw)) as opened,
+        ):
             source_format = opened.format
             # Read before draft() and thumbnail() below, both of which
             # mutate .size in place.

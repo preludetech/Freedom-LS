@@ -6,7 +6,7 @@ import io
 from typing import cast
 
 import pytest
-from PIL import Image
+from PIL import Image, ImageFile
 
 from freedom_ls.content_engine import images
 from freedom_ls.content_engine.images import (
@@ -244,6 +244,27 @@ def test_png_with_broken_chunk_crc_is_undecodable_after_the_format_is_known():
     assert decision.source_format == "PNG"
     assert decision.error is not None
     assert "OSError" in decision.error
+
+
+def test_a_corrupt_png_is_still_undecodable_once_weasyprint_has_loaded(monkeypatch):
+    """LOAD_TRUNCATED_IMAGES is process-global and WeasyPrint turns it on, so
+    from the first rendered report onwards Pillow would decode this broken
+    chunk checksum and store the result as an optimised image."""
+    monkeypatch.setattr(ImageFile, "LOAD_TRUNCATED_IMAGES", True)
+
+    decision = optimise_image(break_png_chunk_crc(png_bytes()), ".png")
+
+    assert decision.status is ImageEncodeStatus.UNDECODABLE
+
+
+def test_the_truncation_guard_leaves_the_global_as_it_found_it(monkeypatch):
+    """WeasyPrint sets the flag on purpose, so the optimiser borrows it rather
+    than claiming it."""
+    monkeypatch.setattr(ImageFile, "LOAD_TRUNCATED_IMAGES", True)
+
+    optimise_image(png_bytes(), ".png")
+
+    assert ImageFile.LOAD_TRUNCATED_IMAGES is True
 
 
 def test_no_truncation_of_an_animated_gif_escapes_as_an_exception():

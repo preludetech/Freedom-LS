@@ -23,6 +23,7 @@ from freedom_ls.base.images import (
     BOMB_FAILURES,
     DECODE_FAILURES,
     bomb_warnings_as_errors,
+    truncated_images_rejected,
 )
 
 ALLOWED_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
@@ -74,7 +75,7 @@ def check_logo_safety(raw: bytes) -> SafeLogo:
             f"Image file is too large ({len(raw) / 1024 / 1024:.1f}MB; maximum is 2MB)."
         )
 
-    with bomb_warnings_as_errors():
+    with bomb_warnings_as_errors(), truncated_images_rejected():
         try:
             # verify() decodes the whole stream rather than only the header,
             # and it destroys the object it is called on — hence the second

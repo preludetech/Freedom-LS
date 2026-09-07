@@ -28,7 +28,7 @@ import struct
 import warnings
 from collections.abc import Iterator
 
-from PIL import Image
+from PIL import Image, ImageFile
 
 DECODE_FAILURES = (
     OSError,
@@ -54,11 +54,37 @@ def bomb_warnings_as_errors() -> Iterator[None]:
     store it at full size instead, so it lets the warning band decode and
     only catches ``DecompressionBombError``.
 
-    ``Image.MAX_IMAGE_PIXELS`` stays at Pillow's default for both callers,
-    and ``ImageFile.LOAD_TRUNCATED_IMAGES`` is never set anywhere in this
-    repo: it is a global flag, and ``check_logo_safety`` depends on a
-    truncated file failing to decode.
+    ``Image.MAX_IMAGE_PIXELS`` stays at Pillow's default for both callers.
+    The other global that decides whether a malformed file decodes,
+    ``ImageFile.LOAD_TRUNCATED_IMAGES``, is handled by
+    ``truncated_images_rejected`` below.
     """
     with warnings.catch_warnings():
         warnings.simplefilter("error", Image.DecompressionBombWarning)
         yield
+
+
+@contextlib.contextmanager
+def truncated_images_rejected() -> Iterator[None]:
+    """Hold ``ImageFile.LOAD_TRUNCATED_IMAGES`` false for the duration of the block.
+
+    The flag is process-global and this repo is not the only thing that writes
+    it: importing WeasyPrint turns it on, and the report renderer imports
+    WeasyPrint lazily, in the same process that serves uploads. From the first
+    rendered report onwards, ``Image.open`` completes over a truncated body or
+    a failed chunk checksum instead of raising, so ``optimise_image`` stores a
+    corrupt file as a successfully optimised one. ``check_logo_safety`` is
+    covered by its own ``verify()`` call, which walks the chunks whatever the
+    flag says, but it takes this guard too rather than resting a rejection on
+    a global it does not own.
+
+    The previous value is put back rather than left false, because WeasyPrint
+    sets it deliberately: it renders a partially-received image into the PDF
+    instead of failing the whole document.
+    """
+    previous = ImageFile.LOAD_TRUNCATED_IMAGES
+    ImageFile.LOAD_TRUNCATED_IMAGES = False
+    try:
+        yield
+    finally:
+        ImageFile.LOAD_TRUNCATED_IMAGES = previous
