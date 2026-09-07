@@ -12,6 +12,7 @@ from django.test import RequestFactory
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.site_aware_models.models import SiteResolutionError
 
 
 @pytest.mark.django_db
@@ -159,10 +160,14 @@ def test_send_mail_logo_url_uses_absolute_static_url_verbatim(
 
     The Site-domain fallback must not prefix an already-qualified CDN URL, which
     would produce a malformed https://domain/https://cdn.../logo.png.
+
+    Sent with no request, so FORCE_SITE_NAME names the tenant; it is the only
+    thing that can without one.
     """
     settings.EMAIL_LOGO_STATIC_PATH = "images/test_logo.png"
     settings.HEADER_LOGO_STATIC_PATH = None
     settings.STATIC_URL = "https://cdn.example.com/static/"
+    settings.FORCE_SITE_NAME = mock_site_context.name
 
     captured: dict = {}
     adapter = AccountAdapter(request=None)
@@ -198,9 +203,13 @@ def test_send_mail_logo_url_is_none_when_static_lookup_fails(
     ValueError when the asset is absent from the manifest. The branded logo is a
     best-effort enhancement, so a lookup failure must fall back to the text label
     rather than abort the whole transactional email.
+
+    Sent with no request, so FORCE_SITE_NAME names the tenant; it is the only
+    thing that can without one.
     """
     settings.EMAIL_LOGO_STATIC_PATH = "images/missing_logo.png"
     settings.HEADER_LOGO_STATIC_PATH = None
+    settings.FORCE_SITE_NAME = mock_site_context.name
 
     captured: dict = {}
     adapter = AccountAdapter(request=None)
@@ -283,9 +292,9 @@ class TestFormatEmailSubject:
     ) -> None:
         """No mock_site_context here, deliberately.
 
-        Mail is not always sent from a request, and FLS pins no SITE_ID, so
-        there is nothing for Django to resolve a site from -- it raises. A name
-        HEADER_TITLE already answers must not need one, or cost a query.
+        Mail is not always sent from a request, and with nothing pinned there is
+        no tenant to resolve -- the resolver raises. A name HEADER_TITLE already
+        answers must not need one, or cost a query.
         """
         settings.HEADER_TITLE = "MyProduct"
 
@@ -295,7 +304,13 @@ class TestFormatEmailSubject:
     def test_prefix_falls_back_to_site_name_without_header_title(
         self, mock_site_context: Site, settings
     ) -> None:
+        """With no HEADER_TITLE the name comes from the Site row itself.
+
+        Pinned, because the subject is formatted off-request and FORCE_SITE_NAME
+        is the only thing that names a tenant without one.
+        """
         settings.HEADER_TITLE = ""
+        settings.FORCE_SITE_NAME = mock_site_context.name
 
         assert self._format(self.SUBJECT) == f"[TestSite] {self.SUBJECT}"
 
@@ -309,23 +324,21 @@ class TestFormatEmailSubject:
 
         assert self._format(self.SUBJECT) == f"[PinnedSite] {self.SUBJECT}"
 
-    def test_a_single_site_install_names_itself_with_nothing_pinned(
-        self, settings
-    ) -> None:
+    def test_nothing_pinned_refuses_rather_than_naming_a_tenant(self, settings) -> None:
         """The QA §12.1 case: no request, and nothing pinned to stand in for one.
 
         Deliberately no ``mock_site_context`` -- that fixture patches the site
-        resolution this exercises. With HEADER_TITLE unset, FORCE_SITE_NAME
-        None and no SITE_ID, a single-tenant install still has exactly one
-        possible name, and mail sent from a command or a cron gets it instead
-        of Django's ImproperlyConfigured about SITE_ID.
+        resolution this exercises. Holding one Site row is not an answer: the
+        caller still cannot say which tenant it is, and a subject line carries
+        that name to the recipient. Refusing beats sending under the wrong one.
         """
         settings.HEADER_TITLE = ""
         only_site = Site.objects.get()
         only_site.name = "OnlyTenant"
         only_site.save(update_fields=["name"])
 
-        assert self._format(self.SUBJECT) == f"[OnlyTenant] {self.SUBJECT}"
+        with pytest.raises(SiteResolutionError):
+            self._format(self.SUBJECT)
 
     def test_explicit_subject_prefix_setting_still_wins(
         self, mock_site_context: Site, settings

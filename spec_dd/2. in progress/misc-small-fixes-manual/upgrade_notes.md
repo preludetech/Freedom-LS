@@ -71,18 +71,24 @@ disagreed with the email body and ignored `FORCE_SITE_NAME`. If you assert on su
 lines in your own tests, they will need updating. Setting
 `ACCOUNT_EMAIL_SUBJECT_PREFIX` still wins outright, as before.
 
-### Resolving the site without a request no longer raises `ImproperlyConfigured`
+### Resolving the site without a request raises `SiteResolutionError`, not `ImproperlyConfigured`
 
-Code that sends mail — or otherwise calls `get_cached_site()` — from outside a request now
-resolves the tenant as: `FORCE_SITE_NAME`, else `SITE_ID`, else the sole `Site` if the
-installation holds exactly one. Only a multi-site installation with nothing pinned still
-fails, and it now raises `freedom_ls.site_aware_models.models.SiteResolutionError` instead
-of Django's `ImproperlyConfigured` — whose advice, to set `SITE_ID`, is the one fix that
-breaks multi-tenancy.
+Code that sends mail — or otherwise calls `get_cached_site()` — from outside a request
+resolves the tenant from `FORCE_SITE_NAME`, and from nothing else. With it unset there is no
+host to resolve and no tenant to name, so the call now raises
+`freedom_ls.site_aware_models.models.SiteResolutionError` rather than Django's
+`ImproperlyConfigured` — whose advice, to set `SITE_ID`, is the one fix that breaks
+multi-tenancy. The new message names the two fixes that do not: pass the request through, or
+pin `FORCE_SITE_NAME`.
 
-Nothing in FLS reaches this today; every allauth email is sent inside a request. It matters
-if you send mail from a management command or a cron. If you catch `ImproperlyConfigured`
-around such a call, catch `SiteResolutionError` instead.
+There is no fallback to a single `Site` row. A one-tenant installation is not an answer to
+"which tenant is this", and treating it as one would make off-request mail work on a
+single-site staging box and fail once a second site existed.
+
+Nothing in FLS reaches this today; every allauth email is sent inside a request, and queued
+mail is re-sent from already-rendered content that needs no site. It matters if you send mail
+from a management command or a cron: pin `FORCE_SITE_NAME` in that process. If you catch
+`ImproperlyConfigured` around such a call, catch `SiteResolutionError` instead.
 
 ### Two stylesheets were deleted
 

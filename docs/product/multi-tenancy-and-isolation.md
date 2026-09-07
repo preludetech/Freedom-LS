@@ -15,7 +15,7 @@ _Last updated: 2026-09-07_
 
 Each site corresponds to a domain, using Django's sites framework. When a request arrives, FLS resolves which site it belongs to from the request's host header, and every database query made while serving that request is filtered to that site. Records created during the request are assigned to it automatically, so no application code has to set the site by hand.
 
-Deployments serving a single site can pin the site explicitly with the `FORCE_SITE_NAME` setting, which skips host-based resolution. This is also how tests run. Work that has no request at all — a management command, a scheduled job, a queue worker — needs the same pinning to resolve a tenant, unless the installation holds only one site; a multi-site installation with nothing pinned refuses that work rather than guessing, because outbound mail carries the tenant's branding.
+Deployments serving a single site can pin the site explicitly with the `FORCE_SITE_NAME` setting, which skips host-based resolution. This is also how tests run. Work that has no request at all — a management command, a scheduled job, a queue worker — needs the same pinning to resolve a tenant. With nothing pinned, such work is refused rather than guessed at, because outbound mail carries the tenant's branding and sending under the wrong name is worse than not sending.
 
 ## What Is Isolated
 

@@ -640,10 +640,14 @@ class TestAdapterSendMailContext:
         """Run AccountAdapter.send_mail with no request and return the rendered context.
 
         render_mail is patched to capture the context dict the adapter composes,
-        the mock_site_context fixture resolves the site, and the allauth request
-        context is forced to None (mail sent outside a web request).
+        and the allauth request context is forced to None (mail sent outside a
+        web request). FORCE_SITE_NAME is pinned to the fixture's site because it
+        is the only thing that names a tenant without a request -- unpinned, the
+        adapter refuses to send rather than guess which tenant it is branding.
         """
         from unittest.mock import MagicMock, patch
+
+        from django.test import override_settings
 
         from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 
@@ -651,6 +655,7 @@ class TestAdapterSendMailContext:
         adapter = AccountAdapter(request=None)
 
         with (
+            override_settings(FORCE_SITE_NAME=mock_site_context.name),
             patch.object(adapter, "render_mail") as mock_render_mail,
             patch(
                 "freedom_ls.accounts.allauth_account_adapter.allauth_context"

@@ -25,12 +25,16 @@ _SENTINEL_THEME = EmailTheme(
 
 
 @pytest.mark.django_db
-def test_send_mail_injects_resolved_theme_values(mock_site_context):
+def test_send_mail_injects_resolved_theme_values(mock_site_context, settings):
     """AccountAdapter.send_mail injects every email theme field into the context.
 
     The theme values are built only when an email is sent (no longer via a
     global context processor), so this verifies they reach the email context.
+
+    Sent with no request, so FORCE_SITE_NAME has to name the tenant -- it is the
+    only thing that can, and without it the adapter refuses to send.
     """
+    settings.FORCE_SITE_NAME = mock_site_context.name
     adapter = AccountAdapter(request=None)
     captured: dict = {}
 

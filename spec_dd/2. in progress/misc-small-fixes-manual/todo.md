@@ -52,6 +52,8 @@ component templates. Meant to be visually inert.
 
 - [x] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
 
+- [x] (user + cmd) Reverse the off-request site-resolution decision above: the `SITE_ID` probe and the single-`Site` fallback were scope creep for a caller FLS does not have — mail is always sent inside a request, and queued mail re-sends already-rendered content. `get_cached_site()` without a request now resolves `FORCE_SITE_NAME` or raises `SiteResolutionError`
+
 ## 13. Pull request
 
 - [x] (user) Open a pull request
