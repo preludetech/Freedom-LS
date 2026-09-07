@@ -92,6 +92,24 @@ def test_catalogue_page_has_meta_description(mock_site_context):
     assert "Browse all available courses" in desc
 
 
+@pytest.mark.django_db
+def test_catalogue_canonical_url_drops_campaign_parameters(mock_site_context):
+    """A page behind many utm_* strings canonicalises to one indexable URL.
+
+    The block defaults live in `_base.html` and are covered in
+    freedom_ls/base/tests/test_head_metadata.py; this is the end-to-end check
+    through a real request.
+    """
+    url = reverse("learner_interface:courses")
+    response = Client().get(url, {"utm_source": "newsletter", "utm_medium": "email"})
+    assert response.status_code == 200
+    body = response.content.decode()
+
+    match = re.search(r'<link rel="canonical" href="([^"]*)"', body)
+    assert match, "no canonical link found"
+    assert match.group(1) == f"http://testserver{url}"
+
+
 # ---------------------------------------------------------------------------
 # course detail: meta description
 # ---------------------------------------------------------------------------
