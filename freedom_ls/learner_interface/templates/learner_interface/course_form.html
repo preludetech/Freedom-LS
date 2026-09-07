@@ -4,29 +4,39 @@
 
 {% block content %}
     <c-page flush="true" class="pt-2 lg:pt-4">
-        <div class="space-y-8" x-data="coursePlayer">
+        <div class="mx-auto max-w-xl text-center space-y-6" x-data="coursePlayer">
 
-            {% comment %}=== TITLE + EYEBROW ==={% endcomment %}
-            <div class="space-y-1">
-                {% if form.subtitle %}
-                    <p class="text-xs font-mono uppercase tracking-widest text-muted">
-                        {{ form.subtitle }}
-                    </p>
-                {% endif %}
-                <h1 class="font-display text-on-surface">
-                    {{ form.title }}
-                </h1>
+            {% comment %}Badge{% endcomment %}
+            <div class="mx-auto flex size-16 items-center justify-center rounded-lg bg-secondary text-on-secondary">
+                <c-icon name="form" class="size-8" />
             </div>
 
-            {% comment %}=== INTRO MARKDOWN ==={% endcomment %}
+            {% comment %}Eyebrow + title{% endcomment %}
+            <div class="space-y-2">
+                {% if form.subtitle %}
+                    <p class="font-mono text-xs uppercase tracking-widest text-muted">{{ form.subtitle }}</p>
+                {% endif %}
+                <h1>{{ form.title }}</h1>
+            </div>
+
+            {% comment %}Authored intro: only paragraphs centre, other blocks stay left-aligned{% endcomment %}
             {% if form.rendered_content %}
-                <c-markdown-container>
+                <c-markdown-container class="text-left [&_p]:text-center">
                     {{ form.rendered_content }}
                 </c-markdown-container>
             {% endif %}
 
-            {% comment %}=== META GRID (questions + pages) ==={% endcomment %}
-            {% include "learner_interface/partials/exam_meta_grid.html" %}
+            {% comment %}Fact pills{% endcomment %}
+            <div class="flex flex-wrap justify-center gap-2">
+                <c-chip variant="muted" class="text-on-surface">
+                    <c-icon name="notes" class="size-4 text-secondary" />
+                    {{ question_count }} question{{ question_count|pluralize }}
+                </c-chip>
+                <c-chip variant="muted" class="text-on-surface">
+                    <c-icon name="course_part" class="size-4 text-secondary" />
+                    {{ page_count }} page{{ page_count|pluralize }}
+                </c-chip>
+            </div>
 
             {% comment %}=== PREVIOUS ATTEMPTS ==={% endcomment %}
             {% include "learner_interface/partials/exam_previous_attempts.html" %}

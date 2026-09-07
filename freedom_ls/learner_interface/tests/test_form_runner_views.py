@@ -484,6 +484,98 @@ def test_view_form_context_includes_question_count_and_page_count(
 
 
 @pytest.mark.django_db
+def test_form_start_page_shows_question_and_page_counts(mock_site_context, client):
+    """The rendered start screen names the question and page counts."""
+    user = UserFactory()
+    form = FormFactory()
+    page1 = FormPageFactory(form=form, order=0)
+    FormQuestionFactory(form_page=page1, order=0)
+    FormQuestionFactory(form_page=page1, order=1)
+    page2 = FormPageFactory(form=form, order=1)
+    FormQuestionFactory(form_page=page2, order=0)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+    content = response.content.decode()
+
+    assert "3 questions" in content
+    assert "2 pages" in content
+
+
+@pytest.mark.django_db
+def test_form_start_page_counts_are_singular_for_one(mock_site_context, client):
+    """A one-question, one-page form is described in the singular."""
+    user = UserFactory()
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    FormQuestionFactory(form_page=page, order=0)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+    content = response.content.decode()
+
+    assert re.search(r"1 question(?!s)", content)
+    assert re.search(r"1 page(?!s)", content)
+
+
+@pytest.mark.django_db
+def test_form_subtitle_renders_as_eyebrow(mock_site_context, client):
+    """A form with a subtitle renders that text inside a <p> above its title."""
+    user = UserFactory()
+    form = FormFactory(subtitle="Section One")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+    content = response.content.decode()
+
+    pattern = (
+        rf"<p[^>]*>\s*{re.escape(form.subtitle)}\s*</p>\s*"
+        rf"<h1[^>]*>\s*{re.escape(str(form.title))}"
+    )
+    assert re.search(pattern, content, re.DOTALL)
+
+
+@pytest.mark.django_db
+def test_form_without_subtitle_renders_no_eyebrow(mock_site_context, client):
+    """A form with a blank subtitle renders no empty eyebrow element."""
+    user = UserFactory()
+    form = FormFactory(subtitle="")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+
+    client.force_login(user)
+    url = reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+    response = client.get(url)
+    content = response.content.decode()
+
+    h1_match = re.search(rf"<h1[^>]*>\s*{re.escape(str(form.title))}", content)
+    assert h1_match is not None
+    preceding = content[: h1_match.start()].rstrip()
+    assert not preceding.endswith("</p>")
+
+
+@pytest.mark.django_db
 def test_view_form_start_screen_title_in_tab_but_not_duplicated(
     mock_site_context, client
 ):
