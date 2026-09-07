@@ -3,7 +3,7 @@ a few manual fixes to a few different files and functions. We'll do more interac
 -[x] Email
     - [x] subject: Site name
     - [x] slow in prod
--[ ] Report bug: background color
+-[x] Report bug: background color
 -[x] Admin polish
     -[x] Organisation->Cohorts
     -[x] Maybe ORganisation->Learners
