@@ -362,18 +362,6 @@ class TestApplyStartsTheForm:
 
         assert app.form_progress.form == form
 
-    def test_applying_to_a_course_with_a_form_records_the_form(
-        self, client, mock_site_context
-    ):
-        """Kept on the application itself, so re-pointing the course later does
-        not rewrite what an existing applicant was asked.
-        """
-        course, form = gated_course_with_form()
-
-        app = _applied(client, course)
-
-        assert app.form == form
-
     def test_applying_to_a_course_with_a_form_lands_on_page_one(
         self, client, mock_site_context
     ):

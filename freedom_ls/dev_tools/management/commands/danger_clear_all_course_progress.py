@@ -1,6 +1,8 @@
 import djclick as click
 
+from django.apps import apps
 from django.db import transaction
+from django.db.models import Model
 
 from freedom_ls.dev_tools.guard import require_dev_tools_enabled
 from freedom_ls.form_engine import models as form_models
@@ -9,13 +11,26 @@ from freedom_ls.learner_progress import models
 # Same order as danger_content_delete: QuestionAnswer.question and the two
 # course-progress rows below it are PROTECTed by content further down the
 # chain, so they clear first.
-models_to_delete = [
+models_to_delete: list[tuple[str, type[Model]]] = [
     ("Question Answers", form_models.QuestionAnswer),
     ("Course Form Attempts", models.CourseFormAttempt),
     ("Form Progress", form_models.FormProgress),
     ("Topic Progress", models.TopicProgress),
     ("Course Progress", models.CourseProgress),
 ]
+
+
+def deletion_order() -> list[tuple[str, type[Model]]]:
+    """The order above, with course applications on the front when installed.
+
+    A CourseApplication RESTRICTs the form progress record it names, so the
+    applications go before the sittings. Fetched through the app registry rather
+    than imported, so dev_tools gains no dependency on an optional app.
+    """
+    if not apps.is_installed("freedom_ls.course_applications"):
+        return models_to_delete
+    application = apps.get_model("freedom_ls_course_applications", "CourseApplication")
+    return [("Course Applications", application), *models_to_delete]
 
 
 @click.command()
@@ -35,8 +50,8 @@ def command(yes: bool) -> None:
 
     click.secho("\nProgress to be deleted:", fg="yellow", bold=True)
     total_count = 0
-    for name, model in models_to_delete:
-        count = model.objects.all().count()
+    for name, model in deletion_order():
+        count = model._default_manager.all().count()
         total_count += count
         if count > 0:
             click.secho(f"  {name}: {count}", fg="yellow")
@@ -61,8 +76,8 @@ def command(yes: bool) -> None:
 
     with transaction.atomic():
         deleted_counts = {}
-        for name, model in models_to_delete:
-            count, _ = model.objects.all().delete()
+        for name, model in deletion_order():
+            count, _ = model._default_manager.all().delete()
             if count > 0:
                 deleted_counts[name] = count
 

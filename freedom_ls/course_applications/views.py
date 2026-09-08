@@ -68,11 +68,10 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
             # still converge on one row.
             app, _ = CourseApplication.objects.get_or_create(user=user, course=course)
             if course.application_form is not None and app.form_progress is None:
-                app.form = course.application_form
                 app.form_progress = FormProgress.objects.create(
-                    user=user, form=app.form
+                    user=user, form=course.application_form
                 )
-                app.save(update_fields=["form", "form_progress"])
+                app.save(update_fields=["form_progress"])
         if app.form_progress is not None:
             return redirect("course_applications:form_page", pk=app.pk, page_number=1)
         return redirect("course_applications:status", pk=app.pk)
@@ -125,13 +124,13 @@ def _owned_application_with_form(
     to show, and 404 is the honest answer for a URL that names one.
     """
     app: CourseApplication = get_object_or_404(
-        CourseApplication.objects.select_related("course", "form", "form_progress"),
+        CourseApplication.objects.select_related("course", "form_progress__form"),
         pk=pk,
         user=request.user,
     )
-    if app.form is None or app.form_progress is None:
+    if app.form_progress is None:
         raise Http404
-    return app, app.form, app.form_progress
+    return app, app.form_progress.form, app.form_progress
 
 
 def _page_url(app: CourseApplication, page_number: int) -> str:

@@ -54,6 +54,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user + cmd) Fix QA bug: client-side 6 MB file check does not stop the upload (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: check-your-answers rows render as a two-column grid instead of a stacked list (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: attached-file Download link is a 20px-tall tap target on mobile (TDD — failing test first, then fix)
+- [ ] (user) Run the §7.1 step 7 admin-delete case, added to the QA plan after the QA pass had run
 
 ## 10. Product documentation
 

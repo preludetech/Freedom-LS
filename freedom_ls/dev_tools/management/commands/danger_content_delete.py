@@ -82,13 +82,15 @@ def command(yes: bool) -> None:
         # first and deliberately: deleting all content while keeping progress
         # pointing at it is not a state anyone wants. QuestionAnswer.question is
         # PROTECTed the same way, so it goes first here too -- move it later and
-        # the FormQuestion delete below fails. Course registrations PROTECT the
-        # course they name, so they come after CourseProgress (which PROTECTs
-        # the registration that granted it) and before the course delete below.
-        # Same order as danger_clear_all_course_progress. Fetched through the
-        # app registry rather than imported, so content_engine gains no
-        # dependency on either app -- both already depend on it.
-        for app_label, label in (
+        # the FormQuestion delete below fails. A CourseApplication RESTRICTs the
+        # form progress record it names, so the applications go before the
+        # sittings. Course registrations PROTECT the course they name, so they
+        # come after CourseProgress (which PROTECTs the registration that
+        # granted it) and before the course delete below. Same order as
+        # danger_clear_all_course_progress. Fetched through the app registry
+        # rather than imported, so content_engine gains no dependency on either
+        # app -- both already depend on it.
+        deletion_order = [
             ("freedom_ls_form_engine", "QuestionAnswer"),
             ("freedom_ls_learner_progress", "CourseFormAttempt"),
             ("freedom_ls_form_engine", "FormProgress"),
@@ -96,7 +98,13 @@ def command(yes: bool) -> None:
             ("freedom_ls_learner_progress", "CourseProgress"),
             ("freedom_ls_learner_management", "LearnerCourseRegistration"),
             ("freedom_ls_learner_management", "CohortCourseRegistration"),
-        ):
+        ]
+        # course_applications is the one optional app in the chain.
+        if apps.is_installed("freedom_ls.course_applications"):
+            deletion_order.insert(
+                0, ("freedom_ls_course_applications", "CourseApplication")
+            )
+        for app_label, label in deletion_order:
             apps.get_model(app_label, label).objects.all().delete()
 
         # Delete in reverse dependency order to avoid FK issues

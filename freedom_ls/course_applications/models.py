@@ -2,8 +2,8 @@
 
 Deliberately minimal and standalone. Application review will later add a state
 machine, transitions, notes, signals, and permissions, and will swap the plain
-unique constraint for an active-state partial index. An application holds the
-form it was created against and its own sitting of that form; the answers
+unique constraint for an active-state partial index. An application holds its
+own sitting of the course's application form; the form and the answers
 themselves live in form_engine.
 """
 
@@ -28,9 +28,10 @@ class CourseApplication(SiteAwareModel):
       active-state PARTIAL unique index that REPLACES the plain constraint below.
     Do not architect these away — leave this model standalone and additive.
 
-    `form` is the form this application was made against, kept even if the course
-    is later re-pointed at another one; `form_progress` is the applicant's own
-    sitting of it, null when the course asks for no form.
+    `form_progress` is the applicant's own sitting of the form the course named
+    when they applied, null when the course asks for no form. The form is read
+    back off that sitting, so it survives the course being re-pointed at another
+    one.
     """
 
     user = models.ForeignKey(
@@ -43,22 +44,15 @@ class CourseApplication(SiteAwareModel):
         on_delete=models.CASCADE,
         related_name="applications",
     )
-    # PROTECT: deleting the form would leave applications with no record of what
-    # was asked of the people who filled it in.
-    form = models.ForeignKey(
-        "freedom_ls_form_engine.Form",
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,
-        related_name="applications",
-    )
-    # SET_NULL: the application is the record that someone applied, and losing
-    # the answers must not lose that.
+    # RESTRICT: the sitting is the only record of what was asked of this
+    # applicant, so it cannot be deleted while the application stands. RESTRICT
+    # rather than PROTECT because deleting the applicant must still take the
+    # application and the sitting away together.
     form_progress = models.OneToOneField(
         "freedom_ls_form_engine.FormProgress",
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.RESTRICT,
         related_name="course_application",
     )
     created_at = models.DateTimeField(auto_now_add=True)
