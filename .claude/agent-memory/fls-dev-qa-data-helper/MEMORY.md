@@ -61,6 +61,7 @@
 - [reference_dashboard_catchall_courses_command.md](reference_dashboard_catchall_courses_command.md) — qa_create_catchall_courses: 2 uncategorised courses so the dashboard catch-all "Available courses" section pages; the catch-all also holds hidden-category and coming_soon courses, and its size is per-persona
 - [reference_course_cohort_registration_pagination.md](reference_course_cohort_registration_pagination.md) — Educator course page's two registration tables: the Cohort Registrations table paginates COHORTS not learners, DataTable.page_size is 5, qa_create_course_cohort_registrations, and which DemoDev cohort is safe to register given the CourseProgress fan-out
 - [reference_three_page_dashboard_section.md](reference_three_page_dashboard_section.md) — qa_extend_start_here_section: TWO pages cannot exercise courseSectionPagination's primary focus branch, you need a middle page (3 pages); why the new letters must not join PAGINATION_LETTERS; data-direction="previous" and live arrows have NO aria-disabled attribute
+- [reference_application_review_permission_accounts.md](reference_application_review_permission_accounts.md) — qa_create_application_review_accounts: applicant/bystander/reviewer trio; app label is `freedom_ls_form_engine`; SuperuserOnlyAdmin makes the 3 view_ perms 403 while /admin/ still renders 200
 
 ## Recurring requests
 
@@ -366,3 +367,16 @@ caller's description. Full cascade counts, the PROTECT-driven delete order and t
 trap in [[reference_dashboard_paging_fixture_teardown]]. If a fourth is asked for, the pattern is
 regular enough to wrap as `qa_teardown_dashboard_paging_fixtures` (or a generic
 `qa_teardown --seed <command-name>`) rather than another shell script.
+
+The **"seed a staff account holding exactly N model permissions, to prove they do NOT
+open the admin"** ask arrived once (simple-application-forms, Sep 2026), bundled with two
+throwaway plain learners (applicant + bystander) that must hold ZERO applications and ZERO
+registrations. Wrapped in `qa_create_application_review_accounts`; see
+[[reference_application_review_permission_accounts]]. Three things to carry forward:
+**(a)** FLS app labels are prefixed — the perms are `freedom_ls_form_engine.*`, so resolve
+them via `ContentType.objects.get_for_model(Model)` instead of a literal label;
+**(b)** always run the rolled-back logged-in admin probe and report the actual codes —
+`/admin/` is **200** for any staff user, and only the three changelists 403, so "no admin
+access" needs stating precisely or the tester will read the 200 as a failure;
+**(c)** direct `user_permissions.set(...)` is an established project pattern (guardian is
+for object-level grants only), so no need to route a model permission through a group.

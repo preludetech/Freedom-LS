@@ -47,10 +47,13 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: client-side 6 MB file check does not stop the upload (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: check-your-answers rows render as a two-column grid instead of a stacked list (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: attached-file Download link is a 20px-tall tap target on mobile (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
