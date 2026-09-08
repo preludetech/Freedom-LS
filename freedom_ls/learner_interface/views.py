@@ -37,9 +37,15 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
-from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion, FormStrategy
+from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
+from freedom_ls.form_engine.paging import (
+    answered_counts,
+    build_page_links,
+    resume_page_number,
+    unanswered_required_message,
+    unanswered_required_on_page,
+)
 from freedom_ls.form_engine.queries import count_form_questions, page_questions
-from freedom_ls.form_engine.submissions import has_submitted_answer
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import LearnerCourseRegistration
@@ -1230,7 +1236,7 @@ def view_form(
 
     page_number = None
     if incomplete_form_progress:
-        page_number = incomplete_form_progress.get_current_page_number()
+        page_number = resume_page_number(incomplete_form_progress)
 
     # Determine which buttons to show
     buttons = form_start_page_buttons(
@@ -1296,7 +1302,7 @@ def form_start(request, course_slug, index):
     form_progress = get_or_create_incomplete(course_progress, collection_item)
 
     # Figure out what page of the form the user is on
-    page_number = form_progress.get_current_page_number()
+    page_number = resume_page_number(form_progress)
 
     # Redirect the user to form_fill_page
     return redirect(
@@ -1305,15 +1311,6 @@ def form_start(request, course_slug, index):
         index=index,
         page_number=page_number,
     )
-
-
-def _unanswered_required_message(questions: list[FormQuestion]) -> str:
-    """Name the required questions the learner still has to answer."""
-    numbers = [str(question.question_number()) for question in questions]
-    if len(numbers) == 1:
-        return f"Question {numbers[0]} needs an answer before you can continue."
-    listed = f"{', '.join(numbers[:-1])} and {numbers[-1]}"
-    return f"Questions {listed} need answers before you can continue."
 
 
 @login_required
@@ -1350,18 +1347,17 @@ def form_fill_page(request, course_slug, index, page_number):
     # Get existing answers for questions on this page
     questions = page_questions(form_page)
 
-    next_page_url = (
-        reverse(
+    def url_for_page(number: int) -> str:
+        return reverse(
             "learner_interface:form_fill_page",
             kwargs={
                 "course_slug": course_slug,
                 "index": index,
-                "page_number": page_number + 1,
+                "page_number": number,
             },
         )
-        if page_number < total_pages
-        else None
-    )
+
+    next_page_url = url_for_page(page_number + 1) if page_number < total_pages else None
 
     # Set when a submission is rejected for missing required answers: the page is
     # re-rendered carrying it instead of advancing or completing.
@@ -1378,11 +1374,9 @@ def form_fill_page(request, course_slug, index, page_number):
                 index=index,
             )
 
-        unanswered_required = [
-            question
-            for question in questions
-            if question.required and not has_submitted_answer(question, request.POST)
-        ]
+        unanswered_required = unanswered_required_on_page(
+            questions, request.POST, form_progress
+        )
 
         # Save regardless, so a rejected submission does not throw away the
         # answers the learner did give.
@@ -1401,20 +1395,9 @@ def form_fill_page(request, course_slug, index, page_number):
                 index=index,
             )
 
-        required_answers_error = _unanswered_required_message(unanswered_required)
+        required_answers_error = unanswered_required_message(unanswered_required)
 
-    previous_page_url = (
-        reverse(
-            "learner_interface:form_fill_page",
-            kwargs={
-                "course_slug": course_slug,
-                "index": index,
-                "page_number": page_number - 1,
-            },
-        )
-        if page_number > 1
-        else None
-    )
+    previous_page_url = url_for_page(page_number - 1) if page_number > 1 else None
 
     # No incomplete attempt to resume (e.g. the form is already completed, or it
     # was finalised by a submit-on-exit safety net). Send the learner back to the
@@ -1430,57 +1413,7 @@ def form_fill_page(request, course_slug, index, page_number):
     # Build a dictionary of existing answers keyed by question ID
     existing_answers = form_progress.existing_answers_dict(questions)
 
-    # A skipped question leaves no answer row behind, so the first-outstanding
-    # page can sit behind where the learner has actually reached. On its own it
-    # would lock the page they are standing on, and pages they have already
-    # answered, out of the page-jump navigation.
-    answered_page_ids = set(
-        form_progress.answers.values_list("question__form_page_id", flat=True)
-    )
-    furthest_answered_page = max(
-        (
-            number
-            for number, page in enumerate(all_pages, start=1)
-            if page.id in answered_page_ids
-        ),
-        default=0,
-    )
-    furthest_page = max(
-        form_progress.get_current_page_number(), page_number, furthest_answered_page
-    )
-
-    # Build list of all page objects with their URLs for navigation
-    page_links = []
-    for i in range(1, total_pages + 1):
-        page_links.append(
-            {
-                "number": i,
-                "title": all_pages[i - 1].title,
-                "url": reverse(
-                    "learner_interface:form_fill_page",
-                    kwargs={
-                        "course_slug": course_slug,
-                        "index": index,
-                        "page_number": i,
-                    },
-                ),
-                "is_current": i == page_number,
-                "is_accessible": i
-                <= furthest_page,  # Can access all pages up to furthest progress
-            }
-        )
-
-    # answered_count is the no-JS fallback (persisted answers only); answered_other_pages
-    # is the base the client adds the live current-page tally to. Questions on this page
-    # are excluded so the in-browser count is not double-counted.
-    answered_count = form_progress.answers.count() if form_progress else 0
-    current_page_question_ids = {q.id for q in questions}
-    answered_other_pages = (
-        form_progress.answers.exclude(question_id__in=current_page_question_ids).count()
-        if form_progress
-        else 0
-    )
-    total_question_count = count_form_questions(form)
+    page_links = build_page_links(form, form_progress, page_number, url_for_page)
 
     # URL for the submit-and-exit endpoint (used by the exit dialog)
     submit_and_exit_url = reverse(
@@ -1510,9 +1443,7 @@ def form_fill_page(request, course_slug, index, page_number):
         **_player_chrome_context(
             request.user, course, form, index, course_progress=course_progress
         ),
-        "answered_count": answered_count,
-        "answered_other_pages": answered_other_pages,
-        "total_question_count": total_question_count,
+        **answered_counts(form, form_progress, questions),
         "submit_and_exit_url": submit_and_exit_url,
         "save_and_exit_url": save_and_exit_url,
         "required_answers_error": required_answers_error,

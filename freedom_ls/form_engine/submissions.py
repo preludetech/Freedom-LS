@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .enums import FREE_TEXT_QUESTION_TYPES
+from .enums import FREE_TEXT_QUESTION_TYPES, QuestionType
 
 if TYPE_CHECKING:
     from django.http import QueryDict
@@ -26,7 +26,12 @@ def has_submitted_answer(question: FormQuestion, post_data: QueryDict) -> bool:
     Choice questions need at least one selected option, free-text questions need
     non-blank text. This is what `FormQuestion.required` is measured against, and
     what decides whether an answer row is stored at all.
+
+    A file question is always False: its answer arrives on its own request and
+    lives in a stored row, so the page POST never carries one.
     """
+    if question.type == QuestionType.FILE_UPLOAD:
+        return False
     if question.type in FREE_TEXT_QUESTION_TYPES:
         return bool(submitted_text_answer(question, post_data))
     return bool(submitted_option_ids(question, post_data))

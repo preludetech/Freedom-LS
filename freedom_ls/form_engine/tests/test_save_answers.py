@@ -19,6 +19,7 @@ from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormQuestion
@@ -177,3 +178,50 @@ def test_answer_created_at_survives_a_revisit_that_changes_it(
     assert answer.text_answer == "second"
     assert answer.created_at == original_created_at
     assert answer.updated_at == datetime(2026, 1, 2, tzinfo=UTC)
+
+
+@pytest.fixture
+def number_question(mock_site_context) -> FormQuestion:
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, type="number", order=0)
+    return question
+
+
+@pytest.fixture
+def file_question(mock_site_context) -> FormQuestion:
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="file_upload", order=0
+    )
+    return question
+
+
+@pytest.mark.django_db
+def test_number_answer_is_stored_as_text(mock_site_context, number_question):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=number_question.form_page.form
+    )
+
+    form_progress.save_answers(
+        [number_question], _post_data({f"question_{number_question.id}": ["7"]})
+    )
+
+    answer = form_progress.answers.get(question=number_question)
+    assert answer.text_answer == "7"
+
+
+@pytest.mark.django_db
+def test_blank_post_leaves_a_stored_file_answer_alone(mock_site_context, file_question):
+    """A file never rides the page POST, so a page submission carries nothing for
+    a file question -- deleting the row on that basis would throw the file away.
+    """
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=file_question.form_page.form
+    )
+    QuestionAnswerFactory(form_progress=form_progress, question=file_question)
+
+    form_progress.save_answers([file_question], _post_data({}))
+
+    assert form_progress.answers.filter(question=file_question).count() == 1

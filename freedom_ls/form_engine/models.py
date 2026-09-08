@@ -275,17 +275,17 @@ class FormProgress(SiteAwareModel):
         """
         Get a dictionary of existing answers for the given questions.
         Returns a dict with question.id as keys and QuestionAnswer objects as values.
+
+        Reads the whole answer set once and filters in Python, so a caller that
+        has already prefetched `answers` -- the check-your-answers page does --
+        pays no query at all.
         """
-        existing_answers = {}
-        for question in questions:
-            try:
-                answer = QuestionAnswer.objects.get(
-                    form_progress=self, question=question
-                )
-                existing_answers[question.id] = answer
-            except QuestionAnswer.DoesNotExist:
-                pass
-        return existing_answers
+        wanted_ids = {question.id for question in questions}
+        return {
+            answer.question_id: answer
+            for answer in self.answers.all()
+            if answer.question_id in wanted_ids
+        }
 
     def save_answers(
         self, questions: Iterable[FormQuestion], post_data: QueryDict
@@ -297,6 +297,12 @@ class FormProgress(SiteAwareModel):
         tally and hide which questions are still outstanding.
         """
         for question in questions:
+            if question.type == QuestionType.FILE_UPLOAD:
+                # A file never rides the page POST, so a page submission carries
+                # nothing for a file question. Treating that as "removed" would
+                # throw away the row holding the file.
+                continue
+
             if not has_submitted_answer(question, post_data):
                 self.answers.filter(question=question).delete()
                 continue
@@ -498,6 +504,10 @@ class FormProgress(SiteAwareModel):
             self.score_category_value_sum()
         elif self.form.strategy == FormStrategy.QUIZ:
             self.score_quiz()
+        elif self.form.strategy == FormStrategy.UNSCORED:
+            # An unscored form awards no marks at all, so there is nothing to
+            # write. Completing one still stamps completed_time.
+            return
 
         else:
             raise Exception(f"Unhandled Strategy: {self.form.strategy}")

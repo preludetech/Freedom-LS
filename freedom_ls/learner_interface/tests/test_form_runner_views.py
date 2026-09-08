@@ -1496,3 +1496,40 @@ def test_form_start_badge_wrapper_is_hidden_from_assistive_technology(
     badge_match = re.search(r"<div[^>]*\bbg-secondary\b[^>]*>", content)
     assert badge_match is not None
     assert 'aria-hidden="true"' in badge_match.group(0)
+
+
+@pytest.mark.django_db
+def test_form_start_resumes_past_a_skipped_optional_question(mock_site_context, client):
+    """A skipped optional question leaves no answer row, so the first-outstanding
+    page sits behind where the learner actually reached. Resuming there would
+    drop them in front of pages they have already worked through.
+    """
+    form = FormFactory(strategy=FormStrategy.CATEGORY_VALUE_SUM)
+    pages = [FormPageFactory(form=form, order=order) for order in range(4)]
+    questions = [
+        FormQuestionFactory(
+            form_page=page, type="short_text", order=0, required=index != 1
+        )
+        for index, page in enumerate(pages)
+    ]
+    course = course_with_form(form)
+    user = UserFactory()
+    register_user_for_course(course, user)
+    attempt = form_attempt(course, user, form)
+    for index in (0, 2, 3):
+        QuestionAnswerFactory(
+            form_progress=attempt, question=questions[index], text_answer="done"
+        )
+
+    client.force_login(user)
+    response = client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    assert response["Location"] == reverse(
+        "learner_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": 4},
+    )

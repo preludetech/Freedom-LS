@@ -17,6 +17,8 @@ class QuestionType(StrEnum):
     CHECKBOXES = "checkboxes"
     SHORT_TEXT = "short_text"
     LONG_TEXT = "long_text"
+    NUMBER = "number"
+    FILE_UPLOAD = "file_upload"
 
 
 class FormStrategy(StrEnum):
@@ -24,6 +26,7 @@ class FormStrategy(StrEnum):
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM"
     QUIZ = "QUIZ"
+    UNSCORED = "UNSCORED"
 
 
 class Form(BaseContentModel, MarkdownContentModel, content_type=ContentType.FORM):
@@ -129,7 +132,10 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
     question: str = Field(..., description="The question text")
     type: QuestionType = Field(
         ...,
-        description="Question type (multiple_choice, checkboxes, short_text, long_text)",
+        description=(
+            "Question type (multiple_choice, checkboxes, short_text, long_text, "
+            "number, file_upload)"
+        ),
     )
     required: bool = Field(True, description="Whether the question is required")
     category: str | None = Field(None, description="Question category")

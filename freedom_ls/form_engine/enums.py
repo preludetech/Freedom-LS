@@ -15,11 +15,15 @@ class QuestionType(models.TextChoices):
     CHECKBOXES = "checkboxes", _("Checkboxes")
     SHORT_TEXT = "short_text", _("Short Text")
     LONG_TEXT = "long_text", _("Long Text")
+    NUMBER = "number", _("Number")
+    FILE_UPLOAD = "file_upload", _("File upload")
 
 
 # Free-text questions carry no QuestionOption rows, so anything that reasons
 # about selected or correct options has to treat them separately.
-FREE_TEXT_QUESTION_TYPES = frozenset({QuestionType.SHORT_TEXT, QuestionType.LONG_TEXT})
+FREE_TEXT_QUESTION_TYPES = frozenset(
+    {QuestionType.SHORT_TEXT, QuestionType.LONG_TEXT, QuestionType.NUMBER}
+)
 
 
 class FormStrategy(models.TextChoices):
@@ -27,3 +31,4 @@ class FormStrategy(models.TextChoices):
 
     CATEGORY_VALUE_SUM = "CATEGORY_VALUE_SUM", _("Category Value Sum")
     QUIZ = "QUIZ", _("Quiz")
+    UNSCORED = "UNSCORED", _("Unscored")
