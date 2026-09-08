@@ -12,6 +12,7 @@ from django.contrib.sites.models import Site
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.referral_tracking.capture import record_signup_attribution
 from freedom_ls.site_aware_models.models import get_cached_site
 
 User = get_user_model()
@@ -133,9 +134,12 @@ class SiteAwareSignupForm(SignupForm):
     def custom_signup(self, request, user) -> None:
         """allauth hook called after the user is created.
 
-        Records LegalConsent rows for the consents that were submitted.
-        Wrapped in a transaction so a partial DB failure (one consent saved,
-        the other 500s) does not leave asymmetric state.
+        Records LegalConsent rows for the consents that were submitted, and
+        a SignupAttribution row for where the signup came from. Consent
+        writes are wrapped in a transaction so a partial DB failure (one
+        consent saved, the other 500s) does not leave asymmetric state; the
+        attribution write sits outside it so an attribution failure cannot
+        roll back consents that were already recorded.
         """
         from .legal_docs import get_legal_doc
         from .models import LegalConsent
@@ -168,3 +172,5 @@ class SiteAwareSignupForm(SignupForm):
                     ip_address=ip or None,
                     consent_method="signup_checkbox",
                 )
+
+        record_signup_attribution(request=request, user=user, client_ip=ip or None)

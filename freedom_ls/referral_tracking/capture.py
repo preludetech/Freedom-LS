@@ -8,12 +8,13 @@ import unicodedata
 from datetime import datetime
 
 from django.conf import settings
+from django.contrib.auth.base_user import AbstractBaseUser
 from django.http import HttpRequest
 from django.http.response import HttpResponseBase
 from django.utils import timezone
 
 from freedom_ls.referral_tracking.config import config
-from freedom_ls.referral_tracking.models import CAPS
+from freedom_ls.referral_tracking.models import CAPS, SignupAttribution
 
 TRACKED_PARAMS = (
     "advert_code",
@@ -142,3 +143,34 @@ def _is_first_touch_payload(payload: object) -> bool:
     except ValueError:
         return False
     return True
+
+
+def record_signup_attribution(
+    *, request: HttpRequest, user: AbstractBaseUser, client_ip: str | None
+) -> SignupAttribution:
+    """Write the one SignupAttribution row for this signup.
+
+    Where the attribution cookie is absent, expired or unreadable, the
+    landing is recorded as direct traffic rather than left blank, so "we
+    don't know where this came from" is a channel like any other.
+    """
+    first_touch = read_attribution_cookie(request)
+    now = timezone.now()
+    frozen: dict[str, str]
+    if first_touch is None:
+        frozen = {"utm_source": "direct", "utm_medium": "none"}
+        first_seen = now
+    else:
+        first_seen = datetime.fromisoformat(first_touch.pop("first_seen"))
+        frozen = first_touch
+    attribution: SignupAttribution = SignupAttribution.objects.create(
+        user=user,
+        first_seen=first_seen,
+        ga_cookie=sanitise(request.COOKIES.get("_ga", ""), CAPS["ga_cookie"]),
+        fbp_cookie=sanitise(request.COOKIES.get("_fbp", ""), CAPS["fbp_cookie"]),
+        fbc_cookie=sanitise(request.COOKIES.get("_fbc", ""), CAPS["fbc_cookie"]),
+        client_ip=client_ip,
+        user_agent=sanitise(request.headers.get("User-Agent", ""), CAPS["user_agent"]),
+        **frozen,
+    )
+    return attribution
