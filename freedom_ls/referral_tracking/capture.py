@@ -1,0 +1,144 @@
+"""Sanitising query-parameter capture and the signed attribution cookie."""
+
+from __future__ import annotations
+
+import base64
+import json
+import unicodedata
+from datetime import datetime
+
+from django.conf import settings
+from django.http import HttpRequest
+from django.http.response import HttpResponseBase
+from django.utils import timezone
+
+from freedom_ls.referral_tracking.config import config
+from freedom_ls.referral_tracking.models import CAPS
+
+TRACKED_PARAMS = (
+    "advert_code",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_content",
+    "utm_term",
+    "gclid",
+    "gbraid",
+    "wbraid",
+    "fbclid",
+)
+LOWERCASED_PARAMS = ("utm_source", "utm_medium")
+COOKIE_SALT = "freedom_ls.referral_tracking"
+
+# Short cookie keys, one per frozen field plus the landing time.
+COOKIE_KEYS: dict[str, str] = {
+    "advert_code": "a",
+    "utm_source": "s",
+    "utm_medium": "m",
+    "utm_campaign": "c",
+    "utm_content": "n",
+    "utm_term": "t",
+    "gclid": "g",
+    "gbraid": "gb",
+    "wbraid": "wb",
+    "fbclid": "f",
+    "landing_path": "p",
+    "referer": "r",
+    "raw_query": "q",
+    "first_seen": "ts",
+}
+
+_CONTROL_CHARS = dict.fromkeys((*range(0, 32), 127))
+
+
+def sanitise(value: str, cap: int, *, lower: bool = False) -> str:
+    # No unquote(): request.GET is already decoded, and decoding again would
+    # corrupt a legitimate %2B or smuggle characters past this filter.
+    value = value.translate(_CONTROL_CHARS)
+    value = unicodedata.normalize("NFC", value).strip()
+    if lower:
+        value = value.lower()
+    return value[:cap]
+
+
+def has_tracked_params(request: HttpRequest) -> bool:
+    return any(name in request.GET for name in TRACKED_PARAMS)
+
+
+def first_touch_from_request(request: HttpRequest) -> dict[str, str]:
+    """Every frozen field for this landing, sanitised, plus first_seen as ISO 8601."""
+    first_touch = {
+        name: sanitise(
+            request.GET.get(name, ""), CAPS[name], lower=name in LOWERCASED_PARAMS
+        )
+        for name in TRACKED_PARAMS
+    }
+    first_touch["landing_path"] = sanitise(request.path, CAPS["landing_path"])
+    first_touch["referer"] = sanitise(
+        request.headers.get("Referer", ""), CAPS["referer"]
+    )
+    first_touch["raw_query"] = sanitise(
+        request.META.get("QUERY_STRING", ""), CAPS["raw_query"]
+    )
+    first_touch["first_seen"] = timezone.now().isoformat()
+    return first_touch
+
+
+def _cookie_max_age() -> int:
+    return config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS * 86400
+
+
+def set_attribution_cookie(
+    response: HttpResponseBase, first_touch: dict[str, str]
+) -> None:
+    payload = {COOKIE_KEYS[name]: value for name, value in first_touch.items() if value}
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    response.set_signed_cookie(
+        config.REFERRAL_TRACKING_COOKIE_NAME,
+        encoded,
+        salt=COOKIE_SALT,
+        max_age=_cookie_max_age(),
+        httponly=True,
+        samesite="Lax",
+        secure=settings.SESSION_COOKIE_SECURE,
+    )
+
+
+def read_attribution_cookie(request: HttpRequest) -> dict[str, str] | None:
+    """The first touch the cookie carries, or None for absent, expired, forged or unparseable."""
+    encoded = request.get_signed_cookie(
+        config.REFERRAL_TRACKING_COOKIE_NAME,
+        default=None,
+        salt=COOKIE_SALT,
+        max_age=_cookie_max_age(),
+    )
+    if encoded is None:
+        return None
+    try:
+        payload = json.loads(base64.urlsafe_b64decode(encoded))
+    except (
+        ValueError
+    ):  # binascii.Error, UnicodeDecodeError and JSONDecodeError all subclass it
+        return None
+    if not _is_first_touch_payload(payload):
+        return None
+    return {name: payload.get(short, "") for name, short in COOKIE_KEYS.items()}
+
+
+def _is_first_touch_payload(payload: object) -> bool:
+    """A JSON object whose keys are all short keys, whose values are all str, and whose
+    landing time parses."""
+    if not isinstance(payload, dict):
+        return False
+    known = set(COOKIE_KEYS.values())
+    if any(
+        key not in known or not isinstance(value, str) for key, value in payload.items()
+    ):
+        return False
+    try:
+        datetime.fromisoformat(payload.get("ts", ""))
+    except ValueError:
+        return False
+    return True
