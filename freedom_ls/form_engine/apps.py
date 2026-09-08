@@ -8,4 +8,4 @@ class FormEngineConfig(AppConfig):
     verbose_name = "Form engine"
 
     def ready(self) -> None:
-        from freedom_ls.form_engine import schema  # noqa: F401
+        from freedom_ls.form_engine import checks, receivers, schema  # noqa: F401

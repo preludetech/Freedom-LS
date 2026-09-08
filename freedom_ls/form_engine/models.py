@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
+from django.core.files.storage import Storage
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from freedom_ls.base.storage import storage_for_alias
 from freedom_ls.content_base.models import BaseContent, MarkdownContent, TitledContent
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
@@ -35,8 +38,10 @@ __all__ = [
     "FormQuestion",
     "FormStrategy",
     "QuestionAnswer",
+    "QuestionAnswerFile",
     "QuestionOption",
     "QuestionType",
+    "ScanStatus",
 ]
 
 
@@ -601,3 +606,86 @@ class QuestionAnswer(SiteAwareModel, TimestampedModel):
 
     def __str__(self):
         return f"{self.form_progress.user} - {self.question}"
+
+
+def get_user_uploads_storage() -> Storage:
+    """The fixed `user_uploads` alias; no setting names it, so it names itself."""
+    return storage_for_alias("user_uploads", "STORAGES['user_uploads']")
+
+
+def question_answer_file_upload_to(instance: QuestionAnswerFile, filename: str) -> str:
+    """The key an answer file's first upload lands at.
+
+    `filename` is the name FLS chose after sniffing the content, never the
+    applicant's own. The applicant prefix is what gives an erasure request a
+    single subtree to sweep.
+
+    `user_uploads` never overwrites, so replacing a file at the same extension
+    is stored under a storage-suffixed sibling of this key and
+    `QuestionAnswerFile.save()` deletes the old one.
+    """
+    extension = Path(filename).suffix.lower()
+    user_id = instance.answer.form_progress.user_id
+    return f"user_uploads/{user_id}/form_answers/{instance.pk}{extension}"
+
+
+class ScanStatus(models.TextChoices):
+    """Where a stored file has got to in malware scanning."""
+
+    PENDING = "PENDING", _("Pending")
+    CLEAN = "CLEAN", _("Clean")
+    REJECTED = "REJECTED", _("Rejected")
+
+
+class QuestionAnswerFile(SiteAwareModel, TimestampedModel):
+    """The file an applicant attached to a file-upload question.
+
+    One per answer: attaching a second file replaces the first rather than
+    accumulating, which is what keeps the bucket free of objects no row names.
+    """
+
+    answer = models.OneToOneField(
+        QuestionAnswer, on_delete=models.CASCADE, related_name="answer_file"
+    )
+    file = models.FileField(
+        upload_to=question_answer_file_upload_to, storage=get_user_uploads_storage
+    )
+    # Kept only to show the applicant what they attached and to name the
+    # download. Never used to build a storage key.
+    original_filename = models.CharField(max_length=255)
+    scan_status = models.CharField(
+        max_length=20, choices=ScanStatus.choices, default=ScanStatus.PENDING
+    )
+
+    def __str__(self) -> str:
+        return self.original_filename
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        """Save, then remove the object this save superseded.
+
+        The key carries the extension, and `user_uploads` does not overwrite, so
+        a replacement always lands at a different key. Without the sweep the
+        previous file -- an applicant's ID scan -- would stay in the bucket with
+        no row naming it and nothing to sweep it later.
+        """
+        superseded = self._stored_file_name()
+        super().save(*args, **kwargs)
+        if superseded and superseded != self.file.name:
+            self.file.storage.delete(superseded)
+
+    def _stored_file_name(self) -> str:
+        """The file name the database currently holds, empty for an unsaved row.
+
+        Read through the base manager, because `objects` filters to the current
+        request's Site and this has to see the row whatever Site it belongs to.
+        Read from the database rather than tracked on the instance, because
+        `file.save()` mutates and saves an instance that was never loaded.
+        """
+        if self._state.adding:
+            return ""
+        stored = (
+            QuestionAnswerFile._base_manager.filter(pk=self.pk)
+            .values_list("file", flat=True)
+            .first()
+        )
+        return stored or ""

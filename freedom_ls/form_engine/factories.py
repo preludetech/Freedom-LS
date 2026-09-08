@@ -2,6 +2,7 @@
 
 import factory
 
+from django.core.files.base import ContentFile
 from django.utils.text import slugify
 
 from freedom_ls.accounts.factories import UserFactory
@@ -13,6 +14,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
     QuestionAnswer,
+    QuestionAnswerFile,
     QuestionOption,
 )
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
@@ -99,3 +101,16 @@ class QuestionAnswerFactory(SiteAwareFactory):
 
     form_progress = factory.SubFactory(FormProgressFactory)
     question = factory.SubFactory(FormQuestionFactory)
+
+
+class QuestionAnswerFileFactory(SiteAwareFactory):
+    """Factory for creating QuestionAnswerFile instances."""
+
+    class Meta:
+        model = QuestionAnswerFile
+
+    answer = factory.SubFactory(QuestionAnswerFactory)
+    original_filename = "scan.png"
+    file = factory.LazyAttribute(
+        lambda obj: ContentFile(b"stored bytes", name="file.jpg")
+    )
