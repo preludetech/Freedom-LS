@@ -55,6 +55,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user) Decide the replacement colour for the form start page's fact-pill icons (QA bug B3: text-secondary on a muted chip measures 1.75:1 under the first_class theme, below the 3:1 WCAG non-text minimum), then apply it
 - [ ] (user) Decide whether the form start page's fact-pill icons keep `text-secondary` (measured 1.75:1 under the first_class theme) or move to a darker token, then either apply the new colour or correct the stale ticked B3 item that says a colour was already applied
 - [ ] (user + cmd) Fix QA bug: fact-pill icon contrast under first_class still measures 1.75:1 though its todo item is ticked as applied (TDD — failing test first, then fix)
+- [ ] (user) Decide whether the form start page keeps the shared `c-player-footer` (Previous flush left, CTA flush right, `pt-4 border-t` divider) or takes the centred solo CTA that the idea, `2. plan.md` and `3. frontend_qa.md` all specify, then either apply the centred CTA or correct the plan and QA plan to match the shipped footer
 
 ## 10. Product documentation
 
