@@ -59,6 +59,7 @@ flowchart TB
     course_applications --> accounts
     course_applications --> content_engine
     course_applications --> course_access
+    course_applications --> form_engine
     course_applications --> learner_management
     course_applications --> site_aware_models
     course_interest --> accounts
@@ -87,6 +88,7 @@ flowchart TB
     educator_interface --> panel_framework
     educator_interface --> site_aware_models
     form_engine --> accounts
+    form_engine --> base
     form_engine --> content_base
     form_engine --> markdown_rendering
     form_engine --> site_aware_models
@@ -159,6 +161,7 @@ flowchart TB
     base -.-> role_based_permissions
     content_base -.-> content_engine
     course_access -.-> course_applications
+    course_applications -.-> learner_progress
     course_interest -.-> learner_management
     educator_interface -.-> accounts
     educator_interface -.-> course_interest
@@ -191,13 +194,13 @@ flowchart TB
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | — |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
-| course_applications | accounts, content_engine, course_access, learner_management, site_aware_models | — |
+| course_applications | accounts, content_engine, course_access, form_engine, learner_management, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, content_engine, site_aware_models | — |
 | deployment | base, content_engine, organisations, reports | — |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | — |
 | educator_interface | content_engine, form_engine, learner_management, learner_progress, organisations, panel_framework, site_aware_models | accounts, course_interest, role_based_permissions |
-| form_engine | accounts, content_base, markdown_rendering, site_aware_models | — |
+| form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | health | base | — |
 | icons | base | — |
 | learner_interface | accounts, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, role_based_permissions |

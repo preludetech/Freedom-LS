@@ -1,0 +1,20 @@
+---
+content_type: FORM_PAGE
+subtitle: One file, so we can confirm who you are
+title: Supporting documents
+uuid: ea756902-719f-4cdc-95ab-342dcf936850
+---
+content: |-
+  We accept a JPEG, PNG or PDF up to 6 MB. Your document is stored privately and
+  is only ever seen by the people reviewing applications.
+uuid: 385503c9-fcb3-4dc1-9adc-3970bdd58bbf
+---
+question: Upload a scan of your ID or a recent certificate
+required: true
+type: file_upload
+uuid: ecc673cc-2be0-4681-83f1-06a11a669171
+---
+question: Is there anything else we should know?
+required: false
+type: long_text
+uuid: f756a724-db73-4e64-81c7-b21ca592aa02

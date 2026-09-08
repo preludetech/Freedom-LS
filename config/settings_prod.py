@@ -51,7 +51,11 @@ X_FRAME_OPTIONS = "DENY"
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
 
 # --- Upload Limits ---
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
+# Django's multipart parser counts only non-file fields against
+# DATA_UPLOAD_MAX_MEMORY_SIZE, so the headroom here is for the urlencoded parts
+# of a large request rather than for the file itself. The per-file cap an
+# applicant's upload is measured against is form_engine.uploads.MAX_UPLOAD_BYTES.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10_485_760  # 10 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5_242_880  # 5 MB
 
 SECRET_KEY = fls_defaults.require_secret_key()

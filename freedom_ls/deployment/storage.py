@@ -6,8 +6,9 @@ from django.core.exceptions import ImproperlyConfigured
 
 from freedom_ls.base.env import env_bool, env_int, env_str, first_set_name
 
-#: The media aliases whose name is fixed, because no setting names them: neither
-#: has a consumer yet. The other three are named by ORGANISATION_LOGO_STORAGE_ALIAS,
+#: The media aliases whose name is fixed, because no setting names them:
+#: user_uploads holds QuestionAnswerFile.file, and certificates has no consumer
+#: yet. The other three are named by ORGANISATION_LOGO_STORAGE_ALIAS,
 #: CONTENT_MEDIA_STORAGE_ALIAS and REPORTS_STORAGE_ALIAS, so they arrive as
 #: arguments rather than as constants here.
 FIXED_ALIAS_PURPOSES: dict[str, str] = {

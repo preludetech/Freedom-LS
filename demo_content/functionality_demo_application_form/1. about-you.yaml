@@ -1,0 +1,58 @@
+---
+content_type: FORM_PAGE
+subtitle: Who you are and where you are starting from
+title: About you
+uuid: ea00e850-e51c-403d-bbd3-07f706eb4721
+---
+content: |-
+  We ask about your experience so we can pitch the first few weeks right.
+  Nothing here rules you out.
+uuid: 2fce93f7-f721-4023-95cf-7b0ad2424d1b
+---
+question: What is your full name?
+required: true
+type: short_text
+uuid: 0a73990c-d232-4da1-91ba-84ed30c683b9
+---
+question: How many years have you been writing software?
+required: true
+type: number
+uuid: 2b53f977-8140-4e3b-b6ff-fa0330780dc8
+---
+options:
+- text: From a friend or colleague
+  uuid: 0560ce84-9488-40ab-882d-33ed14ef2418
+  value: word_of_mouth
+- text: A search engine
+  uuid: 353c6b01-3a93-4d80-817b-cac3c86216c5
+  value: search
+- text: Social media
+  uuid: 04b45055-4e3f-41e1-bbf3-d893a5aeac94
+  value: social
+- text: Somewhere else
+  uuid: cc17a2dc-29e0-4849-80a8-95811cc907ec
+  value: other
+question: How did you hear about this course?
+required: true
+type: multiple_choice
+uuid: 30b739b8-6975-437d-a305-55e0669385d8
+---
+options:
+- text: Building web applications
+  uuid: 048b443b-9319-4362-a8be-1ec89db508ca
+  value: web
+- text: Data and analytics
+  uuid: ce03ef7b-5b33-4bc0-8cab-08433c28358d
+  value: data
+- text: Infrastructure and deployment
+  uuid: 33bf7eef-dad1-4d38-bbe7-44593c87f899
+  value: infrastructure
+question: Which of these interest you?
+required: false
+type: checkboxes
+uuid: ae96d63f-8496-4b79-ac22-8a7003b64136
+---
+question: Why do you want to take this course?
+required: false
+type: long_text
+uuid: b47c8f85-5fd5-4da1-92f1-7c349deac72d
