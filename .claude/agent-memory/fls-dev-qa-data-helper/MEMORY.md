@@ -56,6 +56,7 @@
 - [reference_legend_edge_cases_command.md](reference_legend_edge_cases_command.md) — qa_create_legend_edge_cases: one-form course stressing the question <legend> (wrapping asterisk, inline markdown, 2-paragraph question, optional-no-asterisk); render the `#form-question` partial via render_to_string to check markup WITHOUT starting a FormProgress
 - [reference_org_cohort_inline_pagination.md](reference_org_cohort_inline_pagination.md) — qa_create_org_cohort_pagination: padding one Organisation to 46 cohorts so the admin Cohorts tab spans 3 pages; the admin-inline paginator family (Cohort@20 / Learner@25) and zero-padded names straddling a boundary
 - [reference_form_count_edge_cases_command.md](reference_form_count_edge_cases_command.md) — qa_create_form_count_edge_cases: the 1-question/1-page and 0-question/0-page forms that make the start page's pluralised fact pills reachable; a Form with ZERO FormPages is legal; ALLOWED_HOSTS trap for rolled-back Client() probes
+- [reference_form_attempt_history_command.md](reference_form_attempt_history_command.md) — qa_create_form_attempt_history: N genuinely scored completed sittings on consecutive days for the start page's Previous-attempts list + its 5-row slice; the latest attempt alone decides the placement, so ending on a FAIL leaves the progression-block fixture intact
 
 ## Recurring requests
 
@@ -71,6 +72,15 @@ intro, previous-attempts list). `qa_create_form_count_edge_cases` covers the two
 intro", ADD a scenario to that command rather than starting a new one — it is already the
 "start-page render variations" fixture and its `_report()` helper prints the pill text.
 See [[reference_form_count_edge_cases_command]].
+
+Asked THREE times now on this branch. The split that has settled: **form-shape** branches (how
+many questions/pages, subtitle, intro) belong in `qa_create_form_count_edge_cases`, which builds
+its own courses; **attempt-history** branches (previous-attempts rows, the `[:5]` slice, a
+pass/fail verdict) belong in `qa_create_form_attempt_history`, which is argument-driven and sits
+an EXISTING form. Do not add attempt seeding to the count command — the third ask named a
+specific existing course+form (`qa-progression-block-*`) and wanted its progression-block
+behaviour preserved. See [[reference_form_attempt_history_command]]. Every one of these asks so
+far has been on `demodev_quizqa@email.com` (password == email).
 
 The **quiz-marking browser QA pass** (multi-select scoring fix) has now been set up twice. The full
 recipe is: `qa_create_form_question_types DemoDev`, `qa_create_multiselect_quiz_scoring`,
