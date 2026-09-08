@@ -31,6 +31,7 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_content_engine.Activity",
         "freedom_ls_content_engine.ContentCollectionItem",
         "freedom_ls_content_engine.Course",
+        "freedom_ls_content_engine.CourseCategory",
         "freedom_ls_content_engine.CoursePart",
         "freedom_ls_content_engine.File",
         "freedom_ls_content_engine.Topic",

@@ -9,6 +9,7 @@ from freedom_ls.content_engine.models import (
     Activity,
     ContentCollectionItem,
     Course,
+    CourseCategory,
     CoursePart,
     File,
     Topic,
@@ -37,6 +38,17 @@ class ActivityFactory(SiteAwareFactory):
     slug = factory.LazyAttribute(lambda obj: slugify(obj.title))
     category = "general"
     level = 1
+    file_path = ""
+
+
+class CourseCategoryFactory(SiteAwareFactory):
+    """Factory for CourseCategory model."""
+
+    class Meta:
+        model = CourseCategory
+
+    title = factory.Sequence(lambda n: f"Category {n}")
+    slug = factory.LazyAttribute(lambda obj: slugify(obj.title))
     file_path = ""
 
 

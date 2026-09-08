@@ -13,12 +13,14 @@ from freedom_ls.content_engine.admin import (
     ActivityAdmin,
     ContentCollectionItemAdmin,
     CourseAdmin,
+    CourseCategoryAdmin,
     CoursePartAdmin,
     FileAdmin,
     TopicAdmin,
 )
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
+    CourseCategoryFactory,
     CourseFactory,
     TopicFactory,
 )
@@ -26,6 +28,7 @@ from freedom_ls.content_engine.models import (
     Activity,
     ContentCollectionItem,
     Course,
+    CourseCategory,
     CoursePart,
     File,
     Topic,
@@ -35,6 +38,7 @@ CONTENT_ADMINS = [
     (TopicAdmin, Topic),
     (ActivityAdmin, Activity),
     (CourseAdmin, Course),
+    (CourseCategoryAdmin, CourseCategory),
     (CoursePartAdmin, CoursePart),
     (ContentCollectionItemAdmin, ContentCollectionItem),
     (FileAdmin, File),
@@ -48,6 +52,11 @@ CONTENT_ADMINS = [
 )
 def test_content_admins_never_permit_deletion(admin_class, model) -> None:
     assert admin_class(model, admin.site).has_delete_permission(request=None) is False
+
+
+def test_course_category_admin_never_permits_add() -> None:
+    course_category_admin = CourseCategoryAdmin(CourseCategory, admin.site)
+    assert course_category_admin.has_add_permission(request=None) is False
 
 
 @pytest.mark.django_db
@@ -97,3 +106,42 @@ class TestTheLockdownReachesTheAdminUi:
         )
 
         assert not re.search(r'name="[^"]*-DELETE"', response.content.decode())
+
+    def test_the_course_category_add_page_is_forbidden(self, staff_client) -> None:
+        response = staff_client.get(
+            reverse("admin:freedom_ls_content_engine_coursecategory_add")
+        )
+
+        assert response.status_code == 403
+
+    def test_posting_the_course_category_delete_url_leaves_it_standing(
+        self, staff_client
+    ) -> None:
+        category = CourseCategoryFactory()
+
+        response = staff_client.post(
+            reverse(
+                "admin:freedom_ls_content_engine_coursecategory_delete",
+                args=[category.pk],
+            ),
+            {"post": "yes"},
+        )
+
+        assert response.status_code == 403
+        assert CourseCategory.objects.filter(pk=category.pk).exists()
+
+    def test_the_course_change_form_shows_categories_read_only(
+        self, staff_client
+    ) -> None:
+        category = CourseCategoryFactory(title="Data literacy")
+        course = CourseFactory(dashboard_category=category)
+        course.categories.set([category])
+
+        response = staff_client.get(
+            reverse("admin:freedom_ls_content_engine_course_change", args=[course.pk])
+        )
+
+        html = response.content.decode()
+        assert "Data literacy" in html
+        assert not re.search(r'<select[^>]*name="dashboard_category"', html)
+        assert not re.search(r'<select[^>]*name="categories"', html)

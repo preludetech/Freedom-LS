@@ -67,9 +67,9 @@
                 {% comment %}Inner well — matches c-page's max-width + horizontal padding so the
                 hero content lines up with the breadcrumbs and the content below.{% endcomment %}
                 <div class="relative mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 text-white">
-                    {% if course.category %}
-                        <span class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">
-                            {{ course.category }}
+                    {% if course.dashboard_category %}
+                        <span data-testid="course-category-chip" class="inline-block text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 mb-3">
+                            {{ course.dashboard_category.title }}
                         </span>
                     {% endif %}
                     <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-white">

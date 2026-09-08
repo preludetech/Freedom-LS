@@ -388,7 +388,9 @@ def all_courses(request: HttpRequest) -> HttpResponse:
 
 def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Canonical course detail page — accessible on all screen sizes."""
-    course = get_object_or_404(Course, slug=course_slug)
+    course = get_object_or_404(
+        Course.objects.select_related("dashboard_category"), slug=course_slug
+    )
     # Two distinct registration signals, intentionally both fetched: is_registered
     # drives the template (TOC partialdef) and the three-state CTA vocabulary, while
     # decision.can_access_content drives the content gate. They diverge for an

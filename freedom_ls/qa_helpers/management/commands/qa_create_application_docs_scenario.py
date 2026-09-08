@@ -40,6 +40,7 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
+    CourseCategory,
     DifficultyLevel,
     Topic,
 )
@@ -159,7 +160,7 @@ def _link_topic(site: Site, *, course: Course, topic: Topic) -> None:
         )
 
 
-def _get_or_create_gated_course(site: Site) -> Course:
+def _get_or_create_gated_course(site: Site, category: CourseCategory) -> Course:
     """Create the premium application-gated course, refreshing metadata on re-run."""
     course: Course | None = Course.objects.filter(
         slug=GATED_COURSE_SLUG, site=site
@@ -172,7 +173,7 @@ def _get_or_create_gated_course(site: Site) -> Course:
         "learning_outcomes": GATED_LEARNING_OUTCOMES,
         "difficulty": DifficultyLevel.ADVANCED,
         "estimated_duration": timedelta(hours=18),
-        "category": "Product Analytics",
+        "dashboard_category": category,
     }
     if course is None:
         course = cast(
@@ -183,6 +184,7 @@ def _get_or_create_gated_course(site: Site) -> Course:
         for name, value in fields.items():
             setattr(course, name, value)
         course.save(update_fields=list(fields.keys()))
+    course.categories.set([category])
 
     topic = _ensure_topic(
         site,
@@ -198,7 +200,9 @@ def _get_or_create_gated_course(site: Site) -> Course:
     return cast(Course, Course.objects.get(pk=course.pk))
 
 
-def _get_or_create_free_course(site: Site) -> tuple[Course, list[Topic]]:
+def _get_or_create_free_course(
+    site: Site, category: CourseCategory
+) -> tuple[Course, list[Topic]]:
     """Create the presentable free demo course with two viewable topics."""
     course: Course | None = Course.objects.filter(
         slug=FREE_COURSE_SLUG, site=site
@@ -211,7 +215,7 @@ def _get_or_create_free_course(site: Site) -> tuple[Course, list[Topic]]:
         "learning_outcomes": FREE_COURSE_LEARNING_OUTCOMES,
         "difficulty": DifficultyLevel.BEGINNER,
         "estimated_duration": timedelta(hours=2),
-        "category": "Product Analytics",
+        "dashboard_category": category,
     }
     if course is None:
         course = cast(
@@ -222,6 +226,7 @@ def _get_or_create_free_course(site: Site) -> tuple[Course, list[Topic]]:
         for name, value in fields.items():
             setattr(course, name, value)
         course.save(update_fields=list(fields.keys()))
+    course.categories.set([category])
 
     topics = [
         _ensure_topic(
@@ -304,8 +309,14 @@ def command(site_name: str) -> None:
     learner = _get_or_create_learner(site)
     _ensure_verified_email(learner)
 
-    gated_course = _get_or_create_gated_course(site)
-    free_course, free_topics = _get_or_create_free_course(site)
+    category, _ = CourseCategory.objects.get_or_create(
+        site=site,
+        slug="product-analytics",
+        defaults={"title": "Product Analytics", "file_path": ""},
+    )
+
+    gated_course = _get_or_create_gated_course(site, category)
+    free_course, free_topics = _get_or_create_free_course(site, category)
 
     # Preconditions for the gated course: NO registration (so "Apply now"
     # shows), but a single in-flight application exists.

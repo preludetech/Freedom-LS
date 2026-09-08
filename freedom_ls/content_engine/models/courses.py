@@ -28,12 +28,46 @@ class CourseVisibility(models.TextChoices):
     HIDDEN = "hidden", _("Hidden")
 
 
+class CourseCategory(TitledContent):
+    """A named, ordered group of courses, declared in the content repo."""
+
+    # SchemaContentTypes gains COURSE_CATEGORIES in a later batch of this work,
+    # which lands the matching pydantic schema. A StrEnum member compares equal
+    # to its value, so this literal already matches what that member will be.
+    CONTENT_TYPE = "COURSE_CATEGORIES"
+
+    order = models.PositiveIntegerField(default=0)
+    show_on_dashboard = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "title"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "slug"], name="unique_course_category_slug_per_site"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class Course(MarkdownContent, TitledContent):
     """Course - contains an ordered list of child content."""
 
     CONTENT_TYPE = SchemaContentTypes.COURSE
 
-    category = models.CharField(max_length=200, blank=True, default="")
+    categories = models.ManyToManyField(
+        "freedom_ls_content_engine.CourseCategory",
+        blank=True,
+        related_name="courses",
+    )
+    dashboard_category = models.ForeignKey(
+        "freedom_ls_content_engine.CourseCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="dashboard_courses",
+    )
     # BACKEND-PRIVATE: no view, template, or utility may read or branch on access_config
     # directly. All access decisions are made exclusively by the active course-access backend
     # (settings.COURSE_ACCESS_BACKEND). Callers use the backend's CourseAccessDecision fields
@@ -96,6 +130,7 @@ class Course(MarkdownContent, TitledContent):
     )
 
     class Meta:
+        ordering = ["title", "pk"]
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "slug"], name="unique_course_slug_per_site"

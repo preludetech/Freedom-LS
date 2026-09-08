@@ -10,6 +10,7 @@ from .models import (
     Activity,
     ContentCollectionItem,
     Course,
+    CourseCategory,
     CoursePart,
     File,
     Topic,
@@ -72,6 +73,36 @@ class ActivityAdmin(SiteAwareModelAdmin):
         return False
 
 
+@admin.register(CourseCategory)
+class CourseCategoryAdmin(SiteAwareModelAdmin):
+    list_display = ["title", "slug", "order", "show_on_dashboard"]
+    readonly_fields = ("slug",)
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "slug",
+                    "order",
+                    "show_on_dashboard",
+                )
+            },
+        ),
+        ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: CourseCategory | None = None
+    ) -> bool:
+        return False
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+
 class ContentCollectionItemInline(GenericTabularInline):
     """Inline for collection items."""
 
@@ -89,7 +120,7 @@ class CourseAdmin(SiteAwareModelAdmin):
     list_display = ["title", "subtitle", "visibility"]
     list_filter = ("visibility", ContentTagListFilter)
     search_fields = ("title", "subtitle", "description")
-    readonly_fields = ("slug", "visibility")
+    readonly_fields = ("slug", "visibility", "dashboard_category", "categories")
     inlines = [ContentCollectionItemInline]
 
     fieldsets = (
@@ -104,6 +135,8 @@ class CourseAdmin(SiteAwareModelAdmin):
                     "learning_outcomes",
                     "difficulty",
                     "visibility",
+                    "dashboard_category",
+                    "categories",
                     "estimated_duration",
                 )
             },

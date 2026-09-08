@@ -1030,7 +1030,7 @@ class CourseDataTable(DataTable):
 
 
 class CourseDetailsPanel(InstanceDetailsPanel):
-    fields = ["title", "category"]
+    fields = ["title", "dashboard_category"]
 
 
 class CourseCohortRegistrationDataTable(DataTable):

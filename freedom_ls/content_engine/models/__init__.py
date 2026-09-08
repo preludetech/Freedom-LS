@@ -1,6 +1,7 @@
 from .courses import (
     ContentCollectionItem,
     Course,
+    CourseCategory,
     CoursePart,
     CourseVisibility,
     DifficultyLevel,
@@ -12,6 +13,7 @@ __all__ = [
     "Activity",
     "ContentCollectionItem",
     "Course",
+    "CourseCategory",
     "CoursePart",
     "CourseVisibility",
     "DifficultyLevel",
