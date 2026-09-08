@@ -2,8 +2,9 @@
 
 Deliberately minimal and standalone. Application review will later add a state
 machine, transitions, notes, signals, and permissions, and will swap the plain
-unique constraint for an active-state partial index. Application forms will add a
-config FK and answer/file children.
+unique constraint for an active-state partial index. An application holds the
+form it was created against and its own sitting of that form; the answers
+themselves live in form_engine.
 """
 
 from __future__ import annotations
@@ -25,8 +26,11 @@ class CourseApplication(SiteAwareModel):
       submitted_at/decided_at/decided_by, the view_application/change_application permissions,
       ApplicationNote + ApplicationStateTransition, the application_state_changed signal, and the
       active-state PARTIAL unique index that REPLACES the plain constraint below.
-    NOTE: when application forms land, this model gains `config FK ApplicationConfig` + answer/file children.
     Do not architect these away — leave this model standalone and additive.
+
+    `form` is the form this application was made against, kept even if the course
+    is later re-pointed at another one; `form_progress` is the applicant's own
+    sitting of it, null when the course asks for no form.
     """
 
     user = models.ForeignKey(
@@ -38,6 +42,24 @@ class CourseApplication(SiteAwareModel):
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
         related_name="applications",
+    )
+    # PROTECT: deleting the form would leave applications with no record of what
+    # was asked of the people who filled it in.
+    form = models.ForeignKey(
+        "freedom_ls_form_engine.Form",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="applications",
+    )
+    # SET_NULL: the application is the record that someone applied, and losing
+    # the answers must not lose that.
+    form_progress = models.OneToOneField(
+        "freedom_ls_form_engine.FormProgress",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="course_application",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

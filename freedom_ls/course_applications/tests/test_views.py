@@ -4,19 +4,25 @@ from __future__ import annotations
 
 import pytest
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.images import png_bytes
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+from freedom_ls.learner_progress.models import CourseFormAttempt
+
+from .conftest import gated_course_with_form
 
 # ---------------------------------------------------------------------------
 # apply view
@@ -307,3 +313,448 @@ class TestApplicationStatusView:
 
         assert response.status_code == 302
         assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+
+# ---------------------------------------------------------------------------
+# The application form flow
+# ---------------------------------------------------------------------------
+
+
+def _page_url(app, page_number):
+    return reverse(
+        "course_applications:form_page",
+        kwargs={"pk": app.pk, "page_number": page_number},
+    )
+
+
+def _check_url(app):
+    return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
+
+
+def _questions_on(form, page_number):
+    page = list(form.pages.all())[page_number - 1]
+    return page_questions(page)
+
+
+def _applied(client, course):
+    """Log a fresh user in and take them through the apply POST."""
+    user = UserFactory()
+    client.force_login(user)
+    client.post(
+        reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+    )
+    return CourseApplication.objects.get(user=user, course=course)
+
+
+@pytest.mark.django_db
+class TestApplyStartsTheForm:
+    def test_applying_to_a_course_with_a_form_creates_a_sitting(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+
+        app = _applied(client, course)
+
+        assert app.form_progress.form == form
+
+    def test_applying_to_a_course_with_a_form_records_the_form(
+        self, client, mock_site_context
+    ):
+        """Kept on the application itself, so re-pointing the course later does
+        not rewrite what an existing applicant was asked.
+        """
+        course, form = gated_course_with_form()
+
+        app = _applied(client, course)
+
+        assert app.form == form
+
+    def test_applying_to_a_course_with_a_form_lands_on_page_one(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        user = UserFactory()
+        client.force_login(user)
+
+        response = client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_applying_to_a_course_with_no_form_still_reaches_the_status_page(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        client.force_login(user)
+
+        response = client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+
+
+@pytest.mark.django_db
+class TestApplicationStatusResumes:
+    def test_an_unfinished_application_is_sent_back_to_its_form(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.get(
+            reverse("course_applications:status", kwargs={"pk": app.pk})
+        )
+
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_a_submitted_application_renders_its_status(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        app.form_progress.complete()
+
+        response = client.get(
+            reverse("course_applications:status", kwargs={"pk": app.pk})
+        )
+
+        assert response.status_code == 200
+
+
+@pytest.mark.django_db
+class TestApplicationFormPage:
+    def test_the_owner_sees_page_one(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 200
+
+    def test_a_non_owner_gets_404(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        client.force_login(UserFactory())
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 404
+
+    def test_a_page_number_past_the_end_is_404(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.get(_page_url(app, 9))
+
+        assert response.status_code == 404
+
+    def test_answering_a_page_advances_to_the_next(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+
+        response = client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        assert response["Location"] == _page_url(app, 2)
+
+    def test_answering_the_last_page_reaches_check_your_answers(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        response = client.post(_page_url(app, 2), {})
+
+        assert response["Location"] == _check_url(app)
+
+    def test_a_blank_required_question_is_refused_with_422(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.post(_page_url(app, 1), {})
+
+        assert response.status_code == 422
+
+    def test_a_refused_page_still_keeps_the_answers_that_were_given(
+        self, client, mock_site_context
+    ):
+        """Throwing away the work someone did do, because of the one field they
+        missed, is the cruellest thing a form can do.
+        """
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        years = _questions_on(form, 1)[1]
+
+        client.post(_page_url(app, 1), {f"question_{years.id}": "7"})
+
+        answer = app.form_progress.answers.get(question=years)
+        assert answer.text_answer == "7"
+
+    def test_a_submitted_application_writes_nothing_more(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        app.form_progress.complete()
+
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Grace"})
+
+        answer = app.form_progress.answers.get(question=name)
+        assert answer.text_answer == "Ada"
+
+    def test_a_submitted_application_is_sent_to_its_status_page(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        app.form_progress.complete()
+
+        response = client.post(_page_url(app, 1), {f"question_{name.id}": "Grace"})
+
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+
+    def test_a_question_from_another_form_is_ignored(self, client, mock_site_context):
+        """The page saves only the questions it lays out, so an extra key naming
+        someone else's question reaches nothing.
+        """
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        _other_course, other_form = gated_course_with_form()
+        stranger = _questions_on(other_form, 1)[0]
+
+        client.post(
+            _page_url(app, 1),
+            {f"question_{name.id}": "Ada", f"question_{stranger.id}": "Injected"},
+        )
+
+        assert app.form_progress.answers.filter(question=stranger).count() == 0
+
+
+@pytest.mark.django_db
+class TestCheckYourAnswers:
+    def test_a_non_owner_gets_404(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        client.force_login(UserFactory())
+
+        response = client.get(_check_url(app))
+
+        assert response.status_code == 404
+
+    def test_every_question_gets_a_change_link_to_its_own_page(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.get(_check_url(app))
+
+        body = response.content.decode()
+        assert body.count(_page_url(app, 1)) == len(_questions_on(form, 1))
+
+    def test_an_unanswered_required_question_blocks_submission(
+        self, client, mock_site_context
+    ):
+        """The required question sits on page 1, which this applicant never
+        submitted -- so only a whole-form check catches it.
+        """
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.post(_check_url(app))
+
+        assert response.status_code == 422
+
+    def test_a_blocked_submission_stamps_nothing(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        client.post(_check_url(app))
+
+        app.form_progress.refresh_from_db()
+        assert app.form_progress.completed_time is None
+
+    def test_submitting_a_complete_application_stamps_it(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        client.post(_check_url(app))
+
+        app.form_progress.refresh_from_db()
+        assert app.form_progress.completed_time is not None
+
+    def test_submitting_redirects_to_the_status_page(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        response = client.post(_check_url(app))
+
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+
+    def test_submitting_an_application_records_no_course_attempt(
+        self, client, mock_site_context
+    ):
+        """An application is not coursework. Nothing about filling one in may
+        show up as progress through the course it asks for.
+        """
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        client.post(_check_url(app))
+
+        assert CourseFormAttempt.objects.count() == 0
+
+    def test_a_second_submission_does_not_restamp(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        client.post(_check_url(app))
+        app.form_progress.refresh_from_db()
+        first_stamp = app.form_progress.completed_time
+
+        client.post(_check_url(app))
+
+        app.form_progress.refresh_from_db()
+        assert app.form_progress.completed_time == first_stamp
+
+
+@pytest.mark.django_db
+class TestApplicationFormPageMarkup:
+    def test_each_question_type_on_the_page_gets_its_input(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_page_url(app, 1)).content.decode()
+
+        assert 'type="text"' in body
+        assert 'type="number"' in body
+        assert 'type="radio"' in body
+        assert "<textarea" in body
+
+    def test_the_page_offers_the_page_jump_nav(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_page_url(app, 1)).content.decode()
+
+        assert 'aria-label="Application pages"' in body
+
+    def test_a_submitted_application_says_it_can_no_longer_be_changed(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        app.form_progress.complete()
+
+        body = client.get(_page_url(app, 1)).content.decode()
+
+        assert "can no longer be changed" in body
+
+    def test_a_submitted_application_disables_its_inputs(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        app.form_progress.complete()
+
+        body = client.get(_page_url(app, 1)).content.decode()
+
+        assert "disabled" in body
+
+
+@pytest.mark.django_db
+class TestCheckYourAnswersMarkup:
+    def test_a_file_answer_shows_its_name_and_a_download_link(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        file_question = _questions_on(form, 2)[0]
+        client.post(
+            reverse(
+                "form_engine:question_file_upload",
+                kwargs={
+                    "progress_pk": app.form_progress.pk,
+                    "question_pk": file_question.pk,
+                },
+            ),
+            {"file": SimpleUploadedFile("id-scan.png", png_bytes())},
+        )
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert "id-scan.png" in body
+
+    def test_an_open_application_offers_a_submit_button(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert "Submit application" in body
+
+    def test_a_submitted_application_cannot_be_submitted_again(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        client.post(_check_url(app))
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert "Submit application" not in body
+
+    def test_a_submitted_application_offers_no_change_links(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+        client.post(_check_url(app))
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert _page_url(app, 1) not in body
+
+    def test_an_unanswered_question_says_so(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert "Not answered" in body

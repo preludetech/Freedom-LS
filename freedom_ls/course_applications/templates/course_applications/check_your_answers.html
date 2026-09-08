@@ -1,0 +1,65 @@
+{% extends "_base.html" %}
+{% load fls_base_filters %}
+
+{% block head_title %}Check your answers — {{ course.title }}{% endblock %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            <p class="text-muted">Application for {{ course.title }}</p>
+            <h1>Check your answers</h1>
+
+            {% if required_answers_error %}
+                <c-callout level="error">{{ required_answers_error }}</c-callout>
+            {% endif %}
+
+            <dl class="divide-y divide-border">
+                {% for row in rows %}
+                    <div class="py-4 space-y-1">
+                        <dt class="font-semibold text-on-surface">{{ row.question.rendered_question }}</dt>
+                        <dd class="flex flex-wrap items-baseline justify-between gap-4">
+                            <span class="text-on-surface">
+                                {% if row.answer.answer_file %}
+                                    {{ row.answer.answer_file.original_filename }}
+                                    <span class="text-sm text-muted">({{ row.answer.answer_file.file.size|filesizeformat }})</span>
+                                    <a class="ml-2 text-primary underline"
+                                       href="{% url 'form_engine:own_question_answer_file' file_pk=row.answer.answer_file.pk %}">
+                                        Download<span class="sr-only"> {{ row.question.rendered_question }}</span>
+                                    </a>
+                                {% elif row.answer.text_answer %}
+                                    {{ row.answer.text_answer }}
+                                {% elif row.answer %}
+                                    {% for option in row.answer.selected_options.all %}
+                                        {{ option.text }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="text-muted">Not answered</span>
+                                {% endif %}
+                            </span>
+
+                            {% if not submitted %}
+                                <a class="text-primary underline" href="{{ row.change_url }}">
+                                    Change<span class="sr-only"> answer to {{ row.question.rendered_question }}</span>
+                                </a>
+                            {% endif %}
+                        </dd>
+                    </div>
+                {% endfor %}
+            </dl>
+
+            {% if submitted %}
+                <c-callout level="success">
+                    Your application has been submitted. You will hear back once it has been reviewed.
+                </c-callout>
+                <c-button href="{% url 'course_applications:status' pk=application.pk %}">
+                    Your application
+                </c-button>
+            {% else %}
+                <form method="post">
+                    {% csrf_token %}
+                    <c-button type="submit">Submit application</c-button>
+                </form>
+            {% endif %}
+        </div>
+    </c-page>
+{% endblock content %}

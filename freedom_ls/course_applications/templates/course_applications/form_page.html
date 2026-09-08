@@ -1,0 +1,67 @@
+{% extends "_base.html" %}
+{% load static %}
+
+{% block head_title %}Application — {{ course.title }}{% endblock %}
+
+{% block extra_alpine_components %}{{ block.super }}
+    <script defer src="{% static 'form_engine/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            <p class="text-muted">Application for {{ course.title }}</p>
+            <h1>{{ form_page.title }}</h1>
+
+            <nav aria-label="Application pages" class="flex flex-wrap gap-2">
+                {% for page in page_links %}
+                    <c-form-page-link :number="page.number"
+                                      :is_current="page.is_current"
+                                      :is_accessible="page.is_accessible"
+                                      :url="page.url"
+                                      :title="page.title" />
+                {% endfor %}
+            </nav>
+
+            {% if read_only %}
+                <c-callout level="info">
+                    This application has been submitted and can no longer be changed.
+                </c-callout>
+            {% endif %}
+
+            {% if required_answers_error %}
+                <c-callout level="error">{{ required_answers_error }}</c-callout>
+            {% endif %}
+
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                {% for child in form_page.children %}
+                    {% if child.content_type == "FORM_QUESTION" %}
+                        {% with question=child %}
+                            {% include "form_engine/question.html" %}
+                        {% endwith %}
+                    {% elif child.content_type == "FORM_CONTENT" %}
+                        <c-markdown-container class="max-w-none">
+                            {{ child.rendered_content }}
+                        </c-markdown-container>
+                    {% endif %}
+                {% endfor %}
+
+                <div class="flex flex-wrap gap-4">
+                    {% if previous_page_url %}
+                        <c-button href="{{ previous_page_url }}" variant="secondary">Previous</c-button>
+                    {% endif %}
+                    {% if not read_only %}
+                        <c-button type="submit">
+                            {% if has_next_page %}Next{% else %}Check your answers{% endif %}
+                        </c-button>
+                    {% elif not has_next_page %}
+                        <c-button href="{% url 'course_applications:check_answers' pk=application.pk %}">
+                            Your answers
+                        </c-button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </c-page>
+{% endblock content %}
