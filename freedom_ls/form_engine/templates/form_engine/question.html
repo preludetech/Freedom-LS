@@ -1,0 +1,53 @@
+{% load fls_base_filters %}
+<fieldset class="space-y-3 border-0 p-0">
+    {% comment %}
+    Only the last rendered paragraph goes inline. That is what keeps the
+    asterisk on the question's last word. Earlier paragraphs stay blocks, so
+    a two-paragraph question reads as two paragraphs instead of running
+    together. The number floats because of those blocks: a block sibling
+    would otherwise strand it on a line of its own above the question.
+    {% endcomment %}
+    <legend class="font-semibold text-on-surface w-full float-left px-0 [&>p:last-of-type]:inline">
+        <span class="float-left mr-1"
+              data-testid="question-number-{{ question.question_number }}">{{ question.question_number }}.</span>
+        {% comment %}
+        The `&nbsp;` keeps the asterisk attached to the last word of the
+        question so it can never wrap onto a line of its own.
+        {% endcomment %}
+        {{ question.rendered_question }}{% if question.required %}&nbsp;<span class="text-error" data-testid="required-indicator-{{ question.question_number }}" aria-hidden="true">*</span><span class="sr-only">(required)</span>{% endif %}
+    </legend>
+
+    {% if question.type == "checkboxes" %}
+        <p class="clear-both text-sm text-muted">Select all that apply.</p>
+    {% endif %}
+
+    <div class="space-y-2 clear-both">
+        {% if question.type == "multiple_choice" %}
+            {% include "form_engine/inputs/multiple_choice.html" %}
+        {% elif question.type == "checkboxes" %}
+            {% include "form_engine/inputs/checkboxes.html" %}
+        {% elif question.type == "short_text" %}
+            {% include "form_engine/inputs/short_text.html" %}
+        {% elif question.type == "long_text" %}
+            {% include "form_engine/inputs/long_text.html" %}
+        {% elif question.type == "number" %}
+            {% include "form_engine/inputs/number.html" %}
+        {% else %}
+            <c-callout level="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
+        {% endif %}
+    </div>
+
+    {% comment %}
+    Revealed by examRunnerForm when a required checkbox group is submitted
+    empty — the browser cannot validate a checkbox group itself. It has to stay a
+    descendant of the fieldset, which is how examRunnerForm finds it. Outside the
+    runner nothing reveals it, so under the application shell it never appears.
+    {% endcomment %}
+    {% if question.type == "checkboxes" and question.required %}
+        <p class="text-sm text-error"
+           data-checkbox-required-message
+           hidden>
+            Select at least one option.
+        </p>
+    {% endif %}
+</fieldset>

@@ -1,0 +1,29 @@
+{% load fls_base_filters %}
+{% for option in question.options.all %}
+    <label class="group relative flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
+                   has-[:checked]:border-primary has-[:checked]:bg-primary/5
+                   hover:bg-surface-2 transition-colors"
+           for="q{{ question.id }}_opt{{ option.id }}">
+        {% comment %}
+        No `required` attribute: HTML cannot express "at least one of this
+        group", so data-required drives the group check in examRunnerForm.
+        {% endcomment %}
+        <input type="checkbox"
+               id="q{{ question.id }}_opt{{ option.id }}"
+               name="question_{{ question.id }}"
+               value="{{ option.id }}"
+               class="sr-only"
+               {% if question.required %}data-required="true"{% endif %}
+               {% if read_only %}disabled{% endif %}
+               {% if existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer and option in answer.selected_options.all %}checked{% endif %}{% endwith %}{% endif %} />
+        <span data-testid="checkbox-indicator"
+              aria-hidden="true"
+              class="mt-0.5 flex-none size-5 rounded-sm border-2 border-border bg-surface
+                     flex items-center justify-center transition-colors
+                     group-has-[:checked]:border-primary group-has-[:checked]:bg-primary">
+            <c-icon name="check"
+                    class="size-3.5 text-on-primary opacity-0 group-has-[:checked]:opacity-100" />
+        </span>
+        <span class="text-on-surface">{{ option.text }}</span>
+    </label>
+{% endfor %}

@@ -1,0 +1,35 @@
+{% load fls_base_filters %}
+{% comment %}
+`relative` on the option labels keeps the sr-only input positioned within its
+label so it scrolls with the label. Without it the absolutely-positioned input
+anchors to the scroll container and focusing it on selection makes the page jump.
+
+The indicator span is the only thing distinguishing a single-select question
+from a multi-select one: round for radios, square for checkboxes. It is driven
+off the sr-only input via group-has-[:checked], so the input stays the single
+source of truth and keyboard/AT behaviour is untouched.
+{% endcomment %}
+{% for option in question.options.all %}
+    <label class="group relative flex items-start gap-3 p-3 rounded-md border border-border cursor-pointer
+                   has-[:checked]:border-primary has-[:checked]:bg-primary/5
+                   hover:bg-surface-2 transition-colors"
+           for="q{{ question.id }}_opt{{ option.id }}">
+        <input type="radio"
+               id="q{{ question.id }}_opt{{ option.id }}"
+               name="question_{{ question.id }}"
+               value="{{ option.id }}"
+               class="sr-only"
+               {% if question.required %}required{% endif %}
+               {% if read_only %}disabled{% endif %}
+               {% if existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer and option in answer.selected_options.all %}checked{% endif %}{% endwith %}{% endif %} />
+        <span data-testid="radio-indicator"
+              aria-hidden="true"
+              class="mt-0.5 flex-none size-5 rounded-pill border-2 border-border bg-surface
+                     flex items-center justify-center transition-colors
+                     group-has-[:checked]:border-primary group-has-[:checked]:bg-primary">
+            <span class="size-2 rounded-pill bg-on-primary opacity-0
+                         group-has-[:checked]:opacity-100"></span>
+        </span>
+        <span class="text-on-surface">{{ option.text }}</span>
+    </label>
+{% endfor %}

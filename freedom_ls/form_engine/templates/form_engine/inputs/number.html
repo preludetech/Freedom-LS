@@ -1,0 +1,15 @@
+{% load fls_base_filters %}
+{% comment %}
+The value still lands in `text_answer`: `number` narrows what the browser will
+accept, not how the answer is stored.
+{% endcomment %}
+<label class="sr-only" for="question_{{ question.id }}">{{ question.rendered_question }}</label>
+<input type="number"
+       inputmode="numeric"
+       id="question_{{ question.id }}"
+       name="question_{{ question.id }}"
+       class="w-full rounded-md border border-border bg-white px-3 py-2 text-on-surface
+              focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+       {% if question.required %}required{% endif %}
+       {% if read_only %}disabled{% endif %}
+       {% if existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer %}value="{{ answer.text_answer }}"{% endif %}{% endwith %}{% endif %} />
