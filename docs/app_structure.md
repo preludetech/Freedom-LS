@@ -34,6 +34,7 @@ flowchart TB
     organisations
     panel_framework
     qa_helpers
+    referral_tracking
     reports
     role_based_permissions
     site_aware_models
@@ -42,6 +43,7 @@ flowchart TB
     accounts --> base
     accounts --> mail
     accounts --> markdown_rendering
+    accounts --> referral_tracking
     accounts --> site_aware_models
     accounts --> webhooks
     content_base --> markdown_rendering
@@ -135,6 +137,9 @@ flowchart TB
     qa_helpers --> role_based_permissions
     qa_helpers --> site_aware_models
     qa_helpers --> webhooks
+    referral_tracking --> accounts
+    referral_tracking --> base
+    referral_tracking --> site_aware_models
     reports --> accounts
     reports --> base
     reports --> content_engine
@@ -189,7 +194,7 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, learner_management, organisations |
+| accounts | base, mail, markdown_rendering, referral_tracking, site_aware_models, webhooks | content_engine, course_applications, course_interest, learner_management, organisations |
 | base | — | accounts, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | — |
@@ -211,6 +216,7 @@ flowchart TB
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | — | — |
 | qa_helpers | accounts, content_engine, course_applications, course_interest, course_recommendations, form_engine, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
+| referral_tracking | accounts, base, site_aware_models | — |
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |
 | site_aware_models | base | accounts, content_engine, learner_management, learner_progress, organisations |
