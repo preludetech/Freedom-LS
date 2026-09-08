@@ -34,6 +34,12 @@
                 {% endfor %}
             {% endif %}
 
+            {% comment %}
+            The page's one live region. It has to exist before any swap so a
+            screen reader is already watching it when a section pages.
+            {% endcomment %}
+            {% include "learner_interface/partials/course_list.html#section-status" %}
+
             <div>
                 {% include "learner_interface/partials/course_list.html" %}
             </div>

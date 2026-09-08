@@ -58,8 +58,8 @@ def test_registered_card_for_zero_progress(
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
-    assert "Registered" in body
-    assert "In progress" not in body  # no in-progress card rendered
+    assert 'data-testid="course-status-registered"' in body
+    assert 'data-testid="course-status-in_progress"' not in body
     assert "Not started" not in body  # retired label
 
 
@@ -98,7 +98,7 @@ def test_in_progress_card_when_progress_above_zero(
     client = logged_in_client(user)
     response = client.get(reverse("learner_interface:dashboard"))
     body = response.content.decode()
-    assert "In progress" in body
+    assert 'data-testid="course-status-in_progress"' in body
 
 
 @pytest.mark.django_db

@@ -1,13 +1,18 @@
 {% comment %}
-Dashboard course-list sections. Each collection partial (`current-courses`,
-`recommended-courses`, `available-courses`, `learning-history`) lays out a grid
-of course_card.html — the single card template, which branches internally on
-course.listing_status. No per-status dispatch or leaf templates here.
+Dashboard course-list sections. Every section is driven by one `section`
+(DashboardSection) and lays out a grid of course_card.html — the single card
+template, which branches internally on course.listing_status. No per-status
+dispatch or leaf templates here.
+
+`section-page` is the htmx swap boundary. It sits below the <h2>, so the
+heading survives the swap as a focus target and heading order cannot break.
 {% endcomment %}
 
 {% partialdef section-heading %}
-    <h2 class="text-base sm:text-lg lg:text-xl font-semibold">
-        {{ heading }}
+    <h2 id="{{ section.heading_id }}"
+        tabindex="-1"
+        class="text-base sm:text-lg lg:text-xl font-semibold">
+        {{ section.heading }}
     </h2>
 {% endpartialdef %}
 
@@ -19,100 +24,102 @@ course.listing_status. No per-status dispatch or leaf templates here.
     </div>
 {% endpartialdef %}
 
-{% partialdef current-courses %}
-    <div id="current-courses" class="space-y-4">
-        {% with heading="In Progress" %}
-            {% partial section-heading %}
-        {% endwith %}
-
-        {% if registered_courses %}
-            {% with courses=registered_courses %}
-                {% partial course-grid %}
-            {% endwith %}
-        {% else %}
-            <div class="space-y-3 text-center">
-                {% if completed_courses %}
-                    <p class="text-muted" data-testid="in-progress-empty-with-history">
-                        No courses in progress — everything you're signed up for is finished
-                        and waiting in your Learning History below.
-                    </p>
-                {% else %}
-                    <p class="text-muted" data-testid="in-progress-empty-no-registrations">
-                        You haven't signed up for any courses yet.
-                    </p>
-                {% endif %}
-                <!-- <c-button href="{% url 'learner_interface:courses' %}">
-                    Browse courses
-                </c-button> -->
-            </div>
-        {% endif %}
-    </div>
-{% endpartialdef %}
-
-{% partialdef recommended-courses %}
-    {% if recommended_courses %}
-        <div id="recommended-courses" class="space-y-4">
-            {% with heading="Recommended Courses" %}
-                {% partial section-heading %}
-            {% endwith %}
-            <div class="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 lg:grid-cols-3">
-                {% for recommendation in recommended_courses %}
-                    {% with course=recommendation.course %}
-                        {% include "learner_interface/partials/course_card.html" %}
-                    {% endwith %}
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-{% endpartialdef %}
-
-{% partialdef available-courses %}
-    {% if available_courses %}
-        <div id="available-courses" class="space-y-4">
-            <div class="flex items-center justify-between gap-4">
-                {% with heading="Available courses" %}
-                    {% partial section-heading %}
-                {% endwith %}
-                <c-button href="{% url 'learner_interface:courses' %}"
+{% comment %}
+`contents` so the two children below take their own places in the section's
+outer grid: the controls beside the heading, the card grid across both columns.
+{% endcomment %}
+{% partialdef section-page %}
+    <div id="{{ section.swap_id }}" class="contents">
+        <div class="flex items-center gap-4 justify-self-end">
+            <span class="text-sm text-muted tabular-nums">{{ section.position_text }}</span>
+            <c-course-section-pagination :page_obj="section.page_obj"
+                                         target_id="{{ section.swap_id }}"
+                                         page_param_name="{{ section.page_param_name }}"
+                                         nav_label="{{ section.nav_label }}" />
+            {% if section.browse_all_url %}
+                <c-button href="{{ section.browse_all_url }}"
                           variant="link"
                           size="small"
                           icon_right="next"
                           class="whitespace-nowrap">
                     Browse all courses
                 </c-button>
-            </div>
-            {% with courses=available_courses %}
+            {% endif %}
+        </div>
+        <div class="sm:col-span-2">
+            {% with courses=section.courses %}
                 {% partial course-grid %}
             {% endwith %}
         </div>
-    {% endif %}
+    </div>
 {% endpartialdef %}
 
-{% partialdef learning-history %}
-    {% if completed_courses %}
-        <div id="learning-history" class="space-y-4">
-            {% with heading="Learning History" %}
-                {% partial section-heading %}
-            {% endwith %}
-            {% with courses=completed_courses %}
-                {% partial course-grid %}
-            {% endwith %}
+{% comment %}
+The page's single live region, rendered once by dashboard.html with no
+`section` in context. Only the htmx fragment carries hx-swap-oob, because a
+live region inserted by a swap is frequently never announced — screen readers
+watch regions that were already on the page.
+{% endcomment %}
+{% partialdef section-status %}
+    <div id="dashboard-section-status"
+         role="status"
+         aria-atomic="true"
+         class="sr-only"
+         {% if section %}hx-swap-oob="true"{% endif %}>
+        {% if section %}{{ section.heading }}: showing {{ section.position_text }}{% endif %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef section-page-response %}
+    {% partial section-page %}
+    {% partial section-status %}
+{% endpartialdef %}
+
+{% partialdef course-section %}
+    <div id="{{ section.wrapper_id }}"
+         x-data="courseSectionPagination"
+         class="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-x-4 gap-y-4 items-start">
+        <div>
+            {% partial section-heading %}
+            {% if section.description %}
+                <p class="text-sm text-muted">{{ section.description }}</p>
+            {% endif %}
         </div>
-    {% endif %}
+        {% partial section-page %}
+    </div>
+{% endpartialdef %}
+
+{% comment %}
+In progress is the one section that renders when empty: its copy tells a
+learner who has finished everything where their courses went.
+{% endcomment %}
+{% partialdef in-progress-empty %}
+    <div id="{{ section.wrapper_id }}" class="space-y-4">
+        {% partial section-heading %}
+        <div class="space-y-3 text-center">
+            {% if has_history %}
+                <p class="text-muted" data-testid="in-progress-empty-with-history">
+                    No courses in progress — everything you're signed up for is finished
+                    and waiting in your Learning History below.
+                </p>
+            {% else %}
+                <p class="text-muted" data-testid="in-progress-empty-no-registrations">
+                    You haven't signed up for any courses yet.
+                </p>
+            {% endif %}
+            <!-- <c-button href="{% url 'learner_interface:courses' %}">
+                Browse courses
+            </c-button> -->
+        </div>
+    </div>
 {% endpartialdef %}
 
 <div class="space-y-8 lg:space-y-12">
-    {% comment %}
-    current-courses and learning-history are personalised sections that only make
-    sense for authenticated users. Anonymous visitors see available-courses (the
-    discovery section) and recommended-courses self-hides when empty.
-    {% endcomment %}
-    {% if user.is_authenticated %}
-        {% partial current-courses %}
-    {% endif %}
-    {% partial recommended-courses %}
-    {% partial available-courses %}
-    {% if user.is_authenticated %}
-        {% partial learning-history %}
-    {% endif %}
+    {% for section in sections %}
+        {% if section.slug == "in-progress" and section.page_obj.paginator.count == 0 %}
+            {% partial in-progress-empty %}
+        {% else %}
+            {% partial course-section %}
+        {% endif %}
+    {% endfor %}
 </div>

@@ -3,8 +3,12 @@
 The dashboard view replaces the old ``partial_list_courses`` HTMX
 endpoint; tests for that endpoint were deleted in the same change set.
 
-Covers the dashboard's course sections (registered, completed, recommended,
-available) and the "Available courses" / Browse-all-courses affordances.
+Covers the dashboard's course sections (In progress, Learning history,
+Recommended courses, Available courses) and the "Available courses" /
+Browse-all-courses affordances.
+
+Sections reach the template as one ordered ``sections`` list, so tests read
+them through ``section_by_slug``.
 """
 
 from __future__ import annotations
@@ -23,7 +27,11 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 
-from .conftest import course_progress_record
+from .conftest import (
+    course_progress_record,
+    rendered_section,
+    section_by_slug,
+)
 
 # --- dashboard view ---
 
@@ -42,16 +50,15 @@ def test_dashboard_authenticated_returns_200_with_user_label(
 
 @pytest.mark.django_db
 def test_dashboard_current_courses(mock_site_context, courses, logged_in_client):
-    """Registered non-completed courses appear under registered_courses."""
+    """Registered non-completed courses appear in the In progress section."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    registered = response.context["registered_courses"]
-    assert len(registered) == 1
-    assert registered[0] == courses[0]
+    in_progress = rendered_section(response, "in-progress")
+    assert in_progress.courses == [courses[0]]
     assert courses[0].title in response.content.decode()
 
 
@@ -77,9 +84,7 @@ def test_dashboard_dedupes_a_course_registered_through_two_organisations(
     response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
-    registered = response.context["registered_courses"]
-    assert len(registered) == 1
-    assert registered[0] == courses[0]
+    assert rendered_section(response, "in-progress").courses == [courses[0]]
 
 
 @pytest.mark.django_db
@@ -92,14 +97,14 @@ def test_dashboard_current_courses_have_progress_percentage(
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
-    registered = response.context["registered_courses"]
-    assert len(registered) == 1
-    assert registered[0].progress_percentage == 0
+    in_progress = rendered_section(response, "in-progress")
+    assert len(in_progress.courses) == 1
+    assert in_progress.courses[0].progress_percentage == 0
 
 
 @pytest.mark.django_db
 def test_dashboard_completed_courses(mock_site_context, courses, logged_in_client):
-    """Completed courses surface in completed_courses, not registered_courses."""
+    """Completed courses surface in Learning history, not In progress."""
     user = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
     course_progress_record(courses[0], user, completed_time=timezone.now())
@@ -107,8 +112,8 @@ def test_dashboard_completed_courses(mock_site_context, courses, logged_in_clien
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    assert courses[0] in response.context["completed_courses"]
-    assert courses[0] not in list(response.context["registered_courses"])
+    assert courses[0] in rendered_section(response, "history").courses
+    assert rendered_section(response, "in-progress").courses == []
     assert courses[0].title in response.content.decode()
 
 
@@ -125,22 +130,20 @@ def test_dashboard_removed_learner_lists_course_in_neither_section(
     response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
-    assert courses[0] not in list(response.context["registered_courses"])
-    assert courses[0] not in list(response.context["completed_courses"])
+    assert courses[0] not in rendered_section(response, "in-progress").courses
+    assert section_by_slug(response, "history") is None
 
 
 @pytest.mark.django_db
 def test_dashboard_recommended_courses(mock_site_context, courses, logged_in_client):
-    """Recommended courses appear in recommended_courses context list."""
+    """Recommended courses appear in the Recommended courses section."""
     user = UserFactory()
     RecommendedCourseFactory(user=user, course=courses[0])
     client = logged_in_client(user)
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    recommended = list(response.context["recommended_courses"])
-    assert len(recommended) == 1
-    assert recommended[0].course == courses[0]
+    assert rendered_section(response, "recommended").courses == [courses[0]]
     assert courses[0].title in response.content.decode()
 
 
@@ -162,16 +165,18 @@ def test_dashboard_sorts_each_course_into_its_own_section(
 
     response = client.get(reverse("learner_interface:dashboard"))
 
-    context = response.context
-    assert [course.pk for course in context["registered_courses"]] == [courses[0].pk]
-    assert [course.pk for course in context["completed_courses"]] == [courses[1].pk]
-    assert [rec.course.pk for rec in context["recommended_courses"]] == [courses[2].pk]
-    assert context["registered_courses"][0].accent_slot_key == (
-        courses[0].accent_slot_key
-    )
+    in_progress = rendered_section(response, "in-progress")
+    assert [course.pk for course in in_progress.courses] == [courses[0].pk]
+    assert [course.pk for course in rendered_section(response, "history").courses] == [
+        courses[1].pk
+    ]
+    assert [
+        course.pk for course in rendered_section(response, "recommended").courses
+    ] == [courses[2].pk]
+    assert in_progress.courses[0].accent_slot_key == courses[0].accent_slot_key
 
 
-# --- dashboard available_courses ---
+# --- dashboard Available courses section ---
 
 
 @pytest.mark.django_db
@@ -187,9 +192,9 @@ def test_dashboard_available_excludes_registered_and_completed(
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    available = response.context["available_courses"]
-    assert courses[0] not in available
-    assert courses[1] not in available
+    available = rendered_section(response, "available")
+    assert courses[0] not in available.courses
+    assert courses[1] not in available.courses
 
 
 @pytest.mark.django_db
@@ -203,15 +208,14 @@ def test_dashboard_available_excludes_recommended(
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    available = response.context["available_courses"]
-    assert courses[0] not in available
+    assert courses[0] not in rendered_section(response, "available").courses
 
 
 @pytest.mark.django_db
-def test_dashboard_available_capped_at_three(
+def test_dashboard_available_page_one_holds_three_of_five(
     mock_site_context, courses, logged_in_client
 ):
-    """No more than three available courses are surfaced, even with more eligible."""
+    """Page one shows the page size and says where in the section it sits."""
     user = UserFactory()
     CourseFactory(title="Course D", slug="course-d")
     CourseFactory(title="Course E", slug="course-e")
@@ -219,7 +223,9 @@ def test_dashboard_available_capped_at_three(
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    assert len(response.context["available_courses"]) == 3
+    available = rendered_section(response, "available")
+    assert len(available.courses) == 3
+    assert available.position_text == "1 to 3 of 5"
 
 
 @pytest.mark.django_db
@@ -232,8 +238,7 @@ def test_dashboard_available_includes_eligible_course(
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    available = response.context["available_courses"]
-    assert courses[0] in available
+    assert courses[0] in rendered_section(response, "available").courses
 
 
 @pytest.mark.django_db
@@ -246,7 +251,7 @@ def test_dashboard_available_courses_are_not_registered(
 
     response = client.get(reverse("learner_interface:dashboard"))
 
-    available = response.context["available_courses"]
+    available = rendered_section(response, "available").courses
     assert [course.is_registered for course in available] == [False] * len(available)
     assert (
         reverse("learner_interface:course_detail", args=[available[0].slug])
@@ -289,7 +294,7 @@ def test_dashboard_available_section_hidden_when_empty(
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    assert not response.context["available_courses"]
+    assert section_by_slug(response, "available") is None
     body = response.content.decode()
     assert 'id="available-courses"' not in body
 
@@ -320,8 +325,8 @@ def test_dashboard_completed_course_in_history_not_available(
 
     response = client.get(reverse("learner_interface:dashboard"))
     assert response.status_code == 200
-    assert courses[0] in response.context["completed_courses"]
-    assert courses[0] not in response.context["available_courses"]
+    assert courses[0] in rendered_section(response, "history").courses
+    assert courses[0] not in rendered_section(response, "available").courses
     body = response.content.decode()
     assert 'id="learning-history"' in body
 

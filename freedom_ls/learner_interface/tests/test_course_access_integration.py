@@ -37,7 +37,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 
-from .conftest import course_progress_record
+from .conftest import course_progress_record, rendered_section
 
 # ---------------------------------------------------------------------------
 # 1. Chokepoint gate — initiate_course_access
@@ -283,7 +283,7 @@ def test_course_detail_registered_completed_shows_review_label(
 def test_dashboard_lists_all_courses_with_default_backend(
     mock_site_context, logged_in_client
 ):
-    """With the default backend, available_courses set is unchanged (filter_visible is a no-op)."""
+    """With the default backend, Available courses is unchanged (filter_visible is a no-op)."""
     user = UserFactory()
     course_a = CourseFactory(title="Course A", slug="course-a")
     course_b = CourseFactory(title="Course B", slug="course-b")
@@ -292,8 +292,8 @@ def test_dashboard_lists_all_courses_with_default_backend(
     response = client.get(reverse("learner_interface:dashboard"))
 
     assert response.status_code == 200
-    available = response.context["available_courses"]
-    available_ids = {c.id for c in available}
+    available = rendered_section(response, "available")
+    available_ids = {c.id for c in available.courses}
     assert course_a.id in available_ids
     assert course_b.id in available_ids
 

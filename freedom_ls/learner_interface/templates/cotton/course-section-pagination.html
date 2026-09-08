@@ -1,0 +1,62 @@
+<c-vars page_obj="" target_id="" page_param_name="" nav_label="" />
+
+{% load dashboard_tags %}
+
+{% comment %}
+Previous / next only — the position is stated in text beside this control, and
+a numbered paginator per section down a dashboard is more controls than cards.
+<c-pagination> belongs to the educator tables and is left alone.
+
+Both controls always render. A control at a boundary keeps its markup and drops
+only href and hx-get, which is what suppresses activation: `disabled` would take
+it out of the tab order, so the control a learner just pressed would vanish from
+under their focus as a result of pressing it.
+
+No base_url: section_page_href builds every link from the request's own path and
+query string, so each link carries every other section's page state untouched.
+{% endcomment %}
+<nav aria-label="{{ nav_label }}" class="flex items-center gap-1">
+    {% if page_obj.has_previous %}
+        {% section_page_href page_param_name page_obj.previous_page_number as previous_href %}
+        <a href="{{ previous_href }}"
+           hx-get="{{ previous_href }}"
+           hx-target="#{{ target_id }}"
+           hx-swap="outerHTML"
+           data-direction="previous"
+           aria-label="Previous page"
+           class="btn btn-secondary p-2">
+            <c-icon name="previous" class="size-5" />
+        </a>
+    {% else %}
+        <a role="link"
+           aria-disabled="true"
+           tabindex="-1"
+           data-direction="previous"
+           aria-label="Previous page"
+           class="btn btn-secondary p-2 opacity-50">
+            <c-icon name="previous" class="size-5" />
+        </a>
+    {% endif %}
+
+    {% if page_obj.has_next %}
+        {% section_page_href page_param_name page_obj.next_page_number as next_href %}
+        <a href="{{ next_href }}"
+           hx-get="{{ next_href }}"
+           hx-target="#{{ target_id }}"
+           hx-swap="outerHTML"
+           data-direction="next"
+           aria-label="Next page"
+           class="btn btn-secondary p-2">
+            <c-icon name="next" class="size-5" />
+        </a>
+    {% else %}
+        <a role="link"
+           aria-disabled="true"
+           tabindex="-1"
+           data-direction="next"
+           aria-label="Next page"
+           class="btn btn-secondary p-2 opacity-50">
+            <c-icon name="next" class="size-5" />
+        </a>
+    {% endif %}
+</nav>

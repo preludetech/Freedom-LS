@@ -13,10 +13,15 @@ Params:
   status    — one of: not_registered | registered | in_progress | complete | coming_soon
   with_icon — include the reinforcement icon (rows: True; dashboard cards: False)
 
+The data-testid carries the status the eyebrow resolved to, so a test can tell
+which card variant rendered without matching the label text — several of those
+labels also appear as section headings on the dashboard.
+
 WCAG 1.4.1: the text label is always present; the icon (and any colour) is
 reinforcement only — never the sole indicator of state.
 {% endcomment %}
-<p class="{% if with_icon %}flex items-center gap-1 {% endif %}text-xs text-muted uppercase tracking-wide">
+<p data-testid="course-status-{{ status|default:'not_registered' }}"
+   class="{% if with_icon %}flex items-center gap-1 {% endif %}text-xs text-muted uppercase tracking-wide">
     {% if status == "coming_soon" %}
         {% if with_icon %}<span aria-hidden="true"><c-icon name="deadline" class="size-4" /></span>{% endif %}
         Coming soon

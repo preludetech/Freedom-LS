@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import contextlib
 import uuid
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
+from django.db.models import Q
 from django.http import (
     Http404,
     HttpRequest,
@@ -22,6 +24,7 @@ from django.views.decorators.http import require_POST
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
+    CourseCategory,
     CourseVisibility,
     Topic,
 )
@@ -56,6 +59,7 @@ from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.models import get_cached_site
 
+from .dashboard_sections import DashboardSection, page_for
 from .utils import (
     BLOCKED,
     IN_PROGRESS,
@@ -256,19 +260,45 @@ def _annotate_recommendations(recommendations: list[RecommendedCourse]) -> None:
         )
 
 
-def _available_courses(
-    user, backend: CourseAccessBackend, *, excluded_ids: set[uuid.UUID]
-) -> list[Course]:
-    """Up to three discovery courses the user is neither registered for nor recommended.
+def _discovery_courses(
+    user: RequestUser, backend: CourseAccessBackend, excluded_ids: set[uuid.UUID]
+) -> QuerySet[Course]:
+    """Visible courses the user is neither registered for nor recommended.
 
-    Runs for both auth states — anonymous visitors simply arrive with an empty
-    registration half of ``excluded_ids``.
+    The shared base every discovery section filters further, so
+    ``select_related("dashboard_category")`` is declared once here rather than
+    at each section's call site. Runs for both auth states — anonymous visitors
+    simply arrive with an empty registration half of ``excluded_ids``.
     """
-    visible_courses = backend.filter_visible(user=user, courses=get_all_courses())
-    available_courses: list[Course] = []
-    for course in visible_courses:
-        if course.id in excluded_ids:
-            continue
+    return (
+        backend.filter_visible(user=user, courses=get_all_courses())
+        .exclude(pk__in=excluded_ids)
+        .select_related("dashboard_category")
+    )
+
+
+def _coming_soon_split(
+    courses: QuerySet[Course],
+) -> tuple[QuerySet[Course], QuerySet[Course]]:
+    """Split the discovery pool into (coming soon, everything else).
+
+    Reads the override rather than ``visibility`` alone, so the visibility
+    preview keeps presenting every course as published: with it on, nothing is
+    coming soon and the section disappears.
+    """
+    if override_visibility_to_visible():
+        return courses.none(), courses
+    return (
+        courses.filter(visibility=CourseVisibility.COMING_SOON),
+        courses.exclude(visibility=CourseVisibility.COMING_SOON),
+    )
+
+
+def _annotate_discovery_courses(
+    courses: list[Course], backend: CourseAccessBackend
+) -> None:
+    """Stamp the access badge and listing status onto each discovery course."""
+    for course in courses:
         setattr(course, "is_registered", False)  # noqa: B010
         stamp_course_access_badge(course, badge=backend.get_access_badge(course=course))
         setattr(  # noqa: B010
@@ -281,21 +311,152 @@ def _available_courses(
                 progress_percentage=0,
             ),
         )
-        available_courses.append(course)
-        if len(available_courses) == 3:
-            break
-    return available_courses
 
 
-def dashboard(request: HttpRequest) -> HttpResponse:
-    """Dashboard view — authenticated or anonymous.
+def _in_progress_section(
+    request: HttpRequest,
+    registered_courses: list[Course],
+    user: RequestUser,
+    backend: CourseAccessBackend,
+) -> DashboardSection:
+    """The In progress section. Always built, because it owns an empty state."""
+    page_obj = page_for(request, "in-progress", registered_courses)
+    courses = list(page_obj.object_list)
+    _annotate_registered_courses(courses, user, backend)
+    return DashboardSection(
+        slug="in-progress",
+        heading="In progress",
+        wrapper_id="current-courses",
+        page_obj=page_obj,
+        courses=courses,
+    )
 
-    Authenticated users see their personalised course lists, backend-contributed
-    panels, and the welcome greeting. Anonymous users see a hero and the
-    discovery (available courses) section only. Both states share a single code
-    path; personalised work is guarded by ``is_auth`` to avoid unnecessary
-    backend calls for anonymous visitors.
+
+def _recommended_section(
+    request: HttpRequest, recommendations: list[RecommendedCourse]
+) -> DashboardSection | None:
+    page_obj = page_for(request, "recommended", recommendations)
+    page_recommendations = list(page_obj.object_list)
+    if not page_recommendations:
+        return None
+    _annotate_recommendations(page_recommendations)
+    return DashboardSection(
+        slug="recommended",
+        heading="Recommended courses",
+        wrapper_id="recommended-courses",
+        page_obj=page_obj,
+        courses=[rec.course for rec in page_recommendations],
+    )
+
+
+def _category_section(
+    request: HttpRequest,
+    category: CourseCategory,
+    rest: QuerySet[Course],
+    backend: CourseAccessBackend,
+) -> DashboardSection | None:
+    page_obj = page_for(
+        request, category.slug, rest.filter(dashboard_category=category)
+    )
+    courses = list(page_obj.object_list)
+    if not courses:
+        return None
+    _annotate_discovery_courses(courses, backend)
+    return DashboardSection(
+        slug=category.slug,
+        heading=category.title,
+        wrapper_id=f"category-{category.slug}",
+        page_obj=page_obj,
+        courses=courses,
+        description=category.description,
+        browse_all_url=reverse("learner_interface:courses"),
+    )
+
+
+def _available_section(
+    request: HttpRequest, rest: QuerySet[Course], backend: CourseAccessBackend
+) -> DashboardSection | None:
+    """The catch-all: uncategorised courses, plus those in a hidden category.
+
+    Only ``dashboard_category`` decides this — a course whose dashboard
+    category is hidden lands here rather than in whichever of its other
+    categories happens to have a section on screen.
     """
+    page_obj = page_for(
+        request,
+        "available",
+        rest.filter(
+            Q(dashboard_category__isnull=True)
+            | Q(dashboard_category__show_on_dashboard=False)
+        ),
+    )
+    courses = list(page_obj.object_list)
+    if not courses:
+        return None
+    _annotate_discovery_courses(courses, backend)
+    return DashboardSection(
+        slug="available",
+        heading="Available courses",
+        wrapper_id="available-courses",
+        page_obj=page_obj,
+        courses=courses,
+        browse_all_url=reverse("learner_interface:courses"),
+    )
+
+
+def _coming_soon_section(
+    request: HttpRequest, coming_soon: QuerySet[Course], backend: CourseAccessBackend
+) -> DashboardSection | None:
+    page_obj = page_for(request, "coming-soon", coming_soon)
+    courses = list(page_obj.object_list)
+    if not courses:
+        return None
+    _annotate_discovery_courses(courses, backend)
+    return DashboardSection(
+        slug="coming-soon",
+        heading="Coming soon",
+        wrapper_id="coming-soon-courses",
+        page_obj=page_obj,
+        courses=courses,
+    )
+
+
+def _history_section(
+    request: HttpRequest, completed_courses: list[Course]
+) -> DashboardSection | None:
+    page_obj = page_for(request, "history", completed_courses)
+    courses = list(page_obj.object_list)
+    if not courses:
+        return None
+    _annotate_completed_courses(courses)
+    return DashboardSection(
+        slug="history",
+        heading="Learning history",
+        wrapper_id="learning-history",
+        page_obj=page_obj,
+        courses=courses,
+    )
+
+
+@dataclass(frozen=True)
+class _DashboardInputs:
+    """The per-request work every section is built from.
+
+    Assembled once whichever branch runs: the category and catch-all sections
+    exclude registered and recommended courses, so even a single-section htmx
+    response needs all three lists.
+    """
+
+    is_auth: bool
+    backend: CourseAccessBackend
+    registered_courses: list[Course]
+    completed_courses: list[Course]
+    recommended_courses: list[RecommendedCourse]
+    coming_soon: QuerySet[Course]
+    rest: QuerySet[Course]
+
+
+def _dashboard_inputs(request: HttpRequest) -> _DashboardInputs:
     backend = get_course_access_backend()
     is_auth = request.user.is_authenticated
 
@@ -305,35 +466,140 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     completed_courses = get_completed_courses(request.user)
     recommended_courses = _visible_recommendations(request.user, backend)
 
-    if is_auth:
-        _annotate_registered_courses(registered_courses, request.user, backend)
-        _annotate_completed_courses(completed_courses)
-        _annotate_recommendations(recommended_courses)
-
     excluded_ids = (
         {c.id for c in get_course_registrations(request.user)} if is_auth else set()
     ) | {rec.course_id for rec in recommended_courses}
-    available_courses = _available_courses(
-        request.user, backend, excluded_ids=excluded_ids
+    coming_soon, rest = _coming_soon_split(
+        _discovery_courses(request.user, backend, excluded_ids)
     )
+    return _DashboardInputs(
+        is_auth=is_auth,
+        backend=backend,
+        registered_courses=registered_courses,
+        completed_courses=completed_courses,
+        recommended_courses=recommended_courses,
+        coming_soon=coming_soon,
+        rest=rest,
+    )
+
+
+def _dashboard_sections(
+    request: HttpRequest, inputs: _DashboardInputs
+) -> list[DashboardSection]:
+    """Every section this visitor sees, in the order they are rendered.
+
+    The first category section is the site's headline group and sits above
+    Recommended courses. In progress leads the page when it holds something and
+    otherwise drops to just above Learning history, where its "waiting in your
+    Learning History below" copy sits next to the history it names.
+    """
+    category_sections = [
+        section
+        for category in CourseCategory.objects.filter(show_on_dashboard=True)
+        if (
+            section := _category_section(request, category, inputs.rest, inputs.backend)
+        )
+    ]
+    in_progress = (
+        _in_progress_section(
+            request, inputs.registered_courses, request.user, inputs.backend
+        )
+        if inputs.is_auth
+        else None
+    )
+    in_progress_has_courses = (
+        in_progress is not None and in_progress.page_obj.paginator.count > 0
+    )
+    history = _history_section(request, inputs.completed_courses)
+
+    sections: list[DashboardSection] = []
+    if in_progress is not None and in_progress_has_courses:
+        sections.append(in_progress)
+    sections.extend(category_sections[:1])
+    recommended = _recommended_section(request, inputs.recommended_courses)
+    if recommended is not None:
+        sections.append(recommended)
+    sections.extend(category_sections[1:])
+    available = _available_section(request, inputs.rest, inputs.backend)
+    if available is not None:
+        sections.append(available)
+    coming_soon = _coming_soon_section(request, inputs.coming_soon, inputs.backend)
+    if coming_soon is not None:
+        sections.append(coming_soon)
+    if in_progress is not None and not in_progress_has_courses:
+        sections.append(in_progress)
+    if history is not None:
+        sections.append(history)
+    return sections
+
+
+def _requested_section(
+    request: HttpRequest, inputs: _DashboardInputs
+) -> DashboardSection | None:
+    """The one section an htmx page request asked for, by its swap target id.
+
+    Building only this section is the point of the swap: the other eight
+    sections' page queries and per-course annotation are never paid for.
+    """
+    target = request.headers.get("HX-Target", "")
+    prefix = "section-page-"
+    if not target.startswith(prefix):
+        return None
+    slug = target[len(prefix) :]
+
+    if slug in {"in-progress", "history"} and not inputs.is_auth:
+        return None
+    if slug == "in-progress":
+        return _in_progress_section(
+            request, inputs.registered_courses, request.user, inputs.backend
+        )
+    if slug == "history":
+        return _history_section(request, inputs.completed_courses)
+    if slug == "recommended":
+        return _recommended_section(request, inputs.recommended_courses)
+    if slug == "available":
+        return _available_section(request, inputs.rest, inputs.backend)
+    if slug == "coming-soon":
+        return _coming_soon_section(request, inputs.coming_soon, inputs.backend)
+    category = get_object_or_404(CourseCategory, slug=slug, show_on_dashboard=True)
+    return _category_section(request, category, inputs.rest, inputs.backend)
+
+
+def dashboard(request: HttpRequest) -> HttpResponse:
+    """Dashboard view — authenticated or anonymous, whole page or one section.
+
+    Authenticated users see their personalised course lists, backend-contributed
+    panels, and the welcome greeting. Anonymous users see a hero and the
+    discovery sections only. An htmx request naming a section's swap target in
+    ``HX-Target`` gets that section's page fragment instead of the whole page.
+    """
+    inputs = _dashboard_inputs(request)
+
+    if request.headers.get("HX-Request") == "true":
+        section = _requested_section(request, inputs)
+        if section is None:
+            raise Http404("No such dashboard section.")
+        return render(
+            request,
+            "learner_interface/partials/course_list.html#section-page-response",
+            {"section": section},
+        )
 
     # Dashboard contributions from the active backend (e.g. the applications panel).
     # Only fetched for authenticated users — anonymous visitors have no panels,
     # and calling get_dashboard_contributions for an anonymous user is unnecessary.
     dashboard_panels: list[str] = []
-    if is_auth:
-        contributions = backend.get_dashboard_contributions(user=request.user)
+    if inputs.is_auth:
+        contributions = inputs.backend.get_dashboard_contributions(user=request.user)
         dashboard_panels = [
             render_to_string(c.template_name, c.context, request=request)
             for c in contributions
         ]
 
     context = {
-        "registered_courses": registered_courses,
-        "completed_courses": completed_courses,
-        "recommended_courses": recommended_courses,
-        "available_courses": available_courses,
+        "sections": _dashboard_sections(request, inputs),
         "dashboard_panels": dashboard_panels,
+        "has_history": bool(inputs.completed_courses),
     }
     return render(request, "learner_interface/dashboard.html", context)
 
@@ -1511,6 +1777,8 @@ def form_submit_and_exit(request, course_slug: str, index: int):
 
 
 if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
     from freedom_ls.accounts.models import User
     from freedom_ls.course_access.backends import CourseAccessBackend, RequestUser
 

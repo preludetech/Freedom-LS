@@ -29,6 +29,8 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 
+from .conftest import rendered_section, section_by_slug
+
 # --- all_courses ---
 
 
@@ -304,16 +306,15 @@ def test_dashboard_coming_soon_present_for_anonymous(
     mock_site_context, course_with_topic
 ):
     """A coming-soon course still appears on the public home page for an anonymous
-    visitor (with its "Coming soon" chip) — the exclusion is specific to HIDDEN."""
-    course_with_topic(
+    visitor, in the Coming soon section — the exclusion is specific to HIDDEN."""
+    course = course_with_topic(
         visibility=CourseVisibility.COMING_SOON, slug="cs", title="Coming Soon Course"
     )
 
     response = Client().get(reverse("learner_interface:dashboard"))
-    body = response.content.decode()
 
-    assert "Coming Soon Course" in body
-    assert "Coming soon" in body
+    assert rendered_section(response, "coming-soon").courses == [course]
+    assert "Coming Soon Course" in response.content.decode()
 
 
 # --- OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE cosmetics ---
@@ -366,9 +367,9 @@ def test_all_courses_coming_soon_shows_no_chip_for_authenticated_with_override(
 def test_dashboard_available_coming_soon_shows_no_chip_with_override(
     mock_site_context, course_with_topic, logged_in_client
 ):
-    """_available_courses: with the override on, a coming-soon course's discovery
-    card carries no "Coming soon" chip."""
-    course_with_topic(
+    """With the override on, nothing is coming soon: the course discovers as an
+    ordinary card in Available courses, and no Coming soon section renders."""
+    course = course_with_topic(
         visibility=CourseVisibility.COMING_SOON,
         slug="cs",
         title="Preview Launch Course",
@@ -380,6 +381,8 @@ def test_dashboard_available_coming_soon_shows_no_chip_with_override(
     body = response.content.decode()
 
     assert response.status_code == 200
+    assert rendered_section(response, "available").courses == [course]
+    assert section_by_slug(response, "coming-soon") is None
     assert "Preview Launch Course" in body
     assert "Coming soon" not in body
 

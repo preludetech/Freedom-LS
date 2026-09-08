@@ -467,4 +467,41 @@ document.addEventListener("alpine:init", () => {
             });
         },
     }));
+
+    // Focus management for a paginated dashboard section
+    // (learner_interface/partials/course_list.html). Registered on the section
+    // wrapper, which sits outside the swapped element and so survives it;
+    // htmx events bubble, so listening here catches the inner swap.
+    //
+    // Focus returns to the equivalent control in the newly rendered page. When
+    // that control is now at a boundary it cannot hold focus, so focus falls
+    // back to the section's heading rather than to <body>.
+    Alpine.data("courseSectionPagination", () => ({
+        pressed: null,
+        _onBeforeRequest: null,
+        _onAfterSwap: null,
+        init() {
+            this._onBeforeRequest = (e) => {
+                this.pressed = e.detail.elt.dataset.direction ?? null;
+            };
+            this._onAfterSwap = () => {
+                if (!this.pressed) return;
+                const control = this.$el.querySelector(
+                    `[data-direction="${this.pressed}"]`,
+                );
+                const target =
+                    control && control.getAttribute("aria-disabled") !== "true"
+                        ? control
+                        : this.$el.querySelector("h2");
+                target?.focus({ preventScroll: true });
+                this.pressed = null;
+            };
+            this.$el.addEventListener("htmx:beforeRequest", this._onBeforeRequest);
+            this.$el.addEventListener("htmx:afterSwap", this._onAfterSwap);
+        },
+        destroy() {
+            this.$el.removeEventListener("htmx:beforeRequest", this._onBeforeRequest);
+            this.$el.removeEventListener("htmx:afterSwap", this._onAfterSwap);
+        },
+    }));
 });
