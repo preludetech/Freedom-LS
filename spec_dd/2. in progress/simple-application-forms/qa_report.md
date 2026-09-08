@@ -1,262 +1,405 @@
 # Frontend QA report: simple application forms
 
-64 test cases were run against the application-gated course flow (apply, fill in the form across
-pages, attach/replace/remove a file, check-your-answers, submit, read-only state after submission,
-cross-account access, admin review of uploaded files, the unchanged exam runner, and re-running
-`content_save`). 59 passed and 5 failed. The 5 failures reduce to 3 distinct bugs: the client-side
-6 MB file-size check does not actually stop the upload (B1), the check-your-answers page renders as
-a two-column grid instead of a stacked list at all three viewports (B2), and the attached-file
-Download link is a 20px-tall tap target on mobile (B3).
+An application-gated course can now name an application form, and applying walks the learner
+through that form page by page, lets them attach a file, shows them a check-your-answers page,
+and only then records the submission. This run walked that whole flow end to end, tried to break
+it the way an applicant plausibly would, checked the admin side of uploaded files, and then walked
+the course player's own quiz and survey forms to confirm the shared question markup and page
+arithmetic still behave exactly as they did before this branch. The plan ran to completion with no
+smoke abort: every one of its nine sections executed. Two bugs came out of it, both red-lane
+(neither auto-fixable without a browser or a product decision, so both are documented here
+unresolved rather than fixed): a dead client-side file-size guard on the application form's upload
+widget, and a page-jump nav on the application shell that re-locks a page the applicant has
+already reached, caused by pre-existing page-accessibility arithmetic meeting optional questions
+for the first time.
 
 ## Methodology
 
-Driven manually through Playwright MCP at three viewports: desktop (1920x1080), mobile (375x812)
-and tablet (768x1024). Screenshots were collected into `screenshots/` beside this report.
-Screenshot compression ran afterwards and found nothing over the size threshold.
+The run drove a real browser through the Playwright MCP tools rather than reading templates. Three
+viewports were exercised: desktop at 1920x1080, mobile at 375x812, and tablet at 768x1024.
+Screenshots were collected into `screenshots/` beside this report; every image referenced below is
+present in that directory alongside a handful more that were captured but not needed for the
+narrative. PNG compression ran across the set and reported no file over 1024KB, so nothing needed
+shrinking. The smoke gate passed, so the run proceeded past it to the full plan; Steps 7, 8 and 9
+(admin, course-player forms, and reload) all executed rather than being skipped for time.
 
 ## Diff scoping
 
-Scoping class: **FULL**. The changed-file set spans the file-upload input template
-(`freedom_ls/form_engine/templates/form_engine/inputs/file_upload.html`), the Alpine components
-driving it (`freedom_ls/form_engine/static/form_engine/js/alpine-components.js`), the application
-form page and check-your-answers templates
-(`freedom_ls/course_applications/templates/course_applications/form_page.html`,
-`.../check_your_answers.html`), the exam-runner page template
-(`freedom_ls/learner_interface/templates/learner_interface/course_form_page.html`), plus 70 other
-files. Because the diff touches the shared question-rendering partials as well as the new
-application-only templates, both the new applicant flow and the pre-existing exam/survey runner
-were in scope for regression checks. **Nothing was skipped** — every section of the plan (§1
-through §9), all three viewports where the plan calls for them, and the admin/permissions checks
-all ran.
+Scoping classed this change **FULL**, on the basis of the changed template and static paths. A
+representative handful from the `scoping` record's `changed_files`:
+
+- `freedom_ls/course_applications/templates/course_applications/check_your_answers.html`
+- `freedom_ls/course_applications/templates/course_applications/form_page.html`
+- `freedom_ls/form_engine/templates/form_engine/question.html`
+- `freedom_ls/form_engine/templates/form_engine/inputs/*.html`
+- `freedom_ls/form_engine/static/form_engine/js/alpine-components.js`
+- `freedom_ls/learner_interface/templates/learner_interface/course_form_page.html`
+- `freedom_ls/form_engine/views.py`, `freedom_ls/course_applications/views.py`
+- `freedom_ls/form_engine/paging.py`, `freedom_ls/form_engine/uploads.py`, `freedom_ls/form_engine/admin.py`
+- `demo_content/functionality_demo_application_form/*`
+
+plus ~80 further .py/.md files. Nothing was skipped: the desktop, mobile and tablet passes all ran
+in full.
 
 ## Smoke gate
 
-**Pass.** Pages checked before the full run:
-- `http://127.0.0.1:8324/` (dashboard, logged in as `demodev@email.com`)
-- `http://127.0.0.1:8324/courses/functionality-demo-application-gated-course/detail/`
+The smoke gate passed. It loaded two pages before the full run started: the site root
+(`http://127.0.0.1:8324/`) and the application-gated course detail page
+(`http://127.0.0.1:8324/courses/functionality-demo-application-gated-course/detail/`). Port 8324
+was chosen deliberately to match the `DemoDev` site's configured domain `127.0.0.1:8324`, which the
+site-resolution middleware keys on.
 
-## Results by section
+## Results by plan section
 
-### §1 The control: a gated course without a form
+### §1 The control: a gated course without a form still works as before
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 1.1 | desktop | pass | "By application" + "Apply now" shown for the form-less gated course |
-| 1.2 | desktop | pass | Confirmation page "Apply to Advanced Product Analytics Masterclass" |
-| 1.3 | desktop | pass | Submit goes straight to the status page; no form page appears |
-| 1.4 | desktop | pass | Dashboard "Your applications" links to the status page |
-| 1.4 | mobile | pass | Same panel at 375px lists both applications, titles wrap not overflow |
+Pass. The gated course with no `application_form` still shows "By application" and "Apply now" on
+its detail page, "Apply to Advanced Product Analytics Masterclass" on confirmation, and lands
+straight on the received/pending-review status page on submit — no form page is interposed at any
+point. The dashboard's "Your applications" panel lists it and links to the status page. This test
+only became reachable once `OVERRIDE_COURSE_ACCESS_TO_FREE` was turned off; see General notes.
+
+![](screenshots/page-2026-09-08T16-50-51-675Z.png)
 
 ### §2 Applying to a course that names a form
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 2.1 | desktop | pass | "By application" + "Apply now" on the gated-with-form course |
-| 2.2 | desktop | pass | Page 1 at `/applications/application/<uuid>/page/1/`, correct eyebrow, heading, dots, 5 questions |
-| 2.2 | mobile | pass | Stacks cleanly, no overflow; cosmetic legend wrap noted below |
-| 2.2 | tablet | pass | No horizontal overflow at 768px |
-| 2.3 | desktop | pass | Number question is `<input type=number>` (spinbutton in a11y tree) |
-| 2.4 | desktop | pass | 422 + "Questions 1, 2 and 3 need answers before you can continue." Native-validation deviation noted below |
-| 2.5 | desktop | pass | Partial fill keeps typed value, callout narrows to remaining questions |
-| 2.6 | desktop | pass | Full required fill advances to page 2, dots update |
-| 2.7 | desktop | pass | Dot 1 preserves all page-1 answers |
+Pass, with one documented deviation from the plan's expectations (not a defect). "Apply now" then
+"Submit application" lands on `/applications/application/<uuid>/page/1/`: eyebrow "Application for
+<course>", heading "About you", page dots with 1 highlighted and 2 not a link, and the five page-one
+questions (short text, number, multiple choice, checkbox group, long text). The number question is
+a real `<input type="number">`.
+
+![](screenshots/page-2026-09-08T16-51-18-538Z.png)
+
+The plan expects clicking "Next" with nothing filled to produce a 422 callout (test 2.4). In
+practice it doesn't reach the server at all: the shared question templates put the native HTML
+`required` attribute on short-text, number and radio inputs, so the browser blocks the submit
+before any request goes out. The server-side check was confirmed correct by stripping the
+`required` attributes in devtools and resubmitting — it comes back HTTP 422 with "Questions 1, 2
+and 3 need answers before you can continue," exactly as the plan describes. See General notes for
+the implication.
+
+With the required attributes stripped and only the short text filled, the 422 re-render named
+exactly the remaining required questions ("Questions 2 and 3 need answers before you can
+continue"), and the typed short text survived the rejection.
+
+![](screenshots/page-2026-09-08T16-52-27-361Z.png)
+
+Filling every required question and leaving the optional checkbox group and long text blank
+advances to page 2 ("Supporting documents"), dot 2 current, dot 1 a link, with question numbering
+continuing at 6 and 7 rather than restarting. Clicking dot 1 returns to page 1 with all three
+answers preserved, and Next returns to page 2 — though dot 2 is re-locked on the way back; that's
+bug B2, covered below.
 
 ### §3 The file question
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 3.1 | desktop | pass | Required file picker, hint "JPEG, PNG or PDF, up to 6 MB.", no Remove |
-| 3.2 | desktop | **fail** | See B1 |
-| 3.3 | desktop | pass | `not-an-image.png` POSTs, 422, "File is not a readable image or PDF." |
-| 3.4 | desktop | pass | `id-scan.png` swaps to attached state via htmx, no full page load |
-| 3.4 | mobile | **fail** | See B3 |
-| 3.4 | tablet | pass | Attached-file row fits at 768px, no overflow |
-| 3.5 | desktop | pass | Download is `attachment; filename="id-scan.png"`, image/png, 4826 bytes, PNG magic bytes |
-| 3.6 | desktop | pass | Remove/Replace/Download accessible names carry the question text |
-| 3.7 | desktop | pass | Dashboard round-trip returns to page 2 with file still attached |
-| 3.8 | desktop | pass | Replace with `id-scan.pdf` updates in place (same file uuid) |
-| 3.9 | desktop | pass | Remove returns to empty picker with "File removed..." |
-| 3.10 | desktop | pass | Empty file question: 422, "Question 6 needs an answer before you can continue." |
-| 3.11 | desktop | pass | Re-attach and submit reaches check-your-answers |
+Mixed: everything passed except the client-side size guard, which is bug B1.
+
+Page 2 shows the required file question with a real file picker and the hint "JPEG, PNG or PDF, up
+to 6 MB," no Remove button yet. Picking the 7 MB oversize file does not trigger the expected
+inline, request-free rejection — see B1. Picking a mislabelled text file (`not-an-image.png`)
+correctly POSTs, comes back 422, and re-renders with "File is not a readable image or PDF," with
+nothing attached.
+
+![](screenshots/page-2026-09-08T16-55-59-094Z.png)
+
+Picking a real PNG swaps the widget to its attached state with no full page load — filename,
+"(4.1 KB)", a Download link, Replace and Remove — and downloading it returns the exact bytes
+uploaded (PNG magic, correct Content-Disposition). Accessible names on Remove, Replace and
+Download all carry the question text rather than being bare labels.
+
+![](screenshots/page-2026-09-08T16-56-40-902Z.png)
+
+Leaving mid-page for the dashboard and returning lands back on page 2 with the file still attached,
+proving the status URL redirects to the resume page rather than the status page while the
+application is a draft. Replace swaps the file cleanly (same answer-file UUID, updated in place,
+not duplicated), and Remove returns the empty picker with a message that the question needs a
+file. Submitting with the file empty re-renders 422 naming that question; re-attaching and
+continuing reaches check-your-answers as expected.
+
+At 375px, page 2 lays out cleanly: the eyebrow wraps, the page dots stay tappable, the
+attached-file row wraps its Download/Replace/Remove controls onto their own line, and the
+Previous/Check-your-answers pair sits at the foot without overflow.
+
+![](screenshots/page-2026-09-08T17-00-05-268Z.png)
 
 ### §4 The check-your-answers page
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 4.1 | desktop | **fail** | Content correct, layout wrong — see B2 |
-| 4.1 | mobile | **fail** | See B2 |
-| 4.1 | tablet | **fail** | See B2 |
-| 4.2 | desktop | pass | Each Change link's accessible name includes its question |
-| 4.3 | desktop | pass | Change on short text round-trips through page 2 with the new value |
-| 4.1.1 | desktop | pass | Clearing the number and submitting page 1: 422 per-page check. Native-validation deviation applies |
-| 4.1.2 | desktop | pass | Page 2 submitted directly still reaches check page; number row reads "Not answered" |
-| 4.1.3 | desktop | pass | Submit application from check page: 422, whole-form check holds |
-| 4.1.4 | desktop | pass | Change on the number row, re-answer, walk forward to check page again |
+Pass throughout. The page renders the title, the "Nothing is sent until you press Submit
+application" note, and one card per form page in form order (About you, Supporting documents).
+Each card has a tinted header with the page title left and a pencil-and-Edit link right; each body
+row runs the full card width with the question as a muted label and the answer beside it. Skipped
+optional questions read "Not answered." The file row shows the filename, size and a Download
+control with no thumbnail — no two-column grid anywhere.
+
+![](screenshots/page-2026-09-08T16-57-58-107Z.png)
+
+Edit links carry their page title in the accessible name ("Edit About you," "Edit Supporting
+documents"). Clicking Edit opens the relevant page at `?return=check` with answers pre-filled,
+"Back to your answers" in place of Previous, and a "Save and return to your answers" primary
+button; saving lands straight back on the check page with the new value. "Back to your answers"
+with no change returns unchanged. Jumping to another page from edit mode drops the `?return=check`
+marker and restores the normal Previous/Check-your-answers button pair — jumping elsewhere leaves
+edit mode, as intended.
+
+The whole-form check (not per-page) was proven directly (test 4.1): clearing the number on page 1
+and posting it gives the per-page 422 as expected, but posting page 2 directly (skipping page 1)
+succeeds and reaches the check page with the number reading "Not answered" — page order is not
+enforced on POST. Submitting from the check page then re-renders it with HTTP 422 naming the
+number question, catching the earlier page's gap. Editing the number back in and saving returns a
+filled-in check page.
+
+![](screenshots/page-2026-09-08T16-59-15-593Z.png)
+
+At 375px, each row stacks the question above its answer, cards fill the width, there's no
+horizontal overflow, and both the Download control (111x32) and each Edit link (69x32) clear the
+24px touch-target floor comfortably.
+
+![](screenshots/page-2026-09-08T16-59-46-010Z.png)
 
 ### §5 Submitting, and what read-only means afterwards
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 5.1 | desktop | pass | Status page: "received and is currently pending review" |
-| 5.2 | desktop | pass | Page 2 read-only: callout, disabled textarea, Download only, no picker/submit |
-| 5.2 | mobile | pass | Same read-only state fits at 375px, no overflow |
-| 5.3 | desktop | pass | Check page: 7 rows, zero Change links, success callout, no submit button |
-| 5.4 | desktop | pass | Replayed submit POST: 302 to status page, no error, no double submission |
-| 5.5 | desktop | pass | Course detail offers "View my application" to the status page |
-| 5.6 | desktop | pass | Dashboard lists the course under "Your applications" |
+Pass. Submitting lands on the status page ("received and is currently pending review"). Re-opening
+page 2 afterward renders read-only: the callout that the application has been submitted and can no
+longer be changed, the textarea disabled, the file shown with Download only (no Replace, no
+Remove), and a "Your answers" link in place of any Next/submit control. The check-your-answers page
+shows the same cards with no Edit links, a success callout, and no submit button. Replaying the
+submit POST from a stale tab redirects to the status page with HTTP 200 and no error. The course
+detail CTA now reads "View my application" pointing at the status URL, and the dashboard entry
+leads there too.
+
+![](screenshots/page-2026-09-08T17-00-40-130Z.png)
 
 ### §6 Other people's applications and files
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 6.2 | desktop | pass | page/1, page/2, check-your-answers and status URL all 404 for the bystander |
-| 6.3 | desktop | pass | `/forms/answer-file/<uuid>/` 404s for the bystander |
-| 6.4 | desktop | pass | Anonymous request redirects to `/accounts/login/?next=...` |
-| 6.5 | desktop | pass | Bystander applying gets a new uuid and a blank page 1 |
+Pass. As the bystander, the applicant's page/1, check-your-answers and status URLs all 404, as does
+the answer-file download URL. Anonymously, the same download URL redirects to login. The bystander
+applying to the same gated course gets their own fresh application opening on an empty page 1 —
+none of the applicant's answers leak across accounts.
 
 ### §7 The admin side of uploaded files
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 7.1.1 | desktop | pass | Row for `id-scan.png`, scan status "Pending" (plan says "Pending scan" — see notes) |
-| 7.1.2 | desktop | pass | Change page fields all read-only, no raw path, no inline file link |
-| 7.1.3 | desktop | pass | "Mark selected files clean" → status "Clean", Download link appears, serves the same PNG |
-| 7.1.4 | desktop | pass | Recent actions entry, LogEntry message "Scan status set to Clean" |
-| 7.1.5 | desktop | pass | "Mark selected files rejected" removes Download; admin and learner URLs both 404 |
-| 7.1.6 | desktop | pass | Question answers / Form progress records show applicant rows with text previews |
-| 7.2.1 | desktop | pass | Reviewer's three view perms alone are insufficient; `SuperuserOnlyAdmin` blocks index and changelists (403) |
-| 7.2.2 | desktop | pass | Admin file download URL 403s for the reviewer |
-| 7.3.1 | desktop | pass | New form "Admin form one" / UNSCORED saves; slug `admin-form-one` |
-| 7.3.2 | desktop | pass | Duplicate title saves with distinct slug `admin-form-one-2`, no uniqueness error |
+Pass throughout. As the superuser, the "Question answer files" changelist lists the applicant's
+file with Applicant / Question / Original filename / Created at / Download columns, a "By created
+at" filter, and no scan-status column or filter anywhere — correctly, since FLS does no malware
+scanning. The actions dropdown offers only "Delete selected question answer files," no clean/reject
+actions. The change page is read-only (filename and timestamps only, no raw path, no inline file
+link). The admin download returns the correct bytes as an attachment.
 
-### §8 The exam runner is unchanged
+![](screenshots/page-2026-09-08T17-02-34-651Z.png)
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 8.1 | desktop | pass | Exam runner markup, tally, page dots and exit dialog unchanged after the partial extraction |
-| 8.2 | desktop | pass | Plan premise wrong (no save-and-exit for QUIZ strategy); behaviour confirmed unchanged by `git diff` — see notes |
-| 8.3 | desktop | pass | Survey renders all four original question types with unchanged markup |
-| 8.4 | desktop | pass | Required checkbox validation still fires (checkbox group made required in dev data — see notes) |
-| 8.5 | desktop | pass | No file picker, "Application for" eyebrow, or application shell leaks into quiz/survey |
+"Question answers" and "Form progress records" both show the applicant's rows with text answers
+rendered in the preview column. Attempting to delete the applicant's form progress record via the
+admin action is refused: FLS shows the "Cannot delete form progress" page listing the course
+application as a protected related object, with no confirmation button, and the row survives.
+
+![](screenshots/page-2026-09-08T17-03-28-757Z.png)
+
+As the reviewer (staff, not superuser, holding the three view permissions directly), none of
+"Question answers," "Form progress records" or "Question answer files" appear on the admin index,
+and all three changelists plus the file-download URL return 403 by direct URL — the model
+permissions buy nothing without superuser status, which is the point of the check.
+
+Adding a form in the admin with only a title and UNSCORED strategy saves and shows a read-only
+slug (`admin-form-one`); adding a second form with the identical title also saves, getting a
+distinct slug (`admin-form-one-2`) rather than a uniqueness error. Residual rows from an earlier
+run were cleared first so the numbering could be observed from a clean start.
+
+### §8 The course player's own forms are unchanged
+
+Pass throughout, across the multi-page quiz, the single-page survey, and the single-page quiz.
+
+The multi-page quiz's start screen sits inside the ordinary player chrome (sidebar, breadcrumb)
+with title, "6 questions," "2 pages" and a single "Start Form" button. The runner itself drops the
+site header and course sidebar entirely: a sticky top bar (exit X, centred title, "0 of 6
+answered"), a "Page 1 of 2" progress bar with two page dots, and three required radio-group
+questions numbered 1–3 with no checkbox hint, no number spinner, no file picker. Answering updates
+the tally live with no page load.
+
+![](screenshots/page-2026-09-08T17-09-41-036Z.png)
+
+Clicking Next with a question blank is blocked by the browser's own required-field validation.
+Answering all three and advancing reaches page 2 with numbering continuing at 4–6, not restarting.
+Stepping back to page 1 via dot 1 leaves dot 2 still a link — the course runner does not re-lock a
+page already reached, in contrast to the application shell (see B2).
+
+The exit dialog for a `submit_on_exit` quiz reads "Leaving now will submit your answers and score
+your attempt... You won't be able to change your answers afterwards," with Escape and "Keep going"
+both leaving the runner untouched. "Leave and submit" with page 2 blank produces the results page:
+score ring at 50%, "Quiz not passed," and the incorrect answers listed, since
+`quiz_show_incorrect: true`.
+
+![](screenshots/page-2026-09-08T17-11-05-849Z.png)
+
+"Try Again" opens a fresh sitting on page 1 with the tally reset and dot 2 re-locked — a new attempt
+does not inherit the previous resume page. A clean retake with all correct answers opens a "Ready
+to submit?" confirmation dialog rather than posting straight through, and confirms to a 100%,
+"Quiz passed!" results page with no incorrect-answer list; the outline marks the item complete and
+unlocks the next one.
+
+![](screenshots/page-2026-09-08T17-12-15-739Z.png)
+
+The save-on-exit quiz ("End course Quiz," `submit_on_exit` unset, `quiz_show_incorrect: false`)
+shows the same dialog frame with different copy — "Your progress is saved — you can resume later"
+— and a "Leave and save" control. Leaving mid-quiz returns the start screen offering "Continue
+Form," which resumes on page 2 (not page 1) with the prior tally and both dots as links. Submitting
+gives a results page scored against the 50% pass mark. Retaking with every answer deliberately
+wrong confirmed the suppression: "Quiz not passed," 0%, and no "Review incorrect answers" section
+at all — `quiz_show_incorrect: false` is honoured.
+
+![](screenshots/page-2026-09-08T17-14-41-208Z.png)
+
+The single-page survey ("Course Feedback Survey") correctly shows none of the multi-page furniture:
+no page-jump nav, "Page 1 of 1" at full width, no Previous link, no "going back" note. All four
+original question types render as before (two radio groups, a checkbox group with the "Select all
+that apply" hint, a text input, and a textarea), with required asterisks only on questions 1 and 2.
+Next opens the submit dialog immediately rather than advancing a page.
+
+![](screenshots/page-2026-09-08T17-15-26-148Z.png)
+
+Submitting gives the non-quiz results page: "Form complete!" with category score bars for
+Satisfaction and Recommendation, no score ring, no pass/fail verdict.
+
+![](screenshots/page-2026-09-08T17-15-48-875Z.png)
+
+The single-page quiz ("Knowledge Check," inside "Core Concepts") behaves the same way structurally:
+one page, no dots, "Page 1 of 1," no Previous link. Getting two of three correct gives a failed
+result at 67% against the 80% pass mark with the one wrong answer listed; retaking with all three
+correct passes cleanly, marks the outline item and its parent complete, and unlocks the next part.
+
+![](screenshots/page-2026-09-08T17-16-59-940Z.png)
+
+A grep across all 28 runner snapshots captured this run, for application-shell-only strings
+("Application for", "Back to your answers", "Save and return to your answers", "spinbutton", the
+file-upload control) returned zero hits — nothing from the application shell leaks into the course
+player's forms, and the runner correctly hides the site header/sidebar only while itself open.
+
+At 375px, the multi-page quiz keeps its sticky top and footer bars pinned while the questions
+region scrolls between them; footer buttons go full width and stack (Next above Previous); the
+single-page survey shows one full-width button and no dots. Both the exit and submit dialogs fit
+the 375x812 viewport with their buttons reachable and no horizontal scroll.
+
+![](screenshots/page-2026-09-08T17-18-30-603Z.png)
+![](screenshots/page-2026-09-08T17-20-41-670Z.png)
+![](screenshots/page-2026-09-08T17-21-15-627Z.png)
+
+Tablet coverage of the check-your-answers page and the read-only submitted page confirmed both lay
+out cleanly at 768x1024 with no horizontal scroll: cards fill the column with rows keeping question
+left, answer right; on the submitted page every input renders disabled while still showing stored
+answers.
+
+![](screenshots/page-2026-09-08T17-06-44-211Z.png)
+![](screenshots/page-2026-09-08T17-06-54-941Z.png)
 
 ### §9 Loading content twice
 
-| Test | Viewport | Status | Note |
-|---|---|---|---|
-| 9.1 | desktop | pass | Re-running `content_save` is idempotent; form binding and in-flight application survive |
-| 9.2 | desktop | pass | Bad `application_form` path fails the load naming course and path; DB left unchanged; raw traceback — see notes |
+Pass. Re-running `content_save demo_content DemoDev` is idempotent: the gated course still binds
+the same Form row and the applicant's submitted application still points at the same FormProgress
+and opens its status page. Pointing `application_form` at a nonexistent path makes the load fail,
+naming both the course and the resolved path, and leaves the gated course unchanged (still bound to
+its original Form and access config) — the failure is atomic. Reverting the edit and re-running
+loads cleanly again. The failure surfaces as an unhandled `ValueError` with a full traceback rather
+than a clean `CommandError`; noted under General notes.
 
-## Bugs
+## B1: The file question's client-side size guard never fires, so an oversize file is uploaded in full before the server rejects it
 
-### B1: The client-side 6 MB file check does not stop the upload
+**Manifestation:** test 3.2, desktop viewport.
 
-**Manifestations:** 3.2 (desktop)
+**Expected:** selecting a file larger than 6 MB shows the inline Alpine message "That file is
+larger than 6 MB. Choose a smaller one." and issues no network request; the picker clears.
 
-![](screenshots/page-2026-09-08T09-56-50-865Z.png)
+**Actual:** the full 7 MB file is POSTed to `/forms/progress/<pk>/question/<pk>/file/upload/` and
+comes back 422. The message the applicant sees is the server's error paragraph, not the
+client-side one — the Alpine paragraph bound with `x-show="oversized"` stays `style="display:
+none"`, meaning `questionFileUpload.checkSize` never ran.
 
-**Expected:** Choosing a file larger than 6 MB shows an inline message and makes no network
-request — the file never leaves the machine, as the docstring in `alpine-components.js` states.
+Evidence gathered live in the browser: a document-level listener saw `htmx:confirm` fire on the
+input with `defaultPrevented=false`, and `htmx:beforeRequest` followed immediately after —
+confirming the request proceeds unchecked. Dispatching a synthetic `htmx:confirm` `CustomEvent`
+directly at the input left `oversized` still `false`. Alpine itself is demonstrably live on that
+element (it stripped `x-cloak` and applied `x-show` correctly elsewhere), so the specific binding
+at fault is `x-on:htmx:confirm="checkSize"` — the colon inside the event name is the obvious
+suspect under an Alpine CSP build.
 
-**Actual:** The full 7.0 MB `too-big.jpg` is POSTed to
-`/forms/progress/<pk>/question/<pk>/file/upload/` every time; the server rejects it with 422 and
-htmx swaps in the server's error. Two picks produced two POSTs in the `runserver` log. The failure
-is invisible in the UI because the server's `TOO_LARGE` string in `uploads.py:35` is byte-identical
-to the Alpine one in the template, so the widget looks as though the client-side guard worked when
-it did not. Root cause: `checkSize` calls `event.preventDefault()` on `htmx:confirm`, but Alpine's
-`x-on` evaluator resolves a bare function-reference expression through a promise, so the handler
-runs in a microtask after htmx has already read the `dispatchEvent` return value. The picker still
-ends up empty and nothing is attached, so the outcome is safe — but the round trip the check exists
-to save is not saved.
+Server-side validation still refuses the file correctly, so nothing unsafe is stored. The cost is
+purely the wasted upload the client-side guard exists to prevent: on a slow connection, an
+applicant now waits out a full 7 MB transfer only to be told afterward that the file was too big.
 
-### B2: Check-your-answers rows render as a two-column grid instead of a stacked list
+![](screenshots/page-2026-09-08T16-55-59-094Z.png)
 
-**Manifestations:** 4.1 (desktop), 4.1 (mobile), 4.1 (tablet)
+## B2: The application form's page-jump nav re-locks a page the applicant has already reached
 
-![](screenshots/page-2026-09-08T10-00-13-453Z.png)
-![](screenshots/page-2026-09-08T10-15-45-997Z.png)
-![](screenshots/page-2026-09-08T10-17-59-737Z.png)
+**Manifestation:** test 2.7, desktop viewport.
 
-**Expected:** One row per question, stacked down the page with a divider between rows — what
-`check_your_answers.html`'s `<dl class="divide-y">` wrapping one `<div>` per row is written to
-produce.
+**Expected:** stepping back to page 1 leaves dot 2 a link, exactly as the course runner does (test
+8.2) — a page you have already reached should stay reachable.
 
-**Actual:** `tailwind.components.css:69` styles every `dl` as `grid grid-cols-[auto_1fr]` (a base
-style meant for prose term/description pairs), so the row wrappers are laid into two columns at
-every width. Computed style on the desktop `dl`: `display: grid`,
-`grid-template-columns: 315.156px 500.844px`. Reading order stays correct, but the `divide-y`
-separators run under each half-width cell instead of across the row, the two columns' dividers sit
-at different heights, and the odd last row leaves an empty right-hand cell. Worst at 375px: question
-text is squeezed into a ~100px column and wraps to 4-5 lines (e.g. "How many years have yo... been
-writing software?"), and the file row's Download link runs to the viewport edge. At 768px it is
-readable but the per-column dividers still don't line up across the row.
+**Actual:** after advancing to page 2 and clicking dot 1 to go back, dot 2 renders as a plain span,
+not a link. The applicant has to press Next again to re-reach page 2 rather than jumping directly.
 
-### B3: The attached-file Download link is a 20px-tall tap target
-
-**Manifestations:** 3.4 (mobile)
-
-![](screenshots/page-2026-09-08T10-17-19-581Z.png)
-
-**Expected:** Every control in the attached-file row is comfortably tappable on a phone — at least
-the WCAG 2.2 SC 2.5.8 minimum of 24x24 CSS px, ideally the 44x44 comfortable-touch size.
-
-**Actual:** At 375x812 the Download link measures 91x20 CSS px. It is a bare text link with no
-padding, sitting 12px from the Replace button, so the SC 2.5.8 spacing exception does not apply.
-Its neighbours Replace (69x34) and Remove (71x34) clear 24 but are still under 44. The same bare-link
-pattern is used for Download on the check-your-answers page.
+**Cause:** `page_accessibility_limit` is computed as `max(resume_page_number,
+current_page_number)`, and `resume_page_number` leans on `FormProgress.get_current_page_number()`,
+which returns the first page holding any unanswered question. The demo application form's page 1
+has two optional questions, and the plan's own step 2.6 has the applicant skip them, so that call
+returns 1 and the limit collapses back to 1 once the applicant is viewing page 1. The course runner
+never exhibits this because every demo quiz question is required, so its first page is always fully
+answered and the limit stays at the page actually reached. The arithmetic itself is a faithful port
+of the shipped runner rule — this is not a regression, it's that rule meeting optional questions
+for the first time in the new application shell.
 
 ## Bug status
 
-All three bugs were triaged to the red lane, so no auto-fix was attempted and nothing was
-committed by this run. Each fails the auto-fix gate on the same condition: the defect lives in the
-browser (Alpine/htmx event timing, a Tailwind base rule, a rendered tap-target size) and cannot be
-verified by a pytest run without a browser.
-
-- B1: **UNRESOLVED** — The client-side 6 MB file check does not stop the upload (reason: browser-only
-  Alpine/htmx timing bug; not reproducible or verifiable in pytest)
-- B2: **UNRESOLVED** — Check-your-answers rows render as a two-column grid instead of a stacked list
-  (reason: layout defect verifiable only by rendering; the fix also spans a project-wide CSS base
-  rule, `tailwind.components.css:69`, as well as the app template)
-- B3: **UNRESOLVED** — The attached-file Download link is a 20px-tall tap target (reason: rendered
-  geometry, not unit-testable; the target size to adopt is a UX decision)
+- **UNRESOLVED** — The file question's client-side size guard never fires, so an oversize file is uploaded in full before the server rejects it (reason: client-side Alpine/htmx binding; not unit-testable without a browser, so out of the auto-fix lane)
+- **UNRESOLVED** — The application form's page-jump nav re-locks a page the applicant has already reached (reason: pre-existing shared page arithmetic, not a regression; the fix turns on a product decision about how the page-accessibility limit should be computed)
 
 ## General notes
 
-- **Dev-tooling artefact:** the django-debug-toolbar overlay intercepts pointer events over the
-  admin Save button at 1920x1080; its own Hide control had to be clicked before Save was reachable.
-  Not a feature defect.
-- **Plan-vs-implementation wording:** the plan calls the page-2 forward control "Next"; the
-  implementation labels it "Check your answers" on the last form page, which reads more clearly.
-  Page 2 also carries a "Previous" link the plan doesn't mention. Separately, the check-your-answers
-  page's whole-form error reads "... before you can continue."; since the action there is "Submit
-  application", "... before you can submit." would read better (cosmetic). Also, the admin scan
-  status label is "Pending", not "Pending scan" as the plan's wording has it.
-- **Native-validation deviation (2.4, 4.1.1):** the required-field checks are provable server-side
-  (POST with nothing filled returns 422 and re-renders with the correct callout), but the plan's
-  "click Next with nothing filled and watch the network panel" step doesn't fire a network request
-  in a real browser: the inputs carry the HTML `required` attribute and the form has no
-  `novalidate`, so native browser validation blocks submission before any POST is made. The 422 path
-  is only reachable once the `required` attributes are stripped. The end result (nothing advances)
-  is the same either way.
-- **§8.2 plan premise is wrong:** the plan expects a save-and-exit path for the quiz's exit dialog,
-  but for a QUIZ-strategy form the dialog only offers "Keep going" and "Leave and submit" and says so
-  ("Leaving now will submit your answers and score your attempt"). Leaving the runner mid-quiz scored
-  the attempt (Previous attempts: 17%, 1/6) and the item page then offered "Try Again", not
-  "Continue". Confirmed this is not a regression: `git diff main...HEAD` leaves the exit dialog
-  markup and the exam-runner Alpine components untouched — the only change to
-  `course_form_page.html` is swapping the inline question partials for
-  `{% include "form_engine/question.html" %}`.
-- **Raw traceback on bad content load (9.2):** pointing `application_form` at a non-existent path
-  makes `content_save` fail with a message naming both the course and the resolved path
-  ("Course 'Functionality Demo - Application gated course' names application_form <abs
-  path>/demo_content/no_such_directory/form.md, which is not a loaded FORM"), but the failure
-  surfaces as a raw `ValueError` traceback rather than a `CommandError`, so an author sees a Python
-  stack above the message. The gated course in the database was left unchanged either way.
-- **Dev data gap (8.4):** no demo form ships a required checkbox group (0 in the database), so per
-  Rule 2 the survey's checkbox question was flipped to required in the dev DB for this check and
-  flipped back afterwards.
-- **Cosmetic mobile wrap (2.2-mobile):** on page 1 at 375px, question 2's long text wraps below its
-  number, leaving "2." alone on one line and the required asterisk on a third — the legend is
-  `flex-wrap`, so short questions keep the number inline and long ones don't.
+`OVERRIDE_COURSE_ACCESS_TO_FREE = True` in `config/settings_dev.py` hides the whole
+application-gating feature on a dev server. With it on, `VisibilityEnforcingBackend`
+short-circuits to the canonical free decision, so both application-gated demo courses render
+"Free · open to everyone" with an "Enrol for free" button and there is no route into an
+application at all. This run had to be re-pointed at a temporary `config/settings_qa_local.py`
+(dev settings with only that flag flipped off) before §1 could even start. Anyone QA-ing or
+demoing application gating needs to know this; it's worth considering whether the shipped dev
+settings should leave the flag off.
 
-status: ok
-reason: 3 bugs — 0 fixed, 3 unresolved (all red-lane, browser-only); report rendered, screenshots verified
+The plan's expectation of a 422 callout on an empty "Next" click (tests 2.4, 2.5, 4.1.1) is
+unreachable through ordinary clicking. The shared question templates put the native HTML
+`required` attribute on short-text, number and radio inputs, so the browser blocks the submit
+before any request is issued. The server-side check is correct and was verified by stripping the
+attributes in devtools — the callout wording is exactly as specified. The user-visible outcome
+(nothing advances, the browser explains why) is arguably better than a round trip, but the plan and
+the spec's narrative both describe the server-side path as what an applicant actually sees, so one
+or the other should be corrected to match reality.
+
+The dashboard's "Your applications" panel labels a draft application "Pending review" even before
+it has been submitted. The link behaviour is right — it resumes the form rather than showing the
+status page — but the wording overstates what has actually happened.
+
+`content_save` surfaces a bad `application_form` path as an unhandled `ValueError` with a full
+Python traceback rather than a clean `CommandError`, so a content author sees a stack trace above
+an otherwise clear message.
+
+Coverage gap the plan predicted and this run confirmed: no demo form ships a required checkbox
+group, so the hidden `data-checkbox-required-message` paragraph is absent from stock content and
+the client-side "Select at least one option." message could not be exercised. No content was
+modified to reach it, per the plan's own instruction.
+
+Accessibility observation, pre-existing and outside this branch's diff: the course runner's page
+dots measure 10x10 CSS px with no larger hit area, well under a 24px touch target. The application
+shell's own page dots are numbered boxes and are comfortably larger, so this doesn't carry over to
+the new shell.
+
+Minor: at 375px the runner's outer document is roughly 195px taller than the viewport
+(`documentElement.scrollHeight` 1007 against `body.scrollHeight` 812 exactly), so over-scrolling
+the outer document can drag the sticky top bar off screen. Scrolling the questions region normally
+keeps both bars pinned as intended. This was only reproducible with the dev debug toolbar present;
+the runner's own `h-screen`/`overflow-hidden` shell is untouched by this branch.
+
+Test data: the applicant's stale form sittings from an earlier run were cleared and three free-course
+registrations created via the `fls-dev:qa-data-helper` agent. Residual admin-created "Admin form
+one" rows were cleared so §7.3's slug numbering could be observed from a clean start, and the End
+course Quiz sitting was reset once so a deliberate all-wrong attempt could prove
+`quiz_show_incorrect: false` suppresses the review list.
+
+status: ok · reason: 2 bugs — 0 fixed, 2 unresolved (both red-lane, no fixer spawned); report rendered, 30 screenshots collected and every referenced image verified present

@@ -62,6 +62,7 @@
 - [reference_course_cohort_registration_pagination.md](reference_course_cohort_registration_pagination.md) — Educator course page's two registration tables: the Cohort Registrations table paginates COHORTS not learners, DataTable.page_size is 5, qa_create_course_cohort_registrations, and which DemoDev cohort is safe to register given the CourseProgress fan-out
 - [reference_three_page_dashboard_section.md](reference_three_page_dashboard_section.md) — qa_extend_start_here_section: TWO pages cannot exercise courseSectionPagination's primary focus branch, you need a middle page (3 pages); why the new letters must not join PAGINATION_LETTERS; data-direction="previous" and live arrows have NO aria-disabled attribute
 - [reference_application_review_permission_accounts.md](reference_application_review_permission_accounts.md) — qa_create_application_review_accounts: applicant/bystander/reviewer trio; app label is `freedom_ls_form_engine`; SuperuserOnlyAdmin makes the 3 view_ perms 403 while /admin/ still renders 200
+- [reference_clearing_form_sittings_around_an_application.md](reference_clearing_form_sittings_around_an_application.md) — Clearing a persona's stale FormProgress so every start screen reads "Start Form" without tripping CourseApplication's RESTRICT; qa_reset_learner_progress is now unsafe for applicant personas; the self-registration shape for free courses
 
 ## Recurring requests
 
@@ -380,3 +381,22 @@ them via `ContentType.objects.get_for_model(Model)` instead of a literal label;
 access" needs stating precisely or the tester will read the 200 as a failure;
 **(c)** direct `user_permissions.set(...)` is an established project pattern (guardian is
 for object-level grants only), so no need to route a model permission through a group.
+
+The **"clear this persona's stale form sittings + enrol them in N free courses"** teardown-plus-seed
+pass arrived once (`simple-application-forms`, Sep 2026, `qa_applicant@email.com` pk 73). It is the
+[[reference_qa_run_residue_cleanup]] shape aimed at form_engine instead of signup, and it is now the
+THIRD "clear the leftover form attempt so the start page says Start Form" ask. Three things changed
+on this branch and must be re-checked every time:
+**(a)** `qa_reset_learner_progress` without `--course-slug` deletes ALL of a learner's FormProgress
+and now aborts with `RestrictedError` for any persona holding a `CourseApplication` — delete an
+explicit pk list with a per-row "no application points at this" assertion instead;
+**(b)** a duplicate `Application form` sitting from an earlier run is normally **orphaned**, because
+the apply flow re-points the single (`unique_application_per_site_user_course`) application at the
+new sitting — query before chaining a delete, twice now the assumed prerequisite delete was a no-op;
+**(c)** a persona with no registration has no `CourseProgress` and therefore **zero**
+`CourseFormAttempt`, so "delete the join rows as well" can be entirely vacuous — check
+`form_progress__user=` AND `course_progress__learner__user=` and report the 0 explicitly.
+Full recipe, cascade counts and the `QuestionAnswerFile` storage sweep in
+[[reference_clearing_form_sittings_around_an_application]]. If this is asked a fourth time, wrap it
+as `qa_clear_form_sittings --learner EMAIL [--keep-pk UUID ...]` that refuses to touch any sitting a
+`CourseApplication` names.
