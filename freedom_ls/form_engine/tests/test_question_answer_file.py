@@ -19,7 +19,6 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
-    ScanStatus,
     question_answer_file_upload_to,
 )
 
@@ -45,11 +44,6 @@ def test_the_key_takes_its_extension_from_the_name_fls_chose(
     key = question_answer_file_upload_to(answer_file, "file.pdf")
 
     assert key.endswith(f"{answer_file.pk}.pdf")
-
-
-@pytest.mark.django_db
-def test_a_new_file_starts_out_pending(mock_site_context, answer_file):
-    assert answer_file.scan_status == ScanStatus.PENDING
 
 
 @pytest.mark.django_db

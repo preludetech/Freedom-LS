@@ -54,7 +54,15 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user + cmd) Fix QA bug: client-side 6 MB file check does not stop the upload (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: check-your-answers rows render as a two-column grid instead of a stacked list (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: attached-file Download link is a 20px-tall tap target on mobile (TDD — failing test first, then fix)
-- [ ] (user) Run the §7.1 step 7 admin-delete case, added to the QA plan after the QA pass had run
+- [ ] (user) Run the §7.1 step 6 admin-delete case, added to the QA plan after the QA pass had run
+- [x] (user + cmd) Cut the malware-scanning seam out of scope: removed `ScanStatus`, `scan_status`,
+      `scanning.py`, `config.py`, `checks.py` (W001) and the manual `mark_clean`/`mark_rejected`
+      admin actions. A seam with no scanner behind it is the appearance of a control. The whole
+      question and the code that was written are parked in `spec_dd/1. next/file-scanning/1. spec.md`.
+      A reviewer now downloads an applicant's file directly. `1. spec.md`, `2. plan.md` and
+      `3. frontend_qa.md` follow; the `research_*.md` files are left as the record of what was
+      investigated at the time.
+- [ ] (user) Re-run QA §7.1 against the simplified admin
 
 ## 10. Product documentation
 
@@ -72,7 +80,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved

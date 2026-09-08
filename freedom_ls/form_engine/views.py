@@ -23,9 +23,7 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     QuestionAnswer,
     QuestionAnswerFile,
-    ScanStatus,
 )
-from freedom_ls.form_engine.scanning import get_file_scanner
 from freedom_ls.form_engine.uploads import validate_and_sanitise
 
 FILE_WIDGET_TEMPLATE = "form_engine/inputs/file_upload.html"
@@ -108,11 +106,8 @@ def partial_question_file_upload(
         except QuestionAnswerFile.DoesNotExist:
             answer_file = QuestionAnswerFile(answer=answer, site=form_progress.site)
         answer_file.original_filename = original_filename
-        # A replacement has not been scanned, whatever the file it replaced was.
-        answer_file.scan_status = ScanStatus.PENDING
         answer_file.file.save(f"file{extension}", content, save=True)
 
-    get_file_scanner().scan(answer_file)
     return _render_file_widget(request, form_progress, question, answer_file)
 
 
@@ -163,10 +158,10 @@ def stream_question_answer_file(answer_file: QuestionAnswerFile) -> FileResponse
 
 @login_required
 def own_question_answer_file(request: HttpRequest, file_pk: str) -> FileResponse:
-    """Serve an applicant their own file back, whatever its scan status.
+    """Serve an applicant back the file they attached.
 
-    Withholding it would only hide from them what they themselves attached; the
-    scan gate is on the reviewer's route, not this one.
+    Ownership is the whole control: the lookup is scoped to the signed-in owner
+    of the sitting, never to the unguessability of the URL.
     """
     answer_file = get_object_or_404(
         QuestionAnswerFile.objects.select_related("answer__form_progress"),
@@ -181,12 +176,10 @@ def question_answer_file_download_view(
 ) -> FileResponse:
     """The reviewer's route, wired into the admin.
 
-    Only a cleared file is served: an unscanned upload reaching a staff member's
-    machine is the risk the scan gate exists for.
+    The superuser check is explicit because `admin_view` only guarantees staff,
+    and rights over course content are not rights over an applicant's papers.
     """
     if not request.user.is_superuser:
         raise PermissionDenied
     answer_file = get_object_or_404(QuestionAnswerFile, pk=object_id)
-    if answer_file.scan_status != ScanStatus.CLEAN:
-        raise Http404
     return stream_question_answer_file(answer_file)

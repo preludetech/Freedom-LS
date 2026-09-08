@@ -41,7 +41,6 @@ __all__ = [
     "QuestionAnswerFile",
     "QuestionOption",
     "QuestionType",
-    "ScanStatus",
 ]
 
 
@@ -629,14 +628,6 @@ def question_answer_file_upload_to(instance: QuestionAnswerFile, filename: str) 
     return f"user_uploads/{user_id}/form_answers/{instance.pk}{extension}"
 
 
-class ScanStatus(models.TextChoices):
-    """Where a stored file has got to in malware scanning."""
-
-    PENDING = "PENDING", _("Pending")
-    CLEAN = "CLEAN", _("Clean")
-    REJECTED = "REJECTED", _("Rejected")
-
-
 class QuestionAnswerFile(SiteAwareModel, TimestampedModel):
     """The file an applicant attached to a file-upload question.
 
@@ -653,9 +644,6 @@ class QuestionAnswerFile(SiteAwareModel, TimestampedModel):
     # Kept only to show the applicant what they attached and to name the
     # download. Never used to build a storage key.
     original_filename = models.CharField(max_length=255)
-    scan_status = models.CharField(
-        max_length=20, choices=ScanStatus.choices, default=ScanStatus.PENDING
-    )
 
     def __str__(self) -> str:
         return self.original_filename

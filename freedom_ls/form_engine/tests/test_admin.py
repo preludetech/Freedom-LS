@@ -7,7 +7,6 @@ import re
 import pytest
 
 from django.contrib import admin
-from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.utils import timezone
@@ -32,7 +31,6 @@ from freedom_ls.form_engine.models import (
     FormQuestion,
     FormStrategy,
     QuestionOption,
-    ScanStatus,
 )
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
@@ -234,7 +232,7 @@ def _admin_download_url(answer_file) -> str:
 
 @pytest.mark.django_db
 def test_an_editor_cannot_download_an_answer_file(mock_site_context, editor_client):
-    answer_file = QuestionAnswerFileFactory(scan_status=ScanStatus.CLEAN)
+    answer_file = QuestionAnswerFileFactory()
 
     response = editor_client.get(_admin_download_url(answer_file))
 
@@ -242,18 +240,8 @@ def test_an_editor_cannot_download_an_answer_file(mock_site_context, editor_clie
 
 
 @pytest.mark.django_db
-def test_an_unscanned_file_is_not_served_to_a_reviewer(mock_site_context, staff_client):
-    """The scan gate exists so an unscanned upload never reaches a staff machine."""
+def test_an_answer_file_is_served_to_a_reviewer(mock_site_context, staff_client):
     answer_file = QuestionAnswerFileFactory()
-
-    response = staff_client.get(_admin_download_url(answer_file))
-
-    assert response.status_code == 404
-
-
-@pytest.mark.django_db
-def test_a_cleared_file_is_served_to_a_reviewer(mock_site_context, staff_client):
-    answer_file = QuestionAnswerFileFactory(scan_status=ScanStatus.CLEAN)
 
     response = staff_client.get(_admin_download_url(answer_file))
 
@@ -261,56 +249,11 @@ def test_a_cleared_file_is_served_to_a_reviewer(mock_site_context, staff_client)
 
 
 @pytest.mark.django_db
-def test_marking_a_file_clean_is_written_to_the_admin_log(
-    mock_site_context, staff_client
-):
-    """Clearing a file is a human judgement about someone's document. Who made
-    it, and when, has to survive.
-    """
-    answer_file = QuestionAnswerFileFactory()
-
-    staff_client.post(
-        reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist"),
-        {
-            "action": "mark_clean",
-            "_selected_action": [str(answer_file.pk)],
-            "index": "0",
-        },
-    )
-
-    assert (
-        LogEntry.objects.filter(
-            object_id=str(answer_file.pk), action_flag=CHANGE
-        ).count()
-        == 1
-    )
-
-
-@pytest.mark.django_db
-def test_marking_a_file_clean_clears_it(mock_site_context, staff_client):
-    answer_file = QuestionAnswerFileFactory()
-
-    staff_client.post(
-        reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist"),
-        {
-            "action": "mark_clean",
-            "_selected_action": [str(answer_file.pk)],
-            "index": "0",
-        },
-    )
-
-    answer_file.refresh_from_db()
-    assert answer_file.scan_status == ScanStatus.CLEAN
-
-
-@pytest.mark.django_db
-def test_the_changelist_offers_no_download_for_an_unscanned_file(
-    mock_site_context, staff_client
-):
+def test_the_changelist_offers_a_download(mock_site_context, staff_client):
     answer_file = QuestionAnswerFileFactory()
 
     response = staff_client.get(
         reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist")
     )
 
-    assert _admin_download_url(answer_file) not in response.content.decode()
+    assert _admin_download_url(answer_file) in response.content.decode()

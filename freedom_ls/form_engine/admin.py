@@ -1,12 +1,7 @@
-from typing import cast
-from uuid import UUID
-
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
-from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.sites.models import Site
-from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
@@ -29,7 +24,6 @@ from .models import (
     QuestionAnswer,
     QuestionAnswerFile,
     QuestionOption,
-    ScanStatus,
 )
 
 
@@ -354,31 +348,29 @@ class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
 class QuestionAnswerFileAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     """The reviewer's view of the documents applicants attached.
 
-    The file itself is reachable only through the download route below, and only
-    once a superuser has marked it clean.
+    The file itself is reachable only through the superuser-only download route
+    below, never from a link on the page.
     """
 
     list_display = [
         "applicant",
         "question",
         "original_filename",
-        "scan_status",
         "created_at",
         "download",
     ]
     list_select_related = ["answer__form_progress__user", "answer__question"]
-    list_filter = ["scan_status", "created_at"]
+    list_filter = ["created_at"]
     readonly_fields = [
         "answer",
         "original_filename",
-        "scan_status",
         "created_at",
         "updated_at",
     ]
     # `file` is excluded rather than read-only: rendering the field would put a
-    # storage URL for an unscanned upload on the page.
+    # storage URL on the page, reachable without passing the download route's
+    # superuser check.
     exclude = ["site", "file"]
-    actions = ["mark_clean", "mark_rejected"]
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -393,8 +385,6 @@ class QuestionAnswerFileAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
 
     @admin.display(description="Download")
     def download(self, obj: QuestionAnswerFile) -> str:
-        if obj.scan_status != ScanStatus.CLEAN:
-            return ""
         url = reverse(
             "admin:freedom_ls_form_engine_questionanswerfile_download", args=[obj.pk]
         )
@@ -411,37 +401,3 @@ class QuestionAnswerFileAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
             )
         ]
         return custom + list(super().get_urls())
-
-    @admin.action(description="Mark selected files clean")
-    def mark_clean(
-        self, request: HttpRequest, queryset: QuerySet[QuestionAnswerFile]
-    ) -> None:
-        self._set_scan_status(request, queryset, ScanStatus.CLEAN)
-
-    @admin.action(description="Mark selected files rejected")
-    def mark_rejected(
-        self, request: HttpRequest, queryset: QuerySet[QuestionAnswerFile]
-    ) -> None:
-        self._set_scan_status(request, queryset, ScanStatus.REJECTED)
-
-    def _set_scan_status(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet[QuestionAnswerFile],
-        status: ScanStatus,
-    ) -> None:
-        """Set the status and record who decided it.
-
-        Clearing a file is a human judgement about someone's document, so the
-        log entry is the point of the action rather than bookkeeping around it.
-        """
-        queryset.update(scan_status=status)
-        # The class is superuser-only, so request.user is always a real row with
-        # a UUID primary key here, never the anonymous user Django types it as.
-        user_pk = cast("UUID", request.user.pk)
-        LogEntry.objects.log_actions(
-            user_pk,
-            queryset,
-            CHANGE,
-            change_message=f"Scan status set to {status.label}",
-        )
