@@ -34,6 +34,7 @@ from freedom_ls.content_engine.models import (
     Activity,
     ContentCollectionItem,
     Course,
+    CourseCategory,
     CoursePart,
     File,
     Topic,
@@ -199,6 +200,50 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     logger.info(f"Updated {file_path} with option UUIDs")
 
 
+def update_file_with_category_uuids(file_path, written):
+    """
+    Update entries in the COURSE_CATEGORIES document of a YAML file with their UUIDs.
+
+    Args:
+        file_path: Path to the file
+        written: List of (entry_index, category_uuid) tuples
+    """
+    with open(file_path, encoding="utf-8") as f:
+        content = f.read()
+
+    sections = content.split("---")
+    if sections and not sections[0].strip():
+        sections = sections[1:]
+
+    sections = [s.strip() for s in sections]
+
+    for idx, section in enumerate(sections):
+        section_data = yaml.safe_load(section)
+        if (
+            section_data
+            and section_data.get("content_type") == "COURSE_CATEGORIES"
+            and section_data.get("categories")
+        ):
+            for entry_idx, entry_uuid in written:
+                if entry_idx < len(section_data["categories"]):
+                    section_data["categories"][entry_idx]["uuid"] = str(entry_uuid)
+
+            sections[idx] = yaml.dump(
+                section_data,
+                Dumper=PreservingDumper,
+                default_flow_style=False,
+                allow_unicode=True,
+            ).strip()
+            break
+
+    new_content = "---\n" + "\n---\n".join(sections) + "\n"
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+    logger.info(f"Updated {file_path} with category UUIDs")
+
+
 def save_with_uuid(
     model_class,
     item,
@@ -206,6 +251,7 @@ def save_with_uuid(
     base_path,
     update_file=True,
     exclude_fields=None,
+    derive_slug=True,
     **extra_fields,
 ):
     """Generic save function that handles UUID logic.
@@ -220,6 +266,9 @@ def save_with_uuid(
         base_path: Base path for calculating relative file paths
         update_file: Whether to update the file with UUID after creation
         exclude_fields: Additional fields to exclude from the Pydantic dump (e.g., 'options' for FormQuestion)
+        derive_slug: Whether to overwrite 'slug' with slugify(title). True for every
+            content type whose slug is derived and unreferenced by name. False for
+            CourseCategory, whose slug is authored and named by every referencing course.
         **extra_fields: Additional fields not in the Pydantic model (e.g., foreign keys like 'form', 'form_page', 'order')
     """
     # Build exclusion set
@@ -265,7 +314,7 @@ def save_with_uuid(
         )
 
     # Auto-generate slug if title exists and slug field exists on model
-    if "title" in fields and "slug" in model_field_names:
+    if derive_slug and "title" in fields and "slug" in model_field_names:
         base_slug = slugify(fields["title"])
         fields["slug"] = get_unique_slug(model_class, site, base_slug, item.uuid)
 
@@ -324,6 +373,31 @@ def save_activity(item, site, base_path):
     return save_with_uuid(Activity, item, site, base_path)
 
 
+def save_course_categories(item, site, base_path):
+    """Save every CourseCategory declared in one file, order from list position."""
+    relative_path = str(item.file_path.relative_to(base_path))
+    categories = []
+    written = []
+    for index, entry in enumerate(item.categories):
+        category = save_with_uuid(
+            CourseCategory,
+            entry,
+            site,
+            None,
+            update_file=False,
+            derive_slug=False,
+            order=index,
+            file_path=relative_path,
+        )
+        categories.append(category)
+        written.append((index, category.id))
+
+    if any(entry.uuid is None for entry in item.categories):
+        update_file_with_category_uuids(item.file_path, written)
+
+    return categories
+
+
 def save_course(item, site, base_path):
     """Save a Course to the database."""
     # Defence-in-depth: the pydantic model_validator already enforces these
@@ -348,12 +422,30 @@ def save_course(item, site, base_path):
             item.access_config or {}, file_path=str(item.file_path)
         )
 
+    dashboard_category_slug = item.resolve_dashboard_category()
+    dashboard_category = None
+    if dashboard_category_slug is not None:
+        try:
+            dashboard_category = CourseCategory._base_manager.get(
+                site=site, slug=dashboard_category_slug
+            )
+        except CourseCategory.DoesNotExist as exc:
+            # Defence-in-depth, as above: validate() already checks every
+            # dashboard_category against the declared slugs, but a caller
+            # that bypasses it still gets a clear error rather than a
+            # half-saved course.
+            raise ValueError(
+                f"Unknown dashboard_category '{dashboard_category_slug}' in "
+                f"{item.file_path}: no CourseCategory with this slug is declared."
+            ) from exc
+
     return save_with_uuid(
         Course,
         item,
         site,
         base_path,
-        exclude_fields={"children"},
+        exclude_fields={"children", "categories", "dashboard_category"},
+        dashboard_category=dashboard_category,
     )
 
 
@@ -641,6 +733,12 @@ def save_content_to_db(path, site_name):
     # Mapping of file paths to saved content objects for collection children resolution
     content_by_path = {}
 
+    # Save CourseCategories, ahead of Courses so a course's categories/
+    # dashboard_category resolve against rows that already exist.
+    for item in grouped.get(SchemaContentType.COURSE_CATEGORIES, []):
+        categories = save_course_categories(item, site, path)
+        logger.info(f"Saved {len(categories)} CourseCategory row(s)")
+
     # Save Topics
     for item in grouped.get(SchemaContentType.TOPIC, []):
         topic = save_topic(item, site, path)
@@ -728,6 +826,16 @@ def save_content_to_db(path, site_name):
 
     # Process collection children
     for collection, schema_item in collections_data:
+        if schema_item.content_type == SchemaContentType.COURSE:
+            # A replace, not a merge: a slug dropped from `categories` and
+            # reloaded drops that membership, which is the one place a load
+            # takes something away rather than only adding or updating.
+            collection.categories.set(
+                CourseCategory._base_manager.filter(
+                    site=site, slug__in=schema_item.categories
+                )
+            )
+
         children_list = schema_item.children if schema_item.children else []
 
         # If no children specified, scan the directory for all content files
@@ -743,6 +851,17 @@ def save_content_to_db(path, site_name):
                 if item.is_file() and item.suffix in [".md", ".yaml", ".yml"]:
                     # Don't include the collection file itself
                     if item != schema_item.file_path:
+                        # A loose course_categories.yaml living in a course
+                        # directory belongs at the repo root (validate.py
+                        # rejects it there) -- it is never auto-adopted as a
+                        # child, whatever it is named.
+                        parsed = parse_single_file(item)
+                        if (
+                            parsed
+                            and parsed[0].content_type
+                            == SchemaContentType.COURSE_CATEGORIES
+                        ):
+                            continue
                         children_list.append(
                             type("Child", (), {"path": item, "overrides": None})()
                         )
@@ -762,6 +881,8 @@ def save_content_to_db(path, site_name):
                         if not parsed:
                             continue
                         content_type = parsed[0].content_type
+                        if content_type == SchemaContentType.COURSE_CATEGORIES:
+                            continue
                         if content_type in (
                             SchemaContentType.FORM,
                             SchemaContentType.COURSE,

@@ -2,18 +2,37 @@
 Schema for yaml structures like this:
 """
 
+import re
+from collections import Counter, defaultdict
 from datetime import timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from freedom_ls.content_base.schema import (
+    BaseBaseContentModel,
     BaseContentModel,
     ContentType,
     MarkdownContentModel,
 )
+
+# The section slugs the dashboard reserves for its built-in sections. A
+# CourseCategory may not take one of these, because the slug names the
+# section's query parameter and its wrapper id. Imported by
+# `learner_interface` and copied into the offline validator, which runs with
+# no Django -- it stays a plain module constant rather than a Django choice.
+RESERVED_SECTION_SLUGS = frozenset(
+    {"in-progress", "recommended", "available", "coming-soon", "history"}
+)
+
+# The character set Django's `validate_slug` accepts. Defined here rather
+# than imported from Django so this module still imports with no Django
+# installed, which the offline validator relies on. Always applied with
+# `.fullmatch()`: `.match()`/`.search()` don't anchor the end, and would let
+# something like "bad slug!" through.
+SLUG_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 
 
 class DifficultyLevel(StrEnum):
@@ -54,6 +73,73 @@ class Child(BaseModel):
     )
 
 
+class CourseCategoryEntry(BaseModel):
+    """One row of `course_categories.yaml`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slug: str
+    title: str
+    description: str | None = None
+    show_on_dashboard: bool = True
+    uuid: str | None = None
+
+
+class CourseCategories(
+    BaseBaseContentModel, content_type=ContentType.COURSE_CATEGORIES
+):
+    """The single, site-wide declaration of every `CourseCategory`, in display order."""
+
+    categories: list[CourseCategoryEntry]
+
+    def derive_content_type(self, data):
+        # A second `---` document in course_categories.yaml omits
+        # content_type, and parse_yaml_file falls back to this method on the
+        # first document. Without it, that fallback raises AttributeError
+        # before the duplicate-declaration check is ever reached.
+        return ContentType.COURSE_CATEGORIES
+
+    @model_validator(mode="after")
+    def _validate_entries(self) -> "CourseCategories":
+        errors: list[str] = []
+
+        slug_counts = Counter(entry.slug for entry in self.categories)
+        for slug, count in slug_counts.items():
+            if count > 1:
+                errors.append(
+                    f"Duplicate category slug '{slug}' in {self.file_path}: "
+                    "every entry needs its own slug."
+                )
+
+        uuid_slugs: dict[str, list[str]] = defaultdict(list)
+        for entry in self.categories:
+            if entry.uuid is not None:
+                uuid_slugs[entry.uuid].append(entry.slug)
+        for entry_uuid, slugs in uuid_slugs.items():
+            if len(slugs) > 1:
+                errors.append(
+                    f"Duplicate category uuid '{entry_uuid}' in {self.file_path}, "
+                    f"shared by slugs {slugs}: an entry copied without clearing "
+                    "its uuid loads as one row overwriting the other."
+                )
+
+        for entry in self.categories:
+            if not SLUG_PATTERN.fullmatch(entry.slug):
+                errors.append(
+                    f"Invalid category slug '{entry.slug}' in {self.file_path}: "
+                    "a slug may only contain letters, digits, hyphens and underscores."
+                )
+            if entry.slug in RESERVED_SECTION_SLUGS:
+                errors.append(
+                    f"Category slug '{entry.slug}' in {self.file_path} is reserved "
+                    f"for the dashboard's built-in sections: {sorted(RESERVED_SECTION_SLUGS)}."
+                )
+
+        if errors:
+            raise ValueError("\n".join(errors))
+        return self
+
+
 class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
@@ -67,6 +153,18 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     )
 
     content: str | None = Field(None, description="Markdown content body")
+
+    categories: list[str] = Field(
+        default_factory=list,
+        description="Slugs of the CourseCategory rows this course belongs to",
+    )
+    dashboard_category: str | None = Field(
+        None,
+        description=(
+            "Slug of the one category the dashboard places this course in. "
+            "Required when categories has more than one entry."
+        ),
+    )
 
     icon: str | None = Field(
         None,
@@ -113,6 +211,33 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             "course-access backend. The schema layer does not interpret its keys."
         ),
     )
+
+    @field_validator("category", mode="before")
+    @classmethod
+    def _category_is_retired(cls, value: str | None) -> str | None:
+        # A before-validator on an inherited field only runs when the key is
+        # present in the input, so a file that never wrote `category:` is
+        # untouched -- only one that still carries the retired key fails.
+        raise ValueError(
+            "'category' is no longer a course field. Use 'categories' (a list "
+            "of category slugs), and 'dashboard_category' when there is more "
+            "than one."
+        )
+
+    def resolve_dashboard_category(self) -> str | None:
+        """The slug the dashboard should place this course under, or None.
+
+        An explicit `dashboard_category` wins. Otherwise a single entry in
+        `categories` resolves as the shorthand; two or more with no explicit
+        choice, or none at all, both resolve to None. The validator (step 4)
+        is what tells those two None cases apart and reports the former --
+        this method's caller, the loader, doesn't need to.
+        """
+        if self.dashboard_category is not None:
+            return self.dashboard_category
+        if len(self.categories) == 1:
+            return self.categories[0]
+        return None
 
     @model_validator(mode="after")
     def _validate_icon_fields(self) -> "Course":
