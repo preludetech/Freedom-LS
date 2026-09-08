@@ -40,6 +40,7 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_form_engine.FormPage",
         "freedom_ls_form_engine.FormQuestion",
         "freedom_ls_form_engine.QuestionAnswer",
+        "freedom_ls_form_engine.QuestionAnswerFile",
         "freedom_ls_form_engine.QuestionOption",
         "freedom_ls_learner_management.Cohort",
         "freedom_ls_learner_management.CohortDeadline",
