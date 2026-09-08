@@ -158,6 +158,7 @@ MIDDLEWARE = [
     "freedom_ls.base.middleware.HtmxMessagesMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "freedom_ls.site_aware_models.middleware.CurrentSiteMiddleware",
+    "freedom_ls.referral_tracking.middleware.AttributionCaptureMiddleware",
     # "config.site_urlconf_middleware.SiteURLConfMiddleware",
     "allauth.account.middleware.AccountMiddleware",
     "freedom_ls.accounts.middleware.RegistrationCompletionMiddleware",
