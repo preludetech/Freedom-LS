@@ -175,7 +175,12 @@ def _visible_recommendations(
             courses=Course.objects.filter(pk__in=[rec.course_id for rec in recs]),
         ).values_list("pk", flat=True)
     )
-    return [rec for rec in recs if rec.course_id in visible_rec_ids]
+    visible_recs = [rec for rec in recs if rec.course_id in visible_rec_ids]
+    # created_at alone is not a total order: a form submission that
+    # recommends several courses at once writes them all inside one
+    # transaction, so ties fall back to the course slug.
+    visible_recs.sort(key=lambda rec: (-rec.created_at.timestamp(), rec.course.slug))
+    return visible_recs
 
 
 def _annotate_registered_courses(

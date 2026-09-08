@@ -38,6 +38,8 @@ from freedom_ls.learner_progress.queries import (
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 
     from freedom_ls.accounts.models import User
@@ -807,7 +809,8 @@ def get_completed_courses(user: RequestUser) -> list[Course]:
     Completion is read from the record the learner's resolved registration
     names. A learner holding two records for one course has finished it only if
     the one they are studying through says so, and the course is listed once
-    either way.
+    either way. Sorted most recently completed first, for the learning
+    history section.
     """
     if not user.is_authenticated:
         return []
@@ -815,11 +818,42 @@ def get_completed_courses(user: RequestUser) -> list[Course]:
     if not all_registered:
         return []
     records = course_progress_by_course_for(cast("User", user), all_registered)
-    return [
-        course
-        for course in all_registered
-        if course.id in records and records[course.id].completed_time is not None
-    ]
+    completed = []
+    for course in all_registered:
+        course_progress = records.get(course.id)
+        if course_progress is None or course_progress.completed_time is None:
+            continue
+        setattr(course, "completed_time", course_progress.completed_time)  # noqa: B010
+        completed.append(course)
+    completed.sort(key=_completed_sort_key)
+    return completed
+
+
+def _completed_sort_key(course: Course) -> float:
+    """Order completed courses most recently completed first."""
+    completed_time: datetime | None = getattr(course, "completed_time", None)
+    return -completed_time.timestamp() if completed_time is not None else 0.0
+
+
+def _in_progress_sort_key(course: Course) -> tuple[int, float, str]:
+    """Order in-progress courses: started before unstarted, each bucket newest first.
+
+    Started courses (bucket 0) rank by their most recent activity, so a
+    course the learner is mid-way through never gets buried by one they have
+    only just registered for. Unstarted courses (bucket 1) rank by
+    registration date, newest first. Neither ever mixes with a course that
+    has no registration record at all (bucket 2). ``slug`` breaks ties so the
+    order is total and stable across renders.
+    """
+    started_at: datetime | None = getattr(course, "started_at", None)
+    last_accessed_time: datetime | None = getattr(course, "last_accessed_time", None)
+    registered_at: datetime | None = getattr(course, "registered_at", None)
+    if started_at is not None:
+        reference_time = last_accessed_time or started_at
+        return (0, -reference_time.timestamp(), course.slug)
+    if registered_at is not None:
+        return (1, -registered_at.timestamp(), course.slug)
+    return (2, 0.0, course.slug)
 
 
 def get_current_courses(user: RequestUser) -> list[Course]:
@@ -827,7 +861,9 @@ def get_current_courses(user: RequestUser) -> list[Course]:
 
     The percentage stamped on each course comes from the resolved record, so a
     learner holding two records for one course sees the one they are studying
-    through -- and sees the course once, not once per record.
+    through -- and sees the course once, not once per record. Sorted with
+    ``_in_progress_sort_key``, so a bulk cohort registration cannot bury the
+    course the learner is actually reading.
     """
     if not user.is_authenticated:
         return []
@@ -845,11 +881,26 @@ def get_current_courses(user: RequestUser) -> list[Course]:
         if course_progress and course_progress.completed_time:
             continue
 
-        # Use the stored progress_percentage from CourseProgress
         percentage = course_progress.progress_percentage if course_progress else 0
         setattr(course, "progress_percentage", percentage)  # noqa: B010
+        setattr(  # noqa: B010
+            course,
+            "started_at",
+            course_progress.started_at if course_progress else None,
+        )
+        setattr(  # noqa: B010
+            course,
+            "last_accessed_time",
+            course_progress.last_accessed_time if course_progress else None,
+        )
+        setattr(  # noqa: B010
+            course,
+            "registered_at",
+            course_progress.created_at if course_progress else None,
+        )
         current.append(course)
 
+    current.sort(key=_in_progress_sort_key)
     return current
 
 
