@@ -725,7 +725,7 @@ children:
 
 
 @pytest.mark.django_db
-def test_a_course_binds_the_application_form_its_frontmatter_names(
+def test_a_course_binds_the_application_form_its_access_config_names(
     site, mock_site_context
 ):
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -743,7 +743,9 @@ def test_a_course_binds_the_application_form_its_frontmatter_names(
 content_type: COURSE
 title: Gated Course
 uuid: {COURSE_UUID}
-application_form: ../application_form/form.md
+access_config:
+  access_type: application_gated
+  application_form: ../application_form/form.md
 ---
 """)
 
@@ -754,7 +756,7 @@ application_form: ../application_form/form.md
 
 
 @pytest.mark.django_db
-def test_removing_the_frontmatter_key_unbinds_the_form(site, mock_site_context):
+def test_removing_the_access_config_key_unbinds_the_form(site, mock_site_context):
     """Otherwise an author who deletes the line is left with a course still
     demanding an application nothing in the content asks for.
     """
@@ -774,7 +776,9 @@ def test_removing_the_frontmatter_key_unbinds_the_form(site, mock_site_context):
 content_type: COURSE
 title: Gated Course
 uuid: {COURSE_UUID}
-application_form: ../application_form/form.md
+access_config:
+  access_type: application_gated
+  application_form: ../application_form/form.md
 ---
 """)
         save_content_to_db(root, site.name)
@@ -783,6 +787,8 @@ application_form: ../application_form/form.md
 content_type: COURSE
 title: Gated Course
 uuid: {COURSE_UUID}
+access_config:
+  access_type: free
 ---
 """)
         save_content_to_db(root, site.name)
@@ -809,7 +815,9 @@ def test_an_application_form_path_pointing_at_a_topic_fails_the_load(
 content_type: COURSE
 title: Gated Course
 uuid: {COURSE_UUID}
-application_form: 1. welcome.md
+access_config:
+  access_type: application_gated
+  application_form: 1. welcome.md
 ---
 """)
 

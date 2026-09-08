@@ -72,6 +72,8 @@ class Course(MarkdownContent, TitledContent):
     # directly. All access decisions are made exclusively by the active course-access backend
     # (settings.COURSE_ACCESS_BACKEND). Callers use the backend's CourseAccessDecision fields
     # (can_self_register, can_access_content, cta_label, cta_url) — never this raw config.
+    # The single exception is the content loader, which reads the application_form key to bind
+    # the foreign key below; it decides nothing, and no other core code may follow suit.
     access_config = models.JSONField(
         default=dict,
         blank=True,
@@ -81,7 +83,7 @@ class Course(MarkdownContent, TitledContent):
             "branches on its contents. The default backend stores {'access_type': ...}."
         ),
     )
-    # Written by the loader from the `application_form:` path in course.md.
+    # Written by the loader from the `application_form:` path in course.md's access_config.
     # SET_NULL rather than PROTECT: unpublishing a form should not make the
     # course it gated unloadable.
     application_form = models.ForeignKey(

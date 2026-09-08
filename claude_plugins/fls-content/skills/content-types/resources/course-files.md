@@ -212,6 +212,34 @@ access_config:
 ---
 ```
 
+**A gated course that asks applicants to fill in a form:**
+
+```yaml
+---
+content_type: COURSE
+title: Advanced Mentorship Programme
+access_config:
+  access_type: application_gated
+  application_form: ../mentorship_application/form.md
+---
+```
+
+`application_form` is the path to the FORM file an applicant fills in before their
+application is reviewed, written **relative to this `course.md`**. It is optional: a gated
+course without one just takes the application and shows the applicant a status page.
+
+Two rules the host enforces at content-load:
+
+- The path must resolve to a FORM that is loaded in the same run. Point it at a topic, or at
+  a form outside the loaded content, and the load fails.
+- `application_form` is only valid alongside `access_type: application_gated`. A free course
+  naming a form is refused rather than quietly ignored.
+
+The form is named here, **not** listed in the course's `children:`. An application form placed
+in a course's content collection renders and behaves as a survey inside the course — which,
+with `strategy: UNSCORED`, is exactly what it becomes. That is an authoring mistake the host
+does not police.
+
 **Which `access_type` values are valid is deployment-specific.** They come from the active
 `COURSE_ACCESS_BACKEND` and are declared, per content repo, in `.fls-content.yaml` under
 `access_types` (scaffolded by `/fls-content:init`). The FLS shipped default accepts `free`
@@ -227,7 +255,8 @@ define entirely different values.
   ```yaml
   access_config:
     access_type: paid        # ✗ not a valid access type for this deployment
-    price: 50                # ✗ unknown key — only `access_type` is allowed
+    price: 50                # ✗ unknown key — only `access_type` and
+                             #   `application_form` are allowed
   ```
 
 - The FLS host re-validates at content-load through the active backend, so bad config never

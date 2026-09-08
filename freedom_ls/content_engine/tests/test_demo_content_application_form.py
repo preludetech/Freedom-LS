@@ -32,7 +32,10 @@ def loaded_demo_content(site, mock_site_context) -> None:
 def test_the_gated_demo_course_is_application_gated(site, loaded_demo_content):
     course = Course.objects.get(title=GATED_COURSE_TITLE, site=site)
 
-    assert course.access_config == {"access_type": "application_gated"}
+    assert course.access_config == {
+        "access_type": "application_gated",
+        "application_form": "../functionality_demo_application_form/form.md",
+    }
 
 
 @pytest.mark.django_db

@@ -392,8 +392,40 @@ def test_course_shipped_access_types_exit_zero(
     )
 
 
+def test_course_application_form_exits_zero(tmp_path: Path) -> None:
+    """A gated course names its application form inside access_config."""
+    write_course_with_access(
+        tmp_path,
+        "access_config:\n"
+        "  access_type: application_gated\n"
+        "  application_form: ../application_form/form.md\n",
+    )
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode == 0, (
+        f"An access_config naming an application_form should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_course_empty_application_form_exits_nonzero(tmp_path: Path) -> None:
+    """An application_form with no path is a typo, not a course with no form."""
+    write_course_with_access(
+        tmp_path,
+        "access_config:\n  access_type: application_gated\n  application_form: ''\n",
+    )
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode != 0, (
+        f"An empty application_form should fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
 def test_course_unknown_access_config_key_exits_nonzero(tmp_path: Path) -> None:
-    """An unknown key under access_config (only access_type is allowed) is rejected."""
+    """An unknown key under access_config is rejected."""
     write_course_with_access(
         tmp_path, "access_config:\n  access_type: free\n  price: 50\n"
     )

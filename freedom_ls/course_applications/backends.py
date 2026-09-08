@@ -9,7 +9,7 @@ This is the shipped default COURSE_ACCESS_BACKEND.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.urls import reverse
 
@@ -57,9 +57,48 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
     # validate_course_config reads this through self, so no override is needed.
     _ALLOWED_ACCESS_TYPES = frozenset({"free", APPLICATION_GATED})
 
+    # application_form is this backend's key: the path, relative to course.md, of
+    # the FORM an applicant fills in. The content loader resolves it and binds
+    # Course.application_form; nothing at runtime reads it back out of the config.
+    _ALLOWED_CONFIG_KEYS = frozenset({"access_type", "application_form"})
+
     # filter_visible is deliberately NOT overridden: gated courses stay discoverable
     # in listings. Gating is enforced at the CTA + initiate_course_access chokepoint,
     # not by hiding courses.
+
+    def validate_course_config(
+        self,
+        raw: dict[str, Any],
+        *,
+        file_path: str = "",
+    ) -> dict[str, Any]:
+        """Add the application_form rules on top of the inherited structural checks.
+
+        Nested inside the access_config JSON blob, application_form gets none of
+        the pydantic coercion a top-level schema field would give it, so its type
+        is checked here. Naming a form on a course that is not gated is an
+        authoring mistake rather than a harmless extra, so it is refused.
+        """
+        config = super().validate_course_config(raw, file_path=file_path)
+
+        if "application_form" not in config:
+            return config
+
+        context = f" in {file_path!r}" if file_path else ""
+        form_path = config["application_form"]
+        if not isinstance(form_path, str) or not form_path.strip():
+            raise ValueError(
+                f"Course access_config has an invalid application_form="
+                f"{form_path!r}{context}. Expected a path to a FORM file, "
+                f"relative to course.md."
+            )
+        if config["access_type"] != APPLICATION_GATED:
+            raise ValueError(
+                f"Course access_config names an application_form{context} but has "
+                f"access_type={config['access_type']!r}. application_form is only "
+                f"valid with access_type={APPLICATION_GATED!r}."
+            )
+        return config
 
     def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.

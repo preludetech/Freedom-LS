@@ -86,6 +86,16 @@ class TestFreeOnlyCourseAccessBackendValidate:
         with pytest.raises(ValueError, match="application_gated"):
             backend.validate_course_config({"access_type": "application_gated"})
 
+    def test_application_form_rejected_by_default_backend(self):
+        """application_form belongs to the applications backend's key vocabulary."""
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        backend = FreeOnlyCourseAccessBackend()
+        with pytest.raises(ValueError, match="unknown key"):
+            backend.validate_course_config(
+                {"access_type": "free", "application_form": "../form.md"}
+            )
+
     def test_file_path_included_in_error_message(self):
         from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
 

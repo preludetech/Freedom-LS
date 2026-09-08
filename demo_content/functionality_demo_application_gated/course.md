@@ -1,7 +1,7 @@
 ---
 access_config:
   access_type: application_gated
-application_form: ../functionality_demo_application_form/form.md
+  application_form: ../functionality_demo_application_form/form.md
 content_type: COURSE
 description: Shows the application form flow end to end.
 subtitle: A course you have to apply for

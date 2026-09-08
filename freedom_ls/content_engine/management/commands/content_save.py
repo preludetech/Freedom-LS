@@ -474,19 +474,15 @@ def save_course(item, site, base_path):
                 f"{item.file_path}: no CourseCategory with this slug is declared."
             ) from exc
 
-    # application_form is a Path in the schema and a foreign key on the model, so
-    # the binding pass in save_content_to_db writes it rather than save_with_uuid.
+    # The access_config written here still carries the author's raw
+    # application_form path; the binding pass in save_content_to_db resolves it
+    # into the Course.application_form foreign key once every Form is saved.
     return save_with_uuid(
         Course,
         item,
         site,
         base_path,
-        exclude_fields={
-            "children",
-            "categories",
-            "dashboard_category",
-            "application_form",
-        },
+        exclude_fields={"children", "categories", "dashboard_category"},
         dashboard_category=dashboard_category,
     )
 
@@ -866,17 +862,21 @@ def save_content_to_db(path, site_name):
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )
 
-    # Bind each course to the application form its frontmatter names. Writing
+    # Bind each course to the application form its access_config names. Writing
     # None when the key is absent is what makes deleting the line unbind the
     # form: save_with_uuid's update_or_create would otherwise leave the old value.
+    #
+    # This is the one place in core that reads an access_config key by name.
+    # content_engine already owns the Course.application_form foreign key, and the
+    # form has to be resolved against the file that declared it, which only the
+    # loader can do — so the key is read here rather than by the access backend.
     for collection, schema_item in collections_data:
         if not isinstance(collection, Course):
             continue
         form = None
-        if schema_item.application_form is not None:
-            form_path = resolve_author_path(
-                schema_item.file_path, schema_item.application_form
-            )
+        author_path = (schema_item.access_config or {}).get("application_form")
+        if author_path is not None:
+            form_path = resolve_author_path(schema_item.file_path, author_path)
             form = content_by_path.get(form_path)
             if not isinstance(form, Form):
                 raise ValueError(

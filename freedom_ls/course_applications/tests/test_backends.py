@@ -71,6 +71,59 @@ class TestValidateCourseConfig:
         with pytest.raises(ValueError, match="unknown key"):
             backend.validate_course_config({"unknown_key": "value"})
 
+    def test_an_application_form_survives_normalisation(self, mock_site_context):
+        """The content loader reads the path back off the normalised config to bind
+        Course.application_form, so dropping it here would silently unbind the form.
+        """
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        backend = ApplicationCourseAccessBackend()
+        result = backend.validate_course_config(
+            {
+                "access_type": "application_gated",
+                "application_form": "../application_form/form.md",
+            }
+        )
+        assert result == {
+            "access_type": "application_gated",
+            "application_form": "../application_form/form.md",
+        }
+
+    def test_an_application_form_on_a_free_course_raises_value_error(
+        self, mock_site_context
+    ):
+        """Naming a form a free course will never show anyone is an authoring
+        mistake, not a harmless extra key.
+        """
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        backend = ApplicationCourseAccessBackend()
+        with pytest.raises(ValueError, match="only valid with access_type"):
+            backend.validate_course_config(
+                {"access_type": "free", "application_form": "../form.md"}
+            )
+
+    @pytest.mark.parametrize("form_path", ["", "   ", 7, None, ["../form.md"]])
+    def test_an_application_form_that_is_not_a_path_raises_value_error(
+        self, mock_site_context, form_path
+    ):
+        """Nested in the JSON blob the value gets no pydantic coercion, so this is
+        the only thing standing between a mistyped path and a confusing load error.
+        """
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        backend = ApplicationCourseAccessBackend()
+        with pytest.raises(ValueError, match="invalid application_form"):
+            backend.validate_course_config(
+                {"access_type": "application_gated", "application_form": form_path}
+            )
+
     def test_file_path_included_in_error_message(self, mock_site_context):
         """ValueError for invalid config includes the file_path context."""
         import re

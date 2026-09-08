@@ -235,25 +235,35 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
     # validate_course_config below reads it through self, so no method override.
     _ALLOWED_ACCESS_TYPES: frozenset[str] = frozenset(CourseAccessType.values)
 
+    # access_config keys this backend understands. Subclasses widen it exactly as
+    # they widen _ALLOWED_ACCESS_TYPES; the shared validate_course_config below
+    # reads it through self, so no method override is needed to add a key.
+    _ALLOWED_CONFIG_KEYS: frozenset[str] = frozenset({"access_type"})
+
     def validate_course_config(
         self,
         raw: dict[str, Any],
         *,
         file_path: str = "",
     ) -> dict[str, Any]:
-        """Validate & normalise access_config against ``self._ALLOWED_ACCESS_TYPES``.
+        """Validate & normalise access_config against this backend's allowed sets.
 
-        Accepts only the access_type key; an absent access_type defaults to 'free'.
-        Returns the normalised dict {"access_type": <value>}. Raises ValueError with
-        file_path context on an unknown key or an unrecognised access_type.
+        Accepts only ``self._ALLOWED_CONFIG_KEYS``; an absent access_type defaults
+        to 'free' and must be in ``self._ALLOWED_ACCESS_TYPES``. Returns the
+        normalised dict: every allowed key that was present, plus the defaulted
+        access_type. Raises ValueError with file_path context on an unknown key or
+        an unrecognised access_type.
+
+        Allowed keys other than access_type are returned untouched, because the
+        content loader reads them back off the schema item after this runs.
         """
-        allowed_keys = {"access_type"}
-        extra_keys = set(raw.keys()) - allowed_keys
+        extra_keys = set(raw.keys()) - self._ALLOWED_CONFIG_KEYS
         if extra_keys:
             context = f" in {file_path!r}" if file_path else ""
             raise ValueError(
                 f"Course access_config has unknown key(s){context}: "
-                f"{sorted(extra_keys)!r}. Allowed keys: {sorted(allowed_keys)!r}"
+                f"{sorted(extra_keys)!r}. "
+                f"Allowed keys: {sorted(self._ALLOWED_CONFIG_KEYS)!r}"
             )
 
         access_type = raw.get("access_type", "free")
@@ -263,7 +273,9 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
                 f"Course access_config has invalid access_type={access_type!r}{context}. "
                 f"Valid values for this backend: {sorted(self._ALLOWED_ACCESS_TYPES)!r}."
             )
-        return {"access_type": access_type}
+        normalised = {k: v for k, v in raw.items() if k in self._ALLOWED_CONFIG_KEYS}
+        normalised["access_type"] = access_type
+        return normalised
 
     def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         """Return a CourseAccessDecision for this user + course.

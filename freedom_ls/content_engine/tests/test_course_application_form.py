@@ -1,10 +1,9 @@
-"""A course names the form its applicants fill in as a path relative to its own
-`course.md`. The schema is where that path is accepted; the loader resolves it.
+"""A course names the form its applicants fill in inside its `access_config`, as a
+path relative to its own `course.md`. The schema carries the config through
+untouched; the access backend validates the key and the loader resolves the path.
 """
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -23,16 +22,32 @@ def _course_data(**extra: object) -> dict[str, object]:
 
 def test_a_course_may_name_an_application_form():
     course = Course.model_validate(
-        _course_data(application_form="../forms/application/form.md")
+        _course_data(
+            access_config={
+                "access_type": "application_gated",
+                "application_form": "../forms/application/form.md",
+            }
+        )
     )
 
-    assert course.application_form == Path("../forms/application/form.md")
+    assert course.access_config == {
+        "access_type": "application_gated",
+        "application_form": "../forms/application/form.md",
+    }
 
 
 def test_a_course_need_not_name_an_application_form():
     course = Course.model_validate(_course_data())
 
-    assert course.application_form is None
+    assert course.access_config is None
+
+
+def test_a_top_level_application_form_is_refused():
+    """The key belongs under access_config. `extra="forbid"` is what stops the
+    older top-level spelling being silently ignored.
+    """
+    with pytest.raises(ValidationError):
+        Course.model_validate(_course_data(application_form="../forms/form.md"))
 
 
 def test_an_unknown_key_is_still_refused():

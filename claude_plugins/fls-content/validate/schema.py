@@ -333,25 +333,39 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         catches author-time mistakes offline.
 
         Structural rule (always enforced): absent/empty config defaults to "free";
-        only the `access_type` key is permitted.
+        only the `access_type` and `application_form` keys are permitted, and
+        `application_form` must be a non-empty path string.
 
         Value rule (enforced only when the deployment vocabulary has been injected):
         `access_type` must be one of ALLOWED_ACCESS_TYPES. That set is owned by the
         repo's .fls-content.yaml `access_types` and injected by validate.py — it is
         never hard-coded here. While it is None (e.g. schema imported without
         validate.py), the value is not checked.
+
+        Which access_type an application_form belongs with is deliberately not
+        checked: the gating access type is named by the deployment's backend, which
+        this validator has no view of. The deployment refuses the mismatch at load.
         """
         raw = self.access_config
         if not raw:
             return self
 
-        allowed_keys = {"access_type"}
+        allowed_keys = {"access_type", "application_form"}
         extra_keys = set(raw.keys()) - allowed_keys
         if extra_keys:
             raise ValueError(
                 f"access_config has unknown key(s) in {self.file_path}: "
                 f"{sorted(extra_keys)!r}. Allowed keys: {sorted(allowed_keys)!r}"
             )
+
+        if "application_form" in raw:
+            form_path = raw["application_form"]
+            if not isinstance(form_path, str) or not form_path.strip():
+                raise ValueError(
+                    f"access_config has an invalid application_form="
+                    f"{form_path!r} in {self.file_path}. Expected a path to a "
+                    f"FORM file, relative to course.md."
+                )
 
         access_type = raw.get("access_type", "free")
         if ALLOWED_ACCESS_TYPES is not None and access_type not in ALLOWED_ACCESS_TYPES:
