@@ -32,6 +32,10 @@
             {% include "form_engine/inputs/long_text.html" %}
         {% elif question.type == "number" %}
             {% include "form_engine/inputs/number.html" %}
+        {% elif question.type == "file_upload" %}
+            {% with answer=existing_answers|get_dict_item:question.id %}
+                {% include "form_engine/inputs/file_upload.html" with answer_file=answer.answer_file %}
+            {% endwith %}
         {% else %}
             <c-callout level="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
         {% endif %}

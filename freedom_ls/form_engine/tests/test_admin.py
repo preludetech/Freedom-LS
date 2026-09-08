@@ -7,9 +7,12 @@ import re
 import pytest
 
 from django.contrib import admin
+from django.contrib.admin.models import CHANGE, LogEntry
+from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.admin import (
     FormAdmin,
     FormContentAdmin,
@@ -17,13 +20,19 @@ from freedom_ls.form_engine.admin import (
     FormQuestionAdmin,
     QuestionOptionAdmin,
 )
-from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormProgressFactory,
+    QuestionAnswerFileFactory,
+)
 from freedom_ls.form_engine.models import (
     Form,
     FormContent,
     FormPage,
     FormQuestion,
+    FormStrategy,
     QuestionOption,
+    ScanStatus,
 )
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
@@ -132,3 +141,176 @@ class TestFormProgressChangelist:
 
         assert visible("complete") == [finished.pk]
         assert visible("incomplete") == [unfinished.pk]
+
+
+# ---------------------------------------------------------------------------
+# Answer data is restricted to superusers
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def editor_client(mock_site_context, logged_in_client):
+    """The admin as staff who are not a superuser.
+
+    Granted every model permission there is, so what the tests below measure is
+    the superuser gate itself rather than an editor who simply has no rights.
+    """
+    editor = UserFactory(is_staff=True, is_superuser=False)
+    editor.user_permissions.set(Permission.objects.all())
+    return logged_in_client(editor)
+
+
+ANSWER_CHANGELISTS = [
+    "admin:freedom_ls_form_engine_questionanswer_changelist",
+    "admin:freedom_ls_form_engine_formprogress_changelist",
+    "admin:freedom_ls_form_engine_questionanswerfile_changelist",
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_name", ANSWER_CHANGELISTS)
+def test_an_editor_cannot_reach_answer_data(editor_client, url_name):
+    """A sitting and its answers are an applicant's own words and documents.
+    Content editing rights are not rights over those.
+    """
+    response = editor_client.get(reverse(url_name))
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_name", ANSWER_CHANGELISTS)
+def test_a_superuser_can_reach_answer_data(staff_client, url_name):
+    response = staff_client.get(reverse(url_name))
+
+    assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Slug minting
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_two_forms_added_with_no_slug_both_save(staff_client):
+    """The slug is read-only in the admin, so nothing can supply one by hand and
+    the second form of the same title would otherwise collide.
+    """
+    add_url = reverse("admin:freedom_ls_form_engine_form_add")
+    payload = {
+        "title": "Application form",
+        "subtitle": "",
+        "description": "",
+        "content": "",
+        "strategy": FormStrategy.UNSCORED,
+        "meta": "null",
+        "tags": "",
+        "pages-TOTAL_FORMS": "0",
+        "pages-INITIAL_FORMS": "0",
+        "pages-MIN_NUM_FORMS": "0",
+        "pages-MAX_NUM_FORMS": "1000",
+    }
+
+    staff_client.post(add_url, payload)
+    staff_client.post(add_url, payload)
+
+    slugs = set(
+        Form.objects.filter(title="Application form").values_list("slug", flat=True)
+    )
+    assert len(slugs) == 2
+
+
+# ---------------------------------------------------------------------------
+# The reviewer's download route
+# ---------------------------------------------------------------------------
+
+
+def _admin_download_url(answer_file) -> str:
+    return reverse(
+        "admin:freedom_ls_form_engine_questionanswerfile_download",
+        args=[answer_file.pk],
+    )
+
+
+@pytest.mark.django_db
+def test_an_editor_cannot_download_an_answer_file(mock_site_context, editor_client):
+    answer_file = QuestionAnswerFileFactory(scan_status=ScanStatus.CLEAN)
+
+    response = editor_client.get(_admin_download_url(answer_file))
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_an_unscanned_file_is_not_served_to_a_reviewer(mock_site_context, staff_client):
+    """The scan gate exists so an unscanned upload never reaches a staff machine."""
+    answer_file = QuestionAnswerFileFactory()
+
+    response = staff_client.get(_admin_download_url(answer_file))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_cleared_file_is_served_to_a_reviewer(mock_site_context, staff_client):
+    answer_file = QuestionAnswerFileFactory(scan_status=ScanStatus.CLEAN)
+
+    response = staff_client.get(_admin_download_url(answer_file))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_marking_a_file_clean_is_written_to_the_admin_log(
+    mock_site_context, staff_client
+):
+    """Clearing a file is a human judgement about someone's document. Who made
+    it, and when, has to survive.
+    """
+    answer_file = QuestionAnswerFileFactory()
+
+    staff_client.post(
+        reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist"),
+        {
+            "action": "mark_clean",
+            "_selected_action": [str(answer_file.pk)],
+            "index": "0",
+        },
+    )
+
+    assert (
+        LogEntry.objects.filter(
+            object_id=str(answer_file.pk), action_flag=CHANGE
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_marking_a_file_clean_clears_it(mock_site_context, staff_client):
+    answer_file = QuestionAnswerFileFactory()
+
+    staff_client.post(
+        reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist"),
+        {
+            "action": "mark_clean",
+            "_selected_action": [str(answer_file.pk)],
+            "index": "0",
+        },
+    )
+
+    answer_file.refresh_from_db()
+    assert answer_file.scan_status == ScanStatus.CLEAN
+
+
+@pytest.mark.django_db
+def test_the_changelist_offers_no_download_for_an_unscanned_file(
+    mock_site_context, staff_client
+):
+    answer_file = QuestionAnswerFileFactory()
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist")
+    )
+
+    assert _admin_download_url(answer_file) not in response.content.decode()

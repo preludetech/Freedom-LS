@@ -1,7 +1,15 @@
+from typing import cast
+from uuid import UUID
+
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
+from django.contrib.admin.models import CHANGE, LogEntry
+from django.contrib.sites.models import Site
+from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.urls import URLPattern, path, reverse
+from django.utils.html import format_html
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
@@ -9,6 +17,8 @@ from freedom_ls.site_aware_models.admin_filters import (
     CompletionListFilter,
     InclusiveRangeDateTimeFilter,
 )
+from freedom_ls.site_aware_models.models import get_cached_site
+from freedom_ls.site_aware_models.slugs import get_unique_slug, slug_base_for
 
 from .models import (
     Form,
@@ -17,8 +27,30 @@ from .models import (
     FormProgress,
     FormQuestion,
     QuestionAnswer,
+    QuestionAnswerFile,
     QuestionOption,
+    ScanStatus,
 )
+
+
+class SuperuserOnlyAdmin:
+    """Restricts a whole admin class to superusers.
+
+    An applicant's sitting, their answers and the documents they attached are
+    their own words and papers. Rights over course content are not rights over
+    those, and Django's per-model permissions cannot express the difference --
+    so the gate is here rather than in a permission grant.
+    """
+
+    def has_view_permission(
+        self, request: HttpRequest, obj: object | None = None
+    ) -> bool:
+        return request.user.is_superuser
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: object | None = None
+    ) -> bool:
+        return request.user.is_superuser
 
 
 class QuestionOptionInline(admin.TabularInline):
@@ -184,6 +216,24 @@ class FormAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
+    def save_model(
+        self, request: HttpRequest, obj: Form, form: object, change: bool
+    ) -> None:
+        """Mint a slug for a form added through the admin.
+
+        `slug` is read-only here, so nothing on the add form can supply one and
+        a second form of the same title would collide without this.
+        """
+        if not obj.slug:
+            # get_cached_site can return a RequestSite fallback, but only when
+            # django.contrib.sites is uninstalled, which never happens here.
+            site = get_cached_site(request)
+            if isinstance(site, Site):
+                obj.slug = get_unique_slug(
+                    Form, site, slug_base_for(obj.title), existing_uuid=str(obj.pk)
+                )
+        super().save_model(request, obj, form, change)
+
 
 class QuestionAnswerInline(admin.TabularInline):
     """Inline for question answers."""
@@ -199,7 +249,7 @@ class FormProgressCompletionFilter(CompletionListFilter):
 
 
 @admin.register(FormProgress)
-class FormProgressAdmin(SiteAwareModelAdmin):
+class FormProgressAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     list_display = [
         "user",
         "form",
@@ -268,7 +318,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(QuestionAnswer)
-class QuestionAnswerAdmin(SiteAwareModelAdmin):
+class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     list_display = [
         "form_progress",
         "question",
@@ -298,3 +348,100 @@ class QuestionAnswerAdmin(SiteAwareModelAdmin):
             options = ", ".join([opt.text for opt in obj.selected_options.all()])
             return options[:50]
         return "-"
+
+
+@admin.register(QuestionAnswerFile)
+class QuestionAnswerFileAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
+    """The reviewer's view of the documents applicants attached.
+
+    The file itself is reachable only through the download route below, and only
+    once a superuser has marked it clean.
+    """
+
+    list_display = [
+        "applicant",
+        "question",
+        "original_filename",
+        "scan_status",
+        "created_at",
+        "download",
+    ]
+    list_select_related = ["answer__form_progress__user", "answer__question"]
+    list_filter = ["scan_status", "created_at"]
+    readonly_fields = [
+        "answer",
+        "original_filename",
+        "scan_status",
+        "created_at",
+        "updated_at",
+    ]
+    # `file` is excluded rather than read-only: rendering the field would put a
+    # storage URL for an unscanned upload on the page.
+    exclude = ["site", "file"]
+    actions = ["mark_clean", "mark_rejected"]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    @admin.display(description="Applicant", ordering="answer__form_progress__user")
+    def applicant(self, obj: QuestionAnswerFile) -> str:
+        return str(obj.answer.form_progress.user)
+
+    @admin.display(description="Question", ordering="answer__question")
+    def question(self, obj: QuestionAnswerFile) -> str:
+        return obj.answer.question.question[:50]
+
+    @admin.display(description="Download")
+    def download(self, obj: QuestionAnswerFile) -> str:
+        if obj.scan_status != ScanStatus.CLEAN:
+            return ""
+        url = reverse(
+            "admin:freedom_ls_form_engine_questionanswerfile_download", args=[obj.pk]
+        )
+        return format_html('<a href="{}">Download</a>', url)
+
+    def get_urls(self) -> list[URLPattern]:
+        from freedom_ls.form_engine.views import question_answer_file_download_view
+
+        custom = [
+            path(
+                "<path:object_id>/download/",
+                self.admin_site.admin_view(question_answer_file_download_view),
+                name="freedom_ls_form_engine_questionanswerfile_download",
+            )
+        ]
+        return custom + list(super().get_urls())
+
+    @admin.action(description="Mark selected files clean")
+    def mark_clean(
+        self, request: HttpRequest, queryset: QuerySet[QuestionAnswerFile]
+    ) -> None:
+        self._set_scan_status(request, queryset, ScanStatus.CLEAN)
+
+    @admin.action(description="Mark selected files rejected")
+    def mark_rejected(
+        self, request: HttpRequest, queryset: QuerySet[QuestionAnswerFile]
+    ) -> None:
+        self._set_scan_status(request, queryset, ScanStatus.REJECTED)
+
+    def _set_scan_status(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[QuestionAnswerFile],
+        status: ScanStatus,
+    ) -> None:
+        """Set the status and record who decided it.
+
+        Clearing a file is a human judgement about someone's document, so the
+        log entry is the point of the action rather than bookkeeping around it.
+        """
+        queryset.update(scan_status=status)
+        # The class is superuser-only, so request.user is always a real row with
+        # a UUID primary key here, never the anonymous user Django types it as.
+        user_pk = cast("UUID", request.user.pk)
+        LogEntry.objects.log_actions(
+            user_pk,
+            queryset,
+            CHANGE,
+            change_message=f"Scan status set to {status.label}",
+        )

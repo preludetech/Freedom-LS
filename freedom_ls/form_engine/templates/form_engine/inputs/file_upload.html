@@ -1,0 +1,84 @@
+{% load form_engine_tags %}
+{% upload_limits as limits %}
+{% comment %}
+The file widget, and the whole of every response the upload and remove views
+return: those views swap this element outerHTML, so any state it can be in has
+to be expressible here.
+
+aria-live so a screen reader hears the outcome of an attach or a remove, both of
+which happen without a page load.
+{% endcomment %}
+<div id="question-{{ question.id }}-file"
+     class="space-y-2"
+     aria-live="polite"
+     x-data="questionFileUpload"
+     data-max-bytes="{{ limits.max_bytes }}"
+     hx-encoding="multipart/form-data">
+
+    {% if error %}
+        <p class="text-sm text-error">{{ error }}</p>
+    {% endif %}
+    {% if notice %}
+        <p class="text-sm text-muted">{{ notice }}</p>
+    {% endif %}
+
+    {% if answer_file %}
+        <p class="flex items-center gap-2 text-on-surface">
+            <c-icon name="notes" class="size-4" />
+            <span>{{ answer_file.original_filename }}</span>
+            <span class="text-sm text-muted">({{ answer_file.file.size|filesizeformat }})</span>
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <a class="inline-flex items-center gap-1 text-sm text-primary underline"
+               href="{% url 'form_engine:own_question_answer_file' file_pk=answer_file.pk %}">
+                <c-icon name="download" class="size-4" />
+                Download<span class="sr-only"> {{ question.rendered_question }}</span>
+            </a>
+
+            {% if not read_only %}
+                {% comment %}
+                A label rather than a button: the picker has to be a real file
+                input, and this is what gives it the affordance of one.
+                {% endcomment %}
+                <label class="btn btn-secondary btn-sm cursor-pointer">
+                    Replace<span class="sr-only"> file for {{ question.rendered_question }}</span>
+                    <input type="file"
+                           class="sr-only"
+                           name="file"
+                           accept="{{ limits.accept }}"
+                           hx-post="{% url 'form_engine:question_file_upload' progress_pk=form_progress.pk question_pk=question.pk %}"
+                           hx-trigger="change"
+                           hx-target="#question-{{ question.id }}-file"
+                           hx-swap="outerHTML"
+                           x-on:htmx:confirm="checkSize" />
+                </label>
+
+                <c-button variant="secondary"
+                          size="small"
+                          hx-post="{% url 'form_engine:question_file_remove' progress_pk=form_progress.pk question_pk=question.pk %}"
+                          hx-target="#question-{{ question.id }}-file"
+                          hx-swap="outerHTML">
+                    Remove<span class="sr-only"> file for {{ question.rendered_question }}</span>
+                </c-button>
+            {% endif %}
+        </div>
+    {% elif not read_only %}
+        <label class="sr-only" for="question_{{ question.id }}_file">{{ question.rendered_question }}</label>
+        <input type="file"
+               id="question_{{ question.id }}_file"
+               name="file"
+               accept="{{ limits.accept }}"
+               hx-post="{% url 'form_engine:question_file_upload' progress_pk=form_progress.pk question_pk=question.pk %}"
+               hx-trigger="change"
+               hx-target="#question-{{ question.id }}-file"
+               hx-swap="outerHTML"
+               x-on:htmx:confirm="checkSize" />
+        <p class="text-sm text-muted">JPEG, PNG or PDF, up to {{ limits.max_label }}.</p>
+        <p class="text-sm text-error" x-cloak x-show="oversized" x-transition>
+            That file is larger than {{ limits.max_label }}. Choose a smaller one.
+        </p>
+    {% else %}
+        <p class="text-sm text-muted">No file attached.</p>
+    {% endif %}
+</div>
