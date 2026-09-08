@@ -1,3 +1,4 @@
+import re
 import tempfile
 from pathlib import Path
 
@@ -600,3 +601,217 @@ def test_svg_image_is_stored_byte_identical(site, mock_site_context):
 
         file_obj = File.objects.get(site=site, file_path="1. intro/images/pic.svg")
         assert file_obj.file.read() == svg_bytes
+
+
+# ---------------------------------------------------------------------------
+# Explicit children lists and application forms
+# ---------------------------------------------------------------------------
+
+
+COURSE_UUID = "20000000-0000-0000-0000-000000000001"
+
+
+def _write_topic(directory: Path, name: str, title: str, uuid: str) -> None:
+    (directory / name).write_text(f"""---
+content_type: TOPIC
+title: {title}
+uuid: {uuid}
+---
+
+{title} content
+""")
+
+
+def _write_application_form(directory: Path) -> None:
+    directory.mkdir()
+    (directory / "form.md").write_text("""---
+content_type: FORM
+strategy: UNSCORED
+title: Application form
+uuid: 20000000-0000-0000-0000-000000000010
+---
+
+Tell us about yourself.
+""")
+    (directory / "1. about-you.yaml").write_text("""---
+content_type: FORM_PAGE
+title: About you
+uuid: 20000000-0000-0000-0000-000000000011
+---
+question: What is your name?
+type: short_text
+required: true
+uuid: 20000000-0000-0000-0000-000000000012
+""")
+
+
+@pytest.mark.django_db
+def test_an_explicit_children_list_is_honoured_in_the_order_it_names(
+    site, mock_site_context
+):
+    """An author who writes a `children:` list is choosing the order. Resolving
+    those paths against the directory that declares them is what makes the list
+    usable at all.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        course_dir.mkdir()
+        _write_topic(
+            course_dir, "1. alpha.md", "Alpha", "20000000-0000-0000-0000-000000000002"
+        )
+        _write_topic(
+            course_dir, "2. beta.md", "Beta", "20000000-0000-0000-0000-000000000003"
+        )
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Ordered Course
+uuid: {COURSE_UUID}
+children:
+  - path: 2. beta.md
+  - path: 1. alpha.md
+---
+""")
+
+        save_content_to_db(course_dir, site.name)
+
+        course = Course.objects.get(title="Ordered Course", site=site)
+        titles = [item.child.title for item in course.items.all().order_by("order")]
+        assert titles == ["Beta", "Alpha"]
+
+
+@pytest.mark.django_db
+def test_a_children_entry_naming_a_missing_file_fails_the_load(site, mock_site_context):
+    """A silently dropped child is a course missing content nobody notices."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        course_dir.mkdir()
+        _write_topic(
+            course_dir, "1. alpha.md", "Alpha", "20000000-0000-0000-0000-000000000002"
+        )
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Broken Course
+uuid: {COURSE_UUID}
+children:
+  - path: 9. nowhere.md
+---
+""")
+
+        with pytest.raises(ValueError, match="Broken Course"):
+            save_content_to_db(course_dir, site.name)
+
+
+@pytest.mark.django_db
+def test_a_failed_load_leaves_no_course_behind(site, mock_site_context):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        course_dir.mkdir()
+        _write_topic(
+            course_dir, "1. alpha.md", "Alpha", "20000000-0000-0000-0000-000000000002"
+        )
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Broken Course
+uuid: {COURSE_UUID}
+children:
+  - path: 9. nowhere.md
+---
+""")
+
+        with pytest.raises(ValueError, match=re.escape("9. nowhere.md")):
+            save_content_to_db(course_dir, site.name)
+
+        assert Course.objects.filter(title="Broken Course").exists() is False
+
+
+@pytest.mark.django_db
+def test_a_course_binds_the_application_form_its_frontmatter_names(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        _write_application_form(root / "application_form")
+        course_dir = root / "gated_course"
+        course_dir.mkdir()
+        _write_topic(
+            course_dir,
+            "1. welcome.md",
+            "Welcome",
+            "20000000-0000-0000-0000-000000000002",
+        )
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Gated Course
+uuid: {COURSE_UUID}
+application_form: ../application_form/form.md
+---
+""")
+
+        save_content_to_db(root, site.name)
+
+        course = Course.objects.get(title="Gated Course", site=site)
+        assert course.application_form == Form.objects.get(title="Application form")
+
+
+@pytest.mark.django_db
+def test_removing_the_frontmatter_key_unbinds_the_form(site, mock_site_context):
+    """Otherwise an author who deletes the line is left with a course still
+    demanding an application nothing in the content asks for.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        _write_application_form(root / "application_form")
+        course_dir = root / "gated_course"
+        course_dir.mkdir()
+        course_file = course_dir / "course.md"
+        _write_topic(
+            course_dir,
+            "1. welcome.md",
+            "Welcome",
+            "20000000-0000-0000-0000-000000000002",
+        )
+        course_file.write_text(f"""---
+content_type: COURSE
+title: Gated Course
+uuid: {COURSE_UUID}
+application_form: ../application_form/form.md
+---
+""")
+        save_content_to_db(root, site.name)
+
+        course_file.write_text(f"""---
+content_type: COURSE
+title: Gated Course
+uuid: {COURSE_UUID}
+---
+""")
+        save_content_to_db(root, site.name)
+
+        course = Course.objects.get(title="Gated Course", site=site)
+        assert course.application_form is None
+
+
+@pytest.mark.django_db
+def test_an_application_form_path_pointing_at_a_topic_fails_the_load(
+    site, mock_site_context
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        root = Path(tmpdir)
+        course_dir = root / "gated_course"
+        course_dir.mkdir()
+        _write_topic(
+            course_dir,
+            "1. welcome.md",
+            "Welcome",
+            "20000000-0000-0000-0000-000000000002",
+        )
+        (course_dir / "course.md").write_text(f"""---
+content_type: COURSE
+title: Gated Course
+uuid: {COURSE_UUID}
+application_form: 1. welcome.md
+---
+""")
+
+        with pytest.raises(ValueError, match="not a loaded FORM"):
+            save_content_to_db(root, site.name)

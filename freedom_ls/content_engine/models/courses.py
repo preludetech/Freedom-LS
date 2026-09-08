@@ -81,6 +81,16 @@ class Course(MarkdownContent, TitledContent):
             "branches on its contents. The default backend stores {'access_type': ...}."
         ),
     )
+    # Written by the loader from the `application_form:` path in course.md.
+    # SET_NULL rather than PROTECT: unpublishing a form should not make the
+    # course it gated unloadable.
+    application_form = models.ForeignKey(
+        "freedom_ls_form_engine.Form",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="application_courses",
+    )
     icon = models.CharField(
         max_length=64,
         blank=True,

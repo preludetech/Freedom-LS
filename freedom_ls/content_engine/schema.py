@@ -213,6 +213,14 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
         ),
     )
 
+    application_form: Path | None = Field(
+        None,
+        description=(
+            "Path to the FORM file this course's applicants fill in, relative "
+            "to course.md"
+        ),
+    )
+
     @field_validator("category", mode="before")
     @classmethod
     def _category_is_retired(cls, value: str | None) -> str | None:

@@ -418,6 +418,21 @@ def save_course_categories(item, site, base_path):
     return categories
 
 
+def content_key(file_path):
+    """The normalised key every content_by_path entry and lookup uses.
+
+    A path written by an author and a path produced by the directory scan reach
+    the same file by different routes, so both have to be resolved before either
+    is used as a key.
+    """
+    return Path(file_path).resolve()
+
+
+def resolve_author_path(declaring_file, author_path):
+    """An author-written path, relative to the file that declares it."""
+    return content_key(Path(declaring_file).parent / author_path)
+
+
 def save_course(item, site, base_path):
     """Save a Course to the database."""
     # Defence-in-depth: the pydantic model_validator already enforces these
@@ -459,12 +474,19 @@ def save_course(item, site, base_path):
                 f"{item.file_path}: no CourseCategory with this slug is declared."
             ) from exc
 
+    # application_form is a Path in the schema and a foreign key on the model, so
+    # the binding pass in save_content_to_db writes it rather than save_with_uuid.
     return save_with_uuid(
         Course,
         item,
         site,
         base_path,
-        exclude_fields={"children", "categories", "dashboard_category"},
+        exclude_fields={
+            "children",
+            "categories",
+            "dashboard_category",
+            "application_form",
+        },
         dashboard_category=dashboard_category,
     )
 
@@ -762,26 +784,26 @@ def save_content_to_db(path, site_name):
     # Save Topics
     for item in grouped.get(SchemaContentType.TOPIC, []):
         topic = save_topic(item, site, path)
-        content_by_path[item.file_path] = topic
+        content_by_path[content_key(item.file_path)] = topic
         logger.info(f"Saved Topic: {topic.title}")
 
     # Save Activities
     for item in grouped.get(SchemaContentType.ACTIVITY, []):
         activity = save_activity(item, site, path)
-        content_by_path[item.file_path] = activity
+        content_by_path[content_key(item.file_path)] = activity
         logger.info(f"Saved Activity: {activity.title}")
 
     # Save Courses and CourseParts
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
     for item in grouped.get(SchemaContentType.COURSE, []):
         collection = save_course(item, site, path)
-        content_by_path[item.file_path] = collection
+        content_by_path[content_key(item.file_path)] = collection
         collections_data.append((collection, item))
         logger.info(f"Saved Course: {collection.title}")
 
     for item in grouped.get(SchemaContentType.COURSE_PART, []):
         collection = save_course_part(item, site, path)
-        content_by_path[item.file_path] = collection
+        content_by_path[content_key(item.file_path)] = collection
         collections_data.append((collection, item))
         logger.info(f"Saved CoursePart: {collection.title}")
 
@@ -790,7 +812,7 @@ def save_content_to_db(path, site_name):
     for item in grouped.get(SchemaContentType.FORM, []):
         form = save_form(item, site, path)
         forms_by_dir[item.file_path.parent] = form
-        content_by_path[item.file_path] = form
+        content_by_path[content_key(item.file_path)] = form
         logger.info(f"Saved Form: {form.title}")
 
     # Group form pages by file
@@ -844,6 +866,27 @@ def save_content_to_db(path, site_name):
                             f"Saved FormQuestion in {form_page.title} (order={content_order})"
                         )
 
+    # Bind each course to the application form its frontmatter names. Writing
+    # None when the key is absent is what makes deleting the line unbind the
+    # form: save_with_uuid's update_or_create would otherwise leave the old value.
+    for collection, schema_item in collections_data:
+        if not isinstance(collection, Course):
+            continue
+        form = None
+        if schema_item.application_form is not None:
+            form_path = resolve_author_path(
+                schema_item.file_path, schema_item.application_form
+            )
+            form = content_by_path.get(form_path)
+            if not isinstance(form, Form):
+                raise ValueError(
+                    f"Course '{collection.title}' names application_form {form_path}, "
+                    f"which is not a loaded FORM"
+                )
+        if collection.application_form_id != (form.pk if form else None):
+            collection.application_form = form
+            collection.save(update_fields=["application_form"])
+
     # Process collection children
     for collection, schema_item in collections_data:
         if schema_item.content_type == SchemaContentType.COURSE:
@@ -856,7 +899,12 @@ def save_content_to_db(path, site_name):
                 )
             )
 
-        children_list = schema_item.children if schema_item.children else []
+        # Both branches produce (resolved path, overrides) pairs, so the lookup
+        # below is the same whichever way the children were arrived at.
+        children_list: list[tuple[Path, dict | None]] = [
+            (resolve_author_path(schema_item.file_path, child.path), child.overrides)
+            for child in (schema_item.children or [])
+        ]
 
         # If no children specified, scan the directory for all content files
         if not children_list:
@@ -882,9 +930,7 @@ def save_content_to_db(path, site_name):
                             == SchemaContentType.COURSE_CATEGORIES
                         ):
                             continue
-                        children_list.append(
-                            type("Child", (), {"path": item, "overrides": None})()
-                        )
+                        children_list.append((content_key(item), None))
                 elif item.is_dir():
                     # A subdirectory is either a child collection/form
                     # (form.md/course.md/part.yaml) or a topic directory
@@ -922,13 +968,11 @@ def save_content_to_db(path, site_name):
 
                     main_file = collection_file or topic_file
                     if main_file:
-                        children_list.append(
-                            type("Child", (), {"path": main_file, "overrides": None})()
-                        )
+                        children_list.append((content_key(main_file), None))
 
         # Create ContentCollectionItem entries for each child
-        for order, child in enumerate(children_list):
-            child_content = content_by_path.get(child.path)
+        for order, (child_path, overrides) in enumerate(children_list):
+            child_content = content_by_path.get(child_path)
             if child_content:
                 # Get the Django ContentType for both collection and child
                 collection_content_type = DjangoContentType.objects.get_for_model(
@@ -947,7 +991,7 @@ def save_content_to_db(path, site_name):
                     child_id=child_content.id,
                     defaults={
                         "order": order,
-                        "overrides": child.overrides,
+                        "overrides": overrides,
                     },
                 )
                 logger.info(
@@ -955,9 +999,11 @@ def save_content_to_db(path, site_name):
                     f"to {collection.__class__.__name__} '{collection.title}' (order={order})"
                 )
             else:
-                logger.warning(
-                    f"Could not find content for path {child.path} "
-                    f"in collection '{collection.title}'"
+                # A silently dropped child is a course missing content nobody
+                # notices, so this fails the whole atomic load instead.
+                raise ValueError(
+                    f"Collection '{collection.title}' names a child at "
+                    f"{child_path} that was not loaded"
                 )
 
     click.echo(f"✓ Successfully saved all content for site: {site_name}")
