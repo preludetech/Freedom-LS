@@ -327,6 +327,11 @@ def _page_url(app, page_number):
     )
 
 
+def _edit_url(app, page_number):
+    """A form page reached from the check-your-answers page."""
+    return f"{_page_url(app, page_number)}?return=check"
+
+
 def _check_url(app):
     return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
 
@@ -486,6 +491,47 @@ class TestApplicationFormPage:
 
         assert response.status_code == 422
 
+    def test_saving_a_page_reached_from_the_check_page_returns_there(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+
+        response = client.post(_edit_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        assert response["Location"] == _check_url(app)
+
+    def test_a_page_reached_from_the_check_page_offers_a_return_button(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_edit_url(app, 1)).content.decode()
+
+        assert "Save and return to your answers" in body
+        assert "Back to your answers" in body
+
+    def test_a_page_reached_normally_offers_no_return_button(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_page_url(app, 1)).content.decode()
+
+        assert "Save and return to your answers" not in body
+
+    def test_a_refused_page_keeps_the_return_marker(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.post(_edit_url(app, 1), {})
+
+        assert response.status_code == 422
+        assert "Save and return to your answers" in response.content.decode()
+
     def test_a_refused_page_still_keeps_the_answers_that_were_given(
         self, client, mock_site_context
     ):
@@ -558,16 +604,34 @@ class TestCheckYourAnswers:
 
         assert response.status_code == 404
 
-    def test_every_question_gets_a_change_link_to_its_own_page(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
+    def test_every_page_gets_one_edit_link(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
         app = _applied(client, course)
 
-        response = client.get(_check_url(app))
+        body = client.get(_check_url(app)).content.decode()
 
-        body = response.content.decode()
-        assert body.count(_page_url(app, 1)) == len(_questions_on(form, 1))
+        assert body.count(_page_url(app, 1)) == 1
+        assert body.count(_page_url(app, 2)) == 1
+
+    def test_answers_are_grouped_under_their_page_titles(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert "About you" in body
+        assert "Supporting documents" in body
+
+    def test_an_edit_link_carries_the_return_marker(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_check_url(app)).content.decode()
+
+        assert _edit_url(app, 1) in body
+        assert _edit_url(app, 2) in body
 
     def test_an_unanswered_required_question_blocks_submission(
         self, client, mock_site_context

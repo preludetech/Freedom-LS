@@ -28,6 +28,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "download",
     "more_options",
     "settings",
+    "edit",
     # Content types
     "topic",
     "form",

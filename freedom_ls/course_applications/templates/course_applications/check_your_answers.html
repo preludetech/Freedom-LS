@@ -1,51 +1,71 @@
 {% extends "_base.html" %}
-{% load fls_base_filters %}
 
 {% block head_title %}Check your answers — {{ course.title }}{% endblock %}
 
 {% block content %}
     <c-page width="narrow">
         <div class="space-y-6">
-            <p class="text-muted">Application for {{ course.title }}</p>
-            <h1>Check your answers</h1>
+            <div class="space-y-2">
+                <p class="text-muted">Application for {{ course.title }}</p>
+                <h1>Check your answers</h1>
+                <p class="text-muted">
+                    Nothing is sent until you press Submit application. You can change any section from here.
+                </p>
+            </div>
 
             {% if required_answers_error %}
                 <c-callout level="error">{{ required_answers_error }}</c-callout>
             {% endif %}
 
-            <dl class="divide-y divide-border">
-                {% for row in rows %}
-                    <div class="py-4 space-y-1">
-                        <dt class="font-semibold text-on-surface">{{ row.question.rendered_question }}</dt>
-                        <dd class="flex flex-wrap items-baseline justify-between gap-4">
-                            <span class="text-on-surface">
-                                {% if row.answer.answer_file %}
-                                    {{ row.answer.answer_file.original_filename }}
-                                    <span class="text-sm text-muted">({{ row.answer.answer_file.file.size|filesizeformat }})</span>
-                                    <a class="ml-2 text-primary underline"
-                                       href="{% url 'form_engine:own_question_answer_file' file_pk=row.answer.answer_file.pk %}">
-                                        Download<span class="sr-only"> {{ row.question.rendered_question }}</span>
-                                    </a>
-                                {% elif row.answer.text_answer %}
-                                    {{ row.answer.text_answer }}
-                                {% elif row.answer %}
-                                    {% for option in row.answer.selected_options.all %}
-                                        {{ option.text }}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    <span class="text-muted">Not answered</span>
-                                {% endif %}
-                            </span>
-
-                            {% if not submitted %}
-                                <a class="text-primary underline" href="{{ row.change_url }}">
-                                    Change<span class="sr-only"> answer to {{ row.question.rendered_question }}</span>
-                                </a>
-                            {% endif %}
-                        </dd>
+            {% for section in sections %}
+                {% comment %}
+                No <dl> at the top level: the base layer lays every dl out as a
+                two-column grid, which is the wrong shape for a stack of cards.
+                The dl inside each card is switched back to block for the same
+                reason, and each question/answer pair is its own small grid.
+                {% endcomment %}
+                <section aria-labelledby="section-{{ section.number }}-title"
+                         class="border border-border rounded-md overflow-hidden bg-surface">
+                    <div class="flex items-center justify-between gap-4 bg-surface-2 border-b border-border px-4 py-3 sm:px-6">
+                        <h2 id="section-{{ section.number }}-title" class="text-base font-semibold">
+                            {% if section.title %}{{ section.title }}{% else %}Page {{ section.number }}{% endif %}
+                        </h2>
+                        {% if not submitted %}
+                            <c-button href="{{ section.edit_url }}" variant="ghost" size="small" icon_left="edit">
+                                Edit<span class="sr-only"> {% if section.title %}{{ section.title }}{% else %}page {{ section.number }}{% endif %}</span>
+                            </c-button>
+                        {% endif %}
                     </div>
-                {% endfor %}
-            </dl>
+
+                    <dl class="block px-4 py-2 sm:px-6">
+                        {% for row in section.rows %}
+                            <div class="py-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-x-6 gap-y-1">
+                                <dt class="text-sm font-normal font-sans text-muted [&_p]:text-muted [&_p]:text-sm">
+                                    {{ row.question.rendered_question }}
+                                </dt>
+                                <dd class="text-on-surface">
+                                    {% if row.answer.answer_file %}
+                                        <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                                            <span>{{ row.answer.answer_file.original_filename }}</span>
+                                            <span class="text-sm text-muted">({{ row.answer.answer_file.file.size|filesizeformat }})</span>
+                                            <c-button href="{% url 'form_engine:own_question_answer_file' file_pk=row.answer.answer_file.pk %}"
+                                                      variant="ghost" size="small" icon_left="download">
+                                                Download<span class="sr-only"> {{ row.answer.answer_file.original_filename }}</span>
+                                            </c-button>
+                                        </span>
+                                    {% elif row.answer.text_answer %}
+                                        <span class="whitespace-pre-line">{{ row.answer.text_answer }}</span>
+                                    {% elif row.answer %}
+                                        {% for option in row.answer.selected_options.all %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                                    {% else %}
+                                        <span class="text-muted">Not answered</span>
+                                    {% endif %}
+                                </dd>
+                            </div>
+                        {% endfor %}
+                    </dl>
+                </section>
+            {% endfor %}
 
             {% if submitted %}
                 <c-callout level="success">

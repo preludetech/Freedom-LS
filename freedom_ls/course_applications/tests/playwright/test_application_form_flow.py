@@ -68,11 +68,11 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     expect(logged_in_page.get_by_text("id-scan.png")).to_be_visible()
     logged_in_page.get_by_role("button", name="Check your answers").click()
 
-    # Change the name from the check page, and see the new value come back.
-    logged_in_page.get_by_role("link", name="Change answer to Your name").click()
+    # Edit the first page from the check page, and land straight back on it
+    # with the new value showing.
+    logged_in_page.get_by_role("link", name="Edit About you").click()
     logged_in_page.get_by_label("Your name").fill("Grace Hopper")
-    logged_in_page.get_by_role("button", name="Next").click()
-    logged_in_page.get_by_role("button", name="Check your answers").click()
+    logged_in_page.get_by_role("button", name="Save and return to your answers").click()
     expect(logged_in_page.get_by_text("Grace Hopper")).to_be_visible()
 
     logged_in_page.get_by_role("button", name="Submit application").click()

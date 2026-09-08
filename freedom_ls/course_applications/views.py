@@ -134,6 +134,18 @@ def _owned_application_with_form(
     return app, app.form, app.form_progress
 
 
+def _page_url(app: CourseApplication, page_number: int) -> str:
+    return reverse(
+        "course_applications:form_page",
+        kwargs={"pk": app.pk, "page_number": page_number},
+    )
+
+
+# Query-string marker an Edit link from the check-your-answers page carries. A
+# page reached with it saves and goes straight back there instead of advancing.
+RETURN_TO_CHECK = "check"
+
+
 @login_required
 def application_form_page(
     request: HttpRequest, pk: UUID, page_number: int
@@ -151,12 +163,12 @@ def application_form_page(
     form_page = all_pages[page_number - 1]
     questions = page_questions(form_page)
     read_only = form_progress.completed_time is not None
+    # The page form posts to its own URL, query string included, so the marker
+    # survives both the save and a 422 re-render.
+    return_to_check = request.GET.get("return") == RETURN_TO_CHECK
 
     def url_for_page(number: int) -> str:
-        return reverse(
-            "course_applications:form_page",
-            kwargs={"pk": app.pk, "page_number": number},
-        )
+        return _page_url(app, number)
 
     required_answers_error = ""
     if request.method == "POST":
@@ -165,7 +177,7 @@ def application_form_page(
         unanswered = unanswered_required_on_page(questions, request.POST, form_progress)
         form_progress.save_answers(questions, request.POST)
         if not unanswered:
-            if page_number < len(all_pages):
+            if page_number < len(all_pages) and not return_to_check:
                 return redirect(url_for_page(page_number + 1))
             return redirect("course_applications:check_answers", pk=app.pk)
         required_answers_error = unanswered_required_message(unanswered)
@@ -184,6 +196,10 @@ def application_form_page(
         "page_links": build_page_links(form, form_progress, page_number, url_for_page),
         "read_only": read_only,
         "required_answers_error": required_answers_error,
+        "return_to_check": return_to_check,
+        "check_answers_url": reverse(
+            "course_applications:check_answers", kwargs={"pk": app.pk}
+        ),
     }
     response = render(
         request,
@@ -198,7 +214,8 @@ def application_form_page(
 
 @login_required
 def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
-    """Everything the applicant has said, and the one place they submit from.
+    """Everything the applicant has said, one card per page, and the one place
+    they submit from.
 
     The whole-form check is what catches a required question on a page they
     never visited -- the per-page check cannot see those.
@@ -221,21 +238,21 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     prefetch_related_objects(
         [form_progress], "answers__selected_options", "answers__answer_file"
     )
-    rows = []
+    sections = []
     for number, page in enumerate(form.pages.all(), start=1):
         questions = page_questions(page)
         answers = form_progress.existing_answers_dict(questions)
-        for question in questions:
-            rows.append(
-                {
-                    "question": question,
-                    "answer": answers.get(question.id),
-                    "change_url": reverse(
-                        "course_applications:form_page",
-                        kwargs={"pk": app.pk, "page_number": number},
-                    ),
-                }
-            )
+        sections.append(
+            {
+                "title": page.title,
+                "number": number,
+                "edit_url": f"{_page_url(app, number)}?return={RETURN_TO_CHECK}",
+                "rows": [
+                    {"question": question, "answer": answers.get(question.id)}
+                    for question in questions
+                ],
+            }
+        )
 
     response = render(
         request,
@@ -243,7 +260,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         {
             "application": app,
             "course": app.course,
-            "rows": rows,
+            "sections": sections,
             "submitted": submitted,
             "required_answers_error": required_answers_error,
         },

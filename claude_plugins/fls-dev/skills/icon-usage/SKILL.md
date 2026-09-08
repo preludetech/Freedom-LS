@@ -40,6 +40,7 @@ All icons use the `<c-icon />` Cotton component. Icons are referenced by **seman
 "download",
 "more_options",
 "settings",
+"edit",
 ### Content types
 "topic",
 "form",

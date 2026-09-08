@@ -48,12 +48,14 @@
                 {% endfor %}
 
                 <div class="flex flex-wrap gap-4">
-                    {% if previous_page_url %}
+                    {% if return_to_check %}
+                        <c-button href="{{ check_answers_url }}" variant="secondary">Back to your answers</c-button>
+                    {% elif previous_page_url %}
                         <c-button href="{{ previous_page_url }}" variant="secondary">Previous</c-button>
                     {% endif %}
                     {% if not read_only %}
                         <c-button type="submit">
-                            {% if has_next_page %}Next{% else %}Check your answers{% endif %}
+                            {% if return_to_check %}Save and return to your answers{% elif has_next_page %}Next{% else %}Check your answers{% endif %}
                         </c-button>
                     {% elif not has_next_page %}
                         <c-button href="{% url 'course_applications:check_answers' pk=application.pk %}">
