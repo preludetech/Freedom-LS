@@ -16,6 +16,7 @@ _Last updated: 2026-09-09_
 - Until the review workflow ships, an applicant's application-form answers and any file they attached are read in the admin, by a superuser only. A staff user granted the same model permissions sees none of it, and files download through a permission-checked link rather than a storage URL.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
+- Signup attribution records and the daily first-touch tally are read-only too, filterable by source, medium and campaign, and exportable to CSV.
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 
 ## Unfold
@@ -75,9 +76,11 @@ A staff user generates a cohort's progress report from the admin: they pick a co
 
 The admin is mounted at the path given by the `DJANGO_ADMIN_URL` environment variable. Changing it in production moves the admin off its default location, reducing exposure to automated discovery. No code change is required.
 
-## Read-Only Consent Records
+## Read-Only Consent and Attribution Records
 
 Legal consent records are registered read-only: the admin disables add, change, and delete. This preserves the append-only integrity of the consent audit trail, described in [authentication](./authentication.md).
+
+The same posture covers where a signup came from: one record per signed-up user, plus a daily tally of first-time tracked arrivals per campaign. Both lists filter by source, medium and campaign, drill down by date, and export to CSV with every recorded field included, safe to open in a spreadsheet even when a value has been crafted to look like a formula. Read access has to be granted as a permission; staff status alone does not show them. Deleting a user still takes their attribution record with it. What is recorded, and the privacy obligations that come with it, is in [signup attribution](./signup-attribution.md).
 
 ## Content Cannot Be Deleted
 

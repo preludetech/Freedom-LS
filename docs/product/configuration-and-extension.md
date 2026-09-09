@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-09_
 
 ## Summary
 
@@ -135,6 +135,9 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `DEADLINES_ACTIVE` | Enables or disables deadline features site-wide. |
 | `FORCE_SITE_NAME` | Pins the installation to one site instead of resolving by host. |
 | `TRUSTED_PROXY_IP_HEADER` | Header to trust for the client IP behind a reverse proxy. |
+| `REFERRAL_TRACKING_COOKIE_NAME` | Name of the signup attribution cookie. |
+| `REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS` | How long the attribution cookie, and so the first-touch window, lasts; defaults to 90 days. |
+| `REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP` | Caps the distinct campaign combinations tallied per site per day; defaults to 1000. See [signup attribution](./signup-attribution.md). |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
 | `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message is queued — read only when `EMAIL_BACKEND` names the queue. See [deployment](./deployment.md). |
 | `EMAIL_TIMEOUT` | Socket timeout for outgoing SMTP, recommended whether or not email is queued; left unset, a stalled mail host can hang the request or worker indefinitely. See [deployment](./deployment.md). |

@@ -114,6 +114,7 @@ FLS stores, in its PostgreSQL database:
 - Email address, first name, and last name.
 - Hashed password (Argon2).
 - Legal consent records — which document and version was accepted, when, from what IP address, and by what method.
+- Signup attribution — for every account created through the signup form, where that person came from: the advert and campaign parameters, Google Ads and Meta click identifiers, landing page, referring page and query string from the tracked link they first arrived on (or "direct" if there was none), plus the IP address, browser user agent, and any Google Analytics and Meta cookie identifiers present at signup. See [signup attribution](./signup-attribution.md) for the full list and the privacy obligations it raises.
 - Learning activity — course progress, quiz answers, and scores.
 - Answers to a course's application form, and any document the applicant uploaded with it, which may be a government ID scan. See [applicant uploads](#applicant-uploads-built).
 - Webhook delivery logs, which may contain user data inside the delivered payload.
