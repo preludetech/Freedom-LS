@@ -45,11 +45,17 @@ Read `.sdd-work/fls_content_sync.md` by path. Apply the drafted edits to the rel
   2. **Import + `__main__` shim:** change `from .schema import SCHEMAS` → `from schema import SCHEMAS`; add the `if __name__ == "__main__":` entry point; fix the stale docstring to the `uv run` form; add the top-of-file bundled-copy comment.
 - Touch **only** the affected sections — never rewrite the whole plugin and never add detail beyond what the source files express.
 
-Delete `.sdd-work/` after all edits are applied:
+Delete this command's scratch file after all edits are applied, naming it explicitly and letting the
+wrapper drop the directory once it is empty:
 
 ```bash
-rm -rf .sdd-work/
+.claude/fls-dev/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/fls_content_sync.md
 ```
+
+`--prune-empty` removes the directory with `rmdir`, which only ever removes an **empty** directory,
+so a concurrent SDD command's scratch files survive and the prune is skipped with a notice. Never
+wipe `.sdd-work/` wholesale: it is shared with other SDD commands, and a recursive force-delete is
+blocked by the `security-guard` PreToolUse hook.
 
 ## Step 4: Tick the todo
 

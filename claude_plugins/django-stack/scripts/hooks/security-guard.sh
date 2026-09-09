@@ -37,7 +37,7 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
 
     for pattern in "${BLOCKED_PATTERNS[@]}"; do
         if [[ "$CONTENT" == *"$pattern"* ]]; then
-            echo "BLOCKED: Dangerous pattern '$pattern' detected. This pattern is not allowed per security policy."
+            echo "BLOCKED: Dangerous pattern '$pattern' detected. This pattern is not allowed per security policy." >&2
             exit 2
         fi
     done
@@ -46,13 +46,13 @@ if [[ "$TOOL_NAME" == "Edit" || "$TOOL_NAME" == "Write" ]]; then
     FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // ""')
     BASENAME=$(basename "$FILE_PATH")
     if [[ "$BASENAME" == .env* && "$BASENAME" != ".env.example" ]]; then
-        echo "BLOCKED: Modifications to environment files ($BASENAME) are not allowed."
+        echo "BLOCKED: Modifications to environment files ($BASENAME) are not allowed." >&2
         exit 2
     fi
 
     # Block modifications to existing migration files
     if [[ "$FILE_PATH" == */migrations/[0-9]* ]]; then
-        echo "BLOCKED: Modifications to existing migration files are not allowed. Create new migrations instead."
+        echo "BLOCKED: Modifications to existing migration files are not allowed. Create new migrations instead." >&2
         exit 2
     fi
 fi
@@ -62,23 +62,23 @@ if [[ "$TOOL_NAME" == "Bash" ]]; then
     COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // ""')
 
     if [[ "$COMMAND" == *"rm -rf"* ]]; then
-        echo "BLOCKED: 'rm -rf' is not allowed."
+        echo "BLOCKED: 'rm -rf' is not allowed." >&2
         exit 2
     fi
 
     if [[ "$COMMAND" == *".env"* && "$COMMAND" != *".env.example"* ]]; then
-        echo "BLOCKED: Accessing .env files via bash is not allowed."
+        echo "BLOCKED: Accessing .env files via bash is not allowed." >&2
         exit 2
     fi
 
     if [[ "$COMMAND" == *"id_rsa"* ]]; then
-        echo "BLOCKED: Accessing SSH private keys is not allowed."
+        echo "BLOCKED: Accessing SSH private keys is not allowed." >&2
         exit 2
     fi
 
     # Check for .pem and .key file access
     if echo "$COMMAND" | grep -qE '\.(pem|key)\b'; then
-        echo "BLOCKED: Accessing .pem or .key files is not allowed."
+        echo "BLOCKED: Accessing .pem or .key files is not allowed." >&2
         exit 2
     fi
 fi

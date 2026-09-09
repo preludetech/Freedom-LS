@@ -180,11 +180,18 @@ Use the extension the file actually has (`.jpg` if QA's compression converted it
 
 ## Step 5: Clean up
 
-Delete `.sdd-work/` once all doc edits (and any screenshot references) have been applied:
+Delete this command's scratch files once all doc edits (and any screenshot references) have been
+applied, listing the **explicit, known paths** — one `.sdd-work/<doc>.md` per worker spawned in the
+step-3 fan-out — and letting the wrapper drop the directory once it is empty:
 
 ```bash
-rm -rf .sdd-work/
+.claude/fls-dev/scripts/delete_sdd_work_files.sh --prune-empty .sdd-work/<doc>.md …
 ```
+
+`--prune-empty` removes the directory with `rmdir`, which only ever removes an **empty** directory,
+so a concurrent SDD command's scratch files survive and the prune is skipped with a notice. Never
+wipe `.sdd-work/` wholesale: it is shared with other SDD commands, and a recursive force-delete is
+blocked by the `security-guard` PreToolUse hook.
 
 ## Step 6: Tick the todo
 
