@@ -9,6 +9,7 @@ import yaml
 from django.db import IntegrityError
 
 from freedom_ls.accounts.factories import SiteFactory
+from freedom_ls.content_engine.factories import CourseCategoryFactory
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
@@ -379,3 +380,104 @@ categories:
 
         with pytest.raises(IntegrityError):
             save_content_to_db(repo_dir, site_b.name)
+
+
+def _read_category_entries(file_path: Path) -> list[dict]:
+    documents = list(yaml.safe_load_all(file_path.read_text(encoding="utf-8")))
+    assert len(documents) == 1
+    entries = documents[0]["categories"]
+    assert isinstance(entries, list)
+    return entries
+
+
+@pytest.mark.django_db
+def test_triple_dash_inside_a_description_loads_the_whole_description(
+    site, mock_site_context
+):
+    """A `---` in a value is prose, not a document separator: the row keeps the full description."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        (repo_dir / "course_categories.yaml").write_text("""---
+content_type: COURSE_CATEGORIES
+categories:
+  - slug: reference
+    title: Reference
+    description: Deep dive --- for advanced learners.
+    uuid: a0000000-0000-0000-0000-000000000001
+""")
+
+        save_content_to_db(repo_dir, site.name)
+
+        category = CourseCategory.objects.get(site=site, slug="reference")
+        assert category.description == "Deep dive --- for advanced learners."
+
+
+@pytest.mark.django_db
+def test_uuid_write_back_keeps_a_description_containing_a_triple_dash(
+    site, mock_site_context
+):
+    """Minting a uuid must not split the file at a `---` that sits inside a value."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        categories_file = repo_dir / "course_categories.yaml"
+        categories_file.write_text("""---
+content_type: COURSE_CATEGORIES
+categories:
+  - slug: reference
+    title: Reference
+    description: Deep dive --- for advanced learners.
+""")
+
+        save_content_to_db(repo_dir, site.name)
+
+        entries = _read_category_entries(categories_file)
+        assert entries[0]["description"] == "Deep dive --- for advanced learners."
+        assert entries[0]["uuid"] is not None
+
+
+@pytest.mark.django_db
+def test_uuid_less_entry_whose_slug_is_taken_on_the_site_is_refused_with_an_authoring_error(
+    site, mock_site_context
+):
+    """A slug already owned by another row on this site is an authoring error naming the slug, file and owning uuid."""
+    existing = CourseCategoryFactory(site=site, slug="start-here", title="Start here")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        (repo_dir / "course_categories.yaml").write_text("""---
+content_type: COURSE_CATEGORIES
+categories:
+  - slug: start-here
+    title: Start here, again
+""")
+
+        with pytest.raises(ValueError, match="start-here") as excinfo:
+            save_content_to_db(repo_dir, site.name)
+
+    message = str(excinfo.value)
+    assert "course_categories.yaml" in message
+    assert str(existing.id) in message
+    existing.refresh_from_db()
+    assert existing.title == "Start here"
+    assert CourseCategory.objects.filter(site=site).count() == 1
+
+
+@pytest.mark.django_db
+def test_uuid_entry_renamed_onto_a_slug_owned_by_another_row_is_refused(
+    site, mock_site_context
+):
+    """Renaming an entry onto a slug that a different uuid owns is refused rather than overwriting that row."""
+    CourseCategoryFactory(site=site, slug="technical", title="Technical")
+    with tempfile.TemporaryDirectory() as tmpdir:
+        repo_dir = Path(tmpdir)
+        (repo_dir / "course_categories.yaml").write_text("""---
+content_type: COURSE_CATEGORIES
+categories:
+  - slug: technical
+    title: Engineering
+    uuid: b0000000-0000-0000-0000-000000000001
+""")
+
+        with pytest.raises(ValueError, match="technical"):
+            save_content_to_db(repo_dir, site.name)
+
+    assert CourseCategory.objects.get(site=site, slug="technical").title == "Technical"

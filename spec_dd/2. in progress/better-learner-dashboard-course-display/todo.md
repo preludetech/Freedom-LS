@@ -51,8 +51,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: content_save reformats the whole course_categories.yaml when it writes uuids (TDD — failing test first, then fix)
-- [ ] (user) Decide whether a uuid-less course_categories.yaml entry whose slug already exists should adopt the existing row by slug or refuse with an authoring error, then fix the raw IntegrityError it currently raises (TDD — failing test first, then fix)
+- [x] (user + cmd) QA bug B2 (whole-file YAML reformat on uuid write) is cosmetic, not a bug — closed as won't-fix. The real defect underneath it: `content.split("---")` in the YAML reader and the three uuid writers cuts any value containing `---` in half — fixed with a shared line-anchored `split_yaml_documents` (TDD — failing test first, then fix)
+- [x] (user) Decide whether a uuid-less course_categories.yaml entry whose slug already exists should adopt the existing row by slug or refuse with an authoring error, then fix the raw IntegrityError it currently raises (TDD — failing test first, then fix) — decision: refuse; uuids identify rows, a taken slug is an authoring error naming the owning uuid
 
 ## 10. Product documentation
 
@@ -70,7 +70,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved

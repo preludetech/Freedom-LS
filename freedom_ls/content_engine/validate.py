@@ -7,6 +7,7 @@ The path can either be a file or a directory. if it is a directory then recurse 
 """
 
 import logging
+import re
 from pathlib import Path
 
 import frontmatter
@@ -72,6 +73,24 @@ def get_all_files(path):
         )
     else:
         return []
+
+
+def split_yaml_documents(content: str) -> list[str]:
+    """Split a multi-document YAML string on its `---` separator lines.
+
+    Only a `---` on a line of its own separates documents; the same three
+    characters inside a value (an em dash typed as `---` in a description)
+    are prose and stay put. A bare `content.split("---")` cut those values in
+    half on both read and write, which is why the reader and every uuid
+    writer in content_save share this.
+
+    Returns each document stripped, with empty documents dropped.
+    """
+    return [
+        section.strip()
+        for section in re.split(r"^---[ \t]*$", content, flags=re.MULTILINE)
+        if section.strip()
+    ]
 
 
 def validate_yaml_section(data, path, section_num=None):
@@ -157,7 +176,7 @@ def parse_yaml_file(path):
         raise ValueError(f"\n❌ Error reading file {path}: {e!s}") from e
 
     # Split content by --- to get individual YAML documents
-    sections = [s.strip() for s in content.split("---") if s.strip()]
+    sections = split_yaml_documents(content)
 
     if not sections:
         raise ValueError(f"\n❌ No YAML content found in {path}")

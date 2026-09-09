@@ -42,6 +42,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,
+    split_yaml_documents,
     validate,
 )
 from freedom_ls.form_engine.models import (
@@ -111,13 +112,7 @@ def update_file_with_uuid(file_path, item_uuid):
         with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
-        sections = content.split("---")
-        # Account for leading --- (sections[0] might be empty)
-        if sections and not sections[0].strip():
-            sections = sections[1:]
-
-        # Strip all sections to normalize formatting
-        sections = [s.strip() for s in sections]
+        sections = split_yaml_documents(content)
 
         # Find the first section without a UUID
         for idx, section in enumerate(sections):
@@ -166,11 +161,7 @@ def update_file_with_option_uuids(file_path, question_uuid, option_uuids):
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
-    sections = content.split("---")
-    if sections and not sections[0].strip():
-        sections = sections[1:]
-
-    sections = [s.strip() for s in sections]
+    sections = split_yaml_documents(content)
 
     # Find the question section with matching UUID
     for idx, section in enumerate(sections):
@@ -211,11 +202,7 @@ def update_file_with_category_uuids(file_path, written):
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
-    sections = content.split("---")
-    if sections and not sections[0].strip():
-        sections = sections[1:]
-
-    sections = [s.strip() for s in sections]
+    sections = split_yaml_documents(content)
 
     for idx, section in enumerate(sections):
         section_data = yaml.safe_load(section)
@@ -373,9 +360,42 @@ def save_activity(item, site, base_path):
     return save_with_uuid(Activity, item, site, base_path)
 
 
+def _refuse_category_slug_collisions(item, site, relative_path):
+    """Refuse any entry whose slug already belongs to a different row on this site.
+
+    Rows are identified by uuid, never by slug: an entry without a uuid is a
+    new row, and an entry whose uuid differs from the slug's current owner is
+    a different row. Either way, saving it would hit the (site, slug)
+    constraint, so name the owning uuid instead so the author can adopt the
+    row deliberately or pick another slug. Every collision is reported, not
+    just the first.
+    """
+    owners = {
+        category.slug: category.id
+        for category in CourseCategory._base_manager.filter(
+            site=site, slug__in=[entry.slug for entry in item.categories]
+        )
+    }
+    errors = []
+    for entry in item.categories:
+        owner_id = owners.get(entry.slug)
+        if owner_id is not None and str(owner_id) != entry.uuid:
+            errors.append(
+                f"\n❌ Category slug '{entry.slug}' in {relative_path} already "
+                f"belongs to another CourseCategory on site '{site.name}' "
+                f"(uuid {owner_id}). A category is identified by its uuid, so "
+                "this entry would be a second row with the same slug. To edit "
+                f"that category, give this entry `uuid: {owner_id}`; to add a "
+                "new one, choose a different slug."
+            )
+    if errors:
+        raise ValueError("\n".join(errors))
+
+
 def save_course_categories(item, site, base_path):
     """Save every CourseCategory declared in one file, order from list position."""
     relative_path = str(item.file_path.relative_to(base_path))
+    _refuse_category_slug_collisions(item, site, relative_path)
     categories = []
     written = []
     for index, entry in enumerate(item.categories):
