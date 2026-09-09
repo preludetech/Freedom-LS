@@ -63,6 +63,7 @@
 - [reference_three_page_dashboard_section.md](reference_three_page_dashboard_section.md) — qa_extend_start_here_section: TWO pages cannot exercise courseSectionPagination's primary focus branch, you need a middle page (3 pages); why the new letters must not join PAGINATION_LETTERS; data-direction="previous" and live arrows have NO aria-disabled attribute
 - [reference_application_review_permission_accounts.md](reference_application_review_permission_accounts.md) — qa_create_application_review_accounts: applicant/bystander/reviewer trio; app label is `freedom_ls_form_engine`; SuperuserOnlyAdmin makes the 3 view_ perms 403 while /admin/ still renders 200
 - [reference_clearing_form_sittings_around_an_application.md](reference_clearing_form_sittings_around_an_application.md) — Clearing a persona's stale FormProgress so every start screen reads "Start Form" without tripping CourseApplication's RESTRICT; qa_reset_learner_progress is now unsafe for applicant personas; the self-registration shape for free courses
+- [reference_withdrawing_a_course_application.md](reference_withdrawing_a_course_application.md) — qa_reset_course_application: withdraw a CourseApplication + the FormProgress it named, in the RESTRICT-forced order (QA plan §0.2.3, runs on EVERY re-walk); answer/file cascade counts; a parallel worker's unmigrated model field breaks ORM reads mid-session
 
 ## Recurring requests
 
@@ -400,3 +401,21 @@ Full recipe, cascade counts and the `QuestionAnswerFile` storage sweep in
 [[reference_clearing_form_sittings_around_an_application]]. If this is asked a fourth time, wrap it
 as `qa_clear_form_sittings --learner EMAIL [--keep-pk UUID ...]` that refuses to touch any sitting a
 `CourseApplication` names.
+
+The fourth ask arrived (`simple-application-forms`, Sep 2026) as the OTHER half of the same QA-plan
+setup: not "clear the sittings", but **"withdraw the application AND the sitting it names"** so the
+plan can be re-walked from §2. Both halves are written into the plan's §0.2 (items 3 and 7) as
+things a *second run* needs, so expect them together after every application-forms QA pass. The
+application half is now `qa_reset_course_application --learner EMAIL --course-slug SLUG`; see
+[[reference_withdrawing_a_course_application]]. Two things carry forward: the RESTRICT dictates
+application-then-sitting and nothing FKs to `CourseApplication` itself (cascade is exactly 1 row);
+and `CourseApplication.__str__` prints two bare UUIDs, so never report it without the email and
+slug beside it.
+
+**A parallel agent editing the shared worktree can break your ORM reads mid-session.** A model
+field added without a migration made every `FormProgress` query fail with
+`ProgrammingError: column ... does not exist`, while `showmigrations` showed everything applied
+(it compares migrations to the DB, never the model to the DB). Do not write the missing migration
+— it is another worker's in-progress diff — and do not bake `.only()`/`defer()` into a committed
+command; defer in the scratch script only, and re-check before assuming it is still broken, because
+their migration landed 20 minutes later and the plain query recovered on its own.
