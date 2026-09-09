@@ -4,14 +4,14 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 
 from django.contrib import admin
 from django.contrib.admin.exceptions import NotRegistered
-from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db.models import QuerySet
+from django.http import HttpRequest
 
+from freedom_ls.referral_tracking.models import SignupAttribution
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
-from .models import LegalConsent, SiteSignupPolicy
-
-User = get_user_model()
+from .models import LegalConsent, SiteSignupPolicy, User
 
 # Unregister Django's default Group
 with contextlib.suppress(NotRegistered):
@@ -157,6 +157,24 @@ class UserAdmin(SiteAwareModelAdmin):
             defaults["form"] = self.add_form
         defaults.update(kwargs)
         return super().get_form(request, obj, **defaults)
+
+    def get_deleted_objects(
+        self, objs: QuerySet[User] | list[User], request: HttpRequest
+    ) -> tuple[list[object], dict[str, int], set[str], list[object]]:
+        to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        # The consent and attribution admins deny delete on their own pages so
+        # nobody can thin out an audit trail row by row. Erasing an account is
+        # the one path that must take those rows with it (both FKs cascade), so
+        # the User admin vouches for them here.
+        perms_needed.difference_update(
+            {
+                str(LegalConsent._meta.verbose_name),
+                str(SignupAttribution._meta.verbose_name),
+            }
+        )
+        return to_delete, model_count, perms_needed, protected
 
 
 # @admin.register(SiteGroup)

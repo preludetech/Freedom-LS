@@ -1,4 +1,4 @@
-"""Admin tests — `LegalConsent` is fully read-only."""
+"""Admin tests — `LegalConsent` is fully read-only, yet a user erasure carries it."""
 
 from __future__ import annotations
 
@@ -8,7 +8,9 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import LegalConsentFactory, UserFactory
-from freedom_ls.accounts.models import LegalConsent
+from freedom_ls.accounts.models import LegalConsent, User
+from freedom_ls.referral_tracking.factories import SignupAttributionFactory
+from freedom_ls.referral_tracking.models import SignupAttribution
 
 
 @pytest.fixture
@@ -62,3 +64,23 @@ def test_legal_consent_admin_delete_keeps_row(staff_client, mock_site_context):
 
     assert LegalConsent.objects.filter(pk=consent.pk).exists()
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_user_admin_delete_cascades_to_audit_rows(staff_client):
+    user = UserFactory()
+    LegalConsentFactory(user=user)
+    SignupAttributionFactory(user=user)
+    url = reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk])
+
+    response = staff_client.get(url)
+
+    assert response.status_code == 200
+    assert response.context["perms_lacking"] == set()
+
+    response = staff_client.post(url, {"post": "yes"})
+
+    assert response.status_code == 302
+    assert not User.objects.filter(pk=user.pk).exists()
+    assert not LegalConsent.objects.filter(user_id=user.pk).exists()
+    assert not SignupAttribution.objects.filter(user_id=user.pk).exists()

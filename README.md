@@ -128,7 +128,7 @@ Access is tightly controlled: an educator sees only the specific groups they hav
 
 Behind the learner and educator views sits a secure administration area where the day-to-day running of the platform happens: enrolling learners, managing group membership, setting deadlines, and choosing which courses are recommended. The administration area has an enhanced, modern interface, and its web address can be customised to a non-obvious path, which reduces the chance of automated attacks finding it.
 
-Two administrative details are worth highlighting for compliance purposes. First, records of users' consent to terms and privacy documents are permanently read-only — they cannot be edited or deleted through the interface, preserving them as a trustworthy audit trail. Second, when connecting the platform to an external system, administrators can send a test notification to confirm the connection works before it goes live.
+Two administrative details are worth highlighting for compliance purposes. First, records of users' consent to terms and privacy documents are permanently read-only — they cannot be edited or deleted through the interface, preserving them as a trustworthy audit trail, except when the account itself is deleted, which removes them with it. Second, when connecting the platform to an external system, administrators can send a test notification to confirm the connection works before it goes live.
 
 ---
 

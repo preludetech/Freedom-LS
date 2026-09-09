@@ -167,7 +167,7 @@ No incident-response runbook, breach-notification templates, or automated alerti
 
 ### Retention, Deletion, and Data-Subject Rights (not yet built)
 
-There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. All of this is operator responsibility today. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. See the [roadmap](./roadmap.md).
+There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. Deleting a user from the admin also removes their consent records and signup attribution row by cascade, even though those records cannot be deleted one at a time. All of this is operator responsibility today. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. See the [roadmap](./roadmap.md).
 
 ---
 
