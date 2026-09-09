@@ -55,14 +55,27 @@ def test_page_two_renders_the_fourth_course(four_available_courses):
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("page_value", ["abc", "0", "-1", "9999"])
-def test_a_bad_page_number_clamps_and_returns_200(four_available_courses, page_value):
+@pytest.mark.parametrize(
+    ("page_value", "expected_page_courses"),
+    [
+        ("abc", slice(0, 3)),
+        ("0", slice(0, 3)),
+        ("-1", slice(0, 3)),
+        ("9999", slice(3, 4)),
+    ],
+)
+def test_a_bad_page_number_clamps_and_returns_200(
+    four_available_courses, page_value, expected_page_courses
+):
     response = Client().get(
         reverse("learner_interface:dashboard"), {"page_available": page_value}
     )
 
     assert response.status_code == 200
-    assert rendered_section(response, "available").courses
+    assert (
+        rendered_section(response, "available").courses
+        == four_available_courses[expected_page_courses]
+    )
 
 
 @pytest.mark.django_db

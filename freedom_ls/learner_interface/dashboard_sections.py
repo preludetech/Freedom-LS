@@ -80,10 +80,23 @@ def page_for(
 
     ``get_page`` rather than ``page``: a home page must not 500 on a stale
     bookmark or a hand-edited query string, so a junk page number clamps.
+
+    ``get_page`` on its own clamps a non-integer to page one but clamps
+    anything below page one to the *last* page (Django's ``EmptyPage``
+    covers both "too high" and "too low", and ``get_page`` maps every
+    ``EmptyPage`` to ``num_pages``). A below-range page number is treated
+    here the same as a non-integer: it clamps to page one.
     """
-    return Paginator(object_list, SECTION_PAGE_SIZE).get_page(
-        request.GET.get(_page_param_name(slug))
-    )
+    paginator = Paginator(object_list, SECTION_PAGE_SIZE)
+    raw_value = request.GET.get(_page_param_name(slug))
+    page_value: str | None = raw_value
+    if raw_value is not None:
+        try:
+            if int(raw_value) < 1:
+                page_value = "1"
+        except ValueError:
+            pass
+    return paginator.get_page(page_value)
 
 
 def section_page_href(request: HttpRequest, param_name: str, page_number: int) -> str:
