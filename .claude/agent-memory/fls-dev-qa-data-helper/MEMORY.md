@@ -57,8 +57,45 @@
 - [reference_org_cohort_inline_pagination.md](reference_org_cohort_inline_pagination.md) — qa_create_org_cohort_pagination: padding one Organisation to 46 cohorts so the admin Cohorts tab spans 3 pages; the admin-inline paginator family (Cohort@20 / Learner@25) and zero-padded names straddling a boundary
 - [reference_form_count_edge_cases_command.md](reference_form_count_edge_cases_command.md) — qa_create_form_count_edge_cases: the 1-question/1-page and 0-question/0-page forms that make the start page's pluralised fact pills reachable; a Form with ZERO FormPages is legal; ALLOWED_HOSTS trap for rolled-back Client() probes
 - [reference_form_attempt_history_command.md](reference_form_attempt_history_command.md) — qa_create_form_attempt_history: N genuinely scored completed sittings on consecutive days for the start page's Previous-attempts list + its 5-row slice; the latest attempt alone decides the placement, so ending on a FAIL leaves the progression-block fixture intact
+- [reference_dashboard_paging_fixture_teardown.md](reference_dashboard_paging_fixture_teardown.md) — Tearing down the whole qa_create_dashboard_paging_fixtures seed; delete order forced by 3 PROTECTs (Course.delete() takes its ContentCollectionItems but NOT the child Topics); CourseCategory has `title` not `name`
+- [reference_dashboard_catchall_courses_command.md](reference_dashboard_catchall_courses_command.md) — qa_create_catchall_courses: 2 uncategorised courses so the dashboard catch-all "Available courses" section pages; the catch-all also holds hidden-category and coming_soon courses, and its size is per-persona
+- [reference_course_cohort_registration_pagination.md](reference_course_cohort_registration_pagination.md) — Educator course page's two registration tables: the Cohort Registrations table paginates COHORTS not learners, DataTable.page_size is 5, qa_create_course_cohort_registrations, and which DemoDev cohort is safe to register given the CourseProgress fan-out
+- [reference_three_page_dashboard_section.md](reference_three_page_dashboard_section.md) — qa_extend_start_here_section: TWO pages cannot exercise courseSectionPagination's primary focus branch, you need a middle page (3 pages); why the new letters must not join PAGINATION_LETTERS; data-direction="previous" and live arrows have NO aria-disabled attribute
 
 ## Recurring requests
+
+**The learner-dashboard section/pagination QA pass keeps asking for "section X needs enough courses to page"** (Sep 2026, better-learner-dashboard-course-display): first the "Start here" category section (`qa_create_dashboard_paging_fixtures` Seed A), then its teardown, then the catch-all "Available courses" section (`qa_create_catchall_courses`). The recipe is always the same one-topic filler course; only the categorisation changes (`dashboard_category`+m2m set = a category section, both empty = the catch-all). SECTION_PAGE_SIZE is 3. Remember the section is computed per-persona — registered courses drop out of the discovery sections — so verify with the persona the tester will actually log in as. See [[reference_dashboard_catchall_courses_command]].
+
+The same pass has now spread to the **educator** course page's paginators, and the ask arrived
+phrased WRONGLY: "add enough learners to the cohort that the Cohort Registrations table pages".
+That table's rows are `CohortCourseRegistration` — one row per *cohort* — so learner count is
+irrelevant; it needs >5 registered cohorts. Whenever a QA plan says "add more X so table Y pages",
+read `Y.get_queryset()` and confirm what a ROW is before seeding anything. `DataTable.page_size`
+is **5** for the whole panel_framework family, which is not the course-progress panel's 15/20.
+`qa_create_course_cohort_registrations` wraps it. Also worth flagging back: the sibling "Direct
+Registrations" table on `functionality-demo-show-end-with-topic` has only 2 rows, so *its*
+paginator still does not render — a "check both paginators" brief is only half satisfied by
+seeding the cohort side. The tester duly asked for that side next, so seed BOTH from the start:
+`qa_create_course_cohort_registrations` + `qa_create_direct_course_registrations`. See
+[[reference_course_cohort_registration_pagination]].
+
+Then, same pass, a **fourth** shape: "the section pages, but I can only reach the FALLBACK branch
+of the focus handler". Two pages means every paging action lands on a boundary, so the pressed
+arrow is always disabled afterwards. Seeding a *middle* page (>= 2*SECTION_PAGE_SIZE+1 items) is
+the fix — `qa_extend_start_here_section` took Start here from 6 to 9. Generalise across this whole
+branch: **"section X needs enough courses to page" is now four different asks** (page at all /
+catch-all / straddle a boundary / have a middle page). Always ask how many PAGES the assertion
+needs, not how many rows. See [[reference_three_page_dashboard_section]].
+
+**Temporary, revert-on-request edits are now a shape too** (Sep 2026: put
+`content-widgets-demo-reference` into the `start-here` category "until I say revert task 1").
+Record the prior state in the report AND in memory, use `queryset.update()` + `m2m.add()` so no
+save-hook fires, and `assert` the prior state before writing so a second run cannot destroy the
+thing you are meant to restore. Prior state here: `dashboard_category=None`, `categories=[]`,
+`visibility='coming_soon'` (never touched). It was silently reverted 20 minutes later by the
+tester's own `content_save demo_content DemoDev` — the loader resets every content field the
+frontmatter omits. **Re-read the field just before you report, not just after you write it**, and
+warn that a content reload undoes it. See [[reference_demo_content_loader]].
 
 **"Clear the leftover form attempt so the start page says Start Form"** (Sep 2026,
 misc-small-fixes-manual): deleting the single `FormProgress` takes its `CourseFormAttempt`
@@ -317,3 +354,15 @@ it are individually identifiable. Verify by rebuilding the `Paginator` under a t
 request and asserting the concatenated pages equal the flat queryset — never by eyeballing the
 tab. `qa_create_org_cohort_pagination` wraps it and generalises to any organisation/prefix/count;
 see [[reference_org_cohort_inline_pagination]].
+
+**"A previous QA run's fixtures block this run's baseline, delete them"** arrived once
+(better-learner-dashboard-course-display, Sep 2026: the whole
+`qa_create_dashboard_paging_fixtures` seed). This is now the third teardown ask overall
+(single `CourseInterest`, then the signup-run residue, now a whole seeding command's output),
+so treat "tear down seed X" as a standing shape. The move that saved the most time: **read the
+seeding command's module docstring for the inventory** instead of querying model by model - it
+names every slug, email and demo course the seed touches, including the ones outside the
+caller's description. Full cascade counts, the PROTECT-driven delete order and the orphaned-Topic
+trap in [[reference_dashboard_paging_fixture_teardown]]. If a fourth is asked for, the pattern is
+regular enough to wrap as `qa_teardown_dashboard_paging_fixtures` (or a generic
+`qa_teardown --seed <command-name>`) rather than another shell script.
