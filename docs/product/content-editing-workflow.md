@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-09_
 
 ## Summary
 
@@ -8,6 +8,7 @@ _Last updated: 2026-09-07_
 - Content is loaded into the database by the `content_save` command, which validates first and then idempotently upserts each item by UUID. Re-running it is safe.
 - Markdown renders through a four-stage pipeline: Markdown → sanitiser → content-widget compilation → template render.
 - Course images are re-encoded to WebP at ingest, so authors can commit camera and screenshot output as-is; filenames and `c-picture` references keep working unchanged.
+- A site's course categories are declared once per content repo, and each course names the categories it belongs to in its own frontmatter. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 - Legal documents are versioned alongside content, and the exact version a user accepted is recorded on their consent record.
 - There is **no browser-based content editor**. All authoring happens in files, and content cannot be deleted from the admin either.
 
@@ -27,10 +28,11 @@ Because draft content is never loaded, it cannot be previewed in the running app
 
 ## Content Types
 
-Eight content types are available:
+Nine content types are available:
 
 | Type | Description |
 |---|---|
+| `COURSE_CATEGORIES` | The site's course categories — slug, title, optional description, and whether the category gets a dashboard section of its own — declared in display order |
 | `COURSE` | Top-level course container; metadata and a list of items |
 | `COURSE_PART` | Optional chapter/section grouping within a course |
 | `TOPIC` | A page of Markdown content |
@@ -39,6 +41,8 @@ Eight content types are available:
 | `FORM_PAGE` | A single page within a form |
 | `FORM_QUESTION` | A question within a form page |
 | `FORM_CONTENT` | A non-question content block within a form page |
+
+Categories are declared in a single `course_categories.yaml` at the content repository root, one entry per category in the order they should appear; a second declaration anywhere in the repo is rejected at validation time, so a site has exactly one ordered list. Each entry gets a UUID written back into the file on its first load, like every other content type.
 
 ## Course Frontmatter Options
 
@@ -65,6 +69,17 @@ Visibility is a separate top-level field from `access_config`; the two are valid
 
 Because a published course should always show its contents, `published` combined with `table_of_contents_in_development: true` is rejected at load time.
 
+**Categories.** A course names the categories it belongs to, and — when it belongs to more than one — which single category places it on the learner dashboard:
+
+```yaml
+categories:
+  - technical
+  - python
+dashboard_category: technical
+```
+
+`dashboard_category` can be omitted when a course names exactly one category, and both keys can be left off entirely. Belonging to more than one category is recorded, but only the dashboard category is read anywhere today: there is no catalogue filtering by category yet, so a course's other categories have no visible effect. See [learner experience](./learner-experience.md) for what the dashboard does with them.
+
 Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description — is authored the same way.
 
 ## Validation and Loading
@@ -74,7 +89,7 @@ uv run python manage.py content_validate <path>
 uv run python manage.py content_save <path> <site_name>
 ```
 
-Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, and the invalid frontmatter combinations above are all caught here.
+Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin.
 
 `content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect.
 

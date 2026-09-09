@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-09_
 
 ## Summary
 
@@ -11,6 +11,7 @@ _Last updated: 2026-09-07_
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available.
+- Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
@@ -80,6 +81,8 @@ Legal consent records are registered read-only: the admin disables add, change, 
 Authored content — courses, course parts, topics, activities, files, and forms with their pages, questions, and options — cannot be deleted through the admin: not from a detail page, not as a bulk action, and not from an inline on a parent. Adding and changing remain available, and content is authored in files and loaded into the site by a command, so the admin is not where content is removed. See [content editing workflow](./content-editing-workflow.md).
 
 Underneath the admin the same protection holds for anything reaching the database another way: a form question a learner has answered, and a course anyone is registered for, cannot be deleted while those records exist.
+
+Course categories are authored content too, and the admin is stricter with them: it refuses to create one as well as to delete one, because the category vocabulary belongs to the content repo. An administrator can see and edit an existing category's title, description, ordering, and whether it gets a section of its own on the dashboard, and can see on a course's own page which category places it on the dashboard and what else it belongs to — but any such edit lasts only until the next content load, which rewrites the category from its file. See [content editing workflow](./content-editing-workflow.md) for how categories are authored and [learner experience](./learner-experience.md) for what one does on the dashboard.
 
 ## Webhook Test-Send
 

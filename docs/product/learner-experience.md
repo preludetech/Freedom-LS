@@ -1,10 +1,11 @@
 # Learner Experience
 
-_Last updated: 2026-09-06_
+_Last updated: 2026-09-09_
 
 ## Summary
 
-- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The three personalised dashboard sections (In Progress, Recommended Courses, Learning History) are shown only to authenticated learners; anonymous visitors see a value-proposition hero and a discovery section instead.
+- Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The personalised dashboard sections — In progress, Recommended courses, Learning history — are shown only to authenticated learners; anonymous visitors see a value-proposition hero instead, followed by the same course-discovery sections an authenticated learner sees.
+- A site can group its courses into named categories and choose which of those get a section of their own on the dashboard, in the order the site declares. A course with no category, or whose category was not chosen for the dashboard, still shows — it falls back to the **Available courses** section, so nothing drops off the page.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
@@ -19,17 +20,23 @@ _Last updated: 2026-09-06_
 
 The learner dashboard serves as the home page at `/`. Its content branches on whether the visitor is authenticated.
 
-**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the **Available courses** discovery section showing a sample of courses on the site. The personalised sections — the "Welcome back" greeting, In Progress, Recommended Courses, Learning History, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
+**Anonymous visitors** see a value-proposition hero (a short headline, subtext, and a single "Browse all courses" CTA) at the top of the page, followed by the site's course-discovery sections: any category sections it has declared, the catch-all **Available courses**, and **Coming soon** where a course isn't yet open for enrolment. The personalised sections — the "Welcome back" greeting, In progress, Recommended courses, Learning history, and any backend panels — are not shown. They are omitted entirely rather than shown as "sign in to see this" placeholders.
 
 ![Anonymous home page with value-proposition hero and course discovery](screenshots/learner_home_anonymous.png)
 
-**Authenticated learners** see the personalised greeting and three sections:
+**Authenticated learners** see the personalised greeting, then the discovery sections above alongside their own:
 
-- **In Progress** — courses the learner has started but not completed, ordered by recent activity.
-- **Recommended Courses** — courses an administrator has surfaced for the learner.
-- **Learning History** — courses the learner has finished.
+- **In progress** — courses the learner has started but not completed, ordered by recent activity, with courses they have merely been registered for behind those.
+- **Recommended courses** — courses an administrator has surfaced for the learner.
+- **Learning history** — courses the learner has finished, most recently completed first.
 
-Each course card shows the course title, category, and progress percentage, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the anonymous "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action.
+Each category chosen for the dashboard gets a section of its own, headed by its title and description, in the order the site declared. A course appears in exactly one section however many categories it carries. A learner has no control over any of this — no section can be hidden, reordered, or collapsed — and a section's "Browse all" link goes to the full catalogue, which cannot yet filter down to one category's courses.
+
+Every section shows up to three cards at a time, with previous/next controls and a "1 to 3 of 12" position beside the heading to reach the rest. Paging one section leaves the others where they are.
+
+Each course card shows the course title, its registration status, and a progress percentage once the learner has started it, plus a low-emphasis "Details" link back to the course's [detail page](#course-detail-page). This link appears on every card in every state (in progress, completed, not yet registered, or coming soon) and on the "Available courses" grid, giving a consistent way back to the overview without competing with the card's primary action. A card does not name the course's category; the [detail page](#course-detail-page) does.
+
+How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 
 When application-gated courses are in use, the authenticated dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in, each linking to its status page. This panel is absent on installations offering only free courses.
 
