@@ -251,3 +251,40 @@ def test_choice_answers_survive_the_existing_answers_lookup(mock_site_context):
     existing = form_progress.existing_answers_dict([question])
 
     assert list(existing[question.id].selected_options.all()) == [option]
+
+
+@pytest.mark.django_db
+def test_resume_page_is_the_furthest_page_reached_when_nothing_on_it_is_answered(
+    mock_site_context, four_page_form
+):
+    """Reaching a page and leaving before answering it must not drop the
+    candidate back in front of the page they had already finished."""
+    form_progress = FormProgressFactory(form=four_page_form)
+    _answer(form_progress, _question_on_page(four_page_form, 1))
+    form_progress.record_page_reached(2)
+
+    assert resume_page_number(form_progress) == 2
+
+
+@pytest.mark.django_db
+def test_page_accessibility_limit_keeps_a_reached_page_after_stepping_back(
+    mock_site_context, four_page_form
+):
+    form_progress = FormProgressFactory(form=four_page_form)
+    form_progress.record_page_reached(3)
+
+    assert page_accessibility_limit(form_progress, current_page_number=1) == 3
+
+
+@pytest.mark.django_db
+def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
+    mock_site_context, four_page_form
+):
+    form_progress = FormProgressFactory(form=four_page_form)
+    form_progress.record_page_reached(2)
+
+    links = build_page_links(
+        four_page_form, form_progress, current_page_number=1, url_for_page=str
+    )
+
+    assert [link["is_accessible"] for link in links] == [True, True, False, False]

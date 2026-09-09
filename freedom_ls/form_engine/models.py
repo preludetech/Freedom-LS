@@ -215,6 +215,11 @@ class FormProgress(SiteAwareModel):
     scores = models.JSONField(
         blank=True, null=True, help_text="Calculated scores by category"
     )
+    # A page with only optional questions leaves no answer rows behind, so the
+    # answers alone cannot say how far a sitting got. 0 until a page is shown.
+    furthest_page_reached = models.PositiveSmallIntegerField(
+        default=0, help_text="The highest-numbered page this sitting has been shown"
+    )
 
     class Meta:
         verbose_name_plural = "Form progress records"
@@ -251,6 +256,17 @@ class FormProgress(SiteAwareModel):
                 "Set quiz_pass_percentage on the Form to use this method."
             )
         return self.quiz_percentage() >= self.form.quiz_pass_percentage
+
+    def record_page_reached(self, page_number: int) -> None:
+        """Remember that this sitting has been shown `page_number`.
+
+        Only ever moves forward: stepping back to an earlier page does not
+        forget the later one.
+        """
+        if page_number <= self.furthest_page_reached:
+            return
+        self.furthest_page_reached = page_number
+        self.save(update_fields=["furthest_page_reached", "last_updated_time"])
 
     def get_current_page_number(self):
         """

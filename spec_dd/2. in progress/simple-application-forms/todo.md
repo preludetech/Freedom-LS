@@ -51,7 +51,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: client-side 6 MB file check does not stop the upload (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: client-side 6 MB file check does not stop the upload (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: check-your-answers rows render as a two-column grid instead of a stacked list (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: attached-file Download link is a 20px-tall tap target on mobile (TDD — failing test first, then fix)
 - [x] (user) Run the §7.1 step 6 admin-delete case, added to the QA plan after the QA pass had run
@@ -63,7 +63,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
       `3. frontend_qa.md` follow; the `research_*.md` files are left as the record of what was
       investigated at the time.
 - [x] (user) Re-run QA §7.1 against the simplified admin
-- [ ] (user + cmd) Fix QA bug: application form's page-jump nav re-locks a page the applicant already reached (TDD — failing test first, then fix). Decide first whether the page-accessibility limit should track the furthest page *reached* rather than the furthest page *answered*; the current rule collapses to page 1 whenever an earlier page holds an unanswered optional question.
+- [x] (user + cmd) Fix QA bug: application form's page-jump nav re-locks a page the applicant already reached (TDD — failing test first, then fix). Decide first whether the page-accessibility limit should track the furthest page *reached* rather than the furthest page *answered*; the current rule collapses to page 1 whenever an earlier page holds an unanswered optional question.
 
 ## 10. Product documentation
 

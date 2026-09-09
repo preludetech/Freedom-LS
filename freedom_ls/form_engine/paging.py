@@ -41,7 +41,11 @@ def _furthest_answered_page(form_progress: FormProgress, pages: list[FormPage]) 
 
 def _resume_page_number(form_progress: FormProgress, pages: list[FormPage]) -> int:
     current: int = form_progress.get_current_page_number()
-    return max(current, _furthest_answered_page(form_progress, pages))
+    return max(
+        current,
+        _furthest_answered_page(form_progress, pages),
+        form_progress.furthest_page_reached,
+    )
 
 
 def resume_page_number(form_progress: FormProgress) -> int:
@@ -49,8 +53,10 @@ def resume_page_number(form_progress: FormProgress) -> int:
 
     A skipped optional question leaves no answer row behind, so the
     first-outstanding page can sit behind where the candidate actually reached.
-    Taking the furthest answered page as well is what stops a resume dropping
-    them back in front of work they have already done.
+    The furthest page they were shown, and the furthest one they answered on,
+    both count too: that is what stops a resume dropping them back in front of
+    work they have already done. The answered-page term still matters for
+    sittings that predate the reached-page record.
     """
     return _resume_page_number(form_progress, list(form_progress.form.pages.all()))
 

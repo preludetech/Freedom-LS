@@ -17,7 +17,9 @@ document.addEventListener("alpine:init", () => {
         checkSize(event) {
             const input = event.target;
             const file = input.files && input.files[0];
-            const max = Number(this.$el.dataset.maxBytes);
+            // $root, not $el: this runs from the input's own x-on, where $el
+            // is the input. The limit is on the widget root.
+            const max = Number(this.$root.dataset.maxBytes);
             this.oversized = Boolean(file && file.size > max);
             if (this.oversized) {
                 event.preventDefault();

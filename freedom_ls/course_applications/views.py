@@ -181,6 +181,8 @@ def application_form_page(
             return redirect("course_applications:check_answers", pk=app.pk)
         required_answers_error = unanswered_required_message(unanswered)
 
+    if not read_only:
+        form_progress.record_page_reached(page_number)
     context = {
         "application": app,
         "course": app.course,

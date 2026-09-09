@@ -96,3 +96,18 @@ def test_an_answered_later_page_stays_clickable_from_the_first_page(
     accessibility = _accessibility_of_each_page(client, course, page_number=1)
 
     assert accessibility == [True, True, True]
+
+
+@pytest.mark.django_db
+def test_stepping_back_keeps_the_reached_page_clickable(mock_site_context, client):
+    """Going back to page 1 after reaching page 2 must not re-lock page 2."""
+    form = _survey_with_an_optional_first_question(page_count=3)
+    course = course_with_form(form)
+    user = register_user_for_course(course)
+    form_attempt(course, user, form)
+    client.force_login(user)
+    _accessibility_of_each_page(client, course, page_number=2)
+
+    accessibility = _accessibility_of_each_page(client, course, page_number=1)
+
+    assert accessibility == [True, True, False]

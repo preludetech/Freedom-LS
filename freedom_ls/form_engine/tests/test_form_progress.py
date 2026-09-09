@@ -82,3 +82,14 @@ def test_get_current_page_number_page_with_text_only(mock_site_context):
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
 
     assert form_progress.get_current_page_number() == 2
+
+
+@pytest.mark.django_db
+def test_record_page_reached_remembers_the_furthest_page(mock_site_context):
+    form_progress: FormProgress = FormProgressFactory()
+    form_progress.record_page_reached(3)
+
+    form_progress.record_page_reached(1)
+
+    form_progress.refresh_from_db()
+    assert form_progress.furthest_page_reached == 3

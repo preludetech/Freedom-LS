@@ -319,7 +319,8 @@ confirming the request proceeds unchecked. Dispatching a synthetic `htmx:confirm
 directly at the input left `oversized` still `false`. Alpine itself is demonstrably live on that
 element (it stripped `x-cloak` and applied `x-show` correctly elsewhere), so the specific binding
 at fault is `x-on:htmx:confirm="checkSize"` — the colon inside the event name is the obvious
-suspect under an Alpine CSP build.
+suspect under an Alpine CSP build. (This diagnosis turned out to be wrong; the corrected cause is
+under "Rerun after the fixes" below.)
 
 Server-side validation still refuses the file correctly, so nothing unsafe is stored. The cost is
 purely the wasted upload the client-side guard exists to prevent: on a slow connection, an
@@ -349,8 +350,37 @@ for the first time in the new application shell.
 
 ## Bug status
 
-- **UNRESOLVED** — The file question's client-side size guard never fires, so an oversize file is uploaded in full before the server rejects it (reason: client-side Alpine/htmx binding; not unit-testable without a browser, so out of the auto-fix lane)
-- **UNRESOLVED** — The application form's page-jump nav re-locks a page the applicant has already reached (reason: pre-existing shared page arithmetic, not a regression; the fix turns on a product decision about how the page-accessibility limit should be computed)
+- **RESOLVED** — The file question's client-side size guard never fires, so an oversize file is uploaded in full before the server rejects it. See the rerun below.
+- **RESOLVED** — The application form's page-jump nav re-locks a page the applicant has already reached. See the rerun below.
+
+## Rerun after the fixes
+
+Both bugs were fixed with a failing test first, and tests 2.6, 2.7, 3.1 and 3.2 were walked again
+in a real browser as the applicant, on a fresh application.
+
+**B1, corrected cause.** The `x-on:htmx:confirm="checkSize"` binding was never the problem: an
+isolated page with the same Alpine CSP build honours a colon-named event, and instrumenting the live
+widget showed `checkSize` running on every pick with the file in hand. What failed was the size
+read inside it. Alpine scopes `$el` to the element carrying the directive, so from the input's own
+`x-on` handler `this.$el` is the input, which has no `data-max-bytes`; the limit read as `NaN` and
+the comparison was never true. The widget now reads the limit from `$root`. A Playwright test
+(`test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded`) picks an oversize file and
+asserts no upload request leaves the browser. Rerun of 3.2: the 7 MB pick was refused inline,
+`htmx:confirm` was cancelled, the network panel showed no upload request, and the picker was empty
+again.
+
+![](screenshots/qa-rerun-3-2-oversize-refused.png)
+
+**B2, decision taken.** The page-accessibility limit now tracks the furthest page *reached*, not
+the furthest page answered. `FormProgress` gained `furthest_page_reached`, stamped whenever a page
+of a sitting is shown (both the application shell and the course runner), and the resume page and
+the page-jump limit take it into account alongside the answer-based terms, which still cover
+sittings that predate the field. A fresh sitting starts at 0, so a retake still opens with later
+pages locked (test 8.4 is unchanged). Rerun of 2.6 and 2.7: advancing to page 2 showed dot 2
+current and dot 1 a link; stepping back with dot 1 showed every page-1 answer still present and dot
+2 still a link; Next returned to page 2.
+
+![](screenshots/qa-rerun-2-7-dot-2-stays-a-link.png)
 
 ## General notes
 

@@ -1413,6 +1413,7 @@ def form_fill_page(request, course_slug, index, page_number):
     # Build a dictionary of existing answers keyed by question ID
     existing_answers = form_progress.existing_answers_dict(questions)
 
+    form_progress.record_page_reached(page_number)
     page_links = build_page_links(form, form_progress, page_number, url_for_page)
 
     # URL for the submit-and-exit endpoint (used by the exit dialog)

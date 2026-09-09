@@ -448,6 +448,20 @@ class TestApplicationFormPage:
 
         assert response.status_code == 404
 
+    def test_stepping_back_keeps_the_reached_page_clickable(
+        self, client, mock_site_context
+    ):
+        """Page 1 holds optional questions, so answering none of them and going
+        back must not re-lock the page the applicant had already reached."""
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+        client.get(_page_url(app, 2))
+
+        response = client.get(_page_url(app, 1))
+
+        accessible = [link["is_accessible"] for link in response.context["page_links"]]
+        assert accessible == [True, True]
+
     def test_answering_a_page_advances_to_the_next(self, client, mock_site_context):
         course, form = gated_course_with_form()
         app = _applied(client, course)
