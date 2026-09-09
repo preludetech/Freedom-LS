@@ -14,12 +14,13 @@ A form lives in a **numbered subdirectory** (e.g. `03. quiz/`) containing:
 |---|---|---|---|
 | `content_type` | `FORM` | Yes | Must be exactly `FORM` |
 | `title` | `str` | Yes | Display title |
-| `strategy` | `QUIZ` or `CATEGORY_VALUE_SUM` | Yes | Form scoring strategy |
-| `quiz_show_incorrect` | `bool` | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` |
-| `quiz_pass_percentage` | `int` (0–100) | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` |
+| `strategy` | `QUIZ`, `CATEGORY_VALUE_SUM`, or `UNSCORED` | Yes | Form scoring strategy |
+| `quiz_show_incorrect` | `bool` | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` and `UNSCORED` |
+| `quiz_pass_percentage` | `int` (0–100) | Conditional | Required when `strategy: QUIZ`; **must be absent** for `CATEGORY_VALUE_SUM` and `UNSCORED` |
 | `submit_on_exit` | `bool` | No (default `false`) | If `true`, partial attempt is finalised on navigation away |
 | `subtitle` | `str` | No | Optional subtitle |
 | `description` | `str` | No | Optional description |
+| `content` | `str` | No | Optional markdown intro body |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 
 ### QUIZ example
@@ -42,6 +43,22 @@ content_type: FORM
 strategy: CATEGORY_VALUE_SUM
 title: Course Feedback Survey
 ---
+```
+
+### Unscored (UNSCORED) example
+
+`UNSCORED` records answers without producing a score or a pass/fail outcome. This is the strategy an
+application form uses — see the course access configuration section of `course-files.md`.
+
+```yaml
+---
+content_type: FORM
+strategy: UNSCORED
+title: Application form
+subtitle: Tell us about yourself
+---
+
+There are no right answers here. Answer as honestly as you can.
 ```
 
 ---
@@ -89,7 +106,7 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `question` | `str` | Yes | The question text |
-| `type` | `multiple_choice`, `checkboxes`, `short_text`, or `long_text` | Yes | Question type |
+| `type` | `multiple_choice`, `checkboxes`, `short_text`, `long_text`, `number`, or `file_upload` | Yes | Question type |
 | `required` | `bool` | No (default `true`) | Whether the question must be answered |
 | `category` | `str` | No | Used by `CATEGORY_VALUE_SUM` scoring strategy |
 | `options` | `list` | Conditional | Required for `multiple_choice` and `checkboxes` |
@@ -130,6 +147,24 @@ question: "What did you find most useful about this course?"
 type: short_text
 required: false
 category: general
+```
+
+### Number question example
+
+```yaml
+---
+question: "How many years have you been writing software?"
+type: number
+required: true
+```
+
+### File-upload question example
+
+```yaml
+---
+question: "Upload a scan of your ID or a recent certificate"
+type: file_upload
+required: true
 ```
 
 ---
