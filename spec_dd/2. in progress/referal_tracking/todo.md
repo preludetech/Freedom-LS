@@ -52,8 +52,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: read-only admin detail pages scroll sideways on a phone when a stored value is one long unbroken string (TDD — failing test first, then fix)
-- [ ] (user) Decide whether the read-only audit admins should permit cascade deletion from the User admin — SignupAttribution now blocks it, as LegalConsent already did on main — then either allow the delete or document that user erasure runs outside the admin
+- [x] (user + cmd) Fix QA bug: read-only admin detail pages scroll sideways on a phone when a stored value is one long unbroken string (TDD — failing test first, then fix)
+- [x] (user) Decide whether the read-only audit admins should permit cascade deletion from the User admin — SignupAttribution now blocks it, as LegalConsent already did on main — then either allow the delete or document that user erasure runs outside the admin
 
 ## 10. Product documentation
 
