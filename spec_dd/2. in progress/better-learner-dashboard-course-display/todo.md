@@ -47,10 +47,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: content_save reformats the whole course_categories.yaml when it writes uuids (TDD — failing test first, then fix)
+- [ ] (user) Decide whether a uuid-less course_categories.yaml entry whose slug already exists should adopt the existing row by slug or refuse with an authoring error, then fix the raw IntegrityError it currently raises (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
