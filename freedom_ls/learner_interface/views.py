@@ -59,7 +59,12 @@ from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.site_aware_models.models import get_cached_site
 
-from .dashboard_sections import DashboardSection, page_for
+from .dashboard_sections import (
+    BuiltInSection,
+    DashboardSection,
+    page_for,
+    requested_section_slug,
+)
 from .utils import (
     BLOCKED,
     IN_PROGRESS,
@@ -320,11 +325,11 @@ def _in_progress_section(
     backend: CourseAccessBackend,
 ) -> DashboardSection:
     """The In progress section. Always built, because it owns an empty state."""
-    page_obj = page_for(request, "in-progress", registered_courses)
+    page_obj = page_for(request, BuiltInSection.IN_PROGRESS, registered_courses)
     courses = list(page_obj.object_list)
     _annotate_registered_courses(courses, user, backend)
     return DashboardSection(
-        slug="in-progress",
+        slug=BuiltInSection.IN_PROGRESS,
         heading="In progress",
         wrapper_id="current-courses",
         page_obj=page_obj,
@@ -334,14 +339,12 @@ def _in_progress_section(
 
 def _recommended_section(
     request: HttpRequest, recommendations: list[RecommendedCourse]
-) -> DashboardSection | None:
-    page_obj = page_for(request, "recommended", recommendations)
+) -> DashboardSection:
+    page_obj = page_for(request, BuiltInSection.RECOMMENDED, recommendations)
     page_recommendations = list(page_obj.object_list)
-    if not page_recommendations:
-        return None
     _annotate_recommendations(page_recommendations)
     return DashboardSection(
-        slug="recommended",
+        slug=BuiltInSection.RECOMMENDED,
         heading="Recommended courses",
         wrapper_id="recommended-courses",
         page_obj=page_obj,
@@ -354,13 +357,11 @@ def _category_section(
     category: CourseCategory,
     rest: QuerySet[Course],
     backend: CourseAccessBackend,
-) -> DashboardSection | None:
+) -> DashboardSection:
     page_obj = page_for(
         request, category.slug, rest.filter(dashboard_category=category)
     )
     courses = list(page_obj.object_list)
-    if not courses:
-        return None
     _annotate_discovery_courses(courses, backend)
     return DashboardSection(
         slug=category.slug,
@@ -375,7 +376,7 @@ def _category_section(
 
 def _available_section(
     request: HttpRequest, rest: QuerySet[Course], backend: CourseAccessBackend
-) -> DashboardSection | None:
+) -> DashboardSection:
     """The catch-all: uncategorised courses, plus those in a hidden category.
 
     Only ``dashboard_category`` decides this — a course whose dashboard
@@ -384,18 +385,16 @@ def _available_section(
     """
     page_obj = page_for(
         request,
-        "available",
+        BuiltInSection.AVAILABLE,
         rest.filter(
             Q(dashboard_category__isnull=True)
             | Q(dashboard_category__show_on_dashboard=False)
         ),
     )
     courses = list(page_obj.object_list)
-    if not courses:
-        return None
     _annotate_discovery_courses(courses, backend)
     return DashboardSection(
-        slug="available",
+        slug=BuiltInSection.AVAILABLE,
         heading="Available courses",
         wrapper_id="available-courses",
         page_obj=page_obj,
@@ -406,14 +405,12 @@ def _available_section(
 
 def _coming_soon_section(
     request: HttpRequest, coming_soon: QuerySet[Course], backend: CourseAccessBackend
-) -> DashboardSection | None:
-    page_obj = page_for(request, "coming-soon", coming_soon)
+) -> DashboardSection:
+    page_obj = page_for(request, BuiltInSection.COMING_SOON, coming_soon)
     courses = list(page_obj.object_list)
-    if not courses:
-        return None
     _annotate_discovery_courses(courses, backend)
     return DashboardSection(
-        slug="coming-soon",
+        slug=BuiltInSection.COMING_SOON,
         heading="Coming soon",
         wrapper_id="coming-soon-courses",
         page_obj=page_obj,
@@ -423,14 +420,12 @@ def _coming_soon_section(
 
 def _history_section(
     request: HttpRequest, completed_courses: list[Course]
-) -> DashboardSection | None:
-    page_obj = page_for(request, "history", completed_courses)
+) -> DashboardSection:
+    page_obj = page_for(request, BuiltInSection.HISTORY, completed_courses)
     courses = list(page_obj.object_list)
-    if not courses:
-        return None
     _annotate_completed_courses(courses)
     return DashboardSection(
-        slug="history",
+        slug=BuiltInSection.HISTORY,
         heading="Learning history",
         wrapper_id="learning-history",
         page_obj=page_obj,
@@ -496,9 +491,9 @@ def _dashboard_sections(
     category_sections = [
         section
         for category in CourseCategory.objects.filter(show_on_dashboard=True)
-        if (
+        if not (
             section := _category_section(request, category, inputs.rest, inputs.backend)
-        )
+        ).is_empty
     ]
     in_progress = (
         _in_progress_section(
@@ -507,62 +502,79 @@ def _dashboard_sections(
         if inputs.is_auth
         else None
     )
-    in_progress_has_courses = (
-        in_progress is not None and in_progress.page_obj.paginator.count > 0
-    )
-    history = _history_section(request, inputs.completed_courses)
 
     sections: list[DashboardSection] = []
-    if in_progress is not None and in_progress_has_courses:
+    if in_progress is not None and not in_progress.is_empty:
         sections.append(in_progress)
     sections.extend(category_sections[:1])
-    recommended = _recommended_section(request, inputs.recommended_courses)
-    if recommended is not None:
-        sections.append(recommended)
+    sections.append(_recommended_section(request, inputs.recommended_courses))
     sections.extend(category_sections[1:])
-    available = _available_section(request, inputs.rest, inputs.backend)
-    if available is not None:
-        sections.append(available)
-    coming_soon = _coming_soon_section(request, inputs.coming_soon, inputs.backend)
-    if coming_soon is not None:
-        sections.append(coming_soon)
-    if in_progress is not None and not in_progress_has_courses:
+    sections.append(_available_section(request, inputs.rest, inputs.backend))
+    sections.append(_coming_soon_section(request, inputs.coming_soon, inputs.backend))
+    sections = [section for section in sections if not section.is_empty]
+    if in_progress is not None and in_progress.is_empty:
         sections.append(in_progress)
-    if history is not None:
+    history = _history_section(request, inputs.completed_courses)
+    if not history.is_empty:
         sections.append(history)
     return sections
 
 
 def _requested_section(
-    request: HttpRequest, inputs: _DashboardInputs
-) -> DashboardSection | None:
-    """The one section an htmx page request asked for, by its swap target id.
+    request: HttpRequest, inputs: _DashboardInputs, slug: str
+) -> DashboardSection:
+    """The one section an htmx page request asked for.
 
     Building only this section is the point of the swap: the other eight
     sections' page queries and per-course annotation are never paid for.
+    A slug this visitor has no section for is a 404.
     """
-    target = request.headers.get("HX-Target", "")
-    prefix = "section-page-"
-    if not target.startswith(prefix):
-        return None
-    slug = target[len(prefix) :]
-
-    if slug in {"in-progress", "history"} and not inputs.is_auth:
-        return None
-    if slug == "in-progress":
+    if (
+        slug in {BuiltInSection.IN_PROGRESS, BuiltInSection.HISTORY}
+        and not inputs.is_auth
+    ):
+        raise Http404("No such dashboard section.")
+    if slug == BuiltInSection.IN_PROGRESS:
         return _in_progress_section(
             request, inputs.registered_courses, request.user, inputs.backend
         )
-    if slug == "history":
+    if slug == BuiltInSection.HISTORY:
         return _history_section(request, inputs.completed_courses)
-    if slug == "recommended":
+    if slug == BuiltInSection.RECOMMENDED:
         return _recommended_section(request, inputs.recommended_courses)
-    if slug == "available":
+    if slug == BuiltInSection.AVAILABLE:
         return _available_section(request, inputs.rest, inputs.backend)
-    if slug == "coming-soon":
+    if slug == BuiltInSection.COMING_SOON:
         return _coming_soon_section(request, inputs.coming_soon, inputs.backend)
     category = get_object_or_404(CourseCategory, slug=slug, show_on_dashboard=True)
     return _category_section(request, category, inputs.rest, inputs.backend)
+
+
+def _section_page_response(
+    request: HttpRequest, inputs: _DashboardInputs, slug: str
+) -> HttpResponse:
+    """One section's page fragment, or its exit when nothing is left in it.
+
+    A section that has drained since the page rendered (a course registered in
+    another tab, a category hidden) leaves the page the way a reload shows it:
+    the whole wrapper goes, or for In progress, gives way to its empty-state
+    copy. Retargeting to the wrapper takes the heading with it.
+    """
+    section = _requested_section(request, inputs, slug)
+    if not section.is_empty:
+        return render(
+            request,
+            "learner_interface/partials/course_list.html#section-page-response",
+            {"section": section},
+        )
+    response = render(
+        request,
+        "learner_interface/partials/course_list.html#section-gone-response",
+        {"section": section, "has_history": bool(inputs.completed_courses)},
+    )
+    response["HX-Retarget"] = f"#{section.wrapper_id}"
+    response["HX-Reswap"] = "outerHTML" if section.renders_when_empty else "delete"
+    return response
 
 
 def dashboard(request: HttpRequest) -> HttpResponse:
@@ -571,19 +583,14 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     Authenticated users see their personalised course lists, backend-contributed
     panels, and the welcome greeting. Anonymous users see a hero and the
     discovery sections only. An htmx request naming a section's swap target in
-    ``HX-Target`` gets that section's page fragment instead of the whole page.
+    ``HX-Target`` gets that section's page fragment instead of the whole page;
+    any other htmx request, a boosted navigation included, gets the whole page.
     """
+    slug = requested_section_slug(request)
     inputs = _dashboard_inputs(request)
 
-    if request.headers.get("HX-Request") == "true":
-        section = _requested_section(request, inputs)
-        if section is None:
-            raise Http404("No such dashboard section.")
-        return render(
-            request,
-            "learner_interface/partials/course_list.html#section-page-response",
-            {"section": section},
-        )
+    if slug is not None:
+        return _section_page_response(request, inputs, slug)
 
     # Dashboard contributions from the active backend (e.g. the applications panel).
     # Only fetched for authenticated users — anonymous visitors have no panels,

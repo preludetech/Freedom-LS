@@ -20,9 +20,10 @@ from freedom_ls.content_base.schema import (
 
 # The section slugs the dashboard reserves for its built-in sections. A
 # CourseCategory may not take one of these, because the slug names the
-# section's query parameter and its wrapper id. Imported by
-# `learner_interface` and copied into the offline validator, which runs with
-# no Django -- it stays a plain module constant rather than a Django choice.
+# section's query parameter and its wrapper id. The dashboard mirrors this
+# set as `learner_interface.dashboard_sections.BuiltInSection` and a test
+# keeps the two equal; the offline validator copies it and runs with no
+# Django -- so it stays a plain module constant rather than a Django choice.
 RESERVED_SECTION_SLUGS = frozenset(
     {"in-progress", "recommended", "available", "coming-soon", "history"}
 )

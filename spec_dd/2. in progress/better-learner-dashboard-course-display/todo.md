@@ -74,6 +74,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
+- [x] (user + cmd) `/code-review 168` findings triaged: 1, 2 (no root-level courses), 5 (uuid write-back reorder is expected), 8 (educator Details panel, deferred) and 9 skipped; 3 already fixed by the taken-slug refusal; 6 (any htmx request 404'd unless it named a section target), 7 (a drained section's stale page click 404'd or rendered an empty grid) and 10 (`RESERVED_SECTION_SLUGS` mirrored nowhere) fixed with tests
 
 ## 14. Cleanup
 

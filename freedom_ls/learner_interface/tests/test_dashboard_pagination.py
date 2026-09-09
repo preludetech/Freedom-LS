@@ -10,6 +10,7 @@ import pytest
 
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseCategoryFactory, CourseFactory
@@ -21,7 +22,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 
-from .conftest import rendered_section
+from .conftest import course_progress_record, rendered_section
 
 DASHBOARD_URL = "/"
 
@@ -216,12 +217,28 @@ def test_an_htmx_request_for_a_category_returns_that_category(mock_site_context)
 
 
 @pytest.mark.django_db
-def test_an_htmx_request_with_no_target_header_is_a_404(four_available_courses):
+def test_an_htmx_request_with_no_target_header_returns_the_whole_page(
+    four_available_courses,
+):
     response = Client().get(
         reverse("learner_interface:dashboard"), HTTP_HX_REQUEST="true"
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert "<h1" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_boosted_request_returns_the_whole_page(four_available_courses):
+    response = Client().get(
+        reverse("learner_interface:dashboard"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_BOOSTED="true",
+        HTTP_HX_TARGET="interface-main",
+    )
+
+    assert response.status_code == 200
+    assert "<h1" in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -247,11 +264,65 @@ def test_an_anonymous_htmx_request_for_in_progress_is_a_404(four_available_cours
 
 
 @pytest.mark.django_db
-def test_an_htmx_request_for_an_empty_section_is_a_404(mock_site_context):
+def test_an_htmx_request_for_an_emptied_section_removes_that_section(
+    mock_site_context,
+):
+    """A stale page click on a drained section takes the section off the page."""
     response = Client().get(
         reverse("learner_interface:dashboard"),
         HTTP_HX_REQUEST="true",
         HTTP_HX_TARGET="section-page-available",
     )
+    body = response.content.decode()
 
-    assert response.status_code == 404
+    assert response.status_code == 200
+    assert response["HX-Retarget"] == "#available-courses"
+    assert response["HX-Reswap"] == "delete"
+    assert 'id="section-page-available"' not in body
+    assert 'id="dashboard-section-status"' in body
+    assert "Available courses: nothing to show" in body
+
+
+@pytest.mark.django_db
+def test_an_htmx_request_for_an_emptied_in_progress_swaps_in_its_empty_state(
+    mock_site_context,
+):
+    learner = LearnerFactory()
+    client = Client()
+    client.force_login(learner.user)
+
+    response = client.get(
+        reverse("learner_interface:dashboard"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="section-page-in-progress",
+    )
+    body = response.content.decode()
+
+    assert response.status_code == 200
+    assert response["HX-Retarget"] == "#current-courses"
+    assert response["HX-Reswap"] == "outerHTML"
+    assert 'id="current-courses"' in body
+    assert "in-progress-empty-no-registrations" in body
+    assert "In progress: nothing to show" in body
+
+
+@pytest.mark.django_db
+def test_an_emptied_in_progress_with_history_points_at_the_history(
+    mock_site_context,
+):
+    learner = LearnerFactory()
+    registration = LearnerCourseRegistrationFactory(learner=learner)
+    course_progress_record(
+        registration.course, learner.user, completed_time=timezone.now()
+    )
+    client = Client()
+    client.force_login(learner.user)
+
+    response = client.get(
+        reverse("learner_interface:dashboard"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="section-page-in-progress",
+    )
+
+    assert response.status_code == 200
+    assert "in-progress-empty-with-history" in response.content.decode()

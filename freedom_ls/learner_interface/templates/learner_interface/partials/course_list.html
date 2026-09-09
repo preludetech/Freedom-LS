@@ -66,12 +66,24 @@ watch regions that were already on the page.
          aria-atomic="true"
          class="sr-only"
          {% if section %}hx-swap-oob="true"{% endif %}>
-        {% if section %}{{ section.heading }}: showing {{ section.position_text }}{% endif %}
+        {% if section %}{{ section.heading }}: {{ section.status_text }}{% endif %}
     </div>
 {% endpartialdef %}
 
 {% partialdef section-page-response %}
     {% partial section-page %}
+    {% partial section-status %}
+{% endpartialdef %}
+
+{% comment %}
+The htmx answer for a section with nothing left in it. The view retargets the
+swap at the section wrapper: In progress gives way to its empty-state copy,
+any other section is deleted, as a reload would show.
+{% endcomment %}
+{% partialdef section-gone-response %}
+    {% if section.renders_when_empty %}
+        {% partial in-progress-empty %}
+    {% endif %}
     {% partial section-status %}
 {% endpartialdef %}
 
@@ -116,7 +128,7 @@ learner who has finished everything where their courses went.
 
 <div class="space-y-8 lg:space-y-12">
     {% for section in sections %}
-        {% if section.slug == "in-progress" and section.page_obj.paginator.count == 0 %}
+        {% if section.is_empty %}
             {% partial in-progress-empty %}
         {% else %}
             {% partial course-section %}

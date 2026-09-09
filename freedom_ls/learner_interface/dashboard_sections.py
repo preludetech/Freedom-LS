@@ -9,6 +9,7 @@ ids however it is authored.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from django.core.paginator import Paginator
@@ -22,10 +23,39 @@ if TYPE_CHECKING:
     from freedom_ls.course_recommendations.models import RecommendedCourse
 
 SECTION_PAGE_SIZE = 3
+SECTION_SWAP_ID_PREFIX = "section-page-"
+
+
+class BuiltInSection(StrEnum):
+    """The slugs of the sections the dashboard always owns.
+
+    Mirrors ``RESERVED_SECTION_SLUGS`` in ``content_engine.schema``, which
+    refuses these as category slugs; a test keeps the two sets equal.
+    """
+
+    IN_PROGRESS = "in-progress"
+    RECOMMENDED = "recommended"
+    AVAILABLE = "available"
+    COMING_SOON = "coming-soon"
+    HISTORY = "history"
 
 
 def _page_param_name(slug: str) -> str:
     return f"page_{slug}"
+
+
+def requested_section_slug(request: HttpRequest) -> str | None:
+    """The slug of the section an htmx page request names in ``HX-Target``.
+
+    ``None`` for anything else, including a boosted navigation, which must get
+    the whole page.
+    """
+    if request.headers.get("HX-Request") != "true":
+        return None
+    target = request.headers.get("HX-Target", "")
+    if not target.startswith(SECTION_SWAP_ID_PREFIX):
+        return None
+    return target[len(SECTION_SWAP_ID_PREFIX) :]
 
 
 @dataclass(frozen=True)
@@ -55,16 +85,32 @@ class DashboardSection:
 
     @property
     def swap_id(self) -> str:
-        return f"section-page-{self.slug}"
+        return f"{SECTION_SWAP_ID_PREFIX}{self.slug}"
+
+    @property
+    def is_empty(self) -> bool:
+        return self.page_obj.paginator.count == 0
+
+    @property
+    def renders_when_empty(self) -> bool:
+        """In progress is the one section with empty-state copy."""
+        return self.slug == BuiltInSection.IN_PROGRESS
 
     @property
     def position_text(self) -> str:
-        if self.page_obj.paginator.count == 0:
+        if self.is_empty:
             return ""
         return (
             f"{self.page_obj.start_index()} to {self.page_obj.end_index()} "
             f"of {self.page_obj.paginator.count}"
         )
+
+    @property
+    def status_text(self) -> str:
+        """What the live region announces after this section's page swaps."""
+        if self.is_empty:
+            return "nothing to show"
+        return f"showing {self.position_text}"
 
     @property
     def nav_label(self) -> str:
