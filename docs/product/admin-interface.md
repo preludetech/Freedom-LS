@@ -13,6 +13,7 @@ _Last updated: 2026-09-09_
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available.
 - Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
+- Until the review workflow ships, an applicant's application-form answers and any file they attached are read in the admin, by a superuser only. A staff user granted the same model permissions sees none of it, and files download through a permission-checked link rather than a storage URL.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
@@ -53,6 +54,8 @@ A learner's own admin page gathers their cohorts, their individual course regist
 
 The progress changelists ask the same questions across many learners at once, filtering by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. Course progress additionally filters by completion percentage and by when the learner was last active, for finding learners who have gone quiet. Form attempts sat outside any course are read on the form progress list, which names the course each was sat in, or nothing when it was sat on its own. Full tracking semantics — what a progress record means and how it is derived — are covered in [learner tracking](./learner-tracking.md).
 
+An applicant's answers to a course's [application form](./learner-experience.md#applying-to-a-course) are read here too: the sitting appears on the form progress list as one sat outside any course, and any file the applicant attached is listed alongside with a download link. Both are visible only to a superuser. A staff user holding the same model permissions sees neither, in the admin or by direct URL, and a file downloads through a permission-checked link rather than a storage URL; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built). There is no review, approve or reject action anywhere in the admin yet; see [roadmap](./roadmap.md).
+
 ## Course Interest
 
 Who has expressed interest in each course is read here, searchable by user and course. Interest is expressed against a course site-wide with no organisation involved, which is why it sits in the admin rather than in the organisation-scoped [educator interface](./educator-interface.md#courses), where only the per-course interest count is shown.
@@ -78,9 +81,9 @@ Legal consent records are registered read-only: the admin disables add, change, 
 
 ## Content Cannot Be Deleted
 
-Authored content — courses, course parts, topics, activities, files, and forms with their pages, questions, and options — cannot be deleted through the admin: not from a detail page, not as a bulk action, and not from an inline on a parent. Adding and changing remain available, and content is authored in files and loaded into the site by a command, so the admin is not where content is removed. See [content editing workflow](./content-editing-workflow.md).
+Authored content — courses, course parts, topics, activities, files, and forms with their pages, questions, and options — cannot be deleted through the admin: not from a detail page, not as a bulk action, and not from an inline on a parent. Adding and changing remain available, and content is authored in files and loaded into the site by a command, so the admin is not where content is removed. A form added directly in the admin rather than loaded from files is given a slug automatically. See [content editing workflow](./content-editing-workflow.md).
 
-Underneath the admin the same protection holds for anything reaching the database another way: a form question a learner has answered, and a course anyone is registered for, cannot be deleted while those records exist.
+Underneath the admin the same protection holds for anything reaching the database another way: a form question a learner has answered, a course anyone is registered for, and the form progress record behind a course application cannot be deleted while those records exist.
 
 Course categories are authored content too, and the admin is stricter with them: it refuses to create one as well as to delete one, because the category vocabulary belongs to the content repo. An administrator can see and edit an existing category's title, description, ordering, and whether it gets a section of its own on the dashboard, and can see on a course's own page which category places it on the dashboard and what else it belongs to — but any such edit lasts only until the next content load, which rewrites the category from its file. See [content editing workflow](./content-editing-workflow.md) for how categories are authored and [learner experience](./learner-experience.md) for what one does on the dashboard.
 

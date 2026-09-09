@@ -7,6 +7,7 @@ _Last updated: 2026-09-09_
 - Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The personalised dashboard sections — In progress, Recommended courses, Learning history — are shown only to authenticated learners; anonymous visitors see a value-proposition hero instead, followed by the same course-discovery sections an authenticated learner sees.
 - A site can group its courses into named categories and choose which of those get a section of their own on the dashboard, in the order the site declares. A course with no category, or whose category was not chosen for the dashboard, still shows — it falls back to the **Available courses** section, so nothing drops off the page.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
+- An application-gated course can carry an author-written **application form**. When it does, confirming "Apply now" walks the applicant through it page by page, then through a check-your-answers page, before the application is submitted once. A gated course with no form goes straight from confirmation to a status page.
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
@@ -168,7 +169,13 @@ Selecting "Apply now" leads to a confirmation page ("Apply to \<course\>?"); con
 
 Applying is idempotent: a learner who has already applied for a course is taken directly to their existing application's status page rather than creating a duplicate submission.
 
-The application records only that the learner applied — it collects no questions or file uploads, and there is no review or approval workflow: the status page is static, with no reviewer messages or withdraw action. Multi-step application forms and application review are planned; see [roadmap](./roadmap.md).
+When the course names an application form, confirming "Apply now" walks the applicant through that form page by page instead of going straight to the status page. Short text, long text, number, multiple-choice, checkbox and file-upload questions are all supported. The applicant can leave partway through and come back later with their answers preserved, then reaches a **check-your-answers page** listing every page's answers with an Edit link back to each one. Submitting from that page is one-way: the application is read-only afterwards. A file-upload question accepts one JPEG, PNG or PDF up to 6 MB, and the applicant can download, replace or remove it at any point before submitting. The handling of uploaded files is described in [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
+
+![Application form page with an attached file, showing Download, Replace and Remove](screenshots/learner_application_form_file_question.png)
+
+![Check-your-answers page with one card per form page and an Edit link on each](screenshots/learner_application_check_answers.png)
+
+A gated course that names no form behaves as before: confirming "Apply now" leads straight to the status page. There is still no review or approval workflow. The status page is static, with no reviewer messages or withdraw action; see [roadmap](./roadmap.md).
 
 Access type is configured per course through the content-loading pipeline; see [content editing workflow](./content-editing-workflow.md) for authoring details and [configuration and extension](./configuration-and-extension.md) for the backend settings.
 
@@ -206,7 +213,7 @@ See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations
 
 ## Multi-Page Forms
 
-Form items can span multiple pages. A learner can leave a form part-way through and resume later with their answers preserved. Leaving is only guarded by a confirmation prompt when there are unsaved changes to lose. A question marked required must be answered before the learner can move on.
+Form items can span multiple pages. A learner can leave a form part-way through and resume later with their answers preserved. Leaving is only guarded by a confirmation prompt when there are unsaved changes to lose. A question marked required must be answered before the learner can move on. Resuming lands the learner on the furthest page they have reached, so a skipped optional question on an earlier page never sends a returning learner backwards.
 
 ## Quiz Feedback
 

@@ -53,9 +53,10 @@ These are set in a course's YAML frontmatter and take effect when content is loa
 ```yaml
 access_config:
   access_type: application_gated
+  application_form: ../mentorship_application/form.md
 ```
 
-Which access types a deployment supports is determined by its access backend — see [configuration and extension](./configuration-and-extension.md). The learner-facing flow is in [learner experience](./learner-experience.md).
+An application-gated course can optionally name an **application form** for applicants to fill in as part of applying; a gated course that names none keeps the plain apply-then-status-page flow. The form is an ordinary unscored FORM file kept outside any course's contents, and forms in general now offer a number question and a file-upload question. Authoring detail, including the worked example, lives in the `fls-content` authoring plugin described below. Which access types a deployment supports is determined by its access backend — see [configuration and extension](./configuration-and-extension.md). The learner-facing flow is in [learner experience](./learner-experience.md).
 
 **Visibility.** `published` (the default when absent), `coming_soon`, or `hidden`:
 
@@ -91,7 +92,7 @@ uv run python manage.py content_save <path> <site_name>
 
 Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin.
 
-`content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect.
+`content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped.
 
 A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content is deleted.
 

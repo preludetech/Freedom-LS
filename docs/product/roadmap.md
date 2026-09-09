@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-09-09_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow built; review/approval and authored form not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
 - **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and learner detail pages are now checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
@@ -43,16 +43,18 @@ See [educator interface](./educator-interface.md#organisation-scope) and [admin 
 
 ## Course Applications
 
-**Status: Access type and bare apply flow built; review/approval workflow and authored application form not built.**
+**Status: Access type, apply flow, and authored application form built; review/approval workflow not built.**
 
-A course can be configured as free or application-gated. A learner browsing an application-gated course sees an "Apply now" prompt; confirming creates an application and shows a static status page saying it has been received and is pending review. The pluggable backend driving this is described in [configuration and extension](./configuration-and-extension.md) and the learner flow in [learner experience](./learner-experience.md).
+A course can be configured as free or application-gated. A learner browsing an application-gated course sees an "Apply now" prompt; confirming creates an application. Where the course names an application form, the applicant works through it, including a file-upload question if the form has one, before reaching the status page; a gated course with no form goes straight to the status page. A superuser reads submitted answers and downloads uploaded files in the Django admin; other staff cannot. See [configuration and extension](./configuration-and-extension.md) for the access backend, [learner experience](./learner-experience.md) for the applicant's flow, and [admin interface](./admin-interface.md) for the admin's answer and file views.
 
-Two pieces are missing:
+What remains missing:
 
 - **Review and approval** — nobody can review, approve, reject, request changes on, or withdraw an application. There are no reviewer roles or permissions, no audit trail, and no admin or educator review screen. The applicant's status page is static and never reflects a decision.
-- **Authored application form** — applying collects no questions, answers, or file uploads. A multi-step form with configurable questions and file upload is deferred to a follow-up.
+- **Malware scanning of uploaded files** — an upload's real type and size are checked and images are re-encoded, but nothing inspects the contents for a malicious payload; a reviewer downloads what was submitted, unmodified in the case of a PDF. This is a deliberate, tracked deferral; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
+- **A retention or expiry policy for uploaded files** — see [data retention](#data-retention-deletion-and-subject-rights).
+- **Some question-authoring options** — no conditional questions, no dropdown or boolean question type, no per-question upload limit, and no numeric range validation.
 
-The seams both follow-ups attach to are in place; neither will require rearchitecting the access backend or the apply flow.
+The review workflow attaches to seams already in place; it will not require rearchitecting the access backend, the apply flow, or the form.
 
 ## Course Visibility & Express Interest
 
@@ -104,6 +106,8 @@ When object storage is configured, course files are private and served through t
 There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. User deletion is a manual admin or database operation. There is also no incident-response runbook or automated alerting for data events. All of this is operator responsibility today — see [security and data handling](./security-and-data-handling.md).
 
 Generated [cohort reports](./reports.md) are a concrete instance of the same gap: the PDFs hold real learner names and answers and are kept until an administrator deletes them by hand, with no automatic expiry. Deletion itself is handled correctly — removing a report removes its stored file, whether deleted singly, in bulk, or as a consequence of deleting its cohort — so nothing is orphaned. What is missing is anything that prompts or schedules that deletion.
+
+Files an applicant uploads to an application form are the same gap in miniature: they are kept until deleted by hand, and deleting the applicant's account is the only thing that removes them automatically. See [Course Applications](#course-applications).
 
 ## xAPI / Tin Can Tracking
 

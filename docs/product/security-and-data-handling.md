@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-09-09_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -11,10 +11,12 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
 - **Built:** Cohort progress reports are downloaded only through a permission-checked view, never a public media URL. Generating and downloading one both require the requesting staff user to be authorised to see that cohort; staff status alone is not enough.
+- **Built:** A document an applicant uploads with a course application is downloaded only through a permission-checked view, never a storage URL, whether by the applicant or by a superuser in the admin. Application answers and files are visible to superusers only.
+- **Not yet built:** FLS runs no malware or content scanning on documents applicants upload; a reviewer downloads exactly what was attached, PDF contents included. See [applicant uploads](#applicant-uploads-built).
 - **Operational:** Report PDFs are written to a private storage location, separate from the buckets that hold course media and public branding. There is no fallback: an unconfigured location fails at startup, and a deploy pipeline running Django's deployment check catches a location that resolves to the wrong bucket before anything is written to it.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
 - **Defect narrowed:** cohort and user detail pages in the educator interface are now permission-checked and deny by default. What remains is the Courses section — any authenticated user on a site can still read the full course list, hidden courses included, and any course detail page. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-narrowed-defect).
-- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
+- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files or applicant-uploaded documents, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
 ---
@@ -49,7 +51,7 @@ Detail-view authorisation across the educator panel now denies by default: a sec
 
 **Content sanitisation (built).** All authored Markdown is sanitised against a strict allowlist before rendering, using a Rust-based, memory-safe sanitiser. Only explicitly permitted content-widget tags and their declared attributes survive; all other HTML is stripped. This is the control that prevents stored XSS from authored content.
 
-**Organisation logo upload validation (built).** Administrator-uploaded organisation logos are restricted to an allowlist of raster formats — PNG, JPEG, and WebP. The uploaded bytes are decoded and the real format asserted rather than the file extension trusted, so a disguised file is caught. SVG is deliberately excluded: it is XML rather than image data and can carry a script, a risk raster formats do not share. File-size and pixel-dimension limits apply, along with decompression-bomb protection, and the uploaded filename is never used to build the storage path. EXIF metadata is deliberately not stripped — the uploader is always an administrator and the asset is a corporate logo, not a personal photo, so the usual location-metadata concern does not apply. Note the scope: this validation covers organisation logos only. Course file assets, loaded from the content repository by an operator rather than uploaded through a browser, are not covered by it. Re-encoding at ingest does strip EXIF — including any GPS coordinates a phone attached to an author's photo — from the course images it applies to, but that is a byproduct of [image optimisation](./content-editing-workflow.md#file-assets) rather than a control: nothing is rejected, no format allowlist applies, and an image stored unchanged keeps whatever metadata it carries.
+**Organisation logo upload validation (built).** Administrator-uploaded organisation logos are restricted to an allowlist of raster formats — PNG, JPEG, and WebP. The uploaded bytes are decoded and the real format asserted rather than the file extension trusted, so a disguised file is caught. SVG is deliberately excluded: it is XML rather than image data and can carry a script, a risk raster formats do not share. File-size and pixel-dimension limits apply, along with decompression-bomb protection, and the uploaded filename is never used to build the storage path. EXIF metadata is deliberately not stripped — the uploader is always an administrator and the asset is a corporate logo, not a personal photo, so the usual location-metadata concern does not apply. Note the scope: this validation covers organisation logos only. Course file assets, loaded from the content repository by an operator rather than uploaded through a browser, are not covered by it, and documents applicants upload have their own validation; see [applicant uploads](#applicant-uploads-built). Re-encoding at ingest does strip EXIF — including any GPS coordinates a phone attached to an author's photo — from the course images it applies to, but that is a byproduct of [image optimisation](./content-editing-workflow.md#file-assets) rather than a control: nothing is rejected, no format allowlist applies, and an image stored unchanged keeps whatever metadata it carries.
 
 **Content Security Policy (report-only — not enforcing).** A policy is configured and violations are reported, but nothing is blocked. The policy permits same-origin sources for most directives, allows inline scripts and styles (currently required by the HTMX and Alpine.js usage in templates), and restricts framing to same-origin plus YouTube. Enforcing mode has not been enabled — doing so requires refactoring the inline script and style usage first. Tracked in the [roadmap](./roadmap.md).
 
@@ -81,7 +83,7 @@ Course pages are access-controlled: a learner must be authorised before FLS rend
 
 When object storage is configured, this is closed at the storage layer: files are private by default and every link is a time-limited signed URL, so files are neither publicly discoverable nor permanently reachable from a leaked link.
 
-**Limitation:** this is storage-layer privacy, not per-request access control. FLS does not re-check whether a specific learner is still authorised at the moment a file is fetched — a signed link works for anyone holding it until it expires. Routing downloads through the same access check used for course pages is **not yet built**; see the [roadmap](./roadmap.md). Without object storage, media is served from local disk with no signing at all — that mode is for development only. See [deployment](./deployment.md) for configuration.
+**Limitation:** this is storage-layer privacy, not per-request access control. FLS does not re-check whether a specific learner is still authorised at the moment a file is fetched — a signed link works for anyone holding it until it expires. Routing downloads through the same access check used for course pages is **not yet built**; see the [roadmap](./roadmap.md). Cohort reports and the documents applicants upload with a course application are already served that way; see [applicant uploads](#applicant-uploads-built). Without object storage, media is served from local disk with no signing at all — that mode is for development only. See [deployment](./deployment.md) for configuration.
 
 ### Cohort Report Access Control (built)
 
@@ -92,6 +94,14 @@ Unlike ordinary media, a report is never reachable through a storage URL. Both g
 Downloads are served as an attachment with caching suppressed, so a PII-bearing PDF is not left sitting in a shared proxy cache or a browser's disk cache.
 
 **Not yet built:** report downloads are not audit-logged. Beyond who requested a report's generation, there is no record of who downloaded it or when.
+
+### Applicant Uploads (built)
+
+An application-gated course's application form can ask the applicant to upload a document, typically an ID scan or a certificate. As with a [cohort progress report](#cohort-report-access-control-built), that file is never reachable through a storage URL. The applicant's own download and a superuser's download from the admin both go through a permission-checked view on every request, served as an attachment with caching suppressed, which is a stronger guarantee than ordinary [course media](#media-file-access-control-built-with-a-stated-limitation) has. In the admin, an applicant's answers and file are visible to a superuser only; a staff user holding the model's own view permission sees neither. Application answers never appear in a cohort report or an educator's view of a learner.
+
+Uploads are restricted to JPEG, PNG and PDF, capped at 6 MB per file, with the real type detected from the content rather than the extension or the browser's declared type. An accepted image is re-encoded, which strips its EXIF metadata, including any GPS location a phone attached to the photo. A PDF is stored exactly as uploaded. FLS runs **no malware or content scanning** on either, so a reviewer downloads exactly what the applicant attached and the inside of a PDF is never inspected; an operator carries that risk knowingly until scanning is built. See the [roadmap](./roadmap.md).
+
+Removing an uploaded file, and deleting the applicant's account, both remove the stored object as well as its database row.
 
 ---
 
@@ -105,12 +115,13 @@ FLS stores, in its PostgreSQL database:
 - Hashed password (Argon2).
 - Legal consent records — which document and version was accepted, when, from what IP address, and by what method.
 - Learning activity — course progress, quiz answers, and scores.
+- Answers to a course's application form, and any document the applicant uploaded with it, which may be a government ID scan. See [applicant uploads](#applicant-uploads-built).
 - Webhook delivery logs, which may contain user data inside the delivered payload.
 - Fully rendered outgoing email — subject and both bodies — where a deployment has turned email queueing on, held as a row on the task queue until it is sent and then pruned. This includes the single-use links in signup-verification and password-reset messages. See [queued email](#queued-email).
 
 Outside the database, FLS stores generated [cohort progress reports](./reports.md) as PDF files. Each holds real learner names, completion history, and individual quiz scores and answers, and is not anonymised — the audience is internal staff, by design. See [generated cohort reports](#generated-cohort-reports).
 
-No payment data, government ID, or biometric data is stored by FLS.
+No payment data or biometric data is stored by FLS. Whether a government ID is stored depends on what a course's application form asks the applicant to upload.
 
 ### Encryption in Transit
 
@@ -156,7 +167,7 @@ No incident-response runbook, breach-notification templates, or automated alerti
 
 ### Retention, Deletion, and Data-Subject Rights (not yet built)
 
-There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. All of this is operator responsibility today. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports). See the [roadmap](./roadmap.md).
+There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. All of this is operator responsibility today. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. See the [roadmap](./roadmap.md).
 
 ---
 
