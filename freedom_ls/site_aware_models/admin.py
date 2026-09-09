@@ -17,6 +17,9 @@ class SiteAwareModelAdmin(ModelAdmin):
 
     exclude = ["site"]
 
+    class Media:
+        css = {"all": ["site_aware_models/css/admin.css"]}
+
 
 class GuardedSiteAwareModelAdmin(ModelAdmin, GuardedModelAdmin):
     """Site-aware admin with guardian's object-permission UI.
@@ -28,6 +31,7 @@ class GuardedSiteAwareModelAdmin(ModelAdmin, GuardedModelAdmin):
     """
 
     exclude = ["site"]
+    Media = SiteAwareModelAdmin.Media
 
 
 def admin_page_context(

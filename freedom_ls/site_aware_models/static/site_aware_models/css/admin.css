@@ -1,0 +1,6 @@
+/* unfold's read-only value wrapper uses overflow-wrap: break-word, which does not
+   shrink a flex item's min-content width; `anywhere` does, so 64-char hashes and
+   ad-network query strings wrap instead of widening the page on a phone. */
+.readonly {
+    overflow-wrap: anywhere;
+}
