@@ -5,7 +5,8 @@ not the declared size. An image is decoded and re-encoded, so what lands in the
 bucket is bytes Pillow wrote rather than bytes the applicant did -- which also
 takes the EXIF, and with it any GPS fix, off a phone photo. A PDF is not
 re-encoded (there is no safe general rewrite of one), so it is stored as
-supplied and never served to anyone but its owner until it is scanned.
+supplied and only ever served as a nosniff attachment -- to its owner, and to a
+superuser reviewing the application.
 """
 
 from __future__ import annotations

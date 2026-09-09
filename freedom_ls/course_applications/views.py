@@ -73,7 +73,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
                 )
                 app.save(update_fields=["form_progress"])
         if app.form_progress is not None:
-            return redirect("course_applications:form_page", pk=app.pk, page_number=1)
+            return redirect(_resume_url(app, app.form_progress))
         return redirect("course_applications:status", pk=app.pk)
 
     return render(
@@ -103,11 +103,7 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         user=request.user,
     )
     if app.form_progress is not None and app.form_progress.completed_time is None:
-        return redirect(
-            "course_applications:form_page",
-            pk=app.pk,
-            page_number=resume_page_number(app.form_progress),
-        )
+        return redirect(_resume_url(app, app.form_progress))
     return render(
         request,
         "course_applications/application_status.html",
@@ -138,6 +134,17 @@ def _page_url(app: CourseApplication, page_number: int) -> str:
         "course_applications:form_page",
         kwargs={"pk": app.pk, "page_number": page_number},
     )
+
+
+def _resume_url(app: CourseApplication, form_progress: FormProgress) -> str:
+    """Where an unfinished sitting picks back up.
+
+    A form with no pages has nothing to fill in, so the only place left to send
+    the applicant is the page they submit from.
+    """
+    if not form_progress.form.pages.exists():
+        return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
+    return _page_url(app, resume_page_number(form_progress))
 
 
 # Query-string marker an Edit link from the check-your-answers page carries. A

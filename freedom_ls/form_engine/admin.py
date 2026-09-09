@@ -46,6 +46,14 @@ class SuperuserOnlyAdmin:
     ) -> bool:
         return request.user.is_superuser
 
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return request.user.is_superuser
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: object | None = None
+    ) -> bool:
+        return request.user.is_superuser
+
 
 class QuestionOptionInline(admin.TabularInline):
     """Inline for question options."""

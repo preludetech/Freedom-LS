@@ -14,8 +14,8 @@ allauth ``EmailAddress`` so login skips the email-confirmation step.
 
 Re-running is idempotent AND destructive for the three accounts it owns: it
 resets flags, password, permissions, group memberships, and strips every
-CourseApplication / course registration the applicant and bystander hold. Do not
-point it at addresses a tester has customised.
+CourseApplication / form sitting / course registration the applicant and
+bystander hold. Do not point it at addresses a tester has customised.
 
 Usage:
     uv run python manage.py qa_create_application_review_accounts
@@ -128,7 +128,8 @@ def _ensure_verified_email(user: User) -> None:
 
 
 def _purge_course_data(user: User) -> dict[str, int]:
-    """Strip every application, registration and cohort membership the user holds.
+    """Strip every application, form sitting, registration and cohort membership
+    the user holds.
 
     CourseProgress PROTECTs LearnerCourseRegistration, so the progress rows a
     registration minted must go before the registration itself. Cohort *course*
@@ -141,6 +142,13 @@ def _purge_course_data(user: User) -> dict[str, int]:
     applications = CourseApplication._base_manager.filter(user=user)
     counts["CourseApplication"] = applications.count()
     applications.delete()
+
+    # After the applications: CourseApplication.form_progress is RESTRICT. The
+    # cascade to QuestionAnswer and QuestionAnswerFile is what sweeps the stored
+    # files, through the post_delete receiver.
+    sittings = FormProgress._base_manager.filter(user=user)
+    counts["FormProgress"] = sittings.count()
+    sittings.delete()
 
     learners = Learner._base_manager.filter(user=user)
 
@@ -166,6 +174,7 @@ def _describe(user: User) -> str:
         for p in user.user_permissions.select_related("content_type")
     )
     applications = CourseApplication._base_manager.filter(user=user).count()
+    sittings = FormProgress._base_manager.filter(user=user).count()
     registrations = LearnerCourseRegistration._base_manager.filter(
         learner__user=user
     ).count()
@@ -175,8 +184,8 @@ def _describe(user: User) -> str:
         f"is_superuser={user.is_superuser} is_active={user.is_active}\n"
         f"      permissions={perms or 'none'} groups="
         f"{sorted(user.groups.values_list('name', flat=True)) or 'none'}\n"
-        f"      applications={applications} learner_registrations={registrations} "
-        f"cohort_memberships={memberships}"
+        f"      applications={applications} form_sittings={sittings} "
+        f"learner_registrations={registrations} cohort_memberships={memberships}"
     )
 
 

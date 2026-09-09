@@ -147,6 +147,8 @@ def stream_question_answer_file(answer_file: QuestionAnswerFile) -> FileResponse
     stem = slugify(Path(answer_file.original_filename).stem, allow_unicode=True)
     try:
         handle = answer_file.file.open("rb")
+    # S3Storage raises this too: its _open loads the object eagerly and maps a
+    # 404 to FileNotFoundError, so a key missing from the bucket lands here as well.
     except FileNotFoundError as exc:
         raise Http404 from exc
     response = FileResponse(

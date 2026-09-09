@@ -22,6 +22,7 @@ from freedom_ls.form_engine.admin import (
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormProgressFactory,
+    QuestionAnswerFactory,
     QuestionAnswerFileFactory,
 )
 from freedom_ls.form_engine.models import (
@@ -182,6 +183,54 @@ def test_a_superuser_can_reach_answer_data(staff_client, url_name):
     response = staff_client.get(reverse(url_name))
 
     assert response.status_code == 200
+
+
+ANSWER_MODELS = ["questionanswer", "formprogress", "questionanswerfile"]
+
+ANSWER_FACTORIES = {
+    "questionanswer": QuestionAnswerFactory,
+    "formprogress": FormProgressFactory,
+    "questionanswerfile": QuestionAnswerFileFactory,
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_an_editor_cannot_add_answer_data(editor_client, model_name):
+    """Django's add view consults only has_add_permission, so the view and
+    change gates alone would leave an editor free to fabricate an answer."""
+    response = editor_client.get(
+        reverse(f"admin:freedom_ls_form_engine_{model_name}_add")
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("model_name", ANSWER_MODELS)
+def test_an_editor_cannot_delete_answer_data(editor_client, model_name):
+    """Django's delete view consults only has_delete_permission, so the view and
+    change gates alone would leave an editor free to destroy an applicant's ID
+    scan."""
+    row = ANSWER_FACTORIES[model_name]()
+
+    response = editor_client.post(
+        reverse(f"admin:freedom_ls_form_engine_{model_name}_delete", args=[row.pk]),
+        {"post": "yes"},
+    )
+
+    assert response.status_code == 403
+    assert type(row)._base_manager.filter(pk=row.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_admin_index_lists_no_answer_data_for_an_editor(editor_client):
+    """A model with any one of add, change, delete or view still gets an index
+    entry, so all four have to be shut for the listing to go."""
+    response = editor_client.get(reverse("admin:index"))
+
+    body = response.content.decode()
+    assert not any(reverse(url_name) in body for url_name in ANSWER_CHANGELISTS)
 
 
 # ---------------------------------------------------------------------------

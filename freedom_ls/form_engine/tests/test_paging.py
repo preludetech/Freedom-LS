@@ -288,3 +288,20 @@ def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
     )
 
     assert [link["is_accessible"] for link in links] == [True, True, False, False]
+
+
+@pytest.mark.django_db
+def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
+    mock_site_context, four_page_form
+):
+    """The reached-page record outlives a page an author deletes afterwards;
+    resuming on it would be a permanent 404."""
+    form_progress = FormProgressFactory(form=four_page_form)
+    form_progress.record_page_reached(4)
+    four_page_form.pages.filter(order__gte=2).delete()
+
+    assert resume_page_number(form_progress) == 2
+    links = build_page_links(
+        four_page_form, form_progress, current_page_number=1, url_for_page=str
+    )
+    assert [link["is_accessible"] for link in links] == [True, True]

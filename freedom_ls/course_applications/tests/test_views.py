@@ -18,6 +18,8 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.models import CourseFormAttempt
@@ -419,6 +421,53 @@ class TestApplicationStatusResumes:
         )
 
         assert response.status_code == 200
+
+
+def _gated_course_with_a_page_less_form():
+    """An author can save a form with no pages, and a course can name it."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+    return course
+
+
+@pytest.mark.django_db
+class TestAPageLessForm:
+    """A form with no pages has no page 1 to land on, so the applicant is sent
+    straight to the page they submit from rather than to a 404."""
+
+    def test_applying_lands_on_the_check_page(self, client, mock_site_context):
+        course = _gated_course_with_a_page_less_form()
+        user = UserFactory()
+        client.force_login(user)
+
+        response = client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert response["Location"] == _check_url(app)
+
+    def test_the_status_page_resumes_on_the_check_page(self, client, mock_site_context):
+        course = _gated_course_with_a_page_less_form()
+        app = _applied(client, course)
+
+        response = client.get(
+            reverse("course_applications:status", kwargs={"pk": app.pk})
+        )
+
+        assert response["Location"] == _check_url(app)
+
+    def test_the_check_page_renders_and_submits(self, client, mock_site_context):
+        course = _gated_course_with_a_page_less_form()
+        app = _applied(client, course)
+
+        assert client.get(_check_url(app)).status_code == 200
+        client.post(_check_url(app))
+
+        app.refresh_from_db()
+        assert app.form_progress.completed_time is not None
 
 
 @pytest.mark.django_db
