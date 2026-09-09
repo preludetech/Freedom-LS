@@ -479,3 +479,235 @@ def test_missing_repo_config_fails(tmp_path: Path) -> None:
     assert "/fls-content:init" in combined, (
         f"Missing-config error should tell the author to run /fls-content:init.\n{combined}"
     )
+
+
+def write_course_categories(directory: Path, body: str) -> Path:
+    """Write a COURSE_CATEGORIES declaration whose `categories:` list is *body*."""
+    path = directory / "course_categories.yaml"
+    path.write_text(
+        f"---\ncontent_type: COURSE_CATEGORIES\ncategories:\n{body}---\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def write_categorised_course(directory: Path, category_block: str) -> Path:
+    """Write a COURSE role file whose frontmatter includes the given category block."""
+    path = directory / "course.md"
+    path.write_text(
+        f"---\ncontent_type: COURSE\ntitle: My Course\n{category_block}---\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+@pytest.fixture
+def declared_categories(tmp_path: Path) -> Path:
+    """Declare `start-here` and `assessment` at the test repo root."""
+    return write_course_categories(
+        tmp_path,
+        "  - slug: start-here\n    title: Start here\n"
+        "  - slug: assessment\n    title: Assessment\n",
+    )
+
+
+def assert_validator_fails(
+    result: subprocess.CompletedProcess[str], expected: str
+) -> None:
+    """The run failed, said *expected*, and did not spill a traceback."""
+    combined = result.stdout + result.stderr
+    assert result.returncode != 0, (
+        f"Expected validation to fail.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert expected in combined, (
+        f"Expected {expected!r} in the validator output.\n{combined}"
+    )
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
+def test_single_category_needs_no_dashboard_category(
+    tmp_path: Path, declared_categories: Path
+) -> None:
+    """One entry in `categories` resolves as the dashboard category on its own."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_categorised_course(course_dir, "categories:\n  - start-here\n")
+
+    result = run_validator(tmp_path, repo_root=tmp_path)
+    assert result.returncode == 0, (
+        f"A course with a single declared category should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_two_categories_with_dashboard_category_validates(
+    tmp_path: Path, declared_categories: Path
+) -> None:
+    """Two categories plus an explicit `dashboard_category` is valid."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_categorised_course(
+        course_dir,
+        "categories:\n  - start-here\n  - assessment\ndashboard_category: start-here\n",
+    )
+
+    result = run_validator(tmp_path, repo_root=tmp_path)
+    assert result.returncode == 0, (
+        f"Two categories with an explicit dashboard_category should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_two_categories_without_dashboard_category_fails(
+    tmp_path: Path, declared_categories: Path
+) -> None:
+    """Two categories and no `dashboard_category` leaves the dashboard no choice to make."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_categorised_course(
+        course_dir, "categories:\n  - start-here\n  - assessment\n"
+    )
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "dashboard_category must name which one",
+    )
+
+
+def test_dashboard_category_outside_categories_fails(
+    tmp_path: Path, declared_categories: Path
+) -> None:
+    """`dashboard_category` has to be one of the course's own `categories`."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_categorised_course(
+        course_dir,
+        "categories:\n  - start-here\ndashboard_category: assessment\n",
+    )
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "has to be one the course belongs to",
+    )
+
+
+def test_undeclared_category_slug_fails(
+    tmp_path: Path, declared_categories: Path
+) -> None:
+    """A slug no `course_categories.yaml` declares is caught across files."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_categorised_course(course_dir, "categories:\n  - nonexistent\n")
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "no category is declared with this slug in this content repo",
+    )
+
+
+def test_category_declared_after_the_course_in_walk_order_still_resolves(
+    tmp_path: Path, declared_categories: Path
+) -> None:
+    """The cross-file pass runs after the whole walk, so file order cannot matter.
+
+    `aaa-course/` sorts before `course_categories.yaml`, so the course is parsed
+    first and its slug can only resolve once every file has been read.
+    """
+    course_dir = tmp_path / "aaa-course"
+    course_dir.mkdir()
+    write_categorised_course(course_dir, "categories:\n  - assessment\n")
+
+    result = run_validator(tmp_path, repo_root=tmp_path)
+    assert result.returncode == 0, (
+        f"A course parsed before the declaration should still resolve.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_duplicate_category_slug_fails(tmp_path: Path) -> None:
+    """Every entry needs its own slug."""
+    write_course_categories(
+        tmp_path,
+        "  - slug: start-here\n    title: Start here\n"
+        "  - slug: start-here\n    title: Start again\n",
+    )
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path), "Duplicate category slug"
+    )
+
+
+def test_reserved_category_slug_fails(tmp_path: Path) -> None:
+    """The dashboard's built-in section slugs are not available to categories."""
+    write_course_categories(tmp_path, "  - slug: history\n    title: History\n")
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "reserved for the dashboard's built-in sections",
+    )
+
+
+def test_second_categories_declaration_fails(tmp_path: Path) -> None:
+    """A repo declares its categories exactly once."""
+    write_course_categories(tmp_path, "  - slug: start-here\n    title: Start here\n")
+    other = tmp_path / "elsewhere"
+    other.mkdir()
+    write_course_categories(other, "  - slug: assessment\n    title: Assessment\n")
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "Multiple COURSE_CATEGORIES declarations found",
+    )
+
+
+def test_categories_declared_inside_a_course_directory_fails(tmp_path: Path) -> None:
+    """The declaration belongs at the repo root, not inside a course."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_valid_course(course_dir)
+    write_course_categories(course_dir, "  - slug: start-here\n    title: Start here\n")
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "declaration inside a course directory",
+    )
+
+
+def test_retired_singular_category_field_fails(tmp_path: Path) -> None:
+    """A leftover `category:` on a course names its replacement in the error."""
+    course_dir = tmp_path / "my-course"
+    course_dir.mkdir()
+    write_categorised_course(course_dir, "category: start-here\n")
+
+    assert_validator_fails(
+        run_validator(tmp_path, repo_root=tmp_path),
+        "'category' is no longer a course field",
+    )
+
+
+def test_em_dash_in_a_value_does_not_split_the_document(tmp_path: Path) -> None:
+    """Only a `---` alone on its line separates YAML documents.
+
+    A `---` written inside a description used to be treated as a separator,
+    cutting the value in half and leaving the tail as a bogus second document.
+    """
+    path = tmp_path / "01. page.yaml"
+    path.write_text(
+        "---\n"
+        "content_type: FORM_PAGE\n"
+        "title: A Page\n"
+        "description: >-\n"
+        "  A dash written in prose\n"
+        "  ---\n"
+        "  should not split this file.\n"
+        "---\n",
+        encoding="utf-8",
+    )
+
+    result = run_validator(path)
+    assert result.returncode == 0, (
+        f"A `---` inside a value should stay part of that value.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )

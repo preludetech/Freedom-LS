@@ -24,6 +24,7 @@ The path can either be a file or a directory. if it is a directory then recurse 
 """
 
 import logging
+import re
 import sys
 from pathlib import Path
 
@@ -31,8 +32,9 @@ import frontmatter
 import schema  # Patch 4: module imported so access_types override can rebind ALLOWED_ACCESS_TYPES
 import yaml
 from pydantic import ValidationError
-from schema import (
-    SCHEMAS,  # Patch 1: same-directory import (was `from .schema import SCHEMAS`)
+from schema import (  # Patch 1: same-directory import (was `from .schema import ...`)
+    SCHEMAS,
+    ContentType,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,6 +136,24 @@ def get_all_files(path):
         return []
 
 
+def split_yaml_documents(content: str) -> list[str]:
+    """Split a multi-document YAML string on its `---` separator lines.
+
+    Only a `---` on a line of its own separates documents; the same three
+    characters inside a value (an em dash typed as `---` in a description)
+    are prose and stay put. A bare `content.split("---")` cut those values in
+    half on both read and write, which is why the reader and every uuid
+    writer in content_save share this.
+
+    Returns each document stripped, with empty documents dropped.
+    """
+    return [
+        section.strip()
+        for section in re.split(r"^---[ \t]*$", content, flags=re.MULTILINE)
+        if section.strip()
+    ]
+
+
 def validate_yaml_section(data, path, section_num=None):
     """
     Validate a single YAML section/document.
@@ -217,7 +237,7 @@ def parse_yaml_file(path):
         raise ValueError(f"\n❌ Error reading file {path}: {e!s}") from e
 
     # Split content by --- to get individual YAML documents
-    sections = [s.strip() for s in content.split("---") if s.strip()]
+    sections = split_yaml_documents(content)
 
     if not sections:
         raise ValueError(f"\n❌ No YAML content found in {path}")
@@ -358,6 +378,164 @@ def validate_single_file(path):
         validate_markdown_file(path)
 
 
+def _category_reference_error(
+    file_path: Path,
+    header: str,
+    field: str,
+    problem: str,
+    given_value: str,
+    declared: dict[str, Path],
+    fix: str,
+    list_label: str = "Categories declared in this repo",
+) -> str:
+    """Build the course-side category error block shown in the spec.
+
+    Shared by the four checks in `validate_category_references` that report a
+    course's `categories`/`dashboard_category` against the declared set:
+    unknown slug in `categories`, unknown `dashboard_category`,
+    `dashboard_category` outside the course's own `categories`, and a missing
+    `dashboard_category` with two or more `categories`.
+    """
+    lines = [f"\n❌ {header} in {file_path}", "Content type: COURSE", ""]
+    lines.append(f"  • Field: {field}")
+    lines.append(f"    Problem: {problem}")
+    lines.append(f"    Given value: {given_value!r}")
+    lines.append("")
+
+    if declared:
+        declaring_files = sorted(
+            {str(declaring_path) for declaring_path in declared.values()}
+        )
+        lines.append(f"    {list_label} ({', '.join(declaring_files)}):")
+        for slug in sorted(declared):
+            lines.append(f"      {slug}")
+    else:
+        lines.append(f"    {list_label}: none")
+
+    lines.append("")
+    lines.append(f"    {fix}")
+    return "\n".join(lines)
+
+
+def validate_category_references(all_parsed: list) -> list[str]:
+    """Resolve every course's category references against the declared set.
+
+    `validate()`'s per-file pass validates each file in isolation and can't
+    see whether a slug a course names is actually declared anywhere -- a
+    `course_categories.yaml` appearing later in the sorted file walk than the
+    courses that reference it still has to satisfy them. This pass runs once
+    every file's parsed items are available, so file order doesn't matter.
+
+    Returns every error found, never just the first, so an author with five
+    typos gets five lines rather than five runs.
+    """
+    errors: list[str] = []
+
+    declarations = [
+        item
+        for item in all_parsed
+        if item.content_type == ContentType.COURSE_CATEGORIES
+    ]
+
+    if len(declarations) > 1:
+        declaring_files = ", ".join(str(d.file_path) for d in declarations)
+        errors.append(
+            f"\n❌ Multiple COURSE_CATEGORIES declarations found: {declaring_files}. "
+            "A content repo may declare its categories only once."
+        )
+
+    declared: dict[str, Path] = {}
+    for declaration in declarations:
+        for entry in declaration.categories:
+            declared.setdefault(entry.slug, declaration.file_path)
+
+    collection_dirs = {
+        item.file_path.parent
+        for item in all_parsed
+        if item.content_type in (ContentType.COURSE, ContentType.COURSE_PART)
+    }
+    for declaration in declarations:
+        if set(declaration.file_path.parents) & collection_dirs:
+            errors.append(
+                f"\n❌ COURSE_CATEGORIES declaration inside a course directory: "
+                f"{declaration.file_path}. Move it to the repo root."
+            )
+
+    unknown_fix = (
+        "Fix the slug, or add an entry declaring it in course_categories.yaml."
+    )
+
+    for item in all_parsed:
+        if item.content_type != ContentType.COURSE:
+            continue
+
+        for index, slug in enumerate(item.categories):
+            if slug not in declared:
+                errors.append(
+                    _category_reference_error(
+                        item.file_path,
+                        header="Unknown category",
+                        field=f"categories[{index}]",
+                        problem="no category is declared with this slug in this content repo",
+                        given_value=slug,
+                        declared=declared,
+                        fix=unknown_fix,
+                    )
+                )
+
+        dashboard_category = item.dashboard_category
+        if dashboard_category:
+            if dashboard_category not in declared:
+                errors.append(
+                    _category_reference_error(
+                        item.file_path,
+                        header="Unknown category",
+                        field="dashboard_category",
+                        problem="no category is declared with this slug in this content repo",
+                        given_value=dashboard_category,
+                        declared=declared,
+                        fix=unknown_fix,
+                    )
+                )
+            elif dashboard_category not in item.categories:
+                errors.append(
+                    _category_reference_error(
+                        item.file_path,
+                        header="dashboard_category not in categories",
+                        field="dashboard_category",
+                        problem=(
+                            f"'{dashboard_category}' is not one of this course's "
+                            f"categories {sorted(item.categories)}: the dashboard "
+                            "category has to be one the course belongs to"
+                        ),
+                        given_value=dashboard_category,
+                        declared=declared,
+                        fix="Add it to categories, or change dashboard_category to one already listed there.",
+                    )
+                )
+        elif len(item.categories) >= 2:
+            candidates = {
+                slug: declared.get(slug, item.file_path) for slug in item.categories
+            }
+            errors.append(
+                _category_reference_error(
+                    item.file_path,
+                    header="dashboard_category is required",
+                    field="dashboard_category",
+                    problem=(
+                        "this course belongs to two or more categories, so "
+                        "dashboard_category must name which one the dashboard uses"
+                    ),
+                    given_value="(not set)",
+                    declared=candidates,
+                    fix="Set dashboard_category to one of the candidates listed above.",
+                    list_label="Candidates",
+                )
+            )
+
+    return errors
+
+
 def validate(path):
     """
     Validate all content files in a directory or a single file.
@@ -390,18 +568,33 @@ def validate(path):
         logger.warning(f"No content files (.md, .yaml, .yml) found in {path}")
         return
 
-    # 3. validate each file path (only .md and .yaml files)
+    # 3. validate each file path (only .md and .yaml files), keeping every
+    # parsed item so validate_category_references can resolve references
+    # across files regardless of the order the walk visited them in.
     failed_files = []
+    all_parsed = []
     for file_path in all_file_paths:
         if file_path.suffix in [".md", ".yaml", ".yml"]:
             try:
-                validate_single_file(file_path)
+                items = parse_single_file(file_path)
             except ValueError as e:
                 # Collect errors but continue validating other files
                 failed_files.append((file_path, str(e)))
-            # except Exception as e:
-            # Catch any unexpected errors
-            # failed_files.append((file_path, f"\n❌ Unexpected error: {str(e)}"))
+                continue
+
+            all_parsed.extend(items)
+            if file_path.suffix in [".yaml", ".yml"]:
+                logger.info(
+                    f"✓ {file_path} validated successfully "
+                    f"({len(items)} section{'s' if len(items) > 1 else ''})"
+                )
+            else:
+                logger.info(f"✓ {file_path} validated successfully")
+
+    # 4. cross-file pass: resolve every course's category references now
+    # that every file's parsed items are available
+    for message in validate_category_references(all_parsed):
+        failed_files.append((path, message))
 
     # Report all failures at the end
     if failed_files:

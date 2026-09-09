@@ -93,6 +93,7 @@ for the exact rule.
 2. **Never edit an existing `uuid:`.** The UUID is the stable identity for the DB row; editing it breaks the upsert and may silently create a duplicate.
 3. **Never duplicate a UUID across files.** Two files with the same UUID cause one to silently overwrite the other on `content_save`.
 4. **Never hand-create a UUID.** Not even with a UUID4 generator — the workflow is: omit the field, run `content_save`, let it write the UUID back.
+5. **This applies to `course_categories.yaml` too.** Each entry in its `categories:` list gets its own `uuid` written back on first run, exactly like any other file's `uuid:` field. Omit it on a new entry; never hand-edit an existing one.
 
 Example of a **correct** new topic (no uuid field):
 

@@ -48,6 +48,26 @@ my-course/
           1. page.yaml
 ```
 
+## Course categories declaration (repo root)
+
+If a repo declares dashboard categories, exactly one `COURSE_CATEGORIES` file lives outside
+every course directory — normally the repo root, as a sibling of the course directories, never
+nested inside one:
+
+```
+demo_content/
+  course_categories.yaml   ← COURSE_CATEGORIES (declared once, for the whole repo)
+  functionality_demo_course_parts/
+    course.md
+    ...
+  functionality_demo_standard_markdown/
+    course.md
+    ...
+```
+
+Its frontmatter and validation rules: see
+[`course-files.md`](course-files.md#course_categories-course_categoriesyaml).
+
 ## Numbering rules
 
 - Two-digit zero-padded prefix for directories (topic, part, and form directories): `01.`, `02.` … `09.`, `10.`
