@@ -36,6 +36,7 @@ dependencies = [
     "django-tasks-db==0.12.0",
     "pillow>=11.0",
     "weasyprint>=69.0",
+    "django-import-export>=4.4.1",
 ]
 
 [project.optional-dependencies]
@@ -293,6 +294,7 @@ module = [
     "markdown.*", "unfold.*", "factory.*", "django_cotton.*",
     "django_ace.*", "encrypted_fields.*", "django.tasks.*",
     "premailer.*", "health_check.*", "weasyprint.*",
+    "import_export.*", "tablib.*",
     # Supplied at run time by `uv run --with pypandoc-binary`, not a project dependency.
     "pypandoc.*",
 ]

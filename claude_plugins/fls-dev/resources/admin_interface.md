@@ -24,6 +24,40 @@ class TopicAdmin(SiteAwareModelAdmin):
 
 **Rule:** Never display or allow editing of the `site` field in admin.
 
+## CSV export variant
+
+An admin that needs an export extends `SiteAwareExportModelAdmin` and names a resource:
+
+```python
+from import_export.fields import Field
+from import_export.widgets import ForeignKeyWidget
+
+from freedom_ls.site_aware_models.admin import SiteAwareExportModelAdmin
+from freedom_ls.site_aware_models.admin_exports import SiteAwareModelResource
+
+
+class TopicResource(SiteAwareModelResource):
+    course = Field(attribute="course", widget=ForeignKeyWidget(Course, "title"))
+
+    class Meta:
+        model = Topic
+
+
+@admin.register(Topic)
+class TopicAdmin(SiteAwareExportModelAdmin):
+    resource_classes = [TopicResource]
+```
+
+**What it gives:** an "Export selected ..." action and an "Export" changelist button, both
+downloading CSV immediately and gated on the model's view permission. The shared
+`FormulaSafeCSV` format escapes spreadsheet-formula triggers and writes the UTF-8 BOM; the resource
+base excludes `site` and renders dates as ISO 8601. Foreign keys export as the pk unless a `Field`
+with a `ForeignKeyWidget` picks a readable column, as above.
+
+**Rules:** put the resource in `<app>/resources.py`; never set `IMPORT_EXPORT_FORMATS` or
+`IMPORT_EXPORT_ESCAPE_FORMULAE_ON_EXPORT` (the package's own escaping is weaker and would run
+first); if `<app>` is imported by `accounts`, resolve the user model with `get_user_model()`.
+
 ## django-guardian variant
 
 `GuardedModelAdmin` does NOT inherit from `SiteAwareModelAdmin`, so you must manually `exclude = ["site"]` for site-aware models:

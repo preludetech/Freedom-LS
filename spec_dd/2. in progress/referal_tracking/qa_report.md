@@ -205,6 +205,32 @@ second, identical blocker following the accounts app's own precedent rather than
 behaviour. Resolving it means deciding whether read-only audit rows should permit cascade deletion
 at all — a product and data-retention call that also touches the accounts app.
 
+## Addendum 2026-09-09: §8 re-run after moving the export to django-import-export
+
+The hand-written `export_as_csv` action was replaced by `django-import-export` through the new
+`SiteAwareExportModelAdmin` base. §8 was re-run against the dev site on `127.0.0.1:8681` as the
+superuser, on the same seed rows as the first run.
+
+- The `SignupAttribution` changelist filtered to `utm_campaign=qa-signup` shows a "download Export"
+  button linking to `.../signupattribution/export/?utm_campaign=qa-signup`, and the action menu
+  offers "Export selected signup attributions". Ticking the row and running the action downloaded
+  `SignupAttribution-2026-09-09.csv` at once, with no intermediate form. The file starts with
+  `EF BB BF`, its header names every model field including `gclid`, `client_ip` and `user_agent`
+  and omits `site`, the `user` column is `qa-linkedin@example.com`, and `first_seen` /
+  `signed_up_at` read `2026-09-09T07:58:09.104485+00:00` / `2026-09-09T07:58:10.015691+00:00`.
+- Fetching the Export button's URL through the logged-in session returned the same one-row CSV.
+- Fetching `.../firsttouchcount/export/?utm_campaign=%3D1%2B1` returned
+  `FirstTouchCount-2026-09-09.csv` whose campaign cell reads `'=1+1`, `day` reads `2026-09-09` and
+  `is_overflow` reads `0`.
+- The `SignupAttribution` detail page renders 200 with neither a Save nor an Export button.
+- As `qa-staff@example.com` (view permission on `SignupAttribution` only), the
+  `signupattribution` export URL returned `text/csv` and the `firsttouchcount` export URL returned
+  403, matching the changelist itself.
+
+The "Select all N" pass of the first run (1000 seeded rows) was not repeated; the seed rows were
+removed after that run. The same `select_across=1` path is covered by
+`test_export_action_on_filtered_changelist_returns_only_matching_rows`.
+
 ## Bug status
 
 - **UNRESOLVED** — Read-only admin detail pages scroll sideways on a phone when a stored value is one long unbroken string

@@ -4,14 +4,15 @@ requires_template_review: false
 changed_template_paths: []
 requires_settings_change: true
 changed_settings:
-  - INSTALLED_APPS                          # hard: add "freedom_ls.referral_tracking" or freedom_ls.accounts fails to import at boot
+  - INSTALLED_APPS                          # hard: add "freedom_ls.referral_tracking" or freedom_ls.accounts fails to import at boot; add "import_export" after "unfold.contrib.import_export" or the changelists fail to render
   - MIDDLEWARE                              # hard: add AttributionCaptureMiddleware or no cookie is minted and every signup records as direct
   - REFERRAL_TRACKING_COOKIE_NAME           # optional: defaults to "fls_attribution"
   - REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS   # optional: defaults to 90
   - REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP   # optional: defaults to 1000
   - TRUSTED_PROXY_IP_HEADER                 # optional: existing key; unset behind a proxy, every row stores the proxy's address
-requires_package_upgrade: false
-changed_packages: []
+requires_package_upgrade: true
+changed_packages:
+  - django-import-export>=4.4.1            # hard: new base dependency, pulled in by `uv sync`; brings tablib and diff-match-patch
 requires_npm_install: false
 changed_npm_packages: []
 requires_tailwind_rebuild: false
@@ -24,7 +25,8 @@ sets a signed, first-party, `HttpOnly` cookie on a visitor's first landing that 
 `advert_code`, a `utm_*` parameter or an ad-network click id, and tallies that first touch per
 site per day. The signup form then writes one read-only `SignupAttribution` row per new user
 from the cookie plus the signup request's `_ga` / `_fbp` / `_fbc` cookies, client IP and user
-agent. Two read-only admin changelists with a CSV export are the whole interface.
+agent. Two read-only admin changelists with a CSV export are the whole interface. The export runs on
+`django-import-export`, which is new to FLS.
 
 Nothing is wired up until you add the app and the middleware. No system check enforces either,
 so the failure modes below are the only warning you get.
@@ -42,11 +44,27 @@ boot. Add the app before you deploy; see "Manual steps".
 
 On `main`, the read-only `LegalConsent` admin blocked the User admin's delete confirmation with
 a "permission needed" notice, because Django asks every cascaded model's admin for delete
-permission. `UserAdmin.get_deleted_objects` now vouches for `LegalConsent` and
-`SignupAttribution`, so deleting an account from the admin goes through and takes both by
-cascade. The per-row admins stay read-only; account erasure is the one path that removes those
-rows. If you subclass `UserAdmin` and override `get_deleted_objects`, call `super()` or the
-block returns.
+permission. `UserAdmin.get_deleted_objects` now vouches for every model in
+`freedom_ls.accounts.admin.USER_ERASURE_CASCADE_MODELS`, which holds `LegalConsent` and, once
+the referral tracking admin loads, `SignupAttribution`, so deleting an account from the admin
+goes through and takes both by cascade. The per-row admins stay read-only; account erasure is
+the one path that removes those rows. If you subclass `UserAdmin` and override
+`get_deleted_objects`, call `super()` or the block returns. If you add a read-only audit model
+of your own that cascades from `User`, add it to that set from your admin module.
+
+### Admin CSV exports run on `django-import-export`
+
+FLS now depends on `django-import-export`, and `"import_export"` has to be in your
+`INSTALLED_APPS`. Without it, any changelist whose admin extends the new
+`freedom_ls.site_aware_models.admin.SiteAwareExportModelAdmin` raises `TemplateDoesNotExist`.
+The referral-tracking admins are the first; further FLS exports will use the same base, so add
+it once now. The export gives each such changelist an "Export selected ..." action and an
+"Export" button that downloads the whole filtered list, both gated on the model's view
+permission. The download is named `<Model>-<date>.csv`, carries no `site` column, and writes
+booleans as `1`/`0`. Formula escaping and the UTF-8 BOM are applied by FLS's own
+`FormulaSafeCSV` format; leave `IMPORT_EXPORT_FORMATS` and
+`IMPORT_EXPORT_ESCAPE_FORMULAE_ON_EXPORT` unset, since the package's own escaping is weaker
+and would run first.
 
 ### `SiteAwareModelAdmin` and `GuardedSiteAwareModelAdmin` ship a stylesheet
 
@@ -56,23 +74,32 @@ read-only values wrap on a phone instead of widening the page. Django merges adm
 by inheritance, so an admin of yours that declares its own `Media` keeps it unless that class
 sets `extend = False`. The file has to reach your static root; see "Manual steps".
 
-### Signup attribution is written from `SiteAwareSignupForm.custom_signup()`
+### Signup attribution is written from a `user_signed_up` receiver
 
-The row is written in the same allauth hook that records `LegalConsent`, and nowhere else.
-If your `ACCOUNT_FORMS["signup"]` names a form that does not subclass
-`freedom_ls.accounts.forms.SiteAwareSignupForm`, no row is written and the changelist stays
-empty. Accounts created by the admin, a management command or an import get no row either;
-that is by design.
+The row is written by `freedom_ls.referral_tracking.signals.record_attribution_on_signup`,
+connected to allauth's `user_signed_up` signal, and nowhere else. allauth sends that signal
+from `complete_signup()`, so any signup form that goes through allauth's signup view gets a
+row, including one that does not subclass `freedom_ls.accounts.forms.SiteAwareSignupForm`.
+A signup path of your own that skips `complete_signup()` writes no row. Accounts created by
+the admin, a management command or an import get no row either; that is by design.
 
 ## Manual steps
 
-1. **Add the app to `INSTALLED_APPS`**, after `freedom_ls.accounts`:
+1. **Add the apps to `INSTALLED_APPS`.** `import_export` goes after
+   `unfold.contrib.import_export`, so Unfold's templates win lookup; the new app goes after
+   `freedom_ls.accounts`:
 
    ```diff
+     "unfold.contrib.import_export",
+   + "import_export",
+     ...
      "freedom_ls.accounts",
    + "freedom_ls.referral_tracking",
      "freedom_ls.organisations",
    ```
+
+   `uv sync` installs `django-import-export` itself; if you pin packages by hand, add
+   `django-import-export>=4.4.1`.
 
 2. **Add the middleware to `MIDDLEWARE`**, directly after `CurrentSiteMiddleware`. It reads the
    current site from the thread-local that middleware populates, on both the request and the
@@ -96,8 +123,9 @@ that is by design.
    ```
 
 4. **Run `collectstatic`** on any deployment that serves static files from a collected root, so
-   the new admin stylesheet is served. Without it every admin page requests a 404 stylesheet;
-   nothing breaks, but long values on a phone widen the page again.
+   the new admin stylesheet and `django-import-export`'s own static files are served. Without
+   it every admin page requests a 404 stylesheet; nothing breaks, but long values on a phone
+   widen the page again.
 
    ```
    python manage.py collectstatic
@@ -106,8 +134,9 @@ that is by design.
 5. **Grant view permissions.** Neither admin overrides `has_view_permission`, so `is_staff`
    alone shows nothing. Staff who should see the tables need
    `freedom_ls_referral_tracking.view_signupattribution` and
-   `freedom_ls_referral_tracking.view_firsttouchcount`. Anyone who can view a changelist can
-   run its CSV export; there is no separate export permission. Superusers see both as usual.
+   `freedom_ls_referral_tracking.view_firsttouchcount`. The export action and the Export button
+   are gated on that same view permission; there is no separate export permission. Superusers
+   see both as usual.
 
 6. **Optionally override the three new settings.** All have defaults and none is required:
 
@@ -139,4 +168,4 @@ that is by design.
    `docs/product/security-and-data-handling.md` now states under retention. The full field
    list is in `freedom_ls/referral_tracking/models.py`.
 
-No `npm install`, no Tailwind rebuild and no Python package change.
+No `npm install` and no Tailwind rebuild. The one Python package change is `django-import-export`.

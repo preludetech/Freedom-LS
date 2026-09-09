@@ -6,9 +6,12 @@ from django.contrib import admin
 from django.db.models import Model
 from django.http import HttpRequest
 
-from freedom_ls.referral_tracking.exports import export_as_csv
 from freedom_ls.referral_tracking.models import FirstTouchCount, SignupAttribution
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.referral_tracking.resources import (
+    FirstTouchCountResource,
+    SignupAttributionResource,
+)
+from freedom_ls.site_aware_models.admin import SiteAwareExportModelAdmin
 
 
 def _readonly_field_names(model: type[Model]) -> list[str]:
@@ -16,7 +19,7 @@ def _readonly_field_names(model: type[Model]) -> list[str]:
 
 
 @admin.register(SignupAttribution)
-class SignupAttributionAdmin(SiteAwareModelAdmin):
+class SignupAttributionAdmin(SiteAwareExportModelAdmin):
     date_hierarchy = "signed_up_at"
     list_display = [
         "user",
@@ -31,7 +34,7 @@ class SignupAttributionAdmin(SiteAwareModelAdmin):
     list_filter = ["utm_source", "utm_medium", "utm_campaign"]
     search_fields = ["user__email", "utm_campaign", "advert_code"]
     readonly_fields = _readonly_field_names(SignupAttribution)
-    actions = [export_as_csv]
+    resource_classes = [SignupAttributionResource]
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -48,7 +51,7 @@ class SignupAttributionAdmin(SiteAwareModelAdmin):
 
 
 @admin.register(FirstTouchCount)
-class FirstTouchCountAdmin(SiteAwareModelAdmin):
+class FirstTouchCountAdmin(SiteAwareExportModelAdmin):
     date_hierarchy = "day"
     list_display = [
         "day",
@@ -64,7 +67,7 @@ class FirstTouchCountAdmin(SiteAwareModelAdmin):
     list_filter = ["utm_source", "utm_medium", "utm_campaign", "is_overflow"]
     search_fields = ["utm_campaign", "advert_code"]
     readonly_fields = _readonly_field_names(FirstTouchCount)
-    actions = [export_as_csv]
+    resource_classes = [FirstTouchCountResource]
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

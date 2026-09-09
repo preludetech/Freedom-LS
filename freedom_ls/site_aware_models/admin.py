@@ -1,12 +1,16 @@
 import contextlib
 
 from guardian.admin import GuardedModelAdmin
+from import_export.admin import ExportActionMixin
 from unfold.admin import ModelAdmin
+from unfold.contrib.import_export.forms import ExportForm
 
 from django.contrib import admin
 from django.contrib.admin.exceptions import NotRegistered
 from django.contrib.sites.models import Site
 from django.http import HttpRequest
+
+from freedom_ls.site_aware_models.admin_exports import FormulaSafeCSV
 
 with contextlib.suppress(NotRegistered):
     admin.site.unregister(Site)
@@ -19,6 +23,36 @@ class SiteAwareModelAdmin(ModelAdmin):
 
     class Media:
         css = {"all": ["site_aware_models/css/admin.css"]}
+
+
+class SiteAwareExportModelAdmin(ExportActionMixin, SiteAwareModelAdmin):
+    """Site-aware admin with a CSV export action and an "Export" changelist button.
+
+    Both download immediately: only one format is offered, so the package's
+    intermediate form has nothing to ask. The format is fixed in code rather
+    than through ``IMPORT_EXPORT_FORMATS`` so a downstream settings file
+    cannot swap in one without formula escaping. Subclasses declare
+    ``resource_classes`` with a ``SiteAwareModelResource``.
+
+    The package's default export permission is "any staff user", which would
+    let staff with no permission on the model download every row through the
+    export URL. Export is gated on view permission instead.
+
+    The detail-page export button is off: it posts to the change view, which
+    denies any user without change permission.
+    """
+
+    export_form_class = ExportForm
+    skip_export_form = True
+    skip_export_form_from_action = True
+    show_change_form_export = False
+
+    def get_export_formats(self) -> list[type[FormulaSafeCSV]]:
+        return [FormulaSafeCSV]
+
+    def has_export_permission(self, request: HttpRequest) -> bool:
+        allowed: bool = self.has_view_permission(request)
+        return allowed
 
 
 class GuardedSiteAwareModelAdmin(ModelAdmin, GuardedModelAdmin):

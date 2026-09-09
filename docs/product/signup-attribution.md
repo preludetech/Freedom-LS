@@ -26,7 +26,7 @@ Where no tracked landing preceded the signup, the record reads "direct" / "none"
 
 ## Reviewing and Exporting
 
-Two read-only admin lists: one row per account showing where it came from, and one row per campaign per day showing how many first-time tracked arrivals it had. Neither can be added to, changed or deleted through the admin. A CSV export on both covers every recorded field, including ones the list view omits, and is safe to open directly in a spreadsheet: a value that would otherwise be read as a formula is escaped. Comparing the two lists for a date range, grouped by campaign, gives signups over arrivals without writing a query. Viewing either list requires the admin view permission for that record; staff status alone does not grant it.
+Two read-only admin lists: one row per account showing where it came from, and one row per campaign per day showing how many first-time tracked arrivals it had. Neither can be added to, changed or deleted through the admin. A CSV export on both, of the ticked rows or of the whole filtered list, covers every recorded field, including ones the list view omits, and is safe to open directly in a spreadsheet: a value that would otherwise be read as a formula is escaped. Comparing the two lists for a date range, grouped by campaign, gives signups over arrivals without writing a query. Viewing either list requires the admin view permission for that record; staff status alone does not grant it.
 
 ## Privacy Obligations
 

@@ -80,7 +80,7 @@ The admin is mounted at the path given by the `DJANGO_ADMIN_URL` environment var
 
 Legal consent records are registered read-only: the admin disables add, change, and delete. This preserves the append-only integrity of the consent audit trail, described in [authentication](./authentication.md).
 
-The same posture covers where a signup came from: one record per signed-up user, plus a daily tally of first-time tracked arrivals per campaign. Both lists filter by source, medium and campaign, drill down by date, and export to CSV with every recorded field included, safe to open in a spreadsheet even when a value has been crafted to look like a formula. Read access has to be granted as a permission; staff status alone does not show them. Deleting a user still takes their attribution record with it. What is recorded, and the privacy obligations that come with it, is in [signup attribution](./signup-attribution.md).
+The same posture covers where a signup came from: one record per signed-up user, plus a daily tally of first-time tracked arrivals per campaign. Both lists filter by source, medium and campaign, drill down by date, and export the ticked rows or the whole filtered list to CSV with every recorded field included, safe to open in a spreadsheet even when a value has been crafted to look like a formula. Read access has to be granted as a permission; staff status alone does not show them. Deleting a user still takes their attribution record with it. What is recorded, and the privacy obligations that come with it, is in [signup attribution](./signup-attribution.md).
 
 ## Content Cannot Be Deleted
 
