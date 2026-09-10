@@ -2,257 +2,288 @@
 
 ## 1. Methodology
 
-The run drove a real browser through Playwright MCP against a dev server on port 8681, logged in as
-the admin from `.claude/fls-dev/config.md`. Screenshots were collected into
-`spec_dd/2. in progress/referal_tracking/screenshots/`, which sits beside this report; every image
-this report embeds exists there. Header-level assertions (`Set-Cookie` attributes, `Vary`,
-`Cache-Control`) were read from real response headers, not inferred. Isolated fresh browser contexts
-were used wherever the plan called for a visitor with no `fls_attribution` cookie.
+This run drove a real browser through Playwright MCP against a dev server on port 8882, logged in
+as the admin account from `.claude/fls-dev/config.md` (`demodev@email.com`, password equal to the
+email). The DemoDev site row was repointed from `127.0.0.1:8681` to `127.0.0.1:8882` for the run,
+since site resolution is host-based and the port is chosen per run.
 
-Two setup facts affected the run:
+Header-level assertions — `Set-Cookie` attributes, `Vary`, `Cache-Control` — were read from real
+response headers via `curl`, not inferred from behaviour or from reading the middleware source.
 
-- The dev DB's `DemoDev` Site was repointed from `127.0.0.1:8000` to `127.0.0.1:8681`, because port
-  8000 was occupied by another worktree's server and site resolution is host-based.
-- The dev DB held zero `Course` rows on every site, so course content was created via the
-  `fls-dev:qa-data-helper` agent before the course-player checks in §9 could run.
+Screenshots were collected into `spec_dd/2. in progress/referal_tracking/screenshots/`, which sits
+beside this report. Every image this report embeds exists in that directory.
+
+Nothing was skipped. All of §1 through §9 of the test plan ran, across desktop, mobile (375x812)
+and tablet (768x1024) viewports.
 
 ## 2. Diff scoping
 
-Scoping class: **FULL**.
+Scoping class: **FULL**. The changed files that triggered it:
 
-Changed files:
-
-- `.secrets.baseline`
-- `config/settings_base.py`
-- `docs/app_structure.md`
+- `freedom_ls/site_aware_models/static/site_aware_models/css/admin.css`
+- `freedom_ls/referral_tracking/*.py`
+- `freedom_ls/site_aware_models/admin.py`
+- `freedom_ls/site_aware_models/admin_exports.py`
+- `freedom_ls/accounts/admin.py`
 - `freedom_ls/accounts/forms.py`
-- `freedom_ls/referral_tracking/*.py` (new app: admin, capture, counters, exports, middleware,
-  models, migrations, tests)
-- `spec_dd/2. in progress/referal_tracking/*.md`
+- `config/settings_base.py`
+- `pyproject.toml`
+- `docs/product/*.md`
 
-A new middleware that runs on every request plus a new signup hook is not a change with a safely
-narrowable blast radius, so the plan ran in full: nothing was skipped.
+Nothing was skipped as a result of this scoping: desktop, mobile and tablet all ran.
 
 ## 3. Smoke gate
 
-**Pass.** Pages loaded:
+Outcome: **pass**. Pages loaded:
 
-- `http://127.0.0.1:8681/` (Dashboard, 200)
-- `http://127.0.0.1:8681/admin/freedom_ls_referral_tracking/signupattribution/` (changelist, 200)
+- `http://127.0.0.1:8882/`
+- `http://127.0.0.1:8882/admin/freedom_ls_referral_tracking/signupattribution/`
 
 ## 4. Results by test-plan section
 
 ### §1 A tracked landing mints the cookie and tallies once — pass
 
-A tracked landing on `/courses/` rendered normally and set `fls_attribution` as `HttpOnly`,
-`SameSite=Lax`, `Max-Age=7776000`, `Path=/`, no `Domain`, not `Secure`, alongside a single
-`Vary: Cookie` and `Cache-Control: private, no-store`. Header assertions were re-confirmed with a
-second fresh curl landing (`utm_source=Hdrcheck`) rather than re-using the browser session, so the
-browser's Facebook tally stayed at 1.
+A fresh landing on `/courses/?utm_source=Facebook&utm_medium=CPC&utm_campaign=Spring%20Sale&utm_content=blue&advert_code=AD-7`
+returned 200 and set `fls_attribution`: `HttpOnly`, `SameSite=Lax`, `Max-Age=7776000`, `Path=/`, no
+`Domain`, not `Secure`. The response carried a single `Vary: Cookie` and `Cache-Control: private,
+no-store`.
 
-The `FirstTouchCount` changelist showed one row for today: `utm_source` `facebook`, `utm_medium`
-`cpc` (both lower-cased), `utm_campaign` `Spring Sale` (case kept), `utm_content` `blue`,
-`advert_code` `AD-7`, `count` 1, `is_overflow` unticked. The detail view rendered every field
-read-only with no Save/Delete buttons and the expected count help text ("Counts cookie mints, not
-visitors...").
+The `FirstTouchCount` changelist showed one row for today: `advert_code` `AD-7`, `utm_source`
+`facebook`, `utm_medium` `cpc` (both lower-cased), `utm_campaign` `Spring Sale` (case kept),
+`utm_content` `blue`, `count` 1, `is_overflow` unticked. The detail page had no editable inputs, no
+Save or Delete button, and showed the `count` help text about cookie mints, bots and comparing
+campaigns.
 
-Reloading the same URL, then a different tracked URL (`utm_source=google`), with the cookie already
-present minted no new cookie and added no Google row — the stored cookie value was byte-identical
-before and after. First touch stays frozen.
+![](screenshots/page-2026-09-10T04-59-56-921Z.png)
+
+Reloading the same URL, then a different one (`utm_source=google`), with the cookie still present
+set no new `fls_attribution` cookie. The tally still showed `count` 1 for the Facebook row and no
+Google row — first touch stayed frozen.
 
 ### §2 Untracked traffic is untouched — pass
 
-`/courses/`, `/accounts/login/` and `/courses/?foo=bar&ref=partner` set no `fls_attribution` and
-added no tally row, each with a single `Vary: Cookie`; `ref` is correctly not a tracked parameter.
-`POST /accounts/login/?utm_source=post-test` returned 403 (CSRF) with no `fls_attribution` in
-`Set-Cookie` and no `post-test` row in `FirstTouchCount`. Only GETs mint.
+`/courses/`, `/accounts/login/` and `/courses/?foo=bar&ref=partner` each returned 200 with a single
+`Vary: Cookie` and no `fls_attribution` Set-Cookie. `ref` was correctly not treated as a tracked
+parameter, and no new `FirstTouchCount` row appeared.
+
+`POST /accounts/login/?utm_source=post-test` returned 403 (CSRF) and set only `csrftoken`, no
+`fls_attribution`. No `post-test` row appeared in the tally. Only GETs mint.
 
 ### §3 Signup after a tracked landing — pass
 
-Landing on `?utm_source=linkedin&utm_medium=social&utm_campaign=qa-signup&gclid=abc123` then
-signing up as `qa-linkedin@example.com` wrote one `SignupAttribution` row before the email was
-confirmed, with `gclid` `abc123`, `landing_path` `/courses/`, `raw_query` the full query string,
-`client_ip` `127.0.0.1`, a HeadlessChrome `user_agent`, and blank `ga_cookie`/`fbp_cookie`/`fbc_cookie`.
-`first_seen` (07:58:09) precedes `signed_up_at` (07:58:10) as expected.
+Landing on `?utm_source=linkedin&utm_medium=social&utm_campaign=qa-signup&gclid=abc123` and signing
+up as `qa-linkedin@example.com` wrote one `SignupAttribution` row before the email was confirmed:
+`linkedin`/`social`/`qa-signup`, `gclid` `abc123`, `landing_path` `/courses/`, `raw_query` the full
+query string, `client_ip` `127.0.0.1`, a `user_agent`, and blank `ga_cookie`/`fbp_cookie`/`fbc_cookie`.
+`first_seen` (05:00:37.199152) preceded `signed_up_at` (05:00:49.206718).
 
-Opening the confirmation link in a brand-new context confirmed the email and left the row
-byte-identical (still `linkedin` / `qa-signup`, same `first_seen`) — see the general note on where
-the confirmation flow lands. A third fresh context landed on a decoy campaign, then confirmed a
-different signup that had no landing; that learner's row still read `direct` / `none` with its
-original `first_seen`, and no extra row was created. Confirmation never writes attribution.
+Opening the confirmation link in a fresh context with no prior visit verified the email (`True`) and
+left the attribution row unchanged — still `linkedin`/`qa-signup`, same `first_seen`, still exactly
+one row. Confirmation landed on the login page rather than auto-logging in; that is baseline allauth
+cross-session behaviour, unchanged by this diff. The test plan's wording on this point is what is
+off, not the product.
 
-### §4 Signup with no landing — pass, with one wording note
+A fresh context that landed on `?utm_source=decoy&utm_campaign=decoy` (minting `fls_attribution`)
+and then confirmed `qa-direct@example.com` — whose own signup had no landing — left that learner's
+row reading `direct`/`none` with its original `first_seen`, and created no extra row. Confirmation
+never writes attribution.
 
-A cookie-less signup wrote `utm_source` `direct`, `utm_medium` `none`, and every other frozen field
-blank, with no `FirstTouchCount` row added. `first_seen` and `signed_up_at` differ by about a
-millisecond rather than being exactly equal — see general notes. Landing on `?utm_source=direct`
-before signing up stored `direct` as-is (`landing_path` `/courses/`, `raw_query`
-`utm_source=direct`) and gave the tally a `direct` row with `count` 1: a crafted value is not
-distinguished from a real direct signup, as specified.
+### §4 Signup with no landing — pass
+
+A cookie-less signup (`qa-direct@example.com`) wrote `utm_source` `direct`, `utm_medium` `none`,
+every other frozen field blank, and added no `FirstTouchCount` row. `first_seen` and `signed_up_at`
+differed by 0.64ms rather than being byte-equal — two separate `timezone.now()` calls, same instant
+for reporting purposes. That is a plan-wording nit, not a defect.
+
+Landing on `?utm_source=direct` and then signing up stored `utm_source` `direct` as-is
+(`landing_path` `/courses/`, `raw_query` `utm_source=direct`), and the tally gained a `direct` row
+with `count` 1. A crafted `direct` value is not distinguished from a real direct signup, as
+specified.
 
 ### §5 Malformed and hostile input — pass
 
 Landing with a null byte and tab embedded in `utm_source`, `=1+1` in `utm_campaign`, a
-double-encoded `utm_term`, and a 200-character `utm_content` rendered the course listing at 200 with
-no traceback. The stored row: `utm_source` `facebook` (null byte and tab stripped, lower-cased),
-`utm_campaign` `=1+1` literal, `utm_term` `a%2Bb` (not double-decoded), `utm_content` truncated to
-exactly 128 characters.
+double-encoded `utm_term`, and a 200-character `utm_content` returned 200 with no traceback. Stored:
+`utm_source` `facebook` (null and tab stripped, lower-cased), `utm_campaign` `=1+1` literal,
+`utm_term` `a%2Bb` (not double-decoded), `utm_content` truncated to exactly 128 characters.
 
-Forging the `fls_attribution` cookie then landing on `?utm_source=after-forge` returned 200, emitted
-exactly one fresh `Set-Cookie` replacing the forged value, and tallied an `after-forge` row with
-`count` 1 — a tampered cookie counts as absent. Signing up with the forged cookie still in place
-stored `direct` / `none` with blank `landing_path`/`raw_query`; nothing from the forged value
-reached the row.
+Landing on `?utm_source=after-forge` with a forged `fls_attribution` cookie in place returned 200,
+minted a fresh cookie replacing the forged value, and tallied an `after-forge` row with `count` 1. A
+tampered cookie counts as absent.
+
+Signing up (`qa-forged@example.com`) with the forged cookie still in place stored `direct`/`none`
+with blank `landing_path`, `raw_query` and `gclid`. Nothing from the forged value reached the row.
 
 ### §6 The admin is read-only — pass
 
-`FirstTouchCount`: no Add button; date drilldown by day; filters for utm source/medium/campaign/
-is_overflow; add and delete URLs 403 for the superuser, change URL 200 read-only.
+On both changelists: no Add button; the add URL and the delete URL both returned 403, even for the
+superuser; the change URL returned 200 and was fully read-only (no editable inputs, no Save, no
+Delete, no Export button on the detail page). `SignupAttribution` has a `signed_up_at` date
+drilldown and filters for `utm_source`/`utm_medium`/`utm_campaign` only — `gclid`, the ad cookies,
+`client_ip` and `user_agent` are not offered as filters. Its search box found a row by email,
+campaign and advert code (`AD-SEARCH`); searching `gclid` `abc123` returned 0 rows, confirming
+`gclid` is correctly not searchable. `FirstTouchCount` has a `day` drilldown and filters for
+`utm_source`/`utm_medium`/`utm_campaign`/`is_overflow`.
 
-`SignupAttribution`: no Add button; date drilldown by `signed_up_at`; filters exactly by utm
-source/medium/campaign (gclid, ad cookies, client_ip and user_agent are not offered as filters);
-search finds a row by email, campaign or advert code (verified with a row carrying `advert_code`
-`AD-SEARCH`), gclid is not searchable; detail view read-only with no Save/Delete; add and delete
-URLs 403 even for the superuser.
+![](screenshots/page-2026-09-10T04-59-56-921Z.png)
 
-Permission check: a staff user with no permissions sees neither model on the admin index and gets
-403 on both changelists and the add URL. Granted only "Can view signup attribution": the
-`SignupAttribution` changelist renders 200 and appears on the index, the add URL still 403s,
-`FirstTouchCount` still 403s and stays off the index, and "Export selected rows as CSV" is offered.
+`qa-staff@example.com` (`is_staff`, no permissions) saw neither model on the admin index and got 403
+on both changelists, the add URL and both export URLs. After granting only "Can view signup
+attribution": the `SignupAttribution` changelist rendered 200 and appeared on the index, its add URL
+still 403'd, no Add button appeared, the action menu offered "Export selected signup attributions",
+and `FirstTouchCount` stayed off the index and still 403'd.
+
+![](screenshots/page-2026-09-10T05-08-16-749Z.png)
 
 ### §7 The overflow row — pass
 
-After seeding 1000 distinct keys for today (1008 total), landing on
-`?utm_source=past-cap&utm_campaign=novel` returned 200 and created no `past-cap` row — instead a
-single overflow row for today with every key column blank. A second fresh `past-cap` landing took
-that overflow row's count to 2, and landing on the already-seeded key `seed-5` took that row's count
-to 2 independently: an existing key still gets its own increment past the cap. Seed rows were
-removed afterwards.
+With 1000 distinct keys seeded for today, landing on `?utm_source=past-cap&utm_campaign=novel`
+returned 200 and created no `past-cap` row; instead a single overflow row appeared for today with
+every key column blank and `count` 1. A second fresh `past-cap` landing took the overflow count to
+2, and landing on the already-seeded key `seed-5` took that row's own count to 2 independently: an
+existing key still gets its own increment past the cap.
 
 ### §8 CSV export — pass
 
-Filtering `SignupAttribution` by `utm_campaign=qa-signup` and exporting the selected row produced
-`signupattribution.csv` beginning with the UTF-8 BOM (`EF BB BF`), a header naming every model field
-including `gclid`, `client_ip` and `user_agent`, one data row, the `user` column as the email, and
-`first_seen`/`signed_up_at` as ISO 8601 (`2026-09-09T07:58:09.104485+00:00`).
+`SignupAttribution` filtered to `utm_campaign=qa-signup`, one row ticked, action "Export selected
+signup attributions": downloaded `SignupAttribution-2026-09-10.csv` immediately with no intermediate
+form (changelist URL unchanged). The file starts with the UTF-8 BOM (`EF BB BF`); the header line is
+`id,user,advert_code,utm_source,utm_medium,utm_campaign,utm_content,utm_term,gclid,gbraid,wbraid,fbclid,landing_path,referer,raw_query,first_seen,ga_cookie,fbp_cookie,fbc_cookie,client_ip,user_agent,signed_up_at`
+— every model field including `gclid`, `client_ip` and `user_agent`, no `site` column. One data row;
+`user` was `qa-linkedin@example.com`; `first_seen` `2026-09-10T05:00:37.199152+00:00` and
+`signed_up_at` `2026-09-10T05:00:49.206718+00:00` were both ISO 8601.
 
-Exporting the `FirstTouchCount` row whose `utm_campaign` is `=1+1` produced a cell of `'=1+1` — the
-leading apostrophe forces Excel/Sheets/LibreOffice to render it as text rather than evaluating it.
+The `FirstTouchCount` row carrying `utm_campaign` `=1+1` exported via "Export selected first touch
+counts" as `FirstTouchCount-2026-09-10.csv`. The cell read `'=1+1` with a leading apostrophe, so
+Excel, Google Sheets and LibreOffice render it as text rather than evaluating it to 2. `is_overflow`
+read `0`, `day` read `2026-09-10`, and there was no `site` column.
 
-On the seeded changelist (1000 rows, 100 per page, 10 pages) filtered to `utm_source=seed`, ticking
-the header checkbox then "Select all 1000 first touch counts" set `select_across=1`, and the export
-returned 1000 data rows with 1000 distinct campaigns — the whole filtered set, not the visible page.
+On the seeded changelist filtered to `utm_source=seed` (1000 rows, 100 per page), ticking the header
+checkbox then "All 1000 selected" set `select_across=1`, and the action exported 1000 data rows with
+1000 distinct campaigns, all `utm_source=seed` — the whole filtered set, not just the visible page.
+On the same filtered changelist with nothing ticked, the top-of-list Export button linked to
+`.../firsttouchcount/export/?utm_source=seed` and downloaded the same 1000-row filtered set
+immediately.
 
-### §9 What else could break — pass on every check but one
+A `SignupAttribution` detail page rendered 200 with no Export anchor or button outside the debug
+toolbar, an empty submit row (no Save, no Delete) and no editable inputs.
 
-| Check | Result |
-|---|---|
-| 404 with `?utm_source=x404` | 404 page rendered, cookie still minted, one `x404` tally row, one `Vary: Cookie` — expected, spec doesn't gate minting on status |
-| Admin under `?utm_source=x`, cookie already present | 200, single `Vary: Cookie`, no re-mint (first touch frozen) |
-| Admin under `?utm_source=admin-fresh`, cookie cleared, logged-in admin context | mints and tallies an `admin-fresh` row — admin is tallied like any other GET, as the plan expects |
-| Signup with `_ga`/`_fbp`/`_fbc` set by hand | stored verbatim: `ga_cookie` `GA1.1.111111111.1700000000`, `fbp_cookie` `fb.1.1700000000000.222222222`, `fbc_cookie` `fb.1.1700000000000.IwAR3fbclidvalue` |
-| HTMX partials (admin search, and the mint path under `HX-Request: true`) | exactly one `Vary: Cookie` each, `Cache-Control: private, no-store` and one `Set-Cookie` on the mint path, no duplicated headers |
-| Course listing/detail/player, plain and with tracked params | 200, single `Vary: Cookie`; the player's Next action still marks complete and advances under the middleware |
-| Deleting a user with a `SignupAttribution` row from the User admin | **fail** — see bug B2 |
-| Mobile/tablet admin layout (changelists, detail pages) | changelists reflow cleanly at 375×812 and 768×1024; detail pages overflow at 375×812 — see bug B1 |
+![](screenshots/page-2026-09-10T05-11-03-622Z.png)
 
-## Bug B1: Read-only admin detail pages scroll sideways on a phone when a stored value is one long unbroken string
+As `qa-staff@example.com` holding only "Can view signup attribution": `GET
+.../firsttouchcount/export/` returned 403 (`text/html`), while `.../signupattribution/export/`
+returned 200 `text/csv` and downloaded `SignupAttribution-2026-09-10.csv`. Export follows the
+model's own view permission, not merely "is this user staff".
 
-**Manifestations:** `6.1-mobile-detail` (mobile)
+### §9 What else could break — pass
 
-**Screenshots:**
+A 404 URL carrying `?utm_source=x404` rendered the 404 page and still minted the cookie and tallied
+a row, with a single `Vary: Cookie`. The plan does not gate minting on response status, so this is
+expected.
 
-![](screenshots/page-2026-09-09T08-11-18-850Z.png)
-![](screenshots/page-2026-09-09T08-09-45-747Z.png)
+A tracked landing sent with `HX-Request: true` returned 200 with exactly one `Vary: Cookie` and
+`Cache-Control: private, no-store`, and minted normally. No duplicated `Vary` headers were seen on
+any page checked (course listing, course detail, player, 404, admin), with or without tracked
+params. Course listing, course detail
+(`/courses/qa-browsable-course/detail/?utm_source=playerqa`) and the player
+(`/courses/qa-browsable-course/1/?utm_source=playerqa3`) all returned 200 with a single
+`Vary: Cookie`. The player's Next button still marked the topic complete and advanced: Welcome to
+Key Ideas (302 then 200, one `Vary: Cookie` each).
 
-**Expected:** At 375×812 the `FirstTouchCount` and `SignupAttribution` detail pages fit the
-viewport, wrapping long values the way the changelist cards already do. Document `scrollWidth`
-should equal 375.
+The admin under `?utm_source=x` is tallied like any other GET, which the plan calls expected. The
+observed consequence — that the referral admin's own changelist filters mint cookies and write tally
+rows — is covered in General notes below and is filed as an observation, not a defect.
 
-**Actual:** The field container is forced wider than the viewport by its longest unbreakable value,
-so the whole page scrolls horizontally. `FirstTouchCount` detail measures 552px against a 375px
-viewport, driven by the 64-character `key_hash` rendering as a single unbroken line off the right
-edge. `SignupAttribution` detail measures 458px for the row whose `raw_query` is 73 characters and
-417px for another; rows whose values are all short measure exactly 375px and fit — the correlation
-with value length is exact. This is not baseline theme behaviour: the pre-existing `LegalConsent`
-detail page, whose breadcrumb title is longer still, stays at 375px. It will be the normal case in
-production rather than the exception, because `raw_query`, `user_agent` and the three ad cookies
-routinely hold long unbroken strings, and real ad-platform query strings run far longer than 73
-characters. The fix is a wrapping rule (`overflow-wrap: anywhere` / `break-words`) on the read-only
-field values.
+A signup made with `_ga`, `_fbp` and `_fbc` set by hand stored them verbatim: `ga_cookie`
+`GA1.1.111111111.1700000000`, `fbp_cookie` `fb.1.1700000000000.222222222`, `fbc_cookie`
+`fb.1.1700000000000.IwAR3fbclidvalue`.
 
-## Bug B2: A user holding a SignupAttribution row can no longer be deleted from the User admin
+Creating `qa-staff@example.com` straight from the `User` admin's Add form produced no
+`SignupAttribution` row. Only the signup flow, via the `user_signed_up` receiver, writes one.
 
-**Manifestations:** `9.user-delete` (desktop)
+Two bullets in this section re-verify bugs the previous QA run found. Both are now fixed:
 
-**Screenshots:**
+**User deletion (previously bug B2), fixed and re-verified.** Deleting `qa-crafted@example.com` from
+the `User` admin now renders a real deletion summary — "Users: 1, Legal consents: 2, Signup
+attributions: 1, Email addresses: 1" with the individual objects listed — and a working "Yes, I am
+sure" button. There was no "Cannot delete user" message and no permission warning. After confirming,
+the user, its attribution row and its two legal consents were all gone. Per-row deletion on the
+attribution admin itself is still refused (403), so the audit trail stays protected there.
+Previously, deleting a user with a `SignupAttribution` row could not be done from the `User` admin at
+all.
 
-![](screenshots/page-2026-09-09T08-08-41-950Z.png)
+![](screenshots/page-2026-09-10T05-12-48-014Z.png)
 
-**Expected:** Per the test plan's §9, the User admin delete page lists the attribution row in its
-deletion summary, and after confirming, the row is gone from the changelist.
+**Sideways scroll on read-only detail pages at mobile width (previously bug B1), fixed and
+re-verified.** At 375x812, both read-only detail pages measured `documentElement.scrollWidth` 375
+against `clientWidth` 375 — no sideways scroll. The `.readonly` wrapper computes
+`overflow-wrap: anywhere`, and the widest read-only value box measured 317px. This was checked on
+the worst-case rows: the `FirstTouchCount` row carrying both a 64-character `key_hash` and a
+128-character `utm_content`, and the `SignupAttribution` row with a 109-character `user_agent`.
+Previously these measured 552px and 458px.
 
-**Actual:** The delete page renders "Cannot delete user" with no summary and no confirm button, even
-for a superuser: "Deleting the user ... would result in deleting related objects, but your account
-doesn't have permission to delete the following types of objects: signup attribution, legal
-consent." Django's delete view calls `has_delete_permission` on every related admin, and
-`SignupAttributionAdmin` returns `False`. The FK cascade itself is sound — deleting the user through
-the ORM removed the `SignupAttribution` row cleanly — so only the admin route is blocked. Important
-context: "legal consent" is listed alongside it, and `LegalConsentAdmin.has_delete_permission`
-already returns `False` on main (`freedom_ls/accounts/admin.py:44`). Every consent-flow signup
-writes both rows, so admin user deletion was already blocked before this branch; this diff adds a
-second, identical blocker following the accounts app's own precedent rather than introducing the
-behaviour. Resolving it means deciding whether read-only audit rows should permit cascade deletion
-at all — a product and data-retention call that also touches the accounts app.
+![](screenshots/mobile-ftc-detail.png)
 
-## Addendum 2026-09-09: §8 re-run after moving the export to django-import-export
+Two further viewport checks beyond the plan's own list: both changelists reflowed cleanly at
+375x812, `scrollWidth` 375, no horizontal overflow.
 
-The hand-written `export_as_csv` action was replaced by `django-import-export` through the new
-`SiteAwareExportModelAdmin` base. §8 was re-run against the dev site on `127.0.0.1:8681` as the
-superuser, on the same seed rows as the first run.
+![](screenshots/page-2026-09-10T05-15-54-080Z.png)
 
-- The `SignupAttribution` changelist filtered to `utm_campaign=qa-signup` shows a "download Export"
-  button linking to `.../signupattribution/export/?utm_campaign=qa-signup`, and the action menu
-  offers "Export selected signup attributions". Ticking the row and running the action downloaded
-  `SignupAttribution-2026-09-09.csv` at once, with no intermediate form. The file starts with
-  `EF BB BF`, its header names every model field including `gclid`, `client_ip` and `user_agent`
-  and omits `site`, the `user` column is `qa-linkedin@example.com`, and `first_seen` /
-  `signed_up_at` read `2026-09-09T07:58:09.104485+00:00` / `2026-09-09T07:58:10.015691+00:00`.
-- Fetching the Export button's URL through the logged-in session returned the same one-row CSV.
-- Fetching `.../firsttouchcount/export/?utm_campaign=%3D1%2B1` returned
-  `FirstTouchCount-2026-09-09.csv` whose campaign cell reads `'=1+1`, `day` reads `2026-09-09` and
-  `is_overflow` reads `0`.
-- The `SignupAttribution` detail page renders 200 with neither a Save nor an Export button.
-- As `qa-staff@example.com` (view permission on `SignupAttribution` only), the
-  `signupattribution` export URL returned `text/csv` and the `firsttouchcount` export URL returned
-  403, matching the changelist itself.
+At 768x1024, both changelists and both detail pages measured `scrollWidth` 768 against `clientWidth`
+768. The result tables fit without their own horizontal scroll, and the read-only detail layout
+stayed within the viewport.
 
-The "Select all N" pass of the first run (1000 seeded rows) was not repeated; the seed rows were
-removed after that run. The same `select_across=1` path is covered by
-`test_export_action_on_filtered_changelist_returns_only_matching_rows`.
+![](screenshots/tablet-sa-changelist.png)
 
 ## Bug status
 
-- **UNRESOLVED** — Read-only admin detail pages scroll sideways on a phone when a stored value is one long unbroken string
-- **UNRESOLVED** — A user holding a SignupAttribution row can no longer be deleted from the User admin
+No bugs were found in this run. Every test in §1 through §9 passed.
+
+The two bugs found by the previous QA run were re-verified as fixed in this run: B1 (read-only
+detail pages scrolling sideways on a phone) and B2 (a user with a `SignupAttribution` row could not
+be deleted from the `User` admin). Detail for both is under §9 above.
 
 ## General notes
 
-- Email confirmation lands on the login page rather than auto-logging the learner in, despite
-  `ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION=True`. This is baseline allauth cross-session behaviour
-  untouched by this diff (`accounts/forms.py` adds only a `record_signup_attribution` call after
-  consents) — the plan's §3.4 expectation is what's off, not the code.
-- In §4.1, `first_seen` and `signed_up_at` differ by about a millisecond (`08:00:20.914544` vs
-  `08:00:20.915546`) rather than being exactly equal as the plan words it, since they come from two
-  separate `timezone.now()` calls. Same instant for any reporting purpose.
-- The plan's §1.1 header assertions were confirmed on a second fresh curl landing using
-  `utm_source=Hdrcheck` so the browser's Facebook tally stayed at 1, which leaves a stray `hdrcheck`
-  row in the dev tally.
-- About 10 links/buttons on the admin changelists measure under 32px tall on mobile (mainly the
-  date-drilldown links) — this is Django/unfold admin chrome rather than FLS-authored markup.
-- The `fls-dev:qa-data-helper` agent left a new management command at
-  `freedom_ls/qa_helpers/management/commands/qa_create_browsable_course.py`, which is untracked and
-  not part of this feature's diff. Flag it so someone decides whether to keep or drop it.
+**Product question: the admin's own filters feed the data they filter.** The referral admin's own
+changelist filters are named `utm_source`, `utm_medium` and `utm_campaign` — exactly the parameters
+the middleware tracks. Filtering either changelist therefore mints an `fls_attribution` cookie for
+the person doing the filtering and writes a tally row named after the filter value. Verified
+directly: `GET .../firsttouchcount/?utm_source=adminfilterprobe` as a fresh visitor minted
+`fls_attribution` and created an `adminfilterprobe` row. The feature's own reporting UI writes rows
+into the data it displays. This also explains why the overflow row reached `count` 3 during the
+export tests, rather than the 2 the §7 steps alone would produce — an admin changelist URL carrying
+`utm_source=seed` minted one extra increment while the seed was still in place. The test plan's §9
+already declares admin tallying expected, so this is filed as an observation and a product question
+rather than a defect: is it acceptable for admin/report traffic to pollute the same counters it
+reports on?
+
+Both bugs from the previous QA run are now fixed and were re-verified in the browser this run: B1 is
+covered by test `B1-regression`, B2 by test `9.user-delete`.
+
+The DemoDev Site row was repointed from `127.0.0.1:8681` to `127.0.0.1:8882` for this run, because
+site resolution is host-based and the port is chosen per run.
+
+The dev database briefly went down mid-run. It was restored by the user, and every row this run had
+created was verified intact afterwards (6 tally rows, 4 attribution rows, all matching what the
+tests had observed). No check had hit a connection error, so no test needed re-running.
+
+Two expectations in the test plan were corrected during this run because they described baseline
+behaviour inaccurately rather than describing a defect: §3.4 said email confirmation logs the
+learner straight in (allauth actually lands on the login page when the link is opened in a context
+that did not sign up), and §4.1 said `first_seen` equals `signed_up_at` exactly (they come from two
+separate `timezone.now()` calls and differ by well under a millisecond).
+
+The django-debug-toolbar overlay intercepts pointer events on admin form buttons at desktop width, so
+the toolbar had to be hidden before clicking Save or Run. This is dev-only tooling, not product
+markup.
+
+Dev data left behind by this run: QA users `qa-linkedin@example.com`, `qa-direct@example.com`,
+`qa-forged@example.com`, `qa-adcookies@example.com` and the staff user `qa-staff@example.com`
+(holding only "Can view signup attribution"), plus the tally rows the landing tests created. The
+1000 seeded `FirstTouchCount` rows for §7 were removed. The overflow row remains at `count` 3 rather
+than 2 because an admin changelist URL carrying `utm_source=seed` minted one extra increment while
+the seed was still in place — see the admin-filter observation above.
 
 status: ok
-reason: 2 bugs — 0 fixed, 2 unresolved (both triaged to the red lane: B1 is a CSS layout defect with no pytest-level assertion, B2 turns on a product decision and spans two apps); report rendered, screenshots verified
+reason: report rendered, 0 bugs found, screenshots verified
