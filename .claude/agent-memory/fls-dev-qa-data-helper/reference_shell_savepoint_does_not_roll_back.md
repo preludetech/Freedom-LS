@@ -38,3 +38,34 @@ it then blocks on email verification), and — from any player GET —
 `CourseProgress.started_at` / `last_accessed_time` / `last_accessed_item`. Attribute rows by
 timestamp against the mtime of the file you just wrote; the dev DB has other agents' and the
 tester's own rows in the same minute, so never delete by "recent" alone.
+
+## The `raise` must be INSIDE the `with atomic()` block (bit again, Sep 2026)
+
+Second self-inflicted commit, `referal_tracking` browsable-course fixture. The block was
+written as:
+
+```python
+try:
+    with transaction.atomic():
+        ...probe...
+    raise Rollback          # <-- one indent level too far left
+except Rollback:
+    print("ROLLED BACK")
+```
+
+The atomic block **exits cleanly and commits**, then the raise fires, then the handler prints
+the reassuring "ROLLED BACK". Every counter still showed the probe's writes. It is a silent
+failure that *looks* like a success, so the "re-read the field afterwards and print it" rule
+above is the only thing that catches it — do it every time, and diff the numbers, do not just
+eyeball that a line was printed.
+
+Residue from a full player walk (`GET` + `POST mark_complete` x N to the end of a course):
+one `TopicProgress` per item (`complete_time` set), `CourseProgress` at
+`progress_percentage=100` with `completed_time`/`started_at`/`last_accessed_item`/
+`last_accessed_time` set, and a `course.completed` **`WebhookEvent`** row (dev `TASKS` is the
+ImmediateBackend, so the dispatch task runs inline — see [[reference_background_tasks_dev]]).
+Repair = delete the TopicProgress rows + the WebhookEvent, then reset the five CourseProgress
+fields back to `0`/`None` (all four timestamps/FK are nullable); do NOT delete the
+CourseProgress row, it is minted by the registration `post_save` signal.
+`WebhookEvent.event_type="user.registered"` rows are **browser signups** from the allauth
+adapter, never anything a `qa_` command or a player probe creates — leave them alone.

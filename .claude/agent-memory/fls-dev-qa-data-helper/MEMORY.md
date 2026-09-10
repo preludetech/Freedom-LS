@@ -65,6 +65,7 @@
 - [reference_clearing_form_sittings_around_an_application.md](reference_clearing_form_sittings_around_an_application.md) — Clearing a persona's stale FormProgress so every start screen reads "Start Form" without tripping CourseApplication's RESTRICT; qa_reset_learner_progress is now unsafe for applicant personas; the self-registration shape for free courses
 - [reference_withdrawing_a_course_application.md](reference_withdrawing_a_course_application.md) — qa_reset_course_application: withdraw a CourseApplication + the FormProgress it named, in the RESTRICT-forced order (QA plan §0.2.3, runs on EVERY re-walk); answer/file cascade counts; a parallel worker's unmigrated model field breaks ORM reads mid-session
 - [reference_application_forms_qa_baseline.md](reference_application_forms_qa_baseline.md) — The whole-run simple-application-forms QA setup: content_save on the PARENT demo_content dir, qa_create_application_review_accounts (covers the whole teardown), qa_create_application_docs_scenario (positional site arg), + the 3-course enrolment; the two easily-confused gated courses; a re-run normally deletes nothing
+- [reference_browsable_course_command.md](reference_browsable_course_command.md) — qa_create_browsable_course: the factory-built 1-course/1-part/3-topic fixture for a dev DB with ZERO Courses; registers an EXISTING user; CoursePart is dropped from viewable_items(); sequential unlock 302s items 2-3 until item 1 is marked complete
 
 ## Recurring requests
 
@@ -454,3 +455,13 @@ Two import/field drifts bit here and are written up in
 [[reference_clearing_form_sittings_around_an_application]]: `CourseApplication` now lives in
 `freedom_ls.course_applications.models`, and `CohortMembership` keys on `learner`, not `user`.
 If this is asked a third time, wrap it as `qa_create_blank_learner --email EMAIL`.
+
+The **"the dev DB has ZERO Courses, seed me one I can actually browse"** ask arrived once
+(referal_tracking frontend QA, Sep 2026). A fresh worktree DB really does start with an empty
+Course table — [[reference_seeding_course_catalogue]] is the background. There are now TWO
+answers and the ask decides which: `content_save` for the real demo catalogue (images, forms,
+several accent slots), or `qa_create_browsable_course` when the ask says "use the factories".
+Prefer extending the latter over writing another one-off. Whichever is used, ALWAYS tell the
+tester that items 2..N 302 back to the detail page until item 1 is marked complete — sequential
+unlock looks exactly like a broken fixture from the browser.
+See [[reference_browsable_course_command]].

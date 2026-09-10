@@ -19,3 +19,12 @@ Demo course dirs (each = one Course): functionality_demo_content_widgets, functi
 To enroll demodev_s1 in courses WITH progress for free, run the existing command
 `uv run python manage.py qa_create_course_player_learner DemoDev`
 (djclick). It enrolls demodev_s1 in functionality-demo-course-parts (0% / REGISTERED) and functionality-demo-show-end-with-topic (~29% / IN_PROGRESS, resumes item 3), leaves functionality-demo-show-end-with-quiz NOT enrolled. Requires those 3 course dirs be content_save'd first or it raises ClickException listing available slugs. See [[reference_course_player_learner_command]] and [[reference_verified_learner_setup]].
+
+Factory-only alternative (Sep 2026, `referal_tracking`): `qa_create_browsable_course` builds one
+published/free course + CoursePart + 3 markdown Topics + a registration for an existing user, with
+no `demo_content` dependency at all. See [[reference_browsable_course_command]].
+
+`Course.visibility` now EXISTS (added on `courses_coming_soon`), so the "no published flag" note
+above is stale: a course must be `visibility=published` to appear as a normal catalogue card.
+`Site` domains drift between QA runs — DemoDev has been `127.0.0.1:8000` and `127.0.0.1:8681`; read
+`Site.objects.get(name="DemoDev").domain` rather than quoting a port from memory.
