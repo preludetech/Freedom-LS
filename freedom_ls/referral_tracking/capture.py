@@ -49,6 +49,24 @@ COOKIE_KEYS: dict[str, str] = {
     "first_seen": "ts",
 }
 
+# Browsers hold a cookie to 4096 bytes of name plus value. The signer appends
+# a timestamp and signature of about 55 bytes and the default name is 16, so
+# the encoded payload itself gets a little under 3.9KB.
+COOKIE_MAX_ENCODED_LENGTH = 3800
+# Dropped from the payload, in this order, until it fits. A multi-byte campaign
+# at the caps is over after the first two; only an all-multi-byte payload — one
+# whose click ids are not click ids — gets past them. None of these is part of
+# the attribution key, so the cookie and the tally still agree.
+COOKIE_DROP_ORDER = (
+    "raw_query",
+    "referer",
+    "landing_path",
+    "fbclid",
+    "wbraid",
+    "gbraid",
+    "gclid",
+)
+
 _CONTROL_CHARS = dict.fromkeys((*range(0, 32), 127))
 
 
@@ -89,13 +107,34 @@ def _cookie_max_age() -> int:
     return config.REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS * 86400
 
 
+def _encode_payload(payload: dict[str, str]) -> str:
+    # ensure_ascii=False keeps a CJK character at 3 bytes rather than the 6 of
+    # its \uXXXX escape; the value is base64 either way, so it stays token-safe.
+    return base64.urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    ).decode("ascii")
+
+
 def set_attribution_cookie(
     response: HttpResponseBase, first_touch: dict[str, str]
-) -> None:
+) -> bool:
+    """Set the cookie and return True, or return False when it cannot fit.
+
+    A browser drops an oversize cookie without saying so, and a visitor whose
+    cookie never sticks would be minted and tallied again on every landing.
+    The fields that are not part of the attribution key are dropped in order
+    of value until the payload fits; a payload that still does not fit is not
+    set at all, and the caller must not count it as a first touch.
+    """
     payload = {COOKIE_KEYS[name]: value for name, value in first_touch.items() if value}
-    encoded = base64.urlsafe_b64encode(
-        json.dumps(payload, separators=(",", ":")).encode("utf-8")
-    ).decode("ascii")
+    encoded = _encode_payload(payload)
+    for name in COOKIE_DROP_ORDER:
+        if len(encoded) <= COOKIE_MAX_ENCODED_LENGTH:
+            break
+        payload.pop(COOKIE_KEYS[name], None)
+        encoded = _encode_payload(payload)
+    if len(encoded) > COOKIE_MAX_ENCODED_LENGTH:
+        return False
     response.set_signed_cookie(
         config.REFERRAL_TRACKING_COOKIE_NAME,
         encoded,
@@ -105,6 +144,7 @@ def set_attribution_cookie(
         samesite="Lax",
         secure=settings.SESSION_COOKIE_SECURE,
     )
+    return True
 
 
 def read_attribution_cookie(request: HttpRequest) -> dict[str, str] | None:

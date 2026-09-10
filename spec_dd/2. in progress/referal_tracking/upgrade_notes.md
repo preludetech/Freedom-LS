@@ -150,9 +150,11 @@ the admin, a management command or an import get no row either; that is by desig
    proxy, every row stores the proxy's own address, and nothing warns you.
 
 8. **If a CDN or shared cache fronts the site**, confirm it honours `Cache-Control: private,
-   no-store` and `Vary: Cookie`. A response that mints the cookie carries both, so a cache that
-   ignores them would serve one visitor's signed cookie to everyone after them and attribute
-   their signups to the first visitor's campaign. Ordinary responses are untouched.
+   no-store` and `Vary: Cookie`. Every response to a landing carrying a tracked parameter
+   carries `Vary: Cookie`; the one that mints the cookie also carries `private, no-store`. A
+   cache that ignores them would serve one visitor's signed cookie to everyone after them and
+   attribute their signups to the first visitor's campaign. Responses to requests carrying no
+   tracked parameter are untouched.
 
 9. **Settle the privacy position before enabling capture in the EU or UK.** The operator of a
    downstream project is the data controller. The attribution cookie is unlikely to count as

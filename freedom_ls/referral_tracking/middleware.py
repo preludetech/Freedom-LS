@@ -30,30 +30,32 @@ class AttributionCaptureMiddleware:
     The first touch is read off the request before the view runs, so nothing
     the view does can change what gets recorded; the cookie and the tally are
     only written once the view has returned successfully, so a view that
-    raises leaves neither behind. A request that already carries a valid
-    cookie, or carries no tracked parameter, does no work at all.
+    raises leaves neither behind. A request that carries no tracked parameter
+    does no work at all.
+
+    Every response to a tracked landing carries `Vary: Cookie`, not only the
+    minting one: a shared cache that stored the response served to a visitor
+    who already held the cookie would replay it, with no `Set-Cookie`, to the
+    next visitor who did not.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponseBase:
-        if (
-            request.method != "GET"
-            or not has_tracked_params(request)
-            or read_attribution_cookie(request) is not None
-        ):
+        if request.method != "GET" or not has_tracked_params(request):
             return self.get_response(request)
-        site = get_cached_site(request)
-        if not isinstance(site, Site):
-            # A rejected Host resolves to UnknownSite, which is not a row, so
-            # there is nothing to key a tally against.
-            return self.get_response(request)
-        first_touch = first_touch_from_request(request)
+        site = self._site_to_mint_for(request)
+        first_touch = first_touch_from_request(request) if site else None
         response = self.get_response(request)
-        set_attribution_cookie(response, first_touch)
         patch_vary_headers(response, ["Cookie"])
+        if site is None or first_touch is None:
+            return response
         patch_cache_control(response, private=True, no_store=True)
+        if not set_attribution_cookie(response, first_touch):
+            # Nothing the browser can keep, so the next landing would mint
+            # again; counting this one would count that visitor twice.
+            return response
         key_fields = {name: first_touch[name] for name in ATTRIBUTION_KEY_FIELDS}
         increment_first_touch(
             site=site,
@@ -65,3 +67,15 @@ class AttributionCaptureMiddleware:
             **key_fields,
         )
         return response
+
+    @staticmethod
+    def _site_to_mint_for(request: HttpRequest) -> Site | None:
+        """The site to tally a mint against, or None when this landing mints nothing."""
+        if read_attribution_cookie(request) is not None:
+            return None
+        site = get_cached_site(request)
+        if not isinstance(site, Site):
+            # A rejected Host resolves to UnknownSite, which is not a row, so
+            # there is nothing to key a tally against.
+            return None
+        return site

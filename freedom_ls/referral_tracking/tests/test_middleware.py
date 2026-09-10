@@ -7,6 +7,7 @@ import pytest
 from django.http import HttpResponse
 from django.test import Client, RequestFactory
 
+from freedom_ls.referral_tracking import capture
 from freedom_ls.referral_tracking.capture import (
     first_touch_from_request,
     set_attribution_cookie,
@@ -148,3 +149,46 @@ def test_a_tracked_get_with_an_existing_valid_cookie_costs_no_query(
 
     with django_assert_num_queries(0):
         AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
+
+
+@pytest.mark.django_db
+def test_a_tracked_get_with_an_existing_valid_cookie_carries_vary_cookie(
+    mock_site_context,
+) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    response = client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    assert response.headers["Vary"] == "Cookie"
+
+
+@pytest.mark.django_db
+def test_a_tracked_get_with_an_existing_valid_cookie_sets_no_cookie(
+    mock_site_context,
+) -> None:
+    client = Client()
+    client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    response = client.get(ROBOTS_TXT, {"utm_source": "x"})
+
+    assert COOKIE_NAME not in response.cookies
+
+
+def test_an_untracked_get_is_not_varied_on_cookie(db) -> None:
+    request = rf.get("/")
+
+    response = AttributionCaptureMiddleware(lambda request: HttpResponse())(request)
+
+    assert "Vary" not in response.headers
+
+
+@pytest.mark.django_db
+def test_a_landing_whose_cookie_cannot_fit_mints_no_tally(
+    mock_site_context, site, monkeypatch
+) -> None:
+    monkeypatch.setattr(capture, "COOKIE_MAX_ENCODED_LENGTH", 10)
+
+    Client().get(ROBOTS_TXT, {"utm_source": "x"})
+
+    assert not FirstTouchCount.objects.filter(site=site, utm_source="x").exists()

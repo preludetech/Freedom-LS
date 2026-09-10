@@ -6,16 +6,19 @@ import datetime
 
 import time_machine
 
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 
+from freedom_ls.referral_tracking import capture
 from freedom_ls.referral_tracking.capture import (
+    TRACKED_PARAMS,
     first_touch_from_request,
     read_attribution_cookie,
     sanitise,
     set_attribution_cookie,
 )
 from freedom_ls.referral_tracking.config import config
+from freedom_ls.referral_tracking.models import CAPS
 
 rf = RequestFactory()
 
@@ -120,3 +123,93 @@ def test_cookie_older_than_the_window_reads_as_none() -> None:
         read_request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = cookie_value
 
         assert read_attribution_cookie(read_request) is None
+
+
+def _landing_with_every_value_at_its_cap(char: str) -> HttpRequest:
+    """A tracked landing whose every captured value fills its cap with `char`."""
+    params = {name: char * CAPS[name] for name in TRACKED_PARAMS}
+    return rf.get("/", params, HTTP_REFERER=char * CAPS["referer"])
+
+
+def test_a_multibyte_worst_case_landing_keeps_its_campaign_in_the_cookie() -> None:
+    first_touch = first_touch_from_request(_landing_with_every_value_at_its_cap("漢"))
+    response = HttpResponse()
+
+    set_attribution_cookie(response, first_touch)
+    read_request = rf.get("/")
+    read_request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = _cookie_from(response)
+    read_back = read_attribution_cookie(read_request)
+
+    assert read_back is not None
+    assert read_back["utm_campaign"] == "漢" * CAPS["utm_campaign"]
+
+
+def test_a_multibyte_worst_case_landing_drops_raw_query_rather_than_overflowing() -> (
+    None
+):
+    first_touch = first_touch_from_request(_landing_with_every_value_at_its_cap("漢"))
+    response = HttpResponse()
+
+    set_attribution_cookie(response, first_touch)
+    read_request = rf.get("/")
+    read_request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = _cookie_from(response)
+    read_back = read_attribution_cookie(read_request)
+
+    assert read_back is not None
+    assert read_back["raw_query"] == ""
+
+
+def test_a_multibyte_worst_case_cookie_fits_the_browser_limit() -> None:
+    first_touch = first_touch_from_request(_landing_with_every_value_at_its_cap("漢"))
+    response = HttpResponse()
+
+    set_attribution_cookie(response, first_touch)
+
+    name_and_value = f"{config.REFERRAL_TRACKING_COOKIE_NAME}={_cookie_from(response)}"
+    assert len(name_and_value) <= 4096
+
+
+def test_an_ascii_worst_case_landing_keeps_raw_query_in_the_cookie() -> None:
+    first_touch = first_touch_from_request(_landing_with_every_value_at_its_cap("a"))
+    response = HttpResponse()
+
+    set_attribution_cookie(response, first_touch)
+    read_request = rf.get("/")
+    read_request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = _cookie_from(response)
+    read_back = read_attribution_cookie(read_request)
+
+    assert read_back is not None
+    assert read_back["raw_query"] == first_touch["raw_query"]
+
+
+def test_a_payload_that_cannot_fit_sets_no_cookie(monkeypatch) -> None:
+    monkeypatch.setattr(capture, "COOKIE_MAX_ENCODED_LENGTH", 10)
+    first_touch = first_touch_from_request(rf.get("/?utm_source=x"))
+    response = HttpResponse()
+
+    was_set = set_attribution_cookie(response, first_touch)
+
+    assert was_set is False
+    assert config.REFERRAL_TRACKING_COOKIE_NAME not in response.cookies
+
+
+def test_a_multibyte_campaign_with_real_click_ids_keeps_them_in_the_cookie() -> None:
+    params = {
+        name: "漢" * CAPS[name] for name in ("utm_campaign", "utm_content", "utm_term")
+    }
+    params |= {name: "a" * CAPS[name] for name in TRACKED_PARAMS if name not in params}
+    request = rf.get(
+        "/" + "p" * (CAPS["landing_path"] - 1),
+        params,
+        HTTP_REFERER="r" * CAPS["referer"],
+    )
+    first_touch = first_touch_from_request(request)
+    response = HttpResponse()
+
+    set_attribution_cookie(response, first_touch)
+    read_request = rf.get("/")
+    read_request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = _cookie_from(response)
+    read_back = read_attribution_cookie(read_request)
+
+    assert read_back is not None
+    assert read_back["gclid"] == "a" * CAPS["gclid"]
