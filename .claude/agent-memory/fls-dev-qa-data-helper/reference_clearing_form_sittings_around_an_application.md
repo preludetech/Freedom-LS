@@ -91,3 +91,101 @@ The `post_save` receiver mints one `CourseProgress` per registration at
 `transaction.on_commit`, which in `manage.py shell` (autocommit) runs immediately. It also
 announces `course.registered`; check `WebhookEndpoint._base_manager.filter(site=..., is_active=True)`
 first (0 on DemoDev) so nothing fires at an endpoint mid-QA.
+
+## The BUTTON reads `FormProgress`; the OUTLINE reads `CourseFormAttempt`. Clear both.
+
+Second pass, Sep 2026, same persona: "clear two sittings so the start screens read Start Form
+again". The two surfaces are decided by **different tables**, which is the thing to get right:
+
+| surface | source | function |
+|---|---|---|
+| start-screen button | `FormProgress` for (user, form) | `form_start_page_buttons` |
+| outline item status | `CourseFormAttempt` for (course_progress, collection_item) | `_fetch_player_progress_maps` -> `get_content_status` |
+
+`_fetch_player_progress_maps` builds `form_map` **only from attempts** (`FormPlacementProgress`
+= `is_complete` via `completed_form_item_ids(attempts)`, `has_open_attempt`,
+`has_completed_attempt`). Delete the `FormProgress` and leave the attempt and the outline still
+calls the item COMPLETE; delete the attempt and leave the sitting and the button still says
+"Next". Deleting the `FormProgress` does take the attempt with it (`CourseFormAttempt.form_progress`
+is a **OneToOne CASCADE**), so one delete is enough — but it lands as a *fast delete*, so it only
+shows up in `Collector.fast_deletes`, never in `c.data`.
+
+Note the maps key on **`collection_item`**, not on the form: one form placed twice is two
+placements, answered separately. Filter attempts by `collection_item_id`, not `form_id`.
+
+## Whether clearing a form re-locks what follows: it depends on the NEXT item's own progress
+
+`get_content_status` returns `(status, next_status)`, and a placement with progress of its own
+**ignores the incoming `next_status`**: a Topic with `complete_time` returns `COMPLETE, READY`
+unconditionally. So clearing a mid-course form drops it to READY and hands BLOCKED forward, but:
+
+- items after it that hold their own completed `TopicProgress` / attempts stay COMPLETE — the
+  chain heals immediately. (end-with-quiz: items 3 and 4 stayed COMPLETE and clickable.)
+- the first item after it with **no progress row of its own** was only READY because the form's
+  completion unlocked it, and it goes BLOCKED — taking everything past it. (end-with-topic item 4
+  "Pictures" went READY -> BLOCKED, items 5-7 were already BLOCKED.)
+
+So "will this re-lock anything?" is answered by looking at the *next unstarted* item, not by the
+count of items after the form. Check it by diffing `get_course_index(user, course,
+can_access_content=True)` before and after — that is the real player code and is cheap to run
+twice, far better than reasoning about the branches.
+
+## `progress_percentage` is stored and does NOT recalculate on delete
+
+`CourseProgress.progress_percentage` for end-with-quiz stayed at **100** with the Mid course Quiz
+now un-sat and READY. Nothing recomputes it on `FormProgress`/`CourseFormAttempt` delete (the
+recalc hangs off completion, not deletion). Report the stale number rather than silently fixing
+it — the tester's next submit rewrites it, and `qa_complete_form` is the command that recalcs
+([[reference_qa_complete_form_now_recalculates]]).
+
+## Field/import corrections that cost a round-trip this run
+
+- `FormProgress` has **no `created_at` / `score_percentage`**: it is `start_time`,
+  `last_updated_time`, and `scores` (a JSONField, e.g. `{'score': 3, 'max_score': 6}`, or
+  per-category dicts for a survey). Percentage comes from the `quiz_percentage()` method.
+- **`Form` lives in `form_engine.models`**, not `content_engine.models` — the latter exports
+  `Course`, `Topic`, `CoursePart` but not `Form`, and the import raises.
+- `uv run python manage.py shell < script.py` needs the project root as cwd; agent bash calls
+  reset cwd between invocations, so use
+  `uv run --project <root> python <root>/manage.py shell < script.py`.
+
+## Cascade shape of one course-sat sitting (add to the table above)
+
+```
+quiz sitting, 6 answers : loaded {FormProgress: 1, QuestionAnswer: 6}
+                          fast   {QuestionAnswer_selected_options: 6, CourseFormAttempt: 1}
+3 sittings (6+3+2 answers) deleted together:
+  (25, {QuestionAnswer_selected_options: 11, QuestionAnswer: 11, FormProgress: 3})
+```
+
+The persona holds **two** `CourseApplication` rows and only one names a sitting
+(`advanced-product-analytics-masterclass` has `form_progress=None` — it is the gated-but-names-no-form
+fixture from [[reference_application_forms_qa_baseline]]). Assert
+`not CourseApplication._base_manager.filter(form_progress=fp).exists()` per fp rather than
+"the persona has an application, so be careful" — most of their sittings are unreferenced.
+
+## This is now a command — use it instead of scripting the delete
+
+`qa_clear_form_sittings --learner EMAIL [--course-slug SLUG]... [--item-title TITLE]...
+[--keep-pk UUID]... [--dry-run]`
+(`freedom_ls/qa_helpers/management/commands/qa_clear_form_sittings.py`, written on the fourth
+ask). Placement-scoped, skips sittings a `CourseApplication` names rather than aborting, leaves
+`TopicProgress`/`CourseProgress` alone, prints the resulting outline. Always `--dry-run` first;
+it lists each `FormProgress` with its scores and the attempt pks that will go with it.
+
+## Import/field drift on this branch (re-checked Sep 2026)
+
+`CourseApplication` has moved OUT of `form_engine` into its own app:
+`from freedom_ls.course_applications.models import CourseApplication`
+(`freedom_ls/course_applications/{models,factories}.py`; the old import raises
+`ImportError: ... Did you mean: 'course_applications'`). `FormProgress` is still in
+`freedom_ls.form_engine.models`.
+
+`CohortMembership` has **no `user` FK** — it is `(cohort, learner)`. Any purge script must
+filter `CohortMembership._base_manager.filter(learner__user=u)`; `filter(user=u)` raises
+`FieldError: Cannot resolve keyword 'user' ... Choices are: cohort, learner, site, ...`.
+
+`Course` has no `status` / `access_type` attribute: visibility is `Course.visibility`
+(`"published"`) and the gating lives in the `access_config` JSON
+(`{"access_type": "application_gated", "application_form": "<path>"}`) alongside the
+resolved `application_form` FK.

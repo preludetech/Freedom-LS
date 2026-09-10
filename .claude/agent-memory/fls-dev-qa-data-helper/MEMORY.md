@@ -64,6 +64,7 @@
 - [reference_application_review_permission_accounts.md](reference_application_review_permission_accounts.md) — qa_create_application_review_accounts: applicant/bystander/reviewer trio; app label is `freedom_ls_form_engine`; SuperuserOnlyAdmin makes the 3 view_ perms 403 while /admin/ still renders 200
 - [reference_clearing_form_sittings_around_an_application.md](reference_clearing_form_sittings_around_an_application.md) — Clearing a persona's stale FormProgress so every start screen reads "Start Form" without tripping CourseApplication's RESTRICT; qa_reset_learner_progress is now unsafe for applicant personas; the self-registration shape for free courses
 - [reference_withdrawing_a_course_application.md](reference_withdrawing_a_course_application.md) — qa_reset_course_application: withdraw a CourseApplication + the FormProgress it named, in the RESTRICT-forced order (QA plan §0.2.3, runs on EVERY re-walk); answer/file cascade counts; a parallel worker's unmigrated model field breaks ORM reads mid-session
+- [reference_application_forms_qa_baseline.md](reference_application_forms_qa_baseline.md) — The whole-run simple-application-forms QA setup: content_save on the PARENT demo_content dir, qa_create_application_review_accounts (covers the whole teardown), qa_create_application_docs_scenario (positional site arg), + the 3-course enrolment; the two easily-confused gated courses; a re-run normally deletes nothing
 
 ## Recurring requests
 
@@ -398,9 +399,31 @@ new sitting — query before chaining a delete, twice now the assumed prerequisi
 `CourseFormAttempt`, so "delete the join rows as well" can be entirely vacuous — check
 `form_progress__user=` AND `course_progress__learner__user=` and report the 0 explicitly.
 Full recipe, cascade counts and the `QuestionAnswerFile` storage sweep in
-[[reference_clearing_form_sittings_around_an_application]]. If this is asked a fourth time, wrap it
-as `qa_clear_form_sittings --learner EMAIL [--keep-pk UUID ...]` that refuses to touch any sitting a
-`CourseApplication` names.
+[[reference_clearing_form_sittings_around_an_application]].
+
+**It was asked a fourth time (Sep 2026, clear two named placements) and the command now EXISTS:**
+`freedom_ls/qa_helpers/management/commands/qa_clear_form_sittings.py` --
+`qa_clear_form_sittings --learner EMAIL [--course-slug SLUG]... [--item-title TITLE]...
+[--keep-pk UUID]... [--site-name DemoDev] [--dry-run]`. It is **placement-scoped** (filters on
+`collection_item`, so one form placed twice is two placements), skips-and-lists any sitting a
+`CourseApplication` names instead of aborting like `qa_reset_learner_progress` does, never touches
+`TopicProgress`/`CourseProgress`, and prints the resulting outline so the re-lock question answers
+itself. `--dry-run` first, always. Reach for this instead of hand-scripting the delete.
+
+The **whole-run "put the dev DB into the QA starting state" ask has now landed for
+`simple-application-forms` too** (Sep 2026, a seven-item end-state spec). It is the fifth
+application-forms data ask on this branch and it is entirely covered by commands that already
+exist: `content_save demo_content DemoDev` (the PARENT dir, which is what sets the gated course's
+`application_form` FK), `qa_create_application_review_accounts --site-name DemoDev`,
+`qa_create_application_docs_scenario DemoDev` (positional site arg), then a short enrolment script
+putting the applicant into the three free demo courses. Full recipe in
+[[reference_application_forms_qa_baseline]]. Two things to carry forward: **(a)** the spec is
+written as if a re-run always has residue to clear, but `qa_create_application_review_accounts` is
+destructive-idempotent, so on this pass it removed *nothing* — inspect and report "already
+correct" instead of scripting the RESTRICT-ordered teardown by hand; **(b)** the only application
+left on the gated course belonged to the SUPERUSER `demodev@email.com`, which is out of scope but
+must be reported, because `unique_application_per_site_user_course` means a tester walking the
+apply flow as demodev lands on the status page rather than the form.
 
 The fourth ask arrived (`simple-application-forms`, Sep 2026) as the OTHER half of the same QA-plan
 setup: not "clear the sittings", but **"withdraw the application AND the sitting it names"** so the
@@ -419,3 +442,15 @@ field added without a migration made every `FormProgress` query fail with
 — it is another worker's in-progress diff — and do not bake `.only()`/`defer()` into a committed
 command; defer in the scratch script only, and re-check before assuming it is still broken, because
 their migration landed 20 minutes later and the plain query recovered on its own.
+
+The **"one throwaway blank learner for a UX walk of the apply flow"** ask arrived
+(`simple-application-forms`, Sep 2026: `ux_walk@email.com`, pk 80, password == email). It is the
+smallest version of [[reference_verified_learner_setup]] and needs exactly two rows —
+`UserFactory(email=..., password=..., site=<DemoDev>)` plus an `update_or_create`d verified+primary
+allauth `EmailAddress`. Deliberately create **no `Learner` row**: a fresh signup has none, and both
+the dashboard and the gated course-detail page render 200 without one (`ensure_learner` mints it on
+the first enrol/apply), so adding one only makes the fixture less like the state under test.
+Two import/field drifts bit here and are written up in
+[[reference_clearing_form_sittings_around_an_application]]: `CourseApplication` now lives in
+`freedom_ls.course_applications.models`, and `CohortMembership` keys on `learner`, not `user`.
+If this is asked a third time, wrap it as `qa_create_blank_learner --email EMAIL`.
