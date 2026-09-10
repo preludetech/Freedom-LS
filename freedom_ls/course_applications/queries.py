@@ -47,4 +47,6 @@ def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
 
     if not user.is_authenticated:
         return CourseApplication.objects.none()
-    return CourseApplication.objects.filter(user=user).select_related("course")
+    return CourseApplication.objects.filter(user=user).select_related(
+        "course", "form_progress"
+    )

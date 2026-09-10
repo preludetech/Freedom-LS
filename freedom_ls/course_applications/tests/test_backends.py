@@ -443,6 +443,51 @@ class TestDashboardPartialRendering:
 
         assert expected_url in rendered
 
+    def test_an_application_with_no_form_is_pending_review(self, mock_site_context):
+        rendered = _render_panel(CourseApplicationFactory())
+
+        assert "Pending review" in rendered
+        assert "Incomplete" not in rendered
+
+    def test_a_draft_application_is_incomplete_not_pending(self, mock_site_context):
+        """An application nobody has submitted is not waiting on a reviewer;
+        it is waiting on the applicant, and the dashboard has to say so."""
+        rendered = _render_panel(_application_with_sitting())
+
+        assert "Incomplete" in rendered
+        assert "Finish your application to have it reviewed." in rendered
+        assert "Continue application" in rendered
+        assert "Pending review" not in rendered
+
+    def test_a_submitted_application_is_pending_review(self, mock_site_context):
+        app = _application_with_sitting()
+        app.form_progress.complete()
+
+        rendered = _render_panel(app)
+
+        assert "Pending review" in rendered
+        assert "Incomplete" not in rendered
+
+
+def _application_with_sitting():
+    from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
+    from freedom_ls.form_engine.models import FormStrategy
+
+    user = UserFactory()
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    return CourseApplicationFactory(
+        user=user, form_progress=FormProgressFactory(user=user, form=form)
+    )
+
+
+def _render_panel(app) -> str:
+    from django.template.loader import render_to_string
+
+    return render_to_string(
+        "course_applications/partials/dashboard_applications.html",
+        {"applications": [app]},
+    )
+
 
 @pytest.mark.django_db
 class TestGetAccessAnonymousUser:

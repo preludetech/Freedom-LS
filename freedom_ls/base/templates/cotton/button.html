@@ -29,7 +29,7 @@ role="menuitem"
 class="{{ computed_class }}"
 {{ attrs }}
 >
-{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
+{% if icon_left %}<span aria-hidden="true"><c-icon :name="icon_left" class="size-5 mr-2" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true"><c-icon :name="icon_right" class="size-5 ml-2" /></span>{% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endwith %}
 {% else %}
@@ -46,10 +46,10 @@ class="btn btn-{{ variant }}{% if size == 'small' %} btn-sm{% endif %} {{ class 
 {% if loading %}
 {# HTMX puts .htmx-request on the element that triggered the request, which #}
 {# is an ancestor of these spans, so both states are driven from there.     #}
-<span class="[.htmx-request_&]:hidden">{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}</span>
+<span class="[.htmx-request_&]:hidden">{% if icon_left %}<span aria-hidden="true"><c-icon :name="icon_left" class="size-5 mr-2" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true"><c-icon :name="icon_right" class="size-5 ml-2" /></span>{% endif %}</span>
 <span class="hidden [.htmx-request_&]:inline-flex [.htmx-request_&]:items-center [.htmx-request_&]:gap-2"><c-icon name="loading" class="size-5 animate-spin" /> {{ loading_text }}</span>
 {% else %}
-{% if icon_left %}<c-icon :name="icon_left" class="size-5 mr-2" />{% endif %}{{ slot }}{% if icon_right %}<c-icon :name="icon_right" class="size-5 ml-2" />{% endif %}
+{% if icon_left %}<span aria-hidden="true"><c-icon :name="icon_left" class="size-5 mr-2" /></span>{% endif %}{{ slot }}{% if icon_right %}<span aria-hidden="true"><c-icon :name="icon_right" class="size-5 ml-2" /></span>{% endif %}
 {% endif %}
 </{% if href %}a{% else %}button{% endif %}>
 {% endif %}
@@ -83,7 +83,8 @@ Usage Examples:
        <c-dropdown-menu />, whose panel is a role="menu". -->
   <c-button dropdown="true">Dropdown menu item</c-button>
 
-  <!-- With icons -->
+  <!-- With icons. The icon is decorative (aria-hidden): the slot text is the
+       button's accessible name, so a screen reader hears "Next", not "next Next". -->
   <c-button icon_left="user">Profile</c-button>
   <c-button icon_right="next">Next</c-button>
   <c-button icon_left="check" variant="primary">Save Changes</c-button>

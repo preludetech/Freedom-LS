@@ -6,9 +6,12 @@ of someone's ID, so "the URL is unguessable" is not the control -- ownership is.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.template.loader import render_to_string
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -359,6 +362,36 @@ def test_the_attached_widget_links_to_the_download(mock_site_context, client, si
 
 
 @pytest.mark.django_db
+def test_the_attached_widgets_download_link_is_a_tap_sized_button(
+    mock_site_context, client, sitting
+):
+    """The Download control sits beside the Replace/Remove buttons, both of
+    which are padded btn-sm buttons. An underlined text link there falls
+    below the 24px minimum tap target, so Download has to be styled as a
+    button too, matching the fix already applied on the check-your-answers
+    page.
+    """
+    form_progress, question = sitting
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    stored = QuestionAnswerFile.objects.get(answer__question=question)
+    download_url = _download_url(stored)
+    content = response.content.decode()
+    anchor_match = re.search(rf'<a[^>]*href="{re.escape(download_url)}"[^>]*>', content)
+
+    assert anchor_match is not None
+    anchor_tag = anchor_match.group(0)
+    assert "btn" in anchor_tag
+    assert "btn-sm" in anchor_tag
+
+
+@pytest.mark.django_db
 def test_the_empty_widget_offers_a_picker_for_the_allowed_extensions(
     mock_site_context, client, sitting
 ):
@@ -397,3 +430,49 @@ def test_a_refused_upload_renders_its_reason_in_the_widget(
     )
 
     assert "Upload a JPEG, PNG or PDF." in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# The picker's face
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_the_empty_picker_is_a_button_wrapping_the_input(mock_site_context, sitting):
+    """A bare file input gives no hint of where to click. The label carries
+    the button styling, and the real input rides inside it."""
+    form_progress, question = sitting
+
+    markup = render_to_string(
+        "form_engine/inputs/file_upload.html",
+        {"question": question, "form_progress": form_progress, "answer_file": None},
+    )
+
+    label_start = markup.index("<label")
+    label_end = markup.index("</label>")
+    label = markup[label_start:label_end]
+    assert "btn btn-secondary" in label
+    assert "cursor-pointer" in label
+    assert "Choose a file" in label
+    assert 'type="file"' in label
+
+
+@pytest.mark.django_db
+def test_the_replace_picker_sits_level_with_the_remove_button(
+    mock_site_context, client, sitting
+):
+    """The base layer gives every label a bottom margin, which is what used to
+    push Replace a few pixels above Remove."""
+    form_progress, question = sitting
+    client.force_login(form_progress.user)
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    markup = response.content.decode()
+    label = markup[markup.index("<label") : markup.index("</label>")]
+    assert "Replace" in label
+    assert "mb-0" in label

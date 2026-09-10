@@ -68,3 +68,15 @@ class CourseApplication(SiteAwareModel):
 
     def __str__(self) -> str:
         return f"CourseApplication({self.user_id}, {self.course_id})"
+
+    @property
+    def is_submitted(self) -> bool:
+        """Whether the applicant has actually asked for a place yet.
+
+        An application with no sitting was submitted the moment it was created.
+        One with a sitting is a draft until the sitting is completed; that stamp
+        is what separates draft from submitted until review adds `state`.
+        """
+        return (
+            self.form_progress is None or self.form_progress.completed_time is not None
+        )

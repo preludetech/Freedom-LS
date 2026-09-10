@@ -47,18 +47,29 @@
                     {% endif %}
                 {% endfor %}
 
-                <div class="flex flex-wrap gap-4">
+                {% comment %}
+                Back control on the left, forward control on the right. The empty
+                div keeps the forward control on the right when there is nothing
+                to go back to. On narrow screens they stack, forward on top.
+                {% endcomment %}
+                <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
                     {% if return_to_check %}
-                        <c-button href="{{ check_answers_url }}" variant="secondary">Back to your answers</c-button>
+                        <c-button href="{{ check_answers_url }}" variant="secondary" icon_left="previous" class="w-full sm:w-auto">
+                            Back to your answers
+                        </c-button>
                     {% elif previous_page_url %}
-                        <c-button href="{{ previous_page_url }}" variant="secondary">Previous</c-button>
+                        <c-button href="{{ previous_page_url }}" variant="secondary" icon_left="previous" class="w-full sm:w-auto">
+                            Previous
+                        </c-button>
+                    {% else %}
+                        <div></div>
                     {% endif %}
                     {% if not read_only %}
-                        <c-button type="submit">
-                            {% if return_to_check %}Save and return to your answers{% elif has_next_page %}Next{% else %}Check your answers{% endif %}
+                        <c-button type="submit" icon_right="next" class="w-full sm:w-auto">
+                            {% if return_to_check %}Save and return to your answers{% else %}Next{% endif %}
                         </c-button>
                     {% elif not has_next_page %}
-                        <c-button href="{% url 'course_applications:check_answers' pk=application.pk %}">
+                        <c-button href="{% url 'course_applications:check_answers' pk=application.pk %}" icon_right="next" class="w-full sm:w-auto">
                             Your answers
                         </c-button>
                     {% endif %}

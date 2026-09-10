@@ -7,7 +7,7 @@ _Last updated: 2026-09-09_
 - Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The personalised dashboard sections — In progress, Recommended courses, Learning history — are shown only to authenticated learners; anonymous visitors see a value-proposition hero instead, followed by the same course-discovery sections an authenticated learner sees.
 - A site can group its courses into named categories and choose which of those get a section of their own on the dashboard, in the order the site declares. A course with no category, or whose category was not chosen for the dashboard, still shows — it falls back to the **Available courses** section, so nothing drops off the page.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
-- An application-gated course can carry an author-written **application form**. When it does, confirming "Apply now" walks the applicant through it page by page, then through a check-your-answers page, before the application is submitted once. A gated course with no form goes straight from confirmation to a status page.
+- An application-gated course can carry an author-written **application form**. When it does, "Apply now" takes the applicant straight into it, page by page, then through a check-your-answers page, before the application is submitted once. A gated course with no form asks for confirmation and then shows a status page.
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
 - Multi-page forms, quiz feedback (pass/fail, score, optional reveal of incorrect answers), and a course finish page are all built in.
@@ -39,7 +39,7 @@ Each course card shows the course title, its registration status, and a progress
 
 How a site declares its categories and assigns courses to them is covered in [content editing workflow](./content-editing-workflow.md).
 
-When application-gated courses are in use, the authenticated dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in, each linking to its status page. This panel is absent on installations offering only free courses.
+When application-gated courses are in use, the authenticated dashboard also shows an **In-flight applications** panel listing any courses the learner has applied to but not yet been enrolled in. A submitted application reads "Pending review" and links to its status page. An application whose form the learner has not finished reads "Incomplete", says it will not be reviewed until it is finished, and offers a "Continue application" button that resumes the form where they left it. This panel is absent on installations offering only free courses.
 
 The site header shows **Log in** and **Sign up** affordances for anonymous visitors (carrying a `?next=` parameter so the visitor returns to the page they were on after authenticating). These affordances are absent from the header for authenticated users.
 
@@ -127,7 +127,7 @@ The CTA label is action-forward and does not mention login; an anonymous visitor
 When an anonymous visitor clicks an acquisition CTA ("Enrol for free" or "Apply now"), they are sent through the standard full-page login or signup flow via a `?next=` parameter. After authenticating, their intended action completes automatically:
 
 - **"Enrol for free"** — after login or signup, the learner is enrolled and dropped straight into the course content with no additional click.
-- **"Apply now"** — after login or signup, the learner lands on the apply confirmation page, ready to submit. The application is not auto-submitted; applying is a deliberate action.
+- **"Apply now"** — after login or signup, the learner lands on the first page of the course's application form, or on the apply confirmation page when the course has no form. The application is not auto-submitted; it is sent only from the check-your-answers page, or by confirming, so applying is a deliberate action.
 
 This intent is preserved even through the new-user signup path that requires completing additional registration forms. For how the intended destination is preserved through signup, see [Authentication](./authentication.md).
 
@@ -161,7 +161,7 @@ Courses configured as application-gated present an "Apply now" CTA on the course
 
 ![Application-gated course detail page with "Apply now"](screenshots/learner_course_detail_gated.png)
 
-Selecting "Apply now" leads to a confirmation page ("Apply to \<course\>?"); confirming creates the application and shows a status page confirming it has been received and is pending review.
+For a gated course with no application form, selecting "Apply now" leads to a confirmation page ("Apply to \<course\>?"); confirming creates the application and shows a status page confirming it has been received and is pending review.
 
 ![Apply confirmation page](screenshots/learner_apply_confirm.png)
 
@@ -169,7 +169,7 @@ Selecting "Apply now" leads to a confirmation page ("Apply to \<course\>?"); con
 
 Applying is idempotent: a learner who has already applied for a course is taken directly to their existing application's status page rather than creating a duplicate submission.
 
-When the course names an application form, confirming "Apply now" walks the applicant through that form page by page instead of going straight to the status page. Short text, long text, number, multiple-choice, checkbox and file-upload questions are all supported. The applicant can leave partway through and come back later with their answers preserved, then reaches a **check-your-answers page** listing every page's answers with an Edit link back to each one. Submitting from that page is one-way: the application is read-only afterwards. A file-upload question accepts one JPEG, PNG or PDF up to 6 MB, and the applicant can download, replace or remove it at any point before submitting. The handling of uploaded files is described in [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
+When the course names an application form, "Apply now" opens the first page of that form directly, with no confirmation page, and walks the applicant through it page by page. "Previous" and "Next" sit left and right with arrow icons, and the last page's "Next" leads to the check-your-answers page. Short text, long text, number, multiple-choice, checkbox and file-upload questions are all supported. The applicant can leave partway through and come back later with their answers preserved, then reaches a **check-your-answers page** listing every page's answers with an Edit link back to each one. Submitting from that page is one-way: the application is read-only afterwards, and the applicant lands back on the dashboard with a confirmation toast, where the application is listed as "Pending review". A file-upload question accepts one JPEG, PNG or PDF up to 6 MB, and the applicant can download, replace or remove it at any point before submitting. The handling of uploaded files is described in [security and data handling](./security-and-data-handling.md#applicant-uploads-built).
 
 ![Application form page with an attached file, showing Download, Replace and Remove](screenshots/learner_application_form_file_question.png)
 

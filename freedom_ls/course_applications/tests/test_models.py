@@ -102,3 +102,30 @@ class TestCourseApplicationSitting:
 
         with pytest.raises(ProtectedError):
             form.delete()
+
+
+@pytest.mark.django_db
+class TestIsSubmitted:
+    """Draft versus submitted is the sitting's completed_time."""
+
+    def test_an_application_with_no_sitting_is_submitted(self, mock_site_context):
+        assert CourseApplicationFactory().is_submitted is True
+
+    def test_an_open_sitting_is_a_draft(self, mock_site_context):
+        user = UserFactory()
+        form = FormFactory(strategy=FormStrategy.UNSCORED)
+        app = CourseApplicationFactory(
+            user=user, form_progress=FormProgressFactory(user=user, form=form)
+        )
+
+        assert app.is_submitted is False
+
+    def test_a_completed_sitting_is_submitted(self, mock_site_context):
+        user = UserFactory()
+        form = FormFactory(strategy=FormStrategy.UNSCORED)
+        app = CourseApplicationFactory(
+            user=user, form_progress=FormProgressFactory(user=user, form=form)
+        )
+        app.form_progress.complete()
+
+        assert app.is_submitted is True

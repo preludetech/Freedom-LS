@@ -64,6 +64,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
       investigated at the time.
 - [x] (user) Re-run QA §7.1 against the simplified admin
 - [x] (user + cmd) Fix QA bug: application form's page-jump nav re-locks a page the applicant already reached (TDD — failing test first, then fix). Decide first whether the page-accessibility limit should track the furthest page *reached* rather than the furthest page *answered*; the current rule collapses to page 1 whenever an earlier page holds an unanswered optional question.
+- [x] (user + cmd) Fix QA UX: Apply now on a course with a form goes straight to page 1, no confirmation page (TDD)
+- [x] (user + cmd) Fix QA UX: last form page's button reads Next; Previous/Next sit left/right with arrow icons, Next on the right even on page 1
+- [x] (user + cmd) Fix QA UX: empty file picker is a Choose a file button; Replace and Remove sit level (TDD)
+- [x] (user + cmd) Fix QA UX: submitting lands on the dashboard with a success toast instead of the status page (TDD)
+- [x] (user + cmd) Fix QA UX: dashboard marks an unfinished application Incomplete with a Continue application button instead of Pending review (TDD)
 
 ## 10. Product documentation
 

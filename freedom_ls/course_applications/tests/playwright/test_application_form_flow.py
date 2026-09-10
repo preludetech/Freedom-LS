@@ -31,6 +31,7 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     scan = tmp_path / "id-scan.png"
     scan.write_bytes(png_bytes())
 
+    # Apply now is a link straight into the form: nothing to confirm yet.
     logged_in_page.goto(
         reverse_url(
             live_server,
@@ -38,7 +39,6 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
             kwargs={"course_slug": course.slug},
         )
     )
-    logged_in_page.get_by_role("button", name="Submit application").click()
 
     # Page 1: the required name question, then on to the documents page.
     logged_in_page.get_by_label("Your name").fill("Ada Lovelace")
@@ -48,10 +48,12 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     logged_in_page.get_by_label("Upload your ID").set_input_files(str(scan))
     expect(logged_in_page.get_by_text("id-scan.png")).to_be_visible()
 
-    # Leave and come back: the file has to still be attached. The status page is
-    # the "View my application" CTA's destination, and it routes a returning
-    # applicant back into the form.
+    # Leave and come back: the file has to still be attached. The dashboard
+    # says the application is unfinished, and the status page -- the "View my
+    # application" CTA's destination -- routes a returning applicant back into
+    # the form.
     logged_in_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+    expect(logged_in_page.get_by_text("Incomplete")).to_be_visible()
     logged_in_page.goto(
         reverse_url(
             live_server,
@@ -67,7 +69,7 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
 
     logged_in_page.get_by_label("Upload your ID").set_input_files(str(scan))
     expect(logged_in_page.get_by_text("id-scan.png")).to_be_visible()
-    logged_in_page.get_by_role("button", name="Check your answers").click()
+    logged_in_page.get_by_role("button", name="Next").click()
 
     # Edit the first page from the check page, and land straight back on it
     # with the new value showing.
@@ -76,8 +78,15 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     logged_in_page.get_by_role("button", name="Save and return to your answers").click()
     expect(logged_in_page.get_by_text("Grace Hopper")).to_be_visible()
 
+    # Submitting lands on the dashboard, where the application now waits on
+    # a reviewer rather than on the applicant.
     logged_in_page.get_by_role("button", name="Submit application").click()
-    expect(logged_in_page.get_by_text("pending review")).to_be_visible()
+    expect(logged_in_page).to_have_url(
+        reverse_url(live_server, "learner_interface:dashboard")
+    )
+    expect(logged_in_page.get_by_text("has been submitted")).to_be_visible()
+    expect(logged_in_page.get_by_text("Pending review", exact=True)).to_be_visible()
+    expect(logged_in_page.get_by_text("Incomplete")).to_be_hidden()
 
     # A submitted application offers no way back into the answers.
     logged_in_page.goto(
@@ -123,7 +132,6 @@ def test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded(
             kwargs={"course_slug": course.slug},
         )
     )
-    logged_in_page.get_by_role("button", name="Submit application").click()
     logged_in_page.get_by_label("Your name").fill("Ada Lovelace")
     logged_in_page.get_by_role("button", name="Next").click()
 

@@ -8,6 +8,30 @@ to be expressible here.
 aria-live so a screen reader hears the outcome of an attach or a remove, both of
 which happen without a page load.
 {% endcomment %}
+
+{% partialdef file-picker-button %}
+    {% comment %}
+    A label rather than a button: the picker has to be a real file input, and
+    wrapping it is what gives a hidden input a visible, clickable face. The
+    base layer gives labels a bottom margin; mb-0 keeps this one level with the
+    buttons beside it. The focus ring is on the label because the focus lands on
+    the hidden input inside it.
+    {% endcomment %}
+    <label class="btn btn-secondary btn-sm mb-0 cursor-pointer focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
+        {{ picker_label }}<span class="sr-only"> for {{ question.rendered_question }}</span>
+        <input type="file"
+               id="question_{{ question.id }}_file"
+               class="sr-only"
+               name="file"
+               accept="{{ limits.accept }}"
+               hx-post="{% url 'form_engine:question_file_upload' progress_pk=form_progress.pk question_pk=question.pk %}"
+               hx-trigger="change"
+               hx-target="#question-{{ question.id }}-file"
+               hx-swap="outerHTML"
+               x-on:htmx:confirm="checkSize" />
+    </label>
+{% endpartialdef %}
+
 <div id="question-{{ question.id }}-file"
      class="space-y-2"
      aria-live="polite"
@@ -30,29 +54,15 @@ which happen without a page load.
         </p>
 
         <div class="flex flex-wrap items-center gap-3">
-            <a class="inline-flex items-center gap-1 text-sm text-primary underline"
-               href="{% url 'form_engine:own_question_answer_file' file_pk=answer_file.pk %}">
-                <c-icon name="download" class="size-4" />
+            <c-button href="{% url 'form_engine:own_question_answer_file' file_pk=answer_file.pk %}"
+                      variant="ghost" size="small" icon_left="download">
                 Download<span class="sr-only"> {{ question.rendered_question }}</span>
-            </a>
+            </c-button>
 
             {% if not read_only %}
-                {% comment %}
-                A label rather than a button: the picker has to be a real file
-                input, and this is what gives it the affordance of one.
-                {% endcomment %}
-                <label class="btn btn-secondary btn-sm cursor-pointer">
-                    Replace<span class="sr-only"> file for {{ question.rendered_question }}</span>
-                    <input type="file"
-                           class="sr-only"
-                           name="file"
-                           accept="{{ limits.accept }}"
-                           hx-post="{% url 'form_engine:question_file_upload' progress_pk=form_progress.pk question_pk=question.pk %}"
-                           hx-trigger="change"
-                           hx-target="#question-{{ question.id }}-file"
-                           hx-swap="outerHTML"
-                           x-on:htmx:confirm="checkSize" />
-                </label>
+                {% with picker_label="Replace" %}
+                    {% partial file-picker-button %}
+                {% endwith %}
 
                 <c-button variant="secondary"
                           size="small"
@@ -64,16 +74,9 @@ which happen without a page load.
             {% endif %}
         </div>
     {% elif not read_only %}
-        <label class="sr-only" for="question_{{ question.id }}_file">{{ question.rendered_question }}</label>
-        <input type="file"
-               id="question_{{ question.id }}_file"
-               name="file"
-               accept="{{ limits.accept }}"
-               hx-post="{% url 'form_engine:question_file_upload' progress_pk=form_progress.pk question_pk=question.pk %}"
-               hx-trigger="change"
-               hx-target="#question-{{ question.id }}-file"
-               hx-swap="outerHTML"
-               x-on:htmx:confirm="checkSize" />
+        {% with picker_label="Choose a file" %}
+            {% partial file-picker-button %}
+        {% endwith %}
         <p class="text-sm text-muted">JPEG, PNG or PDF, up to {{ limits.max_label }}.</p>
         <p class="text-sm text-error" x-cloak x-show="oversized" x-transition>
             That file is larger than {{ limits.max_label }}. Choose a smaller one.

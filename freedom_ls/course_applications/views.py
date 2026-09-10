@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import cast
 from uuid import UUID
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import prefetch_related_objects
@@ -28,20 +29,46 @@ from freedom_ls.form_engine.paging import (
 from freedom_ls.form_engine.queries import page_questions
 
 
+def _start_application(user: User, course: Course) -> CourseApplication:
+    """The applicant's application to this course, created if they have none.
+
+    A course that names an application form gets a sitting of that form created
+    alongside the application; the sitting is a draft, not a submission.
+    """
+    with transaction.atomic():
+        # get_or_create is race-safe (savepoint + IntegrityError catch +
+        # re-get), so concurrent requests that both pass the existing-application
+        # check still converge on one row.
+        app: CourseApplication
+        app, _ = CourseApplication.objects.get_or_create(user=user, course=course)
+        if course.application_form is not None and app.form_progress is None:
+            app.form_progress = FormProgress.objects.create(
+                user=user, form=course.application_form
+            )
+            app.save(update_fields=["form_progress"])
+    return app
+
+
 @login_required
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Apply entry view.
 
+    A learner who already has an application is sent to its status page.
+
+    A course that names an application form has nothing to confirm here: the
+    application is not sent until the check-your-answers page. So any request,
+    GET included, starts the application and its draft sitting and lands on the
+    first form page. The course detail CTA is a plain link, so GET is the only
+    request that link can make; starting twice converges on the same row.
+
+    A course that names no form keeps the confirmation page, because there
+    creating the application is the submission itself:
     GET: show confirmation page ("Apply to <course>?").
-         If the learner already has an application, redirect to its status page.
     POST: get_or_create the application, then redirect to status page.
 
     NOTE: when application review lands, the POST body will wrap get_or_create in
       an atomic block and call app.submit() (the FSM transition) + create an
       ApplicationStateTransition audit row.
-    A course that names an application form gets a sitting of that form created
-    alongside the application, and the applicant is sent to its first page. A
-    course that names none goes straight to the status page as before.
     """
     course = get_object_or_404(Course, slug=course_slug)
     user = cast(User, request.user)  # login_required guarantees an authenticated User
@@ -61,17 +88,8 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
 
-    if request.method == "POST":
-        with transaction.atomic():
-            # get_or_create is race-safe (savepoint + IntegrityError catch +
-            # re-get), so concurrent POSTs that both pass the pre-check above
-            # still converge on one row.
-            app, _ = CourseApplication.objects.get_or_create(user=user, course=course)
-            if course.application_form is not None and app.form_progress is None:
-                app.form_progress = FormProgress.objects.create(
-                    user=user, form=course.application_form
-                )
-                app.save(update_fields=["form_progress"])
+    if course.application_form is not None or request.method == "POST":
+        app = _start_application(user, course)
         if app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
         return redirect("course_applications:status", pk=app.pk)
@@ -236,7 +254,12 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         unanswered = unanswered_required_in_form(form_progress)
         if not unanswered:
             form_progress.complete()
-            return redirect("course_applications:status", pk=app.pk)
+            messages.success(
+                request,
+                f"Your application for {app.course.title} has been submitted "
+                "and is pending review.",
+            )
+            return redirect("learner_interface:dashboard")
         required_answers_error = unanswered_required_message(unanswered)
     elif request.method == "POST":
         return redirect("course_applications:status", pk=app.pk)

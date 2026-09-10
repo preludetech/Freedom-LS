@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
@@ -378,6 +379,39 @@ class TestApplyStartsTheForm:
         app = CourseApplication.objects.get(user=user, course=course)
         assert response["Location"] == _page_url(app, 1)
 
+    def test_visiting_apply_for_a_course_with_a_form_starts_it(
+        self, client, mock_site_context
+    ):
+        """The course detail CTA is a plain link, so the GET has to be enough:
+        nothing is sent until the check-your-answers page, so there is nothing
+        to confirm first."""
+        course, form = gated_course_with_form()
+        user = UserFactory()
+        client.force_login(user)
+
+        response = client.get(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        app = CourseApplication.objects.get(user=user, course=course)
+        assert app.form_progress.form == form
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_visiting_apply_for_a_course_with_no_form_still_asks_first(
+        self, client, mock_site_context
+    ):
+        """With no form, creating the application is the submission itself, so
+        the confirmation page stays."""
+        course = CourseFactory()
+        client.force_login(UserFactory())
+
+        response = client.get(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert response.status_code == 200
+        assert not CourseApplication.objects.filter(course=course).exists()
+
     def test_applying_to_a_course_with_no_form_still_reaches_the_status_page(
         self, client, mock_site_context
     ):
@@ -719,7 +753,7 @@ class TestCheckYourAnswers:
         app.form_progress.refresh_from_db()
         assert app.form_progress.completed_time is not None
 
-    def test_submitting_redirects_to_the_status_page(self, client, mock_site_context):
+    def test_submitting_lands_on_the_dashboard(self, client, mock_site_context):
         course, form = gated_course_with_form()
         app = _applied(client, course)
         name = _questions_on(form, 1)[0]
@@ -727,9 +761,31 @@ class TestCheckYourAnswers:
 
         response = client.post(_check_url(app))
 
-        assert response["Location"] == reverse(
-            "course_applications:status", kwargs={"pk": app.pk}
-        )
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_submitting_says_so_on_the_dashboard(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        response = client.post(_check_url(app))
+
+        notices = [str(m) for m in get_messages(response.wsgi_request)]
+        assert notices == [
+            f"Your application for {course.title} has been submitted "
+            "and is pending review."
+        ]
+
+    def test_a_blocked_submission_says_nothing_about_success(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.post(_check_url(app))
+
+        assert list(get_messages(response.wsgi_request)) == []
 
     def test_submitting_an_application_records_no_course_attempt(
         self, client, mock_site_context
@@ -783,6 +839,17 @@ class TestApplicationFormPageMarkup:
         body = client.get(_page_url(app, 1)).content.decode()
 
         assert 'aria-label="Application pages"' in body
+
+    def test_the_last_page_still_says_next(self, client, mock_site_context):
+        """The check-your-answers page is one more step, not a different kind
+        of step, so the button that reaches it reads like every other one."""
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        body = client.get(_page_url(app, 2)).content.decode()
+
+        assert "Next" in body
+        assert "Check your answers" not in body
 
     def test_a_submitted_application_says_it_can_no_longer_be_changed(
         self, client, mock_site_context
