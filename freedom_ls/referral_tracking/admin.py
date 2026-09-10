@@ -6,6 +6,7 @@ from django.contrib import admin
 from django.db.models import Model
 from django.http import HttpRequest
 
+from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.referral_tracking.models import FirstTouchCount, SignupAttribution
 from freedom_ls.referral_tracking.resources import (
     FirstTouchCountResource,
@@ -48,6 +49,9 @@ class SignupAttributionAdmin(SiteAwareExportModelAdmin):
         self, request: HttpRequest, obj: SignupAttribution | None = None
     ) -> bool:
         return False
+
+
+USER_ERASURE_CASCADE_MODELS.add(SignupAttribution)
 
 
 @admin.register(FirstTouchCount)

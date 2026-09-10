@@ -54,6 +54,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [x] (user + cmd) Fix QA bug: read-only admin detail pages scroll sideways on a phone when a stored value is one long unbroken string (TDD — failing test first, then fix)
 - [x] (user) Decide whether the read-only audit admins should permit cascade deletion from the User admin — SignupAttribution now blocks it, as LegalConsent already did on main — then either allow the delete or document that user erasure runs outside the admin
+- [x] (user + cmd) Invert the `accounts -> referral_tracking` dependency: write the attribution row from a `user_signed_up` receiver, register `SignupAttribution` with the User admin's erasure-cascade set, and classify `factories.py` as test code in the app-map script
 
 ## 10. Product documentation
 

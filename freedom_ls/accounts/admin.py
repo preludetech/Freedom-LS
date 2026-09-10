@@ -5,13 +5,19 @@ from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationFo
 from django.contrib import admin
 from django.contrib.admin.exceptions import NotRegistered
 from django.contrib.auth.models import Group
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 
-from freedom_ls.referral_tracking.models import SignupAttribution
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 from .models import LegalConsent, SiteSignupPolicy, User
+
+# Admins for these models deny delete on their own pages so nobody can thin
+# out an audit trail row by row. Erasing an account is the one path that must
+# take those rows with it (their FKs to User cascade), so the User admin
+# vouches for them. An app that owns such a model adds it here from its admin
+# module.
+USER_ERASURE_CASCADE_MODELS: set[type[Model]] = {LegalConsent}
 
 # Unregister Django's default Group
 with contextlib.suppress(NotRegistered):
@@ -164,15 +170,8 @@ class UserAdmin(SiteAwareModelAdmin):
         to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
             objs, request
         )
-        # The consent and attribution admins deny delete on their own pages so
-        # nobody can thin out an audit trail row by row. Erasing an account is
-        # the one path that must take those rows with it (both FKs cascade), so
-        # the User admin vouches for them here.
         perms_needed.difference_update(
-            {
-                str(LegalConsent._meta.verbose_name),
-                str(SignupAttribution._meta.verbose_name),
-            }
+            str(model._meta.verbose_name) for model in USER_ERASURE_CASCADE_MODELS
         )
         return to_delete, model_count, perms_needed, protected
 

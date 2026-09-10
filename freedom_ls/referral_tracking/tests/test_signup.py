@@ -1,8 +1,8 @@
 """Tests for the SignupAttribution row written on every signup.
 
 Every test drives the real allauth signup form through `Client()`, the way a
-learner actually reaches `custom_signup()` — there is no direct-call path
-that bypasses the view.
+learner actually reaches the `user_signed_up` receiver — there is no
+direct-call path that bypasses the view.
 """
 
 from __future__ import annotations

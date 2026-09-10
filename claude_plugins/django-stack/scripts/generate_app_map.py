@@ -74,7 +74,7 @@ def find_apps(root: Path) -> list[App]:
 
 def is_test_path(path: Path) -> bool:
     normalised = str(path).replace("\\", "/")
-    if path.name == "conftest.py":
+    if path.name in ("conftest.py", "factories.py"):
         return True
     return any(marker in normalised for marker in TEST_PATH_MARKERS)
 
