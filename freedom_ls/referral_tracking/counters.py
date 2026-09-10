@@ -34,23 +34,34 @@ def increment_first_touch(
     seen yet today folds into the overflow row instead of minting its own,
     so the table's daily row count stays bounded regardless of how many
     distinct campaigns get thrown at it.
+
+    The overflow row exists only once the cap has been reached, so its
+    presence is the cap signal. A novel key is tried against it before the
+    count runs, which keeps a capped-out day — the path anyone can drive
+    with random query strings — to two UPDATEs and no COUNT.
     """
     updated = FirstTouchCount.objects.filter(
         site=site, day=day, key_hash=key_hash
     ).update(count=F("count") + 1)
     if updated:
         return
-    if not is_overflow and (
-        FirstTouchCount.objects.filter(site=site, day=day, is_overflow=False).count()
-        >= config.REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP
-    ):
-        increment_first_touch(
-            site=site,
-            day=day,
-            key_hash=attribution_key_hash(OVERFLOW_SENTINEL),
-            is_overflow=True,
-        )
-        return
+    if not is_overflow:
+        overflow_hash = attribution_key_hash(OVERFLOW_SENTINEL)
+        folded = FirstTouchCount.objects.filter(
+            site=site, day=day, key_hash=overflow_hash
+        ).update(count=F("count") + 1)
+        if folded:
+            return
+        if (
+            FirstTouchCount.objects.filter(
+                site=site, day=day, is_overflow=False
+            ).count()
+            >= config.REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP
+        ):
+            create_or_increment_first_touch(
+                site=site, day=day, key_hash=overflow_hash, is_overflow=True
+            )
+            return
     create_or_increment_first_touch(
         site=site, day=day, key_hash=key_hash, is_overflow=is_overflow, **key_fields
     )

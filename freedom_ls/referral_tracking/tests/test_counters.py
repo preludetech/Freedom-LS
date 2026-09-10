@@ -255,3 +255,30 @@ def test_concurrent_insert_of_the_same_key_recovers_without_raising(
 
     row.refresh_from_db()
     assert row.count == 2
+
+
+@pytest.mark.django_db
+def test_a_novel_key_on_a_capped_out_day_costs_two_queries_and_no_count(
+    mock_site_context, site, settings, django_assert_num_queries
+) -> None:
+    settings.REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP = 1
+    increment_first_touch(
+        site=site,
+        day="2026-01-01",
+        key_hash=_key_hash(utm_source="one"),
+        **_key_fields(utm_source="one"),
+    )
+    increment_first_touch(
+        site=site,
+        day="2026-01-01",
+        key_hash=_key_hash(utm_source="two"),
+        **_key_fields(utm_source="two"),
+    )
+
+    with django_assert_num_queries(2):
+        increment_first_touch(
+            site=site,
+            day="2026-01-01",
+            key_hash=_key_hash(utm_source="three"),
+            **_key_fields(utm_source="three"),
+        )
