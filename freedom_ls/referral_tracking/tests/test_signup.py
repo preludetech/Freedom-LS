@@ -11,6 +11,8 @@ import pytest
 import time_machine
 from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 
+from django.core import mail
+from django.db import DatabaseError
 from django.test import Client
 from django.urls import reverse
 
@@ -156,3 +158,46 @@ def test_signup_and_confirmation_together_leave_exactly_one_row(mock_site_contex
     client.post(_confirm_url_for("onlyone@example.com"), follow=True)
 
     assert SignupAttribution.objects.count() == 1
+
+
+@pytest.fixture
+def failing_attribution_write(mocker):
+    """The SignupAttribution insert raises, as a dropped connection or bad inet would."""
+    mocker.patch.object(
+        SignupAttribution.objects, "create", side_effect=DatabaseError("boom")
+    )
+    return mocker.patch("freedom_ls.referral_tracking.signals.sentry_sdk")
+
+
+def test_a_failed_attribution_write_does_not_fail_the_signup(
+    mock_site_context, failing_attribution_write
+):
+    response = Client().post(
+        reverse("account_signup"), _signup_payload("survives@example.com")
+    )
+
+    assert response.status_code == 302
+
+
+def test_a_failed_attribution_write_still_sends_the_verification_mail(
+    mock_site_context, failing_attribution_write
+):
+    Client().post(reverse("account_signup"), _signup_payload("mailed@example.com"))
+
+    assert len(mail.outbox) == 1
+
+
+def test_a_failed_attribution_write_leaves_no_row(
+    mock_site_context, failing_attribution_write
+):
+    Client().post(reverse("account_signup"), _signup_payload("norow@example.com"))
+
+    assert not SignupAttribution.objects.exists()
+
+
+def test_a_failed_attribution_write_is_reported_to_sentry(
+    mock_site_context, failing_attribution_write
+):
+    Client().post(reverse("account_signup"), _signup_payload("sentry@example.com"))
+
+    failing_attribution_write.capture_exception.assert_called_once()
