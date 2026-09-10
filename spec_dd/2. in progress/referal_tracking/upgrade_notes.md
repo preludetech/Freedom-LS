@@ -4,7 +4,7 @@ requires_template_review: false
 changed_template_paths: []
 requires_settings_change: true
 changed_settings:
-  - INSTALLED_APPS                          # hard: add "freedom_ls.referral_tracking" or freedom_ls.accounts fails to import at boot; add "import_export" after "unfold.contrib.import_export" or the changelists fail to render
+  - INSTALLED_APPS                          # hard: add "import_export" after "unfold.contrib.import_export" or the changelists fail to render; add "freedom_ls.referral_tracking" or the feature is silently absent
   - MIDDLEWARE                              # hard: add AttributionCaptureMiddleware or no cookie is minted and every signup records as direct
   - REFERRAL_TRACKING_COOKIE_NAME           # optional: defaults to "fls_attribution"
   - REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS   # optional: defaults to 90
@@ -23,22 +23,18 @@ requires_tailwind_rebuild: false
 A new app, `freedom_ls.referral_tracking`, records where each signup came from. A middleware
 sets a signed, first-party, `HttpOnly` cookie on a visitor's first landing that carries
 `advert_code`, a `utm_*` parameter or an ad-network click id, and tallies that first touch per
-site per day. The signup form then writes one read-only `SignupAttribution` row per new user
-from the cookie plus the signup request's `_ga` / `_fbp` / `_fbc` cookies, client IP and user
-agent. Two read-only admin changelists with a CSV export are the whole interface. The export runs on
-`django-import-export`, which is new to FLS.
+site per day. A receiver on allauth's `user_signed_up` signal then writes one read-only
+`SignupAttribution` row per new user from the cookie plus the signup request's `_ga` / `_fbp` /
+`_fbc` cookies, client IP and user agent. Two read-only admin changelists with a CSV export are the
+whole interface. The export runs on `django-import-export`, which is new to FLS.
 
-Nothing is wired up until you add the app and the middleware. No system check enforces either,
-so the failure modes below are the only warning you get.
+Nothing is wired up until you add the app and the middleware, and no system check enforces either,
+so the failure modes below are the only warning you get. `freedom_ls.accounts` does not import the
+new app, so a project that leaves it out of `INSTALLED_APPS` still boots and simply records
+nothing. The dependency runs the other way: the app's admin and its signal receiver import
+`freedom_ls.accounts`, so the app cannot be installed without it.
 
 ## Breaking changes
-
-### `freedom_ls.accounts` now imports from `freedom_ls.referral_tracking`
-
-Both `freedom_ls/accounts/admin.py` and `freedom_ls/accounts/forms.py` import the new app at
-module level. With `freedom_ls.accounts` installed and the new app absent from
-`INSTALLED_APPS`, Django raises `RuntimeError` on the model import and the project does not
-boot. Add the app before you deploy; see "Manual steps".
 
 ### Deleting a user from the admin now succeeds, and erases their audit rows
 
