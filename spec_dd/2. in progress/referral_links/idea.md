@@ -15,8 +15,8 @@ brought a thousand visitors and no signups looks exactly like a code nobody ever
 ## What we are building
 
 A `ReferralCode`. A short code a builder creates in the admin, with a destination on the same site.
-Two routes resolve it, `/go/{code}` and `/d/{CODE}`, and both 302 to that destination. Every access
-writes a `ReferralCodeHit` with a timestamp.
+Two routes resolve it, `/go/{code}` and `/d/{CODE}`, and both 302 to that destination, or to a
+separate one once the code is deactivated. Every access writes a `ReferralCodeHit` with a timestamp.
 
 A referral code is not an advert code. It names a source of traffic, meaning a person's website, a
 printed board, a business card, rather than a campaign. A code may well appear inside an advert, and
@@ -143,13 +143,32 @@ retention tooling in the app; `SignupAttribution` has none and this does not add
 
 ## Retiring a code
 
-An inactive code still redirects, to a configured fallback destination, and still logs its hits. It
-does not 404.
+An inactive code still redirects and still logs its hits. It does not 404.
 
 Printed material cannot be recalled. A poster from eighteen months ago is still on a wall, and the
 person scanning it did the work. A dead end is the worst available outcome and the one every source
 argues against. Keeping the hit log running on a retired code is also how anyone finds out that a
 print run everyone believed was pulped is still pulling traffic.
+
+**Each code has two destinations.** The destination is where it sends visitors while it is active.
+The inactive destination is where it sends them once it is deactivated, and it is optional. A code
+with no inactive destination uses the default, `REFERRAL_TRACKING_INACTIVE_DESTINATION`, which is
+`/` unless the host project sets it. So every retired code can land on the home page while one
+affiliate's code, once the affiliate deal ends, goes to the course they were promoting.
+
+The inactive destination and the default follow the same rule as the destination. Each is a path on
+the site, never a URL. That is also why the default can live in Django settings rather than on a
+model. One path serves every site, each on its own host.
+
+The second field exists so that retiring a code never means editing its destination. The entry keeps
+a record of where the code pointed while it was live, and reactivating it sends traffic back there
+without anyone having to remember what it was. It is also what makes bulk deactivation work. The
+action flips one flag across fifty codes, and each one lands wherever its own inactive destination,
+or the default, says.
+
+The inactive redirect appends `ref` and passes the visitor's query string through, exactly as the
+active one does. The poster brought the visitor whether or not the campaign is over, and a retired
+code turning up in `SignupAttribution` is the evidence that old material still works.
 
 404 is reserved for a code that never existed.
 
@@ -172,7 +191,9 @@ back later to ask whether anyone used it, and retire it at the end. Two things f
 the prefix plus the code by hand is a transcription error waiting to be printed onto something.
 Alongside it, the resolved destination including the appended `ref`, which is the string a partner's
 own analytics will record. That is the one thing a builder cannot otherwise see before it is
-committed to paper.
+committed to paper. The form also shows where the code will go once it is deactivated, resolved
+through to the default when the code's own inactive destination is blank. A blank field gives no
+other hint that retiring the code sends people to the home page.
 
 **Every entry gets a label and notes.** `/d/P5H2B3C8` tells nobody anything eighteen months later,
 and the code is opaque by design. The label is what makes the changelist readable, and the notes are
@@ -222,6 +243,8 @@ and adds no edge to the app's dependency graph.
 | `ReferralCode` | coined | The configured code, its destination and its counter. Supersedes the "referrer code" `referral_tracking` deferred, which was to live on `Organisation`. |
 | `ReferralCodeHit` | coined | One access of a `ReferralCode`. Holds no personal data. |
 | `referral_code` | coined | The column on `SignupAttribution` and `FirstTouchCount` holding the code text a first touch carried. Seventh value of the attribution key. |
+| inactive destination | coined | Where a deactivated `ReferralCode` redirects. Optional on the code. When blank, `REFERRAL_TRACKING_INACTIVE_DESTINATION` applies. |
+| `REFERRAL_TRACKING_INACTIVE_DESTINATION` | coined | The default inactive destination for every code on every site. A path, `/` by default. |
 | door | coined | Which of the two prefixes a hit arrived through. Only used to tell a probable scan from a probable click. |
 | `advert_code` | narrowed | `referral_tracking`'s existing parameter and field. Unchanged here, and independent of a referral code. |
 
