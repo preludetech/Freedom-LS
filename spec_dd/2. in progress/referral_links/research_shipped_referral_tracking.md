@@ -112,10 +112,11 @@ it, which is the property the idea wants ("share a value rather than a row").
   different home. The done directory's `research_referral_codes.md` still argues for the
   `Organisation` FK and the reasons it gives (stable code text, no reuse of `slug`, forbid
   reassignment) survive; only the FK does not.
-- **`referral-link-tracker` in `docs/app_conventions.md`** is a planned extractable app that may
-  not depend on `site_aware_models`. Spec §4 decided `referral_tracking` is not that app. Codes
-  unique per `Site` cannot be that app either, so this work is not it. The convention doc's entry
-  remains unreconciled with both features.
+- **`referral-link-tracker` in `docs/app_conventions.md`** is this feature, listed there as a
+  planned extractable app that may not depend on `site_aware_models`. Spec §4 decided
+  `referral_tracking` is an ordinary site-aware app and left the doc's entry alone. Building the
+  tracker inside `referral_tracking` means it is not extractable either, so the entry has to come
+  off the extractable list when this ships.
 - **Retention.** No retention period ships for `SignupAttribution`; kept until the `User` cascade.
   A pruning command for hits would be the first retention tooling in the app.
 

@@ -23,13 +23,15 @@ printed board, a business card, rather than a campaign. A code may well appear i
 when it does the advert's own `advert_code` and UTM values ride alongside it and behave exactly as
 they already do. The two are independent and compose.
 
-This work extends `freedom_ls/referral_tracking`, which is on `main`. That app owns the vocabulary,
-the settings pattern and the admin conventions this needs a smaller version of, and the alternative
-adds a third app's worth of scaffolding for one model and a view. The app has no routes or views
-today, so these are its first. It is not the extractable `referral-link-tracker` that
-`docs/app_conventions.md` still names as planned: codes are unique per `Site`, and an extractable app
-may not depend on `site_aware_models`. `research_shipped_referral_tracking.md` describes the app as
-it stands and every seam this work touches; the other research files predate it and describe its
+This is the referral link tracker that `docs/app_conventions.md` lists as a planned extractable
+app. It ships inside `freedom_ls/referral_tracking`, which is on `main`, rather than as its own
+package. Codes are unique per `Site`, and the cookie, the tally and the attribution row a code has
+to reach all live in that app, so an extractable version would either have no site to key on or
+would import from the host, which an extracted package cannot do. That app also owns the
+vocabulary, the settings pattern and the admin conventions this needs a smaller version of, and it
+has no routes or views today, so these are its first. The conventions doc's extractable list drops
+`referral-link-tracker` when this ships. `research_shipped_referral_tracking.md` describes the app
+as it stands and every seam this work touches. The other research files predate it and describe its
 spec.
 
 ## The two routes
