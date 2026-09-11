@@ -23,10 +23,14 @@ printed board, a business card, rather than a campaign. A code may well appear i
 when it does the advert's own `advert_code` and UTM values ride alongside it and behave exactly as
 they already do. The two are independent and compose.
 
-This work assumes `referral_tracking` has shipped. It extends that app rather than starting a new
-one. That app already owns the vocabulary, the settings pattern and the admin conventions this needs
-a smaller version of, and the alternative adds a third app's worth of scaffolding for one model and
-a view.
+This work extends `freedom_ls/referral_tracking`, which is on `main`. That app owns the vocabulary,
+the settings pattern and the admin conventions this needs a smaller version of, and the alternative
+adds a third app's worth of scaffolding for one model and a view. The app has no routes or views
+today, so these are its first. It is not the extractable `referral-link-tracker` that
+`docs/app_conventions.md` still names as planned: codes are unique per `Site`, and an extractable app
+may not depend on `site_aware_models`. `research_shipped_referral_tracking.md` describes the app as
+it stands and every seam this work touches; the other research files predate it and describe its
+spec.
 
 ## The two routes
 
@@ -59,48 +63,64 @@ The URL patterns carry no trailing slash. `/go/mrbeast` is the form that gets pr
 and registering the pattern with a slash would make Django issue its own redirect first, an extra
 round trip before the hit is ever logged.
 
+The destination is a path on the site, not a URL. Capture only mints on FLS's own hosts, so an
+off-site destination would produce a code that appears to work while recording nothing, and a path
+makes that impossible to type rather than a validation error to catch.
+
 ## How a hit reaches attribution
 
 The redirect appends `ref={code}` to the destination and passes through everything the visitor
-arrived carrying, untouched. `ref` is the parameter name `referral_tracking` already reserved.
-Anything already on the configured destination stays, the visitor's own query string stays, and
-`ref` is added.
+arrived carrying, untouched. `ref` is the parameter name `referral_tracking` reserved for this
+work. Anything already on the configured destination stays, the visitor's own query string stays,
+and `ref` is added.
 
 The value appended is the code as stored on the entry, not as it was typed in the URL. Otherwise
 `ref=MrBeast` and `ref=mrbeast` become two rows describing one code.
 
-`referral_tracking` gains `ref` in its tracked parameters, a `referral_code` field on
-`SignupAttribution`, and `ref` in the attribution key `FirstTouchCount` counts. Without that last
-one the tally cannot be sliced by referral code, and the only denominator left is the raw hit count,
-which counts machines as well as people.
+`ref` joins the tracked parameters, so a landing carrying it mints the attribution cookie like any
+other tracked landing, and it joins the attribution key as a seventh value. `SignupAttribution` and
+`FirstTouchCount` each gain a `referral_code` column, and it appears on both changelists and in
+both exports. The column holds the code text, never a foreign key: attribution rows are written
+once and copied from the cookie, and a code is never reused, so the text identifies the entry for
+as long as either table exists. Without the key change the tally cannot be sliced by referral code,
+and the only denominator left is the raw hit count, which counts machines as well as people.
 
-**Capture must be suppressed on the two redirect routes themselves.** A visitor arriving at
-`/go/mrbeast?utm_source=twitter` carries a tracked parameter, so the capture middleware would
-otherwise mint its cookie from the redirect request. That freezes a first touch whose landing path
-is `/go/mrbeast` and which never sees the `ref` the redirect is about to append. The mint has to
-happen at the destination, where the referral code and the campaign values are present together.
+Anyone can type `?ref=anything` onto any URL by hand. It is captured as free text, the way
+`advert_code` is, and matches no entry. That is a typo in a column, visible, and not worth a query
+on the mint path to prevent.
 
-The destination must be on the current site's own host. Capture only runs on FLS's own hosts, so an
-off-site destination produces a code that appears to work while recording nothing. Rejecting it when
-the builder saves turns a silent failure into a visible one.
+**A referral code reaches attribution only as a first touch.** The shipped design freezes the
+cookie on the first tracked landing and never overwrites it. A visitor who already holds the cookie
+and later follows `/go/mrbeast` is passed straight through: the hit is logged, and the code reaches
+neither the tally nor the eventual `SignupAttribution` row. "How many signups carried this code"
+means how many signups whose first tracked touch carried it.
+
+**Capture must be suppressed on the two redirect routes themselves.** The middleware mints on the
+response to any GET carrying a tracked parameter, whatever the status code, so a visitor arriving at
+`/go/mrbeast?utm_source=twitter` would otherwise be minted from the redirect: a first touch whose
+landing path is `/go/mrbeast` and which never sees the `ref` the redirect is about to append. The
+mint has to happen at the destination, where the referral code and the campaign values are present
+together. The suppression is by route, not by status code. A tracked landing on a page that itself
+redirects to login is a real landing and is counted today.
 
 ## What a hit row holds
 
 The timestamp, which code, which door, and whether the request looked like a machine. Nothing else.
 No IP address, no user agent, no `Referer`.
 
-That is a deliberate reading of the position `referral_tracking` already took. It keeps no
-per-visitor landing records because a row about someone who never signed up is data on a person who
-never saw a privacy notice and has no account against which to hang a deletion request. A hit log is
-structurally the same thing, and the way to stay consistent with that position without giving up the
-count is to hold nothing that describes the visitor. What survives is a row about the code, which is
-not personal data at all.
+That is a deliberate reading of the position `referral_tracking` already took. It writes nothing
+per visitor at landing, only the day's tally, because a row about someone who never signed up is
+data on a person who never saw a privacy notice and has no account against which to hang a deletion
+request. A hit log is structurally the same thing, and the way to stay consistent with that position
+without giving up the count is to hold nothing that describes the visitor. What survives is a row
+about the code, which is not personal data at all.
 
 The machine-fetch verdict is decided when the hit is written, from the user agent and the
 `Sec-Purpose` header, and only the verdict is kept. This costs the ability to reclassify old hits
 when a better bot list comes along. That is the price of not retaining the user agent, and it is
 worth paying. The raw string is a fingerprinting field on an anonymous visitor, and the verdict is
-all anyone reads.
+all anyone reads. The verdict is on hits only. `FirstTouchCount` stays unfiltered, as the product
+page says it is, which is one more reason the two counts for one code will differ.
 
 A maintained counter on the entry sits alongside the log, incremented atomically, so the changelist
 reads one integer instead of aggregating a growing table on every page load. The log is the source
@@ -109,13 +129,15 @@ of truth if the two ever disagree.
 **A hit count is an upper bound on human use, not an estimate of it.** Link-preview fetchers, mail
 security scanners and crawlers all follow redirects with nobody behind them, and no server-side
 signal reliably separates them from a phone camera. The machine-fetch flag removes the ones that
-identify themselves and misses the ones that imitate a browser. The admin says this plainly rather
-than presenting the number as a scan count. `research_qr_codes.md` and `research_hit_logging.md`
-cover which signals exist and how far each gets.
+identify themselves and misses the ones that imitate a browser. The admin says this plainly, in the
+same place `FirstTouchCount` already says it about its own count, rather than presenting the number
+as a scan count. `research_qr_codes.md` and `research_hit_logging.md` cover which signals exist and
+how far each gets.
 
 Hits accumulate indefinitely. A management command prunes rows older than a given age so an operator
 can bound the table on their own schedule, and the counter is never pruned, so historical totals
-survive the pruning. FLS documents that the table grows and whose decision it is.
+survive the pruning. FLS documents that the table grows and whose decision it is. This is the first
+retention tooling in the app; `SignupAttribution` has none and this does not add any.
 
 ## Retiring a code
 
@@ -136,6 +158,10 @@ stale material aimed at the first one, and its hit log would be a blend of two c
 
 No dashboard, no partner-facing view. The changelist is the product, so the columns and filters are
 the design.
+
+`ReferralCode` is the app's first writable admin; the two it ships with are read-only. Hits get the
+read-only treatment those two already have, and the CSV export that comes with the app's admin base,
+so "when did the June flyer's traffic arrive" is an export rather than a feature.
 
 The builder's real work is to create a code, hand the finished URL to a partner or a designer, come
 back later to ask whether anyone used it, and retire it at the end. Two things follow.
@@ -167,9 +193,10 @@ here, so it waits.
 refreshing or fifty people, and there is no way to tell.
 
 **How many of this code's hits became signups.** The hit log and `SignupAttribution` are two
-counting systems that share a value rather than a row. "How many signups carried this code" is
-answerable exactly, and that is the useful question. "What fraction of this code's hits converted"
-divides a signup count by a number that includes machines, so it is a floor rather than a rate.
+counting systems that share a value rather than a row. "How many signups carried this code as their
+first touch" is answerable exactly, and that is the useful question. "What fraction of this code's
+hits converted" divides a signup count by a number that includes machines and repeat visitors, so
+it is a floor rather than a rate.
 
 **Anything about the visitor.** Where they came from, what device they used, where they are, whether
 this is their second visit. A hit says a code was used and when, and nothing more.
@@ -182,9 +209,9 @@ opinion about error-correction level.
 
 **Any link to `Organisation`.** An affiliate is usually a person, and making someone create an
 organisation before they can be issued a code is a heavy act for no gain. The label says who the
-code is for. This supersedes `referral_tracking`'s deferred plan to hang referrer codes off
-`Organisation`, because the code lives on the entry, which is a lighter home and the only one that
-works for an individual.
+code is for. This closes the "partner referral codes" item `referral_tracking` deferred and its
+product page lists as not built, with a lighter home than the `Organisation` field that plan named,
+and adds no edge to the app's dependency graph.
 
 ## Terminology
 
@@ -192,11 +219,15 @@ works for an individual.
 | --- | --- | --- |
 | `ReferralCode` | coined | The configured code, its destination and its counter. Supersedes the "referrer code" `referral_tracking` deferred, which was to live on `Organisation`. |
 | `ReferralCodeHit` | coined | One access of a `ReferralCode`. Holds no personal data. |
+| `referral_code` | coined | The column on `SignupAttribution` and `FirstTouchCount` holding the code text a first touch carried. Seventh value of the attribution key. |
 | door | coined | Which of the two prefixes a hit arrived through. Only used to tell a probable scan from a probable click. |
 | `advert_code` | narrowed | `referral_tracking`'s existing parameter and field. Unchanged here, and independent of a referral code. |
 
 ## Research
 
+- `research_shipped_referral_tracking.md` describes `referral_tracking` as it is on `main`: the
+  seams `ref` passes through, what the middleware does and when, the admin bases now in force, and
+  the deferred items this closes. Read it first. The files below were written against the spec.
 - `research_short_link_design.md` covers reference implementations, code alphabets, reserved words,
   why 302 rather than 301, and the open-redirect risk profile when the destination is builder-typed.
 - `research_qr_codes.md` covers encoding modes and the cost of a lowercase character, dynamic-QR
