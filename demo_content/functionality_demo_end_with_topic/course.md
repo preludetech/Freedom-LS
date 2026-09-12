@@ -1,9 +1,9 @@
 ---
 categories:
-  - start-here
-  - assessment
+  - start-here-demo
+  - assessment-demo
 content_type: COURSE
-dashboard_category: start-here
+dashboard_category: start-here-demo
 description: This will show you how all the different goodies show up.
 subtitle: A tour of the content system
 title: Functionality Demo - show end with Topic

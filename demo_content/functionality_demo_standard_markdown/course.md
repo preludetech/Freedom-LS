@@ -1,6 +1,6 @@
 ---
 categories:
-  - start-here
+  - start-here-demo
 content_type: COURSE
 description: This will show how all the Standard Markdown goodies show up.
 difficulty: beginner

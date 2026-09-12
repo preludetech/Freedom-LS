@@ -1,15 +1,15 @@
 ---
 content_type: COURSE_CATEGORIES
 categories:
-  - slug: start-here
+  - slug: start-here-demo
     title: Start here
     description: New to the platform? Begin with these.
     uuid: 9d099094-0a82-475c-98d5-e576e3b52dbe
-  - slug: assessment
+  - slug: assessment-demo
     title: Assessment
     description: Courses that end in a graded quiz.
     uuid: 6e08fab1-0206-49da-ab0c-afb95c24910f
-  - slug: reference
+  - slug: reference-demo
     title: Reference
     description: Reference material, listed in the catch-all rather than its own section.
     show_on_dashboard: false

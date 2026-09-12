@@ -1,6 +1,6 @@
 ---
 categories:
-  - assessment
+  - assessment-demo
 content_type: COURSE
 description: This will show you how all the different goodies show up.
 subtitle: A tour of the content system
