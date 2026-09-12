@@ -147,6 +147,11 @@ class FormQuestion(BaseContent):
         choices=QuestionType.choices,
     )
     required = models.BooleanField(default=True)
+    # Holds an ISO date, an HH:MM time, or a plain number depending on
+    # `type`, and renders straight into the matching HTML attribute. Both
+    # bounds are inclusive, matching what the HTML attributes themselves mean.
+    min = models.CharField(max_length=20, blank=True, default="")
+    max = models.CharField(max_length=20, blank=True, default="")
 
     def rendered_question(self):
         # No request: cotton components embedded in question markdown render

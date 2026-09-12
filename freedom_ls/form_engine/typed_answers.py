@@ -37,7 +37,7 @@ class RejectedAnswer:
     message: str  # what to tell them, naming the format and the value
 
 
-def _parsed_date(text: str) -> date | None:
+def parsed_date(text: str) -> date | None:
     """`text` as a date, or None when it does not parse.
 
     `dateparse.parse_date` returns None for a malformed string like "banana"
@@ -51,15 +51,15 @@ def _parsed_date(text: str) -> date | None:
         return None
 
 
-def _parsed_time(text: str) -> time | None:
-    """`text` as a time, or None when it does not parse. See `_parsed_date`."""
+def parsed_time(text: str) -> time | None:
+    """`text` as a time, or None when it does not parse. See `parsed_date`."""
     try:
         return parse_time(text)
     except ValueError:
         return None
 
 
-def _parsed_number(text: str) -> int | None:
+def parsed_number(text: str) -> int | None:
     """`text` as an integer, or None when it does not parse."""
     try:
         return int(text)
@@ -91,13 +91,9 @@ def _bounds_error[T: (date, time, int)](
     Bounds are compared against the parsed value, never the raw string. A
     bound this module cannot parse is ignored rather than failing closed,
     matching what a browser does with an unparseable `min`/`max` attribute.
-
-    `min`/`max` land on `FormQuestion` in a later change; `getattr` with a
-    blank default means this still works, as if no bound had been set, for
-    however long that stays true.
     """
-    min_text: str = getattr(question, "min", "")
-    max_text: str = getattr(question, "max", "")
+    min_text: str = question.min
+    max_text: str = question.max
     min_value = parse(min_text) if min_text else None
     if min_value is not None and value < min_value:
         return f'You entered "{text}". Enter a {label} on or after {min_text}.'
@@ -110,22 +106,22 @@ def _bounds_error[T: (date, time, int)](
 def answer_error(question: FormQuestion, text: str) -> str | None:
     """Why `text` is not a valid answer to `question`, or None when it is."""
     if question.type == QuestionType.DATE:
-        date_value = _parsed_date(text)
+        date_value = parsed_date(text)
         if date_value is None:
             return f'You entered "{text}". Enter a date in the format YYYY-MM-DD.'
-        return _bounds_error(question, text, date_value, _parsed_date, "date")
+        return _bounds_error(question, text, date_value, parsed_date, "date")
 
     if question.type == QuestionType.TIME:
-        time_value = _parsed_time(text)
+        time_value = parsed_time(text)
         if time_value is None:
             return f'You entered "{text}". Enter a time in the format HH:MM.'
-        return _bounds_error(question, text, time_value, _parsed_time, "time")
+        return _bounds_error(question, text, time_value, parsed_time, "time")
 
     if question.type == QuestionType.NUMBER:
-        number_value = _parsed_number(text)
+        number_value = parsed_number(text)
         if number_value is None:
             return f'You entered "{text}". Enter a whole number.'
-        return _bounds_error(question, text, number_value, _parsed_number, "number")
+        return _bounds_error(question, text, number_value, parsed_number, "number")
 
     if question.type == QuestionType.EMAIL:
         try:
@@ -154,11 +150,11 @@ def format_answer(question_type: str, text: str) -> str:
     afterwards, still has to render as something.
     """
     if question_type == QuestionType.DATE:
-        date_value = _parsed_date(text)
+        date_value = parsed_date(text)
         return formats.date_format(date_value) if date_value is not None else text
 
     if question_type == QuestionType.TIME:
-        time_value = _parsed_time(text)
+        time_value = parsed_time(text)
         return formats.time_format(time_value) if time_value is not None else text
 
     return text
