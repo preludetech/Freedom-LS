@@ -224,6 +224,38 @@ def test_referral_code_add_with_case_only_duplicate_is_a_form_error(
 
 
 @pytest.mark.django_db
+def test_referral_code_add_with_case_only_duplicate_reports_a_duplicate_code_error(
+    superuser_client, mock_site_context
+):
+    ReferralCodeFactory(code="MrBeast")
+
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcode_add"),
+        _referral_code_add_payload(code="mrbeast"),
+    )
+
+    errors = response.context["adminform"].form.errors
+    assert "code" in errors
+    assert "constraint" not in errors["code"][0].lower()
+
+
+@pytest.mark.django_db
+def test_referral_code_add_with_exact_duplicate_reports_a_duplicate_code_error(
+    superuser_client, mock_site_context
+):
+    ReferralCodeFactory(code="MrBeast")
+
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcode_add"),
+        _referral_code_add_payload(code="MrBeast"),
+    )
+
+    errors = response.context["adminform"].form.errors
+    assert "code" in errors
+    assert "constraint" not in errors["code"][0].lower()
+
+
+@pytest.mark.django_db
 def test_referral_code_change_form_does_not_render_code_as_an_input(
     superuser_client, mock_site_context
 ):
