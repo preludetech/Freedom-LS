@@ -52,7 +52,7 @@ def record_hit(referral_code: ReferralCode, door: Door, request: HttpRequest) ->
     try:
         with transaction.atomic():
             ReferralCodeHit._base_manager.create(
-                site=referral_code.site,
+                site_id=referral_code.site_id,
                 referral_code=referral_code,
                 door=door,
                 is_machine_fetch=machine_fetch,

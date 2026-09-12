@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from django.db import DatabaseError
+from django.db import DatabaseError, connection
 from django.test import RequestFactory
+from django.test.utils import CaptureQueriesContext
 
+from freedom_ls.referral_tracking.codes import lookup_referral_code
 from freedom_ls.referral_tracking.factories import ReferralCodeFactory
 from freedom_ls.referral_tracking.hits import (
     NAMED_FETCHERS,
@@ -137,3 +139,22 @@ def test_a_database_error_is_reported_and_swallowed(mock_site_context, mocker) -
 
     sentry.capture_exception.assert_called_once()
     assert not ReferralCodeHit.objects.exists()
+
+
+@pytest.mark.django_db
+def test_recording_a_hit_does_not_re_fetch_the_site(mock_site_context) -> None:
+    """The hit row takes the code's site id rather than dereferencing the FK.
+
+    `lookup_referral_code` builds its queryset without `select_related`, so
+    reading `referral_code.site` costs a query on every single redirect.
+    """
+    ReferralCodeFactory(code="mrbeast")
+    # Through the lookup the view uses, not the factory instance: only a
+    # freshly fetched row has an empty relation cache to fall into.
+    referral_code = lookup_referral_code(mock_site_context, "mrbeast")
+    request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
+
+    with CaptureQueriesContext(connection) as queries:
+        record_hit(referral_code, Door.GO, request)
+
+    assert not [q for q in queries.captured_queries if "django_site" in q["sql"]]
