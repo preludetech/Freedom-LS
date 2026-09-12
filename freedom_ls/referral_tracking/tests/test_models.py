@@ -91,3 +91,10 @@ def test_deleting_a_referral_code_with_hits_raises(mock_site_context) -> None:
 
     with pytest.raises(ProtectedError):
         hit.referral_code.delete()
+
+
+@pytest.mark.django_db
+def test_referral_code_hit_str_names_the_code_not_its_id(mock_site_context) -> None:
+    hit = ReferralCodeHitFactory(referral_code=ReferralCodeFactory(code="mrbeast"))
+
+    assert str(hit).startswith("mrbeast via")

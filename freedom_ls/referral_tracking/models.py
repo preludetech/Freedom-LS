@@ -244,4 +244,4 @@ class ReferralCodeHit(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
-        return f"{self.referral_code_id} via {self.door} at {self.hit_at:%Y-%m-%d}"
+        return f"{self.referral_code.code} via {self.door} at {self.hit_at:%Y-%m-%d}"
