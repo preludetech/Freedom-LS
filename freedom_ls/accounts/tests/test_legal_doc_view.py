@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import pytest
 
 from django.test import Client
 from django.urls import reverse
+
+from freedom_ls.icons.loader import _cache
 
 _TERMS = """---
 version: "1.0"
@@ -41,6 +45,19 @@ def with_terms(mock_legal_blobs, mock_site_context):
     return mock_legal_blobs
 
 
+@pytest.fixture
+def cold_icon_cache() -> Iterator[None]:
+    """Empty the icon loader's cache around the test.
+
+    The loader reads its JSON from ``BASE_DIR/node_modules`` once and memoises
+    it, so a page only re-reads that path when the cache is cold. Emptying it
+    makes the read happen here rather than depending on which tests ran first.
+    """
+    _cache.clear()
+    yield
+    _cache.clear()
+
+
 @pytest.mark.django_db
 def test_unknown_doc_type_returns_404(mock_site_context):
     client = Client()
@@ -53,6 +70,21 @@ def test_unknown_doc_type_returns_404(mock_site_context):
 @pytest.mark.django_db
 def test_missing_doc_returns_404(mock_site_context, mock_legal_blobs):
     # No blobs registered → lookup raises FileNotFoundError → view returns 404.
+    client = Client()
+    response = client.get(reverse("accounts:legal_doc", kwargs={"doc_type": "terms"}))
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_missing_doc_returns_404_with_a_cold_icon_cache(
+    mock_site_context, mock_legal_blobs, cold_icon_cache
+):
+    """The stubbed BASE_DIR must still reach the real node_modules.
+
+    `mock_legal_blobs` repoints BASE_DIR at a tmp dir so the legal-doc loader
+    reads fixture blobs. The icon loader reads that same setting, and the 404
+    page it renders carries icons, so they have to resolve under the stub too.
+    """
     client = Client()
     response = client.get(reverse("accounts:legal_doc", kwargs={"doc_type": "terms"}))
     assert response.status_code == 404
