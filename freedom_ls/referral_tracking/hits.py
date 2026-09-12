@@ -94,12 +94,20 @@ def is_hit_log_throttled(referral_code: ReferralCode, request: HttpRequest) -> b
         f"referral-hit:{referral_code.site_id}:{referral_code.pk}"
         f":{_client_fingerprint(ip)}:{bucket}"
     )
-    if cache.add(key, 1, window * 2):
-        return False
     try:
+        if cache.add(key, 1, window * 2):
+            return False
         count = cache.incr(key)
     except ValueError:
         # The bucket expired between the add and the incr.
+        return False
+    except Exception as exc:
+        # The cache backend is the deployment's own choice, so what it can
+        # raise is open-ended — a connection error from Redis, say. These
+        # routes are public and must keep redirecting, and a logged hit is
+        # worth more than an enforced cap, so a broken cache costs the cap
+        # rather than the link. Reported rather than swallowed.
+        sentry_sdk.capture_exception(exc)
         return False
     return bool(count > limit)
 

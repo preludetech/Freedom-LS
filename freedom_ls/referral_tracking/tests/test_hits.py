@@ -230,3 +230,25 @@ def test_the_throttle_key_does_not_hold_the_client_address(mock_site_context) ->
 
     assert cache._cache
     assert not [key for key in cache._cache if "203.0.113.7" in key]
+
+
+@pytest.mark.django_db
+def test_a_broken_cache_leaves_the_hit_logged(mock_site_context, mocker) -> None:
+    """A cache outage must not cost the redirect or the hit.
+
+    The counter lives in whichever cache the deployment configures, so the
+    failures it can raise are open-ended — these routes are public and the
+    cap is worth less than the link.
+    """
+    mocker.patch(
+        "freedom_ls.referral_tracking.hits.cache.add",
+        side_effect=ConnectionError("no cache"),
+    )
+    sentry = mocker.patch("freedom_ls.referral_tracking.hits.sentry_sdk")
+    referral_code = ReferralCodeFactory()
+    request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
+
+    record_hit(referral_code, Door.GO, request)
+
+    assert ReferralCodeHit._base_manager.count() == 1
+    sentry.capture_exception.assert_called_once()
