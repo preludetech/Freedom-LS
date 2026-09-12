@@ -45,3 +45,85 @@ def test_number_question_validates():
     )
 
     assert question.type == QuestionType.NUMBER
+
+
+def test_date_question_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/1. about-you.yaml",
+            "question": "What is your date of birth?",
+            "type": "date",
+        }
+    )
+
+    assert question.type == QuestionType.DATE
+
+
+def test_time_question_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/3. availability.yaml",
+            "question": "What time can you start?",
+            "type": "time",
+        }
+    )
+
+    assert question.type == QuestionType.TIME
+
+
+def test_email_question_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/1. about-you.yaml",
+            "question": "What is your email address?",
+            "type": "email",
+        }
+    )
+
+    assert question.type == QuestionType.EMAIL
+
+
+def test_url_question_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/1. about-you.yaml",
+            "question": "Link to your portfolio?",
+            "type": "url",
+        }
+    )
+
+    assert question.type == QuestionType.URL
+
+
+def test_phone_question_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/1. about-you.yaml",
+            "question": "What is your phone number?",
+            "type": "phone",
+        }
+    )
+
+    assert question.type == QuestionType.PHONE
+
+
+def test_dropdown_question_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/3. availability.yaml",
+            "question": "Which region are you based in?",
+            "type": "dropdown",
+            "options": [
+                {"text": "North", "value": 1},
+                {"text": "South", "value": 2},
+            ],
+        }
+    )
+
+    assert question.type == QuestionType.DROPDOWN

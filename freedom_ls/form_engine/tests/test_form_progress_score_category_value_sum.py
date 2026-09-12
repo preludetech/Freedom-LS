@@ -23,13 +23,18 @@ from freedom_ls.form_engine.models import (
 
 
 def _scored_question(
-    page: FormPage, *, category: str, order: int, values: tuple[str, str]
+    page: FormPage,
+    *,
+    category: str,
+    order: int,
+    values: tuple[str, str],
+    question_type: str = "multiple_choice",
 ) -> tuple[FormQuestion, QuestionOption]:
     """A question offering two option values; the first is returned to be selected."""
     question: FormQuestion = FormQuestionFactory(
         form_page=page,
         question=f"Question {order + 1}",
-        type="multiple_choice",
+        type=question_type,
         order=order,
         category=category,
     )
@@ -67,6 +72,42 @@ def test_score_category_value_sum_single_question(mock_site_context):
     )
     QuestionOptionFactory(question=question, text="Good", value="3", order=1)
     QuestionOptionFactory(question=question, text="Poor", value="1", order=2)
+
+    form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
+    _answer(form_progress, question, best_option)
+
+    form_progress.score_category_value_sum()
+
+    form_progress.refresh_from_db()
+    assert form_progress.scores == {
+        "Wellbeing": {
+            "score": 5,
+            "max_score": 5,
+            "sub_categories": {
+                "Mental Health": {"score": 5, "max_score": 5, "sub_categories": {}}
+            },
+        }
+    }
+
+
+@pytest.mark.django_db
+def test_score_category_value_sum_scores_dropdown_like_multiple_choice(
+    mock_site_context,
+):
+    """A dropdown question sums its selected option's value exactly as multiple_choice does."""
+    form = FormFactory()
+    page = FormPageFactory(form=form, title="Page 1", order=0, category="Wellbeing")
+    question = FormQuestionFactory(
+        form_page=page,
+        question="How are you feeling?",
+        type="dropdown",
+        order=0,
+        category="Mental Health",
+    )
+    best_option = QuestionOptionFactory(
+        question=question, text="Great", value="5", order=0
+    )
+    QuestionOptionFactory(question=question, text="Good", value="3", order=1)
 
     form_progress: FormProgress = FormProgressFactory(user=UserFactory(), form=form)
     _answer(form_progress, question, best_option)

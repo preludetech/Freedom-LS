@@ -370,8 +370,9 @@ class FormProgress(SiteAwareModel):
 
                 question = child
 
-                # Only process multiple choice questions for now
-                if question.type != "multiple_choice":
+                # multiple_choice and dropdown both carry QuestionOption rows
+                # with a numeric value; every other type has no value to sum.
+                if question.type not in ("multiple_choice", "dropdown"):
                     continue
 
                 # Get the maximum value among all options for this question
