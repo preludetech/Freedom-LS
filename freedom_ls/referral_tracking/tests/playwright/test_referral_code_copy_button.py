@@ -94,3 +94,15 @@ def test_copy_button_is_bordered_so_it_does_not_read_as_body_text(
     border_width = button.evaluate("el => getComputedStyle(el).borderTopWidth")
 
     assert border_width != "0px"
+
+
+def test_copy_button_reports_a_refused_clipboard(change_form: Page) -> None:
+    """A rejected write must not leave the button looking like it worked."""
+    change_form.evaluate(
+        "Object.defineProperty(navigator.clipboard, 'writeText', "
+        "{value: () => Promise.reject(new Error('denied'))})"
+    )
+
+    change_form.get_by_role("button", name="Copy /go/ URL").click()
+
+    expect(change_form.get_by_text("Could not copy")).to_be_visible()

@@ -27,10 +27,24 @@
     buttons.forEach(function (button) {
       button.addEventListener("click", function () {
         var target = document.getElementById(button.dataset.copyTarget);
-        if (!target || !navigator.clipboard) return;
-        navigator.clipboard.writeText(target.textContent).then(function () {
-          live.textContent = "Copied";
-        });
+        if (!target) return;
+        // The Clipboard API is absent outside a secure context, and a write
+        // can still be refused inside one. Either way the live region says
+        // so, rather than leaving a button that looks like it worked.
+        if (!navigator.clipboard) {
+          live.textContent = window.isSecureContext
+            ? "Could not copy. Select the URL and copy it."
+            : "Copying needs HTTPS. Select the URL and copy it.";
+          return;
+        }
+        navigator.clipboard.writeText(target.textContent).then(
+          function () {
+            live.textContent = "Copied";
+          },
+          function () {
+            live.textContent = "Could not copy. Select the URL and copy it.";
+          }
+        );
       });
     });
   }
