@@ -111,12 +111,23 @@ def test_head_redirects_without_recording_a_hit(mock_site_context) -> None:
     assert not ReferralCodeHit.objects.filter(referral_code=referral_code).exists()
 
 
-def test_post_is_not_allowed(mock_site_context) -> None:
+def test_post_is_refused(mock_site_context) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
+    # The default client skips CSRF, so it never reaches the middleware that
+    # refuses this request ahead of the view.
+    client = Client(enforce_csrf_checks=True)
 
-    response = Client().post("/go/mrbeast")
+    response = client.post("/go/mrbeast")
 
-    assert response.status_code == 405
+    assert response.status_code == 403
+
+
+def test_a_refused_post_records_no_hit(mock_site_context) -> None:
+    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    Client(enforce_csrf_checks=True).post("/go/mrbeast")
+
+    assert not ReferralCodeHit.objects.filter(referral_code=referral_code).exists()
 
 
 def test_a_database_error_recording_the_hit_still_redirects(

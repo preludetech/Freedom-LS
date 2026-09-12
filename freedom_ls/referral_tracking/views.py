@@ -1,4 +1,10 @@
-"""The redirect view behind `/go/{code}` and `/d/{CODE}`."""
+"""The redirect view behind `/go/{code}` and `/d/{CODE}`.
+
+`require_safe` is the view-level guarantee that only GET and HEAD are served,
+but an unsafe method never reaches it: `CsrfViewMiddleware` runs first and
+answers a token-less POST 403, so that, not the decorator's 405, is what a
+caller sees.
+"""
 
 from __future__ import annotations
 
