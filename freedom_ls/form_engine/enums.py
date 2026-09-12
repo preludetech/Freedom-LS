@@ -17,12 +17,29 @@ class QuestionType(models.TextChoices):
     LONG_TEXT = "long_text", _("Long Text")
     NUMBER = "number", _("Number")
     FILE_UPLOAD = "file_upload", _("File upload")
+    DATE = "date", _("Date")
+    TIME = "time", _("Time")
+    EMAIL = "email", _("Email")
+    URL = "url", _("URL")
+    PHONE = "phone", _("Phone")
+    DROPDOWN = "dropdown", _("Dropdown")
 
 
 # Free-text questions carry no QuestionOption rows, so anything that reasons
-# about selected or correct options has to treat them separately.
+# about selected or correct options has to treat them separately. DROPDOWN
+# stays out: it carries QuestionOption rows and writes selected_options,
+# exactly like MULTIPLE_CHOICE.
 FREE_TEXT_QUESTION_TYPES = frozenset(
-    {QuestionType.SHORT_TEXT, QuestionType.LONG_TEXT, QuestionType.NUMBER}
+    {
+        QuestionType.SHORT_TEXT,
+        QuestionType.LONG_TEXT,
+        QuestionType.NUMBER,
+        QuestionType.DATE,
+        QuestionType.TIME,
+        QuestionType.EMAIL,
+        QuestionType.URL,
+        QuestionType.PHONE,
+    }
 )
 
 

@@ -19,6 +19,12 @@ class QuestionType(StrEnum):
     LONG_TEXT = "long_text"
     NUMBER = "number"
     FILE_UPLOAD = "file_upload"
+    DATE = "date"
+    TIME = "time"
+    EMAIL = "email"
+    URL = "url"
+    PHONE = "phone"
+    DROPDOWN = "dropdown"
 
 
 class FormStrategy(StrEnum):
@@ -134,7 +140,7 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         ...,
         description=(
             "Question type (multiple_choice, checkboxes, short_text, long_text, "
-            "number, file_upload)"
+            "number, file_upload, date, time, email, url, phone, dropdown)"
         ),
     )
     required: bool = Field(True, description="Whether the question is required")
