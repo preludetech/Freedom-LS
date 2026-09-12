@@ -1,11 +1,14 @@
+import io
 import re
 import tempfile
 from pathlib import Path
 
 import pytest
+from PIL import Image
 
 from django.core.files.base import ContentFile
 
+from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
 )
@@ -444,6 +447,13 @@ uuid: {topic_uuid}
     (images_dir / image_name).write_bytes(image_bytes)
 
 
+def _distinguishable_webp_bytes() -> bytes:
+    """A tiny, valid WebP that optimising the JPEG fixture below could never produce."""
+    buf = io.BytesIO()
+    Image.new("RGB", (3, 3), (1, 2, 3)).save(buf, format="WEBP", lossless=True)
+    return buf.getvalue()
+
+
 @pytest.mark.django_db
 def test_jpeg_image_is_stored_as_optimised_webp(site, mock_site_context):
     """A JPEG is re-encoded to WebP; its path and author-facing filename are untouched."""
@@ -468,7 +478,7 @@ def test_jpeg_image_is_stored_as_optimised_webp(site, mock_site_context):
 
 @pytest.mark.django_db
 def test_repeated_save_produces_identical_stored_bytes(site, mock_site_context):
-    """Two runs over the same tree each re-encode from the pristine source, so the stored bytes match."""
+    """The second run serves the cache the first one wrote instead of re-encoding, and the stored bytes match either way."""
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "test_course"
         _write_intro_topic_with_image(
@@ -490,6 +500,95 @@ def test_repeated_save_produces_identical_stored_bytes(site, mock_site_context):
         ).file.read()
 
         assert first_bytes == second_bytes
+
+
+@pytest.mark.django_db
+def test_second_run_serves_a_planted_cache_entry_through_to_storage(
+    site, mock_site_context
+):
+    """Replacing the cached WebP with a distinguishable file proves a hit is served all the way to `File`, not only reconstructed as a decision."""
+    jpeg_source = photographic_jpeg_bytes()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="41100000-0000-0000-0000-000000000001",
+            topic_uuid="41100000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=jpeg_source,
+        )
+
+        save_content_to_db(course_dir, site.name)
+
+        stored_webp = course_dir / "1. intro" / "images" / CACHE_DIR_NAME / "photo.webp"
+        planted = _distinguishable_webp_bytes()
+        stored_webp.write_bytes(planted)
+
+        save_content_to_db(course_dir, site.name)
+
+        file_obj = File.objects.get(site=site, file_path="1. intro/images/photo.jpg")
+        assert file_obj.file.read() == planted
+
+
+@pytest.mark.django_db
+def test_cache_hit_prints_the_same_image_lines_as_the_first_encode(
+    site, mock_site_context, capsys
+):
+    """A hit reconstructs the same decision a fresh encode produced, so the lines an author reads about the image don't change."""
+    jpeg_source = photographic_jpeg_bytes()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="41200000-0000-0000-0000-000000000001",
+            topic_uuid="41200000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=jpeg_source,
+        )
+
+        save_content_to_db(course_dir, site.name)
+        first_output = capsys.readouterr().out
+
+        save_content_to_db(course_dir, site.name)
+        second_output = capsys.readouterr().out
+
+        # The per-image decision and byte-count lines are the ones
+        # save_file_to_db indents; the leading action line ("Created" versus
+        # "Updated") legitimately differs between the two runs.
+        first_image_lines = [
+            line for line in first_output.splitlines() if line.startswith("  ")
+        ]
+        second_image_lines = [
+            line for line in second_output.splitlines() if line.startswith("  ")
+        ]
+        assert first_image_lines
+        assert first_image_lines == second_image_lines
+
+
+@pytest.mark.django_db
+def test_only_the_first_run_reports_optimised_files_to_commit(
+    site, mock_site_context, capsys
+):
+    """The commit reminder names _optimised/ only for a run that changed it; an unchanged tree leaves nothing new to commit."""
+    jpeg_source = photographic_jpeg_bytes()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        course_dir = Path(tmpdir) / "test_course"
+        _write_intro_topic_with_image(
+            course_dir,
+            course_uuid="41300000-0000-0000-0000-000000000001",
+            topic_uuid="41300000-0000-0000-0000-000000000002",
+            image_name="photo.jpg",
+            image_bytes=jpeg_source,
+        )
+
+        save_content_to_db(course_dir, site.name)
+        first_output = capsys.readouterr().out
+
+        save_content_to_db(course_dir, site.name)
+        second_output = capsys.readouterr().out
+
+        assert f"{CACHE_DIR_NAME}/" in first_output
+        assert f"{CACHE_DIR_NAME}/" not in second_output
 
 
 @pytest.mark.django_db

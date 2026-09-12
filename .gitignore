@@ -67,3 +67,8 @@ qa-screenshots/
 
 # pytest-playwright traces and failure screenshots
 test-results/
+
+# The content image cache content_save writes beside images it optimises.
+# demo_content is the worked example authors copy as a template, so it never
+# carries the ingest machinery. Every real content repository commits its own.
+demo_content/**/_optimised/

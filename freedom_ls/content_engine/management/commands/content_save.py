@@ -25,10 +25,10 @@ from django.utils.text import slugify
 
 from freedom_ls.content_base.schema import ContentType as SchemaContentType
 from freedom_ls.content_engine.config import config
+from freedom_ls.content_engine.image_cache import CACHE_DIR_NAME, ImageCache
 from freedom_ls.content_engine.images import (
     ImageEncodeDecision,
     ImageEncodeStatus,
-    optimise_image,
 )
 from freedom_ls.content_engine.models import (
     Activity,
@@ -648,7 +648,7 @@ def _format_image_decision_line(decision: ImageEncodeDecision) -> str:
 
 
 def save_file_to_db(
-    file_path: Path, site: Site, base_path: Path
+    file_path: Path, site: Site, base_path: Path, cache: ImageCache
 ) -> ImageEncodeDecision | None:
     """Save a single file to the database, optimising it first if it is an image."""
     relative_path = str(file_path.relative_to(base_path))
@@ -659,7 +659,7 @@ def save_file_to_db(
     before_bytes: int | None = None
     if file_type == File.FileType.IMAGE:
         raw = file_path.read_bytes()
-        decision = optimise_image(raw, file_path.suffix)
+        decision = cache.decide(file_path, raw)
         before_bytes = len(raw)
         if decision.data is not None:
             mime_type = decision.mime_type
@@ -752,6 +752,7 @@ def save_content_to_db(path, site_name):
     # and holding one per image would keep every encode of the run in memory
     # to produce a count.
     image_statuses: list[ImageEncodeStatus] = []
+    cache = ImageCache(path)
 
     for file_path in all_files:
         if file_path.suffix in [".md", ".yaml", ".yml"]:
@@ -759,9 +760,19 @@ def save_content_to_db(path, site_name):
             all_parsed.extend(parsed_items)
         else:
             # Save non-content files (images, documents, etc.) to the database
-            decision = save_file_to_db(file_path, site, path)
+            decision = save_file_to_db(file_path, site, path, cache)
             if decision is not None:
                 image_statuses.append(decision.status)
+
+    for notice in cache.notices:
+        click.echo(notice)
+    cache.write_manifests()
+    if cache.written or cache.removed:
+        click.echo(
+            f"Wrote {len(cache.written)} and removed {len(cache.removed)} file(s) "
+            f"under {CACHE_DIR_NAME}/. Commit them alongside the content change, or "
+            "every other clone pays the full encode again."
+        )
 
     # Group by content type
     grouped = defaultdict(list)
