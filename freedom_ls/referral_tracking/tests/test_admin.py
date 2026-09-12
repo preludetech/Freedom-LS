@@ -341,6 +341,17 @@ def test_deactivate_action_flips_the_selection_and_reports_the_count(
     assert b"Deactivated 2 referral code(s)." in response.content
 
 
+def test_the_change_form_loads_the_copy_button_stylesheet(
+    referral_code_admin_instance,
+):
+    media = str(referral_code_admin_instance.media)
+
+    assert "referral_tracking/css/copy_button.css" in media
+    # Declaring css here is easy to get wrong in a way that silently drops the
+    # base class's stylesheet, so pin that it is still merged in.
+    assert "site_aware_models/css/admin.css" in media
+
+
 @pytest.mark.django_db
 def test_go_url_uses_the_codes_site_domain(
     mock_site_context, referral_code_admin_instance

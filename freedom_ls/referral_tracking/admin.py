@@ -152,6 +152,7 @@ class ReferralCodeAdmin(SiteAwareExportModelAdmin):
     resource_classes = [ReferralCodeResource]
 
     class Media:
+        css = {"all": ["referral_tracking/css/copy_button.css"]}
         js = ["referral_tracking/js/copy_button.js"]
 
     def get_readonly_fields(
