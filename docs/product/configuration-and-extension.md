@@ -139,8 +139,8 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `REFERRAL_TRACKING_COOKIE_MAX_AGE_DAYS` | How long the attribution cookie, and so the first-touch window, lasts; defaults to 90 days. |
 | `REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP` | Caps the distinct campaign combinations tallied per site per day; defaults to 1000. See [signup attribution](./signup-attribution.md). |
 | `REFERRAL_TRACKING_INACTIVE_DESTINATION` | Where a deactivated referral code sends visitors when it has no fallback destination of its own; defaults to `/`. See [referral codes](./referral-codes.md). |
-| `REFERRAL_TRACKING_HIT_LOG_LIMIT` | How many hits on one referral code one address may write to the hit log per window; defaults to 30. Set it to 0 to log every hit. See [referral codes](./referral-codes.md). |
-| `REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS` | The window that limit is counted over; defaults to 3600. |
+| `REFERRAL_TRACKING_HIT_LOG_LIMIT` | How many hits on one referral code one address may write to the hit log per window; defaults to 30. See [referral codes](./referral-codes.md). |
+| `REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS` | The window that limit is counted over; defaults to 3600 seconds. See [referral codes](./referral-codes.md). |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
 | `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message is queued — read only when `EMAIL_BACKEND` names the queue. See [deployment](./deployment.md). |
 | `EMAIL_TIMEOUT` | Socket timeout for outgoing SMTP, recommended whether or not email is queued; left unset, a stalled mail host can hang the request or worker indefinitely. See [deployment](./deployment.md). |
