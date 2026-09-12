@@ -47,12 +47,12 @@ Write to that audience and at that altitude:
 This command runs at **depth 0** and fans work out to sub-agents.
 
 1. **Declare inputs up front.** Gather any user input the phase needs now, via `AskUserQuestion`. Bake the answers into each worker prompt. Subagents don't have access to `AskUserQuestion`.
-2. **One output path per unit.** Durable artifacts keep their real names; intermediate outputs go in `.sdd-work/` inside the spec directory, named `<doc>.md`.
+2. **One output path per unit.** Durable artifacts keep their real names; intermediate outputs go in `.sdd-work/` at the project root, named `<doc>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
 4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → gather the listed `needs` via `AskUserQuestion`, then re-spawn a fresh worker with the original brief + answers.
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and apply edits to the real docs.
-7. **Clean up on success.** Delete `.sdd-work/` once all edits are applied.
+7. **Clean up on success.** Once all edits are applied, delete this command's own scratch files **by name** — never the `.sdd-work/` directory itself, which is shared with every other SDD command. Step 5 has the exact invocation.
 
 ## Step 1: Decide whether any doc changes — and which
 
