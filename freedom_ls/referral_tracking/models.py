@@ -211,7 +211,12 @@ class ReferralCode(SiteAwareModel):
 
     def clean(self) -> None:
         super().clean()
-        if self.site_id:
+        # Only while the text is being set. A saved code can never be edited,
+        # so re-checking one on update can only reject something no form can
+        # fix — and the change form excludes `code`, which turns an error
+        # keyed to it into a ValueError out of `add_error` rather than a
+        # rendered field error.
+        if self.site_id and self._state.adding:
             from freedom_ls.referral_tracking.codes import validate_code_text
 
             try:

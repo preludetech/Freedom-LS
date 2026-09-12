@@ -293,6 +293,50 @@ def test_referral_code_change_post_does_not_change_the_code(
 
 
 @pytest.mark.django_db
+def test_referral_code_change_post_saves_when_the_stored_code_is_invalid(
+    superuser_client, mock_site_context
+):
+    """A code written past `full_clean()` must not break its own change form.
+
+    `code` is read-only on the change form, so it is excluded from the form's
+    fields. `Model.full_clean()` runs `clean()` regardless of that exclusion,
+    and a `ValidationError` keyed to an absent field makes `add_error` raise
+    `ValueError` rather than rendering an error.
+    """
+    code = ReferralCodeFactory(code="has_underscore", destination="/courses/")
+    url = reverse(f"admin:{APP_LABEL}_referralcode_change", args=[code.pk])
+
+    response = superuser_client.post(
+        url,
+        {
+            "code": "has_underscore",
+            "label": "Renamed stand",
+            "notes": "",
+            "destination": code.destination,
+            "inactive_destination": "",
+            "is_active": "on",
+        },
+    )
+
+    assert response.status_code == 302
+    code.refresh_from_db()
+    assert code.label == "Renamed stand"
+
+
+@pytest.mark.django_db
+def test_referral_code_add_with_a_reserved_code_is_a_field_error(
+    superuser_client, mock_site_context
+):
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcode_add"),
+        _referral_code_add_payload(code="admin"),
+    )
+
+    assert response.status_code == 200
+    assert "code" in response.context["adminform"].form.errors
+
+
+@pytest.mark.django_db
 def test_referral_code_delete_returns_403(superuser_client, mock_site_context):
     code = ReferralCodeFactory()
     url = reverse(f"admin:{APP_LABEL}_referralcode_delete", args=[code.pk])
