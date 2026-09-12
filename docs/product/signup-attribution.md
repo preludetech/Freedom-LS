@@ -1,10 +1,10 @@
 # Signup Attribution
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-12_
 
 ## Summary
 
-- **Every signup made through the signup form has a record of where it came from.** Landing on a tracked link and later signing up writes a permanent record against the new account: the advert or campaign, UTM parameters, ad-platform click identifiers, the landing page and the referrer. Built.
+- **Every signup made through the signup form has a record of where it came from.** Landing on a tracked link and later signing up writes a permanent record against the new account: the advert or campaign, a referral code if one brought the visitor, UTM parameters, ad-platform click identifiers, the landing page and the referrer. Built.
 - **A daily tally of first-time tracked arrivals per campaign** supplies the denominator: signups over arrivals, both grouped by campaign, is a conversion rate. Built.
 - **Two read-only admin lists and a CSV export are the whole interface.** A dashboard or conversion-rate view is not built.
 - **A signup with no tracked landing records as "direct" / "none"** rather than a blank, so an untracked signup still counts as a channel.
@@ -12,13 +12,13 @@ _Last updated: 2026-09-09_
 
 ## How It Works
 
-A tracked link, one carrying an advert code, a UTM parameter or an ad-click identifier, sets a signed, host-only cookie on first landing. Nothing about that visitor is written to the database at that point; only the day's tally for that campaign goes up by one. The cookie lasts 90 days by default, and a later landing inside that window leaves it untouched, so only the first touch is ever recorded.
+A tracked link, one carrying an advert code, a referral code, a UTM parameter or an ad-click identifier, sets a signed, host-only cookie on first landing. Nothing about that visitor is written to the database at that point; only the day's tally for that campaign goes up by one. The cookie lasts 90 days by default, and a later landing inside that window leaves it untouched, so only the first touch is ever recorded. Following a referral code's own redirect link neither sets this cookie nor moves this tally; only the page it redirects to does.
 
 Submitting the signup form writes whatever the cookie carried, together with the request's IP address, browser user agent, and any Google Analytics or Meta cookies present, into a permanent record against the new account. An account created any other way, by an administrator, a management command or an import, gets no record. Confirming the account's email afterwards, even from a different browser, does not change what was recorded at signup.
 
 ## What Is Recorded
 
-From the first tracked landing: the advert code, the five UTM parameters (source, medium, campaign, content, term), the Google Ads click identifiers (including the variants that survive Safari's private browsing), the Meta click identifier, the page landed on, the referring page, the full query string, and when that landing happened.
+From the first tracked landing: the advert code, the [referral code](./referral-codes.md) that brought the visitor if there was one, the five UTM parameters (source, medium, campaign, content, term), the Google Ads click identifiers (including the variants that survive Safari's private browsing), the Meta click identifier, the page landed on, the referring page, the full query string, and when that landing happened.
 
 From the signup request itself: the Google Analytics and Meta cookies present in the browser, if any, the request's IP address and browser user agent, and when the signup happened.
 
@@ -47,7 +47,6 @@ Three settings govern capture. `REFERRAL_TRACKING_COOKIE_NAME` names the trackin
 
 ## Not Built
 
-- Partner referral codes. The advert code is free text with nothing behind it.
 - A per-site switch to turn capture on or off.
 - Bot filtering. The daily tally counts every landing, including automated ones.
 - A dashboard or conversion-rate view. The two lists and their export are the whole interface.
