@@ -141,6 +141,15 @@ def unanswered_required_message(questions: list[FormQuestion]) -> str:
     return f"Questions {listed} need answers before you can continue."
 
 
+def rejected_answers_message(questions: list[FormQuestion]) -> str:
+    """Name the questions whose answers were not valid for their type."""
+    numbers = [str(question.question_number()) for question in questions]
+    if len(numbers) == 1:
+        return f"Question {numbers[0]} needs a valid answer."
+    listed = f"{', '.join(numbers[:-1])} and {numbers[-1]}"
+    return f"Questions {listed} need valid answers."
+
+
 def answered_counts(
     form: Form,
     form_progress: FormProgress,
