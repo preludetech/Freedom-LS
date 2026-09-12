@@ -43,8 +43,12 @@ def get_dict_item(dictionary, key):
     """
     Template filter to get an item from a dictionary by key.
 
+    A template variable that was never added to the context resolves to the
+    empty string, not `None`, so a template that has not been handed the dict
+    at all must not crash the render either.
+
     Usage: {{ my_dict|get_dict_item:my_key }}
     """
-    if dictionary is None:
+    if not isinstance(dictionary, dict):
         return None
     return dictionary.get(key)
