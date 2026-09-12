@@ -51,10 +51,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: POST to /go/ and /d/ returns 403 from CSRF middleware instead of the 405 @require_safe intends (TDD — failing test first, then fix)
-- [ ] (user) Decide whether the public /go/ and /d/ redirect routes should be csrf_exempt so @require_safe can answer POST with 405, then apply that decision to follow_referral_code
-- [ ] (user + cmd) Fix QA bug: the admin Copy buttons are unstyled and their 35x20px hit box is under the WCAG 2.5.8 minimum (TDD — failing test first, then fix)
-- [ ] (user) Decide how the Copy button beside go_url and d_url should look, then style it to read as a control and meet the 24x24 minimum target size
+- [x] (user + cmd) Fix QA bug: POST to /go/ and /d/ returns 403 from CSRF middleware instead of the 405 @require_safe intends (TDD — failing test first, then fix)
+- [x] (user) Decide whether the public /go/ and /d/ redirect routes should be csrf_exempt so @require_safe can answer POST with 405, then apply that decision to follow_referral_code
+- [x] (user + cmd) Fix QA bug: the admin Copy buttons are unstyled and their 35x20px hit box is under the WCAG 2.5.8 minimum (TDD — failing test first, then fix)
+- [x] (user) Decide how the Copy button beside go_url and d_url should look, then style it to read as a control and meet the 24x24 minimum target size
 
 ## 10. Product documentation
 

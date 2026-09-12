@@ -130,8 +130,14 @@ No screenshot (curl-only assertion).
 `@require_safe` never gets a chance to answer. `POST` to a code that does not exist is likewise 403
 rather than 404. The route is still refused and still writes no hit — hit count, `hits.count()` and
 the tally are unaffected — so nothing leaks and no counter moves; only the status code is wrong.
-The obvious fix (`csrf_exempt` on a public route) is a security-posture call, so this is left for a
-human rather than patched here.
+
+**Resolution (commit 7333ece8):** documented rather than changed. Exempting the route from CSRF is
+the only way to let the decorator answer, and this project blocks that at two levels — the
+`test_no_dangerous_pattern_in_codebase` guard and a `PreToolUse` hook — so taking it would mean
+relaxing a deliberate project-wide policy for a status code. The spec now records the 403,
+`test_post_is_not_allowed` became `test_post_is_refused` and enforces CSRF the way a browser does
+(it only ever passed because the default test client skips it), and a new test pins down that a
+refused POST writes no hit.
 
 ## Bug B3: The admin Copy buttons carry no styling — they read as body text and their hit box is below the minimum target size
 
@@ -150,13 +156,18 @@ renders as the bare word "Copy" immediately after the URL text: the Go URL row r
 button. Its box measures 35x20 CSS px — 4px under the 24px WCAG minimum on height. This is identical
 at 1920, 768 and 375px wide. The button works correctly at every width — it copies the exact URL and
 announces "Copied" via the live region — so this is an affordance and target-size defect, not a
-functional one. Choosing how it should look is a UX decision, so it is left for a human.
+functional one.
+
+**Resolution (commit 3bd02093):** the `referral-code-copy` class the markup already carried had no
+rule defined anywhere, so it gained one — a bordered pill, at least 24x24, styled against
+`currentColor` so both admin themes work. The markup is untouched, so the accessible names and the
+clipboard JS are unaffected. Two browser tests now assert the target size and the visible border.
 
 ## Bug status
 
 - **FIXED** (commit: cff3cc12) — A duplicate referral code shows the raw database constraint name instead of a duplicate-code error
-- **UNRESOLVED** — POST to a referral redirect route returns 403 (CSRF) rather than the 405 the view intends (reason: the fix is `csrf_exempt` on a public route, a security-posture call for a human)
-- **UNRESOLVED** — The admin Copy buttons carry no styling: they read as body text and their hit box is below the minimum target size (reason: how the button should look is a UX decision)
+- **RESOLVED AS DOCUMENTED** (commit: 7333ece8) — POST to a referral redirect route returns 403 (CSRF) rather than the 405 the view intends; the spec and the test now record the 403, because the exemption that would buy the 405 is blocked by project policy
+- **FIXED** (commit: 3bd02093) — The admin Copy buttons carry no styling: they read as body text and their hit box is below the minimum target size
 
 B1 was fixed by adding `ReferralCodeForm.clean_code()`, which uses the existing case-insensitive
 `codes.lookup_referral_code()` and raises a field error before `validate_unique()` can attach the
