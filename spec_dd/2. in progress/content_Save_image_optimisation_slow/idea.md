@@ -1,0 +1,1 @@
+ With the content engine content_save mechanism optimizes images. Save the optimized images into the content repo so that we don't need to re-optimize things every single time we save them. This will save a lot of time and increase the size of the content repo.
