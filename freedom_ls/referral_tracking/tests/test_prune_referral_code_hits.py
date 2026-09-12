@@ -86,3 +86,28 @@ def test_older_than_days_zero_is_refused(mock_site_context, site) -> None:
         call_command("prune_referral_code_hits", "--older-than-days", "0")
 
     assert ReferralCodeHit._base_manager.filter(pk=hit.pk).exists()
+
+
+def test_hit_at_is_indexed_on_its_own() -> None:
+    """The prune filters on `hit_at` alone, which the (site, hit_at) index
+    cannot serve — without this one every batch is a sequential scan."""
+    indexed = [tuple(index.fields) for index in ReferralCodeHit._meta.indexes]
+
+    assert ("hit_at",) in indexed
+
+
+def test_the_prune_deletes_across_a_batch_boundary(
+    mock_site_context, site, mocker
+) -> None:
+    mocker.patch(
+        "freedom_ls.referral_tracking.management.commands."
+        "prune_referral_code_hits.PRUNE_BATCH_SIZE",
+        2,
+    )
+    code = ReferralCodeFactory(site=site)
+    for _ in range(3):
+        _age(ReferralCodeHitFactory(referral_code=code, site=site), OLD_ENOUGH)
+
+    call_command("prune_referral_code_hits", "--older-than-days", "30")
+
+    assert not ReferralCodeHit._base_manager.exists()

@@ -241,6 +241,8 @@ class ReferralCodeHit(SiteAwareModel):
     class Meta:
         indexes = [
             models.Index(fields=["site", "hit_at"]),
+            # The prune filters on hit_at alone, across every site.
+            models.Index(fields=["hit_at"]),
         ]
 
     def __str__(self) -> str:

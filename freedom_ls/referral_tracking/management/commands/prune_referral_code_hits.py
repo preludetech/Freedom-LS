@@ -26,7 +26,7 @@ def command(older_than_days: int) -> None:
     while True:
         batch = list(
             ReferralCodeHit._base_manager.filter(hit_at__lt=cutoff)
-            .order_by("pk")
+            .order_by("hit_at")
             .values_list("pk", flat=True)[:PRUNE_BATCH_SIZE]
         )
         if not batch:
