@@ -68,7 +68,7 @@ Visibility is a separate top-level field from `access_config`; the two are valid
 
 **In-development table of contents.** While a course is still being written, its detail page would otherwise show empty table-of-contents elements — a lesson count of zero, a heading with nothing under it. Setting `table_of_contents_in_development: true` suppresses those elements on that course's detail page, so the course can stay listed and demoable without looking broken. It changes nothing about listing, enrolment, or access.
 
-Because a published course should always show its contents, `published` combined with `table_of_contents_in_development: true` is rejected at load time.
+Like `access_config`, it is validated independently of `visibility` and composes with all three states. A `published` course can carry it — which is what an application-gated course needs, since applications open before the contents are finished.
 
 **Categories.** A course names the categories it belongs to, and — when it belongs to more than one — which single category places it on the learner dashboard:
 

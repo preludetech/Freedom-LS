@@ -197,7 +197,11 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
     )
     table_of_contents_in_development: bool = Field(
         False,
-        description="Hide the course's table-of-contents surfaces while it is being built.",
+        description=(
+            "Hide the course's table-of-contents surfaces while it is being "
+            "built. Independent of visibility: a published course open for "
+            "applications may still be under construction."
+        ),
     )
     estimated_duration: timedelta | None = Field(
         None,
@@ -259,18 +263,6 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
                 f"Invalid course icon fields in {self.file_path}: "
                 f"{exc.message_dict if hasattr(exc, 'message_dict') else exc}"
             ) from exc
-        return self
-
-    @model_validator(mode="after")
-    def _validate_toc_in_development(self) -> "Course":
-        # A published course must always show its contents.
-        if self.table_of_contents_in_development and (
-            self.visibility == CourseVisibility.PUBLISHED
-        ):
-            raise ValueError(
-                f"table_of_contents_in_development must be false for a published "
-                f"course (in {self.file_path})"
-            )
         return self
 
 

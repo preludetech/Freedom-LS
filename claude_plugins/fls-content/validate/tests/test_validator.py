@@ -513,6 +513,38 @@ def test_missing_repo_config_fails(tmp_path: Path) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# table_of_contents_in_development
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("visibility_block", ["", "visibility: coming_soon\n"])
+def test_toc_in_development_exits_zero_for_any_visibility(
+    tmp_path: Path, visibility_block: str
+) -> None:
+    """The flag is independent of visibility, including the default (published).
+
+    An application-gated course can be open for applications while its contents
+    are still being written, so the flag must not be coupled to visibility.
+    """
+    (tmp_path / "course.md").write_text(
+        "---\n"
+        "content_type: COURSE\n"
+        "title: Open For Applications\n"
+        f"{visibility_block}"
+        "table_of_contents_in_development: true\n"
+        "access_config:\n"
+        "  access_type: application_gated\n"
+        "---\n",
+        encoding="utf-8",
+    )
+    result = run_validator(tmp_path / "course.md")
+    assert result.returncode == 0, (
+        f"table_of_contents_in_development must not be constrained by visibility.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
 def write_course_categories(directory: Path, body: str) -> Path:
     """Write a COURSE_CATEGORIES declaration whose `categories:` list is *body*."""
     path = directory / "course_categories.yaml"

@@ -21,10 +21,9 @@ Courses created / ensured:
    ``qa_create_course_access_types``; this command creates it (published, free)
    if absent and guarantees it has >= 3 lessons either way.
 
-IMPORTANT spec constraint (see ``content_engine.schema.Course._validate_toc_in_development``
-and the Django-side clean): a PUBLISHED course may not have
-``table_of_contents_in_development=True``. The two TOC-in-development courses are
-therefore ``coming_soon`` (not published).
+The two TOC-in-development courses are ``coming_soon`` so that this command covers
+every visibility state between its four courses. ``table_of_contents_in_development``
+is independent of visibility -- a published course may carry it too.
 
 All objects are created with the site-aware factories and an explicit ``site=``
 override (the factories' thread-local site default is None outside a request).

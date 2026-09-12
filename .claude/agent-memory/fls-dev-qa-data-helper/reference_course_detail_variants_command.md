@@ -21,9 +21,10 @@ Courses it ensures on the site:
   intro topic; this command adds lessons 2..3, creating the course (published/free)
   if absent.
 
-KEY CONSTRAINT (enforced in `content_engine/schema.py` `_validate_toc_in_development`
-and Course model): a PUBLISHED course may NOT have `table_of_contents_in_development=True`.
-The two toc_dev=True courses are therefore `coming_soon`.
+NO visibility constraint: `table_of_contents_in_development` composes freely with every
+visibility state, published included (an application-gated course can take applications
+while its contents are still being written). The two toc_dev=True courses here are
+`coming_soon` only so the four courses cover every visibility state between them.
 
 Detail-page counting (`learner_interface/views.py` course_detail): `lesson_count` =
 viewable items that are NOT `Form`; `includes_assessments` = any viewable child is a

@@ -6,7 +6,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
 from freedom_ls.content_engine.management.commands.content_save import (
     save_content_to_db,
@@ -15,50 +14,41 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.schema import Course as CourseSchema
 
 # ---------------------------------------------------------------------------
-# Pydantic schema field + validator
+# Pydantic schema field
 # ---------------------------------------------------------------------------
 
 
-def test_schema_published_with_flag_true_raises() -> None:
-    """A published course cannot have table_of_contents_in_development set."""
-    with pytest.raises(ValidationError) as excinfo:
-        CourseSchema.model_validate(
-            {
-                "content_type": "COURSE",
-                "file_path": "test/course.yaml",
-                "title": "Published In Development",
-                "visibility": "published",
-                "table_of_contents_in_development": True,
-            }
-        )
-    assert "test/course.yaml" in str(excinfo.value)
-
-
-def test_schema_published_default_visibility_with_flag_true_raises() -> None:
-    """Omitting visibility defaults to published, so the flag still raises."""
-    with pytest.raises(ValidationError):
-        CourseSchema.model_validate(
-            {
-                "content_type": "COURSE",
-                "file_path": "test/course.yaml",
-                "title": "Default Visibility In Development",
-                "table_of_contents_in_development": True,
-            }
-        )
-
-
-@pytest.mark.parametrize("visibility", ["coming_soon", "hidden"])
-def test_schema_non_published_with_flag_true_is_valid(visibility: str) -> None:
-    """A coming_soon/hidden course may have the flag set."""
+@pytest.mark.parametrize("visibility", ["published", "coming_soon", "hidden"])
+def test_schema_flag_true_is_valid_for_every_visibility(visibility: str) -> None:
+    """The flag composes freely with every visibility state."""
     schema = CourseSchema.model_validate(
         {
             "content_type": "COURSE",
             "file_path": "test/course.yaml",
-            "title": "Non Published In Development",
+            "title": "In Development",
             "visibility": visibility,
             "table_of_contents_in_development": True,
         }
     )
+    assert schema.table_of_contents_in_development is True
+
+
+def test_schema_flag_true_is_valid_with_default_visibility() -> None:
+    """Omitting visibility defaults to published, which still accepts the flag.
+
+    This is the application-gated case: applications are open while the
+    course's contents are still being written.
+    """
+    schema = CourseSchema.model_validate(
+        {
+            "content_type": "COURSE",
+            "file_path": "test/course.yaml",
+            "title": "Open For Applications",
+            "access_config": {"access_type": "application_gated"},
+            "table_of_contents_in_development": True,
+        }
+    )
+    assert schema.visibility == "published"
     assert schema.table_of_contents_in_development is True
 
 
@@ -81,7 +71,11 @@ def test_schema_flag_defaults_to_false() -> None:
 
 @pytest.mark.django_db
 def test_content_save_persists_toc_in_development_flag(site, mock_site_context):
-    """A valid non-published course carrying the flag saves without error."""
+    """A published course carrying the flag saves without error.
+
+    Visibility is omitted so it defaults to published -- the shape that used
+    to be rejected at load time.
+    """
     with tempfile.TemporaryDirectory() as tmpdir:
         course_dir = Path(tmpdir) / "in_development_course"
         course_dir.mkdir()
@@ -90,7 +84,6 @@ def test_content_save_persists_toc_in_development_flag(site, mock_site_context):
             """---
 content_type: COURSE
 title: In Development Course
-visibility: coming_soon
 table_of_contents_in_development: true
 uuid: 00000000-0000-0000-0000-000000000030
 ---
