@@ -8,4 +8,7 @@ class ReferralTrackingConfig(AppConfig):
     verbose_name = "Referral tracking"
 
     def ready(self) -> None:
-        from freedom_ls.referral_tracking import signals  # noqa: F401
+        from freedom_ls.referral_tracking import (
+            checks,  # noqa: F401
+            signals,  # noqa: F401
+        )

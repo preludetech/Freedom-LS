@@ -27,6 +27,7 @@ TRACKED_PARAMS = (
     "gbraid",
     "wbraid",
     "fbclid",
+    "ref",
 )
 LOWERCASED_PARAMS = ("utm_source", "utm_medium")
 COOKIE_SALT = "freedom_ls.referral_tracking"
@@ -34,6 +35,7 @@ COOKIE_SALT = "freedom_ls.referral_tracking"
 # Short cookie keys, one per frozen field plus the landing time.
 COOKIE_KEYS: dict[str, str] = {
     "advert_code": "a",
+    "referral_code": "rc",
     "utm_source": "s",
     "utm_medium": "m",
     "utm_campaign": "c",
@@ -69,6 +71,21 @@ COOKIE_DROP_ORDER = (
 
 _CONTROL_CHARS = dict.fromkeys((*range(0, 32), 127))
 
+_CAPTURE_SUPPRESSED_ATTR = "_attribution_capture_suppressed"
+
+
+def suppress_capture(request: HttpRequest) -> None:
+    """Opt this request out of minting the cookie or tallying a first touch.
+
+    The referral redirect routes call this before anything else, so a 404 on
+    one of them never mints either.
+    """
+    setattr(request, _CAPTURE_SUPPRESSED_ATTR, True)
+
+
+def is_capture_suppressed(request: HttpRequest) -> bool:
+    return getattr(request, _CAPTURE_SUPPRESSED_ATTR, False) is True
+
 
 def sanitise(value: str, cap: int, *, lower: bool = False) -> str:
     # No unquote(): request.GET is already decoded, and decoding again would
@@ -85,13 +102,23 @@ def has_tracked_params(request: HttpRequest) -> bool:
 
 
 def first_touch_from_request(request: HttpRequest) -> dict[str, str]:
-    """Every frozen field for this landing, sanitised, plus first_seen as ISO 8601."""
+    """Every frozen field for this landing, sanitised, plus first_seen as ISO 8601.
+
+    `ref` is the one tracked parameter whose field name differs from the
+    query parameter that fills it: it lands in `referral_code`, never looked
+    up against `ReferralCode`, so a hand-typed `?ref=anything` is stored as
+    free text the way `advert_code` is.
+    """
     first_touch = {
         name: sanitise(
             request.GET.get(name, ""), CAPS[name], lower=name in LOWERCASED_PARAMS
         )
         for name in TRACKED_PARAMS
+        if name != "ref"
     }
+    first_touch["referral_code"] = sanitise(
+        request.GET.get("ref", ""), CAPS["referral_code"]
+    )
     first_touch["landing_path"] = sanitise(request.path, CAPS["landing_path"])
     first_touch["referer"] = sanitise(
         request.headers.get("Referer", ""), CAPS["referer"]

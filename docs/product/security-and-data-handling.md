@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-12_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -114,13 +114,15 @@ FLS stores, in its PostgreSQL database:
 - Email address, first name, and last name.
 - Hashed password (Argon2).
 - Legal consent records — which document and version was accepted, when, from what IP address, and by what method.
-- Signup attribution — for every account created through the signup form, where that person came from: the advert and campaign parameters, Google Ads and Meta click identifiers, landing page, referring page and query string from the tracked link they first arrived on (or "direct" if there was none), plus the IP address, browser user agent, and any Google Analytics and Meta cookie identifiers present at signup. See [signup attribution](./signup-attribution.md) for the full list and the privacy obligations it raises.
+- Signup attribution — for every account created through the signup form, where that person came from: the advert and campaign parameters, Google Ads and Meta click identifiers, landing page, referring page, query string and any referral code from the tracked link they first arrived on (or "direct" if there was none), plus the IP address, browser user agent, and any Google Analytics and Meta cookie identifiers present at signup. See [signup attribution](./signup-attribution.md) for the full list and the privacy obligations it raises.
 - Learning activity — course progress, quiz answers, and scores.
 - Answers to a course's application form, and any document the applicant uploaded with it, which may be a government ID scan. See [applicant uploads](#applicant-uploads-built).
 - Webhook delivery logs, which may contain user data inside the delivered payload.
 - Fully rendered outgoing email — subject and both bodies — where a deployment has turned email queueing on, held as a row on the task queue until it is sent and then pruned. This includes the single-use links in signup-verification and password-reset messages. See [queued email](#queued-email).
 
 Outside the database, FLS stores generated [cohort progress reports](./reports.md) as PDF files. Each holds real learner names, completion history, and individual quiz scores and answers, and is not anonymised — the audience is internal staff, by design. See [generated cohort reports](#generated-cohort-reports).
+
+Every visit to a [referral link](./referral-codes.md) is logged separately, but that log holds nothing describing the visitor — no IP address, browser identifier, referring page or query string — and is tied to no account. Outside the log, the cap on how much one visitor can write to it does need to tell visitors apart: it holds a counter per address in the cache for the length of its window, an hour by default. The address is not stored there either — the counter is keyed on a hash of it, computed with the deployment's own secret key, so the address cannot be read back out of the cache. Each counter expires on its own once its window passes, so nothing needs to prune it.
 
 No payment data or biometric data is stored by FLS. Whether a government ID is stored depends on what a course's application form asks the applicant to upload.
 
@@ -168,7 +170,7 @@ No incident-response runbook, breach-notification templates, or automated alerti
 
 ### Retention, Deletion, and Data-Subject Rights (not yet built)
 
-There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. Deleting a user from the admin also removes their consent records and signup attribution row by cascade, even though those records cannot be deleted one at a time. All of this is operator responsibility today. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. See the [roadmap](./roadmap.md).
+There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. Deleting a user from the admin also removes their consent records and signup attribution row by cascade, even though those records cannot be deleted one at a time. All of this is operator responsibility today. The referral link visit log is one store an operator can trim, with the `prune_referral_code_hits` command, on a schedule of their choosing. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. See the [roadmap](./roadmap.md).
 
 ---
 

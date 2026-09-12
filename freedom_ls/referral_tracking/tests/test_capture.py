@@ -2,25 +2,37 @@
 
 from __future__ import annotations
 
+import base64
 import datetime
+import json
 
 import time_machine
 
 from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
+from django.utils import timezone
 
 from freedom_ls.referral_tracking import capture
 from freedom_ls.referral_tracking.capture import (
+    COOKIE_SALT,
     TRACKED_PARAMS,
     first_touch_from_request,
+    is_capture_suppressed,
     read_attribution_cookie,
     sanitise,
     set_attribution_cookie,
+    suppress_capture,
 )
 from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.models import CAPS
 
 rf = RequestFactory()
+
+
+def _cap_for(name: str) -> int:
+    """`CAPS` is keyed by field name; `ref` is the one tracked parameter whose
+    field name differs from the parameter it fills."""
+    return CAPS["referral_code"] if name == "ref" else CAPS[name]
 
 
 def _cookie_from(response: HttpResponse) -> str:
@@ -127,7 +139,7 @@ def test_cookie_older_than_the_window_reads_as_none() -> None:
 
 def _landing_with_every_value_at_its_cap(char: str) -> HttpRequest:
     """A tracked landing whose every captured value fills its cap with `char`."""
-    params = {name: char * CAPS[name] for name in TRACKED_PARAMS}
+    params = {name: char * _cap_for(name) for name in TRACKED_PARAMS}
     return rf.get("/", params, HTTP_REFERER=char * CAPS["referer"])
 
 
@@ -197,7 +209,9 @@ def test_a_multibyte_campaign_with_real_click_ids_keeps_them_in_the_cookie() -> 
     params = {
         name: "漢" * CAPS[name] for name in ("utm_campaign", "utm_content", "utm_term")
     }
-    params |= {name: "a" * CAPS[name] for name in TRACKED_PARAMS if name not in params}
+    params |= {
+        name: "a" * _cap_for(name) for name in TRACKED_PARAMS if name not in params
+    }
     request = rf.get(
         "/" + "p" * (CAPS["landing_path"] - 1),
         params,
@@ -213,3 +227,61 @@ def test_a_multibyte_campaign_with_real_click_ids_keeps_them_in_the_cookie() -> 
 
     assert read_back is not None
     assert read_back["gclid"] == "a" * CAPS["gclid"]
+
+
+def test_ref_lands_in_referral_code() -> None:
+    request = rf.get("/?ref=mrbeast")
+
+    first_touch = first_touch_from_request(request)
+
+    assert first_touch["referral_code"] == "mrbeast"
+
+
+def test_ref_keeps_its_case() -> None:
+    request = rf.get("/?ref=MrBeast")
+
+    first_touch = first_touch_from_request(request)
+
+    assert first_touch["referral_code"] == "MrBeast"
+
+
+def test_ref_over_length_value_is_truncated_to_the_referral_code_cap() -> None:
+    request = rf.get("/?ref=" + "a" * 100)
+
+    first_touch = first_touch_from_request(request)
+
+    assert first_touch["referral_code"] == "a" * CAPS["referral_code"]
+
+
+def test_ref_requires_no_database_access() -> None:
+    """A hand-typed `ref` is stored as free text: capture never looks it up
+    against `ReferralCode`."""
+    request = rf.get("/?ref=mrbeast")
+
+    first_touch_from_request(request)
+
+
+def test_a_pre_upgrade_cookie_without_rc_reads_with_a_blank_referral_code() -> None:
+    payload = {"s": "x", "ts": timezone.now().isoformat()}
+    encoded = base64.urlsafe_b64encode(json.dumps(payload).encode("utf-8")).decode(
+        "ascii"
+    )
+    response = HttpResponse()
+    response.set_signed_cookie(
+        config.REFERRAL_TRACKING_COOKIE_NAME, encoded, salt=COOKIE_SALT
+    )
+    request = rf.get("/")
+    request.COOKIES[config.REFERRAL_TRACKING_COOKIE_NAME] = _cookie_from(response)
+
+    read_back = read_attribution_cookie(request)
+
+    assert read_back is not None
+    assert read_back["referral_code"] == ""
+
+
+def test_suppress_capture_marks_the_request() -> None:
+    request = rf.get("/")
+
+    assert is_capture_suppressed(request) is False
+    suppress_capture(request)
+    assert is_capture_suppressed(request) is True

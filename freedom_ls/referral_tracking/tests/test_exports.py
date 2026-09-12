@@ -7,6 +7,7 @@ import csv
 import io
 
 import pytest
+from import_export.widgets import ForeignKeyWidget
 
 from django.contrib.auth.models import Permission
 from django.http import HttpResponse
@@ -16,10 +17,14 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.referral_tracking.factories import (
     FirstTouchCountFactory,
+    ReferralCodeFactory,
+    ReferralCodeHitFactory,
     SignupAttributionFactory,
 )
 from freedom_ls.referral_tracking.resources import (
     FirstTouchCountResource,
+    ReferralCodeHitResource,
+    ReferralCodeResource,
     SignupAttributionResource,
 )
 from freedom_ls.site_aware_models.admin_exports import (
@@ -32,11 +37,16 @@ APP_LABEL = "freedom_ls_referral_tracking"
 
 @pytest.fixture
 def staff_client(mock_site_context, db):
-    """Staff user with permission to view both referral-tracking models."""
+    """Staff user with permission to view every referral-tracking model."""
     user = UserFactory(staff=True)
     permissions = Permission.objects.filter(
         content_type__app_label=APP_LABEL,
-        codename__in=["view_signupattribution", "view_firsttouchcount"],
+        codename__in=[
+            "view_signupattribution",
+            "view_firsttouchcount",
+            "view_referralcode",
+            "view_referralcodehit",
+        ],
     )
     user.user_permissions.add(*permissions)
     client = Client()
@@ -217,3 +227,60 @@ def test_resources_map_date_fields_to_iso_widgets():
     )
     assert isinstance(FirstTouchCountResource.fields["day"].widget, IsoDateWidget)
     assert "site" not in SignupAttributionResource.fields
+
+
+@pytest.mark.django_db
+def test_signup_attribution_export_carries_referral_code(staff_client):
+    row = SignupAttributionFactory(referral_code="mrbeast")
+
+    response = _export_selected(staff_client, "signupattribution", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("referral_code")] == "mrbeast"
+
+
+@pytest.mark.django_db
+def test_first_touch_count_export_carries_referral_code(staff_client):
+    row = FirstTouchCountFactory(referral_code="mrbeast")
+
+    response = _export_selected(staff_client, "firsttouchcount", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("referral_code")] == "mrbeast"
+
+
+@pytest.mark.django_db
+def test_referral_code_export_downloads(staff_client, mock_site_context):
+    row = ReferralCodeFactory(code="mrbeast")
+
+    response = _export_selected(staff_client, "referralcode", [str(row.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("code")] == "mrbeast"
+
+
+@pytest.mark.django_db
+def test_referral_code_export_omits_site(staff_client, mock_site_context):
+    row = ReferralCodeFactory()
+
+    response = _export_selected(staff_client, "referralcode", [str(row.pk)])
+
+    header, _ = _rows(response)
+    assert "site" not in header
+
+
+@pytest.mark.django_db
+def test_referral_code_hit_export_writes_the_code_text(staff_client, mock_site_context):
+    hit = ReferralCodeHitFactory()
+
+    response = _export_selected(staff_client, "referralcodehit", [str(hit.pk)])
+
+    header, (values,) = _rows(response)
+    assert values[header.index("referral_code")] == hit.referral_code.code
+
+
+def test_referral_code_hit_resource_writes_referral_code_through_a_foreign_key_widget():
+    assert isinstance(
+        ReferralCodeHitResource.fields["referral_code"].widget, ForeignKeyWidget
+    )
+    assert "site" not in ReferralCodeResource.fields

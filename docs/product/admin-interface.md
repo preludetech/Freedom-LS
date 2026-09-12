@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-12_
 
 ## Summary
 
@@ -17,6 +17,7 @@ _Last updated: 2026-09-09_
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
 - Signup attribution records and the daily first-touch tally are read-only too, filterable by source, medium and campaign, and exportable to CSV.
+- Referral codes are managed in the admin: created and deactivated, but never deleted, with the code text locked once saved. Visits to a code are logged in a separate read-only list, and both lists export to CSV. See [referral codes](./referral-codes.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 
 ## Unfold

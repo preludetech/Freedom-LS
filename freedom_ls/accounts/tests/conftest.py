@@ -31,6 +31,13 @@ def mock_legal_blobs(monkeypatch, tmp_path: Path, settings):
         fake_read_blob_at_head,
     )
 
+    # The icon loader reads BASE_DIR too, and pages rendered under this stub
+    # (the 404 page among them) carry icons. Link the real node_modules into
+    # the stub root so they resolve whether or not the loader's cache is warm.
+    node_modules = Path(settings.BASE_DIR) / "node_modules"
+    if node_modules.is_dir():
+        (tmp_path / "node_modules").symlink_to(node_modules, target_is_directory=True)
+
     settings.BASE_DIR = tmp_path
     settings.LEGAL_DOCS_MANIFEST_PATH = None
 
