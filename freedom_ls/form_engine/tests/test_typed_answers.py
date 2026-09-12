@@ -3,16 +3,19 @@ server-side check run against a submitted answer, and the reader-facing
 rendering of an already-stored one. Both must reach the same conclusion about
 what a string means for a given question type, so they are tested together.
 
-`FormQuestion` does not yet carry `min`/`max` fields (a later batch adds
-them), so a lightweight stand-in carrying just `type`, `min` and `max` is
-used everywhere `answer_error` needs a question — the same object shape a
-real `FormQuestion` will have once those fields exist.
+Most cases here use a lightweight duck-typed stand-in rather than a real
+`FormQuestion`, so these stay pure unit tests with no database round trip. A
+handful of tests use the real model directly, to pin that its `min`/`max`
+fields behave the same way the stand-in does.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
+import pytest
+
+from freedom_ls.form_engine.factories import FormQuestionFactory
 from freedom_ls.form_engine.typed_answers import answer_error, format_answer
 
 
@@ -259,6 +262,41 @@ def test_phone_text_with_letters_is_still_accepted():
     question = _StubQuestion(type="phone")
 
     assert answer_error(question, "call me maybe") is None
+
+
+# min/max on a real FormQuestion
+
+
+@pytest.mark.django_db
+def test_date_equal_to_min_is_accepted_on_a_real_form_question(mock_site_context):
+    question = FormQuestionFactory(type="date", min="2025-01-01")
+
+    assert answer_error(question, "2025-01-01") is None
+
+
+@pytest.mark.django_db
+def test_date_before_min_is_rejected_on_a_real_form_question(mock_site_context):
+    question = FormQuestionFactory(type="date", min="2025-01-01")
+
+    message = answer_error(question, "2024-12-31")
+
+    assert message is not None
+
+
+@pytest.mark.django_db
+def test_number_equal_to_max_is_accepted_on_a_real_form_question(mock_site_context):
+    question = FormQuestionFactory(type="number", max="70")
+
+    assert answer_error(question, "70") is None
+
+
+@pytest.mark.django_db
+def test_number_above_max_is_rejected_on_a_real_form_question(mock_site_context):
+    question = FormQuestionFactory(type="number", max="70")
+
+    message = answer_error(question, "71")
+
+    assert message is not None
 
 
 # format_answer
