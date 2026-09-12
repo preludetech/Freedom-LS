@@ -23,6 +23,7 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormQuestion
+from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
 
 def _post_data(pairs: dict[str, list[str]]) -> QueryDict:
@@ -225,3 +226,75 @@ def test_blank_post_leaves_a_stored_file_answer_alone(mock_site_context, file_qu
     form_progress.save_answers([file_question], _post_data({}))
 
     assert form_progress.answers.filter(question=file_question).count() == 1
+
+
+@pytest.fixture
+def date_question(mock_site_context) -> FormQuestion:
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, type="date", order=0)
+    return question
+
+
+@pytest.mark.django_db
+def test_rejected_answer_is_not_stored(mock_site_context, date_question):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=date_question.form_page.form
+    )
+
+    form_progress.save_answers(
+        [date_question], _post_data({f"question_{date_question.id}": ["banana"]})
+    )
+
+    assert form_progress.answers.count() == 0
+
+
+@pytest.mark.django_db
+def test_rejected_resubmission_leaves_a_prior_valid_answer_in_place(
+    mock_site_context, date_question
+):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=date_question.form_page.form
+    )
+    field_name = f"question_{date_question.id}"
+    form_progress.save_answers(
+        [date_question], _post_data({field_name: ["2025-06-01"]})
+    )
+
+    form_progress.save_answers([date_question], _post_data({field_name: ["banana"]}))
+
+    answer = form_progress.answers.get(question=date_question)
+    assert answer.text_answer == "2025-06-01"
+
+
+@pytest.mark.django_db
+def test_rejected_answer_is_returned_with_the_submitted_text(
+    mock_site_context, date_question
+):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=date_question.form_page.form
+    )
+
+    rejected = form_progress.save_answers(
+        [date_question], _post_data({f"question_{date_question.id}": ["banana"]})
+    )
+
+    assert rejected[date_question.id] == RejectedAnswer(
+        text="banana",
+        message='You entered "banana". Enter a date in the format YYYY-MM-DD.',
+    )
+
+
+@pytest.mark.django_db
+def test_valid_date_answer_round_trips(mock_site_context, date_question):
+    form_progress = FormProgressFactory(
+        user=UserFactory(), form=date_question.form_page.form
+    )
+
+    rejected = form_progress.save_answers(
+        [date_question], _post_data({f"question_{date_question.id}": ["2025-06-01"]})
+    )
+
+    answer = form_progress.answers.get(question=date_question)
+    assert answer.text_answer == "2025-06-01"
+    assert rejected == {}

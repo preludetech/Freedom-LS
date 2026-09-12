@@ -23,6 +23,7 @@ from freedom_ls.form_engine.paging import (
     answered_counts,
     build_page_links,
     page_accessibility_limit,
+    rejected_answers_message,
     resume_page_number,
     unanswered_required_in_form,
     unanswered_required_message,
@@ -232,6 +233,30 @@ def test_several_outstanding_questions_are_listed_in_the_plural(mock_site_contex
     assert (
         unanswered_required_message(questions)
         == "Questions 1, 2 and 3 need answers before you can continue."
+    )
+
+
+@pytest.mark.django_db
+def test_one_rejected_answer_is_named_in_the_singular(
+    mock_site_context, four_page_form
+):
+    question = _question_on_page(four_page_form, 3)
+
+    assert rejected_answers_message([question]) == "Question 3 needs a valid answer."
+
+
+@pytest.mark.django_db
+def test_several_rejected_answers_are_listed_in_the_plural(mock_site_context):
+    form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    questions = [
+        FormQuestionFactory(form_page=page, type="short_text", order=order)
+        for order in range(3)
+    ]
+
+    assert (
+        rejected_answers_message(questions)
+        == "Questions 1, 2 and 3 need valid answers."
     )
 
 
