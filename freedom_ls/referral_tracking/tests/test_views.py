@@ -11,7 +11,7 @@ from django.db import DatabaseError
 from django.test import Client
 
 from freedom_ls.referral_tracking.factories import ReferralCodeFactory
-from freedom_ls.referral_tracking.models import Door, ReferralCodeHit
+from freedom_ls.referral_tracking.models import Door, ReferralCode, ReferralCodeHit
 
 pytestmark = pytest.mark.django_db
 
@@ -158,3 +158,21 @@ def test_an_unsafe_destination_falls_back_to_the_default_path(
     target = urlsplit(response.url)
     assert target.netloc == ""
     assert target.path == "/"
+
+
+def test_a_relative_destination_falls_back_to_the_default_path(
+    mock_site_context,
+) -> None:
+    """A destination with no leading slash must not resolve against /go/ itself.
+
+    `url_has_allowed_host_and_scheme` passes a relative target — it has neither
+    a host nor a scheme to object to — so without a separate check the browser
+    resolves the Location against the redirect route and loops, logging a hit
+    on every hop.
+    """
+    code = ReferralCodeFactory(code="mrbeast")
+    ReferralCode._base_manager.filter(pk=code.pk).update(destination="courses/")
+
+    response = Client().get("/go/mrbeast")
+
+    assert response.url.startswith("/?")
