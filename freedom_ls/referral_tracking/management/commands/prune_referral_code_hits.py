@@ -1,7 +1,9 @@
 """Delete referral code hits older than a cutoff, across every site.
 
-The hit log grows without bound (see `ReferralCode.hit_count`'s help text), so
-an operator runs this on whatever schedule suits their retention policy.
+Nothing trims the hit log on its own, so an operator runs this on whatever
+schedule suits their retention policy. What one client can add to the log is
+capped (see `REFERRAL_TRACKING_HIT_LOG_LIMIT`), but ordinary traffic still
+grows it indefinitely.
 """
 
 from __future__ import annotations

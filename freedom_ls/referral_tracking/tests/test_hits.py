@@ -158,3 +158,60 @@ def test_recording_a_hit_does_not_re_fetch_the_site(mock_site_context) -> None:
         record_hit(referral_code, Door.GO, request)
 
     assert not [q for q in queries.captured_queries if "django_site" in q["sql"]]
+
+
+@pytest.mark.django_db
+def test_hits_past_the_log_limit_are_not_recorded(mock_site_context, settings) -> None:
+    settings.REFERRAL_TRACKING_HIT_LOG_LIMIT = 2
+    referral_code = ReferralCodeFactory()
+    request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
+
+    for _ in range(5):
+        record_hit(referral_code, Door.GO, request)
+
+    assert ReferralCodeHit._base_manager.count() == 2
+    referral_code.refresh_from_db()
+    assert referral_code.hit_count == 2
+
+
+@pytest.mark.django_db
+def test_the_log_limit_is_counted_per_code(mock_site_context, settings) -> None:
+    settings.REFERRAL_TRACKING_HIT_LOG_LIMIT = 1
+    first = ReferralCodeFactory()
+    second = ReferralCodeFactory()
+    request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
+
+    record_hit(first, Door.GO, request)
+    record_hit(first, Door.GO, request)
+    record_hit(second, Door.GO, request)
+
+    assert ReferralCodeHit._base_manager.filter(referral_code=first).count() == 1
+    assert ReferralCodeHit._base_manager.filter(referral_code=second).count() == 1
+
+
+@pytest.mark.django_db
+def test_a_log_limit_of_zero_records_every_hit(mock_site_context, settings) -> None:
+    settings.REFERRAL_TRACKING_HIT_LOG_LIMIT = 0
+    referral_code = ReferralCodeFactory()
+    request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
+
+    for _ in range(5):
+        record_hit(referral_code, Door.GO, request)
+
+    assert ReferralCodeHit._base_manager.count() == 5
+
+
+@pytest.mark.django_db
+def test_a_refused_client_ip_does_not_silently_drop_the_hit(
+    mock_site_context, settings
+) -> None:
+    """A misconfigured edge must not quietly stop the hit log."""
+    settings.REFERRAL_TRACKING_HIT_LOG_LIMIT = 1
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    referral_code = ReferralCodeFactory()
+    request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
+
+    record_hit(referral_code, Door.GO, request)
+    record_hit(referral_code, Door.GO, request)
+
+    assert ReferralCodeHit._base_manager.count() == 2

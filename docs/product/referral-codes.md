@@ -10,7 +10,7 @@ _Last updated: 2026-09-12_
 - **A code reaches signup attribution only as a first touch**, the same rule every other tracked link follows. See [signup attribution](./signup-attribution.md). Built.
 - **A retired code still redirects and still logs**, so printed material never dead-ends. Only a code that never existed is treated as a dead link. Built.
 - **A saved code can be deactivated but never deleted or renamed**, so its text is never handed to someone else later. Built.
-- **Nothing trims the hit log.** An operator prunes it on whatever schedule suits them. Not built: automatic pruning.
+- **Nothing trims the hit log.** An operator prunes it on whatever schedule suits them. What one address can add to it is capped, but ordinary traffic still grows it indefinitely. Not built: automatic pruning.
 
 ## Codes and Redirects
 
@@ -25,6 +25,8 @@ The admin change form for a code shows both of its URLs ready to copy and a prev
 ![Referral code change form showing the two copyable URLs, both redirect previews and the hit count](screenshots/admin_referral_code_change_form.png)
 
 Every visit is written to a separate hit log, recording which code it carried and which of the two URLs it came through. That log holds no personal data and describes no visitor — see [security and data handling](./security-and-data-handling.md#personal-data-collected). It is not trimmed automatically: an operator runs the `prune_referral_code_hits` command on whatever schedule their deployment needs. Because the log is pruned and the hit count is not, the two do not reconcile.
+
+These URLs are public and need no login, so repeated hits on one code from one address stop being logged past a cap — 30 an hour by default, tunable through `REFERRAL_TRACKING_HIT_LOG_LIMIT`. The visitor is still redirected every time: the cap bounds what one client can write to the log, never the link itself. Heavy use from a single connection, a conference or a school sharing one address, is therefore undercounted in both the log and the hit count.
 
 Both the code list and the hit log export to CSV.
 

@@ -176,3 +176,16 @@ def test_a_relative_destination_falls_back_to_the_default_path(
     response = Client().get("/go/mrbeast")
 
     assert response.url.startswith("/?")
+
+
+def test_a_throttled_hit_still_redirects(mock_site_context, settings) -> None:
+    """The cap bounds the hit log, never the link itself."""
+    settings.REFERRAL_TRACKING_HIT_LOG_LIMIT = 1
+    ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    first = Client().get("/go/mrbeast")
+    second = Client().get("/go/mrbeast")
+
+    assert (first.status_code, second.status_code) == (302, 302)
+    assert first.url == second.url
+    assert ReferralCodeHit._base_manager.count() == 1

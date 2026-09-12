@@ -187,7 +187,9 @@ class ReferralCode(SiteAwareModel):
             "crawlers that imitate a browser still inflate it. This number "
             "and the hit log do not reconcile — the log holds every hit, "
             "machine fetches included, and pruning empties it, while this "
-            "count skips machine fetches and never goes down."
+            "count skips machine fetches and never goes down. Repeated hits "
+            "from one address are capped per hour, so heavy use from a single "
+            "connection is undercounted."
         ),
     )
     last_hit_at = models.DateTimeField(null=True, blank=True)

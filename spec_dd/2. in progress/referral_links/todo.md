@@ -55,6 +55,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user) Decide whether the public /go/ and /d/ redirect routes should be csrf_exempt so @require_safe can answer POST with 405, then apply that decision to follow_referral_code
 - [x] (user + cmd) Fix QA bug: the admin Copy buttons are unstyled and their 35x20px hit box is under the WCAG 2.5.8 minimum (TDD — failing test first, then fix)
 - [x] (user) Decide how the Copy button beside go_url and d_url should look, then style it to read as a control and meet the 24x24 minimum target size
+- [x] (user + cmd) Fix code-review finding: ReferralCode.clean() 500s the admin change form when a stored code fails validation, because `code` is excluded from that form (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix code-review finding: recording a hit dereferenced an uncached site FK, costing a query on every redirect (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix code-review finding: a relative destination slipped past the open-redirect check and resolved against the /go/ route itself (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix code-review finding: the hit prune had no index for a bare hit_at filter and sorted on a random UUID pk (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix code-review finding: ReferralCodeHit.__str__ rendered a raw UUID instead of the code text (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix code-review finding: a refused or unavailable clipboard failed silently on the admin Copy buttons (TDD — failing test first, then fix)
+- [x] (user) Decide whether the unauthenticated per-request write behind /go/ and /d/ needs a throttle, then apply that decision
+- [x] (user + cmd) Fix code-review finding: /go/ and /d/ wrote a hit row per anonymous request with no cap (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
