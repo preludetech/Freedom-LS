@@ -78,6 +78,16 @@ SECOND_ENCODE_BYTES = 250 * 1024
 # comparison. Integer arithmetic on both sides, never floats.
 LOSSY_WINS_DIVISOR = 3
 
+# Bump when a change to this module changes the bytes optimise_image returns
+# for some input without changing any constant above. That covers branch
+# order, the never-grow comparison, which formats get a second encode, and
+# where the camera EXIF gate sits. It is also the one deliberate lever for
+# re-encoding after a Pillow or libwebp upgrade. Nothing else invalidates a
+# cached encode when the encoder changes, because a stale WebP is still a
+# correct WebP, and a silent re-encode would rewrite every binary file in
+# every content repository for a change no learner can see.
+ENCODE_VERSION = 1
+
 # The EXIF orientations whose transform swaps the two axes: transpose,
 # rotate 90, transverse and rotate 270. The other four leave them alone.
 TRANSPOSED_ORIENTATIONS = frozenset({5, 6, 7, 8})
@@ -86,8 +96,30 @@ TRANSPOSED_ORIENTATIONS = frozenset({5, 6, 7, 8})
 # it, so a .svgz is never File.FileType.IMAGE and cannot reach this module.
 SVG_SUFFIXES = {".svg"}
 
+# The stored extension and MIME type for an OPTIMISED decision. Named once
+# so the cache can reconstruct a decision from a cached entry without
+# duplicating either literal.
+WEBP_SUFFIX = ".webp"
+WEBP_MIME_TYPE = "image/webp"
 
-def _store_source(
+# The constants above, as an entry records them. An entry written under a
+# different set of values reads as a miss, so nobody has to remember
+# anything for a retuned knob to take effect. SVG_SUFFIXES is deliberately
+# absent. Changing it changes which branch an image takes, not what that
+# branch produces, which is ENCODE_VERSION's half of the problem.
+ENCODE_CONSTANTS: dict[str, int | list[int]] = {
+    "encode_version": ENCODE_VERSION,
+    "max_dimension_px": MAX_DIMENSION_PX,
+    "lossy_quality": LOSSY_QUALITY,
+    "lossless_effort": LOSSLESS_EFFORT,
+    "encode_method": ENCODE_METHOD,
+    "second_encode_bytes": SECOND_ENCODE_BYTES,
+    "lossy_wins_divisor": LOSSY_WINS_DIVISOR,
+    "transposed_orientations": sorted(TRANSPOSED_ORIENTATIONS),
+}
+
+
+def store_source(
     status: ImageEncodeStatus,
     *,
     source_format: str | None = None,
@@ -148,7 +180,7 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
         # the same suffix before classifying a file as IMAGE, so this check
         # has to lowercase too or DIAGRAM.SVG would fall through to a decode
         # it cannot survive.
-        return _store_source(ImageEncodeStatus.PASSTHROUGH, source_format="SVG")
+        return store_source(ImageEncodeStatus.PASSTHROUGH, source_format="SVG")
 
     # Both stay None when Image.open itself raises: a PNG with a too-short
     # IHDR fails before there is a format to name.
@@ -169,7 +201,7 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
                 # define neither. MPO is excluded because phone .jpg files
                 # open as format MPO with n_frames == 2, and a bare frame
                 # count would pass real photos through untouched.
-                return _store_source(
+                return store_source(
                     ImageEncodeStatus.PASSTHROUGH,
                     source_format=source_format,
                     source_size=source_size,
@@ -178,7 +210,7 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
             if source_format == "WEBP" and max(source_size) <= MAX_DIMENSION_PX:
                 # Re-encoding buys nothing here and spends a generation of
                 # quality for no benefit.
-                return _store_source(
+                return store_source(
                     ImageEncodeStatus.PASSTHROUGH,
                     source_format=source_format,
                     source_size=source_size,
@@ -253,7 +285,7 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
         # reports a write it cannot complete as an OSError, and an
         # unexpected mode conversion as a ValueError, so leaving the guard
         # around Image.open alone would leave two ways to abort a run.
-        return _store_source(
+        return store_source(
             ImageEncodeStatus.UNDECODABLE,
             source_format=source_format,
             source_size=source_size,
@@ -263,7 +295,7 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
     if len(encoded) >= len(raw):
         # Strict: a tie keeps the source rather than churning the extension
         # and MIME type for nothing.
-        return _store_source(
+        return store_source(
             ImageEncodeStatus.KEPT_SOURCE,
             source_format=source_format,
             source_size=source_size,
@@ -274,8 +306,8 @@ def optimise_image(raw: bytes, suffix: str) -> ImageEncodeDecision:
         source_format=source_format,
         source_size=source_size,
         data=encoded,
-        suffix=".webp",
-        mime_type="image/webp",
+        suffix=WEBP_SUFFIX,
+        mime_type=WEBP_MIME_TYPE,
         lossless=lossless,
         stored_size=img.size,
         error=None,
