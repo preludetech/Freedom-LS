@@ -10,6 +10,7 @@ from __future__ import annotations
 from django.contrib import admin
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest
+from django.urls import NoReverseMatch
 from django.utils.html import format_html
 
 from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
@@ -35,6 +36,9 @@ from freedom_ls.referral_tracking.resources import (
 from freedom_ls.site_aware_models.admin import SiteAwareExportModelAdmin
 
 UNSAVED_MESSAGE = "Shown once the code is saved."
+UNREVERSABLE_CODE_MESSAGE = (
+    "This code predates the current rules and has no working link."
+)
 
 
 def _readonly_field_names(model: type[Model]) -> list[str]:
@@ -203,7 +207,13 @@ class ReferralCodeAdmin(SiteAwareExportModelAdmin):
     def _copyable_url(self, obj: ReferralCode, door: Door) -> str:
         if obj._state.adding:
             return UNSAVED_MESSAGE
-        url = absolute_code_url(obj, door)
+        try:
+            url = absolute_code_url(obj, door)
+        except NoReverseMatch:
+            # A code written past `full_clean()` (or saved under older,
+            # looser rules) can fall outside `CODE_PATTERN`, and the URL
+            # patterns exclude it too — there is no route to reverse.
+            return UNREVERSABLE_CODE_MESSAGE
         element_id = f"referral-code-{door}-url"
         return format_html(
             '<span id="{}">{}</span> '

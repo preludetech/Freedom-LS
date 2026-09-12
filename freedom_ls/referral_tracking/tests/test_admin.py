@@ -324,6 +324,22 @@ def test_referral_code_change_post_saves_when_the_stored_code_is_invalid(
 
 
 @pytest.mark.django_db
+def test_referral_code_change_form_renders_for_a_code_outside_the_url_pattern(
+    superuser_client, mock_site_context
+):
+    """A code stored past `full_clean()` must not break `reverse()` in the
+
+    read-only `go_url`/`d_url` fields when the change form renders.
+    """
+    code = ReferralCodeFactory(code="has_underscore", destination="/courses/")
+    url = reverse(f"admin:{APP_LABEL}_referralcode_change", args=[code.pk])
+
+    response = superuser_client.get(url)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
 def test_referral_code_add_with_a_reserved_code_is_a_field_error(
     superuser_client, mock_site_context
 ):
