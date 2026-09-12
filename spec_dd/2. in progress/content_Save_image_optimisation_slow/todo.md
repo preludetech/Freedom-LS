@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -69,7 +69,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
