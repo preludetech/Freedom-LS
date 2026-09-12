@@ -49,9 +49,9 @@ commands spawn `sdd`-plugin agents.
 `qa-bugfixer` — fixes one QA-reported bug TDD-style (failing test → fix → full suite → commit).
 Spawned by `do_qa`'s triage loop.
 
-### Scripts (9)
+### Scripts (8)
 
-`dev_db_delete.sh`, `dev_db_init.sh`, `db_recreate.sh`, `install_dev.sh` — per-branch dev/test database
+`dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh` — per-branch dev/test database
 setup and teardown.
 `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh` + `compress_screenshots.py`,
 `delete_sdd_work_files.sh` — QA-run artifact cleanup, screenshot collection and compression, and
@@ -70,7 +70,7 @@ FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extend
 ### Templates
 
 `fls.md`, `fls.local.md` (config templates `/fls-dev:init` copies into `.claude/fls-dev/`), and
-`wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `db_recreate.sh`, `install_dev.sh`,
+`wrapper_scripts/` (`dev_db_delete.sh`, `dev_db_init.sh`, `install_dev.sh`,
 `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`,
 `delete_sdd_work_files.sh`). The shared `claude.sh` launcher and the `settings.json` baseline are
 `ds`-owned templates.
