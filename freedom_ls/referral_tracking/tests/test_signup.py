@@ -56,6 +56,16 @@ def test_signup_after_a_tracked_landing_records_the_landing(mock_site_context):
     assert attribution.signed_up_at > attribution.first_seen
 
 
+def test_signup_after_a_referral_landing_records_the_code(mock_site_context):
+    client = Client()
+    client.get("/robots.txt", {"ref": "mrbeast", "utm_source": "newsletter"})
+    client.post(reverse("account_signup"), _signup_payload("referred@example.com"))
+
+    attribution = SignupAttribution.objects.get()
+
+    assert attribution.referral_code == "mrbeast"
+
+
 def test_signup_with_no_landing_is_recorded_as_direct(mock_site_context):
     with time_machine.travel("2026-01-01T00:00:00+00:00", tick=False):
         Client().post(reverse("account_signup"), _signup_payload("direct@example.com"))

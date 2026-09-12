@@ -13,6 +13,7 @@ from django.utils.cache import patch_cache_control, patch_vary_headers
 from freedom_ls.referral_tracking.capture import (
     first_touch_from_request,
     has_tracked_params,
+    is_capture_suppressed,
     read_attribution_cookie,
     set_attribution_cookie,
 )
@@ -37,6 +38,10 @@ class AttributionCaptureMiddleware:
     minting one: a shared cache that stored the response served to a visitor
     who already held the cookie would replay it, with no `Set-Cookie`, to the
     next visitor who did not.
+
+    The `/go/` and `/d/` referral redirect views opt out by name, calling
+    `suppress_capture()` before doing anything else, so following a code
+    itself never mints a cookie or tallies a first touch.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponseBase]) -> None:
@@ -48,6 +53,8 @@ class AttributionCaptureMiddleware:
         site = self._site_to_mint_for(request)
         first_touch = first_touch_from_request(request) if site else None
         response = self.get_response(request)
+        if is_capture_suppressed(request):
+            return response
         patch_vary_headers(response, ["Cookie"])
         if site is None or first_touch is None:
             return response

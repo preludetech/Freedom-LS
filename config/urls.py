@@ -53,6 +53,7 @@ urlpatterns = [
         {"sitemaps": _sitemaps},
         name="sitemap",
     ),
+    path("", include("freedom_ls.referral_tracking.urls")),
     # path("api/", api.urls),
     # path("api/xapi/", include("xapi_learning_record_store.api_urls")),
     # path("api/", api.urls),

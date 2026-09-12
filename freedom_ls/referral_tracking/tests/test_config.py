@@ -39,3 +39,15 @@ def test_first_touch_key_cap_reads_the_projects_value(settings) -> None:
     settings.REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP = 50
 
     assert config.REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP == 50
+
+
+def test_inactive_destination_defaults_when_project_sets_nothing(settings) -> None:
+    settings.REFERRAL_TRACKING_INACTIVE_DESTINATION = None
+
+    assert config.REFERRAL_TRACKING_INACTIVE_DESTINATION == "/"
+
+
+def test_inactive_destination_reads_the_projects_value(settings) -> None:
+    settings.REFERRAL_TRACKING_INACTIVE_DESTINATION = "/courses/"
+
+    assert config.REFERRAL_TRACKING_INACTIVE_DESTINATION == "/courses/"
