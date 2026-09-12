@@ -12,6 +12,7 @@ from django.db import DatabaseError, transaction
 from django.db.models import F
 from django.http import HttpRequest
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 
 from freedom_ls.accounts.utils import get_client_ip
 from freedom_ls.referral_tracking.config import config
@@ -51,6 +52,17 @@ def is_machine_fetch(request: HttpRequest) -> bool:
     )
 
 
+def _client_fingerprint(ip: str) -> str:
+    """A per-deployment pseudonym for one client address.
+
+    The cache key reaches storage — under the default DatabaseCache it is a
+    row in the cache table — so the address must not be readable from it. A
+    plain digest would not do: the IPv4 space is small enough to exhaust, so
+    this is keyed on SECRET_KEY.
+    """
+    return salted_hmac("referral_tracking.hit_log", ip).hexdigest()[:32]
+
+
 def is_hit_log_throttled(referral_code: ReferralCode, request: HttpRequest) -> bool:
     """Whether this client has already had its fill of logged hits on this code.
 
@@ -78,7 +90,10 @@ def is_hit_log_throttled(referral_code: ReferralCode, request: HttpRequest) -> b
     # backend without a native incr, `cache.incr` is get-then-set and resets
     # the timeout, so a steady stream would keep one counter alive for good.
     bucket = int(timezone.now().timestamp()) // window
-    key = f"referral-hit:{referral_code.site_id}:{referral_code.pk}:{ip}:{bucket}"
+    key = (
+        f"referral-hit:{referral_code.site_id}:{referral_code.pk}"
+        f":{_client_fingerprint(ip)}:{bucket}"
+    )
     if cache.add(key, 1, window * 2):
         return False
     try:

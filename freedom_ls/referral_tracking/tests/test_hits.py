@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.core.cache import cache
 from django.db import DatabaseError, connection
 from django.test import RequestFactory
 from django.test.utils import CaptureQueriesContext
@@ -215,3 +216,17 @@ def test_a_refused_client_ip_does_not_silently_drop_the_hit(
     record_hit(referral_code, Door.GO, request)
 
     assert ReferralCodeHit._base_manager.count() == 2
+
+
+@pytest.mark.django_db
+def test_the_throttle_key_does_not_hold_the_client_address(mock_site_context) -> None:
+    """The cache key reaches storage, so the address must not be readable in it."""
+    referral_code = ReferralCodeFactory()
+    request = rf.get(
+        "/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0], REMOTE_ADDR="203.0.113.7"
+    )
+
+    record_hit(referral_code, Door.GO, request)
+
+    assert cache._cache
+    assert not [key for key in cache._cache if "203.0.113.7" in key]

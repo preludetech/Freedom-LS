@@ -122,7 +122,7 @@ FLS stores, in its PostgreSQL database:
 
 Outside the database, FLS stores generated [cohort progress reports](./reports.md) as PDF files. Each holds real learner names, completion history, and individual quiz scores and answers, and is not anonymised — the audience is internal staff, by design. See [generated cohort reports](#generated-cohort-reports).
 
-Every visit to a [referral link](./referral-codes.md) is logged separately, but that log holds nothing describing the visitor — no IP address, browser identifier, referring page or query string — and is tied to no account.
+Every visit to a [referral link](./referral-codes.md) is logged separately, but that log holds nothing describing the visitor — no IP address, browser identifier, referring page or query string — and is tied to no account. Outside the log, the cap on how much one visitor can write to it does need to tell visitors apart: it holds a counter per address in the cache for the length of its window, an hour by default. The address is not stored there either — the counter is keyed on a hash of it, computed with the deployment's own secret key, so the address cannot be read back out of the cache. Under the default database-backed cache those counters are rows in the cache table, which expire on their own.
 
 No payment data or biometric data is stored by FLS. Whether a government ID is stored depends on what a course's application form asks the applicant to upload.
 
