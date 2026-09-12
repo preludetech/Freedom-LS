@@ -284,6 +284,15 @@ examRunnerForm scope (no intermediate x-data between them).
                     </div>
                 {% endif %}
 
+                {% comment %}Rejected submission: which answers were not valid for their type{% endcomment %}
+                {% if rejected_answers_error %}
+                    <div data-testid="rejected-answers-error" role="alert">
+                        <c-callout level="error" title="Invalid answers">
+                            {{ rejected_answers_error }}
+                        </c-callout>
+                    </div>
+                {% endif %}
+
                 <form id="runner-page-form" method="post" x-ref="pageForm" class="space-y-6">
                     {% csrf_token %}
                     {% comment %}

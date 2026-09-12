@@ -41,11 +41,13 @@ from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
 from freedom_ls.form_engine.paging import (
     answered_counts,
     build_page_links,
+    rejected_answers_message,
     resume_page_number,
     unanswered_required_message,
     unanswered_required_on_page,
 )
 from freedom_ls.form_engine.queries import count_form_questions, page_questions
+from freedom_ls.form_engine.typed_answers import RejectedAnswer
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import LearnerCourseRegistration
@@ -1362,6 +1364,8 @@ def form_fill_page(request, course_slug, index, page_number):
     # Set when a submission is rejected for missing required answers: the page is
     # re-rendered carrying it instead of advancing or completing.
     required_answers_error = ""
+    rejected_answers: dict[uuid.UUID, RejectedAnswer] = {}
+    rejected_answers_error = ""
 
     if request.method == "POST":
         # No incomplete attempt to save into (e.g. it was finalised by a
@@ -1380,9 +1384,9 @@ def form_fill_page(request, course_slug, index, page_number):
 
         # Save regardless, so a rejected submission does not throw away the
         # answers the learner did give.
-        form_progress.save_answers(questions, request.POST)
+        rejected_answers = form_progress.save_answers(questions, request.POST)
 
-        if not unanswered_required:
+        if not unanswered_required and not rejected_answers:
             if next_page_url:
                 return redirect(next_page_url)
 
@@ -1395,7 +1399,18 @@ def form_fill_page(request, course_slug, index, page_number):
                 index=index,
             )
 
-        required_answers_error = unanswered_required_message(unanswered_required)
+        required_answers_error = (
+            unanswered_required_message(unanswered_required)
+            if unanswered_required
+            else ""
+        )
+        rejected_answers_error = (
+            rejected_answers_message(
+                [question for question in questions if question.id in rejected_answers]
+            )
+            if rejected_answers
+            else ""
+        )
 
     previous_page_url = url_for_page(page_number - 1) if page_number > 1 else None
 
@@ -1448,6 +1463,8 @@ def form_fill_page(request, course_slug, index, page_number):
         "submit_and_exit_url": submit_and_exit_url,
         "save_and_exit_url": save_and_exit_url,
         "required_answers_error": required_answers_error,
+        "rejected_answers": rejected_answers,
+        "rejected_answers_error": rejected_answers_error,
     }
 
     # A rejected submission is a validation failure, not a fresh page view.
@@ -1455,7 +1472,7 @@ def form_fill_page(request, course_slug, index, page_number):
         request,
         "learner_interface/course_form_page.html",
         context,
-        status=422 if required_answers_error else 200,
+        status=422 if required_answers_error or rejected_answers_error else 200,
     )
     # Runner pages must re-fetch on back-nav so the answered count is never stale.
     response["Cache-Control"] = "no-store"
@@ -1655,7 +1672,9 @@ def _save_posted_page_answers(
     that names no usable page saves nothing rather than guessing at one.
 
     Required answers are deliberately not enforced. Leaving scores the attempt
-    as it stands, which is the opposite of the Next/Submit path.
+    as it stands, which is the opposite of the Next/Submit path. An answer that
+    fails its type's check is likewise dropped rather than stored: this path
+    has no re-render to report it on.
     """
     try:
         page_number = int(post_data.get("page_number", ""))

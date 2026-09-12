@@ -19,7 +19,11 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.form_engine.factories import (
+    FormFactory,
+    FormPageFactory,
+    FormQuestionFactory,
+)
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
@@ -940,3 +944,97 @@ class TestCheckYourAnswersMarkup:
         body = client.get(_check_url(app)).content.decode()
 
         assert "Not answered" in body
+
+
+# ---------------------------------------------------------------------------
+# Rejected (invalid) typed answers
+# ---------------------------------------------------------------------------
+
+
+def _course_with_single_question(question_type: str, *, required: bool = False):
+    """An application-gated course whose one-page form carries a single
+    question of `question_type`, isolated from the rest of the fixture form
+    so a rejected answer's effect on paging and completion is unambiguous.
+    """
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0, title="About you")
+    question = FormQuestionFactory(
+        form_page=page,
+        type=question_type,
+        order=0,
+        question="Answer",
+        required=required,
+    )
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+    return course, question
+
+
+@pytest.mark.django_db
+class TestApplicationFormPageRejectedAnswers:
+    def test_an_invalid_date_answer_returns_422_and_stores_nothing(
+        self, client, mock_site_context
+    ):
+        course, question = _course_with_single_question("date")
+        app = _applied(client, course)
+
+        response = client.post(_page_url(app, 1), {f"question_{question.id}": "banana"})
+
+        assert response.status_code == 422
+        assert app.form_progress.answers.filter(question=question).count() == 0
+
+    def test_an_invalid_answer_names_the_question_in_the_context(
+        self, client, mock_site_context
+    ):
+        course, question = _course_with_single_question("date")
+        app = _applied(client, course)
+
+        response = client.post(_page_url(app, 1), {f"question_{question.id}": "banana"})
+
+        assert (
+            response.context["rejected_answers_error"]
+            == "Question 1 needs a valid answer."
+        )
+
+    def test_a_rejected_email_comes_back_in_the_input_value(
+        self, client, mock_site_context
+    ):
+        course, question = _course_with_single_question("email")
+        app = _applied(client, course)
+
+        body = client.post(
+            _page_url(app, 1), {f"question_{question.id}": "not-an-email"}
+        ).content.decode()
+
+        assert 'value="not-an-email"' in body
+
+    def test_a_corrected_resubmission_advances_and_stores(
+        self, client, mock_site_context
+    ):
+        course, question = _course_with_single_question("email")
+        app = _applied(client, course)
+        client.post(_page_url(app, 1), {f"question_{question.id}": "not-an-email"})
+
+        response = client.post(
+            _page_url(app, 1), {f"question_{question.id}": "ada@example.com"}
+        )
+
+        assert response["Location"] == _check_url(app)
+        answer = app.form_progress.answers.get(question=question)
+        assert answer.text_answer == "ada@example.com"
+
+    def test_a_rejected_required_answer_still_blocks_final_submission(
+        self, client, mock_site_context
+    ):
+        """The rejected date stores no row, so the whole-form check on
+        check-your-answers still finds the required question unanswered."""
+        course, question = _course_with_single_question("date", required=True)
+        app = _applied(client, course)
+        client.post(_page_url(app, 1), {f"question_{question.id}": "banana"})
+
+        response = client.post(_check_url(app))
+
+        assert response.status_code == 422
+        app.form_progress.refresh_from_db()
+        assert app.form_progress.completed_time is None
