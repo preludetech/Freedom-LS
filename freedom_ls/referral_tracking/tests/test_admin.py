@@ -1,20 +1,37 @@
-"""Admin tests — `SignupAttribution` and `FirstTouchCount` are fully read-only."""
+"""Admin tests.
+
+`SignupAttribution` and `FirstTouchCount` are fully read-only. `ReferralCode`
+is writable but never deletable, and `ReferralCodeHit` is read-only like the
+first two.
+"""
 
 from __future__ import annotations
 
 import pytest
 
+from django.contrib import admin
 from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.referral_tracking.admin import UNSAVED_MESSAGE, ReferralCodeAdmin
+from freedom_ls.referral_tracking.codes import (
+    GENERATED_CODE_ALPHABET,
+    GENERATED_CODE_LENGTH,
+)
 from freedom_ls.referral_tracking.factories import (
     FirstTouchCountFactory,
+    ReferralCodeFactory,
+    ReferralCodeHitFactory,
     SignupAttributionFactory,
 )
-from freedom_ls.referral_tracking.models import FirstTouchCount, SignupAttribution
+from freedom_ls.referral_tracking.models import (
+    FirstTouchCount,
+    ReferralCode,
+    SignupAttribution,
+)
 
 APP_LABEL = "freedom_ls_referral_tracking"
 
@@ -141,4 +158,250 @@ def test_first_touch_count_changelist_returns_403_without_permission(
     response = unprivileged_staff_client.get(
         reverse(f"admin:{APP_LABEL}_firsttouchcount_changelist")
     )
+    assert response.status_code == 403
+
+
+# --- ReferralCode ------------------------------------------------------------
+
+
+@pytest.fixture
+def superuser_client(mock_site_context, db):
+    """A user who can add, change and view every referral-tracking model.
+
+    `has_delete_permission` on `ReferralCodeAdmin` and `ReferralCodeHitAdmin`
+    always returns `False`, so even a superuser cannot delete through either
+    admin — that refusal is what these tests exercise.
+    """
+    user = UserFactory(superuser=True)
+    client = Client()
+    client.force_login(user)
+    return client
+
+
+@pytest.fixture
+def referral_code_admin_instance() -> ReferralCodeAdmin:
+    return ReferralCodeAdmin(ReferralCode, admin.site)
+
+
+def _referral_code_add_payload(**overrides: str) -> dict[str, str]:
+    payload = {
+        "code": "",
+        "label": "Trade stand",
+        "notes": "",
+        "destination": "/courses/",
+        "inactive_destination": "",
+        "is_active": "on",
+    }
+    payload.update(overrides)
+    return payload
+
+
+@pytest.mark.django_db
+def test_referral_code_add_with_blank_code_generates_one(superuser_client):
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcode_add"), _referral_code_add_payload()
+    )
+
+    assert response.status_code == 302
+    code = ReferralCode.objects.get(label="Trade stand")
+    assert len(code.code) == GENERATED_CODE_LENGTH
+    assert set(code.code) <= set(GENERATED_CODE_ALPHABET)
+
+
+@pytest.mark.django_db
+def test_referral_code_add_with_case_only_duplicate_is_a_form_error(
+    superuser_client, mock_site_context
+):
+    ReferralCodeFactory(code="MrBeast")
+
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcode_add"),
+        _referral_code_add_payload(code="mrbeast"),
+    )
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors
+
+
+@pytest.mark.django_db
+def test_referral_code_change_form_does_not_render_code_as_an_input(
+    superuser_client, mock_site_context
+):
+    code = ReferralCodeFactory(code="mrbeast")
+
+    response = superuser_client.get(
+        reverse(f"admin:{APP_LABEL}_referralcode_change", args=[code.pk])
+    )
+
+    assert 'name="code"' not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_referral_code_change_post_does_not_change_the_code(
+    superuser_client, mock_site_context
+):
+    code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+    url = reverse(f"admin:{APP_LABEL}_referralcode_change", args=[code.pk])
+
+    response = superuser_client.post(
+        url,
+        {
+            "code": "hacked",
+            "label": code.label,
+            "notes": "",
+            "destination": code.destination,
+            "inactive_destination": "",
+            "is_active": "on",
+        },
+    )
+
+    code.refresh_from_db()
+    assert code.code == "mrbeast"
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_referral_code_delete_returns_403(superuser_client, mock_site_context):
+    code = ReferralCodeFactory()
+    url = reverse(f"admin:{APP_LABEL}_referralcode_delete", args=[code.pk])
+
+    response = superuser_client.post(url, {"post": "yes"})
+
+    assert ReferralCode.objects.filter(pk=code.pk).exists()
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_referral_code_changelist_offers_no_delete_selected_action(
+    superuser_client, mock_site_context
+):
+    ReferralCodeFactory()
+
+    response = superuser_client.get(
+        reverse(f"admin:{APP_LABEL}_referralcode_changelist")
+    )
+
+    assert b"delete_selected" not in response.content
+
+
+@pytest.mark.django_db
+def test_deactivate_action_flips_the_selection_and_reports_the_count(
+    superuser_client, mock_site_context
+):
+    first = ReferralCodeFactory(is_active=True)
+    second = ReferralCodeFactory(is_active=True)
+
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcode_changelist"),
+        {
+            "action": "deactivate_referral_codes",
+            "_selected_action": [str(first.pk), str(second.pk)],
+            "select_across": "0",
+            "index": "0",
+        },
+        follow=True,
+    )
+
+    first.refresh_from_db()
+    second.refresh_from_db()
+    assert first.is_active is False
+    assert second.is_active is False
+    assert b"Deactivated 2 referral code(s)." in response.content
+
+
+@pytest.mark.django_db
+def test_go_url_uses_the_codes_site_domain(
+    mock_site_context, referral_code_admin_instance
+):
+    code = ReferralCodeFactory(code="mrbeast")
+
+    html = referral_code_admin_instance.go_url(code)
+
+    assert code.site.domain in html
+
+
+@pytest.mark.django_db
+def test_d_url_is_fully_uppercase(mock_site_context, referral_code_admin_instance):
+    code = ReferralCodeFactory(code="mrbeast")
+
+    html = referral_code_admin_instance.d_url(code)
+
+    assert "MRBEAST" in html
+    assert "mrbeast" not in html
+
+
+@pytest.mark.django_db
+def test_unsaved_referral_code_shows_the_unsaved_message(
+    mock_site_context, referral_code_admin_instance, site
+):
+    unsaved = ReferralCode(site=site, code="temp", label="Temp", destination="/")
+
+    assert referral_code_admin_instance.go_url(unsaved) == UNSAVED_MESSAGE
+    assert referral_code_admin_instance.d_url(unsaved) == UNSAVED_MESSAGE
+    assert referral_code_admin_instance.destination_preview(unsaved) == UNSAVED_MESSAGE
+    assert (
+        referral_code_admin_instance.inactive_destination_preview(unsaved)
+        == UNSAVED_MESSAGE
+    )
+
+
+@pytest.mark.django_db
+def test_destination_preview_matches_the_view_redirect(
+    mock_site_context, referral_code_admin_instance
+):
+    code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    response = Client().get(f"/go/{code.code}")
+
+    assert response.url == referral_code_admin_instance.destination_preview(code)
+
+
+@pytest.mark.django_db
+def test_inactive_destination_preview_matches_the_view_redirect(
+    mock_site_context, referral_code_admin_instance
+):
+    code = ReferralCodeFactory(
+        code="oldcode", is_active=False, inactive_destination="/retired/"
+    )
+
+    response = Client().get(f"/go/{code.code}")
+
+    assert response.url == referral_code_admin_instance.inactive_destination_preview(
+        code
+    )
+
+
+# --- ReferralCodeHit -----------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_referral_code_hit_admin_add_returns_403(superuser_client):
+    response = superuser_client.get(reverse(f"admin:{APP_LABEL}_referralcodehit_add"))
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_referral_code_hit_admin_change_returns_403(
+    superuser_client, mock_site_context
+):
+    hit = ReferralCodeHitFactory()
+
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcodehit_change", args=[hit.pk]), {}
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_referral_code_hit_admin_delete_returns_403(
+    superuser_client, mock_site_context
+):
+    hit = ReferralCodeHitFactory()
+
+    response = superuser_client.post(
+        reverse(f"admin:{APP_LABEL}_referralcodehit_delete", args=[hit.pk]),
+        {"post": "yes"},
+    )
+
     assert response.status_code == 403
