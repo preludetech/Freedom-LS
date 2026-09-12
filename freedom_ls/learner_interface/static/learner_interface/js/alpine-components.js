@@ -348,7 +348,7 @@ document.addEventListener("alpine:init", () => {
             const groups = {};
             this._formEl
                 .querySelectorAll(
-                    'input[name^="question_"], textarea[name^="question_"]'
+                    'input[name^="question_"], textarea[name^="question_"], select[name^="question_"]'
                 )
                 .forEach((el) => {
                     (groups[el.name] ||= []).push(el);

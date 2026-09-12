@@ -1,0 +1,14 @@
+{% load fls_base_filters %}
+<label class="sr-only" for="question_{{ question.id }}">{{ question.rendered_question }}</label>
+<select id="question_{{ question.id }}"
+        name="question_{{ question.id }}"
+        class="w-full rounded-md border border-border bg-white px-3 py-2 text-on-surface
+               focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+        {% if question.required %}required{% endif %}
+        {% if read_only %}disabled{% endif %}
+        {% if rejected %}aria-invalid="true" aria-describedby="question_{{ question.id }}_error"{% endif %}>
+    <option value=""></option>
+    {% for option in question.options.all %}
+        <option value="{{ option.id }}" {% if existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer and option in answer.selected_options.all %}selected{% endif %}{% endwith %}{% endif %}>{{ option.text }}</option>
+    {% endfor %}
+</select>
