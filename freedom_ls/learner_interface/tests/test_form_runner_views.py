@@ -1533,3 +1533,127 @@ def test_form_start_resumes_past_a_skipped_optional_question(mock_site_context, 
         "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 4},
     )
+
+
+# ---------------------------------------------------------------------------
+# Rejected (invalid) typed answers
+# ---------------------------------------------------------------------------
+
+
+def _make_single_question_form(question_type: str, *, required: bool = False):
+    """A one-page, one-question form, isolated from the multi-question forms
+    above so a rejected answer's effect on paging and completion is
+    unambiguous."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(
+        form_page=page, type=question_type, order=0, required=required
+    )
+    return form, question
+
+
+def _fill_page_url(course: Course, page_number: int = 1) -> str:
+    return reverse(
+        "learner_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": page_number},
+    )
+
+
+@pytest.mark.django_db
+def test_an_invalid_date_answer_returns_422_and_stores_nothing(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form, question = _make_single_question_form("date")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    response = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "banana"}
+    )
+
+    assert response.status_code == 422
+    assert (
+        response.context["rejected_answers_error"] == "Question 1 needs a valid answer."
+    )
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.answers.filter(question=question).count() == 0
+
+
+@pytest.mark.django_db
+def test_a_rejected_email_comes_back_in_the_input_value(mock_site_context, client):
+    user = UserFactory()
+    form, question = _make_single_question_form("email")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    body = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "not-an-email"}
+    ).content.decode()
+
+    assert 'value="not-an-email"' in body
+
+
+@pytest.mark.django_db
+def test_a_corrected_resubmission_advances_and_stores(mock_site_context, client):
+    user = UserFactory()
+    form, question = _make_single_question_form("email")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    client.post(_fill_page_url(course), {f"question_{question.id}": "not-an-email"})
+
+    response = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "ada@example.com"}
+    )
+
+    assert response.status_code == 302
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.answers.get(question=question).text_answer == "ada@example.com"
+
+
+@pytest.mark.django_db
+def test_a_rejected_required_answer_does_not_complete_the_attempt(
+    mock_site_context, client
+):
+    """The rejected date stores no row, so the single-page final submission
+    does not satisfy the required check and does not complete the attempt."""
+    user = UserFactory()
+    form, question = _make_single_question_form("date", required=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    response = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "banana"}
+    )
+
+    assert response.status_code == 422
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.completed_time is None

@@ -21,12 +21,14 @@ from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.form_engine.paging import (
     build_page_links,
+    rejected_answers_message,
     resume_page_number,
     unanswered_required_in_form,
     unanswered_required_message,
     unanswered_required_on_page,
 )
 from freedom_ls.form_engine.queries import page_questions
+from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
 
 def _start_application(user: User, course: Course) -> CourseApplication:
@@ -195,16 +197,27 @@ def application_form_page(
         return _page_url(app, number)
 
     required_answers_error = ""
+    rejected_answers: dict[UUID, RejectedAnswer] = {}
+    rejected_answers_error = ""
     if request.method == "POST":
         if read_only:
             return redirect("course_applications:status", pk=app.pk)
         unanswered = unanswered_required_on_page(questions, request.POST, form_progress)
-        form_progress.save_answers(questions, request.POST)
-        if not unanswered:
+        rejected_answers = form_progress.save_answers(questions, request.POST)
+        if not unanswered and not rejected_answers:
             if page_number < len(all_pages) and not return_to_check:
                 return redirect(url_for_page(page_number + 1))
             return redirect("course_applications:check_answers", pk=app.pk)
-        required_answers_error = unanswered_required_message(unanswered)
+        required_answers_error = (
+            unanswered_required_message(unanswered) if unanswered else ""
+        )
+        rejected_answers_error = (
+            rejected_answers_message(
+                [question for question in questions if question.id in rejected_answers]
+            )
+            if rejected_answers
+            else ""
+        )
 
     if not read_only:
         form_progress.record_page_reached(page_number)
@@ -222,6 +235,8 @@ def application_form_page(
         "page_links": build_page_links(form, form_progress, page_number, url_for_page),
         "read_only": read_only,
         "required_answers_error": required_answers_error,
+        "rejected_answers": rejected_answers,
+        "rejected_answers_error": rejected_answers_error,
         "return_to_check": return_to_check,
         "check_answers_url": reverse(
             "course_applications:check_answers", kwargs={"pk": app.pk}
@@ -231,7 +246,7 @@ def application_form_page(
         request,
         "course_applications/form_page.html",
         context,
-        status=422 if required_answers_error else 200,
+        status=422 if required_answers_error or rejected_answers_error else 200,
     )
     # Re-fetch on back-nav, so a page never shows answers that have since changed.
     response["Cache-Control"] = "no-store"
