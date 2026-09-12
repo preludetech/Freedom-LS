@@ -16,5 +16,5 @@ PLUGIN_DIR="$PROJECT_ROOT/$PLUGINS_ROOT/claude_plugins/fls-dev"
 # Add your implementation-specific steps below:
 
 # Create demo data (all sites)
-uv run manage.py create_demo_data
-python manage.py content_save ./demo_content DemoDev
+# uv run manage.py create_demo_data
+# python manage.py content_save ./demo_content DemoDev
