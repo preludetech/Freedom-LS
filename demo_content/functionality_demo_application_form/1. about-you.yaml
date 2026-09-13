@@ -14,7 +14,32 @@ required: true
 type: short_text
 uuid: 0a73990c-d232-4da1-91ba-84ed30c683b9
 ---
+max: '2010-01-01'
+min: '1900-01-01'
+question: What is your date of birth?
+required: true
+type: date
+uuid: 9be9d76b-9d0b-484d-af63-b6e353d256cf
+---
+question: What is your email address?
+required: true
+type: email
+uuid: 5c870e60-2bc0-4363-b603-53746b47753d
+---
+question: What is your phone number?
+required: false
+type: phone
+uuid: bcfd1fdb-64fa-4efe-8dcb-22204ce65ac2
+---
+question: Share a link to your portfolio, GitHub profile or LinkedIn, if you have
+  one
+required: false
+type: url
+uuid: 3f0b0eac-9d90-429a-a5e0-826c9519a672
+---
 question: How many years have you been writing software?
+max: 70
+min: 0
 required: true
 type: number
 uuid: 2b53f977-8140-4e3b-b6ff-fa0330780dc8

@@ -71,6 +71,27 @@ def test_the_demo_application_form_asks_a_number_question(site, loaded_demo_cont
 
 
 @pytest.mark.django_db
+def test_the_demo_application_form_asks_a_date_question(site, loaded_demo_content):
+    form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
+
+    assert FormQuestion.objects.filter(form_page__form=form, type="date").exists()
+
+
+@pytest.mark.django_db
+def test_the_demo_application_form_asks_an_email_question(site, loaded_demo_content):
+    form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
+
+    assert FormQuestion.objects.filter(form_page__form=form, type="email").exists()
+
+
+@pytest.mark.django_db
+def test_the_demo_application_form_asks_a_url_question(site, loaded_demo_content):
+    form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
+
+    assert FormQuestion.objects.filter(form_page__form=form, type="url").exists()
+
+
+@pytest.mark.django_db
 def test_the_demo_application_form_is_content_of_no_course(site, loaded_demo_content):
     """An application form is not coursework, so it must not appear in any
     course's contents -- only as the form a course points at.
