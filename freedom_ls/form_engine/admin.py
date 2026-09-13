@@ -25,6 +25,7 @@ from .models import (
     QuestionAnswerFile,
     QuestionOption,
 )
+from .typed_answers import format_answer
 
 
 class SuperuserOnlyAdmin:
@@ -335,6 +336,7 @@ class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     )
     ordering = ("-updated_at",)
     readonly_fields = ("updated_at",)
+    list_select_related = ("form_progress", "question")
 
     fieldsets = (
         (None, {"fields": ("form_progress", "question")}),
@@ -345,7 +347,7 @@ class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     @admin.display(description="Answer")
     def answer_preview(self, obj):
         if obj.text_answer:
-            return obj.text_answer[:50]
+            return format_answer(obj.question.type, obj.text_answer)[:50]
         elif obj.selected_options.exists():
             options = ", ".join([opt.text for opt in obj.selected_options.all()])
             return options[:50]

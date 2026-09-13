@@ -17,11 +17,14 @@ from freedom_ls.form_engine.admin import (
     FormContentAdmin,
     FormPageAdmin,
     FormQuestionAdmin,
+    QuestionAnswerAdmin,
     QuestionOptionAdmin,
 )
+from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormProgressFactory,
+    FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
 )
@@ -31,6 +34,7 @@ from freedom_ls.form_engine.models import (
     FormPage,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionOption,
 )
 
@@ -306,3 +310,30 @@ def test_the_changelist_offers_a_download(mock_site_context, staff_client):
     )
 
     assert _admin_download_url(answer_file) in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# answer_preview renders a stored answer the way a reader would see it
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_answer_preview_renders_a_date_answer_for_a_reader(mock_site_context) -> None:
+    question = FormQuestionFactory(type=QuestionType.DATE)
+    answer = QuestionAnswerFactory(question=question, text_answer="1987-03-14")
+
+    preview = QuestionAnswerAdmin(QuestionAnswer, admin.site).answer_preview(answer)
+
+    assert preview == "March 14, 1987"
+
+
+@pytest.mark.django_db
+def test_answer_preview_truncates_a_long_answer_to_fifty_characters(
+    mock_site_context,
+) -> None:
+    question = FormQuestionFactory(type=QuestionType.SHORT_TEXT)
+    answer = QuestionAnswerFactory(question=question, text_answer="x" * 60)
+
+    preview = QuestionAnswerAdmin(QuestionAnswer, admin.site).answer_preview(answer)
+
+    assert preview == "x" * 50
