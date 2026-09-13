@@ -1,0 +1,101 @@
+# Research: coming-soon `Course` surfaces, affordances, and the category-section overlap
+
+## `CourseVisibility` and the `visibility` field
+
+`freedom_ls/content_engine/models/courses.py` defines `CourseVisibility` as `PUBLISHED` (default), `COMING_SOON`, `HIDDEN`, stored on `Course.visibility` (`CharField`, `db_index=True`, default `PUBLISHED`). The schema mirror lives in `freedom_ls/content_engine/schema.py` (`CourseVisibility` StrEnum, same three values) and is set per-course in frontmatter via `visibility: coming_soon`.
+
+`Course.dashboard_category` is an independent `ForeignKey` to `CourseCategory` (`on_delete=models.SET_NULL`), resolved from either an explicit `dashboard_category:` key or, when a course names exactly one entry in `categories`, that single entry (`Course.resolve_dashboard_category` in `content_engine/schema.py:232`). Nothing in the Django model, the pydantic schema, or its validators (`content_engine/schema.py`) makes `dashboard_category` and `visibility=coming_soon` mutually exclusive, conditional on each other, or cross-validated in any way — an author can freely set both today, and no docstring, comment, or product doc (see below) currently states what that combination is supposed to do.
+
+## How `listing_status` becomes `coming_soon`
+
+`freedom_ls/course_access/overrides.py`'s `is_coming_soon_for_display(course)` is the single source of "is this course coming-soon for display purposes": `course.visibility == CourseVisibility.COMING_SOON and not override_visibility_to_visible()`. The `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` dev/staging override, when on, makes every course present as published — including in the dashboard split below.
+
+`freedom_ls/learner_interface/utils.py`'s `derive_listing_status` (`CourseListingStatus` StrEnum: `NOT_REGISTERED`, `REGISTERED`, `IN_PROGRESS`, `COMPLETE`, `COMING_SOON`) applies one precedence rule, shared by the all-courses catalogue and every dashboard section: **coming-soon precedes registration only for the unregistered.** `if is_coming_soon and not is_registered: return COMING_SOON`. A learner already registered for a coming-soon course keeps their registration-derived status (`REGISTERED` / `IN_PROGRESS` / `COMPLETE`), never `COMING_SOON` — this mirrors how `HIDDEN` courses treat registrants. So a coming-soon course only ever shows `listing_status == "coming_soon"` to a learner who is not registered for it.
+
+## What a coming-soon card/row actually shows
+
+`course_status_eyebrow.html` is the single template that renders the four/five status labels; a coming-soon entry renders `Coming soon` with the `deadline` icon (icon only `with_icon=True`, i.e. rows and, per its own docstring, cards render `with_icon=False`... but `course_card.html:43/48` and `course_row.html:47/52` both pass `with_icon=True` for every branch, so cards *do* carry the icon too — the module docstring's "dashboard cards: False" is stale relative to the actual include calls).
+
+`course_card.html` and `course_row.html` branch identically:
+- `{% if course.listing_status == "not_registered" %}` → shows the `not_registered` eyebrow when authenticated, or the `access_badge` chip (Free / By application) when anonymous.
+- `{% else %}` (covers `registered`, `in_progress`, `complete`, and `coming_soon`) → **always** renders `course_status_eyebrow.html` with `status=course.listing_status`.
+
+Consequence: **a coming-soon card is self-labelling.** Because `coming_soon` falls into the `{% else %}` branch, the "Coming soon" eyebrow renders unconditionally, regardless of section, regardless of `user.is_authenticated`. It never falls through to the access-badge branch (that branch is gated on `listing_status == "not_registered"` specifically). So a coming-soon card seen inside a category section carries its own "Coming soon" label independent of the section heading — the duplication the user has already decided to allow does not strand a learner without a signal.
+
+A corollary: **the access badge (Free / By application) never renders next to a coming-soon card or row**, in any section, because `stamp_course_access_badge` sets `course.access_badge` but the templates only read it in the `not_registered` branch. `_annotate_discovery_courses` (`learner_interface/views.py:308`) stamps the badge on every discovery course including coming-soon ones, but it is simply inert for `coming_soon`-status courses. **This means the "mixed-signal" concern the topic raised — a badge appearing next to available courses in the same section — does not arise on the card/row leaf itself**, because badge and "Coming soon" eyebrow are mutually exclusive render branches keyed off `listing_status`, not off section membership.
+
+Title link and "Details" link, for `coming_soon` (same branch as `not_registered`):
+- `course_card.html` / `course_row.html`: title link (`card_title_link.html`) points at `learner_interface:course_detail`.
+- `course_details_link.html`'s own "Details" link (always rendered, every state) also points at `learner_interface:course_detail`.
+
+So both entry points on a coming-soon card/row — the stretched title and the secondary "Details" link — go to the same place: the course detail page. There is no enrol/apply/register affordance and no express-interest control on the card/row itself in any section (dashboard or all-courses); this is explicit, current, and documented behaviour (see `docs/product/learner-experience.md` lines 78 and 60, quoted below).
+
+## `course_interest`: where the express-interest CTA renders, and why the dashboard skips the per-course lookup
+
+`freedom_ls/course_interest/templates/course_interest/partials/express_interest_cta.html` is only ever included from `freedom_ls/learner_interface/templates/learner_interface/course_detail.html` (confirmed by a repo-wide search — no `course_card.html`, `course_row.html`, or any listing template references it, `is_interested`, or `CourseInterest` directly). The CTA is course-detail-only, by design.
+
+`course_interest/queries.py`'s `stamp_interest(user, courses)` (one query, batches `get_interested_course_ids`) is called from exactly one place: `learner_interface/views.py`'s `course_detail` view, and only when `is_coming_soon and not is_registered` (`views.py:713-715`). No dashboard or all-courses code path calls it.
+
+`_annotate_recommendations` (`views.py:252`) states explicitly in its docstring: "Recommendations are by definition not yet registered, so the status is coming_soon … or not_registered. The dashboard renders both through the same `course_card.html`, a plain detail link with no express-interest CTA, so no per-course interest lookup is needed here." The same reasoning applies, unstated but structurally identical, to `_annotate_discovery_courses` (`views.py:308`), which is the function both `_category_section` and `_coming_soon_section` (and `_available_section`) call — **it also never calls `stamp_interest`**, because the card template it feeds has no branch that would read `course.is_interested`.
+
+**Consequence for a coming-soon course appearing inside a category section:** it gains no CTA and loses no CTA relative to appearing only in the built-in Coming soon section — both renders are the same `course_card.html` leaf, same `listing_status == "coming_soon"` branch, same absence of any express-interest markup. **No extra per-course query is needed**: the card doesn't read interest state at all, so duplicating the card into a second section doesn't newly require `stamp_interest` there either. The only place a duplicate per-course cost could appear is if a future change tried to add an interest-aware CTA to cards — that would need `stamp_interest` called once per section that renders coming-soon courses (category sections plus the dedicated Coming soon section), which is not the current shape.
+
+## `course_detail` view for a coming-soon, unregistered learner
+
+`freedom_ls/learner_interface/views.py`'s `course_detail` (line 673):
+- `raise_404_if_hidden_unregistered` lets coming-soon and published detail pages stay reachable (only `hidden` 404s for the unregistered).
+- `decision = get_course_access_backend().get_access(...)` — for coming-soon + unregistered this comes from `VisibilityEnforcingBackend.get_access` (`course_access/backends.py:344`), returning `cta_label="I'm interested"`, `cta_url` = `course_interest:express_interest`, `can_self_register=False`, `can_access_content=False`, plus coming-soon acquisition copy (`_COMING_SOON_ENROLMENT_SUMMARY`, heading, subtext).
+- Since `is_registered` is `False`, the not-registered branch is taken: `start_url = decision.cta_url`, `cta_label = decision.cta_label` — but the template renders the shared `express_interest_cta.html` partial in that slot instead of a generic enrol anchor (per the comment at `views.py:709-711`), because a plain anchor would GET a POST-only endpoint and couldn't reflect existing interest.
+- `stamp_interest(request.user, [course])` runs so the CTA partial can pick the interested/not-interested variant.
+- The course player is not reachable: `get_course_index(..., can_access_content=False)` renders every item `BLOCKED`, and `can_access_content=False` gates content directly (matches the documented "content stays locked" behaviour).
+
+## Course-access backends and the access badge
+
+`course_access/backends.py`'s `VisibilityEnforcingBackend` always wraps whatever inner backend is configured (`course_access/loader.py`'s `get_course_access_backend`, process-cached). Its `get_access_badge` (line 393) **delegates straight to the inner backend regardless of visibility** — "The access-model badge is owned by the inner backend; the visibility wrapper never mints its own badge copy." So a coming-soon course does carry a real access badge value (`Free` from `FreeOnlyCourseAccessBackend`, or whatever an application-gated backend returns) whenever `get_access_badge` is called on it — `_annotate_discovery_courses` calls it unconditionally for every discovery course, coming-soon included.
+
+As established above, that badge is stamped but never rendered for a `coming_soon`-status card/row, because the templates only read `access_badge` in the `not_registered` branch. So while the badge *value* exists on a coming-soon `Course` instance in memory, there is no live UI path today where it would render next to the "Coming soon" eyebrow — the concern the topic asked to confirm (a possible mixed-signal badge) does not materialise on cards/rows in either the dedicated Coming soon section or a category section, because both use the identical card leaf and the identical `listing_status`-keyed branch.
+
+`filter_visible` (`VisibilityEnforcingBackend.filter_visible`, line 405) excludes `HIDDEN` courses for the unregistered but does **not** exclude `COMING_SOON` — coming-soon courses pass through `filter_visible` and are visible in every discovery queryset (all-courses, dashboard discovery pool) subject only to the `listing_status` computation, never to a hard filter.
+
+`override_visibility_to_visible()` (dev/staging preview) makes `is_coming_soon_for_display` always `False` and, in `_coming_soon_split` (`views.py:291`), routes every course into `rest` and none into `coming_soon` — with the override on, nothing is coming-soon anywhere, including inside category sections.
+
+## Dashboard section assembly: today, a coming-soon course cannot land in a category section
+
+This is the load-bearing finding for the "what has to stay true" half of the topic: **as the code stands today, a `COMING_SOON` course never appears in a category section, because it is filtered out of the pool categories are built from before the category filter ever runs.**
+
+Walking `learner_interface/views.py`:
+- `_discovery_courses` (line 274) builds the full backend-visible, not-yet-excluded pool.
+- `_coming_soon_split` (line 291) partitions that pool into `(coming_soon_qs, rest_qs)` where `rest_qs = courses.exclude(visibility=CourseVisibility.COMING_SOON)` — `rest` **excludes every coming-soon course outright**, unconditionally, before any category logic runs (unless `override_visibility_to_visible()` is on, in which case there is no coming-soon split at all).
+- `_dashboard_inputs` (line 460) stores that `rest` on `_DashboardInputs.rest`.
+- `_category_section` (line 361) filters `rest.filter(dashboard_category=category)` — since `rest` has already had every coming-soon course removed, **a category section can never contain a coming-soon course under the current implementation**, regardless of its `dashboard_category`.
+- `_available_section` (line 383) similarly filters `rest` (the catch-all for uncategorised or dashboard-hidden-category courses) — same exclusion applies.
+- `_coming_soon_section` (line 412) is the only section built from the `coming_soon` queryset, and it ignores `dashboard_category` entirely — every coming-soon course lands there in one flat, unsectioned list regardless of its category.
+
+So the scenario the topic's CONTEXT describes as already decided (a `COMING_SOON` course whose `dashboard_category` has `show_on_dashboard=True` appearing in *both* its category section and the Coming soon section) is **not what happens today** — it is a behaviour that does not yet exist and would require changing `_coming_soon_split`/`_category_section`/`_available_section` to stop excluding coming-soon courses from the category-filtering pool (while still including them, undifferentiated by category, in the dedicated Coming soon section). Nothing else downstream needs new machinery for that change to be safe, per the findings above:
+- The card leaf is already self-labelling (`Coming soon` eyebrow, unconditional) and already carries no CTA regardless of which section renders it, so duplicating a coming-soon course's card into a second section reuses an existing, side-effect-free render path.
+- No per-course interest query needs to be added to the category-section annotation path (`_annotate_discovery_courses`), because coming-soon cards never read interest state.
+- The access badge, though stamped, is inert on a `coming_soon`-status card, so no mixed access-badge/coming-soon signal appears.
+- Each `DashboardSection` pages independently (`page_for`, `SECTION_PAGE_SIZE = 3`, its own `page_<slug>` query param and its own `#section-page-<slug>` htmx swap target — `learner_interface/dashboard_sections.py`), so the same course appearing in two sections produces two independently-paged, independently-swappable card instances with no shared pagination state or id collision between them (the only slug-scoped DOM id on this path, `express-interest-cta-{{ course.slug }}`, belongs to the detail-page CTA, not the card).
+
+## The all-courses listing: flat, ungrouped, includes coming-soon
+
+`freedom_ls/learner_interface/templates/learner_interface/partials/course_row_list.html` renders one flat `<ul>` from `all_courses` with no grouping and no category headings — its own comment says so explicitly ("flat, no grouping, no special ordering"). `all_courses` (the view, `views.py:620`) builds its list via `get_course_listing`, which does not filter out `COMING_SOON` (only the backend's `filter_visible` exclusion of `HIDDEN` applies) — coming-soon courses are present in the catalogue, each carrying `listing_status == "coming_soon"` and rendered via the identical `course_row.html` leaf described above. Every "Browse all courses" button/link across the site (`browse_all_url` on category and Available sections, the anonymous hero CTA) points at this same flat, ungrouped `learner_interface:courses` URL — it has no per-category filtering today (`docs/product/learner-experience.md` line 34 says so explicitly: "a section's 'Browse all' link goes to the full catalogue, which cannot yet filter down to one category's courses").
+
+## Educator/authoring-side expectations
+
+- `freedom_ls/educator_interface/tests/test_course_visibility_and_interest.py` only asserts (a) the educator course table exposes a human-readable `visibility` label and an interest count annotated from `CourseInterest`, and (b) `CourseDetailsPanel.fields` deliberately excludes `visibility` — visibility is content-file-only, not educator-editable. Nothing in this test file touches `dashboard_category` or its interaction with visibility.
+- `freedom_ls/qa_helpers/management/commands/qa_create_course_visibility.py` seeds a dedicated `coming-soon` QA course with **no `dashboard_category` set at all** (its `_get_or_create_course` helper never touches categories). The QA fixture set for the "Coming Soon & Hidden Courses" feature does not exercise the category+coming-soon combination — there is no fixture, QA data, or manual-test guidance for it anywhere in the repo.
+- `content_engine/schema.py`'s `Course` pydantic model imposes no cross-field constraint between `visibility` and `dashboard_category`/`categories`; `resolve_dashboard_category` (line 232) resolves the dashboard category purely from `dashboard_category`/`categories`, with no visibility awareness. An author can write `visibility: coming_soon` and `dashboard_category: technical` today and content-load validation will accept it — the resulting course simply renders (under current code) only in the Coming soon section, per the section-assembly finding above, silently dropping the intended category placement. This is a currently-silent behaviour, not a validation error or a documented one.
+
+## Product docs that will become wrong
+
+`docs/product/learner-experience.md`:
+- Line 34: **"A course appears in exactly one section however many categories it carries."** This statement is currently true (per the section-assembly finding above) and becomes **false** the moment a coming-soon course is allowed to appear in both its category section and the Coming soon section — it will need to be qualified or rewritten.
+- Line 78: "In the course listing and on the dashboard, a coming-soon course is badged 'Coming soon' and is a plain link through to its detail page — there is no enrol, apply, or express-interest control on the card or row itself." This statement **stays true** under the decided change (confirmed above: the card leaf itself is unaffected by which section renders it).
+- Line 60: "A course set to 'coming soon' also appears in this listing [all-courses], clearly badged, but as a plain link to its detail page rather than a course card with a registration action." Also unaffected — the all-courses page is untouched by any dashboard-section change.
+- Line 72: "A learner who is already registered for a course is unaffected by its visibility. … it stays on their dashboard …" — still true; registered learners never see `listing_status == "coming_soon"` regardless of section duplication (per `derive_listing_status`'s precedence rule).
+- Line 8 ("A course with no category, or whose category was not chosen for the dashboard, still shows — it falls back to the Available courses section") is not directly contradicted, but is adjacent: it currently implicitly assumes a coming-soon course with no dashboard category shows in Coming soon, not Available — that remains true, since `_available_section` filters `rest`, which still excludes coming-soon courses even after the decided change removes that exclusion from category-section filtering specifically (the change described in the topic's CONTEXT is scoped to categorised coming-soon courses, not to whether `_available_section` also needs to start including them — that scope question is not settled by anything read here and is a design decision the CONTEXT does not resolve).
+
+No other file under `docs/product/` (`roadmap.md`, `content-editing-workflow.md`, `educator-interface.md`, `learner-tracking.md`, `configuration-and-extension.md`, `README.md`) makes a statement about dashboard section exclusivity or coming-soon category placement that would be affected; `content-editing-workflow.md` line 82 documents `dashboard_category` purely in terms of "which single category places it on the learner dashboard" and separately (line 61-67) documents `visibility` as composing freely with `access_config` — it never states how `visibility` and `dashboard_category` compose with each other, which is exactly the gap this research was asked to characterise.
+
+status: ok
