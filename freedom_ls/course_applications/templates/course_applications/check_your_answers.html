@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load form_engine_tags %}
 
 {% block head_title %}Check your answers — {{ course.title }}{% endblock %}
 
@@ -56,7 +57,7 @@
                                             </c-button>
                                         </span>
                                     {% elif row.answer.text_answer %}
-                                        <span class="whitespace-pre-line">{{ row.answer.text_answer }}</span>
+                                        <span class="whitespace-pre-line">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
                                     {% elif row.answer %}
                                         {% for option in row.answer.selected_options.all %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
                                     {% else %}
