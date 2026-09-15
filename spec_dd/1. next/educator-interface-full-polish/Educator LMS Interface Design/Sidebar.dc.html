@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<script src="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/_ds_bundle.js"></script>
+</helmet>
+<div style="width:264px;flex:0 0 264px;height:100%;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;font-family:var(--font-body)">
+
+  <div style="height:64px;flex:0 0 64px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border)">
+    <div style="width:28px;height:28px;border-radius:7px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-heading);font-weight:700;font-size:14px;letter-spacing:-0.02em">FC</div>
+    <div style="font-family:var(--font-heading);font-weight:600;font-size:15px;color:var(--fg-1);letter-spacing:-0.01em">First Class</div>
+    <div style="margin-left:auto;font-family:var(--font-mono);font-size:10px;color:var(--fg-4);letter-spacing:0.04em">EDU</div>
+  </div>
+
+  <div style="padding:16px 16px 12px">
+    <div class="fc-overline" style="margin-bottom:6px">Organization</div>
+    <div style="height:44px;border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#fff;cursor:pointer">
+      <div style="width:24px;height:24px;border-radius:6px;background:var(--grey-100);display:flex;align-items:center;justify-content:center;color:var(--color-primary);font-size:11px;font-weight:700;font-family:var(--font-heading)">SA</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Skyward Aviation Academy</div>
+      </div>
+      <i class="ph ph-caret-up-down" style="font-size:15px;color:var(--fg-3)"></i>
+    </div>
+  </div>
+
+  <div style="padding:4px 12px;display:flex;flex-direction:column;gap:2px">
+    <div class="fc-overline" style="padding:10px 8px 4px">Teaching</div>
+    <sc-for list="{{ teaching }}" as="item" hint-placeholder-count="4">
+      <div style="{{ item.style }}">
+        <i class="{{ item.icon }}" style="{{ item.iconStyle }}"></i>
+        <span style="flex:1">{{ item.label }}</span>
+        <span style="{{ item.countStyle }}">{{ item.count }}</span>
+      </div>
+    </sc-for>
+    <div class="fc-overline" style="padding:16px 8px 4px">Administration</div>
+    <sc-for list="{{ admin }}" as="item" hint-placeholder-count="3">
+      <div style="{{ item.style }}">
+        <i class="{{ item.icon }}" style="{{ item.iconStyle }}"></i>
+        <span style="flex:1">{{ item.label }}</span>
+        <span style="{{ item.countStyle }}">{{ item.count }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="margin-top:auto;padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px">
+    <div style="width:32px;height:32px;border-radius:999px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">AO</div>
+    <div style="min-width:0">
+      <div style="font-size:13px;font-weight:600;color:var(--fg-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Adaeze Okonkwo</div>
+      <div style="font-size:11px;color:var(--fg-3)">Lead instructor</div>
+    </div>
+    <i class="ph ph-gear" style="margin-left:auto;font-size:16px;color:var(--fg-3)"></i>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:264,&quot;height&quot;:760},&quot;active&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  build(items) {
+    const active = this.props.active;
+    return items.map(it => {
+      const on = it.label === active;
+      return {
+        label: it.label,
+        icon: "ph " + it.icon,
+        count: it.count || "",
+        style: "display:flex;align-items:center;gap:10px;height:38px;padding:0 8px;border-radius:8px;font-size:13.5px;cursor:pointer;"
+          + (on
+            ? "background:var(--grey-100);color:var(--color-primary);font-weight:600;box-shadow:inset 2px 0 0 var(--color-primary);"
+            : "color:var(--fg-2);font-weight:500;"),
+        iconStyle: "font-size:17px;" + (on ? "color:var(--color-primary)" : "color:var(--fg-3)"),
+        countStyle: "font-family:var(--font-mono);font-size:11px;color:" + (on ? "var(--color-primary)" : "var(--fg-4)")
+      };
+    });
+  }
+  renderVals() {
+    return {
+      teaching: this.build([
+        { label: "Dashboard", icon: "ph-squares-four" },
+        { label: "Cohorts", icon: "ph-users-three", count: "12" },
+        { label: "Learners", icon: "ph-user", count: "284" },
+        { label: "Courses", icon: "ph-book-open-text", count: "9" }
+      ]),
+      admin: this.build([
+        { label: "Educators", icon: "ph-chalkboard-teacher", count: "16" },
+        { label: "Roles & permissions", icon: "ph-shield-check" },
+        { label: "Organization settings", icon: "ph-buildings" }
+      ])
+    };
+  }
+}
+</script>
+</body>
+</html>

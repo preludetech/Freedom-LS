@@ -1,0 +1,35 @@
+/* Shared styles for design-system preview cards.
+   Each card targets ~700×<height>px and renders a single concept. */
+@import url("../colors_and_type.css");
+
+html, body { background: #FFFFFF; }
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: var(--font-body);
+  color: var(--fg-1);
+  box-sizing: border-box;
+}
+* { box-sizing: border-box; }
+.card-grid { display: grid; gap: 12px; }
+.row { display: flex; gap: 12px; align-items: stretch; }
+.swatch {
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1.3;
+  min-height: 88px;
+}
+.swatch .name { font-weight: 600; font-family: var(--font-heading); font-size: 13px; }
+.swatch .hex { font-family: var(--font-mono); font-size: 11px; opacity: 0.85; }
+.swatch.dark { color: white; }
+.swatch.light { color: var(--fg-1); border: 1px solid var(--border); }
+.label-overline {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--fg-3); margin-bottom: 8px;
+  font-family: var(--font-body);
+}
