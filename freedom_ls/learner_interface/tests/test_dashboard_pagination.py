@@ -14,7 +14,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseCategoryFactory, CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_interface.dashboard_sections import section_page_href
 from freedom_ls.learner_management.factories import (
@@ -204,6 +204,28 @@ def test_an_htmx_request_for_a_category_returns_that_category(mock_site_context)
     category = CourseCategoryFactory(title="Start here", slug="start-here")
     course: Course = CourseFactory(
         title="Course A", slug="course-a", dashboard_category=category
+    )
+
+    response = Client().get(
+        reverse("learner_interface:dashboard"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="section-page-start-here",
+    )
+
+    assert response.status_code == 200
+    assert course.title in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_an_htmx_request_for_a_category_includes_its_coming_soon_course(
+    mock_site_context,
+):
+    category = CourseCategoryFactory(title="Start here", slug="start-here")
+    course: Course = CourseFactory(
+        title="Course A",
+        slug="course-a",
+        dashboard_category=category,
+        visibility=CourseVisibility.COMING_SOON,
     )
 
     response = Client().get(
