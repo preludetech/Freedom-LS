@@ -150,4 +150,10 @@
      * Defaults to the page surface; themes wanting a distinct panel colour set
      * --color-sidepanel rather than overriding the component selectors. */
     --color-sidepanel: var(--color-surface);
+
+    /* Site footer surface. Defaults to the secondary surface with the normal
+     * body foreground; themes wanting a distinct footer set these rather than
+     * restyling the partial. */
+    --color-footer: var(--color-surface-2);
+    --color-on-footer: var(--color-on-surface);
 }

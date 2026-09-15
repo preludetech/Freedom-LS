@@ -58,6 +58,12 @@ def test_default_theme_declares_status_light_tokens(role: str) -> None:
     assert f"--color-on-{role}-light:" in css
 
 
+def test_default_theme_declares_footer_tokens() -> None:
+    css = DEFAULT_THEME_CSS.read_text()
+    assert "--color-footer:" in css
+    assert "--color-on-footer:" in css
+
+
 # --- tailwind.components.css contract -------------------------------------
 
 
