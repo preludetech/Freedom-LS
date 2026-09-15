@@ -51,7 +51,9 @@ every other one. The function is uncached and resolves the git blob at HEAD, so 
 - Plain `_base.html` pages get the full footer. That is the dashboard, course detail, all-courses,
   legal docs, auth pages and the application pages.
 - `_base_interface.html` pages, meaning course topics and the educator interface, override the block
-  with a compact variant. Same copyright and legal links on one line, small type, tight padding. Its
+  with a compact variant. Same copyright and legal links on one line, small type, tight padding. The
+  partial carries a `data-compact` attribute saying which variant rendered, so the choice is
+  assertable without a test pinning utility classes. Its
   desktop sidebar is a sticky full-height column, so a full-bleed footer under the whole grid makes a
   learner scroll a viewport of pinned sidebar to reach it. A short bar keeps the legal links on the
   most learner-facing pages in the product and makes that scroll cost small. Aligning the footer to
@@ -62,7 +64,7 @@ every other one. The function is uncached and resolves the git blob at HEAD, so 
   with a `sticky bottom-0` action bar, so an inherited footer would be clipped or would collide.
 - Error pages blank it. `500.html` and `503.html` are standalone documents that do not extend
   `_base.html` at all, deliberately, so they render with no request or database context. They cannot
-  inherit the block. Blanking it on the other five keeps all six behaving alike.
+  inherit the block. Blanking it on the other five keeps all seven behaving alike.
 
 **Two override paths, both valid.** Resolution order is the host project's own `templates/`, then the
 active theme's `templates/`, then FLS's app directories. So `templates/partials/footer_bar.html` in
@@ -77,8 +79,8 @@ level is still the better default, because a footer is not tied to theme identit
 rather than the styling. Exactly one `contentinfo` per page, so the runner's sticky action bar must
 never be marked up as a second page-level `<footer>`. No explicit `role="contentinfo"`, because the
 implicit role is enough now and validators flag the redundant one. If the links are wrapped in
-`<nav>` it needs an `aria-label`. FLS labels every secondary `<nav>` except the header's, and a
-second unlabelled one would make the two indistinguishable. Footer text and its focus ring both need
+`<nav>` it needs an `aria-label`, and the label is `Legal`. FLS labels every secondary `<nav>`
+except the header's, and a second unlabelled one would make the two indistinguishable. Footer text and its focus ring both need
 their contrast checked against the footer's own background, not assumed from a `text-muted` token
 used elsewhere. Link order stays the same on every page.
 
