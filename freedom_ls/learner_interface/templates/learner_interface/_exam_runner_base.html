@@ -7,7 +7,9 @@ Extends _base.html directly — no sidebar, no course TOC.
 
 Its only jobs are:
   - load the runner's Alpine components (learner_interface + content_engine),
-  - suppress the global header so the runner can own its own top bar.
+  - suppress the global header so the runner can own its own top bar,
+  - suppress the global footer so it cannot collide with the runner's own
+    sticky action bar.
 
 The runner layout itself (top bar, scrollable body, sticky footer) lives in the
 child, which overrides the body block wholesale — see course_form_page.html.
@@ -29,3 +31,7 @@ child, which overrides the body block wholesale — see course_form_page.html.
 {% block header %}
 {% comment %}runner owns its own bar{% endcomment %}
 {% endblock header %}
+
+{% block footer %}
+{% comment %}runner owns its own sticky action bar{% endcomment %}
+{% endblock footer %}

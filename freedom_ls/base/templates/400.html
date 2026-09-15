@@ -4,6 +4,15 @@
 
 {% block head_seo %}<meta name="robots" content="noindex" />{% endblock head_seo %}
 
+{% comment %}
+This page is reached with a rejected Host header, where site resolution
+itself fails, so it is the one error page whose rendering context is
+genuinely degraded. The footer reverses accounts:legal_doc and reads
+header_title from site_config, either of which could depend on a resolvable
+site, so it is blanked here along with the other four error pages.
+{% endcomment %}
+{% block footer %}{% endblock footer %}
+
 {% block content %}
     {% url 'learner_interface:dashboard' as dashboard_url %}
     <c-error-page status="400" status_label="Bad request" level="warning" icon="warning"

@@ -4,6 +4,9 @@
 
 {% block head_seo %}<meta name="robots" content="noindex" />{% endblock head_seo %}
 
+{% comment %}Keeps this shell page free of the site chrome the others carry.{% endcomment %}
+{% block footer %}{% endblock footer %}
+
 {% block content %}
     <c-error-page status="429" status_label="Too many requests" level="warning" icon="rate_limit"
                   heading="You have made too many attempts">

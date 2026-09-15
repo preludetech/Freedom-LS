@@ -1,0 +1,24 @@
+{% load i18n %}
+{% comment %}
+One template renders both the full and the compact footer, switched by the
+`compact` variable passed on the include, so a downstream project shadowing
+the footer only has one file to override.
+{% endcomment %}
+<footer data-compact="{% if compact %}true{% else %}false{% endif %}"
+        class="bg-footer text-on-footer border-t border-border
+               px-4 sm:px-6 lg:px-8 {% if compact %}py-2{% else %}py-6{% endif %}">
+    <div class="mx-auto w-full max-w-7xl flex flex-wrap items-center justify-center
+                gap-x-4 gap-y-1 {% if compact %}text-xs{% else %}text-sm{% endif %}">
+        {% comment %}
+        text-on-footer is repeated here because the base layer's `p { @apply
+        text-on-surface }` rule would otherwise win over the inherited colour,
+        defeating a theme that sets --color-on-footer to something other than
+        the default alias.
+        {% endcomment %}
+        <p class="text-on-footer">&copy; {% now "Y" %} {{ header_title }}</p>
+        <nav aria-label="Legal" class="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <a href="{% url 'accounts:legal_doc' doc_type='terms' %}" class="py-1">{% trans "Terms and Conditions" %}</a>
+            <a href="{% url 'accounts:legal_doc' doc_type='privacy' %}" class="py-1">{% trans "Privacy Policy" %}</a>
+        </nav>
+    </div>
+</footer>

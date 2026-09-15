@@ -246,3 +246,15 @@
     </div>
 
 {% endblock body %}
+
+{% comment %}
+This shell's desktop sidebar is a sticky full-height column, so a full-bleed
+footer under the whole grid would make a learner scroll a viewport of pinned
+sidebar to reach it; the compact bar keeps the legal links reachable at a
+small scroll cost instead. Aligning the footer to the content column instead
+would mean restructuring the grid, and would put the footer back inside
+<main>, losing the landmark.
+{% endcomment %}
+{% block footer %}
+    {% include "partials/footer_bar.html" with compact=True %}
+{% endblock footer %}

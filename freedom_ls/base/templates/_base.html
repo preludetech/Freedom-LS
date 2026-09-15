@@ -115,6 +115,16 @@
             {% block extra_body %}
             {% endblock extra_body %}
         </main>
+
+        {% comment %}
+        A sibling of <main>, not nested inside it: <footer> maps to the
+        contentinfo landmark only as a direct child of <body>. Moved inside
+        <main> it maps to generic and the landmark is lost silently.
+        {% endcomment %}
+        {% block footer %}
+            {% include "partials/footer_bar.html" %}
+        {% endblock footer %}
+
         {% if debug_branch_name %}
             <div x-data="debugBadge"
                  x-on:click="toggle"
