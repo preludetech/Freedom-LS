@@ -224,6 +224,23 @@ def test_unquoted_time_bound_turned_integer_by_yaml_is_refused():
         )
 
 
+def test_a_quoted_time_bound_carrying_seconds_validates():
+    """`parse_time` accepts seconds, so a bound written with them is a real
+    time the author quoted correctly — not the unquoted-YAML hazard the shape
+    check exists to catch."""
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/3. availability.yaml",
+            "question": "What time can you start?",
+            "type": "time",
+            "min": "09:00:00",
+        }
+    )
+
+    assert question.min == "09:00:00"
+
+
 def test_unquoted_time_bound_that_still_parses_is_refused():
     """The dangerous half of the same mistake. An unquoted `17:00` becomes the
     integer 1020, and `parse_time` accepts "1020" as ten past ten — so a parse
@@ -237,5 +254,63 @@ def test_unquoted_time_bound_that_still_parses_is_refused():
                 "question": "What time can you finish?",
                 "type": "time",
                 "max": 1020,
+            }
+        )
+
+
+# decimal_places
+
+
+def test_number_question_with_decimal_places_validates():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/1. about-you.yaml",
+            "question": "What hourly rate are you looking for?",
+            "type": "number",
+            "decimal_places": 2,
+        }
+    )
+
+    assert question.decimal_places == 2
+
+
+def test_a_number_question_defaults_to_whole_numbers():
+    question = FormQuestion.model_validate(
+        {
+            "content_type": "FORM_QUESTION",
+            "file_path": "forms/application/1. about-you.yaml",
+            "question": "How many years of experience do you have?",
+            "type": "number",
+        }
+    )
+
+    assert question.decimal_places == 0
+
+
+def test_decimal_places_on_a_short_text_question_is_refused():
+    with pytest.raises(ValidationError):
+        FormQuestion.model_validate(
+            {
+                "content_type": "FORM_QUESTION",
+                "file_path": "forms/application/1. about-you.yaml",
+                "question": "Tell us about yourself",
+                "type": "short_text",
+                "decimal_places": 2,
+            }
+        )
+
+
+def test_a_number_bound_finer_than_the_allowed_decimal_places_is_refused():
+    """A `max` of 70.5 on a whole-number question is a bound no answer could
+    ever sit against, so it is an authoring mistake, not a runtime one."""
+    with pytest.raises(ValidationError):
+        FormQuestion.model_validate(
+            {
+                "content_type": "FORM_QUESTION",
+                "file_path": "forms/application/1. about-you.yaml",
+                "question": "How many years of experience do you have?",
+                "type": "number",
+                "max": "70.5",
             }
         )

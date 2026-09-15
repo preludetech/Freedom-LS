@@ -97,13 +97,20 @@ def test_email_question_renders_an_email_input(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_url_question_renders_a_url_input(mock_site_context):
+def test_url_question_renders_a_text_input_with_a_url_inputmode(mock_site_context):
+    """A schemeless address is a valid answer -- `answer_error` prepends
+    `https://` before validating, the way `forms.URLField` does -- but a native
+    url input refuses to submit one, so nothing the server allows ever reaches
+    it. The keyboard hint stays; the native check goes.
+    """
     page = FormPageFactory(order=0)
     question: FormQuestion = FormQuestionFactory(form_page=page, type="url", order=0)
 
     markup = _render(question)
 
-    assert 'type="url"' in markup
+    assert 'type="text"' in markup
+    assert 'inputmode="url"' in markup
+    assert 'type="url"' not in markup
 
 
 @pytest.mark.django_db
@@ -145,6 +152,44 @@ def test_number_question_with_bounds_renders_min_and_max_attributes(
 
     assert 'min="0"' in markup
     assert 'max="70"' in markup
+
+
+@pytest.mark.django_db
+def test_a_whole_number_question_renders_a_step_of_one(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, type="number", order=0)
+
+    markup = _render(question)
+
+    assert 'step="1"' in markup
+
+
+@pytest.mark.django_db
+def test_a_number_question_allowing_decimals_renders_a_matching_step(
+    mock_site_context,
+):
+    """Without it the browser's default step of 1 refuses the very decimals
+    the author just allowed."""
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="number", order=0, decimal_places=2
+    )
+
+    markup = _render(question)
+
+    assert 'step="0.01"' in markup
+
+
+@pytest.mark.django_db
+def test_a_non_number_question_renders_no_step(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0
+    )
+
+    markup = _render(question)
+
+    assert "step=" not in markup
 
 
 @pytest.mark.django_db

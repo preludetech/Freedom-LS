@@ -136,6 +136,37 @@ class FormQuestionAdmin(SiteAwareModelAdmin):
     ordering = ("form_page", "order")
     inlines = [QuestionOptionInline]
 
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "question",
+                    "type",
+                    "required",
+                    "form_page",
+                    "category",
+                    "order",
+                )
+            },
+        ),
+        (
+            "Answer format",
+            {
+                "fields": ("min", "max", "decimal_places"),
+                "description": (
+                    "min and max apply to date, time and number questions only, "
+                    "and are inclusive. decimal_places applies to number "
+                    "questions; 0 is whole numbers only."
+                ),
+            },
+        ),
+        (
+            "Metadata",
+            {"fields": ("file_path", "meta", "tags"), "classes": ("collapse",)},
+        ),
+    )
+
     @admin.display(description="Question")
     def question_preview(self, obj):
         return obj.question[:50]

@@ -1,6 +1,3 @@
-import re
-from collections.abc import Callable
-from datetime import date, time
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -11,12 +8,7 @@ from freedom_ls.content_base.schema import (
     ContentType,
     MarkdownContentModel,
 )
-from freedom_ls.form_engine.typed_answers import parsed_date, parsed_number, parsed_time
-
-# A time bound has to be written HH:MM. Anything else that `parse_time`
-# happens to accept — a bare "1020" from an unquoted YAML time — means a
-# different time than the author wrote.
-_TIME_BOUND = re.compile(r"\d{1,2}:\d{2}")
+from freedom_ls.form_engine.typed_answers import question_bounds_error
 
 
 class QuestionType(StrEnum):
@@ -171,6 +163,14 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
             "(YYYY-MM-DD, HH:MM, or a plain number)"
         ),
     )
+    decimal_places: int = Field(
+        0,
+        ge=0,
+        description=(
+            "How many decimal places a number answer may be written to. "
+            "0, the default, is whole numbers only"
+        ),
+    )
 
     @field_validator("min", "max", mode="before")
     @classmethod
@@ -186,43 +186,18 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
 
     @model_validator(mode="after")
     def validate_bounds(self) -> "FormQuestion":
-        """`min`/`max` only mean anything on a type with an order, and only
-        when they parse as that type. Reusing `typed_answers`'s own parsers
-        is what makes this validator agree with the check a submitted answer
-        gets at runtime.
+        """`min`, `max` and `decimal_places` only mean anything on the types
+        that have an order, and only when they parse as that type.
 
-        This is also what catches a time bound an author left unquoted in
-        YAML, which needs more than a parse check to spot. YAML 1.1 reads
-        `17:00` as the base-60 integer 1020, and `parse_time` accepts the
-        resulting "1020" as ten past ten — so an unquoted bound does not fail
-        to parse, it parses as a different time than the author wrote. The
-        `HH:MM` shape check below is what refuses it, at `content_save` and
-        naming the file, instead of quietly enforcing the wrong hour on every
-        respondent.
+        The rule itself lives in `typed_answers.question_bounds_error`, shared
+        with `FormQuestion.clean()`, so an authoring mistake is judged the same
+        way wherever it is made. What this validator adds is the file name: an
+        author finds out at `content_save`, with the file called out, rather
+        than leaving a respondent to discover it.
         """
-        if not self.min and not self.max:
-            return self
-        parsers: dict[QuestionType, Callable[[str], date | time | int | None]] = {
-            QuestionType.DATE: parsed_date,
-            QuestionType.TIME: parsed_time,
-            QuestionType.NUMBER: parsed_number,
-        }
-        parse = parsers.get(self.type)
-        if parse is None:
-            raise ValueError(
-                f"min/max are only valid on date, time or number questions, "
-                f"not {self.type} (in {self.file_path})"
-            )
-        for name, bound in (("min", self.min), ("max", self.max)):
-            if not bound:
-                continue
-            if parse(bound) is None:
-                raise ValueError(
-                    f'{name} "{bound}" is not a valid {self.type} (in {self.file_path})'
-                )
-            if self.type == QuestionType.TIME and not _TIME_BOUND.fullmatch(bound):
-                raise ValueError(
-                    f'{name} "{bound}" is not written as HH:MM — quote it in the '
-                    f"YAML, or it is read as a number (in {self.file_path})"
-                )
+        error = question_bounds_error(
+            self.type, self.min, self.max, self.decimal_places
+        )
+        if error is not None:
+            raise ValueError(f"{error} (in {self.file_path})")
         return self
