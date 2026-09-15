@@ -1,8 +1,5 @@
 {% extends "learner_interface/_exam_runner_base.html" %}
 
-{% load content_tags %}
-{% load fls_base_filters %}
-
 {% comment %}
 Exam runner page template.
 Extends the sidebar-less runner base and overrides {% block body %} so that
@@ -21,12 +18,6 @@ needed there) so it does not interfere with ref collection.
 Exit dialog uses x-data="examExitDialog" scoped to the top-bar area.
 All Alpine wiring uses registered method names only (CSP build — zero inline expressions).
 {% endcomment %}
-
-{% partialdef form-content %}
-    <c-markdown-container class="max-w-none">
-        {{ child.rendered_content }}
-    </c-markdown-container>
-{% endpartialdef form-content %}
 
 {% comment %}
 Page dots partial — driven by page_links context.
@@ -275,23 +266,7 @@ examRunnerForm scope (no intermediate x-data between them).
                 answered-count logic (every page) and to the Submit button's
                 x-on:click (final page only).
                 {% endcomment %}
-                {% comment %}Rejected submission: which required questions are still blank{% endcomment %}
-                {% if required_answers_error %}
-                    <div data-testid="required-answers-error" role="alert">
-                        <c-callout level="error" title="Missing answers">
-                            {{ required_answers_error }}
-                        </c-callout>
-                    </div>
-                {% endif %}
-
-                {% comment %}Rejected submission: which answers were not valid for their type{% endcomment %}
-                {% if rejected_answers_error %}
-                    <div data-testid="rejected-answers-error" role="alert">
-                        <c-callout level="error" title="Invalid answers">
-                            {{ rejected_answers_error }}
-                        </c-callout>
-                    </div>
-                {% endif %}
+                {% include "form_engine/partials/answer_errors.html" %}
 
                 <form id="runner-page-form" method="post" x-ref="pageForm" class="space-y-6">
                     {% csrf_token %}
@@ -304,16 +279,7 @@ examRunnerForm scope (no intermediate x-data between them).
                     {% endcomment %}
                     <input type="hidden" name="page_number" value="{{ current_page_num }}">
 
-                    {% for child in form_page.children %}
-                        {% if child.content_type == 'FORM_QUESTION' %}
-                            {% with question=child %}
-                                {% include "form_engine/question.html" %}
-                            {% endwith %}
-                        {% elif child.content_type == 'FORM_CONTENT' %}
-                            {% partial form-content %}
-                        {% endif %}
-                    {% endfor %}
-
+                    {% include "form_engine/partials/page_children.html" %}
                 </form>
 
             </div>

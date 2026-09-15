@@ -19,16 +19,19 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.page_flow import (
+    PageSubmission,
+    page_context,
+    render_form_page,
+    resolve_page,
+    submit_page,
+)
 from freedom_ls.form_engine.paging import (
-    build_page_links,
-    rejected_answers_message,
     resume_page_number,
     unanswered_required_in_form,
     unanswered_required_message,
-    unanswered_required_on_page,
 )
 from freedom_ls.form_engine.queries import page_questions
-from freedom_ls.form_engine.typed_answers import RejectedAnswer
 
 
 def _start_application(user: User, course: Course) -> CourseApplication:
@@ -178,16 +181,11 @@ def application_form_page(
 ) -> HttpResponse:
     """One page of the application form.
 
-    A submission that misses a required question is refused, but the answers it
-    did carry are saved first: throwing away the work someone did do, because of
-    the one field they missed, is the cruellest thing a form can do.
+    A submitted application is read-only: its pages still render, so the
+    applicant can re-read what they said, but nothing more is written to it.
     """
     app, form, form_progress = _owned_application_with_form(request, pk)
-    all_pages = list(form.pages.all())
-    if not 1 <= page_number <= len(all_pages):
-        raise Http404
-    form_page = all_pages[page_number - 1]
-    questions = page_questions(form_page)
+    current = resolve_page(form, page_number)
     read_only = form_progress.completed_time is not None
     # The page form posts to its own URL, query string included, so the marker
     # survives both the save and a 422 re-render.
@@ -196,61 +194,31 @@ def application_form_page(
     def url_for_page(number: int) -> str:
         return _page_url(app, number)
 
-    required_answers_error = ""
-    rejected_answers: dict[UUID, RejectedAnswer] = {}
-    rejected_answers_error = ""
+    submission = PageSubmission()
     if request.method == "POST":
         if read_only:
             return redirect("course_applications:status", pk=app.pk)
-        unanswered = unanswered_required_on_page(questions, request.POST, form_progress)
-        rejected_answers = form_progress.save_answers(questions, request.POST)
-        if not unanswered and not rejected_answers:
-            if page_number < len(all_pages) and not return_to_check:
+        submission = submit_page(current, request.POST, form_progress)
+        if submission.accepted:
+            if not current.is_last and not return_to_check:
                 return redirect(url_for_page(page_number + 1))
             return redirect("course_applications:check_answers", pk=app.pk)
-        required_answers_error = (
-            unanswered_required_message(unanswered) if unanswered else ""
-        )
-        rejected_answers_error = (
-            rejected_answers_message(
-                [question for question in questions if question.id in rejected_answers]
-            )
-            if rejected_answers
-            else ""
-        )
 
     if not read_only:
         form_progress.record_page_reached(page_number)
-    context = {
+    context = page_context(
+        form, current, form_progress, submission, url_for_page, read_only=read_only
+    ) | {
         "application": app,
         "course": app.course,
-        "form": form,
-        "form_page": form_page,
-        "form_progress": form_progress,
-        "current_page_num": page_number,
-        "total_pages": len(all_pages),
-        "previous_page_url": url_for_page(page_number - 1) if page_number > 1 else None,
-        "has_next_page": page_number < len(all_pages),
-        "existing_answers": form_progress.existing_answers_dict(questions),
-        "page_links": build_page_links(form, form_progress, page_number, url_for_page),
-        "read_only": read_only,
-        "required_answers_error": required_answers_error,
-        "rejected_answers": rejected_answers,
-        "rejected_answers_error": rejected_answers_error,
         "return_to_check": return_to_check,
         "check_answers_url": reverse(
             "course_applications:check_answers", kwargs={"pk": app.pk}
         ),
     }
-    response = render(
-        request,
-        "course_applications/form_page.html",
-        context,
-        status=422 if required_answers_error or rejected_answers_error else 200,
+    return render_form_page(
+        request, "course_applications/form_page.html", context, submission
     )
-    # Re-fetch on back-nav, so a page never shows answers that have since changed.
-    response["Cache-Control"] = "no-store"
-    return response
 
 
 @login_required

@@ -518,6 +518,16 @@ class TestApplicationFormPage:
 
         assert response.status_code == 200
 
+    def test_a_form_page_is_never_cached(self, client, mock_site_context):
+        """A back-nav must re-read the answers, or it shows work that has since
+        changed."""
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.get("Cache-Control") == "no-store"
+
     def test_a_non_owner_gets_404(self, client, mock_site_context):
         course, _form = gated_course_with_form()
         app = _applied(client, course)
