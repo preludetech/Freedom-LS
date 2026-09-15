@@ -51,9 +51,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: dashboard section paging never pushes its page parameter to the URL, so paging one section silently resets another (TDD — failing test first, then fix)
-- [ ] (user) Decide whether dashboard section paging should push its page parameter to the browser URL (hx-push-url on c-course-section-pagination), then fix or close QA bug B1 accordingly
-- [ ] (user) Correct the test plan `3. frontend_qa.md`: it tells the tester to open `/dashboard/`, which 404s — the learner dashboard is served at `/`
+- [x] (user + cmd) Fix QA bug: dashboard section paging never pushes its page parameter to the URL, so paging one section silently resets another (TDD — failing test first, then fix)
+- [x] (user) Decide whether dashboard section paging should push its page parameter to the browser URL (hx-push-url on c-course-section-pagination), then fix or close QA bug B1 accordingly
+- [x] (user) Correct the test plan `3. frontend_qa.md`: it tells the tester to open `/dashboard/`, which 404s — the learner dashboard is served at `/`
 
 ## 10. Product documentation
 

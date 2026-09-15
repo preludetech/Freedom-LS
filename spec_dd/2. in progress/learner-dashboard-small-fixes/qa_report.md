@@ -13,10 +13,10 @@ This run tests two changes to the learner dashboard on branch `learner-dashboard
 **Headline verdict:** both changes work as specified across every scenario in the test plan
 (interleave order, no triple-rendering, hidden-category isolation, ordering control, the visibility
 preview, the anonymous visitor, htmx fragment paths, keyboard/focus, and mobile/tablet layout). One
-bug was found, but it is pre-existing, out of this branch's diff, and unrelated to either change: the
-dashboard's per-section pagination never pushes its page parameter into the browser URL, so paging a
-second section can silently reset a first section's page if a stale link from it is later followed.
-See bug B1.
+bug was filed, B1 — the dashboard's per-section pagination never pushes its page parameter into the
+browser URL. It has since been closed as working as intended: paging a dashboard section is not meant
+to write to the URL or to browser history, so the test plan's §5 expectation was wrong and the plan
+has been corrected. See bug B1.
 
 ## Methodology
 
@@ -59,7 +59,7 @@ Outcome: **pass**. Pages loaded before the detailed run began:
 | §2 The repeated card explains itself | PASS | Identical card content in both sections; express-interest lives only on detail page |
 | §3 No course renders three times | PASS | Available courses never picks up a coming-soon course |
 | §4 Category of only coming-soon courses | PASS | New section renders and its `order` genuinely controls page position |
-| §5 Two sections paging independently | FAIL (bug B1) | Visual isolation correct; URL push missing, filed as B1 |
+| §5 Two sections paging independently | PASS | Visual isolation correct; the missing URL push was filed as B1 and closed as by design |
 | §6 Browse all courses button | PASS | Present where expected, absent where not, identical styling everywhere |
 | §7 Visibility preview | PASS | No duplication with the preview on or off |
 | §8 Anonymous visitor | PASS | Same behaviour signed out, badge/label slot correct |
@@ -127,18 +127,19 @@ setting was left at 0 as the plan requires (4.5).
 
 Mix Bravo starts on page 1 of both QA Soon Mix and Coming soon (5.1). Clicking next on QA Soon Mix
 correctly swaps only that section, with no full page reload, to "4 to 4 of 4" (Mix Delta), while
-Coming soon stays on "1 to 3 of 4" — section isolation is correct — **but** the browser URL never
-gains `page_qa-soon-mix`; it stays at `/` (5.2, **FAIL**). Paging Coming soon as well leaves both
-sections holding their own correct positions visually, but the URL still carries neither parameter,
-and the freshly swapped Coming-soon fragment's own Previous link is rebuilt to `/` instead of
-`/?page_qa-soon-mix=2` — following it would silently reset QA Soon Mix (5.3, **FAIL**). Navigating
+Coming soon stays on "1 to 3 of 4" — section isolation is correct. The browser URL never gains
+`page_qa-soon-mix`; it stays at `/` (5.2). Paging Coming soon as well leaves both sections holding
+their own correct positions visually, the URL still carries neither parameter, and the freshly
+swapped Coming-soon fragment's own Previous link is rebuilt to `/` rather than
+`/?page_qa-soon-mix=2` (5.3). Both were recorded as failures against the plan as written, and both
+were later closed as by design — paging is not meant to reach the URL. Navigating
 directly to `/?page_qa-soon-mix=2&page_coming-soon=2` brings both sections back on the named pages
 with correct cross-referencing hrefs, confirming the server-side `section_page_href` logic is correct
 and only the URL push is missing (5.4). Hand-editing to
 `/?page_qa-soon-mix=99&page_coming-soon=0` renders a normal page with no error: 99 clamps to the last
 page, 0 clamps to page one (5.5). Both mobile and tablet reruns of the pagination swap (5.2) behaved
-the same — correct visual isolation, same missing URL push — confirming this is viewport-independent.
-These two failures are the sole manifestations of bug **B1**, detailed below.
+the same — correct visual isolation, same absent URL push — confirming this is viewport-independent.
+These two observations are the sole manifestations of bug **B1**, detailed below.
 
 ### §6 — Browse all courses on Recommended courses and Coming soon
 
@@ -250,17 +251,24 @@ other's parameter correctly — confirming the server side is correct and only t
 pagination code or template. The behaviour is unchanged from `main`. It surfaced in this run only
 because this is the first test plan to page two overlapping sections in sequence.
 
+**Resolution:** closed, working as intended. The product decision is that dashboard section paging
+does **not** belong in the URL or in browser history — a section pages in place and the URL stays
+put. The `page_<slug>` parameters remain honoured on a full page load, which is all the feature
+needs. Test plan §5 has been corrected to expect an unchanged URL; no code change was made.
+
 ## Bug status
 
-**UNRESOLVED** — Section paging never pushes its page parameter to the URL, so paging one section silently resets another (reason: triaged to the red lane — pre-existing behaviour unchanged by this branch, so it is not a regression in the feature under test, and adding `hx-push-url` to the shared `c-course-section-pagination` component is a product decision about whether dashboard paging belongs in browser history. No fix was attempted and nothing was reverted.)
+**CLOSED — by design** — Section paging never pushes its page parameter to the URL. Paging a
+dashboard section in place without touching the URL is the intended behaviour, so there is nothing to
+fix; the wrong expectation was in the test plan, which has been corrected.
 
 ## General notes
 
 - **The test plan's `/dashboard/` URL is wrong.** §0, §1 and §8 all instruct opening
   `http://127.0.0.1:<PORT>/dashboard/`. That path 404s. The learner dashboard is served at `/`
   (`freedom_ls/learner_interface/urls.py:8`, `name="dashboard"`). Every dashboard check in this run
-  was driven against `/` instead. This is a defect in the test plan document, not in the application
-  — a future run of this plan should fix the plan rather than trip over the 404 again.
+  was driven against `/` instead. This was a defect in the test plan document, not in the
+  application, and the plan has since been corrected to use `/`.
 - The per-branch dev database had migrations applied but no data at all when this run started; `/`
   returned an HTTP 500 (`FORCE_SITE_NAME='DemoDev' does not match any Site`). This was fixed during
   the run by running `create_demo_data --yes`, `content_save demo_content DemoDev`, and
