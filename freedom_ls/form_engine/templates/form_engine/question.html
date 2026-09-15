@@ -40,7 +40,13 @@
             {% elif question.type == "email" %}
                 {% include "form_engine/inputs/text_input.html" with input_type="email" %}
             {% elif question.type == "url" %}
-                {% include "form_engine/inputs/text_input.html" with input_type="url" %}
+                {% comment %}
+                type="text", not type="url": a schemeless address is a valid
+                answer, and a native url input refuses to submit one at all, so
+                the server's rule would never be reached. inputmode keeps the
+                keyboard hint.
+                {% endcomment %}
+                {% include "form_engine/inputs/text_input.html" with input_type="text" input_mode="url" %}
             {% elif question.type == "phone" %}
                 {% include "form_engine/inputs/text_input.html" with input_type="tel" input_mode="tel" %}
             {% elif question.type == "dropdown" %}

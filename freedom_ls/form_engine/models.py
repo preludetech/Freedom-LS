@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
 from django.db import models
 from django.utils import timezone
@@ -25,7 +26,7 @@ from .submissions import (
     submitted_option_ids,
     submitted_text_answer,
 )
-from .typed_answers import RejectedAnswer, answer_error
+from .typed_answers import RejectedAnswer, answer_error, question_bounds_error
 
 if TYPE_CHECKING:
     from django.http import QueryDict
@@ -154,6 +155,36 @@ class FormQuestion(BaseContent):
     # bounds are inclusive, matching what the HTML attributes themselves mean.
     min = models.CharField(max_length=20, blank=True, default="")
     max = models.CharField(max_length=20, blank=True, default="")
+    # How many decimal places a `number` answer may be written to. 0 is whole
+    # numbers only, which is what `<input type="number">` enforces on its own
+    # with its default `step` of 1.
+    decimal_places = models.PositiveSmallIntegerField(default=0)
+
+    def clean(self) -> None:
+        """Refuse a bound the page could only render as an inert attribute.
+
+        The pydantic schema runs this same rule over authored YAML, but nothing
+        ran it over a question edited by hand -- so `max = "31/12/2010"` saved
+        silently and then did nothing at all, in the browser or on the server.
+        """
+        error = question_bounds_error(
+            self.type, self.min, self.max, self.decimal_places
+        )
+        if error is not None:
+            raise ValidationError(error)
+
+    @property
+    def number_step(self) -> str:
+        """The `step` attribute for this question's input, or "" for no step.
+
+        Without it the browser's default step of 1 would refuse the very
+        decimals `decimal_places` was set to allow.
+        """
+        if self.type != QuestionType.NUMBER:
+            return ""
+        if self.decimal_places == 0:
+            return "1"
+        return f"0.{'0' * (self.decimal_places - 1)}1"
 
     def rendered_question(self):
         # No request: cotton components embedded in question markdown render

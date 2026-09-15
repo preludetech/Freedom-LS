@@ -85,21 +85,31 @@ a generic browser message that names no question and offers no guidance.
 
 ## Bug status
 
-- **UNRESOLVED** — Schemeless URL answer is blocked client-side, so the server's documented acceptance is unreachable (reason: needs a product/UX decision, and the likeliest fix spans three apps — auto-fix not attempted)
+- **FIXED** — Schemeless URL answer is blocked client-side, so the server's documented acceptance is unreachable
 
-B1 was triaged to the red lane rather than auto-fixed. At least three defensible fixes exist with
-materially different trade-offs, and choosing between them is a product call:
+B1 was triaged to the red lane during the run because the choice between fixes was a product call,
+not a mechanical one. That decision was since taken: `url` questions render through
+`text_input.html` as `type="text"` with `inputmode="url"`, the second of the three options weighed
+below. The keyboard hint stays, the native check is traded for the server's — which already accepted
+schemeless input and gives a message naming the question — and the stored value is unaffected.
 
-1. Add `novalidate` to the page form — but that disables **all** client-side validation for every
+The options weighed, for the record:
+
+1. Add `novalidate` to the page form — rejected. It disables **all** client-side validation for every
    question type on the page (required, email, number bounds), trading a real UX regression for this
-   one case. Neither `course_applications/form_page.html` nor
-   `learner_interface/course_form_page.html` currently carries it, so this route touches both runners
-   plus `form_engine`.
-2. Render `url` questions through `text_input.html` as `type="text"` with `inputmode="url"` — keeps
-   the keyboard hint and defers entirely to the server, which already handles the case correctly, but
-   loses the native check.
-3. Prepend `https://` client-side on blur so the native check passes — keeps `type="url"` but adds JS
-   that silently rewrites what the person typed.
+   one case, and touches both runners plus `form_engine`.
+2. **Chosen.** Render `url` questions as `type="text"` with `inputmode="url"` — one line in
+   `question.html`'s dispatch ladder.
+3. Prepend `https://` client-side on blur — rejected. It keeps `type="url"` but rewrites what the
+   person typed, so the stored value would gain a scheme and contradict §7.3, which asserts the URL
+   reads back exactly as entered.
+
+Re-verified in the browser after the fix: the application form's URL input is `type="text"` with
+`inputmode="url"` and the page carries zero native url inputs; `linkedin.com/in/someone` now
+produces a real `POST → 302` where the bug produced **zero requests**; the stored value reads back
+as `linkedin.com/in/someone` with no scheme added; and `not a url` still earns a 422 with
+`You entered "not a url". Enter a valid web address.` and the text handed back. The same markup was
+confirmed in the course player's runner, which shares `question.html`.
 
 ## What the run proves
 
@@ -146,4 +156,4 @@ materially different trade-offs, and choosing between them is a product call:
   says "Do not use memory" — these were not created or removed by the QA run itself, and the
   directory long predates it.
 
-status: ok · reason: 1 bug — 0 fixed, 1 unresolved (red lane: product/UX decision required, no fixer spawned); 62 checks run across desktop, mobile and tablet; report rendered, screenshots verified present
+status: ok · reason: 1 bug — 1 fixed, 0 unresolved (B1 fixed test-first after the product decision was taken, then re-verified in both runners); 62 checks run across desktop, mobile and tablet; report rendered, screenshots verified present

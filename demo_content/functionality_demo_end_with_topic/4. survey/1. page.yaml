@@ -53,7 +53,7 @@ options:
   uuid: d0ca76e7-fab1-4535-b16b-c55b1d3c83d2
   value: visuals
 question: Which areas would you most like to see improved? (Select all that apply)
-required: false
+required: true
 type: checkboxes
 uuid: adcf99a9-2507-461c-9936-fd3a2346ff96
 ---
@@ -66,3 +66,20 @@ question: Do you have any other feedback or suggestions for improving this cours
 required: false
 type: long_text
 uuid: 89635191-1d56-41d9-899d-d1a6ba35f4c5
+---
+max: '2030-12-31'
+min: '2020-01-01'
+question: When did you start this course?
+required: false
+type: date
+uuid: 46625a37-a837-4eb8-99f9-833cf697c8fe
+---
+question: What email address should we use if we follow up on your feedback?
+required: false
+type: email
+uuid: f449b73e-a531-4b60-b7eb-b5a38238d5ce
+---
+question: If you shared anything you built during this course, link it here
+required: false
+type: url
+uuid: 89b64e9f-c4fa-4e1a-b5cc-8980d779133e

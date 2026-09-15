@@ -26,6 +26,7 @@ class _StubQuestion:
     type: str
     min: str = ""
     max: str = ""
+    decimal_places: int = 0
 
 
 # date
@@ -192,6 +193,80 @@ def test_number_equal_to_max_is_accepted():
     question = _StubQuestion(type="number", max="70")
 
     assert answer_error(question, "70") is None
+
+
+def test_exponent_notation_is_accepted():
+    """`<input type="number">` submits it, so the server has to take it."""
+    question = _StubQuestion(type="number")
+
+    assert answer_error(question, "1e3") is None
+
+
+@pytest.mark.parametrize(
+    "text", ["1_0", "1,000", "nan", "Infinity", " 5 ", "+5", ".5", "5."]
+)
+def test_text_no_number_input_would_submit_is_rejected(text):
+    """`int()` takes `1_0` and surrounding whitespace, and `Decimal()` takes
+    those plus `nan` and `Infinity`. None of them is a valid floating-point
+    number, so no browser would submit one and the server must not take one."""
+    question = _StubQuestion(type="number")
+
+    assert answer_error(question, text) is not None
+
+
+# number: decimal places
+
+
+def test_a_decimal_is_rejected_when_the_question_allows_none():
+    """The default is whole numbers, which is what `<input type="number">`
+    itself enforces with its default `step` of 1."""
+    question = _StubQuestion(type="number")
+
+    message = answer_error(question, "7.5")
+
+    assert message is not None
+    assert "7.5" in message
+    assert "whole number" in message
+
+
+def test_a_decimal_is_accepted_when_the_question_allows_decimal_places():
+    question = _StubQuestion(type="number", decimal_places=2)
+
+    assert answer_error(question, "7.5") is None
+
+
+def test_too_many_decimal_places_is_rejected_naming_the_limit():
+    question = _StubQuestion(type="number", decimal_places=2)
+
+    message = answer_error(question, "7.555")
+
+    assert message is not None
+    assert "7.555" in message
+    assert "2 decimal places" in message
+
+
+def test_a_single_allowed_decimal_place_is_named_in_the_singular():
+    question = _StubQuestion(type="number", decimal_places=1)
+
+    message = answer_error(question, "7.55")
+
+    assert message is not None
+    assert "1 decimal place." in message
+
+
+def test_a_trailing_zero_does_not_count_as_a_decimal_place():
+    """`7.50` is the same number as `7.5`. Counting the written zero would
+    reject a value the author's own limit allows."""
+    question = _StubQuestion(type="number", decimal_places=1)
+
+    assert answer_error(question, "7.50") is None
+
+
+def test_a_decimal_bound_is_compared_numerically():
+    question = _StubQuestion(type="number", max="7.5", decimal_places=2)
+
+    assert answer_error(question, "7.6") is not None
+    assert answer_error(question, "7.5") is None
 
 
 # email

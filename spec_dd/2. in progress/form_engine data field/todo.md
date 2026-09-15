@@ -49,10 +49,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user) Decide how a schemeless URL answer should reach the server — form-level novalidate, render url questions as type=text with inputmode=url, or prepend the scheme client-side — then fix per that decision
-- [ ] (user + cmd) Fix QA bug: schemeless URL answer is blocked client-side so the server's acceptance is unreachable (TDD — failing test first, then fix)
+- [x] (user) Decide how a schemeless URL answer should reach the server — form-level novalidate, render url questions as type=text with inputmode=url, or prepend the scheme client-side — then fix per that decision
+- [x] (user + cmd) Fix QA bug: schemeless URL answer is blocked client-side so the server's acceptance is unreachable (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

@@ -8,12 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 
-from freedom_ls.content_engine.management.commands.content_save import (
-    save_content_to_db,
-)
 from freedom_ls.content_engine.models import ContentCollectionItem, Course
 from freedom_ls.form_engine.models import Form, FormQuestion, FormStrategy
 
@@ -21,11 +17,6 @@ pytestmark = pytest.mark.fls_internal
 
 GATED_COURSE_TITLE = "Functionality Demo - Application gated course"
 APPLICATION_FORM_TITLE = "Application form"
-
-
-@pytest.fixture
-def loaded_demo_content(site, mock_site_context) -> None:
-    save_content_to_db(settings.BASE_DIR / "demo_content", site.name)
 
 
 @pytest.mark.django_db
