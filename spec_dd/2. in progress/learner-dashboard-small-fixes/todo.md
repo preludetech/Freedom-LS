@@ -47,10 +47,13 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: dashboard section paging never pushes its page parameter to the URL, so paging one section silently resets another (TDD — failing test first, then fix)
+- [ ] (user) Decide whether dashboard section paging should push its page parameter to the browser URL (hx-push-url on c-course-section-pagination), then fix or close QA bug B1 accordingly
+- [ ] (user) Correct the test plan `3. frontend_qa.md`: it tells the tester to open `/dashboard/`, which 404s — the learner dashboard is served at `/`
 
 ## 10. Product documentation
 
@@ -68,7 +71,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
