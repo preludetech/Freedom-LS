@@ -351,6 +351,15 @@ def _in_progress_section(
     )
 
 
+def _browse_all_url() -> str:
+    """The catalogue link behind every Browse all courses button.
+
+    Unparameterised: a section's button lands on the whole catalogue, not on
+    that section's own slice of it.
+    """
+    return reverse("learner_interface:courses")
+
+
 def _recommended_section(
     request: HttpRequest, recommendations: list[RecommendedCourse]
 ) -> DashboardSection:
@@ -363,6 +372,7 @@ def _recommended_section(
         wrapper_id="recommended-courses",
         page_obj=page_obj,
         courses=[rec.course for rec in page_recommendations],
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -384,7 +394,7 @@ def _category_section(
         page_obj=page_obj,
         courses=courses,
         description=category.description,
-        browse_all_url=reverse("learner_interface:courses"),
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -415,7 +425,7 @@ def _available_section(
         wrapper_id="available-courses",
         page_obj=page_obj,
         courses=courses,
-        browse_all_url=reverse("learner_interface:courses"),
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -431,6 +441,7 @@ def _coming_soon_section(
         wrapper_id="coming-soon-courses",
         page_obj=page_obj,
         courses=courses,
+        browse_all_url=_browse_all_url(),
     )
 
 
