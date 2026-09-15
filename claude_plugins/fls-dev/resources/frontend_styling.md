@@ -85,6 +85,7 @@ These exist so a theme can reshape one region without redeclaring the brand role
 | `header` / `on-header` | `bg-header`, `text-on-header` | `primary` / `on-primary` |
 | `header-action` / `on-header-action` | `bg-header-action` | `primary` / `on-primary` |
 | `sidepanel` | `bg-sidepanel` | `surface` — the docked/overlay nav in `_base_interface.html` |
+| `footer` / `on-footer` | `bg-footer`, `text-on-footer` | `surface-2` / `on-surface` — the site footer in `partials/footer_bar.html` |
 
 ### Shape and type
 

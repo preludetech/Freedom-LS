@@ -28,7 +28,7 @@ Shipped slugs are `default` and `first_class`. Themes are sparse — only overri
 
 - Role tokens: `primary`, `secondary`, `accent`, `success`, `warning`, `error`, `info` (each with an `on-*` partner tuned for WCAG AA on that background), `surface`, `surface-2`, `on-surface`, `border`, `muted`, `focus-ring`.
 - Status tints `success-light` / `warning-light` / `error-light` / `info-light`, each with its own `on-*-light` foreground, plus `success-soft`.
-- Component-tier aliases `header`, `on-header`, `header-action`, `on-header-action`, `sidepanel`.
+- Component-tier aliases `header`, `on-header`, `header-action`, `on-header-action`, `sidepanel`, `footer`, `on-footer`.
 - The `--fls-course-accent-*` course-card palette. It is the only per-component token series left; a value only one component reads belongs in that component's template instead.
 - Shape and type under `--fls-*`, aliased into Tailwind's `--radius-*` / `--font-*` slots.
 - A `*-hover` variant for the seven coloured roles only, derived via `color-mix()`. Surfaces, `border`, and `muted` have none.
