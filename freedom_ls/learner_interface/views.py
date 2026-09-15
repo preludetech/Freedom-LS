@@ -288,10 +288,16 @@ def _discovery_courses(
     )
 
 
-def _coming_soon_split(
+def _discovery_pools(
     courses: QuerySet[Course],
 ) -> tuple[QuerySet[Course], QuerySet[Course]]:
-    """Split the discovery pool into (coming soon, everything else).
+    """The Coming soon roll-up and the pool every other discovery section draws from.
+
+    The two overlap deliberately: a coming-soon course whose dashboard category
+    is shown belongs in both, so it flows into ``rest`` as well as the first
+    queryset, and ``_category_section`` picks it up the same way it picks up
+    any published course. A coming-soon course with no category, or a hidden
+    one, has nowhere else to render and stays out of ``rest`` entirely.
 
     Reads the override rather than ``visibility`` alone, so the visibility
     preview keeps presenting every course as published: with it on, nothing is
@@ -299,9 +305,11 @@ def _coming_soon_split(
     """
     if override_visibility_to_visible():
         return courses.none(), courses
+    is_coming_soon = Q(visibility=CourseVisibility.COMING_SOON)
+    has_shown_category = Q(dashboard_category__show_on_dashboard=True)
     return (
-        courses.filter(visibility=CourseVisibility.COMING_SOON),
-        courses.exclude(visibility=CourseVisibility.COMING_SOON),
+        courses.filter(is_coming_soon),
+        courses.filter(~is_coming_soon | has_shown_category),
     )
 
 
@@ -343,6 +351,15 @@ def _in_progress_section(
     )
 
 
+def _browse_all_url() -> str:
+    """The catalogue link behind every Browse all courses button.
+
+    Unparameterised: a section's button lands on the whole catalogue, not on
+    that section's own slice of it.
+    """
+    return reverse("learner_interface:courses")
+
+
 def _recommended_section(
     request: HttpRequest, recommendations: list[RecommendedCourse]
 ) -> DashboardSection:
@@ -355,6 +372,7 @@ def _recommended_section(
         wrapper_id="recommended-courses",
         page_obj=page_obj,
         courses=[rec.course for rec in page_recommendations],
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -376,7 +394,7 @@ def _category_section(
         page_obj=page_obj,
         courses=courses,
         description=category.description,
-        browse_all_url=reverse("learner_interface:courses"),
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -387,7 +405,9 @@ def _available_section(
 
     Only ``dashboard_category`` decides this — a course whose dashboard
     category is hidden lands here rather than in whichever of its other
-    categories happens to have a section on screen.
+    categories happens to have a section on screen. A coming-soon course can
+    never reach this catch-all: ``rest`` only ever holds one with a shown
+    category, so the filter below has nothing coming-soon left to exclude.
     """
     page_obj = page_for(
         request,
@@ -405,7 +425,7 @@ def _available_section(
         wrapper_id="available-courses",
         page_obj=page_obj,
         courses=courses,
-        browse_all_url=reverse("learner_interface:courses"),
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -421,6 +441,7 @@ def _coming_soon_section(
         wrapper_id="coming-soon-courses",
         page_obj=page_obj,
         courses=courses,
+        browse_all_url=_browse_all_url(),
     )
 
 
@@ -470,7 +491,7 @@ def _dashboard_inputs(request: HttpRequest) -> _DashboardInputs:
     excluded_ids = (
         {c.id for c in get_course_registrations(request.user)} if is_auth else set()
     ) | {rec.course_id for rec in recommended_courses}
-    coming_soon, rest = _coming_soon_split(
+    coming_soon, rest = _discovery_pools(
         _discovery_courses(request.user, backend, excluded_ids)
     )
     return _DashboardInputs(

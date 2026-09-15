@@ -1,8 +1,10 @@
 """How the dashboard's discovery pool splits into sections.
 
-Only ``Course.dashboard_category`` decides where a course lands. The other
-categories a course belongs to are deliberately never consulted here, which is
-what keeps one course to one card in one section.
+Only ``Course.dashboard_category`` decides where a course lands: the other
+categories a course belongs to are deliberately never consulted here. A
+coming-soon course is the one exception to "one course, one section". It
+renders in Coming soon and, if its dashboard category is shown, in that
+category's section too.
 """
 
 from __future__ import annotations
@@ -97,7 +99,7 @@ def test_course_in_three_categories_renders_only_in_its_dashboard_category(
 
 
 @pytest.mark.django_db
-def test_coming_soon_course_lands_in_coming_soon_whatever_its_category(
+def test_coming_soon_course_renders_in_its_shown_category_and_in_coming_soon(
     mock_site_context,
 ):
     category = CourseCategoryFactory(title="Start here", slug="start-here")
@@ -110,8 +112,103 @@ def test_coming_soon_course_lands_in_coming_soon_whatever_its_category(
 
     response = Client().get(reverse("learner_interface:dashboard"))
 
+    assert rendered_section(response, "start-here").courses == [course]
     assert rendered_section(response, "coming-soon").courses == [course]
-    assert section_by_slug(response, "start-here") is None
+
+
+@pytest.mark.django_db
+def test_coming_soon_courses_interleave_alphabetically_in_their_category(
+    mock_site_context,
+):
+    category = CourseCategoryFactory(title="Start here", slug="start-here")
+    alpha = CourseFactory(title="Alpha", slug="alpha", dashboard_category=category)
+    bravo = CourseFactory(
+        title="Bravo",
+        slug="bravo",
+        dashboard_category=category,
+        visibility=CourseVisibility.COMING_SOON,
+    )
+    charlie = CourseFactory(
+        title="Charlie", slug="charlie", dashboard_category=category
+    )
+
+    response = Client().get(reverse("learner_interface:dashboard"))
+
+    # Three courses, one page at SECTION_PAGE_SIZE: the order below is the
+    # section's actual render order, not a second page boundary.
+    assert rendered_section(response, "start-here").courses == [alpha, bravo, charlie]
+
+
+@pytest.mark.django_db
+def test_uncategorised_coming_soon_course_stays_out_of_available_courses(
+    mock_site_context,
+):
+    course = CourseFactory(
+        title="Course A", slug="course-a", visibility=CourseVisibility.COMING_SOON
+    )
+
+    response = Client().get(reverse("learner_interface:dashboard"))
+
+    assert rendered_section(response, "coming-soon").courses == [course]
+    assert section_by_slug(response, "available") is None
+
+
+@pytest.mark.django_db
+def test_hidden_category_coming_soon_course_stays_out_of_available_courses(
+    mock_site_context,
+):
+    hidden = CourseCategoryFactory(
+        title="Reference", slug="reference", show_on_dashboard=False
+    )
+    course = CourseFactory(
+        title="Course A",
+        slug="course-a",
+        dashboard_category=hidden,
+        visibility=CourseVisibility.COMING_SOON,
+    )
+
+    response = Client().get(reverse("learner_interface:dashboard"))
+
+    assert rendered_section(response, "coming-soon").courses == [course]
+    assert section_by_slug(response, "available") is None
+    assert section_by_slug(response, "reference") is None
+
+
+@pytest.mark.django_db
+def test_a_category_of_only_coming_soon_courses_renders_a_section(mock_site_context):
+    category = CourseCategoryFactory(title="Start here", slug="start-here")
+    course = CourseFactory(
+        title="Course A",
+        slug="course-a",
+        dashboard_category=category,
+        visibility=CourseVisibility.COMING_SOON,
+    )
+
+    response = Client().get(reverse("learner_interface:dashboard"))
+
+    assert rendered_section(response, "start-here").courses == [course]
+
+
+@pytest.mark.django_db
+def test_a_coming_soon_only_category_can_lead_the_page(
+    mock_site_context, logged_in_client
+):
+    category = CourseCategoryFactory(title="Start here", slug="start-here")
+    CourseFactory(
+        title="Course A",
+        slug="course-a",
+        dashboard_category=category,
+        visibility=CourseVisibility.COMING_SOON,
+    )
+    user = UserFactory()
+    RecommendedCourseFactory(
+        user=user, course=CourseFactory(title="Course B", slug="course-b")
+    )
+
+    response = logged_in_client(user).get(reverse("learner_interface:dashboard"))
+
+    slugs = [section.slug for section in response.context["sections"]]
+    assert slugs.index("start-here") < slugs.index("recommended")
 
 
 @pytest.mark.django_db

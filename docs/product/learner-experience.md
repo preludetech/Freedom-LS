@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-15_
 
 ## Summary
 
@@ -31,7 +31,7 @@ The learner dashboard serves as the home page at `/`. Its content branches on wh
 - **Recommended courses** — courses an administrator has surfaced for the learner.
 - **Learning history** — courses the learner has finished, most recently completed first.
 
-Each category chosen for the dashboard gets a section of its own, headed by its title and description, in the order the site declared. A course appears in exactly one section however many categories it carries. A learner has no control over any of this — no section can be hidden, reordered, or collapsed — and a section's "Browse all" link goes to the full catalogue, which cannot yet filter down to one category's courses.
+Each category chosen for the dashboard gets a section of its own, headed by its title and description, in the order the site declared. A published course appears in exactly one section however many categories it carries. A coming-soon course is the exception: where its category is one the site shows on the dashboard, it appears both in that category's section and in **Coming soon**; where it has no category, or its category isn't shown, it appears only in Coming soon and never in Available courses. A category whose courses are all coming soon therefore gets a section of its own — one with nothing in it a learner can start yet — and it leads the page if the site's declared order puts it first. A learner has no control over any of this — no section can be hidden, reordered, or collapsed — and a section's "Browse all" link goes to the full catalogue, which cannot yet filter down to one category's courses.
 
 Every section shows up to three cards at a time, with previous/next controls and a "1 to 3 of 12" position beside the heading to reach the rest. Paging one section leaves the others where they are.
 

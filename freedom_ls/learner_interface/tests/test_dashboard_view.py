@@ -20,6 +20,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.course_recommendations.factories import RecommendedCourseFactory
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
@@ -351,3 +352,82 @@ def test_dashboard_empty_in_progress_reads_differently_once_there_is_history(
     assert 'data-testid="in-progress-empty-no-registrations"' not in body
     assert 'data-testid="in-progress-empty-with-history"' in body
     assert 'id="learning-history"' in body
+
+
+# --- Browse all courses on Recommended courses and Coming soon ---
+
+
+@pytest.mark.django_db
+def test_recommended_section_offers_browse_all_courses(
+    mock_site_context, courses, logged_in_client
+):
+    """The Recommended courses section links to the whole catalogue, like every
+    other discovery section."""
+    user = UserFactory()
+    RecommendedCourseFactory(user=user, course=courses[0])
+    client = logged_in_client(user)
+
+    response = client.get(reverse("learner_interface:dashboard"))
+
+    assert rendered_section(response, "recommended").browse_all_url == reverse(
+        "learner_interface:courses"
+    )
+
+
+@pytest.mark.django_db
+def test_coming_soon_section_offers_browse_all_courses(
+    mock_site_context, logged_in_client
+):
+    """The Coming soon section links to the whole catalogue, like every other
+    discovery section."""
+    CourseFactory(
+        title="Not Yet Course",
+        slug="not-yet-course",
+        visibility=CourseVisibility.COMING_SOON,
+    )
+    client = logged_in_client(UserFactory())
+
+    response = client.get(reverse("learner_interface:dashboard"))
+
+    assert rendered_section(response, "coming-soon").browse_all_url == reverse(
+        "learner_interface:courses"
+    )
+
+
+@pytest.mark.django_db
+def test_the_learners_own_sections_offer_no_browse_all_courses(
+    mock_site_context, courses, logged_in_client
+):
+    """In progress and Learning history are the learner's own lists, not a
+    discovery section, so neither offers a Browse-all-courses link."""
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=courses[0])
+    course_progress_record(courses[1], user, completed_time=timezone.now())
+    client = logged_in_client(user)
+
+    response = client.get(reverse("learner_interface:dashboard"))
+
+    assert rendered_section(response, "in-progress").browse_all_url == ""
+    assert rendered_section(response, "history").browse_all_url == ""
+
+
+@pytest.mark.django_db
+def test_coming_soon_fragment_carries_the_browse_all_courses_button(
+    mock_site_context, logged_in_client
+):
+    """The htmx fragment for Coming soon — the response an in-page swap
+    actually renders — carries the button, not just the section object."""
+    CourseFactory(
+        title="Not Yet Course",
+        slug="not-yet-course",
+        visibility=CourseVisibility.COMING_SOON,
+    )
+    client = logged_in_client(UserFactory())
+
+    response = client.get(
+        reverse("learner_interface:dashboard"),
+        HTTP_HX_REQUEST="true",
+        HTTP_HX_TARGET="section-page-coming-soon",
+    )
+
+    assert "Browse all courses" in response.content.decode()
