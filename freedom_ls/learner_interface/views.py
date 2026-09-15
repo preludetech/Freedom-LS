@@ -37,23 +37,18 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.queries import stamp_interest
 from freedom_ls.course_recommendations.models import RecommendedCourse
 from freedom_ls.course_recommendations.queries import get_recommended_courses
-from freedom_ls.form_engine.models import (
-    Form,
-    FormPage,
-    FormProgress,
-    FormQuestion,
-    FormStrategy,
+from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
+from freedom_ls.form_engine.page_flow import (
+    CurrentPage,
+    PageSubmission,
+    page_at,
+    page_context,
+    render_form_page,
+    resolve_page,
+    submit_page,
 )
-from freedom_ls.form_engine.paging import (
-    answered_counts,
-    build_page_links,
-    rejected_answers_message,
-    resume_page_number,
-    unanswered_required_message,
-    unanswered_required_on_page,
-)
-from freedom_ls.form_engine.queries import count_form_questions, page_questions
-from freedom_ls.form_engine.typed_answers import RejectedAnswer
+from freedom_ls.form_engine.paging import answered_counts, resume_page_number
+from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_management.config import config
 from freedom_ls.learner_management.deadline_utils import is_item_locked_by_deadline
 from freedom_ls.learner_management.models import LearnerCourseRegistration
@@ -1342,17 +1337,6 @@ def form_start(request, course_slug, index):
     )
 
 
-def _rejected_answers_error(
-    questions: list[FormQuestion], rejected_answers: dict[uuid.UUID, RejectedAnswer]
-) -> str:
-    """The message naming the questions whose answers were not valid."""
-    if not rejected_answers:
-        return ""
-    return rejected_answers_message(
-        [question for question in questions if question.id in rejected_answers]
-    )
-
-
 def _form_page_url(course_slug: str, index: int, page_number: int) -> str:
     return reverse(
         "learner_interface:form_fill_page",
@@ -1369,25 +1353,19 @@ def _render_form_fill_page(
     course: Course,
     form: Form,
     index: int,
-    page_number: int,
+    current: CurrentPage,
     course_progress: CourseProgress | None,
     form_progress: FormProgress | None,
-    all_pages: list[FormPage],
-    questions: list[FormQuestion],
-    *,
-    required_answers_error: str = "",
-    rejected_answers: dict[uuid.UUID, RejectedAnswer] | None = None,
-    rejected_answers_error: str = "",
+    submission: PageSubmission,
 ) -> HttpResponse:
     """Render one runner page, carrying whatever a submission was rejected for.
 
     Shared with `form_submit_and_exit`, which has to put the learner back on the
     page they were standing on when an answer is rejected, rather than finalise
-    the attempt without it. Both callers have already read the form's pages and
-    the page's questions, so both hand them over rather than paying for them
-    twice.
+    the attempt without it. Both callers have already resolved the page, so both
+    hand it over rather than paying for it twice — and both record it as reached
+    here, so leaving by the dialog moves the resume point just as paging does.
     """
-    form_page = all_pages[page_number - 1]
 
     def url_for_page(number: int) -> str:
         return _form_page_url(course.slug, index, number)
@@ -1402,30 +1380,16 @@ def _render_form_fill_page(
             index=index,
         )
 
-    # Build a dictionary of existing answers keyed by question ID
-    existing_answers = form_progress.existing_answers_dict(questions)
+    form_progress.record_page_reached(current.number)
 
-    form_progress.record_page_reached(page_number)
-
-    context = {
+    context = page_context(form, current, form_progress, submission, url_for_page) | {
         "course": course,
-        "form": form,
-        "form_page": form_page,
-        "form_progress": form_progress,
-        "current_page_num": page_number,
-        "total_pages": len(all_pages),
-        "previous_page_url": url_for_page(page_number - 1) if page_number > 1 else None,
-        "has_next_page": (
-            url_for_page(page_number + 1) if page_number < len(all_pages) else None
-        ),
-        "existing_answers": existing_answers,
-        "page_links": build_page_links(form, form_progress, page_number, url_for_page),
         # Player chrome (outline panel + breadcrumb) so the fill page keeps the
         # same orientation as the rest of the player.
         **_player_chrome_context(
             request.user, course, form, index, course_progress=course_progress
         ),
-        **answered_counts(form, form_progress, questions),
+        **answered_counts(form, form_progress, current.questions),
         # URLs the exit dialog acts on.
         "submit_and_exit_url": reverse(
             "learner_interface:form_submit_and_exit",
@@ -1435,25 +1399,16 @@ def _render_form_fill_page(
             "learner_interface:view_course_item",
             kwargs={"course_slug": course.slug, "index": index},
         ),
-        "required_answers_error": required_answers_error,
-        "rejected_answers": rejected_answers or {},
-        "rejected_answers_error": rejected_answers_error,
     }
-
-    # A rejected submission is a validation failure, not a fresh page view.
-    response = render(
-        request,
-        "learner_interface/course_form_page.html",
-        context,
-        status=422 if required_answers_error or rejected_answers_error else 200,
+    return render_form_page(
+        request, "learner_interface/course_form_page.html", context, submission
     )
-    # Runner pages must re-fetch on back-nav so the answered count is never stale.
-    response["Cache-Control"] = "no-store"
-    return response
 
 
 @login_required
-def form_fill_page(request, course_slug, index, page_number):
+def form_fill_page(
+    request: HttpRequest, course_slug: str, index: int, page_number: int
+) -> HttpResponse:
     course = get_object_or_404(Course, slug=course_slug)
     no_access = _course_access_redirect(request.user, course)
     if no_access is not None:
@@ -1470,11 +1425,7 @@ def form_fill_page(request, course_slug, index, page_number):
     if blocked is not None:
         return blocked
 
-    all_pages = list(form.pages.all())
-    total_pages = len(all_pages)
-    if page_number < 1 or page_number > total_pages:
-        raise Http404("No form page at this number.")
-    form_page = all_pages[page_number - 1]
+    current = resolve_page(form, page_number)
 
     # Get the latest incomplete form progress instance
     form_progress = (
@@ -1483,21 +1434,7 @@ def form_fill_page(request, course_slug, index, page_number):
         else None
     )
 
-    # Get existing answers for questions on this page
-    questions = page_questions(form_page)
-
-    next_page_url = (
-        _form_page_url(course_slug, index, page_number + 1)
-        if page_number < total_pages
-        else None
-    )
-
-    # Set when a submission is rejected for missing required answers: the page is
-    # re-rendered carrying it instead of advancing or completing.
-    required_answers_error = ""
-    rejected_answers: dict[uuid.UUID, RejectedAnswer] = {}
-    rejected_answers_error = ""
-
+    submission = PageSubmission()
     if request.method == "POST":
         # No incomplete attempt to save into (e.g. it was finalised by a
         # submit-on-exit safety net, or the page was reached without starting).
@@ -1509,17 +1446,10 @@ def form_fill_page(request, course_slug, index, page_number):
                 index=index,
             )
 
-        unanswered_required = unanswered_required_on_page(
-            questions, request.POST, form_progress
-        )
-
-        # Save regardless, so a rejected submission does not throw away the
-        # answers the learner did give.
-        rejected_answers = form_progress.save_answers(questions, request.POST)
-
-        if not unanswered_required and not rejected_answers:
-            if next_page_url:
-                return redirect(next_page_url)
+        submission = submit_page(current, request.POST, form_progress)
+        if submission.accepted:
+            if not current.is_last:
+                return redirect(_form_page_url(course_slug, index, page_number + 1))
 
             # Mark form as completed and calculate scores
             form_progress.complete()
@@ -1530,26 +1460,15 @@ def form_fill_page(request, course_slug, index, page_number):
                 index=index,
             )
 
-        required_answers_error = (
-            unanswered_required_message(unanswered_required)
-            if unanswered_required
-            else ""
-        )
-        rejected_answers_error = _rejected_answers_error(questions, rejected_answers)
-
     return _render_form_fill_page(
         request,
         course,
         form,
         index,
-        page_number,
+        current,
         course_progress,
         form_progress,
-        all_pages,
-        questions,
-        required_answers_error=required_answers_error,
-        rejected_answers=rejected_answers,
-        rejected_answers_error=rejected_answers_error,
+        submission,
     )
 
 
@@ -1734,10 +1653,8 @@ def course_finish(request, course_slug):
     return render(request, "learner_interface/course_finish.html", context)
 
 
-def _posted_page(
-    form: Form, post_data: QueryDict
-) -> tuple[int, list[FormPage], list[FormQuestion]] | None:
-    """The page a submit-and-exit POST was made from, and its questions.
+def _posted_page(form: Form, post_data: QueryDict) -> CurrentPage | None:
+    """The page a submit-and-exit POST was made from.
 
     The exit dialog retargets the runner page form here, so the POST holds the
     page the learner was standing on — named by a hidden field, because this
@@ -1749,15 +1666,14 @@ def _posted_page(
         page_number = int(post_data.get("page_number", ""))
     except ValueError:
         return None
-    pages = list(form.pages.all())
-    if not 1 <= page_number <= len(pages):
-        return None
-    return page_number, pages, page_questions(pages[page_number - 1])
+    return page_at(form, page_number)
 
 
 @login_required
 @require_POST
-def form_submit_and_exit(request, course_slug: str, index: int):
+def form_submit_and_exit(
+    request: HttpRequest, course_slug: str, index: int
+) -> HttpResponse:
     """POST-only endpoint: finalise the learner's current attempt and redirect to results.
 
     Used by the exit dialog's "Leave and submit" action on submit-on-exit forms.
@@ -1801,23 +1717,19 @@ def form_submit_and_exit(request, course_slug: str, index: int):
         # Save before completing, so score() sees the page the learner was on.
         posted = _posted_page(form, request.POST)
         if posted is not None:
-            page_number, all_pages, questions = posted
-            rejected_answers = form_progress.save_answers(questions, request.POST)
-            if rejected_answers:
+            submission = submit_page(
+                posted, request.POST, form_progress, require_answers=False
+            )
+            if not submission.accepted:
                 return _render_form_fill_page(
                     request,
                     course,
                     form,
                     index,
-                    page_number,
+                    posted,
                     course_progress,
                     form_progress,
-                    all_pages,
-                    questions,
-                    rejected_answers=rejected_answers,
-                    rejected_answers_error=_rejected_answers_error(
-                        questions, rejected_answers
-                    ),
+                    submission,
                 )
         form_progress.complete()  # idempotent
 

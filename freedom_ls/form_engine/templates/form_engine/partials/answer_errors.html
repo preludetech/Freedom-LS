@@ -1,0 +1,23 @@
+{% comment %}
+Why a submission was refused. Belongs outside the <form>, above it: it is the
+page's answer to the submission just made, not a field of the next one. That
+placement is what lets role="alert" announce the refusal on the 422 re-render.
+
+Reads: required_answers_error, rejected_answers_error. Renders nothing when
+both are empty.
+{% endcomment %}
+{% if required_answers_error %}
+    <div data-testid="required-answers-error" role="alert">
+        <c-callout level="error" title="Missing answers">
+            {{ required_answers_error }}
+        </c-callout>
+    </div>
+{% endif %}
+
+{% if rejected_answers_error %}
+    <div data-testid="rejected-answers-error" role="alert">
+        <c-callout level="error" title="Invalid answers">
+            {{ rejected_answers_error }}
+        </c-callout>
+    </div>
+{% endif %}

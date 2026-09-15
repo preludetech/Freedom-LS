@@ -1063,6 +1063,30 @@ def test_final_page_submit_button_is_a_real_form_submit(mock_site_context, clien
     assert re.search(r'type="submit"\s+form="runner-page-form"', content)
 
 
+@pytest.mark.django_db
+def test_the_submit_dialog_is_drawn_only_on_the_final_page(mock_site_context, client):
+    """The review dialog belongs to the end of the form. A page with more to
+    come offers Next instead, and must not carry a second dialog that the exit
+    focus trap could reach."""
+    user = UserFactory()
+    form, _pages, _questions = _make_two_page_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    first = client.get(_fill_page_url(course, 1)).content.decode()
+    last = client.get(_fill_page_url(course, 2)).content.decode()
+
+    assert 'aria-labelledby="submit-dialog-title"' not in first
+    assert 'aria-labelledby="submit-dialog-title"' in last
+
+
 # ---------------------------------------------------------------------------
 # form_fill_page POST with no incomplete attempt
 # ---------------------------------------------------------------------------
@@ -1700,6 +1724,24 @@ def test_leave_and_submit_with_an_invalid_answer_does_not_complete_the_attempt(
     attempt = FormProgress.objects.get(user=user, form=form)
     assert attempt.completed_time is None
     assert attempt.answers.filter(question=question).count() == 0
+
+
+@pytest.mark.django_db
+def test_leave_and_submit_with_an_invalid_answer_still_records_the_page_reached(
+    mock_site_context, client
+):
+    """Being sent back to the page is still having been shown it. The resume
+    point is recorded where the page is rendered, so both ways of arriving --
+    paging into it, and being returned to it by a refused exit -- move it."""
+    user, form, question, course = _start_submit_on_exit_attempt(client, "date")
+
+    client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{question.id}": "banana"},
+    )
+
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.furthest_page_reached == 1
 
 
 @pytest.mark.django_db
