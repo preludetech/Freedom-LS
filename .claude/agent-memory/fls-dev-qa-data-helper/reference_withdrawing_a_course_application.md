@@ -1,78 +1,91 @@
 ---
 name: reference-withdrawing-a-course-application
-description: qa_reset_course_application — withdrawing a QA applicant's CourseApplication plus the FormProgress it named, in the RESTRICT-safe order, so the application-forms QA plan can be re-walked from §2
+description: qa_reset_course_application — withdrawing a QA applicant's CourseApplication plus the FormProgress it named, in the RESTRICT-safe order, so an application-gated QA plan can be re-walked from scratch
 metadata:
   type: reference
 ---
 
-`qa_reset_course_application --learner EMAIL --course-slug SLUG [--site-name DemoDev]`
-(`freedom_ls/qa_helpers/management/commands/`). Deletes the learner's application to that
-course, then the sitting that application named. Idempotent: no application -> prints
-"No application to withdraw" and exits 0.
+`qa_reset_course_application --learner EMAIL --course-slug SLUG [--site-name DemoDev] [--dry-run]`
+(`freedom_ls/qa_helpers/management/commands/qa_reset_course_application.py`). Deletes the
+learner's application to that course, then the sitting that application named. Idempotent: no
+application -> "No application to withdraw" and exit 0.
 
-## This is QA-plan step §0.2.3, not a one-off
+## It gets RE-WRITTEN per worktree — check before assuming it exists
 
-`spec_dd/2. in progress/simple-application-forms/3. frontend_qa.md` §0.2.3 says in so many
-words: "On a second run of this plan the account from the first run already holds an
-application and its form sitting: clear them in that order". §0.2.7 is the sibling ask for
-the three free courses' `FormProgress` ([[reference_clearing_form_sittings_around_an_application]]).
-So expect BOTH every time the plan is re-run, not just the first time.
+Written twice now (first on `simple-application-forms`, again on `form_engine_data_field`
+Sep 2026). The first one **never merged**, and `git log --all --diff-filter=A` in the second
+worktree found nothing. A memory note saying "this is a command" is not evidence the file is on
+*this* branch — `ls freedom_ls/qa_helpers/management/commands/ | grep -i reset` first. Same
+applies to any command these notes name. `qa_clear_form_sittings` *did* exist on both.
 
-## Order is forced by RESTRICT, and only the application end can be deferred
+## This is a recurring QA-plan step, not a one-off
 
-`CourseApplication.form_progress` is `OneToOneField(..., on_delete=RESTRICT)`. Application
-first, sitting second, always. The command re-fetches the sitting **by pk after** the
-application row is gone, which is also why it never has to reason about the RESTRICT itself.
+Every re-run of an application-gated plan needs it: the account from the previous run already
+holds an application + sitting. Its sibling ask is §"clear the other courses' FormProgress"
+([[reference_clearing_form_sittings_around_an_application]]). Expect BOTH together.
 
-Observed cascade for `qa_applicant@email.com` (pk 73) on the gated course, Sep 2026:
+## Order is forced by RESTRICT — and so is the *preview*
+
+`CourseApplication.form_progress` is `OneToOneField(on_delete=RESTRICT)`. Application first,
+sitting second, always. The command re-fetches the sitting **by pk after** the application row
+is gone, so it never reasons about the RESTRICT.
+
+TRAP that cost a round-trip: building a `Collector` over the sitting to preview the blast radius
+**raises `RestrictedError` itself** while the application still stands —
+
+```
+RestrictedError: Cannot delete some instances of model 'FormProgress' because they are
+referenced through restricted foreign keys: 'CourseApplication.form_progress'.
+```
+
+It fails safe (nothing was deleted, the exception precedes the delete calls), but a
+`Collector`-based preview simply cannot run in this order. Preview with direct `.count()`
+queries instead, which is what the command does.
+
+Observed cascades, Sep 2026 (`qa.applicant.a@email.com` pk 71, gated course, 12 answers):
 
 ```
 CourseApplication : (1, {CourseApplication: 1})            # zero cascade, nothing FKs to it
-FormProgress      : (7, {QuestionAnswer_selected_options: 1, QuestionAnswerFile: 1,
-                         QuestionAnswer: 4, FormProgress: 1})
+FormProgress      : (17, {QuestionAnswer_selected_options: 3, QuestionAnswerFile: 1,
+                          QuestionAnswer: 12, FormProgress: 1})
+applicant B, 4 answers, never completed:
+FormProgress      : (6, {QuestionAnswer_selected_options: 1, QuestionAnswer: 4, FormProgress: 1})
 ```
 
-`Collector.fast_deletes` also listed `CourseFormAttempt: 0` — an application sitting is
-started outside the player, so it never has a join row even when the applicant has 8 of them
-from other courses. Check `form_progress=` (0 here) rather than
-`course_progress__learner__user=` (8 here) before reporting.
+An application sitting is started **outside** the player, so it has no `CourseFormAttempt` even
+when the persona has several from other courses. Check `form_progress=` rather than
+`course_progress__learner__user=` before reporting.
 
-The `QuestionAnswerFile` post_delete receiver really does sweep storage: grab
+The `QuestionAnswerFile` post_delete receiver really sweeps storage: grab
 `(pk, file.name, file.storage)` BEFORE the delete and assert `storage.exists(name)` flips
-True -> False (`user_uploads/73/form_answers/<qaf pk>.png`).
+True -> False (`user_uploads/71/form_answers/<qaf pk>.pdf`).
+
+## Deleting the application does NOT touch course progress
+
+`LearnerCourseRegistration`, `CourseProgress` and `TopicProgress` all survive untouched — worth
+stating explicitly when the ask says "keep the registration so item N stays unlocked".
 
 ## Field names that bite
 
 - `FormProgress` has **no** `is_complete`; it is `completed_time` (nullable datetime).
-- `QuestionAnswerFile`'s FK to the answer is **`answer`**, not `question_answer` — so the
-  filter is `QuestionAnswerFile.objects.filter(answer__form_progress=fp)`.
-- `CourseApplication.__str__` is `CourseApplication(<user pk>, <course pk>)` — two opaque
-  ids, no email or slug, so always print `user.email` / `course.slug` alongside it or the
-  "here is what I deleted" line is unreadable.
-
-## A parallel worker's unmigrated model field will break every ORM read mid-session
-
-Halfway through this run `FormProgress` SELECTs started failing with
-`ProgrammingError: column ...furthest_page_reached does not exist` — another agent had added
-a model field in the shared worktree without a migration. Do **not** write the migration
-(it lands an unrequested file in someone else's in-progress diff) and do not bake a
-`.only()`/`defer()` workaround into a committed command. Work around it *in the scratch
-script only*:
-
-```python
-FormProgress._base_manager.only("id", "site", "form", "user", "completed_time").get(pk=...)
-```
-
-Re-check before assuming it is still broken: the same worker's migration landed ~20 minutes
-later and the plain query started working again. `showmigrations` said everything was applied
-both times — the mismatch is model-vs-DB, not migration-vs-DB, so `showmigrations` cannot see it.
+- `QuestionAnswerFile`'s FK to the answer is **`answer`**, not `question_answer` — the filter is
+  `QuestionAnswerFile.objects.filter(answer__form_progress=fp)`.
+- `CourseApplication` filters on **`user`**, not `applicant`, and has no `status` field.
+- `CourseApplication.__str__` is `CourseApplication(<user pk>, <course pk>)` — two opaque ids, no
+  email or slug, so always print `user.email` / `course.slug` alongside it.
+- `FormQuestion`'s FK to its page is **`form_page`**, not `page`, and the type field is **`type`**,
+  not `question_type`. `filter(page__form=form)` raises `FieldError` (choices: category,
+  created_at, decimal_places, file_path, form_page, id, max, meta, min, options, order, question,
+  required, site, tags, type). The text is in **`question`**.
 
 ## Testing a destructive command without spending the fixture
 
-The target rows are gone by the time the command exists, so exercise it against a row that
-must SURVIVE, inside `transaction.atomic()` + a raised sentinel. Per
-[[reference_shell_savepoint_does_not_roll_back]] `transaction.atomic()` (not
-`transaction.savepoint()`) genuinely rolls back in `manage.py shell`. This proved the
-sitting-delete branch against `qa_bystander`'s live application and left it byte-identical.
-Postgres DDL is transactional too, so a temporary `ALTER TABLE ... ADD COLUMN` inside the
-same block rolls back — a legitimate way to test around a missing column, if it is still missing.
+The target rows are gone by the time the command exists, so exercise it against a row that must
+SURVIVE, inside `transaction.atomic()` + a raised sentinel ([[reference_shell_savepoint_does_not_roll_back]]).
+Proved the delete branch against applicant B's live application and confirmed
+`(pk, form_progress_id)` identical after rollback.
+
+**djclick commands need CLI-style args through `call_command`**:
+`call_command("qa_reset_course_application", "--learner", email, "--course-slug", slug)`.
+Kwargs (`learner=..., course_slug=...`) raise `click.exceptions.MissingParameter: learner`,
+because djclick's adapter builds a click context from `args` only.

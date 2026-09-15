@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from freedom_ls.content_base.schema import (
     BaseBaseContentModel,
@@ -8,6 +8,7 @@ from freedom_ls.content_base.schema import (
     ContentType,
     MarkdownContentModel,
 )
+from freedom_ls.form_engine.typed_answers import question_bounds_error
 
 
 class QuestionType(StrEnum):
@@ -19,6 +20,12 @@ class QuestionType(StrEnum):
     LONG_TEXT = "long_text"
     NUMBER = "number"
     FILE_UPLOAD = "file_upload"
+    DATE = "date"
+    TIME = "time"
+    EMAIL = "email"
+    URL = "url"
+    PHONE = "phone"
+    DROPDOWN = "dropdown"
 
 
 class FormStrategy(StrEnum):
@@ -134,7 +141,7 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         ...,
         description=(
             "Question type (multiple_choice, checkboxes, short_text, long_text, "
-            "number, file_upload)"
+            "number, file_upload, date, time, email, url, phone, dropdown)"
         ),
     )
     required: bool = Field(True, description="Whether the question is required")
@@ -142,3 +149,55 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
     options: list[QuestionOption] | None = Field(
         None, description="Options for multiple choice questions"
     )
+    min: str = Field(
+        "",
+        description=(
+            "Inclusive lower bound for a date, time or number question "
+            "(YYYY-MM-DD, HH:MM, or a plain number)"
+        ),
+    )
+    max: str = Field(
+        "",
+        description=(
+            "Inclusive upper bound for a date, time or number question "
+            "(YYYY-MM-DD, HH:MM, or a plain number)"
+        ),
+    )
+    decimal_places: int = Field(
+        0,
+        ge=0,
+        description=(
+            "How many decimal places a number answer may be written to. "
+            "0, the default, is whole numbers only"
+        ),
+    )
+
+    @field_validator("min", "max", mode="before")
+    @classmethod
+    def _coerce_bound_to_str(cls, value: object) -> str:
+        """`yaml.safe_load` resolves an unquoted `min: 0` to an int and an
+        unquoted `min: 1930-01-01` to a `datetime.date`. Both must arrive as
+        str: the model field is a `CharField`, and `extra="forbid"` means the
+        two sides have to line up exactly.
+        """
+        if value is None:
+            return ""
+        return str(value)
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "FormQuestion":
+        """`min`, `max` and `decimal_places` only mean anything on the types
+        that have an order, and only when they parse as that type.
+
+        The rule itself lives in `typed_answers.question_bounds_error`, shared
+        with `FormQuestion.clean()`, so an authoring mistake is judged the same
+        way wherever it is made. What this validator adds is the file name: an
+        author finds out at `content_save`, with the file called out, rather
+        than leaving a respondent to discover it.
+        """
+        error = question_bounds_error(
+            self.type, self.min, self.max, self.decimal_places
+        )
+        if error is not None:
+            raise ValueError(f"{error} (in {self.file_path})")
+        return self

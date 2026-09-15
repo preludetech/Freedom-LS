@@ -1,0 +1,19 @@
+{% comment %}
+One page's children, in the order the page lays them out: its questions and the
+content blocks between them. The two shells that draw a form page put entirely
+different chrome around this, and nothing at all inside it.
+
+Reads: form_page, plus everything form_engine/question.html reads --
+existing_answers, rejected_answers, read_only.
+{% endcomment %}
+{% for child in form_page.children %}
+    {% if child.content_type == "FORM_QUESTION" %}
+        {% with question=child %}
+            {% include "form_engine/question.html" %}
+        {% endwith %}
+    {% elif child.content_type == "FORM_CONTENT" %}
+        <c-markdown-container class="max-w-none">
+            {{ child.rendered_content }}
+        </c-markdown-container>
+    {% endif %}
+{% endfor %}

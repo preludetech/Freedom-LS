@@ -1063,6 +1063,30 @@ def test_final_page_submit_button_is_a_real_form_submit(mock_site_context, clien
     assert re.search(r'type="submit"\s+form="runner-page-form"', content)
 
 
+@pytest.mark.django_db
+def test_the_submit_dialog_is_drawn_only_on_the_final_page(mock_site_context, client):
+    """The review dialog belongs to the end of the form. A page with more to
+    come offers Next instead, and must not carry a second dialog that the exit
+    focus trap could reach."""
+    user = UserFactory()
+    form, _pages, _questions = _make_two_page_form()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    first = client.get(_fill_page_url(course, 1)).content.decode()
+    last = client.get(_fill_page_url(course, 2)).content.decode()
+
+    assert 'aria-labelledby="submit-dialog-title"' not in first
+    assert 'aria-labelledby="submit-dialog-title"' in last
+
+
 # ---------------------------------------------------------------------------
 # form_fill_page POST with no incomplete attempt
 # ---------------------------------------------------------------------------
@@ -1533,3 +1557,267 @@ def test_form_start_resumes_past_a_skipped_optional_question(mock_site_context, 
         "learner_interface:form_fill_page",
         kwargs={"course_slug": course.slug, "index": 1, "page_number": 4},
     )
+
+
+# ---------------------------------------------------------------------------
+# Rejected (invalid) typed answers
+# ---------------------------------------------------------------------------
+
+
+def _make_single_question_form(question_type: str, *, required: bool = False):
+    """A one-page, one-question form, isolated from the multi-question forms
+    above so a rejected answer's effect on paging and completion is
+    unambiguous."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    question = FormQuestionFactory(
+        form_page=page, type=question_type, order=0, required=required
+    )
+    return form, question
+
+
+def _fill_page_url(course: Course, page_number: int = 1) -> str:
+    return reverse(
+        "learner_interface:form_fill_page",
+        kwargs={"course_slug": course.slug, "index": 1, "page_number": page_number},
+    )
+
+
+@pytest.mark.django_db
+def test_an_invalid_date_answer_returns_422_and_stores_nothing(
+    mock_site_context, client
+):
+    user = UserFactory()
+    form, question = _make_single_question_form("date")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    response = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "banana"}
+    )
+
+    assert response.status_code == 422
+    assert (
+        response.context["rejected_answers_error"] == "Question 1 needs a valid answer."
+    )
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.answers.filter(question=question).count() == 0
+
+
+@pytest.mark.django_db
+def test_a_rejected_email_comes_back_in_the_input_value(mock_site_context, client):
+    user = UserFactory()
+    form, question = _make_single_question_form("email")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    body = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "not-an-email"}
+    ).content.decode()
+
+    assert 'value="not-an-email"' in body
+
+
+@pytest.mark.django_db
+def test_a_corrected_resubmission_advances_and_stores(mock_site_context, client):
+    user = UserFactory()
+    form, question = _make_single_question_form("email")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    client.post(_fill_page_url(course), {f"question_{question.id}": "not-an-email"})
+
+    response = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "ada@example.com"}
+    )
+
+    assert response.status_code == 302
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.answers.get(question=question).text_answer == "ada@example.com"
+
+
+@pytest.mark.django_db
+def test_a_rejected_required_answer_does_not_complete_the_attempt(
+    mock_site_context, client
+):
+    """The rejected date stores no row, so the single-page final submission
+    does not satisfy the required check and does not complete the attempt."""
+    user = UserFactory()
+    form, question = _make_single_question_form("date", required=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    response = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "banana"}
+    )
+
+    assert response.status_code == 422
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.completed_time is None
+
+
+# ---------------------------------------------------------------------------
+# "Leave and submit" meets a rejected answer
+# ---------------------------------------------------------------------------
+
+
+def _start_submit_on_exit_attempt(client, question_type: str, *, required=False):
+    """A started attempt on a one-question submit-on-exit form."""
+    user = UserFactory()
+    form, question = _make_single_question_form(question_type, required=required)
+    form.submit_on_exit = True
+    form.save()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    return user, form, question, course
+
+
+@pytest.mark.django_db
+def test_leave_and_submit_with_an_invalid_answer_does_not_complete_the_attempt(
+    mock_site_context, client
+):
+    """The exit button is `formnovalidate`, so an invalid value reaches the
+    server unchecked. Finalising on it would freeze the attempt without the
+    answer and leave no chance to fix it."""
+    user, form, question, course = _start_submit_on_exit_attempt(client, "date")
+
+    response = client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{question.id}": "banana"},
+    )
+
+    assert response.status_code == 422
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.completed_time is None
+    assert attempt.answers.filter(question=question).count() == 0
+
+
+@pytest.mark.django_db
+def test_leave_and_submit_with_an_invalid_answer_still_records_the_page_reached(
+    mock_site_context, client
+):
+    """Being sent back to the page is still having been shown it. The resume
+    point is recorded where the page is rendered, so both ways of arriving --
+    paging into it, and being returned to it by a refused exit -- move it."""
+    user, form, question, course = _start_submit_on_exit_attempt(client, "date")
+
+    client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{question.id}": "banana"},
+    )
+
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.furthest_page_reached == 1
+
+
+@pytest.mark.django_db
+def test_leave_and_submit_with_an_invalid_answer_names_the_question(
+    mock_site_context, client
+):
+    _user, _form, question, course = _start_submit_on_exit_attempt(client, "date")
+
+    response = client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{question.id}": "banana"},
+    )
+
+    assert (
+        response.context["rejected_answers_error"] == "Question 1 needs a valid answer."
+    )
+
+
+@pytest.mark.django_db
+def test_leave_and_submit_still_completes_when_a_required_answer_is_blank(
+    mock_site_context, client
+):
+    """Leaving scores the attempt as it stands. A blank required question must
+    not trap the learner in the exit dialog -- only an invalid one does."""
+    user, form, _question, course = _start_submit_on_exit_attempt(
+        client, "date", required=True
+    )
+
+    response = client.post(_exit_url(course), {"page_number": "1"})
+
+    assert response.status_code == 302
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.completed_time is not None
+
+
+@pytest.mark.django_db
+def test_leave_and_submit_completes_once_the_answer_is_corrected(
+    mock_site_context, client
+):
+    user, form, question, course = _start_submit_on_exit_attempt(client, "date")
+    client.post(
+        _exit_url(course), {"page_number": "1", f"question_{question.id}": "banana"}
+    )
+
+    response = client.post(
+        _exit_url(course),
+        {"page_number": "1", f"question_{question.id}": "2025-06-15"},
+    )
+
+    assert response.status_code == 302
+    attempt = FormProgress.objects.get(user=user, form=form)
+    assert attempt.completed_time is not None
+    assert attempt.answers.get(question=question).text_answer == "2025-06-15"
+
+
+@pytest.mark.django_db
+def test_a_rejected_number_is_recited_in_its_error_message(mock_site_context, client):
+    """The page sends the value back, but a browser blanks whatever it cannot
+    parse out of a `number` input — the same value-sanitisation rule `date` and
+    `time` inputs follow, so the field renders empty whatever we put in it.
+    Reciting the value in the error message is what keeps the person's own
+    words on the page for those three types."""
+    user = UserFactory()
+    form, question = _make_single_question_form("number")
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+    client.get(
+        reverse(
+            "learner_interface:form_start",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+
+    body = client.post(
+        _fill_page_url(course), {f"question_{question.id}": "banana"}
+    ).content.decode()
+
+    assert 'You entered "banana". Enter a whole number.' in html.unescape(body)

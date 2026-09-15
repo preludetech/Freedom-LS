@@ -52,6 +52,12 @@ def test_answered_count_reflects_answers_filled_in_on_the_current_page(
     QuestionOptionFactory(question=cb, text="Red", order=0)
     QuestionOptionFactory(question=cb, text="Green", order=1)
 
+    dd = FormQuestionFactory(
+        form_page=page, type="dropdown", question="Pick a colour", order=3
+    )
+    QuestionOptionFactory(question=dd, text="Blue", order=0)
+    QuestionOptionFactory(question=dd, text="Yellow", order=1)
+
     ContentCollectionItemFactory(collection_object=course, child_object=form, order=0)
     register_user_for_course(course, logged_in_user)
 
@@ -65,19 +71,22 @@ def test_answered_count_reflects_answers_filled_in_on_the_current_page(
     logged_in_page.goto(start_url)
 
     summary = logged_in_page.get_by_test_id("answered-summary")
-    expect(summary).to_have_text("0 of 3 answered")
+    expect(summary).to_have_text("0 of 4 answered")
 
     # Answer each question and watch the live tally climb.
     # exact=True so option text does not substring-match words like "answe(red)".
     logged_in_page.get_by_text("Alpha", exact=True).click()
-    expect(summary).to_have_text("1 of 3 answered")
+    expect(summary).to_have_text("1 of 4 answered")
 
     logged_in_page.get_by_label("Your name").fill("Sheena")
-    expect(summary).to_have_text("2 of 3 answered")
+    expect(summary).to_have_text("2 of 4 answered")
 
     logged_in_page.get_by_text("Red", exact=True).click()
-    expect(summary).to_have_text("3 of 3 answered")
+    expect(summary).to_have_text("3 of 4 answered")
+
+    logged_in_page.get_by_label("Pick a colour").select_option(label="Blue")
+    expect(summary).to_have_text("4 of 4 answered")
 
     # Open the "Ready to submit?" modal — it must show the same honest count.
     logged_in_page.get_by_role("button", name="Next").click()
-    expect(logged_in_page.get_by_test_id("modal-answered-count")).to_have_text("3")
+    expect(logged_in_page.get_by_test_id("modal-answered-count")).to_have_text("4")

@@ -1,0 +1,65 @@
+---
+content_type: FORM_PAGE
+subtitle: When you can join live sessions
+title: Availability
+uuid: 466c70d6-99a4-466c-b01e-907f0a080cde
+---
+content: |-
+  Live sessions run on weekdays. Telling us when you are usually free helps us
+  place you in a cohort that fits your schedule.
+uuid: f6150679-3b73-4633-83aa-647d392293f7
+---
+max: '17:00'
+min: 09:00
+question: What time of day do you prefer for live sessions?
+required: true
+type: time
+uuid: 60bade08-7624-4138-a31f-0c319d37b82e
+---
+options:
+- text: Hawaii-Aleutian (UTC-10)
+  uuid: 278e52cc-2cab-44d7-9d57-4ac412acc317
+  value: hawaii_aleutian
+- text: Pacific (UTC-8)
+  uuid: 379d949a-7057-4be3-820e-23386c4824d7
+  value: pacific
+- text: Mountain (UTC-7)
+  uuid: 99899300-db3c-4260-b7d6-8d89f6013eee
+  value: mountain
+- text: Central (UTC-6)
+  uuid: a461af8a-071d-48ff-a648-5bb452228e95
+  value: central
+- text: Eastern (UTC-5)
+  uuid: 673f49c0-d734-45d3-a2ce-772dab9717b6
+  value: eastern
+- text: Brasilia (UTC-3)
+  uuid: d5a2227f-c401-44b3-8c1b-a44b9348c00f
+  value: brasilia
+- text: Greenwich Mean Time (UTC+0)
+  uuid: 08aaa3e2-7f41-4909-b3d2-8fc710711619
+  value: gmt
+- text: Central European (UTC+1)
+  uuid: b6d34418-5474-4805-ab4c-3bdeba7e302e
+  value: central_european
+- text: Eastern European (UTC+2)
+  uuid: b3f19b0f-bbe0-4ac6-bf2d-2fc5cc57c308
+  value: eastern_european
+- text: Moscow (UTC+3)
+  uuid: 89ca5156-969e-4995-ab79-cf3fe84bfdfe
+  value: moscow
+- text: India (UTC+5:30)
+  uuid: f19b48fd-046f-48ad-9209-ba382291208b
+  value: india
+- text: China Standard (UTC+8)
+  uuid: 996d35a4-63ff-444b-9c6d-79d7a5972701
+  value: china
+- text: Japan (UTC+9)
+  uuid: 3df633d8-c303-4afd-9a9e-d11719ca3fe7
+  value: japan
+- text: Australian Eastern (UTC+10)
+  uuid: 44fec5f6-4947-4fde-859d-e97f91ed2747
+  value: australian_eastern
+question: Which time zone are you usually in?
+required: true
+type: dropdown
+uuid: 51a0a209-773a-43aa-b75b-cd7f5ec23a05

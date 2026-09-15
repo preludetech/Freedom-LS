@@ -21,25 +21,50 @@
         <p class="clear-both text-sm text-muted">Select all that apply.</p>
     {% endif %}
 
-    <div class="space-y-2 clear-both">
-        {% if question.type == "multiple_choice" %}
-            {% include "form_engine/inputs/multiple_choice.html" %}
-        {% elif question.type == "checkboxes" %}
-            {% include "form_engine/inputs/checkboxes.html" %}
-        {% elif question.type == "short_text" %}
-            {% include "form_engine/inputs/short_text.html" %}
-        {% elif question.type == "long_text" %}
-            {% include "form_engine/inputs/long_text.html" %}
-        {% elif question.type == "number" %}
-            {% include "form_engine/inputs/number.html" %}
-        {% elif question.type == "file_upload" %}
-            {% with answer=existing_answers|get_dict_item:question.id %}
-                {% include "form_engine/inputs/file_upload.html" with answer_file=answer.answer_file %}
-            {% endwith %}
-        {% else %}
-            <c-callout level="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
+    {% with rejected=rejected_answers|get_dict_item:question.id %}
+        <div class="space-y-2 clear-both">
+            {% if question.type == "multiple_choice" %}
+                {% include "form_engine/inputs/multiple_choice.html" %}
+            {% elif question.type == "checkboxes" %}
+                {% include "form_engine/inputs/checkboxes.html" %}
+            {% elif question.type == "short_text" %}
+                {% include "form_engine/inputs/text_input.html" with input_type="text" %}
+            {% elif question.type == "long_text" %}
+                {% include "form_engine/inputs/long_text.html" %}
+            {% elif question.type == "number" %}
+                {% include "form_engine/inputs/text_input.html" with input_type="number" input_mode="numeric" %}
+            {% elif question.type == "date" %}
+                {% include "form_engine/inputs/text_input.html" with input_type="date" %}
+            {% elif question.type == "time" %}
+                {% include "form_engine/inputs/text_input.html" with input_type="time" %}
+            {% elif question.type == "email" %}
+                {% include "form_engine/inputs/text_input.html" with input_type="email" %}
+            {% elif question.type == "url" %}
+                {% comment %}
+                type="text", not type="url": a schemeless address is a valid
+                answer, and a native url input refuses to submit one at all, so
+                the server's rule would never be reached. inputmode keeps the
+                keyboard hint.
+                {% endcomment %}
+                {% include "form_engine/inputs/text_input.html" with input_type="text" input_mode="url" %}
+            {% elif question.type == "phone" %}
+                {% include "form_engine/inputs/text_input.html" with input_type="tel" input_mode="tel" %}
+            {% elif question.type == "dropdown" %}
+                {% include "form_engine/inputs/dropdown.html" %}
+            {% elif question.type == "file_upload" %}
+                {% with answer=existing_answers|get_dict_item:question.id %}
+                    {% include "form_engine/inputs/file_upload.html" with answer_file=answer.answer_file %}
+                {% endwith %}
+            {% else %}
+                <c-callout level="error">ERROR! UNHANDLED FORM TYPE {{ question.type }}</c-callout>
+            {% endif %}
+        </div>
+        {% if rejected %}
+            <p class="text-sm text-error" id="question_{{ question.id }}_error">
+                <span class="sr-only">Error: </span>{{ rejected.message }}
+            </p>
         {% endif %}
-    </div>
+    {% endwith %}
 
     {% comment %}
     Revealed by examRunnerForm when a required checkbox group is submitted

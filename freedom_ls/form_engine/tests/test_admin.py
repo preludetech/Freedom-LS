@@ -8,6 +8,7 @@ import pytest
 
 from django.contrib import admin
 from django.contrib.auth.models import Permission
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils import timezone
 
@@ -17,11 +18,14 @@ from freedom_ls.form_engine.admin import (
     FormContentAdmin,
     FormPageAdmin,
     FormQuestionAdmin,
+    QuestionAnswerAdmin,
     QuestionOptionAdmin,
 )
+from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormProgressFactory,
+    FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
 )
@@ -31,6 +35,7 @@ from freedom_ls.form_engine.models import (
     FormPage,
     FormQuestion,
     FormStrategy,
+    QuestionAnswer,
     QuestionOption,
 )
 
@@ -306,3 +311,136 @@ def test_the_changelist_offers_a_download(mock_site_context, staff_client):
     )
 
     assert _admin_download_url(answer_file) in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# answer_preview renders a stored answer the way a reader would see it
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_answer_preview_renders_a_date_answer_for_a_reader(mock_site_context) -> None:
+    question = FormQuestionFactory(type=QuestionType.DATE)
+    answer = QuestionAnswerFactory(question=question, text_answer="1987-03-14")
+
+    preview = QuestionAnswerAdmin(QuestionAnswer, admin.site).answer_preview(answer)
+
+    assert preview == "March 14, 1987"
+
+
+@pytest.mark.django_db
+def test_answer_preview_truncates_a_long_answer_to_fifty_characters(
+    mock_site_context,
+) -> None:
+    question = FormQuestionFactory(type=QuestionType.SHORT_TEXT)
+    answer = QuestionAnswerFactory(question=question, text_answer="x" * 60)
+
+    preview = QuestionAnswerAdmin(QuestionAnswer, admin.site).answer_preview(answer)
+
+    assert preview == "x" * 50
+
+
+# ---------------------------------------------------------------------------
+# Bounds set by hand are validated, not left inert
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_a_bound_that_does_not_parse_is_refused_by_the_model(mock_site_context) -> None:
+    """`31/12/2010` renders straight into the `max` attribute, where the
+    browser ignores it as an invalid date and the runtime check parses it to
+    None and skips it. Inert either way, so it must not be storable."""
+    question = FormQuestionFactory(type=QuestionType.DATE, max="31/12/2010")
+
+    with pytest.raises(ValidationError):
+        question.clean()
+
+
+@pytest.mark.django_db
+def test_a_bound_on_a_type_with_no_order_is_refused_by_the_model(
+    mock_site_context,
+) -> None:
+    """YAML forbids this; the admin must not be the way around it."""
+    question = FormQuestionFactory(type=QuestionType.SHORT_TEXT, min="1")
+
+    with pytest.raises(ValidationError):
+        question.clean()
+
+
+@pytest.mark.django_db
+def test_decimal_places_on_a_type_that_is_not_a_number_is_refused_by_the_model(
+    mock_site_context,
+) -> None:
+    question = FormQuestionFactory(type=QuestionType.SHORT_TEXT, decimal_places=2)
+
+    with pytest.raises(ValidationError):
+        question.clean()
+
+
+@pytest.mark.django_db
+def test_a_valid_bound_passes_the_model_check(mock_site_context) -> None:
+    question = FormQuestionFactory(type=QuestionType.DATE, max="2010-01-01")
+
+    question.clean()
+
+
+def _change_payload(response, **overrides: str) -> dict[str, str]:
+    """The admin change form's own values, ready to post straight back."""
+    form = response.context["adminform"].form
+    payload = {
+        name: "" if form.initial.get(name) is None else str(form.initial.get(name, ""))
+        for name in form.fields
+    }
+    for inline in response.context["inline_admin_formsets"]:
+        prefix = inline.formset.prefix
+        payload[f"{prefix}-TOTAL_FORMS"] = "0"
+        payload[f"{prefix}-INITIAL_FORMS"] = "0"
+        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
+        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
+    payload.update(overrides)
+    return payload
+
+
+@pytest.fixture
+def date_question(mock_site_context) -> FormQuestion:
+    """A date question complete enough for the admin change form to accept it."""
+    question: FormQuestion = FormQuestionFactory(
+        type=QuestionType.DATE,
+        max="",
+        file_path="forms/application/1. about-you.yaml",
+    )
+    return question
+
+
+def _question_change_url(question: FormQuestion) -> str:
+    return reverse(
+        "admin:freedom_ls_form_engine_formquestion_change", args=[question.pk]
+    )
+
+
+@pytest.mark.django_db
+def test_the_admin_refuses_a_bound_that_does_not_parse(
+    staff_client, date_question
+) -> None:
+    """The model check is only worth anything if it is what the admin consults,
+    so this goes through HTTP rather than calling `clean()`."""
+    url = _question_change_url(date_question)
+
+    response = staff_client.post(
+        url, _change_payload(staff_client.get(url), max="31/12/2010")
+    )
+
+    date_question.refresh_from_db()
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors
+    assert date_question.max == ""
+
+
+@pytest.mark.django_db
+def test_the_admin_saves_a_valid_bound(staff_client, date_question) -> None:
+    url = _question_change_url(date_question)
+
+    staff_client.post(url, _change_payload(staff_client.get(url), max="2010-01-01"))
+
+    date_question.refresh_from_db()
+    assert date_question.max == "2010-01-01"

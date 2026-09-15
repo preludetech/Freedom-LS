@@ -63,9 +63,12 @@
 - [reference_three_page_dashboard_section.md](reference_three_page_dashboard_section.md) — qa_extend_start_here_section: TWO pages cannot exercise courseSectionPagination's primary focus branch, you need a middle page (3 pages); why the new letters must not join PAGINATION_LETTERS; data-direction="previous" and live arrows have NO aria-disabled attribute
 - [reference_application_review_permission_accounts.md](reference_application_review_permission_accounts.md) — qa_create_application_review_accounts: applicant/bystander/reviewer trio; app label is `freedom_ls_form_engine`; SuperuserOnlyAdmin makes the 3 view_ perms 403 while /admin/ still renders 200
 - [reference_clearing_form_sittings_around_an_application.md](reference_clearing_form_sittings_around_an_application.md) — Clearing a persona's stale FormProgress so every start screen reads "Start Form" without tripping CourseApplication's RESTRICT; qa_reset_learner_progress is now unsafe for applicant personas; the self-registration shape for free courses
-- [reference_withdrawing_a_course_application.md](reference_withdrawing_a_course_application.md) — qa_reset_course_application: withdraw a CourseApplication + the FormProgress it named, in the RESTRICT-forced order (QA plan §0.2.3, runs on EVERY re-walk); answer/file cascade counts; a parallel worker's unmigrated model field breaks ORM reads mid-session
+- [reference_withdrawing_a_course_application.md](reference_withdrawing_a_course_application.md) — qa_reset_course_application: withdraw a CourseApplication + the FormProgress it named, in the RESTRICT-forced order (recurs on EVERY re-walk); the command gets re-written per worktree so CHECK IT EXISTS first; a Collector preview trips the RESTRICT itself; djclick needs CLI-style args via call_command; FormQuestion is form_page/type/question
 - [reference_application_forms_qa_baseline.md](reference_application_forms_qa_baseline.md) — The whole-run simple-application-forms QA setup: content_save on the PARENT demo_content dir, qa_create_application_review_accounts (covers the whole teardown), qa_create_application_docs_scenario (positional site arg), + the 3-course enrolment; the two easily-confused gated courses; a re-run normally deletes nothing
 - [reference_browsable_course_command.md](reference_browsable_course_command.md) — qa_create_browsable_course: the factory-built 1-course/1-part/3-topic fixture for a dev DB with ZERO Courses; registers an EXISTING user; CoursePart is dropped from viewable_items(); sequential unlock 302s items 2-3 until item 1 is marked complete
+
+- [reference_clean_applicant_command.md](reference_clean_applicant_command.md) — qa_create_clean_applicant: one verified learner with zero applications/sittings and optional registrations (the A/B applicant pair); "no sitting" != "reachable" — sequential unlock still blocks the form at item 3; ContentCollectionItem uses child_id/collection_id
+- [reference_submit_on_exit_flag_flip.md](reference_submit_on_exit_flag_flip.md) — Form.submit_on_exit has no admin widget: flip it with queryset.update(); it gates the runner's "Leave and submit" button AND makes view_form/form_start auto-finalise any open attempt (finalise_stale_incomplete); content_save reverts it; CourseApplication filters on `user` not `applicant`; the question model is FormQuestion not Question
 
 ## Recurring requests
 
@@ -101,6 +104,8 @@ thing you are meant to restore. Prior state here: `dashboard_category=None`, `ca
 tester's own `content_save demo_content DemoDev` — the loader resets every content field the
 frontmatter omits. **Re-read the field just before you report, not just after you write it**, and
 warn that a content reload undoes it. See [[reference_demo_content_loader]].
+
+**"Flip a field the admin does not expose" is the same shape** (Sep 2026: `Form.submit_on_exit` on the end-with-topic survey, to make the runner's "Leave and submit" exit path reachable at all). Same recipe: `assert` the prior value, `queryset.update()`, re-read and print, and warn that `content_save` reverts it whenever the demo-content markdown omits the field. Check whether turning the flag on changes OTHER code paths before reporting — `submit_on_exit` also makes `view_form`/`form_start` auto-finalise the learner's open attempt. See [[reference_submit_on_exit_flag_flip]].
 
 **"Clear the leftover form attempt so the start page says Start Form"** (Sep 2026,
 misc-small-fixes-manual): deleting the single `FormProgress` takes its `CourseFormAttempt`
@@ -465,3 +470,13 @@ Prefer extending the latter over writing another one-off. Whichever is used, ALW
 tester that items 2..N 302 back to the detail page until item 1 is marked complete — sequential
 unlock looks exactly like a broken fixture from the browser.
 See [[reference_browsable_course_command]].
+
+**"Two clean applicant accounts, A and B, verified, no application, no sitting"** (Sep 2026,
+form_engine_data_field): the third variation of the applicant-persona ask. The first two were
+served by `qa_create_application_review_accounts` (which hardcodes `qa_applicant@` /
+`qa_bystander@` / `qa_reviewer@`), so the moment the tester names their *own* addresses that
+command is the wrong tool. `qa_create_clean_applicant --email ... --register-course-slug ...`
+is the per-persona version; run it once per account. Expect the ask to keep arriving with a
+"delete the previous run's CourseApplication then its FormProgress" clause attached that has
+nothing to delete — inspect and report "already clean" rather than hunting.
+See [[reference_clean_applicant_command]].

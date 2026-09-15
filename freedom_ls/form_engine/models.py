@@ -3,8 +3,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING
+from uuid import UUID
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.files.storage import Storage
 from django.db import models
 from django.utils import timezone
@@ -24,6 +26,7 @@ from .submissions import (
     submitted_option_ids,
     submitted_text_answer,
 )
+from .typed_answers import RejectedAnswer, answer_error, question_bounds_error
 
 if TYPE_CHECKING:
     from django.http import QueryDict
@@ -147,6 +150,41 @@ class FormQuestion(BaseContent):
         choices=QuestionType.choices,
     )
     required = models.BooleanField(default=True)
+    # Holds an ISO date, an HH:MM time, or a plain number depending on
+    # `type`, and renders straight into the matching HTML attribute. Both
+    # bounds are inclusive, matching what the HTML attributes themselves mean.
+    min = models.CharField(max_length=20, blank=True, default="")
+    max = models.CharField(max_length=20, blank=True, default="")
+    # How many decimal places a `number` answer may be written to. 0 is whole
+    # numbers only, which is what `<input type="number">` enforces on its own
+    # with its default `step` of 1.
+    decimal_places = models.PositiveSmallIntegerField(default=0)
+
+    def clean(self) -> None:
+        """Refuse a bound the page could only render as an inert attribute.
+
+        The pydantic schema runs this same rule over authored YAML, but nothing
+        ran it over a question edited by hand -- so `max = "31/12/2010"` saved
+        silently and then did nothing at all, in the browser or on the server.
+        """
+        error = question_bounds_error(
+            self.type, self.min, self.max, self.decimal_places
+        )
+        if error is not None:
+            raise ValidationError(error)
+
+    @property
+    def number_step(self) -> str:
+        """The `step` attribute for this question's input, or "" for no step.
+
+        Without it the browser's default step of 1 would refuse the very
+        decimals `decimal_places` was set to allow.
+        """
+        if self.type != QuestionType.NUMBER:
+            return ""
+        if self.decimal_places == 0:
+            return "1"
+        return f"0.{'0' * (self.decimal_places - 1)}1"
 
     def rendered_question(self):
         # No request: cotton components embedded in question markdown render
@@ -309,13 +347,22 @@ class FormProgress(SiteAwareModel):
 
     def save_answers(
         self, questions: Iterable[FormQuestion], post_data: QueryDict
-    ) -> None:
+    ) -> dict[UUID, RejectedAnswer]:
         """Persist the answers in `post_data` for `questions`.
 
         A question submitted with no answer stores no row, and loses any row from
         an earlier visit: a blank row would count toward the runner's answered
         tally and hide which questions are still outstanding.
+
+        An answer whose content is not valid for the question's type is neither
+        written nor deleted: the row from an earlier visit, if there is one, is
+        left exactly as it was. Storing it would leave a rejected value counting
+        as an answer, which would satisfy the required-question check and let an
+        application through. It comes back in the return value instead, keyed by
+        question id, so the page that re-renders can show the person what they
+        typed.
         """
+        rejected: dict[UUID, RejectedAnswer] = {}
         for question in questions:
             if question.type == QuestionType.FILE_UPLOAD:
                 # A file never rides the page POST, so a page submission carries
@@ -327,14 +374,23 @@ class FormProgress(SiteAwareModel):
                 self.answers.filter(question=question).delete()
                 continue
 
+            text: str | None = None
+            if question.type in FREE_TEXT_QUESTION_TYPES:
+                text = submitted_text_answer(question, post_data)
+                message = answer_error(question, text)
+                if message is not None:
+                    rejected[question.id] = RejectedAnswer(text=text, message=message)
+                    continue
+
             answer, _created = QuestionAnswer.objects.get_or_create(
                 form_progress=self, question=question, site=self.site
             )
-            if question.type in FREE_TEXT_QUESTION_TYPES:
-                answer.text_answer = submitted_text_answer(question, post_data)
+            if text is not None:
+                answer.text_answer = text
             else:
                 answer.selected_options.set(submitted_option_ids(question, post_data))
             answer.save()
+        return rejected
 
     def complete(self):
         """Mark the form as completed and calculate the final score (idempotent)."""
@@ -370,8 +426,9 @@ class FormProgress(SiteAwareModel):
 
                 question = child
 
-                # Only process multiple choice questions for now
-                if question.type != "multiple_choice":
+                # multiple_choice and dropdown both carry QuestionOption rows
+                # with a numeric value; every other type has no value to sum.
+                if question.type not in ("multiple_choice", "dropdown"):
                     continue
 
                 # Get the maximum value among all options for this question

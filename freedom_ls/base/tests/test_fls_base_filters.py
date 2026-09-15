@@ -1,7 +1,8 @@
-"""The `duration` filter, which names how long a wait lasts.
+"""The `duration` and `get_dict_item` filters.
 
-Its one call site is the lockout page's "paused for about ..." sentence, so a
-value that renders as "0 minutes" reads as though the pause is already over.
+`duration` names how long a wait lasts; its one call site is the lockout
+page's "paused for about ..." sentence, so a value that renders as
+"0 minutes" reads as though the pause is already over.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ import pytest
 
 from django.template import Context, Template
 
-from freedom_ls.base.templatetags.fls_base_filters import duration
+from freedom_ls.base.templatetags.fls_base_filters import duration, get_dict_item
 
 
 @pytest.mark.parametrize(
@@ -40,3 +41,18 @@ def test_a_non_timedelta_renders_empty_rather_than_raising() -> None:
     )
 
     assert rendered == ""
+
+
+def test_get_dict_item_returns_the_value_for_a_known_key() -> None:
+    assert get_dict_item({"a": 1}, "a") == 1
+
+
+def test_get_dict_item_returns_none_for_a_missing_key() -> None:
+    assert get_dict_item({"a": 1}, "b") is None
+
+
+def test_get_dict_item_returns_none_for_a_non_dict_value() -> None:
+    """A template variable never added to the context resolves to the empty
+    string, not `None` — a downstream filter chained onto it must not raise.
+    """
+    assert get_dict_item("", "a") is None

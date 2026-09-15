@@ -25,6 +25,7 @@ from .models import (
     QuestionAnswerFile,
     QuestionOption,
 )
+from .typed_answers import format_answer
 
 
 class SuperuserOnlyAdmin:
@@ -134,6 +135,37 @@ class FormQuestionAdmin(SiteAwareModelAdmin):
     search_fields = ("question", "category", "form_page__title")
     ordering = ("form_page", "order")
     inlines = [QuestionOptionInline]
+
+    fieldsets = (
+        (
+            None,
+            {
+                "fields": (
+                    "question",
+                    "type",
+                    "required",
+                    "form_page",
+                    "category",
+                    "order",
+                )
+            },
+        ),
+        (
+            "Answer format",
+            {
+                "fields": ("min", "max", "decimal_places"),
+                "description": (
+                    "min and max apply to date, time and number questions only, "
+                    "and are inclusive. decimal_places applies to number "
+                    "questions; 0 is whole numbers only."
+                ),
+            },
+        ),
+        (
+            "Metadata",
+            {"fields": ("file_path", "meta", "tags"), "classes": ("collapse",)},
+        ),
+    )
 
     @admin.display(description="Question")
     def question_preview(self, obj):
@@ -335,6 +367,7 @@ class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     )
     ordering = ("-updated_at",)
     readonly_fields = ("updated_at",)
+    list_select_related = ("form_progress", "question")
 
     fieldsets = (
         (None, {"fields": ("form_progress", "question")}),
@@ -345,7 +378,7 @@ class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     @admin.display(description="Answer")
     def answer_preview(self, obj):
         if obj.text_answer:
-            return obj.text_answer[:50]
+            return format_answer(obj.question.type, obj.text_answer)[:50]
         elif obj.selected_options.exists():
             options = ", ".join([opt.text for opt in obj.selected_options.all()])
             return options[:50]

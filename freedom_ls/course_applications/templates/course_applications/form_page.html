@@ -29,23 +29,11 @@
                 </c-callout>
             {% endif %}
 
-            {% if required_answers_error %}
-                <c-callout level="error">{{ required_answers_error }}</c-callout>
-            {% endif %}
+            {% include "form_engine/partials/answer_errors.html" %}
 
             <form method="post" class="space-y-6">
                 {% csrf_token %}
-                {% for child in form_page.children %}
-                    {% if child.content_type == "FORM_QUESTION" %}
-                        {% with question=child %}
-                            {% include "form_engine/question.html" %}
-                        {% endwith %}
-                    {% elif child.content_type == "FORM_CONTENT" %}
-                        <c-markdown-container class="max-w-none">
-                            {{ child.rendered_content }}
-                        </c-markdown-container>
-                    {% endif %}
-                {% endfor %}
+                {% include "form_engine/partials/page_children.html" %}
 
                 {% comment %}
                 Back control on the left, forward control on the right. The empty
