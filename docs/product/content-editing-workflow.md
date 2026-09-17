@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-17_
 
 ## Summary
 
@@ -56,7 +56,7 @@ access_config:
   application_form: ../mentorship_application/form.md
 ```
 
-An application-gated course can optionally name an **application form** for applicants to fill in as part of applying; a gated course that names none keeps the plain apply-then-status-page flow. The form is an ordinary unscored FORM file kept outside any course's contents, and forms in general now offer a number question and a file-upload question. Authoring detail, including the worked example, lives in the `fls-content` authoring plugin described below. Which access types a deployment supports is determined by its access backend — see [configuration and extension](./configuration-and-extension.md). The learner-facing flow is in [learner experience](./learner-experience.md).
+An application-gated course can optionally name an **application form** for applicants to fill in as part of applying; a gated course that names none keeps the plain apply-then-status-page flow. The form is an ordinary unscored FORM file kept outside any course's contents. A form question can ask for a date, a time, an email address, a URL or a phone number, or offer a dropdown, alongside the short text, long text, number, multiple-choice, checkbox and file-upload questions that came before; there is no combined date-and-time type, so a question needing both is authored as two. Date, time and number questions can carry a minimum and a maximum, and an answer that is malformed or out of range is refused at submission rather than stored. The phone type is a mobile-keypad hint that validates nothing, and the new text types carry no correct answer, so they score zero in a quiz; a dropdown scores exactly as a multiple-choice question does. Authoring detail, including the worked example, lives in the `fls-content` authoring plugin described below. Which access types a deployment supports is determined by its access backend — see [configuration and extension](./configuration-and-extension.md). The learner-facing flow is in [learner experience](./learner-experience.md).
 
 **Visibility.** `published` (the default when absent), `coming_soon`, or `hidden`:
 
