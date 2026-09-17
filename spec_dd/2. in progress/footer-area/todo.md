@@ -51,8 +51,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: footer stranded above empty background on pages shorter than the viewport — decide whether to pin it with a sticky-footer shell or accept the gap, then act (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: debug branch badge covers the footer copyright line at narrow widths (dev-only) (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: footer stranded above empty background on pages shorter than the viewport — decide whether to pin it with a sticky-footer shell or accept the gap, then act (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: debug branch badge covers the footer copyright line at narrow widths (dev-only) (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

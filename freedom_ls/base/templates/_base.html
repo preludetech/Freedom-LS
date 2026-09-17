@@ -94,7 +94,12 @@
 
     </head>
 
-    <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    {% comment %}
+    A full-height flex column with a growing <main> keeps the footer at the
+    bottom of the viewport on pages shorter than the screen.
+    {% endcomment %}
+    <body class="min-h-dvh flex flex-col"
+          hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
         {% block header %}
             {% include "partials/header_bar.html" %}
@@ -103,7 +108,7 @@
 
         {% include "partials/messages.html" %}
 
-        <main>
+        <main class="grow">
             {% block body %}
                 {% block pre-content %}
                 {% endblock pre-content %}
@@ -145,6 +150,7 @@
             <style>
         @media (max-width: 479px) {
             #debug-branch-badge { font-size: 10px !important; bottom: 4px !important; left: 4px !important; }
+            body > footer { padding-bottom: 32px !important; }
         }
             </style>
         {% endif %}

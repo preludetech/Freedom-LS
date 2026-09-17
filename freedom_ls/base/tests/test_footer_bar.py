@@ -143,3 +143,30 @@ def test_error_page_renders_no_footer(mock_site_context, template_name: str):
     request = RequestFactory().get("/no-such-page/")
     body = render_to_string(template_name, request=request)
     assert "<footer" not in body
+
+
+@pytest.mark.django_db
+def test_body_is_a_sticky_footer_shell(mock_site_context):
+    """On a page shorter than the viewport the footer must sit at the bottom of
+    the screen, not stranded above a band of bare background."""
+    body = _render()
+    body_classes = re.search(r'<body class="([^"]*)"', body)
+    main_classes = re.search(r'<main class="([^"]*)"', body)
+    assert body_classes is not None
+    assert main_classes is not None
+    assert {"min-h-dvh", "flex", "flex-col"} <= set(body_classes.group(1).split())
+    assert "grow" in main_classes.group(1).split()
+
+
+@pytest.mark.django_db
+def test_debug_badge_reserves_room_below_the_footer_on_narrow_screens(
+    mock_site_context,
+):
+    """The fixed debug badge sits in the bottom-left corner, where the footer's
+    copyright line lands on a narrow screen."""
+    body = _render(debug_branch_name="my-feature")
+    style = re.search(
+        r"@media \(max-width: 479px\) \{(.*?)\n\s*\}\s*</style>", body, re.DOTALL
+    )
+    assert style is not None
+    assert re.search(r"body > footer \{[^}]*padding-bottom", style.group(1))
