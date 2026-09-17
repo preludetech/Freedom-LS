@@ -47,10 +47,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: footer stranded above empty background on pages shorter than the viewport — decide whether to pin it with a sticky-footer shell or accept the gap, then act (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: debug branch badge covers the footer copyright line at narrow widths (dev-only) (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
@@ -68,7 +70,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
