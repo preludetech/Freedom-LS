@@ -61,3 +61,29 @@ complete_time=now)` for items 1-2, GET item 3, grep the body, then raise to roll
 The placement lookup is `child_id` / `child_type` / `collection_id` / `collection_type`, with the
 accessors `ci.child` and `ci.collection`. `filter(object_id=...)` raises `FieldError` — that is
 `CohortDeadline`'s naming, not this model's.
+
+## Re-run Sep 17 2026 (same branch, after `content_save demo_content DemoDev`)
+
+The A/B pair was asked for **again**, and this time the "clear the leftovers" clause *did* bite —
+so do not carry the "nothing was deleted" note above forward as an expectation. Both personas
+survived the demo-content reload holding a full previous run:
+
+| persona | removed |
+|---|---|
+| A (pk 71) | CourseApplication (gated course) -> 2 FormProgress ("Application form", "Course Feedback Survey"; 16 rows incl. 1 `CourseFormAttempt`, 9 `QuestionAnswer`) -> CourseProgress (+2 TopicProgress) -> LearnerCourseRegistration |
+| B (pk 72) | CourseApplication -> 1 FormProgress ("Application form"; 6 rows) |
+
+`content_save` rewrites course/form content but does **not** touch user-owned rows, and the slugs
+were stable across the reload (`functionality-demo-show-end-with-topic` still resolves). The
+command was idempotent over the reload with no edits needed. Two invocations, ~30s total —
+cheaper than any hand-written script, and it prints the cascade counts the report needs.
+
+DemoDev's `Site.domain` is `127.0.0.1:8000` even when the tester runs the dev server on another
+port (8890 this time). That mismatch is normal and does not affect login or data; only
+absolute-URL building reads it. Do not "fix" the Site row for it.
+
+Outline re-confirmed post-reload for a freshly-registered A: `READY, BLOCKED, BLOCKED(form
+"Course Feedback Survey" @ item 3), BLOCKED x4`. Always re-run `get_course_index` and paste it —
+it is what makes the "Start Form vs reachable" distinction concrete for the tester. Note
+`get_course_index` returns a **list of plain dicts** (`title`/`status`/`url`/`type`), not objects;
+a `.children`-style walker raises.

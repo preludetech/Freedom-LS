@@ -189,3 +189,69 @@ filter `CohortMembership._base_manager.filter(learner__user=u)`; `filter(user=u)
 (`"published"`) and the gating lives in the `access_config` JSON
 (`{"access_type": "application_gated", "application_form": "<path>"}`) alongside the
 resolved `application_form` FK.
+
+## Fifth ask (Sep 17 2026, `form_engine_data_field`): the command fit unchanged
+
+`qa.applicant.a@email.com` (pk 71), DemoDev (**id 3, domain `127.0.0.1:8000`** — note the domain
+moved from `:8324`; dev server was on 8890, so do not infer the Site row from the port).
+One flag set did the whole job, no scripting of the delete:
+
+```
+qa_clear_form_sittings --learner qa.applicant.a@email.com \
+  --course-slug functionality-demo-show-end-with-topic \
+  --item-title "Course Feedback Survey" --site-name DemoDev [--dry-run]
+```
+
+`--item-title` matches **`item.child.title`** (the Form's title), not any attribute of the
+`ContentCollectionItem`. Cascade of one completed survey sitting with 3 answers:
+`(8, {QuestionAnswer_selected_options: 3, CourseFormAttempt: 1, QuestionAnswer: 3, FormProgress: 1})`
+— here the attempt *did* show in the counts rather than being a silent fast delete.
+
+The persona's other sitting (`Application form`) is named by a `CourseApplication`, and the
+placement scope excluded it before the RESTRICT skip ever mattered. Scope by item first; the skip
+is a backstop, not the plan.
+
+### Field names that raise on this branch (all cost a round-trip this run)
+
+- **`Form` has no `uuid` field.** The pk *is* the UUID: `Form._base_manager.get(pk="7ed91f7d-...")`.
+  `filter(uuid=...)` -> `FieldError ... Choices are: ..., id, meta, pages, quiz_pass_percentage,
+  quiz_show_incorrect, site, slug, strategy, submit_on_exit, subtitle, tags, title, ...`.
+  A QA ask saying "uuid 7ed9..." means the pk.
+- **`ContentCollectionItem` has no `title`.** `FieldError`/`AttributeError: ... Did you mean: 'site'`.
+  Read the title off `item.child.title`.
+- **`TopicProgress` has no `learner` FK** — it hangs off the course progress:
+  `TopicProgress._base_manager.filter(course_progress__learner__user=u)`. Its fields are
+  `collection_item, complete_time, course_progress, last_accessed_time, site, start_time, topic`.
+  Completion is **`complete_time`**, not `completed_time` (which is what `FormProgress` uses).
+- **`form_start_page_buttons(form, incomplete_form_progress, completed_form_progress, is_last_item)`**
+  takes a **QuerySet** for the completed arg (it calls `.first()` on it) and a single instance or
+  None for the incomplete one. Passing `.first()` for both raises
+  `AttributeError: 'NoneType' object has no attribute 'first'`.
+
+### Re-locking downstream is still the thing to flag, not fix
+
+end-with-topic again: item 3 went COMPLETE -> READY ("Start Form" confirmed by calling
+`form_start_page_buttons` directly), items 1-2 stayed COMPLETE on their own `TopicProgress`, and
+item 4 "Pictures" went **READY -> BLOCKED** because it holds no progress row of its own. Same shape
+as the second pass above. `CourseProgress.progress_percentage` stayed stale at **43**. Report both;
+the caller asked only about items 1-3 and neither is in scope to "fix".
+
+## Sixth ask (Sep 17 2026): same flags, repeat after a re-sit — no drift
+
+The tester re-completed the survey and asked for the identical clear a second time. The exact
+command from the fifth ask above worked unchanged; **this ask is now routine — dry-run, run,
+verify, done.** Two deltas worth noting:
+
+- **Cascade counts vary with how many questions were answered.** The re-sit answered 6 questions,
+  not 3: `(11, {QuestionAnswer_selected_options: 3, CourseFormAttempt: 1, QuestionAnswer: 6,
+  FormProgress: 1})` vs `(8, {... QuestionAnswer: 3 ...})` the first time. Don't treat a
+  previously-recorded count as the expected one — read it off `.delete()`.
+- **`CourseApplication` has NO `status` field.** `AttributeError: 'CourseApplication' object has
+  no attribute 'status'`. Full field list: `site, id, user, course, form_progress, created_at,
+  updated_at`. There is no application state machine on this branch — "has an application" is just
+  "a row exists", and "names a sitting" is `form_progress_id is not None`.
+
+Verified post-state each time with: survey `FormProgress` list empty, `CourseFormAttempt` for
+(user, course) empty, `form_start_page_buttons(...)` -> `[{'text': 'Start Form', 'action': 'start'}]`,
+and registration / CourseProgress / both TopicProgress rows unchanged. `progress_percentage`
+stale at **43** again (unchanged behaviour — nothing recomputes on delete).
