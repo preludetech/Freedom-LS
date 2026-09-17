@@ -1,4 +1,8 @@
 # Bundled from freedom_ls/content_engine/schema.py — re-sync via /update_claude_plugin_fls_content
+# NOTE: the form classes below (QuestionType, FormStrategy, Form, FormPage, QuestionOption,
+#   FormContent, FormQuestion) mirror freedom_ls/form_engine/schema.py, NOT content_engine.
+#   Check both source modules on every re-sync — a form_engine-only change still makes this
+#   file stale, and a stale QuestionType/FormQuestion rejects valid content (extra="forbid").
 # Patches applied:
 #   1. Course._validate_icon_fields: body replaced with `return self` to drop the deferred
 #      Django/icon import (from django.core.exceptions and from freedom_ls...icon_validation).
@@ -69,6 +73,12 @@ class QuestionType(StrEnum):
     LONG_TEXT = "long_text"
     NUMBER = "number"
     FILE_UPLOAD = "file_upload"
+    DATE = "date"
+    TIME = "time"
+    EMAIL = "email"
+    URL = "url"
+    PHONE = "phone"
+    DROPDOWN = "dropdown"
 
 
 class FormStrategy(StrEnum):
@@ -516,7 +526,7 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         ...,
         description=(
             "Question type (multiple_choice, checkboxes, short_text, long_text, "
-            "number, file_upload)"
+            "number, file_upload, date, time, email, url, phone, dropdown)"
         ),
     )
     required: bool = Field(True, description="Whether the question is required")
@@ -524,6 +534,47 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
     options: list[QuestionOption] | None = Field(
         None, description="Options for multiple choice questions"
     )
+
+    # min, max and decimal_places are accepted here as plain structural fields,
+    # matching the field shapes in freedom_ls/form_engine/schema.py. The
+    # type-vs-bound and decimal-place cross-check lives in
+    # freedom_ls.form_engine.typed_answers.question_bounds_error, which needs
+    # Django (EmailValidator, URLValidator, dateparse) and so stays out of this
+    # dependency-free offline validator. content_save still applies it.
+    min: str = Field(
+        "",
+        description=(
+            "Inclusive lower bound for a date, time or number question "
+            "(YYYY-MM-DD, HH:MM, or a plain number)"
+        ),
+    )
+    max: str = Field(
+        "",
+        description=(
+            "Inclusive upper bound for a date, time or number question "
+            "(YYYY-MM-DD, HH:MM, or a plain number)"
+        ),
+    )
+    decimal_places: int = Field(
+        0,
+        ge=0,
+        description=(
+            "How many decimal places a number answer may be written to. "
+            "0, the default, is whole numbers only"
+        ),
+    )
+
+    @field_validator("min", "max", mode="before")
+    @classmethod
+    def _coerce_bound_to_str(cls, value: object) -> str:
+        """`yaml.safe_load` resolves an unquoted `min: 0` to an int and an
+        unquoted `min: 1930-01-01` to a `datetime.date`. Both must arrive as
+        str: the model field is a `CharField`, and `extra="forbid"` means the
+        two sides have to line up exactly.
+        """
+        if value is None:
+            return ""
+        return str(value)
 
 
 # SCHEMAS is automatically built via __init_subclass__

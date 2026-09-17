@@ -106,10 +106,13 @@ The parser selects `FORM_QUESTION` when a subsequent section contains a `questio
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `question` | `str` | Yes | The question text |
-| `type` | `multiple_choice`, `checkboxes`, `short_text`, `long_text`, `number`, or `file_upload` | Yes | Question type |
+| `type` | `multiple_choice`, `checkboxes`, `short_text`, `long_text`, `number`, `file_upload`, `date`, `time`, `email`, `url`, `phone`, or `dropdown` | Yes | Question type |
 | `required` | `bool` | No (default `true`) | Whether the question must be answered |
 | `category` | `str` | No | Used by `CATEGORY_VALUE_SUM` scoring strategy |
-| `options` | `list` | Conditional | Required for `multiple_choice` and `checkboxes` |
+| `options` | `list` | Conditional | Required for `multiple_choice`, `checkboxes`, and `dropdown` |
+| `min` | `str` | No | Inclusive lower bound for `date`, `time` or `number` — `YYYY-MM-DD`, `HH:MM`, or a plain number |
+| `max` | `str` | No | Inclusive upper bound — same formats as `min` |
+| `decimal_places` | `int` | No (default `0`) | Decimal places a `number` answer may use. Only valid on `number` |
 | `uuid` | `str` | No | Written by `content_save` — **omit on new files** |
 | `meta` | `dict` | No | Optional metadata |
 | `tags` | `list[str]` | No | Optional tags |
@@ -151,11 +154,89 @@ category: general
 
 ### Number question example
 
+`min` and `max` are inclusive. `decimal_places` defaults to `0` — whole numbers only.
+
 ```yaml
 ---
 question: "How many years have you been writing software?"
 type: number
 required: true
+min: 0
+max: 70
+```
+
+### Date question example
+
+Write `min`/`max` as `YYYY-MM-DD`, quoted.
+
+```yaml
+---
+question: "What is your date of birth?"
+type: date
+required: true
+min: '1900-01-01'
+max: '2010-01-01'
+```
+
+### Time question example
+
+Write `min`/`max` as `HH:MM`. Quote any bound whose hour starts with a zero-free
+digit pair YAML could read as a number — `'17:00'` needs quotes, `09:00` does not.
+Quoting both is the safe habit.
+
+```yaml
+---
+question: "What time of day do you prefer for live sessions?"
+type: time
+required: true
+min: '09:00'
+max: '17:00'
+```
+
+### Email and URL question examples
+
+Both validate the answer's format when the learner submits it.
+
+```yaml
+---
+question: "What is your email address?"
+type: email
+required: true
+```
+
+```yaml
+---
+question: "Share a link to your portfolio, GitHub profile or LinkedIn, if you have one"
+type: url
+required: false
+```
+
+### Phone question example
+
+Renders a telephone input. The number itself is not format-validated.
+
+```yaml
+---
+question: "What is your phone number?"
+type: phone
+required: false
+```
+
+### Dropdown question example
+
+Takes `options` in the same shape as `multiple_choice`, but renders as a select —
+use it when there are too many options to show as radio buttons.
+
+```yaml
+---
+question: "Which time zone are you usually in?"
+type: dropdown
+required: true
+options:
+  - text: "Pacific (UTC-8)"
+    value: pacific
+  - text: "Eastern (UTC-5)"
+    value: eastern
 ```
 
 ### File-upload question example
