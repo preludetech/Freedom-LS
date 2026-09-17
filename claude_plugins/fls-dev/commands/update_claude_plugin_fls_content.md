@@ -11,7 +11,7 @@ Run the detection heuristic:
 
 ```bash
 git diff main --name-only | grep -qE \
-  '(freedom_ls/content_engine/schema\.py|freedom_ls/content_engine/validate\.py|freedom_ls/content_engine/templates/cotton/|config/settings_base\.py|freedom_ls/content_engine/management/commands/content_(save|validate)\.py|demo_content/)'
+  '(freedom_ls/(content_base|content_engine|form_engine)/schema\.py|freedom_ls/form_engine/(enums|typed_answers)\.py|freedom_ls/content_engine/validate\.py|freedom_ls/content_engine/templates/cotton/|config/settings_base\.py|freedom_ls/content_engine/management/commands/content_(save|validate)\.py|demo_content/)'
 ```
 
 - **Exit code 1 (no match):** print `No authoring-relevant changes` and go directly to Step 4 (tick). No LLM, no fan-out.
@@ -22,10 +22,10 @@ git diff main --name-only | grep -qE \
 Spawn **one `sdd:sdd-worker`** to read only the changed authoring-relevant files, identify exactly what changed, and draft scoped edits. Pass in the prompt:
 
 - The list of changed authoring-relevant file paths from Step 1.
-- Instruction to read those files and identify exactly what changed (new/removed/modified: content types, frontmatter fields, widget tags, `MARKDOWN_ALLOWED_TAGS` entries, `ADMONITION_TYPES` keys, convention examples in `demo_content/`).
+- Instruction to read those files and identify exactly what changed (new/removed/modified: content types, frontmatter fields, `QuestionType` members, form-question field rules (`min`/`max`/`decimal_places` and the `question_bounds_error` checks), widget tags, `MARKDOWN_ALLOWED_TAGS` entries, `ADMONITION_TYPES` keys, convention examples in `demo_content/`).
 - Instruction to produce a concrete, scoped set of edits to:
   - (a) the `fls-content` **reference skills** under `claude_plugins/fls-content/skills/` — kept shallow and author-facing; edit only the sections corresponding to changed files.
-  - (b) the **bundled validator** under `claude_plugins/fls-content/validate/` — when `schema.py` or `validate.py` changed, detail what re-sync is required.
+  - (b) the **bundled validator** under `claude_plugins/fls-content/validate/` — when any mirrored source changed (`content_base/schema.py`, `content_engine/schema.py`, `content_engine/validate.py`, `form_engine/schema.py`, `form_engine/enums.py`, `form_engine/typed_answers.py`), detail what re-sync is required.
 - Instruction to base every statement on the actual file contents, not inference.
 - Instruction to write its output to `.sdd-work/fls_content_sync.md` and end the file with `status: ok` on success, `status: failed` + `reason:` on failure, or `status: blocked` + `needs:` if inputs are unclear.
 
@@ -40,9 +40,8 @@ Apply the standard resume/retry/blocked recipe:
 Read `.sdd-work/fls_content_sync.md` by path. Apply the drafted edits to the relevant `claude_plugins/fls-content/` files:
 
 - Use `Edit` for targeted section updates; use `Write` only if a file is new.
-- **When `schema.py` or `validate.py` changed:** re-copy the trimmed validator from the FLS source and **re-apply both patches** (per D3.1 in the implementation plan):
-  1. **Icon stub:** replace the body of `Course._validate_icon_fields` with `return self` (drop the deferred Django/icon import).
-  2. **Import + `__main__` shim:** change `from .schema import SCHEMAS` → `from schema import SCHEMAS`; add the `if __name__ == "__main__":` entry point; fix the stale docstring to the `uv run` form; add the top-of-file bundled-copy comment.
+- **When any mirrored source changed** (the six paths listed in Step 2b): re-copy the trimmed validator from the FLS sources and **re-apply every patch listed in the `# Patches applied:` header of `claude_plugins/fls-content/validate/schema.py` and of `claude_plugins/fls-content/validate/validate.py`**. Those two headers are the authoritative patch list — read them before editing, and add a numbered entry there for any new patch. Do not rely on a list duplicated here: one kept drifting out of date, which is the same failure this command exists to catch.
+- Note that `validate/schema.py` bundles **four** sources, not one: `content_base/schema.py`, `content_engine/schema.py`, `form_engine/schema.py`, and a hand-ported mirror of `form_engine/typed_answers.question_bounds_error`.
 - Touch **only** the affected sections — never rewrite the whole plugin and never add detail beyond what the source files express.
 
 Delete this command's scratch file after all edits are applied, naming it explicitly and letting the

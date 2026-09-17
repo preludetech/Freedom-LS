@@ -775,3 +775,142 @@ def test_em_dash_in_a_value_does_not_split_the_document(tmp_path: Path) -> None:
         f"A `---` inside a value should stay part of that value.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
+
+
+# FORM_QUESTION types and bounds
+
+
+def write_question_page(tmp_path: Path, question_block: str) -> Path:
+    """Write a FORM_PAGE yaml whose later documents are *question_block*.
+
+    The page header is the first document; a later document carrying a `question`
+    key is read as FORM_QUESTION, which is how an authored form page is shaped.
+    """
+    path = tmp_path / "01. questions.yaml"
+    path.write_text(
+        "---\ncontent_type: FORM_PAGE\ntitle: Questions\n---\n" + question_block,
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_every_question_type_validates(tmp_path: Path) -> None:
+    """All twelve question types are accepted, named one by one.
+
+    The types are listed literally rather than derived, so adding a member to the
+    live QuestionType without re-syncing this bundle fails here. `extra="forbid"`
+    plus a strict enum means a stale copy rejects content that saves cleanly.
+    """
+    types = [
+        "multiple_choice",
+        "checkboxes",
+        "short_text",
+        "long_text",
+        "number",
+        "file_upload",
+        "date",
+        "time",
+        "email",
+        "url",
+        "phone",
+        "dropdown",
+    ]
+    block = "".join(f"---\nquestion: Q {t}\ntype: {t}\n" for t in types)
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert result.returncode == 0, (
+        f"Every question type should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_bounds_and_decimal_places_are_accepted(tmp_path: Path) -> None:
+    """min, max and decimal_places are known fields on the types that take them."""
+    block = (
+        "---\nquestion: Birth date\ntype: date\nmin: '1900-01-01'\nmax: '2010-12-31'\n"
+        "---\nquestion: Years\ntype: number\nmin: 0\nmax: 70\ndecimal_places: 2\n"
+        "---\nquestion: Preferred time\ntype: time\nmin: '09:00'\nmax: '17:00'\n"
+    )
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert result.returncode == 0, (
+        f"Bounds and decimal_places should be accepted.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_unquoted_date_bound_validates(tmp_path: Path) -> None:
+    """An unquoted date bound reaches the model as a date and is coerced to str."""
+    block = "---\nquestion: Birth date\ntype: date\nmin: 1900-01-01\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert result.returncode == 0, (
+        f"An unquoted date bound should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_non_zero_padded_date_bound_validates(tmp_path: Path) -> None:
+    """`content_save` accepts a bound whose month and day are not zero-padded.
+
+    Django's parse_date falls back to a permissive regex when date.fromisoformat
+    refuses `2010-1-1`. A stdlib-only port of the bounds check would reject this
+    here and pass it there — a validator that fails content which saves cleanly,
+    which is the whole failure this bundle exists to avoid.
+    """
+    block = "---\nquestion: Birth date\ntype: date\nmin: 2010-1-1\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert result.returncode == 0, (
+        f"A non-zero-padded date bound should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_decimal_places_on_a_short_text_question_fails(tmp_path: Path) -> None:
+    """Decimal places mean nothing on a question that has no numeric answer."""
+    block = "---\nquestion: Why?\ntype: short_text\ndecimal_places: 2\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert_validator_fails(result, "decimal_places is only valid on number questions")
+
+
+def test_min_on_a_checkboxes_question_fails(tmp_path: Path) -> None:
+    """A bound needs a type with an order; checkboxes has none."""
+    block = "---\nquestion: Pick some\ntype: checkboxes\nmin: '5'\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert_validator_fails(
+        result, "min/max are only valid on date, time or number questions"
+    )
+
+
+def test_min_that_does_not_parse_as_a_date_fails(tmp_path: Path) -> None:
+    """A bound that does not parse as its own type is an authoring mistake."""
+    block = "---\nquestion: Birth date\ntype: date\nmin: banana\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert_validator_fails(result, 'min "banana" is not a valid date')
+
+
+def test_unquoted_time_bound_that_still_parses_fails(tmp_path: Path) -> None:
+    """An unquoted `17:00` is read by YAML as the integer 1020 — i.e. 10:20.
+
+    It parses, so nothing downstream would complain; it just means a different
+    time than the author wrote. The shape check is the only thing that catches a
+    mistake which silently changes meaning rather than failing.
+    """
+    block = "---\nquestion: Preferred time\ntype: time\nmax: 17:00\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert_validator_fails(result, "is not written as HH:MM")
+
+
+def test_a_number_bound_finer_than_the_allowed_decimal_places_fails(
+    tmp_path: Path,
+) -> None:
+    """A bound may not be finer-grained than the answers it is bounding."""
+    block = "---\nquestion: Years\ntype: number\nmax: '70.5'\n"
+
+    result = run_validator(write_question_page(tmp_path, block))
+    assert_validator_fails(result, "has more decimal places than this question allows")

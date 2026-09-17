@@ -114,7 +114,7 @@ The command reads the spec, plan, and the actual `git diff main..HEAD` to determ
 
 ## Step 9: Sync the course-author plugin (if authoring functionality changed)
 
-Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (content-engine schema, cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `sdd:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying both the Django-icon stub and the standalone CLI shim when the validator source changed), and cleans up scratch files on completion.
+Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (the schema sources the plugin mirrors — content-base, content-engine and form-engine — cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `sdd:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying the patches the bundled files' own `# Patches applied:` headers list, when a mirrored source changed), and cleans up scratch files on completion.
 
 ## Step 10: Ship it
 

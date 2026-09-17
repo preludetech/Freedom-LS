@@ -1,8 +1,11 @@
 # Bundled from freedom_ls/content_engine/schema.py — re-sync via /update_claude_plugin_fls_content
 # NOTE: the form classes below (QuestionType, FormStrategy, Form, FormPage, QuestionOption,
-#   FormContent, FormQuestion) mirror freedom_ls/form_engine/schema.py, NOT content_engine.
-#   Check both source modules on every re-sync — a form_engine-only change still makes this
-#   file stale, and a stale QuestionType/FormQuestion rejects valid content (extra="forbid").
+#   FormContent, FormQuestion) mirror freedom_ls/form_engine/schema.py, NOT content_engine,
+#   and the bounds helpers above FormQuestion mirror freedom_ls/form_engine/typed_answers.py.
+#   This file bundles FOUR sources: content_base/schema.py, content_engine/schema.py,
+#   form_engine/schema.py and form_engine/typed_answers.py. Check every one on re-sync — a
+#   form_engine-only change still makes this file stale, and a stale QuestionType or
+#   FormQuestion rejects valid content (extra="forbid").
 # Patches applied:
 #   1. Course._validate_icon_fields: body replaced with `return self` to drop the deferred
 #      Django/icon import (from django.core.exceptions and from freedom_ls...icon_validation).
@@ -16,13 +19,22 @@
 #      owned by the repo's .fls-content.yaml (authoritative) and injected by validate.py into
 #      ALLOWED_ACCESS_TYPES before validation. This module owns no vocabulary: when nothing has
 #      been injected (None) only the structural rule is enforced. Re-apply on every re-sync.
+#   3. FormQuestion.validate_bounds, and the typed_answers mirror above FormQuestion that it
+#      calls. The rule is freedom_ls/form_engine/typed_answers.question_bounds_error: pure
+#      stdlib apart from django.utils.dateparse's parse_date/parse_time, which are transcribed
+#      here. That transcription has to stay exact — a stricter parser (plain
+#      date.fromisoformat) rejects bounds that content_save accepts, e.g. `2010-1-1`. Without
+#      this patch the validator PASSES content that content_save rejects. Re-apply on every
+#      re-sync, and re-check the transcription when Django's dateparse changes.
 """
 Schema for yaml structures like this:
 """
 
 import re
 from collections import Counter, defaultdict
-from datetime import timedelta
+from collections.abc import Callable
+from datetime import date, time, timedelta
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, ClassVar
@@ -497,6 +509,172 @@ class FormContent(BaseBaseContentModel, content_type=ContentType.FORM_CONTENT):
     content: str = Field(..., description="Text")
 
 
+# ---------------------------------------------------------------------------
+# Hand-ported mirror of freedom_ls/form_engine/typed_answers.py.
+#
+# Not a bundled copy of a schema module like the rest of this file. The rule below is
+# `question_bounds_error`, which lives in typed_answers.py and is shared by the pydantic
+# schema and `FormQuestion.clean()`. Without it this validator passes content that
+# content_save rejects: decimal_places on a short_text question, an unparseable date
+# bound, min/max on a checkboxes question.
+#
+# `parsed_date` down to `question_bounds_error` are a verbatim copy of typed_answers.py
+# — diff them line for line on re-sync. Only `parse_date` and `parse_time` are written
+# here; the originals are django.utils.dateparse's, and this file imports no Django.
+# ---------------------------------------------------------------------------
+
+# Django 6.0 `dateparse` transcribed, quirks included. `date.fromisoformat` alone would
+# reject the non-zero-padded `2010-1-1` that content_save accepts, so this validator
+# would fail content that saves cleanly — the exact bug class the bundle exists to
+# avoid. The permissive regex fallback is what buys that back. Two behaviours the
+# callers below depend on: a malformed string returns None, and a well-formed but
+# impossible date like `2025-02-30` raises ValueError. Written out positionally rather
+# than Django's `**kw` splat, which mypy rejects; the results are identical.
+#
+# Both stand-ins delegate to `fromisoformat`, whose accepted grammar widened in Python
+# 3.11. This file already requires 3.11+ (StrEnum), so that is not a new constraint —
+# but it is now a semantic one rather than a syntactic one.
+_DATE_RE = re.compile(r"(?P<year>\d{4})-(?P<month>\d{1,2})-(?P<day>\d{1,2})$")
+
+_TIME_RE = re.compile(
+    r"(?P<hour>\d{1,2}):(?P<minute>\d{1,2})"
+    r"(?::(?P<second>\d{1,2})(?:[.,](?P<microsecond>\d{1,6})\d{0,6})?)?$"
+)
+
+
+def parse_date(value: str) -> date | None:
+    """Stand-in for `django.utils.dateparse.parse_date`."""
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        match = _DATE_RE.match(value)
+        if match is None:
+            return None
+        return date(int(match["year"]), int(match["month"]), int(match["day"]))
+
+
+def parse_time(value: str) -> time | None:
+    """Stand-in for `django.utils.dateparse.parse_time`.
+
+    An aware time is never useful here, so any offset `fromisoformat` picked up is
+    dropped, exactly as the Django original does.
+    """
+    try:
+        return time.fromisoformat(value).replace(tzinfo=None)
+    except ValueError:
+        match = _TIME_RE.match(value)
+        if match is None:
+            return None
+        microsecond = match["microsecond"]
+        return time(
+            int(match["hour"]),
+            int(match["minute"]),
+            int(match["second"] or 0),
+            int(microsecond.ljust(6, "0")) if microsecond else 0,
+        )
+
+
+def parsed_date(text: str) -> date | None:
+    """`text` as a date, or None when it does not parse.
+
+    `dateparse.parse_date` returns None for a malformed string like "banana"
+    but raises `ValueError` for a well-formed, impossible one like
+    "2025-02-30". Catching it here means both failures reach the same `None`
+    branch in every caller.
+    """
+    try:
+        return parse_date(text)
+    except ValueError:
+        return None
+
+
+def parsed_time(text: str) -> time | None:
+    """`text` as a time, or None when it does not parse. See `parsed_date`."""
+    try:
+        return parse_time(text)
+    except ValueError:
+        return None
+
+
+# HTML's "valid floating-point number" grammar, so the server accepts exactly
+# what `<input type="number">` submits and no more. `int()` takes `1_0` and
+# surrounding whitespace; `Decimal()` takes those plus `nan` and `Infinity`.
+# None of them can be typed into a number input, so none may reach a stored
+# answer either.
+_NUMBER = re.compile(r"-?\d+(\.\d+)?([eE][+-]?\d+)?")
+
+
+def parsed_number(text: str) -> Decimal | None:
+    """`text` as a number, or None when it does not parse."""
+    if not _NUMBER.fullmatch(text):
+        return None
+    return Decimal(text)
+
+
+def decimal_places_used(value: Decimal) -> int:
+    """How many decimal places `value` is written to.
+
+    Normalised first, so `7.50` counts as one place rather than two -- it is
+    the same number as `7.5`, and counting the written zero would reject a
+    value the question's own limit allows.
+    """
+    exponent = value.normalize().as_tuple().exponent
+    # A non-integer exponent is NaN or Infinity, which `parsed_number` refuses.
+    if not isinstance(exponent, int):
+        return 0
+    return max(0, -exponent)
+
+
+# A time bound has to be written HH:MM, with seconds optional. Anything else
+# that `parse_time` happens to accept — a bare "1020" from an unquoted YAML
+# time — means a different time than the author wrote.
+_TIME_BOUND = re.compile(r"\d{1,2}:\d{2}(:\d{2})?")
+
+
+def question_bounds_error(
+    question_type: str, min_text: str, max_text: str, decimal_places: int
+) -> str | None:
+    """Why this question's `min`, `max` and `decimal_places` do not go together.
+
+    Shared by the pydantic schema, which judges an authored content file, and
+    `FormQuestion.clean()`, which judges the admin. A bound set by hand is then
+    held to the same rule as one written in YAML, and neither route can leave
+    an unparseable bound sitting inert in the page's HTML.
+    """
+    if decimal_places and question_type != QuestionType.NUMBER:
+        return f"decimal_places is only valid on number questions, not {question_type}"
+
+    if not min_text and not max_text:
+        return None
+
+    parsers: dict[str, Callable[[str], date | time | Decimal | None]] = {
+        QuestionType.DATE: parsed_date,
+        QuestionType.TIME: parsed_time,
+        QuestionType.NUMBER: parsed_number,
+    }
+    parse = parsers.get(question_type)
+    if parse is None:
+        return (
+            f"min/max are only valid on date, time or number questions, "
+            f"not {question_type}"
+        )
+
+    for name, bound in (("min", min_text), ("max", max_text)):
+        if not bound:
+            continue
+        value = parse(bound)
+        if value is None:
+            return f'{name} "{bound}" is not a valid {question_type}'
+        if question_type == QuestionType.TIME and not _TIME_BOUND.fullmatch(bound):
+            return (
+                f'{name} "{bound}" is not written as HH:MM — quote it in the '
+                f"YAML, or it is read as a number"
+            )
+        if isinstance(value, Decimal) and decimal_places_used(value) > decimal_places:
+            return f'{name} "{bound}" has more decimal places than this question allows'
+    return None
+
+
 class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION):
     """
     A question in a form page.
@@ -535,12 +713,6 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         None, description="Options for multiple choice questions"
     )
 
-    # min, max and decimal_places are accepted here as plain structural fields,
-    # matching the field shapes in freedom_ls/form_engine/schema.py. The
-    # type-vs-bound and decimal-place cross-check lives in
-    # freedom_ls.form_engine.typed_answers.question_bounds_error, which needs
-    # Django (EmailValidator, URLValidator, dateparse) and so stays out of this
-    # dependency-free offline validator. content_save still applies it.
     min: str = Field(
         "",
         description=(
@@ -575,6 +747,24 @@ class FormQuestion(BaseBaseContentModel, content_type=ContentType.FORM_QUESTION)
         if value is None:
             return ""
         return str(value)
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> "FormQuestion":
+        """`min`, `max` and `decimal_places` only mean anything on the types
+        that have an order, and only when they parse as that type.
+
+        The rule itself lives in `typed_answers.question_bounds_error`, shared
+        with `FormQuestion.clean()`, so an authoring mistake is judged the same
+        way wherever it is made. What this validator adds is the file name: an
+        author finds out at `content_save`, with the file called out, rather
+        than leaving a respondent to discover it.
+        """
+        error = question_bounds_error(
+            self.type, self.min, self.max, self.decimal_places
+        )
+        if error is not None:
+            raise ValueError(f"{error} (in {self.file_path})")
+        return self
 
 
 # SCHEMAS is automatically built via __init_subclass__
