@@ -1,0 +1,17 @@
+{% extends "_base.html" %}
+
+{% comment %}
+Shared shell for the error pages that render with a request (400, 403,
+403 CSRF, 404, 429). 500 and 503 are standalone documents instead, because
+server_error renders them with no context at all.
+{% endcomment %}
+
+{% block head_seo %}<meta name="robots" content="noindex" />{% endblock head_seo %}
+
+{% comment %}
+The 400 page is reached with a rejected Host header, where site resolution
+itself fails. The footer reverses accounts:legal_doc and reads header_title
+from site_config, either of which could depend on a resolvable site, so it is
+blanked for every error page.
+{% endcomment %}
+{% block footer %}{% endblock footer %}

@@ -1,11 +1,6 @@
-{% extends "_base.html" %}
+{% extends "_error_base.html" %}
 
 {% block head_title %}The form was not sent{% endblock head_title %}
-
-{% block head_seo %}<meta name="robots" content="noindex" />{% endblock head_seo %}
-
-{% comment %}Keeps this shell page free of the site chrome the others carry.{% endcomment %}
-{% block footer %}{% endblock footer %}
 
 {% block content %}
     {% url 'account_logout' as logout_url %}

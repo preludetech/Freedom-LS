@@ -1,11 +1,6 @@
-{% extends "_base.html" %}
+{% extends "_error_base.html" %}
 
 {% block head_title %}You do not have access to this page{% endblock head_title %}
-
-{% block head_seo %}<meta name="robots" content="noindex" />{% endblock head_seo %}
-
-{% comment %}Keeps this shell page free of the site chrome the others carry.{% endcomment %}
-{% block footer %}{% endblock footer %}
 
 {% block content %}
     {% url 'learner_interface:courses' as courses_url %}
