@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-09-17_
 
 ## Summary
 
@@ -21,7 +21,7 @@ These settings control visual and email branding without any template change. Al
 | `HEADER_LOGO_STATIC_PATH` | Logo in the navigation bar |
 | `HEADER_LOGO_ON_DARK_STATIC_PATH` | Reversed logo variant, used where the platform mark sits on a strong colour fill — today, the [cohort report](./reports.md) cover band |
 | `FAVICON_STATIC_PATH` | Browser tab favicon |
-| `HEADER_TITLE` | The installation's display name — shown in the navigation bar, and used in outbound email subject lines and bodies and on [cohort reports](./reports.md) |
+| `HEADER_TITLE` | The installation's display name — shown in the navigation bar and the site footer's copyright line, and used in outbound email subject lines and bodies and on [cohort reports](./reports.md) |
 | `HEADER_TITLE_STYLE` | Inline CSS applied to the header title |
 | `EMAIL_LOGO_STATIC_PATH` | Logo embedded in outbound emails |
 
@@ -36,6 +36,8 @@ Each tier is independent and they can be combined.
 **Tier 3 — whole-file shadowing.** Any FLS template can be replaced entirely by placing a file at the same relative path in the downstream project's theme template directory, which the template loader searches first. A replacement file is expected to preserve the small set of structural markers FLS's shipped tests rely on; they are listed in the [theming how-to](../how%20tos/theme-fls.md).
 
 Each component carries its own styling in its own template, so one file is the whole component: shadowing it replaces the markup and the look together. That makes Tier 3 the normal way to restyle an individual component — a content widget, say — rather than a last resort. Only a handful of shared primitives the whole interface draws on are still styled centrally, through the theme stylesheet; the [theming how-to](../how%20tos/theme-fls.md) names them.
+
+The site footer is one such component: a downstream project wanting different footer copy or links replaces that one file rather than forking the page shell around it. No setting controls footer content. See [learner experience](./learner-experience.md) for what the footer shows.
 
 **Report typography.** The [cohort report](./reports.md) follows a similar model for typefaces and most of its colour: it names no font family of its own, and takes most of its palette from the built theme stylesheet so it matches whichever theme is active. Its page and table backgrounds are the one exception — they stay a fixed white and light grey whatever the active theme, because on paper a tinted surface colour reads as a panel laid over the page rather than as the page itself. A downstream project rebrands the report by supplying its own font files and overriding the font settings — no template changes needed. The settings are listed [below](#settings-reference).
 

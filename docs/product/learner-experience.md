@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-09-15_
+_Last updated: 2026-09-17_
 
 ## Summary
 
@@ -14,6 +14,7 @@ _Last updated: 2026-09-15_
 - Hard deadlines lock uncompleted content after expiry; soft deadlines are shown to the learner but never lock anything.
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
+- A site footer with a copyright line and links to the site's terms of service and privacy policy appears on every page, shortened to a single line inside the course player. It is left off error pages and the form or quiz page a learner is answering.
 
 ## Dashboard
 
