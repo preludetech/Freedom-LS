@@ -1,0 +1,34 @@
+- generic [active] [ref=f17e1]:
+  - banner [ref=f17e2]:
+    - link [ref=f17e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f17e4]
+      - heading "FirstClass" [level=1] [ref=f17e5]
+    - navigation [ref=f17e6]:
+      - button "Open user menu for qa.learner.a@email.com" [ref=f17e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f17e9]: QA
+  - generic:
+    - status
+    - alert
+  - main [ref=f17e10]:
+    - generic [ref=f17e11]:
+      - generic [ref=f17e12]:
+        - heading "Sign Out" [level=1] [ref=f17e13]
+        - paragraph [ref=f17e14]: Are you sure you want to sign out?
+        - button "Sign Out" [ref=f17e16] [cursor=pointer]
+      - navigation [ref=f17e17]:
+        - link "Change Email" [ref=f17e18] [cursor=pointer]:
+          - /url: /accounts/email/
+        - link "Change Password" [ref=f17e19] [cursor=pointer]:
+          - /url: /accounts/password/change/
+        - button "Sign Out" [ref=f17e21] [cursor=pointer]
+  - contentinfo [ref=f17e22]:
+    - generic [ref=f17e23]:
+      - paragraph [ref=f17e24]: © 2026 FirstClass
+      - navigation "Legal" [ref=f17e25]:
+        - link "Terms and Conditions" [ref=f17e26] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f17e27] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f17e28] [cursor=pointer]: course-prices
+  - generic "Show toolbar" [ref=f17e30]: DJDT

@@ -1,0 +1,88 @@
+- generic [active] [ref=f36e1]:
+  - banner [ref=f36e2]:
+    - link [ref=f36e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f36e4]
+      - heading "FirstClass" [level=1] [ref=f36e5]
+    - navigation [ref=f36e6]:
+      - button "Open user menu for demodev@email.com" [ref=f36e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f36e9]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f36e10]:
+    - generic [ref=f36e12]:
+      - navigation "Breadcrumb" [ref=f36e13]:
+        - list [ref=f36e14]:
+          - listitem [ref=f36e15]:
+            - link "All courses" [ref=f36e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f36e17]:
+            - generic [aria-hidden] [ref=f36e18]: /
+            - generic [ref=f36e19]: Functionality Demo - Course Parts
+      - generic [ref=f36e21]:
+        - generic [ref=f36e22]: Reference
+        - heading "Functionality Demo - Course Parts" [level=1] [ref=f36e23]
+        - paragraph [ref=f36e24]: Demonstrating course organisation with parts
+        - generic [ref=f36e26]:
+          - generic [ref=f36e27]:
+            - img "topic" [ref=f36e28]
+            - generic [ref=f36e30]:
+              - paragraph [ref=f36e31]: Lessons
+              - paragraph [ref=f36e32]: 5 lessons
+          - generic [ref=f36e33]:
+            - img "check" [ref=f36e34]
+            - generic [ref=f36e36]:
+              - paragraph [ref=f36e37]: Enrolment
+              - paragraph [ref=f36e38]: Free · open
+      - generic [ref=f36e39]:
+        - complementary [ref=f36e40]:
+          - generic [ref=f36e41]:
+            - generic [ref=f36e42]:
+              - paragraph [ref=f36e43]: Free · open to everyone
+              - paragraph [ref=f36e44]: One click. No credit card.
+            - link "Enrol for free" [ref=f36e45] [cursor=pointer]:
+              - /url: /courses/functionality-demo-course-parts/access/
+            - generic [ref=f36e46]:
+              - heading "This course includes" [level=3] [ref=f36e47]
+              - list [ref=f36e48]:
+                - listitem [ref=f36e49]: 5 lessons
+                - listitem [ref=f36e50]: Includes assessments
+        - generic [ref=f36e52]:
+          - heading "Course content" [level=2] [ref=f36e53]
+          - navigation "Course outline" [ref=f36e55]:
+            - list [ref=f36e56]:
+              - listitem [ref=f36e57]:
+                - button "1. course_part Locked Getting Started" [ref=f36e58] [cursor=pointer]:
+                  - generic [ref=f36e59]:
+                    - generic [ref=f36e60]: "1."
+                    - generic [ref=f36e61]:
+                      - img "course_part" [ref=f36e62]
+                      - generic [ref=f36e64]: Locked
+                    - generic [ref=f36e65]: Getting Started
+              - listitem [ref=f36e71]:
+                - button "2. course_part Locked Core Concepts" [ref=f36e72] [cursor=pointer]:
+                  - generic [ref=f36e73]:
+                    - generic [ref=f36e74]: "2."
+                    - generic [ref=f36e75]:
+                      - img "course_part" [ref=f36e76]
+                      - generic [ref=f36e78]: Locked
+                    - generic [ref=f36e79]: Core Concepts
+              - listitem [ref=f36e85]:
+                - button "3. course_part Locked Wrapping Up" [ref=f36e86] [cursor=pointer]:
+                  - generic [ref=f36e87]:
+                    - generic [ref=f36e88]: "3."
+                    - generic [ref=f36e89]:
+                      - img "course_part" [ref=f36e90]
+                      - generic [ref=f36e92]: Locked
+                    - generic [ref=f36e93]: Wrapping Up
+  - contentinfo [ref=f36e99]:
+    - generic [ref=f36e100]:
+      - paragraph [ref=f36e101]: © 2026 FirstClass
+      - navigation "Legal" [ref=f36e102]:
+        - link "Terms and Conditions" [ref=f36e103] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f36e104] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f36e105] [cursor=pointer]: course-prices
+  - generic "Show toolbar" [ref=f36e107]: DJDT

@@ -1,0 +1,75 @@
+- generic [active] [ref=f33e1]:
+  - banner [ref=f33e2]:
+    - link [ref=f33e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f33e4]
+      - heading "FirstClass" [level=1] [ref=f33e5]
+    - navigation [ref=f33e6]:
+      - button "Open user menu for demodev@email.com" [ref=f33e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f33e9]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f33e10]:
+    - generic [ref=f33e12]:
+      - navigation "Breadcrumb" [ref=f33e13]:
+        - list [ref=f33e14]:
+          - listitem [ref=f33e15]:
+            - link "All courses" [ref=f33e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f33e17]:
+            - generic [aria-hidden] [ref=f33e18]: /
+            - generic [ref=f33e19]: QA </script><script>alert(1)</script>
+      - generic [ref=f33e21]:
+        - heading "QA </script><script>alert(1)</script>" [level=1] [ref=f33e22]
+        - generic [ref=f33e24]:
+          - generic [ref=f33e25]:
+            - img "topic" [ref=f33e26]
+            - generic [ref=f33e28]:
+              - paragraph [ref=f33e29]: Lessons
+              - paragraph [ref=f33e30]: 1 lesson
+          - generic [ref=f33e31]:
+            - img "price" [ref=f33e32]
+            - generic [ref=f33e36]:
+              - paragraph [ref=f33e37]: Price
+              - paragraph [ref=f33e38]: $250.00
+          - generic [ref=f33e39]:
+            - img "check" [ref=f33e40]
+            - generic [ref=f33e42]:
+              - paragraph [ref=f33e43]: Enrolment
+              - paragraph [ref=f33e44]: Free · open
+      - generic [ref=f33e45]:
+        - complementary [ref=f33e46]:
+          - generic [ref=f33e47]:
+            - paragraph [ref=f33e48]:
+              - generic [ref=f33e49]: $250.00 excl. tax
+            - generic [ref=f33e50]:
+              - paragraph [ref=f33e51]: Free · open to everyone
+              - paragraph [ref=f33e52]: One click. No credit card.
+            - link "Enrol for free" [ref=f33e53] [cursor=pointer]:
+              - /url: /courses/qa-fixed-price/access/
+            - generic [ref=f33e54]:
+              - heading "This course includes" [level=3] [ref=f33e55]
+              - list [ref=f33e56]:
+                - listitem [ref=f33e57]: 1 lesson
+        - generic [ref=f33e59]:
+          - heading "Course content" [level=2] [ref=f33e60]
+          - navigation "Course outline" [ref=f33e62]:
+            - list [ref=f33e63]:
+              - listitem [ref=f33e64]:
+                - generic [ref=f33e65]:
+                  - generic [ref=f33e66]: "1."
+                  - generic [ref=f33e67]:
+                    - img "topic" [ref=f33e68]
+                    - generic [ref=f33e70]: Locked
+                  - generic [ref=f33e71]: QA Fixed price - Topic 1
+  - contentinfo [ref=f33e72]:
+    - generic [ref=f33e73]:
+      - paragraph [ref=f33e74]: © 2026 FirstClass
+      - navigation "Legal" [ref=f33e75]:
+        - link "Terms and Conditions" [ref=f33e76] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f33e77] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f33e78] [cursor=pointer]: course-prices
+  - generic "Show toolbar" [ref=f33e80]: DJDT

@@ -1,0 +1,77 @@
+- generic [active] [ref=f14e1]:
+  - banner [ref=f14e2]:
+    - link [ref=f14e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f14e4]
+      - heading "FirstClass" [level=1] [ref=f14e5]
+    - navigation [ref=f14e6]:
+      - generic [ref=f14e7]:
+        - link "Login" [ref=f14e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f14e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f14e10]:
+    - generic [ref=f14e12]:
+      - navigation "Breadcrumb" [ref=f14e13]:
+        - list [ref=f14e14]:
+          - listitem [ref=f14e15]:
+            - link "All courses" [ref=f14e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f14e17]:
+            - generic [aria-hidden] [ref=f14e18]: /
+            - generic [ref=f14e19]: QA Range price
+      - generic [ref=f14e21]:
+        - heading "QA Range price" [level=1] [ref=f14e22]
+        - generic [ref=f14e24]:
+          - generic [ref=f14e25]:
+            - img "topic" [ref=f14e26]
+            - generic [ref=f14e28]:
+              - paragraph [ref=f14e29]: Lessons
+              - paragraph [ref=f14e30]: 1 lesson
+          - generic [ref=f14e31]:
+            - img "price" [ref=f14e32]
+            - generic [ref=f14e36]:
+              - paragraph [ref=f14e37]: Price
+              - paragraph [ref=f14e38]: From ZAR1,200.00
+          - generic [ref=f14e39]:
+            - img "check" [ref=f14e40]
+            - generic [ref=f14e42]:
+              - paragraph [ref=f14e43]: Enrolment
+              - paragraph [ref=f14e44]: Free · open
+      - generic [ref=f14e45]:
+        - complementary [ref=f14e46]:
+          - generic [ref=f14e47]:
+            - paragraph [ref=f14e48]: ZAR1,200.00 – ZAR3,000.00
+            - generic [ref=f14e49]:
+              - paragraph [ref=f14e50]: Free · open to everyone
+              - paragraph [ref=f14e51]: One click. No credit card.
+            - link "Enrol for free" [ref=f14e52] [cursor=pointer]:
+              - /url: /courses/qa-range-price/access/
+            - generic [ref=f14e53]:
+              - heading "This course includes" [level=3] [ref=f14e54]
+              - list [ref=f14e55]:
+                - listitem [ref=f14e56]: 1 lesson
+        - generic [ref=f14e58]:
+          - heading "Course content" [level=2] [ref=f14e59]
+          - navigation "Course outline" [ref=f14e61]:
+            - list [ref=f14e62]:
+              - listitem [ref=f14e63]:
+                - generic [ref=f14e64]:
+                  - generic [ref=f14e65]: "1."
+                  - generic [ref=f14e66]:
+                    - img "topic" [ref=f14e67]
+                    - generic [ref=f14e69]: Locked
+                  - generic [ref=f14e70]: QA Range price - Topic 1
+  - contentinfo [ref=f14e71]:
+    - generic [ref=f14e72]:
+      - paragraph [ref=f14e73]: © 2026 FirstClass
+      - navigation "Legal" [ref=f14e74]:
+        - link "Terms and Conditions" [ref=f14e75] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f14e76] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f14e77] [cursor=pointer]: course-prices
+  - generic "Show toolbar" [ref=f14e79]: DJDT

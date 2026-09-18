@@ -1,0 +1,93 @@
+- generic [ref=f37e1]:
+  - banner [ref=f37e2]:
+    - link [ref=f37e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f37e4]
+      - heading "FirstClass" [level=1] [ref=f37e5]
+    - navigation [ref=f37e6]:
+      - button "Open user menu for demodev@email.com" [ref=f37e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f37e9]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f37e10]:
+    - generic [ref=f37e12]:
+      - dialog "Course outline" [ref=f37e13]:
+        - generic [ref=f37e16]:
+          - generic [ref=f37e17]:
+            - paragraph [ref=f37e18]: Course outline
+            - paragraph [ref=f37e19]: Functionality Demo - Course Parts
+            - generic [ref=f37e21]:
+              - progressbar "Progress for Functionality Demo - Course Parts" [ref=f37e22]: 0%
+              - generic [ref=f37e23]: 0% complete
+          - navigation "Course outline" [ref=f37e24]:
+            - list [ref=f37e25]:
+              - listitem [ref=f37e26]:
+                - button "1. course_part Not started Getting Started" [expanded] [active] [ref=f37e27] [cursor=pointer]:
+                  - generic [ref=f37e28]:
+                    - generic [ref=f37e29]: "1."
+                    - generic [ref=f37e30]:
+                      - img "course_part" [ref=f37e31]
+                      - generic [ref=f37e33]: Not started
+                    - generic [ref=f37e34]: Getting Started
+                - list [ref=f37e40]:
+                  - listitem [ref=f37e41]:
+                    - generic [ref=f37e42]:
+                      - generic [ref=f37e43]: "1.1"
+                      - generic [ref=f37e44]:
+                        - img "topic" [ref=f37e45]
+                        - generic [ref=f37e47]: Not started
+                      - generic [ref=f37e48]: Welcome
+                  - listitem [ref=f37e49]:
+                    - generic [ref=f37e50]:
+                      - generic [ref=f37e51]: "1.2"
+                      - generic [ref=f37e52]:
+                        - img "topic" [ref=f37e53]
+                        - generic [ref=f37e55]: Locked
+                      - generic [ref=f37e56]: What to Expect
+              - listitem [ref=f37e57]:
+                - button "2. course_part Locked Core Concepts" [ref=f37e58] [cursor=pointer]:
+                  - generic [ref=f37e59]:
+                    - generic [ref=f37e60]: "2."
+                    - generic [ref=f37e61]:
+                      - img "course_part" [ref=f37e62]
+                      - generic [ref=f37e64]: Locked
+                    - generic [ref=f37e65]: Core Concepts
+              - listitem [ref=f37e71]:
+                - button "3. course_part Locked Wrapping Up" [ref=f37e72] [cursor=pointer]:
+                  - generic [ref=f37e73]:
+                    - generic [ref=f37e74]: "3."
+                    - generic [ref=f37e75]:
+                      - img "course_part" [ref=f37e76]
+                      - generic [ref=f37e78]: Locked
+                    - generic [ref=f37e79]: Wrapping Up
+      - generic [ref=f37e85]:
+        - generic [ref=f37e86]:
+          - navigation "Breadcrumb" [ref=f37e89]:
+            - list [ref=f37e90]:
+              - listitem [ref=f37e91]:
+                - link "Functionality Demo - Course Parts" [ref=f37e92] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/detail/
+              - listitem [ref=f37e93]:
+                - generic [aria-hidden] [ref=f37e94]: ">"
+                - link "Getting Started" [ref=f37e95] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-course-parts/1/
+              - listitem [ref=f37e96]:
+                - generic [aria-hidden] [ref=f37e97]: ">"
+                - generic "Welcome" [ref=f37e98]
+          - heading "Welcome" [level=1] [ref=f37e100]
+        - generic [ref=f37e102]:
+          - generic [ref=f37e103]:
+            - paragraph [ref=f37e104]: "Welcome to the Course Parts demo course. This topic is inside Part 1: \"Getting Started\"."
+            - paragraph [ref=f37e105]: This course demonstrates how content can be organised into parts, which act as chapters or modules within a course. Each part groups related topics and forms together.
+          - button "Next" [ref=f37e108] [cursor=pointer]
+  - contentinfo [ref=f37e112]:
+    - generic [ref=f37e113]:
+      - paragraph [ref=f37e114]: © 2026 FirstClass
+      - navigation "Legal" [ref=f37e115]:
+        - link "Terms and Conditions" [ref=f37e116] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f37e117] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f37e118] [cursor=pointer]: course-prices
+  - generic "Show toolbar" [ref=f37e120]: DJDT

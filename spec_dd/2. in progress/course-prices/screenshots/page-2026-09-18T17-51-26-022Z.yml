@@ -1,0 +1,975 @@
+- generic [active] [ref=f35e1]:
+  - generic [ref=f35e2]:
+    - navigation [ref=f35e5]:
+      - generic [ref=f35e7]:
+        - link "settings" [ref=f35e8] [cursor=pointer]:
+          - /url: /admin/
+        - link "Django administration" [ref=f35e13] [cursor=pointer]:
+          - /url: /admin/
+      - region "scrollable content" [ref=f35e17]:
+        - generic [ref=f35e18]:
+          - list [ref=f35e20]:
+            - listitem [ref=f35e21]:
+              - heading [level=2] [ref=f35e22]:
+                - link "Accounts" [ref=f35e23] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_accounts/
+              - list [ref=f35e24]:
+                - listitem [ref=f35e25]:
+                  - link "Legal consents" [ref=f35e26] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/legalconsent/
+                - listitem [ref=f35e27]:
+                  - link "Site signup policys" [ref=f35e28] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/sitesignuppolicy/
+                - listitem [ref=f35e29]:
+                  - link "Users" [ref=f35e30] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/user/
+          - list [ref=f35e32]:
+            - listitem [ref=f35e33]:
+              - heading [level=2] [ref=f35e34]:
+                - link "Accounts" [ref=f35e35] [cursor=pointer]:
+                  - /url: /admin/account/
+              - list [ref=f35e36]:
+                - listitem [ref=f35e37]:
+                  - link "Email addresses" [ref=f35e38] [cursor=pointer]:
+                    - /url: /admin/account/emailaddress/
+          - list [ref=f35e40]:
+            - listitem [ref=f35e41]:
+              - heading [level=2] [ref=f35e42]:
+                - link "Axes" [ref=f35e43] [cursor=pointer]:
+                  - /url: /admin/axes/
+              - list [ref=f35e44]:
+                - listitem [ref=f35e45]:
+                  - link "Access attempts" [ref=f35e46] [cursor=pointer]:
+                    - /url: /admin/axes/accessattempt/
+                - listitem [ref=f35e47]:
+                  - link "Access failures" [ref=f35e48] [cursor=pointer]:
+                    - /url: /admin/axes/accessfailurelog/
+                - listitem [ref=f35e49]:
+                  - link "Access logs" [ref=f35e50] [cursor=pointer]:
+                    - /url: /admin/axes/accesslog/
+          - list [ref=f35e52]:
+            - listitem [ref=f35e53]:
+              - heading [level=2] [ref=f35e54]:
+                - link "Content engine" [ref=f35e55] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_content_engine/
+              - list [ref=f35e56]:
+                - listitem [ref=f35e57]:
+                  - link "Activities" [ref=f35e58] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/activity/
+                - listitem [ref=f35e59]:
+                  - link "Content collection items" [ref=f35e60] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/contentcollectionitem/
+                - listitem [ref=f35e61]:
+                  - link "Course categorys" [ref=f35e62] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursecategory/
+                - listitem [ref=f35e63]:
+                  - link "Course parts" [ref=f35e64] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursepart/
+                - listitem [ref=f35e65]:
+                  - link "Courses" [ref=f35e66] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/course/
+                - listitem [ref=f35e67]:
+                  - link "Files" [ref=f35e68] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/file/
+                - listitem [ref=f35e69]:
+                  - link "Topics" [ref=f35e70] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/topic/
+          - list [ref=f35e72]:
+            - listitem [ref=f35e73]:
+              - heading [level=2] [ref=f35e74]:
+                - link "Course interest" [ref=f35e75] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_interest/
+              - list [ref=f35e76]:
+                - listitem [ref=f35e77]:
+                  - link "Course interests" [ref=f35e78] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_interest/courseinterest/
+          - list [ref=f35e80]:
+            - listitem [ref=f35e81]:
+              - heading [level=2] [ref=f35e82]:
+                - link "Course recommendations" [ref=f35e83] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_recommendations/
+              - list [ref=f35e84]:
+                - listitem [ref=f35e85]:
+                  - link "Recommended courses" [ref=f35e86] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_recommendations/recommendedcourse/
+          - list [ref=f35e88]:
+            - listitem [ref=f35e89]:
+              - heading [level=2] [ref=f35e90]:
+                - link "Form engine" [ref=f35e91] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_form_engine/
+              - list [ref=f35e92]:
+                - listitem [ref=f35e93]:
+                  - link "Form contents" [ref=f35e94] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formcontent/
+                - listitem [ref=f35e95]:
+                  - link "Form pages" [ref=f35e96] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formpage/
+                - listitem [ref=f35e97]:
+                  - link "Form progress records" [ref=f35e98] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formprogress/
+                - listitem [ref=f35e99]:
+                  - link "Form questions" [ref=f35e100] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formquestion/
+                - listitem [ref=f35e101]:
+                  - link "Forms" [ref=f35e102] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/form/
+                - listitem [ref=f35e103]:
+                  - link "Question answer files" [ref=f35e104] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswerfile/
+                - listitem [ref=f35e105]:
+                  - link "Question answers" [ref=f35e106] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswer/
+                - listitem [ref=f35e107]:
+                  - link "Question options" [ref=f35e108] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionoption/
+          - list [ref=f35e110]:
+            - listitem [ref=f35e111]:
+              - heading [level=2] [ref=f35e112]:
+                - link "Learner management" [ref=f35e113] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_management/
+              - list [ref=f35e114]:
+                - listitem [ref=f35e115]:
+                  - link "Cohort course registrations" [ref=f35e116] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortcourseregistration/
+                - listitem [ref=f35e117]:
+                  - link "Cohort deadlines" [ref=f35e118] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortdeadline/
+                - listitem [ref=f35e119]:
+                  - link "Cohorts" [ref=f35e120] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohort/
+                - listitem [ref=f35e121]:
+                  - link "Learner cohort deadline overrides" [ref=f35e122] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercohortdeadlineoverride/
+                - listitem [ref=f35e123]:
+                  - link "Learner course registrations" [ref=f35e124] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercourseregistration/
+                - listitem [ref=f35e125]:
+                  - link "Learner deadlines" [ref=f35e126] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnerdeadline/
+                - listitem [ref=f35e127]:
+                  - link "Learners" [ref=f35e128] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learner/
+          - list [ref=f35e130]:
+            - listitem [ref=f35e131]:
+              - heading [level=2] [ref=f35e132]:
+                - link "Learner progress" [ref=f35e133] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_progress/
+              - list [ref=f35e134]:
+                - listitem [ref=f35e135]:
+                  - link "Course form attempts" [ref=f35e136] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseformattempt/
+                - listitem [ref=f35e137]:
+                  - link "Course progress records" [ref=f35e138] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/
+                - listitem [ref=f35e139]:
+                  - link "Topic progress records" [ref=f35e140] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/topicprogress/
+          - list [ref=f35e142]:
+            - listitem [ref=f35e143]:
+              - heading [level=2] [ref=f35e144]:
+                - link "Organisations" [ref=f35e145] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_organisations/
+              - list [ref=f35e146]:
+                - listitem [ref=f35e147]:
+                  - link "Organisations" [ref=f35e148] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_organisations/organisation/
+          - list [ref=f35e150]:
+            - listitem [ref=f35e151]:
+              - heading [level=2] [ref=f35e152]:
+                - link "Referral tracking" [ref=f35e153] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_referral_tracking/
+              - list [ref=f35e154]:
+                - listitem [ref=f35e155]:
+                  - link "First touch counts" [ref=f35e156] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/firsttouchcount/
+                - listitem [ref=f35e157]:
+                  - link "Referral code hits" [ref=f35e158] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcodehit/
+                - listitem [ref=f35e159]:
+                  - link "Referral codes" [ref=f35e160] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcode/
+                - listitem [ref=f35e161]:
+                  - link "Signup attributions" [ref=f35e162] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/signupattribution/
+          - list [ref=f35e164]:
+            - listitem [ref=f35e165]:
+              - heading [level=2] [ref=f35e166]:
+                - link "Reports" [ref=f35e167] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_reports/
+              - list [ref=f35e168]:
+                - listitem [ref=f35e169]:
+                  - link "Generated reports" [ref=f35e170] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_reports/generatedreport/
+          - list [ref=f35e172]:
+            - listitem [ref=f35e173]:
+              - heading [level=2] [ref=f35e174]:
+                - link "Tasks Database Backend" [ref=f35e175] [cursor=pointer]:
+                  - /url: /admin/django_tasks_database/
+              - list [ref=f35e176]:
+                - listitem [ref=f35e177]:
+                  - link "Task Results" [ref=f35e178] [cursor=pointer]:
+                    - /url: /admin/django_tasks_database/dbtaskresult/
+          - list [ref=f35e180]:
+            - listitem [ref=f35e181]:
+              - heading [level=2] [ref=f35e182]:
+                - link "Webhooks" [ref=f35e183] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_webhooks/
+              - list [ref=f35e184]:
+                - listitem [ref=f35e185]:
+                  - link "Webhook deliveries" [ref=f35e186] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookdelivery/
+                - listitem [ref=f35e187]:
+                  - link "Webhook endpoints" [ref=f35e188] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookendpoint/
+                - listitem [ref=f35e189]:
+                  - link "Webhook events" [ref=f35e190] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookevent/
+                - listitem [ref=f35e191]:
+                  - link "Webhook secrets" [ref=f35e192] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhooksecret/
+      - generic [ref=f35e194] [cursor=pointer]:
+        - generic [ref=f35e195]: D
+        - generic [ref=f35e196]:
+          - generic [ref=f35e197]: demodev@email.com
+          - generic [ref=f35e198]: demodev@email.com
+        - generic [ref=f35e199]: unfold_more
+    - generic [ref=f35e200]:
+      - generic [ref=f35e204]:
+        - generic [ref=f35e205]:
+          - generic [ref=f35e206] [cursor=pointer]: dock_to_right
+          - link "arrow_back" [ref=f35e209] [cursor=pointer]:
+            - /url: /admin/freedom_ls_content_engine/course/
+          - heading "Content engine chevron_right Courses chevron_right QA Loader course" [level=1] [ref=f35e211]:
+            - link "Content engine" [ref=f35e212] [cursor=pointer]:
+              - /url: /admin/freedom_ls_content_engine/
+            - generic [ref=f35e213]: chevron_right
+            - link "Courses" [ref=f35e214] [cursor=pointer]:
+              - /url: /admin/freedom_ls_content_engine/course/
+            - generic [ref=f35e215]: chevron_right
+            - link "QA Loader course" [ref=f35e216] [cursor=pointer]:
+              - /url: /admin/freedom_ls_content_engine/course/a3238fdc-3313-4ca5-847c-eec91966310e/change/
+        - generic [ref=f35e217]:
+          - list [ref=f35e219]:
+            - listitem [ref=f35e220]:
+              - link "history History" [ref=f35e221] [cursor=pointer]:
+                - /url: /admin/freedom_ls_content_engine/course/a3238fdc-3313-4ca5-847c-eec91966310e/history/
+                - generic [ref=f35e222]: history
+                - text: History
+          - link "add" [ref=f35e224] [cursor=pointer]:
+            - /url: /admin/freedom_ls_content_engine/course/add/
+      - generic [ref=f35e230]:
+        - group [ref=f35e231]:
+          - generic [ref=f35e232]:
+            - generic [ref=f35e234]:
+              - generic [ref=f35e235]: Title*
+              - textbox "Title*" [ref=f35e239]: QA Loader course
+            - generic [ref=f35e241]:
+              - generic [ref=f35e242]: Subtitle
+              - textbox "Subtitle" [ref=f35e246]
+            - generic [ref=f35e248]:
+              - generic [ref=f35e249]: Description
+              - generic [ref=f35e251]:
+                - textbox "Description" [ref=f35e252]: QA copy for the content loader price tests.
+                - generic [ref=f35e253]: Optional description
+            - generic [ref=f35e255]:
+              - generic [ref=f35e256]: Slug
+              - generic [ref=f35e258]:
+                - generic [ref=f35e259]: qa-loader-course
+                - generic [ref=f35e260]: URL-friendly identifier
+            - generic [ref=f35e262]:
+              - generic [ref=f35e263]: Learning outcomes
+              - generic [ref=f35e265]:
+                - textbox "Learning outcomes" [ref=f35e266]
+                - generic [ref=f35e267]: Ordered list of 'what you'll learn' outcomes. Empty hides the section.
+            - generic [ref=f35e269]:
+              - generic [ref=f35e270]: Difficulty
+              - generic [ref=f35e273]:
+                - combobox "Difficulty" [ref=f35e274]:
+                  - option "Select value" [selected]
+                  - option "Beginner"
+                  - option "Intermediate"
+                  - option "Advanced"
+                  - option "All levels"
+                - generic: expand_more
+            - generic [ref=f35e276]:
+              - generic [ref=f35e277]: Visibility
+              - generic [ref=f35e279]: Published
+            - generic [ref=f35e282]:
+              - generic [ref=f35e283]: Dashboard category
+              - generic [ref=f35e285]: "-"
+            - generic [ref=f35e288]:
+              - generic [ref=f35e289]: Categories
+              - generic [ref=f35e291]: "-"
+            - generic [ref=f35e294]:
+              - generic [ref=f35e295]: Estimated duration
+              - textbox "Estimated duration" [ref=f35e299]
+        - group [ref=f35e300]:
+          - heading "Price" [level=2] [ref=f35e301]
+          - generic [ref=f35e302]:
+            - generic [ref=f35e304]:
+              - generic [ref=f35e305]: Price kind
+              - generic [ref=f35e307]:
+                - generic [ref=f35e308]:
+                  - combobox "Price kind" [ref=f35e309]:
+                    - option "Select value" [selected]
+                    - option "Fixed"
+                    - option "Range"
+                    - option "Discounted"
+                    - option "On request"
+                  - generic: expand_more
+                - generic [ref=f35e310]: Empty means the course has no price.
+            - generic [ref=f35e312]:
+              - generic [ref=f35e313]: Price amount
+              - spinbutton "Price amount" [ref=f35e316]
+            - generic [ref=f35e318]:
+              - generic [ref=f35e319]: Price sale amount
+              - spinbutton "Price sale amount" [ref=f35e322]
+            - generic [ref=f35e324]:
+              - generic [ref=f35e325]: Price sale ends on
+              - generic [ref=f35e328]:
+                - textbox "Price sale ends on" [ref=f35e329]
+                - generic [ref=f35e330]:
+                  - text: update |
+                  - link "calendar_today" [ref=f35e331] [cursor=pointer]:
+                    - /url: "#"
+                    - generic "Choose a Date" [ref=f35e332]: calendar_today
+                - generic [ref=f35e333]: "warning Note: You are 2 hours ahead of server time."
+            - generic [ref=f35e335]:
+              - generic [ref=f35e336]: Price low amount
+              - spinbutton "Price low amount" [ref=f35e339]
+            - generic [ref=f35e341]:
+              - generic [ref=f35e342]: Price high amount
+              - spinbutton "Price high amount" [ref=f35e345]
+            - generic [ref=f35e347]:
+              - generic [ref=f35e348]: Price currency
+              - textbox "Price currency" [ref=f35e352]
+            - generic [ref=f35e354]:
+              - generic [ref=f35e355]: Price tax note
+              - textbox "Price tax note" [ref=f35e359]
+        - group [ref=f35e360]:
+          - group [ref=f35e361]:
+            - generic [ref=f35e362]:
+              - heading "Metadata" [level=2] [ref=f35e363] [cursor=pointer]
+              - text: expand_more
+        - group [ref=f35e366]:
+          - heading "Content collection items" [level=2] [ref=f35e367]
+          - region "scrollable content" [ref=f35e373]:
+            - table [ref=f35e375]:
+              - rowgroup [ref=f35e376]:
+                - row [ref=f35e377]:
+                  - columnheader "Child type*" [ref=f35e378]
+                  - columnheader "Child id*" [ref=f35e381]
+                  - columnheader "Order*" [ref=f35e384]
+                  - columnheader "Overrides help" [ref=f35e387]:
+                    - generic [ref=f35e388]:
+                      - generic [ref=f35e389]: Overrides
+                      - generic "Optional overrides as key-value pairs" [ref=f35e390]: help
+              - rowgroup [ref=f35e391]:
+                - row [ref=f35e392]:
+                  - cell "QA Loader course - Content title 1 (order=0)" [ref=f35e393]:
+                    - paragraph [ref=f35e394]:
+                      - generic [ref=f35e395]: QA Loader course - Content title 1 (order=0)
+                - row [ref=f35e396]:
+                  - cell [ref=f35e397]:
+                    - combobox [ref=f35e401]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic" [selected]
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e402]:
+                    - textbox [ref=f35e405]: e0a3ca3b-65d8-433d-8641-edbf77027e36
+                  - cell [ref=f35e406]:
+                    - spinbutton [ref=f35e409]: "0"
+                  - cell [ref=f35e410]:
+                    - textbox [ref=f35e413]: "null"
+              - rowgroup [ref=f35e414]:
+                - row [ref=f35e415]:
+                  - cell "QA Loader course - Callouts (order=1)" [ref=f35e416]:
+                    - paragraph [ref=f35e417]:
+                      - generic [ref=f35e418]: QA Loader course - Callouts (order=1)
+                - row [ref=f35e419]:
+                  - cell [ref=f35e420]:
+                    - combobox [ref=f35e424]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic" [selected]
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e425]:
+                    - textbox [ref=f35e428]: 401958e3-aa9f-4334-abec-ffa66f03f173
+                  - cell [ref=f35e429]:
+                    - spinbutton [ref=f35e432]: "1"
+                  - cell [ref=f35e433]:
+                    - textbox [ref=f35e436]: "null"
+              - rowgroup [ref=f35e437]:
+                - row [ref=f35e438]:
+                  - cell "QA Loader course - Course Feedback Survey (order=2)" [ref=f35e439]:
+                    - paragraph [ref=f35e440]:
+                      - generic [ref=f35e441]: QA Loader course - Course Feedback Survey (order=2)
+                - row [ref=f35e442]:
+                  - cell [ref=f35e443]:
+                    - combobox [ref=f35e447]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic"
+                      - option "Form engine | form" [selected]
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e448]:
+                    - textbox [ref=f35e451]: aaabe88a-2e49-42b2-8420-741a8fcaadf7
+                  - cell [ref=f35e452]:
+                    - spinbutton [ref=f35e455]: "2"
+                  - cell [ref=f35e456]:
+                    - textbox [ref=f35e459]: "null"
+              - rowgroup [ref=f35e460]:
+                - row [ref=f35e461]:
+                  - cell "QA Loader course - Pictures (order=3)" [ref=f35e462]:
+                    - paragraph [ref=f35e463]:
+                      - generic [ref=f35e464]: QA Loader course - Pictures (order=3)
+                - row [ref=f35e465]:
+                  - cell [ref=f35e466]:
+                    - combobox [ref=f35e470]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic" [selected]
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e471]:
+                    - textbox [ref=f35e474]: 73cc3252-1206-4b49-be5d-4dc350622281
+                  - cell [ref=f35e475]:
+                    - spinbutton [ref=f35e478]: "3"
+                  - cell [ref=f35e479]:
+                    - textbox [ref=f35e482]: "null"
+              - rowgroup [ref=f35e483]:
+                - row [ref=f35e484]:
+                  - cell "QA Loader course - YouTube Videos (order=4)" [ref=f35e485]:
+                    - paragraph [ref=f35e486]:
+                      - generic [ref=f35e487]: QA Loader course - YouTube Videos (order=4)
+                - row [ref=f35e488]:
+                  - cell [ref=f35e489]:
+                    - combobox [ref=f35e493]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic" [selected]
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e494]:
+                    - textbox [ref=f35e497]: c623fc8a-f563-4198-bd74-abb223c69227
+                  - cell [ref=f35e498]:
+                    - spinbutton [ref=f35e501]: "4"
+                  - cell [ref=f35e502]:
+                    - textbox [ref=f35e505]: "null"
+              - rowgroup [ref=f35e506]:
+                - row [ref=f35e507]:
+                  - cell "QA Loader course - Markdown Tables (order=5)" [ref=f35e508]:
+                    - paragraph [ref=f35e509]:
+                      - generic [ref=f35e510]: QA Loader course - Markdown Tables (order=5)
+                - row [ref=f35e511]:
+                  - cell [ref=f35e512]:
+                    - combobox [ref=f35e516]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic" [selected]
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e517]:
+                    - textbox [ref=f35e520]: 4c171495-0092-4d63-8cde-57d072e39930
+                  - cell [ref=f35e521]:
+                    - spinbutton [ref=f35e524]: "5"
+                  - cell [ref=f35e525]:
+                    - textbox [ref=f35e528]: "null"
+              - rowgroup [ref=f35e529]:
+                - row [ref=f35e530]:
+                  - cell "QA Loader course - Code Snippets (order=6)" [ref=f35e531]:
+                    - paragraph [ref=f35e532]:
+                      - generic [ref=f35e533]: QA Loader course - Code Snippets (order=6)
+                - row [ref=f35e534]:
+                  - cell [ref=f35e535]:
+                    - combobox [ref=f35e539]:
+                      - option "---------"
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic" [selected]
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e540]:
+                    - textbox [ref=f35e543]: 30aab181-c454-438d-aaba-25628a1471ff
+                  - cell [ref=f35e544]:
+                    - spinbutton [ref=f35e547]: "6"
+                  - cell [ref=f35e548]:
+                    - textbox [ref=f35e551]: "null"
+              - rowgroup [ref=f35e552]:
+                - row [ref=f35e553]:
+                  - cell [ref=f35e554]:
+                    - combobox [ref=f35e558]:
+                      - option "---------" [selected]
+                      - option "Authentication and Authorization | group"
+                      - option "Authentication and Authorization | permission"
+                      - option "Content Types | content type"
+                      - option "Sessions | session"
+                      - option "Sites | site"
+                      - option "Tasks Database Backend | Task Result"
+                      - option "Administration | log entry"
+                      - option "Guardian | group object permission"
+                      - option "Guardian | user object permission"
+                      - option "Content engine | activity"
+                      - option "Content engine | content collection item"
+                      - option "Content engine | course"
+                      - option "Content engine | course category"
+                      - option "Content engine | course part"
+                      - option "Content engine | file"
+                      - option "Content engine | topic"
+                      - option "Form engine | form"
+                      - option "Form engine | form content"
+                      - option "Form engine | form page"
+                      - option "Form engine | form progress"
+                      - option "Form engine | form question"
+                      - option "Form engine | question answer"
+                      - option "Form engine | question answer file"
+                      - option "Form engine | question option"
+                      - option "Accounts | legal consent"
+                      - option "Accounts | site signup policy"
+                      - option "Accounts | user"
+                      - option "Referral tracking | first touch count"
+                      - option "Referral tracking | referral code"
+                      - option "Referral tracking | referral code hit"
+                      - option "Referral tracking | signup attribution"
+                      - option "Organisations | organisation"
+                      - option "Learner management | cohort"
+                      - option "Learner management | cohort course registration"
+                      - option "Learner management | cohort deadline"
+                      - option "Learner management | cohort membership"
+                      - option "Learner management | learner"
+                      - option "Learner management | learner cohort deadline override"
+                      - option "Learner management | learner course registration"
+                      - option "Learner management | learner deadline"
+                      - option "Learner progress | course form attempt"
+                      - option "Learner progress | course progress record"
+                      - option "Learner progress | topic progress record"
+                      - option "Reports | generated report"
+                      - option "Role based permissions | object role assignment"
+                      - option "Role based permissions | site role assignment"
+                      - option "Role based permissions | system role assignment"
+                      - option "Course applications | course application"
+                      - option "Course interest | course interest"
+                      - option "Course recommendations | recommended course"
+                      - option "Webhooks | webhook delivery"
+                      - option "Webhooks | webhook endpoint"
+                      - option "Webhooks | webhook event"
+                      - option "Webhooks | webhook secret"
+                      - option "Accounts | email address"
+                      - option "Accounts | email confirmation"
+                      - option "Axes | access attempt"
+                      - option "Axes | access attempt expiration"
+                      - option "Axes | access failure"
+                      - option "Axes | access log"
+                  - cell [ref=f35e559]:
+                    - textbox [ref=f35e562]
+                  - cell [ref=f35e563]:
+                    - spinbutton [ref=f35e566]: "0"
+                  - cell [ref=f35e567]:
+                    - textbox [ref=f35e570]: "null"
+              - rowgroup [ref=f35e571]:
+                - row [ref=f35e572]:
+                  - cell [ref=f35e573]:
+                    - link "add Add another Content collection item" [ref=f35e575] [cursor=pointer]:
+                      - /url: "#"
+                      - generic [ref=f35e576]: add
+                      - generic [ref=f35e578]: Add another Content collection item
+      - generic [ref=f35e581]:
+        - button "Save" [ref=f35e582] [cursor=pointer]
+        - button "Save and continue editing" [ref=f35e583] [cursor=pointer]
+        - button "Save and add another" [ref=f35e584] [cursor=pointer]
+  - generic "Show toolbar" [ref=f35e586]: DJDT
+  - text: navigate_before navigate_next
