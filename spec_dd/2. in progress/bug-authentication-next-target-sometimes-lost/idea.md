@@ -9,3 +9,5 @@ Here is the situation.
   On the other hand, if they click the sign up link at the top right of the page and then follow the registration flow, when they confirm their email address, they are redirected to the home page. we need to make sure that in both of these cases they are redirected appropriately.
 
   perhaps the simplest thing would be to hide the login and sign up buttons in the header area when you're looking at a login or sign up page. Alternatively, we need to make sure that the buttons at the top right work the same as the link within the form itself, and the redirects work in the same way across all.
+
+Note that this happened in a concrete project, it has not been validated in this specific project,  you'll need to make sure that the bug is in fact here before fixing it. If you cannot reproduce the bug in this repo then let me know and I will give you more information about where it came up.
