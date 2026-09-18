@@ -360,6 +360,25 @@ def test_course_detail_json_ld_includes_aggregate_offer_for_range_price(
 
 
 @pytest.mark.django_db
+def test_course_detail_json_ld_open_ended_range_has_no_high_price(
+    mock_site_context, course_with_topic
+):
+    """A range with no upper end is an AggregateOffer with lowPrice only."""
+    course = course_with_topic(
+        price_kind="range",
+        price_low_amount=Decimal("500.00"),
+        price_currency="ZAR",
+    )
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    offers = _extract_json_ld(body, "course-jsonld")["offers"]
+    assert offers == {
+        "@type": "AggregateOffer",
+        "lowPrice": "500.00",
+        "priceCurrency": "ZAR",
+    }
+
+
+@pytest.mark.django_db
 def test_course_detail_json_ld_live_discount_offer_has_price_valid_until(
     mock_site_context, course_with_topic
 ):

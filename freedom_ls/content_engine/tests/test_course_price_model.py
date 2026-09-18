@@ -51,6 +51,41 @@ def test_range_price_round_trips(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
+def test_open_ended_range_price_round_trips(mock_site_context) -> None:
+    course = CourseFactory(
+        price_kind=PriceKind.RANGE,
+        price_low_amount=Decimal("500.000"),
+        price_currency="ZAR",
+    )
+    course.refresh_from_db()
+
+    assert course.price_kind == PriceKind.RANGE
+    assert course.price_low_amount == Decimal("500.000")
+    assert course.price_high_amount is None
+
+
+@pytest.mark.django_db
+def test_clean_passes_for_an_open_ended_range_price(mock_site_context) -> None:
+    course = CourseFactory.build(
+        price_kind=PriceKind.RANGE,
+        price_low_amount=Decimal("500.000"),
+        price_currency="ZAR",
+    )
+
+    course.clean()
+
+
+@pytest.mark.django_db
+def test_range_price_without_a_low_amount_is_rejected(mock_site_context) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CourseFactory(
+            price_kind=PriceKind.RANGE,
+            price_high_amount=Decimal("500.000"),
+            price_currency="ZAR",
+        )
+
+
+@pytest.mark.django_db
 def test_discounted_price_round_trips(mock_site_context) -> None:
     course = CourseFactory(
         price_kind=PriceKind.DISCOUNTED,
@@ -128,6 +163,23 @@ def test_range_price_rejects_low_not_below_high(mock_site_context) -> None:
             price_high_amount=Decimal("100.000"),
             price_currency="ZAR",
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("kind", "fields"),
+    [
+        (PriceKind.FIXED, {}),
+        (PriceKind.DISCOUNTED, {"price_amount": Decimal("100.000")}),
+        (PriceKind.DISCOUNTED, {"price_sale_amount": Decimal("50.000")}),
+    ],
+    ids=["fixed-no-amount", "discounted-no-sale", "discounted-no-original"],
+)
+def test_a_missing_required_amount_is_rejected(
+    mock_site_context, kind: PriceKind, fields: dict[str, Decimal]
+) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        CourseFactory(price_kind=kind, price_currency="ZAR", **fields)
 
 
 @pytest.mark.django_db

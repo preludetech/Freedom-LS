@@ -4,6 +4,7 @@
 The single place a course price is rendered — the card, the row, the stats
 strip and the sign-up panel all call this. `variant="compact"` is one line
 with no tax note; `variant="full"` adds the tax note when the price has one.
+A range with no high amount is open-ended and reads "From X" in both variants.
 
 Props:
   price   - a CoursePrice (freedom_ls/content_engine/prices.py).
@@ -18,7 +19,7 @@ kind comparisons use the PriceKind values: "fixed", "range", "discounted",
     {% elif price.kind == "fixed" %}
         {{ price.formatted_amount }}
     {% elif price.kind == "range" %}
-        {% if variant == "full" %}
+        {% if variant == "full" and price.high_amount is not None %}
             {{ price.formatted_low_amount }} – {{ price.formatted_high_amount }}
         {% else %}
             From {{ price.formatted_low_amount }}

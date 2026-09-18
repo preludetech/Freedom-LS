@@ -54,6 +54,10 @@ def _course_price_constraint() -> models.CheckConstraint:
     correctly ordered, with every other price column null or blank -- and the
     kinds are OR-ed together alongside a branch for "no price at all". This
     is the DB-level mirror of ``price_errors`` in ``prices.py``.
+
+    Required amounts are checked with ``isnull=False`` as well as ``> 0``:
+    a CHECK constraint passes when its condition is NULL, so ``> 0`` alone
+    lets a missing amount through.
     """
     no_amounts = Q(
         price_amount__isnull=True,
@@ -71,7 +75,7 @@ def _course_price_constraint() -> models.CheckConstraint:
     )
     fixed = (
         Q(price_kind=PriceKind.FIXED)
-        & Q(price_amount__gt=0)
+        & Q(price_amount__isnull=False, price_amount__gt=0)
         & Q(
             price_sale_amount__isnull=True,
             price_low_amount__isnull=True,
@@ -82,8 +86,14 @@ def _course_price_constraint() -> models.CheckConstraint:
     )
     price_range = (
         Q(price_kind=PriceKind.RANGE)
-        & Q(price_low_amount__gt=0, price_high_amount__gt=0)
-        & Q(price_low_amount__lt=F("price_high_amount"))
+        & Q(price_low_amount__isnull=False, price_low_amount__gt=0)
+        & (
+            Q(price_high_amount__isnull=True)
+            | Q(
+                price_high_amount__gt=0,
+                price_low_amount__lt=F("price_high_amount"),
+            )
+        )
         & Q(
             price_amount__isnull=True,
             price_sale_amount__isnull=True,
@@ -93,6 +103,7 @@ def _course_price_constraint() -> models.CheckConstraint:
     )
     discounted = (
         Q(price_kind=PriceKind.DISCOUNTED)
+        & Q(price_amount__isnull=False, price_sale_amount__isnull=False)
         & Q(price_amount__gt=0, price_sale_amount__gt=0)
         & Q(price_sale_amount__lt=F("price_amount"))
         & Q(price_low_amount__isnull=True, price_high_amount__isnull=True)

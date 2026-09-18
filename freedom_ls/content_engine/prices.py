@@ -27,8 +27,8 @@ if TYPE_CHECKING:
 KIND_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "fixed": (frozenset({"amount"}), frozenset({"currency", "tax_note"})),
     "range": (
-        frozenset({"low_amount", "high_amount"}),
-        frozenset({"currency", "tax_note"}),
+        frozenset({"low_amount"}),
+        frozenset({"high_amount", "currency", "tax_note"}),
     ),
     "discounted": (
         frozenset({"amount", "sale_amount"}),
@@ -214,14 +214,18 @@ class CoursePrice:
         if self.kind == "on_request":
             return None
         if self.kind == "range":
-            if self.low_amount is None or self.high_amount is None:
-                raise ValueError("A range price needs low_amount and high_amount.")
-            return {
+            if self.low_amount is None:
+                raise ValueError("A range price needs a low_amount.")
+            aggregate: dict[str, object] = {
                 "@type": "AggregateOffer",
                 "lowPrice": _quantized_amount(self.low_amount, self.currency),
-                "highPrice": _quantized_amount(self.high_amount, self.currency),
-                "priceCurrency": self.currency,
             }
+            if self.high_amount is not None:
+                aggregate["highPrice"] = _quantized_amount(
+                    self.high_amount, self.currency
+                )
+            aggregate["priceCurrency"] = self.currency
+            return aggregate
         if self.kind == "discounted":
             if self.sale_amount is None:
                 raise ValueError("A discounted price needs a sale_amount.")

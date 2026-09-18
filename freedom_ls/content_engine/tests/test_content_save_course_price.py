@@ -150,6 +150,39 @@ price:
     assert course.price_high_amount is None
 
 
+@pytest.mark.django_db
+def test_dropping_high_amount_makes_the_range_open_ended(
+    make_temp_file, mock_site_context
+) -> None:
+    closed = """---
+content_type: COURSE
+title: Opening Range Course
+uuid: aaaaaaaa-bbbb-cccc-dddd-000000000020
+price:
+  kind: range
+  low_amount: "1200.00"
+  high_amount: "3000.00"
+  currency: ZAR
+---
+"""
+    open_ended = """---
+content_type: COURSE
+title: Opening Range Course
+uuid: aaaaaaaa-bbbb-cccc-dddd-000000000020
+price:
+  kind: range
+  low_amount: "1200.00"
+  currency: ZAR
+---
+"""
+    _save(make_temp_file, mock_site_context, closed)
+    course = _save(make_temp_file, mock_site_context, open_ended)
+
+    assert course.price_kind == PriceKind.RANGE
+    assert course.price_low_amount == Decimal("1200.00")
+    assert course.price_high_amount is None
+
+
 # ---------------------------------------------------------------------------
 # Absent price: leaves the stored value; `price: null` clears it
 # ---------------------------------------------------------------------------

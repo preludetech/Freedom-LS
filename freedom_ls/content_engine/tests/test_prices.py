@@ -82,10 +82,16 @@ def test_fixed_price_with_low_amount_reports_low_amount_not_used() -> None:
     assert errors == {"low_amount": "low_amount is not used by a fixed price"}
 
 
-def test_range_price_missing_high_amount_reports_high_amount_required() -> None:
+def test_range_price_without_high_amount_is_open_ended_and_valid() -> None:
     errors = price_errors("range", low_amount=Decimal("100"), currency="ZAR")
 
-    assert errors == {"high_amount": "high_amount is required for a range price"}
+    assert errors == {}
+
+
+def test_range_price_missing_low_amount_reports_low_amount_required() -> None:
+    errors = price_errors("range", high_amount=Decimal("100"), currency="ZAR")
+
+    assert errors == {"low_amount": "low_amount is required for a range price"}
 
 
 def test_range_price_with_sale_amount_reports_sale_amount_not_used() -> None:
@@ -345,6 +351,16 @@ def test_range_price_offer_json_ld() -> None:
         "@type": "AggregateOffer",
         "lowPrice": "1200.00",
         "highPrice": "3000.00",
+        "priceCurrency": "ZAR",
+    }
+
+
+def test_open_ended_range_price_offer_json_ld_has_no_high_price() -> None:
+    price = CoursePrice(kind="range", currency="ZAR", low_amount=Decimal("500.000"))
+
+    assert price.offers_json_ld() == {
+        "@type": "AggregateOffer",
+        "lowPrice": "500.00",
         "priceCurrency": "ZAR",
     }
 

@@ -183,13 +183,16 @@ class FixedPrice(BaseModel):
 
 
 class RangePrice(BaseModel):
-    """A low-high span, with no single amount. `kind: "range"`."""
+    """A low-high span, with no single amount. `kind: "range"`.
+
+    Leave out `high_amount` for an open-ended price that reads "From X".
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["range"]
     low_amount: Amount
-    high_amount: Amount
+    high_amount: Amount | None = None
     currency: str | None = None
     tax_note: str | None = Field(None, max_length=100)
 

@@ -61,6 +61,24 @@ price:
     assert item.price.high_amount == Decimal("3000.00")
 
 
+def test_open_ended_range_price_parses_from_frontmatter(make_temp_file) -> None:
+    content = """---
+content_type: COURSE
+title: Open Range Price Course
+price:
+  kind: range
+  low_amount: "500.00"
+  currency: ZAR
+---
+"""
+    temp_file = make_temp_file(".md", content)
+    (item,) = parse_single_file(temp_file)
+
+    assert isinstance(item.price, RangePrice)
+    assert item.price.low_amount == Decimal("500.00")
+    assert item.price.high_amount is None
+
+
 def test_discounted_price_parses_from_frontmatter(make_temp_file) -> None:
     content = """---
 content_type: COURSE

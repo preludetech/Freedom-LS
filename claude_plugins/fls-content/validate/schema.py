@@ -264,8 +264,8 @@ ALLOWED_ACCESS_TYPES: frozenset[str] | None = None
 KIND_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "fixed": (frozenset({"amount"}), frozenset({"currency", "tax_note"})),
     "range": (
-        frozenset({"low_amount", "high_amount"}),
-        frozenset({"currency", "tax_note"}),
+        frozenset({"low_amount"}),
+        frozenset({"high_amount", "currency", "tax_note"}),
     ),
     "discounted": (
         frozenset({"amount", "sale_amount"}),
@@ -401,13 +401,16 @@ class FixedPrice(BaseModel):
 
 
 class RangePrice(BaseModel):
-    """A low-high span, with no single amount. `kind: "range"`."""
+    """A low-high span, with no single amount. `kind: "range"`.
+
+    Leave out `high_amount` for an open-ended price that reads "From X".
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     kind: Literal["range"]
     low_amount: Amount
-    high_amount: Amount
+    high_amount: Amount | None = None
     currency: str | None = None
     tax_note: str | None = Field(None, max_length=100)
 

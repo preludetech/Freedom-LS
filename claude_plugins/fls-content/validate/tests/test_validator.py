@@ -957,6 +957,20 @@ def test_spec_example_price_frontmatter_validates(tmp_path: Path) -> None:
     )
 
 
+def test_open_ended_range_price_validates(tmp_path: Path) -> None:
+    """A range with a low amount and no high amount reads as "From X"."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            'price:\n  kind: range\n  low_amount: "500.00"\n  currency: ZAR\n',
+        )
+    )
+    assert result.returncode == 0, (
+        f"An open-ended range price should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
 def test_price_unknown_currency_fails(tmp_path: Path) -> None:
     """An unrecognised currency code is rejected."""
     result = run_validator(

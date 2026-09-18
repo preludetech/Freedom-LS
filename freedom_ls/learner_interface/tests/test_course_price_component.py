@@ -32,6 +32,7 @@ RANGE = CoursePrice(
     low_amount=Decimal("1200.00"),
     high_amount=Decimal("3000.00"),
 )
+OPEN_RANGE = CoursePrice(kind="range", currency="ZAR", low_amount=Decimal("500.00"))
 DISCOUNTED = CoursePrice(
     kind="discounted",
     currency="ZAR",
@@ -85,6 +86,17 @@ class TestRangePrice:
         result = _render('<c-course-price :price="price" variant="full" />', RANGE)
         assert RANGE.formatted_low_amount in result
         assert RANGE.formatted_high_amount in result
+
+
+class TestOpenEndedRangePrice:
+    def test_compact_shows_from_low_amount(self) -> None:
+        result = _render('<c-course-price :price="price" />', OPEN_RANGE)
+        assert f"From {OPEN_RANGE.formatted_low_amount}" in result
+
+    def test_full_shows_from_low_amount_with_no_upper_end(self) -> None:
+        result = _render('<c-course-price :price="price" variant="full" />', OPEN_RANGE)
+        assert f"From {OPEN_RANGE.formatted_low_amount}" in result
+        assert "\N{EN DASH}" not in result
 
 
 class TestDiscountedPrice:
