@@ -8,6 +8,8 @@ class ContentEngineConfig(AppSettings):
     ADMONITION_TYPES: dict[str, dict[str, str]]
     COTTON_SNAKE_CASED_NAMES: bool
     CONTENT_MEDIA_STORAGE_ALIAS: str
+    DEFAULT_CURRENCY: str | None
+    PRICE_LOCALE: str | None
 
     declared_settings = {
         "COURSE_ACCESS_CONFIG_VALIDATOR": Setting(default=None),
@@ -18,6 +20,8 @@ class ContentEngineConfig(AppSettings):
         # here purely so it appears in the ownership map for this app.
         "COTTON_SNAKE_CASED_NAMES": Setting(default=False),
         "CONTENT_MEDIA_STORAGE_ALIAS": Setting(default="course_media"),
+        "DEFAULT_CURRENCY": Setting(default=None),
+        "PRICE_LOCALE": Setting(default=None),
     }
 
 
