@@ -165,5 +165,12 @@
         }
             </style>
         {% endif %}
+
+        {% comment %}
+        Covers every page with no #interface-main (e.g. the allauth pages
+        after sign-up). See partials/google_analytics_events.html for why the
+        partial is included at both this point and inside #interface-main.
+        {% endcomment %}
+        {% include "partials/google_analytics_events.html" %}
     </body>
 </html>
