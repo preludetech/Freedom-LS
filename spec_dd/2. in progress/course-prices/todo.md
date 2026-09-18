@@ -51,8 +51,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: course page stats-strip Price value overflows its fixed-width cell into the Enrolment cell (TDD — failing test first, then fix)
-- [ ] (user) Decide how the course page's Price stat cell should hold long prices (let the cell grow past w-48, or let the price wrap), then fix the overflow
+- [x] (user + cmd) Fix QA bug: course page stats-strip Price value overflows its fixed-width cell into the Enrolment cell (TDD — failing test first, then fix)
+- [x] (user) Decide how the course page's Price stat cell should hold long prices (let the cell grow past w-48, or let the price wrap), then fix the overflow
+- [ ] (cmd) Re-run `/fls-dev:do_qa` to cover the open-ended range price ("From X"), the new pricing demo courses, and the widened stats strip
 
 ## 10. Product documentation
 
