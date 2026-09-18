@@ -59,7 +59,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 11. Upgrade notes
 
-- [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
+- [x] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
 - [ ] (user) Review the upgrade notes
 
 ## 12. Author plugin sync
@@ -68,7 +68,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
