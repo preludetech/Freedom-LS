@@ -14,10 +14,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from babel.numbers import format_currency, get_currency_precision, list_currencies
 
 from freedom_ls.form_engine.typed_answers import decimal_places_used
+
+if TYPE_CHECKING:
+    from freedom_ls.content_engine.models import PriceKind
 
 # kind -> (fields the kind requires, fields it may also carry)
 KIND_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
@@ -153,19 +157,12 @@ def _quantized_amount(amount: Decimal, currency: str) -> str:
 class CoursePrice:
     """The price a course shows today: currency resolved, sale expiry applied.
 
-    ``kind`` holds one of the ``KIND_FIELDS`` keys ("fixed", "range",
-    "discounted", "on_request"). It is typed ``str`` rather than the
-    ``PriceKind`` model enum: ``PriceKind`` is a ``str`` subclass, so a
-    ``PriceKind`` member satisfies this field, and this module must not
-    import ``freedom_ls.content_engine.models`` -- ``courses.py`` calls into
-    this module, so importing back would cycle.
-
     ``CoursePrice`` never decides whether a sale has expired -- it trusts
     the ``kind`` and amounts it is given. ``Course.current_price()`` is
     where an expired discount is turned into a fixed price.
     """
 
-    kind: str
+    kind: PriceKind
     currency: str = ""
     amount: Decimal | None = None
     sale_amount: Decimal | None = None

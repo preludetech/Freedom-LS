@@ -141,6 +141,21 @@ class CourseAdmin(SiteAwareModelAdmin):
                 )
             },
         ),
+        (
+            "Price",
+            {
+                "fields": (
+                    "price_kind",
+                    "price_amount",
+                    "price_sale_amount",
+                    "price_sale_ends_on",
+                    "price_low_amount",
+                    "price_high_amount",
+                    "price_currency",
+                    "price_tax_note",
+                )
+            },
+        ),
         ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
     )
 

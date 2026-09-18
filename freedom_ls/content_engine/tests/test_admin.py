@@ -1,12 +1,14 @@
-"""Content admins are locked down against deletion."""
+"""Content admins are locked down against deletion, plus the Course price fieldset."""
 
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 
 import pytest
 
 from django.contrib import admin
+from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.content_engine.admin import (
@@ -145,3 +147,160 @@ class TestTheLockdownReachesTheAdminUi:
         assert "Data literacy" in html
         assert not re.search(r'<select[^>]*name="dashboard_category"', html)
         assert not re.search(r'<select[^>]*name="categories"', html)
+
+
+# ---------------------------------------------------------------------------
+# The Course "Price" fieldset
+# ---------------------------------------------------------------------------
+
+
+def _course_change_url(course: Course) -> str:
+    return reverse("admin:freedom_ls_content_engine_course_change", args=[course.pk])
+
+
+def _course_change_payload(response, **overrides: str) -> dict[str, str]:
+    """The admin change form's own values, ready to post straight back.
+
+    ``learning_outcomes``, ``tags`` and ``meta`` are overridden to a blank
+    value rather than read from ``form.initial``: their initial value is a
+    Python list/dict, and stringifying it (e.g. ``"[]"``) is not what the
+    array/JSON widgets expect back as posted data.
+    """
+    form = response.context["adminform"].form
+    payload = {
+        name: "" if form.initial.get(name) is None else str(form.initial.get(name, ""))
+        for name in form.fields
+    }
+    payload["learning_outcomes"] = ""
+    payload["tags"] = ""
+    payload["meta"] = ""
+    for inline in response.context["inline_admin_formsets"]:
+        prefix = inline.formset.prefix
+        payload[f"{prefix}-TOTAL_FORMS"] = "0"
+        payload[f"{prefix}-INITIAL_FORMS"] = "0"
+        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
+        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
+    payload.update(overrides)
+    return payload
+
+
+@pytest.mark.django_db
+def test_the_admin_saves_a_fixed_price(staff_client) -> None:
+    course = CourseFactory()
+    url = _course_change_url(course)
+
+    staff_client.post(
+        url,
+        _course_change_payload(
+            staff_client.get(url),
+            price_kind="fixed",
+            price_amount="1499.00",
+            price_currency="ZAR",
+        ),
+    )
+
+    course.refresh_from_db()
+    assert course.price_kind == "fixed"
+    assert course.price_amount == Decimal("1499.000")
+    assert course.price_currency == "ZAR"
+
+
+@pytest.mark.django_db
+def test_the_admin_saves_a_range_price(staff_client) -> None:
+    course = CourseFactory()
+    url = _course_change_url(course)
+
+    staff_client.post(
+        url,
+        _course_change_payload(
+            staff_client.get(url),
+            price_kind="range",
+            price_low_amount="1200.00",
+            price_high_amount="3000.00",
+            price_currency="ZAR",
+        ),
+    )
+
+    course.refresh_from_db()
+    assert course.price_kind == "range"
+    assert course.price_low_amount == Decimal("1200.000")
+    assert course.price_high_amount == Decimal("3000.000")
+
+
+@pytest.mark.django_db
+def test_the_admin_saves_a_discounted_price(staff_client) -> None:
+    course = CourseFactory()
+    url = _course_change_url(course)
+
+    staff_client.post(
+        url,
+        _course_change_payload(
+            staff_client.get(url),
+            price_kind="discounted",
+            price_amount="1499.00",
+            price_sale_amount="999.00",
+            price_currency="ZAR",
+        ),
+    )
+
+    course.refresh_from_db()
+    assert course.price_kind == "discounted"
+    assert course.price_amount == Decimal("1499.000")
+    assert course.price_sale_amount == Decimal("999.000")
+
+
+@pytest.mark.django_db
+def test_the_admin_saves_an_on_request_price(staff_client) -> None:
+    course = CourseFactory()
+    url = _course_change_url(course)
+
+    staff_client.post(
+        url,
+        _course_change_payload(staff_client.get(url), price_kind="on_request"),
+    )
+
+    course.refresh_from_db()
+    assert course.price_kind == "on_request"
+
+
+@pytest.mark.django_db
+def test_an_invalid_price_rerenders_with_the_error_on_its_own_field(
+    staff_client,
+) -> None:
+    course = CourseFactory()
+    url = _course_change_url(course)
+
+    response = staff_client.post(
+        url,
+        _course_change_payload(
+            staff_client.get(url),
+            price_kind="fixed",
+            price_amount="0",
+            price_currency="ZAR",
+        ),
+    )
+
+    course.refresh_from_db()
+    assert response.status_code == 200
+    assert "price_amount" in response.context["adminform"].form.errors
+    assert course.price_kind == ""
+
+
+@pytest.mark.django_db
+def test_a_blank_currency_is_saved_as_the_default_currency(staff_client) -> None:
+    course = CourseFactory()
+    url = _course_change_url(course)
+
+    with override_settings(DEFAULT_CURRENCY="ZAR"):
+        staff_client.post(
+            url,
+            _course_change_payload(
+                staff_client.get(url),
+                price_kind="fixed",
+                price_amount="1499.00",
+                price_currency="",
+            ),
+        )
+
+    course.refresh_from_db()
+    assert course.price_currency == "ZAR"

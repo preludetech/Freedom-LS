@@ -5,6 +5,7 @@ from .courses import (
     CoursePart,
     CourseVisibility,
     DifficultyLevel,
+    PriceKind,
 )
 from .files import File, file_upload_handler
 from .topics import Activity, Topic
@@ -18,6 +19,7 @@ __all__ = [
     "CourseVisibility",
     "DifficultyLevel",
     "File",
+    "PriceKind",
     "Topic",
     "file_upload_handler",
 ]

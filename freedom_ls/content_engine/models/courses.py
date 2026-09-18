@@ -1,7 +1,14 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
 from django.contrib.postgres.fields import ArrayField
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import F, Q
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.content_base.models import MarkdownContent, TitledContent
@@ -9,6 +16,9 @@ from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 from ..course_accent import PALETTE
+
+if TYPE_CHECKING:
+    from freedom_ls.content_engine.prices import CoursePrice
 
 
 class DifficultyLevel(models.TextChoices):
@@ -20,12 +30,78 @@ class DifficultyLevel(models.TextChoices):
     ALL_LEVELS = "all_levels", _("All levels")
 
 
+class PriceKind(models.TextChoices):
+    """Which of the four shapes a course's price takes."""
+
+    FIXED = "fixed", _("Fixed")
+    RANGE = "range", _("Range")
+    DISCOUNTED = "discounted", _("Discounted")
+    ON_REQUEST = "on_request", _("On request")
+
+
 class CourseVisibility(models.TextChoices):
     """Course visibility lifecycle state."""
 
     PUBLISHED = "published", _("Published")
     COMING_SOON = "coming_soon", _("Coming soon")
     HIDDEN = "hidden", _("Hidden")
+
+
+def _course_price_constraint() -> models.CheckConstraint:
+    """One kind's fields set and in order, every other price column empty.
+
+    Each kind gets its own ``Q`` fragment -- the fields it uses, ``> 0`` and
+    correctly ordered, with every other price column null or blank -- and the
+    kinds are OR-ed together alongside a branch for "no price at all". This
+    is the DB-level mirror of ``price_errors`` in ``prices.py``.
+    """
+    no_amounts = Q(
+        price_amount__isnull=True,
+        price_sale_amount__isnull=True,
+        price_low_amount__isnull=True,
+        price_high_amount__isnull=True,
+        price_sale_ends_on__isnull=True,
+    )
+    no_currency_or_tax_note = Q(price_currency="", price_tax_note="")
+    has_currency = ~Q(price_currency="")
+
+    no_price = Q(price_kind="") & no_amounts & no_currency_or_tax_note
+    on_request = (
+        Q(price_kind=PriceKind.ON_REQUEST) & no_amounts & no_currency_or_tax_note
+    )
+    fixed = (
+        Q(price_kind=PriceKind.FIXED)
+        & Q(price_amount__gt=0)
+        & Q(
+            price_sale_amount__isnull=True,
+            price_low_amount__isnull=True,
+            price_high_amount__isnull=True,
+            price_sale_ends_on__isnull=True,
+        )
+        & has_currency
+    )
+    price_range = (
+        Q(price_kind=PriceKind.RANGE)
+        & Q(price_low_amount__gt=0, price_high_amount__gt=0)
+        & Q(price_low_amount__lt=F("price_high_amount"))
+        & Q(
+            price_amount__isnull=True,
+            price_sale_amount__isnull=True,
+            price_sale_ends_on__isnull=True,
+        )
+        & has_currency
+    )
+    discounted = (
+        Q(price_kind=PriceKind.DISCOUNTED)
+        & Q(price_amount__gt=0, price_sale_amount__gt=0)
+        & Q(price_sale_amount__lt=F("price_amount"))
+        & Q(price_low_amount__isnull=True, price_high_amount__isnull=True)
+        & has_currency
+    )
+    return models.CheckConstraint(
+        condition=no_price | on_request | fixed | price_range | discounted,
+        name="course_price_fields_match_kind",
+    )
 
 
 class CourseCategory(TitledContent):
@@ -134,6 +210,28 @@ class Course(MarkdownContent, TitledContent):
     )
     table_of_contents_in_development = models.BooleanField(default=False)
     estimated_duration = models.DurationField(null=True, blank=True)
+    price_kind = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        choices=PriceKind.choices,
+        help_text=_("Empty means the course has no price."),
+    )
+    price_amount = models.DecimalField(
+        max_digits=12, decimal_places=3, null=True, blank=True
+    )
+    price_sale_amount = models.DecimalField(
+        max_digits=12, decimal_places=3, null=True, blank=True
+    )
+    price_sale_ends_on = models.DateField(null=True, blank=True)
+    price_low_amount = models.DecimalField(
+        max_digits=12, decimal_places=3, null=True, blank=True
+    )
+    price_high_amount = models.DecimalField(
+        max_digits=12, decimal_places=3, null=True, blank=True
+    )
+    price_currency = models.CharField(max_length=3, blank=True, default="")
+    price_tax_note = models.CharField(max_length=100, blank=True, default="")
     items = GenericRelation(
         "ContentCollectionItem",
         content_type_field="collection_type",
@@ -146,7 +244,8 @@ class Course(MarkdownContent, TitledContent):
         constraints = [
             models.UniqueConstraint(
                 fields=["site", "slug"], name="unique_course_slug_per_site"
-            )
+            ),
+            _course_price_constraint(),
         ]
 
     @property
@@ -209,7 +308,87 @@ class Course(MarkdownContent, TitledContent):
 
         validate_course_icon_fields(self.icon, self.icon_fallback)
 
-    def collection_items(self) -> list["ContentCollectionItem"]:
+        # Local import: prices.py must not be imported at module level here,
+        # since it is also imported by schema.py, which this module's callers
+        # load during app setup.
+        from freedom_ls.content_engine.config import config
+        from freedom_ls.content_engine.prices import KIND_FIELDS, price_errors
+
+        if self.price_kind:
+            uses_currency = "currency" in KIND_FIELDS[self.price_kind][1]
+            if uses_currency and not self.price_currency:
+                self.price_currency = config.DEFAULT_CURRENCY or ""
+            errors = price_errors(
+                self.price_kind,
+                amount=self.price_amount,
+                sale_amount=self.price_sale_amount,
+                sale_ends_on=self.price_sale_ends_on,
+                low_amount=self.price_low_amount,
+                high_amount=self.price_high_amount,
+                currency=self.price_currency,
+                tax_note=self.price_tax_note,
+            )
+            if uses_currency and not self.price_currency:
+                errors.setdefault(
+                    "currency", "Set a currency, or set DEFAULT_CURRENCY."
+                )
+            if errors:
+                raise ValidationError(
+                    {f"price_{field}": message for field, message in errors.items()}
+                )
+        elif any(
+            (
+                self.price_amount,
+                self.price_sale_amount,
+                self.price_sale_ends_on,
+                self.price_low_amount,
+                self.price_high_amount,
+                self.price_currency,
+                self.price_tax_note,
+            )
+        ):
+            raise ValidationError(
+                {"price_kind": "Choose a price kind, or clear the price fields."}
+            )
+
+    def current_price(self) -> CoursePrice | None:
+        """The price this course shows today, with an expired sale turned fixed.
+
+        Reads only this instance's own columns, so it runs no queries. See
+        ``CoursePrice`` in ``prices.py`` for why it, not this method, is what
+        the component and the JSON-LD both render from.
+        """
+        # Local import: see the note above clean() for why prices.py cannot be
+        # imported at module level here.
+        from freedom_ls.content_engine.prices import CoursePrice
+
+        if not self.price_kind:
+            return None
+        kind = PriceKind(self.price_kind)
+        sale_over = (
+            kind == PriceKind.DISCOUNTED
+            and self.price_sale_ends_on is not None
+            and timezone.localdate() > self.price_sale_ends_on
+        )
+        if sale_over:
+            return CoursePrice(
+                kind=PriceKind.FIXED,
+                currency=self.price_currency,
+                amount=self.price_amount,
+                tax_note=self.price_tax_note,
+            )
+        return CoursePrice(
+            kind=kind,
+            currency=self.price_currency,
+            amount=self.price_amount,
+            sale_amount=self.price_sale_amount,
+            sale_ends_on=self.price_sale_ends_on,
+            low_amount=self.price_low_amount,
+            high_amount=self.price_high_amount,
+            tax_note=self.price_tax_note,
+        )
+
+    def collection_items(self) -> list[ContentCollectionItem]:
         """The ordered rows placing this course's children.
 
         Memoized per instance for the same reason children() is -- see its
@@ -220,7 +399,7 @@ class Course(MarkdownContent, TitledContent):
             self._collection_items_cache = list(self.items.prefetch_related("child"))
         return self._collection_items_cache
 
-    def collection_items_flat(self) -> list["ContentCollectionItem"]:
+    def collection_items_flat(self) -> list[ContentCollectionItem]:
         """Get a flattened list of all collection items in the course.
 
         Includes CourseParts' own rows and their nested rows in order.
@@ -232,7 +411,7 @@ class Course(MarkdownContent, TitledContent):
                 flattened.extend(item.child.collection_items())
         return flattened
 
-    def viewable_collection_items(self) -> list["ContentCollectionItem"]:
+    def viewable_collection_items(self) -> list[ContentCollectionItem]:
         """Return ordered list of all viewable collection items (no CoursePart sentinels)."""
         return [
             item
@@ -295,7 +474,7 @@ class CoursePart(TitledContent):
             )
         ]
 
-    def collection_items(self) -> list["ContentCollectionItem"]:
+    def collection_items(self) -> list[ContentCollectionItem]:
         """The ordered rows placing this part's children.
 
         Memoized per instance for the same reason children() is -- see its
