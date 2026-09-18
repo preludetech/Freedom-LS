@@ -1,0 +1,98 @@
+- generic [active] [ref=f18e1]:
+  - banner [ref=f18e2]:
+    - link [ref=f18e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f18e4]
+      - heading "FirstClass" [level=1] [ref=f18e5]
+    - navigation [ref=f18e6]:
+      - generic [ref=f18e7]:
+        - link "Login" [ref=f18e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f18e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f18e10]:
+    - generic [ref=f18e11]:
+      - heading "Confirm Email Address" [level=1] [ref=f18e12]
+      - paragraph [ref=f18e13]:
+        - text: Please confirm that
+        - link "qa-signup-1@email.com" [ref=f18e14] [cursor=pointer]:
+          - /url: mailto:qa-signup-1@email.com
+        - text: is an email address for user qa-signup-1@email.com.
+      - button "Confirm" [ref=f18e16] [cursor=pointer]
+  - contentinfo [ref=f18e17]:
+    - generic [ref=f18e18]:
+      - paragraph [ref=f18e19]: © 2026 FirstClass
+      - navigation "Legal" [ref=f18e20]:
+        - link "Terms and Conditions" [ref=f18e21] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f18e22] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f18e23] [cursor=pointer]: google-analytics-setup
+  - list [ref=f18e25]:
+    - listitem [ref=f18e26]:
+      - link "Hide »" [ref=f18e27] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e28]:
+      - link "Toggle Theme" [ref=f18e29] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e32]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e33] [cursor=pointer]
+      - link "History /accounts/confirm-email/NzA:1x7b2C:wJEuUb9yGJzdm6HAP6hiLlCtoPhGqZ4n-j--61--kOk/" [ref=f18e34] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e35]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e36] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f18e37] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e38]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e39] [cursor=pointer]
+      - 'link "Time CPU: 43.51ms (40.79ms)" [ref=f18e40] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f18e41]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e42] [cursor=pointer]
+      - link "Settings" [ref=f18e43] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e44]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e45] [cursor=pointer]
+      - link "Headers" [ref=f18e46] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e47]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e48] [cursor=pointer]
+      - link "Request ConfirmEmailView" [ref=f18e49] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e50]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e51] [cursor=pointer]
+      - link "SQL 7 queries in 9.37ms" [ref=f18e52] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e53]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e54] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f18e55] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e56]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e57] [cursor=pointer]
+      - link "Templates account/email_confirm.html" [ref=f18e58] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e59]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e60] [cursor=pointer]
+      - link "Alerts" [ref=f18e61] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e62]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e63] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f18e64] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e65]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e66] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f18e67] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e68]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f18e69] [cursor=pointer]
+      - link "Community" [ref=f18e70] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f18e71]:
+      - checkbox "Enable for next and successive requests" [ref=f18e72] [cursor=pointer]
+      - generic [ref=f18e73]: Intercept redirects
+    - listitem [ref=f18e74]:
+      - checkbox "Enable for next and successive requests" [ref=f18e75] [cursor=pointer]
+      - generic [ref=f18e76]: Profiling

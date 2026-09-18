@@ -1,0 +1,134 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - link [ref=f13e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f13e4]
+      - heading "FirstClass" [level=1] [ref=f13e5]
+    - navigation [ref=f13e6]:
+      - generic [ref=f13e7]:
+        - link "Login" [ref=f13e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f13e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f13e10]:
+    - generic [ref=f13e11]:
+      - heading "Sign Up" [level=1] [ref=f13e12]
+      - paragraph [ref=f13e13]:
+        - text: Already have an account? Then please
+        - link "sign in" [ref=f13e14] [cursor=pointer]:
+          - /url: /accounts/login/
+        - text: .
+      - generic [ref=f13e15]:
+        - paragraph [ref=f13e16]:
+          - generic [ref=f13e17]: "Email:"
+          - textbox "Email:" [ref=f13e18]:
+            - /placeholder: Email address
+            - text: qa-signup-1@email.com
+        - paragraph [ref=f13e19]:
+          - generic [ref=f13e20]: "First name:"
+          - textbox "First name:" [ref=f13e21]: Qa
+        - paragraph [ref=f13e22]:
+          - generic [ref=f13e23]: "Last name:"
+          - textbox "Last name:" [ref=f13e24]: Signup
+        - paragraph:
+          - textbox [aria-hidden] [ref=f13e25]
+        - paragraph [ref=f13e26]:
+          - generic [ref=f13e27]: "Password:"
+          - textbox "Password:" [ref=f13e28]:
+            - /placeholder: Password
+        - paragraph [ref=f13e29]: You must type the same password each time.
+        - paragraph [ref=f13e30]:
+          - generic [ref=f13e31]: "Password (again):"
+          - textbox "Password (again):" [invalid] [ref=f13e32]:
+            - /placeholder: Password (again)
+        - generic [ref=f13e33]:
+          - generic [ref=f13e34]:
+            - checkbox "I accept the Terms and Conditions" [checked] [ref=f13e35] [cursor=pointer]
+            - generic [ref=f13e36]:
+              - text: I accept the
+              - link "Terms and Conditions" [ref=f13e37] [cursor=pointer]:
+                - /url: /accounts/legal/terms/
+          - generic [ref=f13e38]:
+            - checkbox "I accept the Privacy Policy" [checked] [ref=f13e39] [cursor=pointer]
+            - generic [ref=f13e40]:
+              - text: I accept the
+              - link "Privacy Policy" [ref=f13e41] [cursor=pointer]:
+                - /url: /accounts/legal/privacy/
+        - button "Sign Up" [ref=f13e42] [cursor=pointer]
+  - contentinfo [ref=f13e43]:
+    - generic [ref=f13e44]:
+      - paragraph [ref=f13e45]: © 2026 FirstClass
+      - navigation "Legal" [ref=f13e46]:
+        - link "Terms and Conditions" [ref=f13e47] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f13e48] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f13e49] [cursor=pointer]: google-analytics-setup
+  - list [ref=f13e51]:
+    - listitem [ref=f13e52]:
+      - link "Hide »" [ref=f13e53] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e54]:
+      - link "Toggle Theme" [ref=f13e55] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e59] [cursor=pointer]
+      - link "History /accounts/signup/" [ref=f13e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e62] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f13e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e65] [cursor=pointer]
+      - 'link "Time CPU: 104.89ms (108.98ms)" [ref=f13e66] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f13e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e68] [cursor=pointer]
+      - link "Settings" [ref=f13e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e71] [cursor=pointer]
+      - link "Headers" [ref=f13e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e74] [cursor=pointer]
+      - link "Request SignupView" [ref=f13e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e77] [cursor=pointer]
+      - link "SQL 7 queries in 12.83ms" [ref=f13e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e79]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e80] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f13e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e82]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e83] [cursor=pointer]
+      - link "Templates account/signup.html" [ref=f13e84] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e85]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e86] [cursor=pointer]
+      - link "Alerts" [ref=f13e87] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e88]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e89] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f13e90] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e91]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e92] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f13e93] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e94]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f13e95] [cursor=pointer]
+      - link "Community" [ref=f13e96] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f13e97]:
+      - checkbox "Enable for next and successive requests" [ref=f13e98] [cursor=pointer]
+      - generic [ref=f13e99]: Intercept redirects
+    - listitem [ref=f13e100]:
+      - checkbox "Enable for next and successive requests" [ref=f13e101] [cursor=pointer]
+      - generic [ref=f13e102]: Profiling
