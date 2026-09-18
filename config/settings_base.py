@@ -478,12 +478,33 @@ WEBHOOK_EVENT_TYPES = FLS_WEBHOOK_EVENT_TYPES
 
 
 # Content Security Policy (report-only mode)
+# googletagmanager.com and *.google-analytics.com/*.analytics.google.com are GA4's
+# loader and collection hosts; *.i.posthog.com covers both PostHog's regional
+# ingestion host (e.g. us.i.posthog.com) and the assets host its snippet derives
+# from that (e.g. us-assets.i.posthog.com). A reverse-proxied PostHog needs its
+# own host added by the deployment that proxies it.
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
-    "script-src": [CSP.SELF, CSP.UNSAFE_INLINE],
+    "script-src": [
+        CSP.SELF,
+        CSP.UNSAFE_INLINE,
+        "https://www.googletagmanager.com",
+        "https://*.i.posthog.com",
+    ],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
-    "img-src": [CSP.SELF, "data:"],
-    "connect-src": [CSP.SELF],
+    "img-src": [
+        CSP.SELF,
+        "data:",
+        "https://*.google-analytics.com",
+        "https://www.googletagmanager.com",
+    ],
+    "connect-src": [
+        CSP.SELF,
+        "https://*.google-analytics.com",
+        "https://*.analytics.google.com",
+        "https://www.googletagmanager.com",
+        "https://*.i.posthog.com",
+    ],
     "frame-src": [
         CSP.SELF,
         "https://www.youtube.com",

@@ -12,3 +12,29 @@ def test_csp_report_only_header_is_present(
     header = response.get("Content-Security-Policy-Report-Only", "")
     assert header, "Content-Security-Policy-Report-Only header is missing"
     assert "default-src 'self'" in header
+
+
+@pytest.mark.django_db
+def test_csp_report_only_header_names_ga4_and_posthog_hosts(
+    client: Client, mock_site_context: None
+) -> None:
+    """The report-only policy allows the GA4 and PostHog hosts each snippet needs."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+
+    directives = dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+    assert "https://www.googletagmanager.com" in directives["script-src"]
+    assert "https://*.i.posthog.com" in directives["script-src"]
+
+    assert "https://*.google-analytics.com" in directives["img-src"]
+    assert "https://www.googletagmanager.com" in directives["img-src"]
+
+    assert "https://*.google-analytics.com" in directives["connect-src"]
+    assert "https://*.analytics.google.com" in directives["connect-src"]
+    assert "https://www.googletagmanager.com" in directives["connect-src"]
+    assert "https://*.i.posthog.com" in directives["connect-src"]
