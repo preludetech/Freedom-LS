@@ -26,7 +26,9 @@
     Pass stat_price instead of stat_value to render a <c-course-price> in the
     value slot rather than plain text.{% endcomment %}
     {% partialdef stat-card %}
-        <div class="flex w-48 items-center gap-3 border-l border-t border-white/20 px-5 py-4">
+        {% comment %}The price cell grows past w-48 because a discounted price
+        (struck original + sale amount) is wider than the other stats.{% endcomment %}
+        <div class="flex {% if stat_price %} min-w-48 {% else %} w-48 {% endif %} items-center gap-3 border-l border-t border-white/20 px-5 py-4"{% if stat_price %} data-testid="price-stat"{% endif %}>
             <c-icon :name="stat_icon" class="size-5 shrink-0 opacity-80" />
             <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-wider opacity-70 text-white">
@@ -90,7 +92,8 @@
 
                     {% comment %}Stats strip — one glass surface over the hero gradient,
                     sized to its content (not full width). Each cell is a fixed equal
-                    width; the max-width caps the row at 3 cells so a 4th wraps. Internal
+                    width, except Price, which grows to fit; the max-width caps the row
+                    at 3 cells so a 4th wraps. Internal
                     dividers come from each cell's top/left border; the inner row is
                     nudged -1px so the outer edges tuck under the rounded border.
                     Render each stat only when present.{% endcomment %}
