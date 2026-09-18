@@ -223,3 +223,19 @@ price:
 
     with pytest.raises(ValueError, match="more decimal places"):
         parse_single_file(temp_file)
+
+
+def test_amount_too_large_for_the_column_fails_validation(make_temp_file) -> None:
+    content = """---
+content_type: COURSE
+title: Too Large Course
+price:
+  kind: fixed
+  amount: "1000000000"
+  currency: IDR
+---
+"""
+    temp_file = make_temp_file(".md", content)
+
+    with pytest.raises(ValueError, match="amount is too large"):
+        parse_single_file(temp_file)

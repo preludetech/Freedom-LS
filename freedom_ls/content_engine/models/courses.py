@@ -336,16 +336,19 @@ class Course(MarkdownContent, TitledContent):
                 raise ValidationError(
                     {f"price_{field}": message for field, message in errors.items()}
                 )
-        elif any(
-            (
-                self.price_amount,
-                self.price_sale_amount,
-                self.price_sale_ends_on,
-                self.price_low_amount,
-                self.price_high_amount,
-                self.price_currency,
-                self.price_tax_note,
+        elif (
+            any(
+                value is not None
+                for value in (
+                    self.price_amount,
+                    self.price_sale_amount,
+                    self.price_sale_ends_on,
+                    self.price_low_amount,
+                    self.price_high_amount,
+                )
             )
+            or self.price_currency
+            or self.price_tax_note
         ):
             raise ValidationError(
                 {"price_kind": "Choose a price kind, or clear the price fields."}

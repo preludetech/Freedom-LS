@@ -39,6 +39,11 @@ KIND_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
 
 _AMOUNT_FIELDS = ("amount", "sale_amount", "low_amount", "high_amount")
 
+# Mirror the Course price amount columns, so an amount that passes these rules
+# is always stored exactly as written.
+AMOUNT_MAX_DIGITS = 12
+AMOUNT_DECIMAL_PLACES = 3
+
 
 def price_errors(
     kind: str,
@@ -100,6 +105,15 @@ def price_errors(
             continue
         if value <= 0:
             errors.setdefault(field, f"{field} must be greater than zero.")
+            continue
+        if value >= Decimal(10) ** (AMOUNT_MAX_DIGITS - AMOUNT_DECIMAL_PLACES):
+            errors.setdefault(field, f"{field} is too large.")
+            continue
+        if decimal_places_used(value) > AMOUNT_DECIMAL_PLACES:
+            errors.setdefault(
+                field,
+                f"{field} can have at most {AMOUNT_DECIMAL_PLACES} decimal places.",
+            )
             continue
         finite_amounts[field] = value
         if currency_valid and decimal_places_used(value) > get_currency_precision(

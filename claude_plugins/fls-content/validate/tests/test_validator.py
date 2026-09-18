@@ -981,6 +981,28 @@ def test_price_too_many_decimal_places_with_explicit_currency_fails(
     assert_validator_fails(result, "more decimal places")
 
 
+def test_price_amount_too_large_for_the_column_fails(tmp_path: Path) -> None:
+    """The amount column holds at most nine digits before the decimal point."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            'price:\n  kind: fixed\n  amount: "1000000000"\n  currency: IDR\n',
+        )
+    )
+    assert_validator_fails(result, "amount is too large")
+
+
+def test_price_more_decimal_places_than_the_column_fails(tmp_path: Path) -> None:
+    """CLF allows four decimal places, but the amount column stores only three."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            'price:\n  kind: fixed\n  amount: "0.1234"\n  currency: CLF\n',
+        )
+    )
+    assert_validator_fails(result, "at most 3 decimal places")
+
+
 def test_price_sale_not_below_original_fails(tmp_path: Path) -> None:
     """A sale_amount that is not less than amount is an authoring mistake."""
     result = run_validator(

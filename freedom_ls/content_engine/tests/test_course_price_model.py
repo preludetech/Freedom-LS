@@ -210,6 +210,19 @@ def test_clean_errors_when_price_fields_set_without_a_kind(mock_site_context) ->
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("field_name", ["price_amount", "price_low_amount"])
+def test_clean_errors_when_a_zero_amount_is_set_without_a_kind(
+    mock_site_context, field_name: str
+) -> None:
+    course = CourseFactory.build(price_kind="", **{field_name: Decimal("0")})
+
+    with pytest.raises(ValidationError) as excinfo:
+        course.clean()
+
+    assert "price_kind" in excinfo.value.message_dict
+
+
+@pytest.mark.django_db
 def test_clean_passes_for_a_course_with_no_price(mock_site_context) -> None:
     course = CourseFactory.build()
 

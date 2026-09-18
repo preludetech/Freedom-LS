@@ -7,9 +7,13 @@ from decimal import Decimal
 
 import pytest
 
+from django.db import models
 from django.test import override_settings
 
+from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.prices import (
+    AMOUNT_DECIMAL_PLACES,
+    AMOUNT_MAX_DIGITS,
     KIND_FIELDS,
     CoursePrice,
     price_errors,
@@ -151,6 +155,37 @@ def test_nan_amount_is_rejected_as_not_finite() -> None:
     errors = price_errors("fixed", amount=Decimal("NaN"), currency="ZAR")
 
     assert errors == {"amount": "amount must be a finite number."}
+
+
+def test_amount_too_large_for_the_column_is_rejected() -> None:
+    errors = price_errors("fixed", amount=Decimal("1000000000"), currency="IDR")
+
+    assert errors == {"amount": "amount is too large."}
+
+
+def test_largest_amount_the_column_holds_is_accepted() -> None:
+    errors = price_errors("fixed", amount=Decimal("999999999.999"), currency="KWD")
+
+    assert errors == {}
+
+
+def test_amount_with_more_decimal_places_than_the_column_is_rejected() -> None:
+    """CLF allows four decimal places, but the column stores only three."""
+    errors = price_errors("fixed", amount=Decimal("0.1234"), currency="CLF")
+
+    assert errors == {"amount": "amount can have at most 3 decimal places."}
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    ["price_amount", "price_sale_amount", "price_low_amount", "price_high_amount"],
+)
+def test_amount_limits_match_the_course_columns(field_name: str) -> None:
+    field = Course._meta.get_field(field_name)
+
+    assert isinstance(field, models.DecimalField)
+    assert field.max_digits == AMOUNT_MAX_DIGITS
+    assert field.decimal_places == AMOUNT_DECIMAL_PLACES
 
 
 # price_errors: ordering rules, both directions
