@@ -7,6 +7,7 @@ class DeploymentSettings(AppSettings):
     POSTHOG_API_KEY: str | None
     POSTHOG_API_HOST: str
     POSTHOG_UI_HOST: str | None
+    GOOGLE_ANALYTICS_MEASUREMENT_ID: str | None
     SENTRY_DSN: str | None
     SENTRY_ENVIRONMENT: str | None
     SENTRY_RELEASE: str | None
@@ -26,6 +27,9 @@ class DeploymentSettings(AppSettings):
         "POSTHOG_API_KEY": Setting(default=None),
         "POSTHOG_API_HOST": Setting(default="https://us.i.posthog.com"),
         "POSTHOG_UI_HOST": Setting(default=None),
+        # Google Analytics 4: the client-side snippet (context processor +
+        # _base.html) reads this. Unset means nothing loads.
+        "GOOGLE_ANALYTICS_MEASUREMENT_ID": Setting(default=None),
         # Sentry: read by init_sentry() in AppConfig.ready().
         "SENTRY_DSN": Setting(default=None),
         "SENTRY_ENVIRONMENT": Setting(default=None),
