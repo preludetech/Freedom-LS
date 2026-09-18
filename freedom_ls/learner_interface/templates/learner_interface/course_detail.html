@@ -92,13 +92,13 @@
 
                     {% comment %}Stats strip — one glass surface over the hero gradient,
                     sized to its content (not full width). Each cell is a fixed equal
-                    width, except Price, which grows to fit; the max-width caps the row
-                    at 3 cells so a 4th wraps. Internal
+                    width, except Price, which grows to fit; the max-width leaves room for
+                    3 cells including a wider Price cell, so a 4th wraps. Internal
                     dividers come from each cell's top/left border; the inner row is
                     nudged -1px so the outer edges tuck under the rounded border.
                     Render each stat only when present.{% endcomment %}
                     <div class="mt-6 w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/20 backdrop-blur-md">
-                        <div class="flex max-w-[36.5rem] flex-wrap -mt-px -ml-px">
+                        <div class="flex max-w-[41rem] flex-wrap -mt-px -ml-px">
                             {% if not course.table_of_contents_in_development %}
                                 {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count_label %}
                                     {% partial stat-card %}
