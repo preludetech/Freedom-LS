@@ -26,6 +26,13 @@
 #      date.fromisoformat) rejects bounds that content_save accepts, e.g. `2010-1-1`. Without
 #      this patch the validator PASSES content that content_save rejects. Re-apply on every
 #      re-sync, and re-check the transcription when Django's dateparse changes.
+#   4. Course.price and its rules. KIND_FIELDS and price_errors are a fifth bundled source --
+#      freedom_ls/content_engine/prices.py, not content_engine/schema.py -- copied verbatim
+#      apart from importing list_currencies/get_currency_precision from babel.numbers
+#      directly instead of through that module. _default_currency() is stubbed to always
+#      return "": the standalone validator has no DEFAULT_CURRENCY setting, so an absent
+#      `currency:` skips only the decimal-place half of the rule, same as content_engine's own
+#      copy when that setting is unset. Re-apply on every re-sync.
 """
 Schema for yaml structures like this:
 """
@@ -37,10 +44,12 @@ from datetime import date, time, timedelta
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import Annotated, Any, ClassVar, Literal
 
+from babel.numbers import get_currency_precision, list_currencies
 from pydantic import (
     BaseModel,
+    BeforeValidator,
     ConfigDict,
     Field,
     field_validator,
@@ -250,6 +259,201 @@ class CourseCategories(
 ALLOWED_ACCESS_TYPES: frozenset[str] | None = None
 
 
+# Patch 4: bundled verbatim from freedom_ls/content_engine/prices.py (kind -> the fields it
+# requires, and the fields it may also carry).
+KIND_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
+    "fixed": (frozenset({"amount"}), frozenset({"currency", "tax_note"})),
+    "range": (
+        frozenset({"low_amount", "high_amount"}),
+        frozenset({"currency", "tax_note"}),
+    ),
+    "discounted": (
+        frozenset({"amount", "sale_amount"}),
+        frozenset({"sale_ends_on", "currency", "tax_note"}),
+    ),
+    "on_request": (frozenset(), frozenset()),
+}
+
+_PRICE_AMOUNT_FIELDS = ("amount", "sale_amount", "low_amount", "high_amount")
+
+
+def price_errors(
+    kind: str,
+    *,
+    amount: Decimal | None = None,
+    sale_amount: Decimal | None = None,
+    sale_ends_on: date | None = None,
+    low_amount: Decimal | None = None,
+    high_amount: Decimal | None = None,
+    currency: str = "",
+    tax_note: str = "",
+) -> dict[str, str]:
+    """Patch 4: bundled verbatim from freedom_ls/content_engine/prices.py.
+
+    Every price rule, keyed by the author-facing field name it belongs to.
+    Currency is never required here -- each caller resolves a default
+    currency before calling, and reports a still-missing currency itself.
+    """
+    values: dict[str, object] = {
+        "amount": amount,
+        "sale_amount": sale_amount,
+        "sale_ends_on": sale_ends_on,
+        "low_amount": low_amount,
+        "high_amount": high_amount,
+        "currency": currency,
+        "tax_note": tax_note,
+    }
+    required, optional = KIND_FIELDS[kind]
+    allowed = required | optional
+    errors: dict[str, str] = {}
+
+    for field in required:
+        if values[field] is None:
+            errors.setdefault(field, f"{field} is required for a {kind} price")
+
+    for field, value in values.items():
+        if field in allowed or value in (None, ""):
+            continue
+        errors.setdefault(field, f"{field} is not used by a {kind} price")
+
+    currency_valid = bool(currency) and currency in list_currencies()
+    if currency and not currency_valid:
+        errors.setdefault(
+            "currency", f"{currency!r} is not a currency code Babel recognises."
+        )
+
+    # Collect the amounts that pass finiteness and positivity, so the
+    # ordering rules below never compare against a NaN (which raises) or an
+    # amount already reported invalid.
+    finite_amounts: dict[str, Decimal] = {}
+    for field in _PRICE_AMOUNT_FIELDS:
+        value = values[field]
+        if not isinstance(value, Decimal):
+            continue
+        if not value.is_finite():
+            errors.setdefault(field, f"{field} must be a finite number.")
+            continue
+        if value <= 0:
+            errors.setdefault(field, f"{field} must be greater than zero.")
+            continue
+        finite_amounts[field] = value
+        if currency_valid and decimal_places_used(value) > get_currency_precision(
+            currency
+        ):
+            errors.setdefault(
+                field, f"{field} has more decimal places than {currency} allows."
+            )
+
+    if (
+        "sale_amount" in finite_amounts
+        and "amount" in finite_amounts
+        and finite_amounts["sale_amount"] >= finite_amounts["amount"]
+    ):
+        errors.setdefault("sale_amount", "sale_amount must be less than amount.")
+    if (
+        "low_amount" in finite_amounts
+        and "high_amount" in finite_amounts
+        and finite_amounts["low_amount"] >= finite_amounts["high_amount"]
+    ):
+        errors.setdefault("high_amount", "high_amount must be greater than low_amount.")
+
+    return errors
+
+
+def _require_quoted_amount(value: object) -> object:
+    """Refuse a bare YAML number, so a price amount is never read through float."""
+    if not isinstance(value, str):
+        raise ValueError('write amounts as quoted strings, e.g. "1499.00"')
+    return value
+
+
+Amount = Annotated[Decimal, BeforeValidator(_require_quoted_amount)]
+
+
+class FixedPrice(BaseModel):
+    """A single amount. `kind: "fixed"`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["fixed"]
+    amount: Amount
+    currency: str | None = None
+    tax_note: str | None = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "FixedPrice":
+        _validate_price(self)
+        return self
+
+
+class RangePrice(BaseModel):
+    """A low-high span, with no single amount. `kind: "range"`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["range"]
+    low_amount: Amount
+    high_amount: Amount
+    currency: str | None = None
+    tax_note: str | None = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "RangePrice":
+        _validate_price(self)
+        return self
+
+
+class DiscountedPrice(BaseModel):
+    """An original amount and a sale amount, with an optional sale end date.
+
+    `kind: "discounted"`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["discounted"]
+    amount: Amount
+    sale_amount: Amount
+    sale_ends_on: date | None = None
+    currency: str | None = None
+    tax_note: str | None = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "DiscountedPrice":
+        _validate_price(self)
+        return self
+
+
+class OnRequestPrice(BaseModel):
+    """No amount is published; a visitor is told to ask. `kind: "on_request"`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["on_request"]
+
+
+def _default_currency() -> str:
+    """Patch 4: stubbed -- the standalone validator has no DEFAULT_CURRENCY setting.
+
+    An absent `currency:` therefore always skips the decimal-place half of
+    `price_errors`, the same as content_engine's own copy when that setting
+    is unset.
+    """
+    return ""
+
+
+def _validate_price(price: "FixedPrice | RangePrice | DiscountedPrice") -> None:
+    """Run the shared price rules against one submodel's own fields."""
+    fields = price.model_dump(exclude_none=True)
+    if "currency" not in fields:
+        fields["currency"] = _default_currency()
+    errors = price_errors(**fields)
+    if errors:
+        raise ValueError(
+            "; ".join(f"{field}: {message}" for field, message in errors.items())
+        )
+
+
 class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
@@ -324,6 +528,9 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             "Opaque per-course access configuration passed verbatim to the active "
             "course-access backend. The schema layer does not interpret its keys."
         ),
+    )
+    price: FixedPrice | RangePrice | DiscountedPrice | OnRequestPrice | None = Field(
+        None, discriminator="kind", description="What the course costs. Display only."
     )
 
     @field_validator("category", mode="before")

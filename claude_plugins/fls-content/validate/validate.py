@@ -18,7 +18,7 @@
 validate that a bunch of markdown files matches the given schema
 
 from the command line run:
-    uv run --no-project --with pydantic --with pyyaml --with python-frontmatter python validate.py /path/to/content/directory_or_item
+    uv run --no-project --with pydantic --with pyyaml --with python-frontmatter --with babel python validate.py /path/to/content/directory_or_item
 
 The path can either be a file or a directory. if it is a directory then recurse over all files and validate each one.
 """
@@ -612,13 +612,13 @@ def validate(path):
 # Patch 2: standalone CLI entry point.
 # The original validate.py has no __main__ block (FLS invokes it via the
 # content_validate management command). This shim lets the bundled copy run
-# directly via uv: `uv run --no-project --with pydantic --with pyyaml --with python-frontmatter
+# directly via uv: `uv run --no-project --with pydantic --with pyyaml --with python-frontmatter --with babel
 # python validate.py <path>`. --no-project is required to run in a truly isolated
 # env without the FLS project's Django dependency tree.
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(
-            "Usage: uv run --no-project --with pydantic --with pyyaml --with python-frontmatter "
+            "Usage: uv run --no-project --with pydantic --with pyyaml --with python-frontmatter --with babel "
             "python validate.py <path>",
             file=sys.stderr,
         )

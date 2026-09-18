@@ -122,8 +122,8 @@ After writing, confirm to the author:
 ### 4. Install the validator's dependencies
 
 `/fls-content:validate-content` runs a bundled Python validator that needs `pydantic`,
-`pyyaml`, and `python-frontmatter`. Install them once here, into a `.venv/` at the repo root,
-so validation never re-resolves dependencies on every run.
+`pyyaml`, `python-frontmatter`, and `babel`. Install them once here, into a `.venv/` at the
+repo root, so validation never re-resolves dependencies on every run.
 
 The venv lives at the repo root — the current working directory where Claude runs, alongside
 `.claude/` and `.fls-content.yaml`.
@@ -141,7 +141,7 @@ and stop — the validator cannot be set up without it.
 If the environment already exists and is healthy, do nothing:
 
 ```bash
-".venv/bin/python" -c "import pydantic, yaml, frontmatter"
+".venv/bin/python" -c "import pydantic, yaml, frontmatter, babel"
 ```
 
 If that command succeeds, the dependencies are already installed — report that and skip the
@@ -150,7 +150,7 @@ install. If it fails (or the environment does not exist), create it and install 
 ```bash
 uv venv .venv
 uv pip install --python .venv/bin/python \
-  pydantic pyyaml python-frontmatter
+  pydantic pyyaml python-frontmatter babel
 ```
 
 Finally, make sure the venv is never committed — ensure `.venv/` is listed in the repo's

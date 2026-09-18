@@ -4,12 +4,20 @@ Schema for yaml structures like this:
 
 import re
 from collections import Counter, defaultdict
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from freedom_ls.content_base.schema import (
     BaseBaseContentModel,
@@ -17,6 +25,7 @@ from freedom_ls.content_base.schema import (
     ContentType,
     MarkdownContentModel,
 )
+from freedom_ls.content_engine.prices import price_errors
 
 # The section slugs the dashboard reserves for its built-in sections. A
 # CourseCategory may not take one of these, because the slug names the
@@ -34,6 +43,22 @@ RESERVED_SECTION_SLUGS = frozenset(
 # `.fullmatch()`: `.match()`/`.search()` don't anchor the end, and would let
 # something like "bad slug!" through.
 SLUG_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+
+
+def _require_quoted_amount(value: object) -> object:
+    """Refuse a bare YAML number, so a price amount is never read through float.
+
+    `yaml.safe_load` resolves an unquoted `amount: 1499.00` to a float before
+    pydantic ever sees it, and a float can't round-trip a currency amount
+    exactly. Requiring a quoted string means the amount reaches `Decimal`
+    from the author's own digits.
+    """
+    if not isinstance(value, str):
+        raise ValueError('write amounts as quoted strings, e.g. "1499.00"')
+    return value
+
+
+Amount = Annotated[Decimal, BeforeValidator(_require_quoted_amount)]
 
 
 class DifficultyLevel(StrEnum):
@@ -141,6 +166,98 @@ class CourseCategories(
         return self
 
 
+class FixedPrice(BaseModel):
+    """A single amount. `kind: "fixed"`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["fixed"]
+    amount: Amount
+    currency: str | None = None
+    tax_note: str | None = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "FixedPrice":
+        _validate_price(self)
+        return self
+
+
+class RangePrice(BaseModel):
+    """A low-high span, with no single amount. `kind: "range"`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["range"]
+    low_amount: Amount
+    high_amount: Amount
+    currency: str | None = None
+    tax_note: str | None = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "RangePrice":
+        _validate_price(self)
+        return self
+
+
+class DiscountedPrice(BaseModel):
+    """An original amount and a sale amount, with an optional sale end date.
+
+    `kind: "discounted"`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["discounted"]
+    amount: Amount
+    sale_amount: Amount
+    sale_ends_on: date | None = None
+    currency: str | None = None
+    tax_note: str | None = Field(None, max_length=100)
+
+    @model_validator(mode="after")
+    def _validate(self) -> "DiscountedPrice":
+        _validate_price(self)
+        return self
+
+
+class OnRequestPrice(BaseModel):
+    """No amount is published; a visitor is told to ask. `kind: "on_request"`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["on_request"]
+
+
+def _default_currency() -> str:
+    """`DEFAULT_CURRENCY` when the project has set one, else `""`.
+
+    A separate function, rather than inlining the setting lookup in
+    `_validate_price`, so the bundled offline validator has one line to
+    patch: it has no settings, so its copy always returns `""`.
+    """
+    from freedom_ls.content_engine.config import config
+
+    return config.DEFAULT_CURRENCY or ""
+
+
+def _validate_price(price: FixedPrice | RangePrice | DiscountedPrice) -> None:
+    """Run the shared price rules against one submodel's own fields.
+
+    `price_errors` is keyed by the same author-facing field names these
+    submodels use, so the dump can be passed straight through. An absent
+    `currency` resolves to `DEFAULT_CURRENCY` first, matching how
+    `Course.clean()` and `content_save` resolve it.
+    """
+    fields = price.model_dump(exclude_none=True)
+    if "currency" not in fields:
+        fields["currency"] = _default_currency()
+    errors = price_errors(**fields)
+    if errors:
+        raise ValueError(
+            "; ".join(f"{field}: {message}" for field, message in errors.items())
+        )
+
+
 class Course(BaseContentModel, content_type=ContentType.COURSE):
     """
     You can think of this as a folder. It contains an ordered list of child content.
@@ -215,6 +332,9 @@ class Course(BaseContentModel, content_type=ContentType.COURSE):
             "Opaque per-course access configuration passed verbatim to the active "
             "course-access backend. The schema layer does not interpret its keys."
         ),
+    )
+    price: FixedPrice | RangePrice | DiscountedPrice | OnRequestPrice | None = Field(
+        None, discriminator="kind", description="What the course costs. Display only."
     )
 
     @field_validator("category", mode="before")

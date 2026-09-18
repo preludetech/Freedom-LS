@@ -19,7 +19,7 @@ repo root — the current working directory where Claude runs, alongside `.claud
 venv is present and healthy:
 
 ```bash
-".venv/bin/python" -c "import pydantic, yaml, frontmatter"
+".venv/bin/python" -c "import pydantic, yaml, frontmatter, babel"
 ```
 
 If that succeeds, go to Step 3.
@@ -33,7 +33,7 @@ With `uv` present, create the environment:
 ```bash
 uv venv .venv
 uv pip install --python .venv/bin/python \
-  pydantic pyyaml python-frontmatter
+  pydantic pyyaml python-frontmatter babel
 ```
 
 Never fall back to a bare `python` or `python3` invocation. Do not fail silently.

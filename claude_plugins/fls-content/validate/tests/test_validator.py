@@ -29,6 +29,8 @@ UV_BASE = [
     "pyyaml",
     "--with",
     "python-frontmatter",
+    "--with",
+    "babel",
 ]
 UV_CMD = [*UV_BASE, "python", str(VALIDATE_SCRIPT)]
 
@@ -55,7 +57,7 @@ def _require_validator_env() -> None:
     """
     try:
         probe = subprocess.run(
-            [*UV_BASE, "python", "-c", "import pydantic, yaml, frontmatter"],
+            [*UV_BASE, "python", "-c", "import pydantic, yaml, frontmatter, babel"],
             capture_output=True,
             text=True,
             env=_clean_env(),
@@ -914,3 +916,155 @@ def test_a_number_bound_finer_than_the_allowed_decimal_places_fails(
 
     result = run_validator(write_question_page(tmp_path, block))
     assert_validator_fails(result, "has more decimal places than this question allows")
+
+
+# ---------------------------------------------------------------------------
+# price
+# ---------------------------------------------------------------------------
+
+
+def write_course_with_price(directory: Path, price_block: str) -> Path:
+    """Write a COURSE role file whose frontmatter includes the given price block.
+
+    *price_block* is raw YAML inserted into the frontmatter (e.g.
+    "price:\n  kind: fixed\n  amount: \"1499.00\"\n").
+    """
+    path = directory / "course.md"
+    path.write_text(
+        f"---\ncontent_type: COURSE\ntitle: My Course\n{price_block}---\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_spec_example_price_frontmatter_validates(tmp_path: Path) -> None:
+    """The discounted price example given in the spec validates cleanly."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            "price:\n"
+            "  kind: discounted\n"
+            '  amount: "1499.00"\n'
+            '  sale_amount: "999.00"\n'
+            "  sale_ends_on: 2026-12-31\n"
+            "  currency: ZAR\n"
+            "  tax_note: incl. VAT\n",
+        )
+    )
+    assert result.returncode == 0, (
+        f"The spec's example price frontmatter should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_price_unknown_currency_fails(tmp_path: Path) -> None:
+    """An unrecognised currency code is rejected."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            'price:\n  kind: fixed\n  amount: "100.00"\n  currency: ZZZ\n',
+        )
+    )
+    assert_validator_fails(result, "not a currency code Babel recognises")
+
+
+def test_price_too_many_decimal_places_with_explicit_currency_fails(
+    tmp_path: Path,
+) -> None:
+    """JPY has no minor units, so half a yen is rejected."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            'price:\n  kind: fixed\n  amount: "1500.50"\n  currency: JPY\n',
+        )
+    )
+    assert_validator_fails(result, "more decimal places")
+
+
+def test_price_sale_not_below_original_fails(tmp_path: Path) -> None:
+    """A sale_amount that is not less than amount is an authoring mistake."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            "price:\n"
+            "  kind: discounted\n"
+            '  amount: "100.00"\n'
+            '  sale_amount: "100.00"\n'
+            "  currency: ZAR\n",
+        )
+    )
+    assert_validator_fails(result, "sale_amount must be less than amount")
+
+
+def test_price_low_not_below_high_fails(tmp_path: Path) -> None:
+    """A low_amount that is not less than high_amount is an authoring mistake."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            "price:\n"
+            "  kind: range\n"
+            '  low_amount: "100.00"\n'
+            '  high_amount: "100.00"\n'
+            "  currency: ZAR\n",
+        )
+    )
+    assert_validator_fails(result, "high_amount must be greater than low_amount")
+
+
+def test_price_bare_number_amount_fails(tmp_path: Path) -> None:
+    """An unquoted amount is read through YAML's float parser -- refused."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            "price:\n  kind: fixed\n  amount: 100.00\n  currency: ZAR\n",
+        )
+    )
+    assert_validator_fails(result, "write amounts as quoted strings")
+
+
+def test_price_unknown_kind_fails(tmp_path: Path) -> None:
+    """A `kind` outside the four known shapes fails the discriminated union."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path,
+            'price:\n  kind: subscription\n  amount: "100.00"\n',
+        )
+    )
+    assert result.returncode != 0, (
+        f"An unknown price kind should fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
+def test_price_currency_on_on_request_fails(tmp_path: Path) -> None:
+    """`on_request` carries no currency -- extra="forbid" rejects it."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path, "price:\n  kind: on_request\n  currency: ZAR\n"
+        )
+    )
+    assert result.returncode != 0, (
+        f"A currency on an on_request price should fail validation.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "Traceback" not in combined, (
+        f"Validator output contains a raw traceback:\n{combined}"
+    )
+
+
+def test_price_no_currency_and_three_decimal_places_passes(tmp_path: Path) -> None:
+    """With no currency anywhere, the standalone validator skips the decimal check."""
+    result = run_validator(
+        write_course_with_price(
+            tmp_path, 'price:\n  kind: fixed\n  amount: "1499.123"\n'
+        )
+    )
+    assert result.returncode == 0, (
+        f"A price with no currency should skip the decimal-place check.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )

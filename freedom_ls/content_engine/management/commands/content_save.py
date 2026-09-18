@@ -39,6 +39,8 @@ from freedom_ls.content_engine.models import (
     File,
     Topic,
 )
+from freedom_ls.content_engine.prices import KIND_FIELDS
+from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.validate import (
     get_all_files,
     parse_single_file,
@@ -433,6 +435,49 @@ def resolve_author_path(declaring_file, author_path):
     return content_key(Path(declaring_file).parent / author_path)
 
 
+# The eight price_* columns with no price at all -- the shape `price_columns`
+# starts from and falls back to for a kind that doesn't use a given field.
+EMPTY_PRICE_COLUMNS: dict[str, object] = {
+    "price_kind": "",
+    "price_amount": None,
+    "price_sale_amount": None,
+    "price_sale_ends_on": None,
+    "price_low_amount": None,
+    "price_high_amount": None,
+    "price_currency": "",
+    "price_tax_note": "",
+}
+
+
+def price_columns(item: CourseSchema) -> dict[str, object]:
+    """The eight price_* columns for a course whose frontmatter has a `price:` key.
+
+    A field the chosen kind doesn't use comes back at its empty value, so
+    switching a course from one kind to another through content_save never
+    leaves a stale column behind. `item.price` is `None` here only when the
+    author wrote an explicit `price: null` -- the caller only calls this when
+    `"price"` is in `item.model_fields_set` -- so this returns the all-empty
+    shape for that case too, clearing whatever was stored.
+    """
+    columns = dict(EMPTY_PRICE_COLUMNS)
+    if item.price is None:
+        return columns
+    columns.update(
+        {
+            f"price_{field}": value
+            for field, value in item.price.model_dump(exclude_none=True).items()
+        }
+    )
+    if "currency" in KIND_FIELDS[item.price.kind][1] and not columns["price_currency"]:
+        if not config.DEFAULT_CURRENCY:
+            raise ValueError(
+                f"{item.file_path}: the price has no currency and "
+                "DEFAULT_CURRENCY is not set."
+            )
+        columns["price_currency"] = config.DEFAULT_CURRENCY
+    return columns
+
+
 def save_course(item, site, base_path):
     """Save a Course to the database."""
     # Defence-in-depth: the pydantic model_validator already enforces these
@@ -474,6 +519,11 @@ def save_course(item, site, base_path):
                 f"{item.file_path}: no CourseCategory with this slug is declared."
             ) from exc
 
+    # An absent `price:` key leaves whatever price is already stored alone,
+    # mirroring how `save_with_uuid` already treats `tags` -- only when the
+    # author wrote the key (including `price: null`) do these columns change.
+    price_fields = price_columns(item) if "price" in item.model_fields_set else {}
+
     # The access_config written here still carries the author's raw
     # application_form path; the binding pass in save_content_to_db resolves it
     # into the Course.application_form foreign key once every Form is saved.
@@ -482,8 +532,9 @@ def save_course(item, site, base_path):
         item,
         site,
         base_path,
-        exclude_fields={"children", "categories", "dashboard_category"},
+        exclude_fields={"children", "categories", "dashboard_category", "price"},
         dashboard_category=dashboard_category,
+        **price_fields,
     )
 
 
