@@ -16,6 +16,10 @@ from freedom_ls.accounts.email_utils import (
     get_email_theme,
     resolved_email_logo_path,
 )
+from freedom_ls.base.google_analytics import (
+    GoogleAnalyticsEvent,
+    record_google_analytics_flag,
+)
 from freedom_ls.mail.encoding import set_8bit_encoding
 from freedom_ls.site_aware_models.models import (
     get_cached_site,
@@ -143,6 +147,7 @@ class AccountAdapter(DefaultAccountAdapter):
                     "last_name": user.last_name,
                 },
             )
+            record_google_analytics_flag(request, GoogleAnalyticsEvent.SIGN_UP)
         return user
 
     def send_notification_mail(

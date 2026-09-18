@@ -14,6 +14,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from freedom_ls.accounts.models import User
+from freedom_ls.base.google_analytics import (
+    GoogleAnalyticsEvent,
+    record_google_analytics_flag,
+)
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.models import CourseApplication
@@ -97,6 +101,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
         app = _start_application(user, course)
         if app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
+        record_google_analytics_flag(request, GoogleAnalyticsEvent.GENERATE_LEAD)
         return redirect("course_applications:status", pk=app.pk)
 
     return render(
@@ -237,6 +242,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         unanswered = unanswered_required_in_form(form_progress)
         if not unanswered:
             form_progress.complete()
+            record_google_analytics_flag(request, GoogleAnalyticsEvent.GENERATE_LEAD)
             messages.success(
                 request,
                 f"Your application for {app.course.title} has been submitted "

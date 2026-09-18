@@ -1048,3 +1048,76 @@ class TestApplicationFormPageRejectedAnswers:
         assert response.status_code == 422
         app.form_progress.refresh_from_db()
         assert app.form_progress.completed_time is None
+
+
+# ---------------------------------------------------------------------------
+# GA4 generate_lead flag
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestApplyGoogleAnalyticsFlag:
+    def test_post_apply_for_a_no_form_course_records_the_flag(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        client.force_login(user)
+
+        client.post(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert client.session["google_analytics_flags"] == ["generate_lead"]
+
+    def test_apply_for_a_course_with_a_form_does_not_record_the_flag(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        user = UserFactory()
+        client.force_login(user)
+
+        client.get(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert "google_analytics_flags" not in client.session
+
+    def test_apply_for_an_existing_application_does_not_record_the_flag(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+        client.force_login(user)
+
+        client.get(
+            reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+        )
+
+        assert "google_analytics_flags" not in client.session
+
+
+@pytest.mark.django_db
+class TestCheckYourAnswersGoogleAnalyticsFlag:
+    def test_submitting_a_complete_application_records_the_flag(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _applied(client, course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        client.post(_check_url(app))
+
+        assert client.session["google_analytics_flags"] == ["generate_lead"]
+
+    def test_a_blocked_submission_does_not_record_the_flag(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        client.post(_check_url(app))
+
+        assert "google_analytics_flags" not in client.session
