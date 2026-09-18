@@ -1,0 +1,1 @@
+We are going to need to use Google Analytics to track a bunch of different things. We want to set up Google Analytics in a similar way to how we set up post-hog, etc. If a key is provided, then it is available, if there is no key, then we don't use it.
