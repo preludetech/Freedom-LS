@@ -14,4 +14,8 @@ categories:
     description: Reference material, listed in the catch-all rather than its own section.
     show_on_dashboard: false
     uuid: 7ebad15c-c6a7-477d-9dc0-6cdd568fb943
+  - slug: pricing-demo
+    title: Pricing
+    description: One small course for each way a course can be priced.
+    uuid: 982782ab-70fc-4300-a596-db43e736e28f
 ---
