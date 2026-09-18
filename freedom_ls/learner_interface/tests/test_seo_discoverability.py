@@ -15,9 +15,11 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import timedelta
+from datetime import date, timedelta
+from decimal import Decimal
 
 import pytest
+import time_machine
 
 from django.contrib.sites.models import Site
 from django.test import Client
@@ -57,13 +59,14 @@ def _extract_title(body: str) -> str:
 
 
 def _extract_json_ld(body: str, script_id: str) -> dict:
-    """Extract and parse the JSON inside <script id="<script_id>" type="application/json">."""
-    # json_script filter emits: <script id="..." type="application/json">...</script>
+    """Extract and parse the JSON inside <script id="<script_id>" type="application/ld+json">."""
+    # json_ld_script filter emits: <script id="..." type="application/ld+json">...</script>
     pattern = (
-        rf'<script id="{re.escape(script_id)}" type="application/json">(.*?)</script>'
+        rf'<script id="{re.escape(script_id)}" '
+        r'type="application/ld\+json">(.*?)</script>'
     )
     match = re.search(pattern, body, re.DOTALL)
-    assert match, f"no <script id='{script_id}'> JSON block found"
+    assert match, f"no <script id='{script_id}'> JSON-LD block found"
     parsed: dict = json.loads(match.group(1))
     return parsed
 
@@ -307,6 +310,131 @@ def test_course_detail_json_ld_includes_teaches_when_learning_outcomes_set(
     ]
 
 
+@pytest.mark.django_db
+def test_course_detail_json_ld_omits_offers_when_course_has_no_price(
+    mock_site_context, course_with_topic
+):
+    """No offers key at all when the course carries no price."""
+    course = course_with_topic()
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    assert "offers" not in _extract_json_ld(body, "course-jsonld")
+
+
+@pytest.mark.django_db
+def test_course_detail_json_ld_includes_offer_for_fixed_price(
+    mock_site_context, course_with_topic
+):
+    """A fixed price becomes a schema.org Offer with an exact decimal price."""
+    course = course_with_topic(
+        price_kind="fixed", price_amount=Decimal("1499.00"), price_currency="ZAR"
+    )
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    offers = _extract_json_ld(body, "course-jsonld")["offers"]
+    assert offers == {
+        "@type": "Offer",
+        "price": "1499.00",
+        "priceCurrency": "ZAR",
+    }
+
+
+@pytest.mark.django_db
+def test_course_detail_json_ld_includes_aggregate_offer_for_range_price(
+    mock_site_context, course_with_topic
+):
+    """A range price becomes a schema.org AggregateOffer with no offerCount."""
+    course = course_with_topic(
+        price_kind="range",
+        price_low_amount=Decimal("1200.00"),
+        price_high_amount=Decimal("3000.00"),
+        price_currency="ZAR",
+    )
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    offers = _extract_json_ld(body, "course-jsonld")["offers"]
+    assert offers == {
+        "@type": "AggregateOffer",
+        "lowPrice": "1200.00",
+        "highPrice": "3000.00",
+        "priceCurrency": "ZAR",
+    }
+    assert "offerCount" not in offers
+
+
+@pytest.mark.django_db
+def test_course_detail_json_ld_live_discount_offer_has_price_valid_until(
+    mock_site_context, course_with_topic
+):
+    """A live discount is an Offer at the sale amount, with priceValidUntil set."""
+    course = course_with_topic(
+        price_kind="discounted",
+        price_amount=Decimal("1499.00"),
+        price_sale_amount=Decimal("999.00"),
+        price_sale_ends_on=date(2026, 12, 31),
+        price_currency="ZAR",
+    )
+    with time_machine.travel("2026-12-31T23:00:00Z", tick=False):
+        body = _get(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+    offers = _extract_json_ld(body, "course-jsonld")["offers"]
+    assert offers == {
+        "@type": "Offer",
+        "price": "999.00",
+        "priceCurrency": "ZAR",
+        "priceValidUntil": "2026-12-31",
+    }
+
+
+@pytest.mark.django_db
+def test_course_detail_json_ld_expired_discount_shows_original_amount_with_no_valid_until(
+    mock_site_context, course_with_topic
+):
+    """A discount past its sale_ends_on renders as the original fixed amount,
+    with no priceValidUntil -- the same expiry current_price() applies to the
+    visible price.
+    """
+    course = course_with_topic(
+        price_kind="discounted",
+        price_amount=Decimal("1499.00"),
+        price_sale_amount=Decimal("999.00"),
+        price_sale_ends_on=date(2026, 12, 31),
+        price_currency="ZAR",
+    )
+    with time_machine.travel("2027-01-01T00:00:00Z", tick=False):
+        body = _get(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+    offers = _extract_json_ld(body, "course-jsonld")["offers"]
+    assert offers == {
+        "@type": "Offer",
+        "price": "1499.00",
+        "priceCurrency": "ZAR",
+    }
+    assert "priceValidUntil" not in offers
+
+
+@pytest.mark.django_db
+def test_course_detail_json_ld_omits_offers_for_on_request_price(
+    mock_site_context, course_with_topic
+):
+    """An on_request price names no offers key -- there is no amount to advertise."""
+    course = course_with_topic(price_kind="on_request")
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    assert "offers" not in _extract_json_ld(body, "course-jsonld")
+
+
+@pytest.mark.django_db
+def test_course_detail_json_ld_title_with_closing_script_tag_does_not_break_out(
+    mock_site_context, course_with_topic
+):
+    """A course title containing a literal "</script>" cannot end the JSON-LD
+    block early -- the escaped payload keeps it inside the <script> tag.
+    """
+    course = course_with_topic(title="Intro</script><script>alert(1)</script>")
+    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
+    data = _extract_json_ld(body, "course-jsonld")
+    assert data["name"] == "Intro</script><script>alert(1)</script>"
+
+
 # ---------------------------------------------------------------------------
 # Catalogue JSON-LD (schema.org/ItemList)
 # ---------------------------------------------------------------------------
@@ -319,6 +447,16 @@ def test_catalogue_json_ld_is_item_list(mock_site_context):
     data = _extract_json_ld(_get("learner_interface:courses"), "catalogue-jsonld")
     assert data["@type"] == "ItemList"
     assert data["@context"] == "https://schema.org"
+
+
+@pytest.mark.django_db
+def test_catalogue_json_ld_script_uses_ld_json_type(mock_site_context):
+    """The catalogue's JSON-LD block is emitted as application/ld+json, not
+    the generic application/json json_script produces -- crawlers only read
+    structured data with the former.
+    """
+    body = _get("learner_interface:courses")
+    assert 'id="catalogue-jsonld" type="application/ld+json"' in body
 
 
 @pytest.mark.django_db

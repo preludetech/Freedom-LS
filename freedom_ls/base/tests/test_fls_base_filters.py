@@ -1,4 +1,4 @@
-"""The `duration` and `get_dict_item` filters.
+"""The `duration`, `get_dict_item` and `json_ld_script` filters.
 
 `duration` names how long a wait lasts; its one call site is the lockout
 page's "paused for about ..." sentence, so a value that renders as
@@ -7,6 +7,8 @@ page's "paused for about ..." sentence, so a value that renders as
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import timedelta
 
 import pytest
@@ -56,3 +58,54 @@ def test_get_dict_item_returns_none_for_a_non_dict_value() -> None:
     string, not `None` — a downstream filter chained onto it must not raise.
     """
     assert get_dict_item("", "a") is None
+
+
+# json_ld_script
+
+
+def _render_json_ld_script(value: object, element_id: str) -> str:
+    return Template(
+        "{% load fls_base_filters %}{{ value|json_ld_script:element_id }}"
+    ).render(Context({"value": value, "element_id": element_id}))
+
+
+def test_json_ld_script_wraps_the_payload_in_an_ld_json_script_tag() -> None:
+    rendered = _render_json_ld_script({"a": 1}, "my-id")
+
+    assert 'type="application/ld+json"' in rendered
+
+
+def test_json_ld_script_sets_the_given_element_id() -> None:
+    rendered = _render_json_ld_script({"a": 1}, "my-id")
+
+    assert 'id="my-id"' in rendered
+
+
+def test_json_ld_script_escapes_a_closing_script_tag_inside_a_value() -> None:
+    """A value containing a literal "</script>" must not let a crawler (or a
+    browser) treat it as the end of the JSON-LD block.
+    """
+    rendered = _render_json_ld_script(
+        {"title": "</script><script>alert(1)</script>"}, "my-id"
+    )
+
+    assert rendered.count("</script>") == 1
+
+
+def test_json_ld_script_escapes_a_double_quote_in_the_element_id() -> None:
+    rendered = _render_json_ld_script({"a": 1}, 'my"id')
+
+    assert 'id="my&quot;id"' in rendered
+
+
+def test_json_ld_script_output_parses_back_to_the_input() -> None:
+    value = {"a": 1, "b": ["x", "y"], "c": "<tag>&"}
+    rendered = _render_json_ld_script(value, "my-id")
+
+    match = re.search(
+        r'<script id="my-id" type="application/ld\+json">(.*?)</script>',
+        rendered,
+        re.DOTALL,
+    )
+    assert match is not None
+    assert json.loads(match.group(1)) == value

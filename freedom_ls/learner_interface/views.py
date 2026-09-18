@@ -774,6 +774,10 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
         json_ld["timeRequired"] = iso_duration
     if course.learning_outcomes:
         json_ld["teaches"] = course.learning_outcomes
+    price = course.current_price()
+    offers = price.offers_json_ld() if price else None
+    if offers:
+        json_ld["offers"] = offers
 
     return render(
         request,

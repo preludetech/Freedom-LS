@@ -1,8 +1,11 @@
+import json
 from datetime import timedelta
 
 from django import template
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils import timezone
-from django.utils.html import avoid_wrapping
+from django.utils.html import avoid_wrapping, format_html
+from django.utils.safestring import SafeString, mark_safe
 from django.utils.timesince import timesince
 from django.utils.translation import ngettext
 
@@ -52,3 +55,26 @@ def get_dict_item(dictionary, key):
     if not isinstance(dictionary, dict):
         return None
     return dictionary.get(key)
+
+
+# Django's own escape table for `json_script` is private
+# (`django.utils.html._json_script_escapes`), so it is reproduced here.
+_JSON_LD_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
+
+
+@register.filter(is_safe=True)
+def json_ld_script(value: object, element_id: str) -> SafeString:
+    """
+    Serialise `value` as JSON-LD, wrapped in a <script type="application/ld+json"> tag.
+
+    Structured data must use "application/ld+json" -- the type schema.org
+    crawlers look for. `django.utils.html.json_script` renders the same
+    payload as "application/json" instead, which is why this filter exists
+    rather than reusing it directly.
+
+    Usage: {{ my_dict|json_ld_script:"course-jsonld" }}
+    """
+    _payload = json.dumps(value, cls=DjangoJSONEncoder).translate(_JSON_LD_ESCAPES)
+    _tag_template = '<script id="{}" type="application/ld+json">{}</script>'
+    # The payload is escaped with json_script's own table above.
+    return format_html(_tag_template, element_id, mark_safe(_payload))  # noqa: S308  # nosec B308 B703

@@ -2,6 +2,7 @@
 
 {% load static %}
 {% load course_icon_tags %}
+{% load fls_base_filters %}
 
 {% block extra_alpine_components %}
     <script defer src="{% static 'learner_interface/js/alpine-components.js' %}"></script>
@@ -14,7 +15,7 @@
 {% block meta_description %}{{ meta_description }}{% endblock meta_description %}
 
 {% block extra_head %}
-    {{ json_ld|json_script:"course-jsonld" }}
+    {{ json_ld|json_ld_script:"course-jsonld" }}
 {% endblock extra_head %}
 
 {% block content %}
