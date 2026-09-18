@@ -1,10 +1,11 @@
-{% url 'account_login' as login_url %}
+{% load accounts_tags %}
+{% url_with_next "account_login" as login_url %}
 <div class="flex items-center gap-2">
     <c-button href="{{ login_url }}">
         Login
     </c-button>
     {% if allow_signups %}
-        {% url 'account_signup' as signup_url %}
+        {% url_with_next "account_signup" as signup_url %}
         <c-button href="{{ signup_url }}">
             Sign up
         </c-button>

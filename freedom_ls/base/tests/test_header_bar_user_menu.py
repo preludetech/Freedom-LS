@@ -9,6 +9,7 @@ real context processors, so these tests also cover the settings wiring.
 from __future__ import annotations
 
 import pytest
+from allauth.core.context import request_context
 
 from django.contrib.auth.models import AnonymousUser
 from django.template.loader import render_to_string
@@ -31,10 +32,11 @@ def _render_menu(user: User) -> str:
     return render_to_string("partials/header_bar_user_menu.html", request=request)
 
 
-def _render_header(user: User | AnonymousUser) -> str:
-    request = RequestFactory().get("/")
+def _render_header(user: User | AnonymousUser, next_url: str = "") -> str:
+    request = RequestFactory().get("/", {"next": next_url} if next_url else {})
     request.user = user
-    return render_to_string("partials/header_bar.html", request=request)
+    with request_context(request):
+        return render_to_string("partials/header_bar.html", request=request)
 
 
 @pytest.mark.django_db
@@ -101,3 +103,9 @@ class TestAnonymousHeader:
 
         assert f'href="{reverse("account_login")}"' in rendered
         assert EDUCATOR_LINK_TEXT not in rendered
+
+    def test_login_and_signup_buttons_carry_the_pending_next(self, mock_site_context):
+        rendered = _render_header(AnonymousUser(), next_url="/some/path/")
+
+        assert 'href="/accounts/login/?next=%2Fsome%2Fpath%2F"' in rendered
+        assert 'href="/accounts/signup/?next=%2Fsome%2Fpath%2F"' in rendered
