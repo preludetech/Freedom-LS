@@ -21,7 +21,9 @@
     {% comment %}One stat inside the hero's glass stats strip. The dividers and
     glass surface live on the container; this is just the icon + label + value.
     Reads stat_icon / stat_label / stat_value from the surrounding context —
-    call it inside a {% templatetag openblock %} with … {% templatetag closeblock %}.{% endcomment %}
+    call it inside a {% templatetag openblock %} with … {% templatetag closeblock %}.
+    Pass stat_price instead of stat_value to render a <c-course-price> in the
+    value slot rather than plain text.{% endcomment %}
     {% partialdef stat-card %}
         <div class="flex w-48 items-center gap-3 border-l border-t border-white/20 px-5 py-4">
             <c-icon :name="stat_icon" class="size-5 shrink-0 opacity-80" />
@@ -30,7 +32,11 @@
                     {{ stat_label }}
                 </p>
                 <p class="font-semibold leading-tight text-white">
-                    {{ stat_value }}
+                    {% if stat_price %}
+                        <c-course-price :price="stat_price" variant="compact" />
+                    {% else %}
+                        {{ stat_value }}
+                    {% endif %}
                 </p>
             </div>
         </div>
@@ -106,6 +112,13 @@
                                     {% endwith %}
                                 {% endif %}
                             {% endwith %}
+                            {% with stat_price=course.current_price %}
+                                {% if stat_price %}
+                                    {% with stat_icon="price" stat_label="Price" %}
+                                        {% partial stat-card %}
+                                    {% endwith %}
+                                {% endif %}
+                            {% endwith %}
                             {% if enrolment_summary %}
                                 {% with stat_icon="check" stat_label="Enrolment" stat_value=enrolment_summary %}
                                     {% partial stat-card %}
@@ -123,6 +136,13 @@
                 {% comment %}Sign-up panel — order-first on mobile so CTA is near the top{% endcomment %}
                 <aside class="order-first lg:order-last lg:col-span-1 pt-6">
                     <div class="signup-panel p-6 rounded-xl border border-border lg:sticky lg:top-6 space-y-4">
+                        {% if not is_registered %}
+                            {% with price=course.current_price %}
+                                {% if price %}
+                                    <p class="text-xl font-semibold"><c-course-price :price="price" variant="full" /></p>
+                                {% endif %}
+                            {% endwith %}
+                        {% endif %}
                         {% if acquisition_heading or acquisition_subtext %}
                             <div>
                                 {% if acquisition_heading %}

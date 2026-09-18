@@ -46,6 +46,8 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "boolean_false",
     # Deadlines
     "deadline",
+    # Commerce
+    "price",
     # Misc
     "sentiment_good",
     "sentiment_bad",

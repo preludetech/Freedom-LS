@@ -1,0 +1,35 @@
+<c-vars price="" variant="compact" />
+
+{% comment %}
+The single place a course price is rendered — the card, the row, the stats
+strip and the sign-up panel all call this. `variant="compact"` is one line
+with no tax note; `variant="full"` adds the tax note when the price has one.
+
+Props:
+  price   - a CoursePrice (freedom_ls/content_engine/prices.py).
+  variant - "compact" or "full".
+
+kind comparisons use the PriceKind values: "fixed", "range", "discounted",
+"on_request".
+{% endcomment %}
+<span data-testid="course-price" class="tabular-nums whitespace-nowrap">
+    {% if price.kind == "on_request" %}
+        Price on request
+    {% elif price.kind == "fixed" %}
+        {{ price.formatted_amount }}
+    {% elif price.kind == "range" %}
+        {% if variant == "full" %}
+            {{ price.formatted_low_amount }} – {{ price.formatted_high_amount }}
+        {% else %}
+            From {{ price.formatted_low_amount }}
+        {% endif %}
+    {% elif price.kind == "discounted" %}
+        <span class="sr-only">Original price:</span>
+        <s class="opacity-60">{{ price.formatted_amount }}</s>
+        <span class="sr-only">Now:</span>
+        {{ price.formatted_sale_amount }}
+    {% endif %}
+    {% if variant == "full" and price.tax_note %}
+        <span class="text-sm font-normal text-muted">{{ price.tax_note }}</span>
+    {% endif %}
+</span>

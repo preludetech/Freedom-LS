@@ -22,7 +22,7 @@ status duplicate.
 
 Required context: course (listing_status, slug, accent_slot_key, icon,
 icon_fallback, title, progress_percentage, next_up_url, next_up_title,
-access_badge) and user.
+access_badge, current_price) and user.
 {% endcomment %}
 {% if course.listing_status == "complete" %}
     {% url 'learner_interface:course_finish' course_slug=course.slug as title_url %}
@@ -52,6 +52,8 @@ access_badge) and user.
     {% with url=title_url title=course.title %}
         {% include "learner_interface/partials/card_title_link.html" %}
     {% endwith %}
+
+    {% include "learner_interface/partials/course_listing_price.html" %}
 
     {% if course.next_up_title %}
         <p class="text-sm text-muted">

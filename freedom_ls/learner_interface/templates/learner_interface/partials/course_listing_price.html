@@ -1,0 +1,14 @@
+{% comment %}
+Compact price line for the course card and course row, shared because the
+two are otherwise identical here. Shown for a not-yet-registered visitor,
+registered or not, and for a coming-soon course.
+
+Required context: course (listing_status, current_price).
+{% endcomment %}
+{% if course.listing_status == "not_registered" or course.listing_status == "coming_soon" %}
+    {% with price=course.current_price %}
+        {% if price %}
+            <p class="text-sm font-semibold"><c-course-price :price="price" variant="compact" /></p>
+        {% endif %}
+    {% endwith %}
+{% endif %}
