@@ -1,6 +1,6 @@
 # Content Editing Workflow
 
-_Last updated: 2026-09-17_
+_Last updated: 2026-09-19_
 
 ## Summary
 
@@ -46,7 +46,7 @@ Categories are declared in a single `course_categories.yaml` at the content repo
 
 ## Course Frontmatter Options
 
-These are set in a course's YAML frontmatter and take effect when content is loaded. There is no admin or educator toggle for any of them — changing one means editing the file and re-running `content_save`.
+These are set in a course's YAML frontmatter and take effect when content is loaded. There is no admin or educator toggle for any of them except price — changing one means editing the file and re-running `content_save`.
 
 **Access type.** A course is free unless it declares otherwise:
 
@@ -81,7 +81,7 @@ dashboard_category: technical
 
 `dashboard_category` can be omitted when a course names exactly one category, and both keys can be left off entirely. Belonging to more than one category is recorded, but only the dashboard category is read anywhere today: there is no catalogue filtering by category yet, so a course's other categories have no visible effect. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 
-Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description — is authored the same way.
+Other course metadata — learning outcomes, difficulty (`beginner`, `intermediate`, `advanced`, `all_levels`), estimated duration, description, `price` — is authored the same way. A price can also be set in the admin, and a price set there survives a later content re-save unless the course file sets or clears it. See [course prices](./learner-experience.md#course-prices) for what a price can be and where it shows.
 
 ## Validation and Loading
 
@@ -90,7 +90,7 @@ uv run python manage.py content_validate <path>
 uv run python manage.py content_save <path> <site_name>
 ```
 
-Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin.
+Validation parses every YAML and Markdown file against strict schemas before any database write. Schemas are strict-mode: any field not defined causes a clear, file-located error rather than being silently ignored, which prevents data corruption from typos or schema drift. Invalid access configuration, an unrecognised visibility value, an invalid price, and the invalid frontmatter combinations above are all caught here. Category references are checked across files too — a course naming a category no file declares, or naming a dashboard category it doesn't itself belong to, fails before anything is written — and the same check runs in the offline validator bundled with the `fls-content` plugin.
 
 `content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped.
 

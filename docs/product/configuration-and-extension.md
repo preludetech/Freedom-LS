@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-09-17_
+_Last updated: 2026-09-19_
 
 ## Summary
 
@@ -129,6 +129,8 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `ADMONITION_TYPES` | The admonition callout types available to content authors. |
 | `COURSE_ACCESS_BACKEND` | Selects the course-access backend. Must be set; the reference configuration uses the application-gated backend. |
 | `COURSE_ACCESS_CONFIG_VALIDATOR` | Validator for each course's access configuration at content-load time. |
+| `DEFAULT_CURRENCY` | Currency used when a course price omits one. See [learner experience](./learner-experience.md#course-prices). |
+| `PRICE_LOCALE` | Locale prices are formatted in; defaults from the site language. |
 | `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` | Dev/staging preview override — every course presents as published. |
 | `OVERRIDE_COURSE_ACCESS_TO_FREE` | Dev/staging preview override — every course presents as free. |
 | `ALLOW_SIGN_UPS` | Installation-wide signup toggle; a site's own signup policy takes precedence. |

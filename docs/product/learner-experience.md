@@ -1,12 +1,13 @@
 # Learner Experience
 
-_Last updated: 2026-09-17_
+_Last updated: 2026-09-19_
 
 ## Summary
 
 - Anonymous (logged-out) visitors can browse the home page, the course catalogue, and individual course detail pages without creating an account. Login is required only at the committing action (enrolment or application). The personalised dashboard sections — In progress, Recommended courses, Learning history — are shown only to authenticated learners; anonymous visitors see a value-proposition hero instead, followed by the same course-discovery sections an authenticated learner sees.
 - A site can group its courses into named categories and choose which of those get a section of their own on the dashboard, in the order the site declares. A course with no category, or whose category was not chosen for the dashboard, still shows — it falls back to the **Available courses** section, so nothing drops off the page.
 - Each course listing entry shows an **access-model badge** (Free / By application) so a visitor can tell the access model before clicking through. Each course displays learning outcomes, difficulty, estimated duration, and a description; the acquisition CTA wording is action-forward: free courses show "Enrol for free", application-gated courses show "Apply now" (or "View my application" for a returning applicant).
+- A course can show a **price**: a fixed amount, a range, a discounted amount or "price on request". The price is for display only, because FLS takes no payment. See [Course Prices](#course-prices).
 - An application-gated course can carry an author-written **application form**. When it does, "Apply now" takes the applicant straight into it, page by page, then through a check-your-answers page, before the application is submitted once. A gated course with no form asks for confirmation and then shows a status page.
 - Independently of access type, a course also has a visibility state — published, coming soon, or hidden — that governs whether it's discoverable and enrollable; see [Course Visibility](#course-visibility-coming-soon--hidden) below.
 - The course player unlocks items in sequence and resumes automatically where the learner left off.
@@ -124,6 +125,16 @@ The CTA label is action-forward and does not mention login; an anonymous visitor
 
 **Visibility overrides the CTA.** A course marked "coming soon" replaces the acquisition CTA with an "I'm interested" express-interest control, and a "hidden" course's detail page is not reachable at all for a learner who isn't already registered — both are described in [Course Visibility](#course-visibility-coming-soon--hidden).
 
+## Course Prices
+
+A course can show a price. It can be a fixed amount, a range ("From …" in listings), a discounted amount with the original struck through, or "Price on request". The price appears in three places. Visitors who have not registered see it on catalogue and dashboard entries, and in the course page's sign-up panel with an optional tax note. Every visitor sees it in the course page's stats strip. When a discount's end date passes, the original amount shows again without anyone editing the course.
+
+**FLS takes no payment.** A price changes nothing about the course's access model, its badge or its call to action. In practice a price goes on an application-gated course: the visitor sees the price and still clicks "Apply now". Payment, if there is any, happens outside FLS.
+
+![Application-gated course page showing a discounted price in the stats strip and sign-up panel](screenshots/learner_course_detail_price.png)
+
+Prices are authored with the rest of the course metadata; see [content editing workflow](./content-editing-workflow.md). The default currency and the display locale are set in [configuration](./configuration-and-extension.md#settings-reference).
+
 ## Deferred-login Intent Completion
 
 When an anonymous visitor clicks an acquisition CTA ("Enrol for free" or "Apply now"), they are sent through the standard full-page login or signup flow via a `?next=` parameter. After authenticating, their intended action completes automatically:
@@ -135,7 +146,7 @@ This intent is preserved even through the new-user signup path that requires com
 
 ## Discoverability
 
-Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, and whether the course is accessible for free). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs.
+Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, whether the course is accessible for free, and the price as a schema.org offer where the course has one). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs.
 
 The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. The sitemap follows the same visibility rules as the catalogue: hidden courses are excluded, while coming-soon courses (whose detail pages are publicly reachable) are included. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 
