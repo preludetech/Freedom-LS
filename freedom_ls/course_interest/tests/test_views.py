@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 
+from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -425,3 +426,129 @@ class TestDeferredExpressInterest:
         assert response["Location"] == reverse(
             "learner_interface:course_detail", kwargs={"course_slug": course.slug}
         )
+
+
+# ---------------------------------------------------------------------------
+# GA4 course_access_requested event
+# ---------------------------------------------------------------------------
+
+
+def _express_interest_url(course_slug: str) -> str:
+    return reverse(
+        "course_interest:express_interest", kwargs={"course_slug": course_slug}
+    )
+
+
+@pytest.mark.django_db
+class TestExpressInterestGoogleAnalyticsEvent:
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_first_click_emits_the_event_in_the_swapped_partial(
+        self, client, mock_site_context
+    ):
+        """The partial carries the script, so the event fires at the swap
+        and does not wait in the session for the next full page."""
+        user = UserFactory()
+        course = CourseFactory(
+            slug="coming-soon-course",
+            visibility=CourseVisibility.COMING_SOON,
+            access_config={"access_type": "free"},
+        )
+        client.force_login(user)
+
+        response = client.post(
+            _express_interest_url("coming-soon-course"), HTTP_HX_REQUEST="true"
+        )
+
+        assert (
+            """gtag('event', 'course_access_requested', """
+            f'{{"course_slug": "coming-soon-course", "course_id": "{course.id}", '
+            '"access_type": "free", "request_kind": "interest"})'
+        ) in response.content.decode()
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_a_repeat_click_emits_nothing(self, client, mock_site_context):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        CourseInterestFactory(user=user, course=course)
+        client.force_login(user)
+
+        response = client.post(
+            _express_interest_url(course.slug), HTTP_HX_REQUEST="true"
+        )
+
+        assert "gtag('event'" not in response.content.decode()
+
+    def test_a_published_course_records_no_event(self, client, mock_site_context):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.PUBLISHED)
+        client.force_login(user)
+
+        client.post(_express_interest_url(course.slug))
+
+        assert "google_analytics_events" not in client.session
+
+    def test_removing_interest_records_no_event(self, client, mock_site_context):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        CourseInterestFactory(user=user, course=course)
+        client.force_login(user)
+
+        client.post(
+            reverse(
+                "course_interest:remove_interest", kwargs={"course_slug": course.slug}
+            )
+        )
+
+        assert "google_analytics_events" not in client.session
+
+
+@pytest.mark.django_db
+class TestDeferredExpressInterestGoogleAnalyticsEvent:
+    def test_the_deferred_click_records_the_event_for_the_next_page(
+        self, client, mock_site_context
+    ):
+        """This view redirects, so the event waits in the session for the
+        course page the visitor lands on."""
+        user = UserFactory()
+        course = CourseFactory(
+            slug="deferred-course",
+            visibility=CourseVisibility.COMING_SOON,
+            access_config={"access_type": "free"},
+        )
+        client.post(_express_interest_url("deferred-course"))
+        client.force_login(user)
+
+        client.get(
+            reverse(
+                "course_interest:deferred_express_interest",
+                kwargs={"course_slug": "deferred-course"},
+            )
+        )
+
+        assert client.session["google_analytics_events"] == [
+            {
+                "name": "course_access_requested",
+                "params": {
+                    "course_slug": "deferred-course",
+                    "course_id": str(course.id),
+                    "access_type": "free",
+                    "request_kind": "interest",
+                },
+            }
+        ]
+
+    def test_a_get_without_a_pending_click_records_no_event(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(user)
+
+        client.get(
+            reverse(
+                "course_interest:deferred_express_interest",
+                kwargs={"course_slug": course.slug},
+            )
+        )
+
+        assert "google_analytics_events" not in client.session

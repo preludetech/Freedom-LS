@@ -9,6 +9,11 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    CohortMembershipFactory,
+)
 
 from .conftest import course_progress_record
 
@@ -116,18 +121,20 @@ class TestCourseCompletedWebhookEvent:
 
 
 @pytest.mark.django_db
-class TestTutorialCompleteGoogleAnalyticsFlag:
+class TestCourseCompletedGoogleAnalyticsEvent:
     """`course_finish` both records and renders in the same response, so the
     event shows up in that response's own HTML rather than surviving in the
     session for a later page -- unlike a call site that redirects.
     """
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_completing_course_emits_the_tutorial_complete_event(
+    def test_completing_course_emits_the_course_completed_event(
         self, mock_site_context: object
     ) -> None:
         user = UserFactory(password="testpass")
-        course = CourseFactory(slug="ga-complete-course")
+        course = CourseFactory(
+            slug="ga-complete-course", access_config={"access_type": "free"}
+        )
         course_progress_record(course, user)
 
         client = Client()
@@ -140,7 +147,34 @@ class TestTutorialCompleteGoogleAnalyticsFlag:
             )
         )
 
-        assert "gtag('event', 'tutorial_complete')" in response.content.decode()
+        assert (
+            """gtag('event', 'course_completed', {"course_slug": "ga-complete-course", """
+            f'"course_id": "{course.id}", "access_type": "free", '
+            '"registration_source": "individual"})'
+        ) in response.content.decode()
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_a_cohort_learner_completing_reports_the_cohort_source(
+        self, mock_site_context: object
+    ) -> None:
+        user = UserFactory(password="testpass")
+        course = CourseFactory(slug="ga-cohort-course")
+        cohort = CohortFactory()
+        CohortMembershipFactory(learner__user=user, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
+        course_progress_record(course, user)
+
+        client = Client()
+        client.force_login(user)
+
+        response = client.get(
+            reverse(
+                "learner_interface:course_finish",
+                kwargs={"course_slug": "ga-cohort-course"},
+            )
+        )
+
+        assert '"registration_source": "cohort"})' in response.content.decode()
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_revisiting_finish_page_does_not_emit_the_event_again(

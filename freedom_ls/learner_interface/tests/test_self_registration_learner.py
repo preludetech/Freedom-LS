@@ -116,3 +116,60 @@ class TestInitiateCourseAccessSelfRegistration:
         )
 
         assert is_registered_for_course(user, course) is True
+
+
+def _initiate_url(course_slug: str) -> str:
+    return reverse(
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course_slug}
+    )
+
+
+@pytest.mark.django_db
+class TestCourseRegisteredGoogleAnalyticsEvent:
+    def test_a_new_registration_records_the_event(
+        self, mock_site_context, logged_in_client, course_with_topic
+    ):
+        course = course_with_topic(access_type="free", slug="ga-register-course")
+        client = logged_in_client(UserFactory())
+
+        client.post(_initiate_url("ga-register-course"))
+
+        assert client.session["google_analytics_events"] == [
+            {
+                "name": "course_registered",
+                "params": {
+                    "course_slug": "ga-register-course",
+                    "course_id": str(course.id),
+                    "access_type": "free",
+                    "registration_method": "self_registration",
+                },
+            }
+        ]
+
+    def test_an_existing_registration_records_no_event(
+        self, mock_site_context, site, logged_in_client, course_with_topic
+    ):
+        course = course_with_topic(access_type="free")
+        user = UserFactory()
+        learner = LearnerFactory(user=user, organisation=get_default_organisation(site))
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+        client = logged_in_client(user)
+
+        client.post(_initiate_url(course.slug))
+
+        assert "google_analytics_events" not in client.session
+
+    def test_reactivating_a_deactivated_registration_records_no_event(
+        self, mock_site_context, site, logged_in_client, course_with_topic
+    ):
+        course = course_with_topic(access_type="free")
+        user = UserFactory()
+        learner = LearnerFactory(user=user, organisation=get_default_organisation(site))
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=course, is_active=False
+        )
+        client = logged_in_client(user)
+
+        client.post(_initiate_url(course.slug))
+
+        assert "google_analytics_events" not in client.session

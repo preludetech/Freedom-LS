@@ -287,3 +287,20 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
         backend = FreeOnlyCourseAccessBackend()
         result = backend.get_dashboard_contributions(user=AnonymousUser())
         assert result == []
+
+
+class TestGetAccessType:
+    def test_base_class_raises(self):
+        from freedom_ls.course_access.backends import CourseAccessBackend
+
+        backend = CourseAccessBackend()
+        with pytest.raises(NotImplementedError):
+            backend.get_access_type(course=None)
+
+    @pytest.mark.django_db
+    def test_free_only_backend_reports_free(self, mock_site_context):
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        course = CourseFactory(access_config={"access_type": "free"})
+
+        assert FreeOnlyCourseAccessBackend().get_access_type(course=course) == "free"

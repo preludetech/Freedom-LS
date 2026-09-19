@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-19_
 
 ## Summary
 
@@ -27,6 +27,7 @@ Built into the application and present regardless of deployment configuration:
 - **Maintenance page** — FLS ships a branded maintenance page that depends on nothing else running in the application, so it still renders while the app itself is down. FLS never serves it: there is no maintenance mode and no switch to turn one on. A deployment that wants a maintenance window points its own reverse proxy or maintenance middleware at this page rather than building one of its own. See [learner experience](./learner-experience.md#error-pages) for FLS's other branded error pages.
 - **Database-backed cache** — production runs a small database-backed cache, which is what lets the login and signup rate limits hold across restarts and across worker processes instead of resetting with each one. Its table is created by `manage.py createcachetable` in the deploy sequence; a deployment check fails when that step was missed, rather than letting the gap surface later as an error on the login page.
 - **Error tracking (Sentry)** — configured by supplying a DSN, and a complete no-op until one is set, so development and unconfigured deployments send nothing. Once configured it tags events with the deployment's environment and release. Attaching learner personal data is an explicit opt-in, off by default. A staff-only endpoint lets an operator confirm a running deployment is actually reaching Sentry. If a DSN is set but the release identifier is left blank, a non-blocking deployment warning surfaces at boot and in CI, so untagged events are caught rather than quietly degrading release tracking.
+- **Analytics (Google Analytics 4)** — a client-side snippet configured by `GOOGLE_ANALYTICS_MEASUREMENT_ID`. With no ID set nothing loads and nothing is sent. Signed-in sessions carry the numeric account ID as `user_id`, never an email address. Neither analytics snippet loads on the email-confirmation or password-reset pages, whose URLs carry one-time tokens. The GA4 property needs one-off setup before its reports are useful. See [Google Analytics 4 setup](#google-analytics-4-setup).
 - **Analytics (PostHog)** — a client-side snippet configured by project token and region host. With no token set the snippet does not render, so development deployments send nothing.
 - **Environment-variable configuration** — all secrets and deployment-specific settings are supplied by environment variable, with sensible in-repo defaults where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded. Database connection SSL mode is configurable and defaults to *preferred*, which suits a same-host containerised PostgreSQL; stricter modes are for external or managed databases. Persistent database connections are enabled with health checking, so a connection left stale by a database restart is recycled rather than failing the next request. A missing `SECRET_KEY` — or a missing `WEBHOOK_ENCRYPTION_SALT` — fails the application at startup as a visible crash-loop rather than booting into a silently broken state. See [security and data handling](./security-and-data-handling.md).
 - **HTTPS detection behind a reverse proxy** — production trusts the proxy's forwarded scheme, so requests that reached the proxy over HTTPS are correctly recognised as secure. This is what makes the HTTPS redirect and HSTS work behind a proxy instead of looping. See [security and data handling](./security-and-data-handling.md) for the trust preconditions.
@@ -34,6 +35,56 @@ Built into the application and present regardless of deployment configuration:
 - **Tailwind build at image-build time** — `npm run tailwind_build` must run during image construction, and `FLS_THEME` must be set at build time. It cannot be changed at runtime without a rebuild. The [cohort report](./reports.md) takes its colours from this compiled stylesheet rather than carrying any of its own, so a deployment that ships without running the build gets an explicit failure when generating a report rather than a colourless PDF.
 
 **Logging.** The application's logging helper defaults to stdout/stderr only, and production uses that default: nothing here writes to disk. Capping and rotating what a container collects is the deployment's job, handled at the log-driver level, not the application's.
+
+## Google Analytics 4 setup
+
+FLS sends six events. Their names describe moments every course access backend shares, and whatever differs by backend travels as a parameter value. A new backend adds a value, so a funnel built today keeps working.
+
+| Event | Sent when | Parameters |
+| --- | --- | --- |
+| `sign_up` | An account is created | `method` |
+| `course_access_requested` | A learner expresses interest in a coming-soon course, or submits a course application | course parameters, `request_kind` (`interest` or `application`) |
+| `course_registered` | A learner registers themselves for a course | course parameters, `registration_method` (`self_registration`) |
+| `course_started` | A learner opens their first page of a course | course parameters, `registration_source` (`individual` or `cohort`) |
+| `course_completed` | A learner completes a course | course parameters, `registration_source` |
+| `generate_lead` | A concrete project's marketing form is submitted. FLS ships no such form | `lead_form`, optional course parameters |
+
+The course parameters are `course_slug`, `course_id` and `access_type` (`free` or `application_gated`). No parameter carries personal data.
+
+Staff and cohort registrations happen outside the learner's browser, so they never send `course_registered`. Those learners still send `course_started`, with `registration_source` set to `cohort` where that applies. The registration step of a funnel undercounts. The later steps do not.
+
+**Set up each GA4 property once, before launch.** Reports pick up a custom dimension a day or two after it is registered, and earlier events are not backfilled.
+
+1. Under Admin, Custom definitions, register six event-scoped custom dimensions: `course_slug`, `access_type`, `request_kind`, `registration_method`, `registration_source` and `lead_form`. Leave `course_id` unregistered. It has one value per course, GA4 folds dimensions with more than 500 values into "(other)", and an unregistered parameter still reaches BigQuery and DebugView.
+2. Mark five key events: `sign_up`, `generate_lead`, `course_access_requested`, `course_registered` and `course_completed`.
+3. In the data stream's enhanced measurement settings, leave "Page changes based on browser history events" on. FLS relies on it for page views during in-page navigation. Consider turning "Form interactions" off. It fires for every form on the site, quiz pages included.
+4. To count applications apart from interest, use Admin, Events, Create event. Match `course_access_requested` where `request_kind` equals `application`, name the result, and mark it a key event.
+5. Build the funnel under Explore, Funnel exploration, with the steps `sign_up`, then `course_access_requested` or `course_registered`, then `course_started`, then `course_completed`. Break it down by `course_slug` or `access_type`.
+
+**Lead forms.** A concrete project's form view records its own event after the form validates and saves.
+
+```python
+from freedom_ls.base.google_analytics import (
+    GoogleAnalyticsEvent,
+    record_google_analytics_event,
+)
+
+record_google_analytics_event(
+    request, GoogleAnalyticsEvent.GENERATE_LEAD, {"lead_form": "call_me_back"}
+)
+```
+
+The next page the visitor sees sends it. The function takes any event name as a string and raises `ValueError` for a name GA4 would reject. Send the form's name and nothing the visitor typed into it. A form that belongs to one course can add `course_event_params(course)` from `freedom_ls.course_access.google_analytics`, so leads line up with the course funnel.
+
+**Landing pages.** GA4 already records the first page of every session as its landing page, so a landing page needs no event. To tell marketing landing pages from any other first page, the landing page template fills one block from `_base.html`.
+
+```django
+{% block google_analytics_config_params %}content_group: 'landing_page'{% endblock %}
+```
+
+Every event from that page, `page_view` included, then carries that content group. It is a predefined GA4 dimension and needs no registration. Link onward from a landing page with ordinary full-page links. The value is set once per full page load, so after a boosted navigation it would stick to the pages that follow.
+
+**Campaign links.** GA4 reads `utm_*` tags from the landing URL. [Referral links](./referral-codes.md) pass the visitor's query string through to the destination, so tags on the short link reach GA4. GA4 ignores the referral code itself. A referral link with no `utm_*` tags shows up as direct traffic.
 
 ## Operator Responsibilities
 

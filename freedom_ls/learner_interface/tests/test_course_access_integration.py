@@ -714,3 +714,20 @@ def test_initiate_access_coming_soon_self_registers_with_visibility_override(
     assert LearnerCourseRegistration.objects.filter(
         learner__user=user, course=course
     ).exists()
+
+
+@pytest.mark.django_db
+def test_initiate_access_gated_course_records_no_course_registered_event(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="application_gated")
+    client = logged_in_client(UserFactory())
+
+    client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    assert "google_analytics_events" not in client.session

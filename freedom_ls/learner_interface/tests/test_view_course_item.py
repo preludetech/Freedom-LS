@@ -318,7 +318,7 @@ def test_form_fill_page_out_of_range_page_returns_404(
 
 
 # ---------------------------------------------------------------------------
-# GA4 tutorial_begin flag
+# GA4 course_started event
 #
 # view_course_item both stamps started_at and renders the page in the same
 # response, so the event shows up in that response's own HTML rather than
@@ -328,9 +328,10 @@ def test_form_fill_page_out_of_range_page_returns_404(
 
 @pytest.mark.django_db
 @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-def test_first_visit_to_a_course_emits_the_tutorial_begin_event(
+def test_first_visit_to_a_course_emits_the_course_started_event(
     course_with_nested_structure, authenticated_client
 ):
+    course = course_with_nested_structure["course"]
     url = reverse(
         "learner_interface:view_course_item",
         kwargs={"course_slug": "test-course", "index": 1},
@@ -338,7 +339,11 @@ def test_first_visit_to_a_course_emits_the_tutorial_begin_event(
 
     response = authenticated_client.get(url)
 
-    assert "gtag('event', 'tutorial_begin')" in response.content.decode()
+    assert (
+        """gtag('event', 'course_started', {"course_slug": "test-course", """
+        f'"course_id": "{course.id}", "access_type": "free", '
+        '"registration_source": "individual"})'
+    ) in response.content.decode()
 
 
 @pytest.mark.django_db

@@ -23,7 +23,7 @@ from django.views.decorators.http import require_POST
 
 from freedom_ls.base.google_analytics import (
     GoogleAnalyticsEvent,
-    record_google_analytics_flag,
+    record_google_analytics_event,
 )
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
@@ -32,6 +32,7 @@ from freedom_ls.content_engine.models import (
     CourseVisibility,
     Topic,
 )
+from freedom_ls.course_access.google_analytics import course_event_params
 from freedom_ls.course_access.loader import get_course_access_backend
 from freedom_ls.course_access.overrides import (
     is_coming_soon_for_display,
@@ -893,11 +894,19 @@ def initiate_course_access(request, course_slug):
     # update_or_create, not get_or_create: defaults only apply on create, so a
     # registration an admin had deactivated would stay inactive and the learner
     # would be bounced back out of the course they just asked to enter.
-    LearnerCourseRegistration.objects.update_or_create(
+    _, created = LearnerCourseRegistration.objects.update_or_create(
         learner=learner,
         course=course,
         defaults={"is_active": True},
     )
+    # Only a new registration. Reactivating one an admin had switched off is
+    # not a second registration, and a repeat visit to this URL is not one either.
+    if created:
+        record_google_analytics_event(
+            request,
+            GoogleAnalyticsEvent.COURSE_REGISTERED,
+            course_event_params(course) | {"registration_method": "self_registration"},
+        )
 
     # Delete any existing RecommendedCourse for this user and course
     RecommendedCourse.objects.filter(user=request.user, course=course).delete()
@@ -1024,7 +1033,9 @@ def view_course_item(request, course_slug, index):
         course_progress.last_accessed_time = now
         if course_progress.started_at is None:
             course_progress.started_at = now
-            record_google_analytics_flag(request, GoogleAnalyticsEvent.TUTORIAL_BEGIN)
+            _record_course_progress_event(
+                request, GoogleAnalyticsEvent.COURSE_STARTED, course, course_progress
+            )
         course_progress.save(
             update_fields=["last_accessed_item", "last_accessed_time", "started_at"]
         )
@@ -1091,6 +1102,25 @@ def view_course_item(request, course_slug, index):
         )
 
     raise Http404("Unsupported course item type.")
+
+
+def _record_course_progress_event(
+    request: HttpRequest,
+    event: GoogleAnalyticsEvent,
+    course: Course,
+    course_progress: CourseProgress,
+) -> None:
+    # registration_source is what keeps cohort learners visible in GA4: staff
+    # register a cohort outside the learner's browser, so no course_registered
+    # event is ever sent for them.
+    registration_source = (
+        "cohort" if course_progress.cohort_registration_id is not None else "individual"
+    )
+    record_google_analytics_event(
+        request,
+        event,
+        course_event_params(course) | {"registration_source": registration_source},
+    )
 
 
 def _ensure_player_course_progress(
@@ -1642,7 +1672,9 @@ def course_finish(request, course_slug):
                 "course_progress_id": str(course_progress.id),
             },
         )
-        record_google_analytics_flag(request, GoogleAnalyticsEvent.TUTORIAL_COMPLETE)
+        _record_course_progress_event(
+            request, GoogleAnalyticsEvent.COURSE_COMPLETED, course, course_progress
+        )
 
     context = {
         "course": course,

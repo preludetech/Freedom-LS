@@ -11,6 +11,15 @@ from django.utils.translation import ngettext
 
 register = template.Library()
 
+# The characters that could close a <script> element or open an HTML comment
+# from inside a JSON string. Django's json_script escapes the same three, but
+# its table (`django.utils.html._json_script_escapes`) is private.
+_SCRIPT_JSON_ESCAPES = {
+    ord("<"): "\\u003C",
+    ord(">"): "\\u003E",
+    ord("&"): "\\u0026",
+}
+
 
 @register.filter
 def duration(value: object) -> str:
@@ -57,11 +66,6 @@ def get_dict_item(dictionary, key):
     return dictionary.get(key)
 
 
-# Django's own escape table for `json_script` is private
-# (`django.utils.html._json_script_escapes`), so it is reproduced here.
-_JSON_LD_ESCAPES = {ord("<"): "\\u003C", ord(">"): "\\u003E", ord("&"): "\\u0026"}
-
-
 @register.filter(is_safe=True)
 def json_ld_script(value: object, element_id: str) -> SafeString:
     """
@@ -74,7 +78,22 @@ def json_ld_script(value: object, element_id: str) -> SafeString:
 
     Usage: {{ my_dict|json_ld_script:"course-jsonld" }}
     """
-    _payload = json.dumps(value, cls=DjangoJSONEncoder).translate(_JSON_LD_ESCAPES)
+    _payload = json.dumps(value, cls=DjangoJSONEncoder).translate(_SCRIPT_JSON_ESCAPES)
     _tag_template = '<script id="{}" type="application/ld+json">{}</script>'
-    # The payload is escaped with json_script's own table above.
+    # The payload is escaped with the table above.
     return format_html(_tag_template, element_id, mark_safe(_payload))  # noqa: S308  # nosec B308 B703
+
+
+@register.filter
+def inline_script_json(value: object) -> SafeString:
+    """
+    Template filter to render a value as JSON inside an inline <script>.
+
+    json_script cannot be used for this: it wraps the JSON in a <script> element
+    of its own, and the value here is an argument in the middle of a statement.
+
+    Usage: gtag('event', 'name', {{ params|inline_script_json }});
+    """
+    # mark_safe is sound here: json.dumps quotes every string, and the three
+    # characters that could leave the script context are escaped.
+    return mark_safe(json.dumps(value).translate(_SCRIPT_JSON_ESCAPES))  # noqa: S308  # nosec B308 B703

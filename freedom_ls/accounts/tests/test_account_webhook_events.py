@@ -72,8 +72,8 @@ class TestUserRegisteredWebhookEvent:
 
 
 @pytest.mark.django_db(transaction=True)
-class TestSignUpGoogleAnalyticsFlag:
-    def test_save_user_records_the_sign_up_flag_on_commit(
+class TestSignUpGoogleAnalyticsEvent:
+    def test_save_user_records_the_sign_up_event_on_commit(
         self, mock_site_context: object, mocker: object
     ) -> None:
         mocker.patch("freedom_ls.webhooks.events.fire_webhook_event")
@@ -88,9 +88,11 @@ class TestSignUpGoogleAnalyticsFlag:
         ):
             adapter.save_user(request, user, mock_form, commit=True)
 
-        assert request.session["google_analytics_flags"] == ["sign_up"]
+        assert request.session["google_analytics_events"] == [
+            {"name": "sign_up", "params": {"method": "email"}}
+        ]
 
-    def test_save_user_does_not_record_the_flag_without_commit(
+    def test_save_user_does_not_record_the_event_without_commit(
         self, mock_site_context: object, mocker: object
     ) -> None:
         mocker.patch("freedom_ls.webhooks.events.fire_webhook_event")
@@ -105,7 +107,7 @@ class TestSignUpGoogleAnalyticsFlag:
         ):
             adapter.save_user(request, user, mock_form, commit=False)
 
-        assert "google_analytics_flags" not in request.session
+        assert "google_analytics_events" not in request.session
 
 
 @pytest.mark.django_db(transaction=True)
@@ -114,7 +116,7 @@ class TestSignUpGoogleAnalyticsEventEndToEnd:
         self, mock_site_context: object
     ) -> None:
         """`save_user` runs before allauth touches the session, and mandatory
-        email verification defers login, so the flag set during signup must
+        email verification defers login, so the event recorded during signup must
         survive allauth's own redirect chain to the page the new user lands
         on. Guards against a later allauth upgrade changing that chain.
         """
@@ -136,4 +138,7 @@ class TestSignUpGoogleAnalyticsEventEndToEnd:
                 follow=True,
             )
 
-        assert "gtag('event', 'sign_up')" in response.content.decode()
+        assert (
+            """gtag('event', 'sign_up', {"method": "email"})"""
+            in response.content.decode()
+        )

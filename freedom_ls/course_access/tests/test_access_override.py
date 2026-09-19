@@ -252,3 +252,54 @@ class TestFreeOnlyGetAccessExtractionUnaffectedByOverride:
 
         assert decision.cta_label == "Continue"
         assert decision.can_access_content is True
+
+
+@pytest.mark.django_db
+class TestAccessTypeOnGatedCourse:
+    def test_access_type_is_free_when_override_on(self, mock_site_context):
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        with override_settings(
+            COURSE_ACCESS_BACKEND=APPLICATION_BACKEND,
+            OVERRIDE_COURSE_ACCESS_TO_FREE=True,
+        ):
+            get_course_access_backend.cache_clear()
+            backend = get_course_access_backend()
+            result = backend.get_access_type(course=course)
+
+        assert result == "free"
+
+    def test_access_type_is_the_inner_backends_when_override_off(
+        self, mock_site_context
+    ):
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        with override_settings(
+            COURSE_ACCESS_BACKEND=APPLICATION_BACKEND,
+            OVERRIDE_COURSE_ACCESS_TO_FREE=False,
+        ):
+            get_course_access_backend.cache_clear()
+            backend = get_course_access_backend()
+            result = backend.get_access_type(course=course)
+
+        assert result == "application_gated"
+
+
+@pytest.mark.django_db
+class TestCourseEventParams:
+    def test_params_name_the_course_and_its_access_type(self, mock_site_context):
+        from freedom_ls.course_access.google_analytics import course_event_params
+
+        course = CourseFactory(
+            slug="intro-to-botany", access_config={"access_type": "application_gated"}
+        )
+        with override_settings(
+            COURSE_ACCESS_BACKEND=APPLICATION_BACKEND,
+            OVERRIDE_COURSE_ACCESS_TO_FREE=False,
+        ):
+            get_course_access_backend.cache_clear()
+            params = course_event_params(course)
+
+        assert params == {
+            "course_slug": "intro-to-botany",
+            "course_id": str(course.id),
+            "access_type": "application_gated",
+        }

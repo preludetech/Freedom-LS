@@ -28,6 +28,7 @@ This platform can load Google Analytics 4 and PostHog. Each one loads only when 
 - Device and browser information.
 - A pseudonymous identifier held in a cookie.
 - If you are signed in, your numeric account ID.
+- Which courses you request, register for, start and complete.
 
 Neither service receives your email address, name, or phone number.
 

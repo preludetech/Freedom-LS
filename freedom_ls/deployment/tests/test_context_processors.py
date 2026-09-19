@@ -2,6 +2,7 @@ import pytest
 
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpRequest, HttpResponse
+from django.template import engines
 from django.test import Client, RequestFactory, override_settings
 from django.urls import resolve, reverse
 from django.utils.html import escapejs
@@ -15,6 +16,9 @@ from freedom_ls.deployment.context_processors import (
     posthog_config,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
+
+_PENDING_SIGN_UP = {"name": "sign_up", "params": {"method": "email"}}
+_SIGN_UP_SCRIPT = """gtag('event', 'sign_up', {"method": "email"})"""
 
 
 def _request_with_session(path: str = "/") -> HttpRequest:
@@ -156,16 +160,16 @@ class TestGoogleAnalyticsConfig:
         assert result["google_analytics_measurement_id"] is None
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID=None)
-    def test_drops_pending_flags_when_unset(self) -> None:
+    def test_drops_pending_events_when_unset(self) -> None:
         # Nothing will ever emit these, so they are discarded up front rather
         # than waiting in the session for a measurement ID that may never
         # arrive.
         request = _request_with_session()
-        request.session["google_analytics_flags"] = ["sign_up"]
+        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
 
         google_analytics_config(request)
 
-        assert "google_analytics_flags" not in request.session
+        assert "google_analytics_events" not in request.session
 
 
 @pytest.mark.django_db
@@ -243,32 +247,32 @@ def course_player_url_and_learner(mock_site_context: object) -> tuple[str, User]
 @pytest.mark.django_db
 class TestGoogleAnalyticsEventsPartial:
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_flag_recorded_in_session_renders_as_gtag_event(
+    def test_event_recorded_in_session_renders_as_gtag_event(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
 
         content = response.content.decode()
-        assert "gtag('event', 'sign_up')" in content
+        assert _SIGN_UP_SCRIPT in content
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_flag_is_removed_from_session_after_rendering(
+    def test_event_is_removed_from_session_after_rendering(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         client.get("/")
 
-        assert "google_analytics_flags" not in client.session
+        assert "google_analytics_events" not in client.session
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_flag_renders_once_on_a_page_that_extends_base_interface(
+    def test_event_renders_once_on_a_page_that_extends_base_interface(
         self,
         client: Client,
         course_player_url_and_learner: tuple[str, User],
@@ -276,20 +280,20 @@ class TestGoogleAnalyticsEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url)
 
         content = response.content.decode()
-        assert content.count("gtag('event', 'sign_up')") == 1
+        assert content.count(_SIGN_UP_SCRIPT) == 1
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID=None)
     def test_no_event_renders_when_measurement_id_unset(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
@@ -298,30 +302,30 @@ class TestGoogleAnalyticsEventsPartial:
         assert "gtag('event'" not in content
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID=None)
-    def test_flag_is_gone_from_session_when_measurement_id_unset(
+    def test_event_is_gone_from_session_when_measurement_id_unset(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         client.get("/")
 
-        assert "google_analytics_flags" not in client.session
+        assert "google_analytics_events" not in client.session
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_nothing_renders_and_flag_stays_on_a_token_bearing_page(
+    def test_nothing_renders_and_event_stays_on_a_token_bearing_page(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(reverse("account_confirm_email", args=["some-key"]))
 
         content = response.content.decode()
         assert "gtag('event'" not in content
-        assert client.session["google_analytics_flags"] == ["sign_up"]
+        assert client.session["google_analytics_events"] == [_PENDING_SIGN_UP]
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_boosted_request_keeps_the_event_inside_interface_main(
@@ -332,7 +336,7 @@ class TestGoogleAnalyticsEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["google_analytics_flags"] = ["sign_up"]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url, HTTP_HX_REQUEST="true")
@@ -341,6 +345,78 @@ class TestGoogleAnalyticsEventsPartial:
         # Placement, not a full DOM parse: the event script must come after
         # the opening tag of #interface-main, the only region a boosted
         # course-player navigation keeps.
-        assert content.index('id="interface-main"') < content.index(
-            "gtag('event', 'sign_up')"
+        assert content.index('id="interface-main"') < content.index(_SIGN_UP_SCRIPT)
+
+
+@pytest.mark.django_db
+class TestGoogleAnalyticsEventParameters:
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_an_event_with_no_params_renders_an_empty_object(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["google_analytics_events"] = [{"name": "sign_up", "params": {}}]
+        session.save()
+
+        response = client.get("/")
+
+        assert "gtag('event', 'sign_up', {})" in response.content.decode()
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_a_value_that_would_close_the_script_element_is_escaped(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["google_analytics_events"] = [
+            {"name": "generate_lead", "params": {"lead_form": "</script><b>"}}
+        ]
+        session.save()
+
+        response = client.get("/")
+
+        content = response.content.decode()
+        assert (
+            """gtag('event', 'generate_lead', {"lead_form": """
+            '"\\u003C/script\\u003E\\u003Cb\\u003E"})'
+        ) in content
+
+
+@pytest.mark.django_db
+class TestGoogleAnalyticsConfigParamsBlock:
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_a_template_filling_the_block_adds_to_the_config_call(
+        self, mock_site_context: object
+    ) -> None:
+        landing_page = engines["django"].from_string(
+            "{% extends '_base.html' %}"
+            "{% block google_analytics_config_params %}"
+            "content_group: 'landing_page'"
+            "{% endblock %}"
         )
+
+        content = landing_page.render(
+            {"analytics_enabled": True}, _request_with_session()
+        )
+
+        assert (
+            f"gtag('config', '{escapejs('G-TEST')}', {{ content_group: 'landing_page' }});"
+            in content
+        )
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_the_block_sits_beside_user_id_for_a_logged_in_user(
+        self, mock_site_context: object
+    ) -> None:
+        user: User = UserFactory()
+        request = _request_with_session()
+        request.user = user
+        landing_page = engines["django"].from_string(
+            "{% extends '_base.html' %}"
+            "{% block google_analytics_config_params %}"
+            "content_group: 'landing_page'"
+            "{% endblock %}"
+        )
+
+        content = landing_page.render({"analytics_enabled": True}, request)
+
+        assert f"{{ user_id: '{user.pk}', content_group: 'landing_page' }}" in content

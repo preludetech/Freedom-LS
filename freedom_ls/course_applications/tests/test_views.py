@@ -1056,21 +1056,33 @@ class TestApplicationFormPageRejectedAnswers:
 
 
 @pytest.mark.django_db
-class TestApplyGoogleAnalyticsFlag:
-    def test_post_apply_for_a_no_form_course_records_the_flag(
+class TestApplyGoogleAnalyticsEvent:
+    def test_post_apply_for_a_no_form_course_records_the_access_request(
         self, client, mock_site_context
     ):
         user = UserFactory()
-        course = CourseFactory()
+        course = CourseFactory(
+            slug="no-form-course", access_config={"access_type": "application_gated"}
+        )
         client.force_login(user)
 
         client.post(
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert client.session["google_analytics_flags"] == ["generate_lead"]
+        assert client.session["google_analytics_events"] == [
+            {
+                "name": "course_access_requested",
+                "params": {
+                    "course_slug": "no-form-course",
+                    "course_id": str(course.id),
+                    "access_type": "application_gated",
+                    "request_kind": "application",
+                },
+            }
+        ]
 
-    def test_apply_for_a_course_with_a_form_does_not_record_the_flag(
+    def test_apply_for_a_course_with_a_form_does_not_record_an_event(
         self, client, mock_site_context
     ):
         course, _form = gated_course_with_form()
@@ -1081,9 +1093,9 @@ class TestApplyGoogleAnalyticsFlag:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert "google_analytics_flags" not in client.session
+        assert "google_analytics_events" not in client.session
 
-    def test_apply_for_an_existing_application_does_not_record_the_flag(
+    def test_apply_for_an_existing_application_does_not_record_an_event(
         self, client, mock_site_context
     ):
         user = UserFactory()
@@ -1095,12 +1107,12 @@ class TestApplyGoogleAnalyticsFlag:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert "google_analytics_flags" not in client.session
+        assert "google_analytics_events" not in client.session
 
 
 @pytest.mark.django_db
-class TestCheckYourAnswersGoogleAnalyticsFlag:
-    def test_submitting_a_complete_application_records_the_flag(
+class TestCheckYourAnswersGoogleAnalyticsEvent:
+    def test_submitting_a_complete_application_records_the_access_request(
         self, client, mock_site_context
     ):
         course, form = gated_course_with_form()
@@ -1110,9 +1122,19 @@ class TestCheckYourAnswersGoogleAnalyticsFlag:
 
         client.post(_check_url(app))
 
-        assert client.session["google_analytics_flags"] == ["generate_lead"]
+        assert client.session["google_analytics_events"] == [
+            {
+                "name": "course_access_requested",
+                "params": {
+                    "course_slug": course.slug,
+                    "course_id": str(course.id),
+                    "access_type": "application_gated",
+                    "request_kind": "application",
+                },
+            }
+        ]
 
-    def test_a_blocked_submission_does_not_record_the_flag(
+    def test_a_blocked_submission_does_not_record_an_event(
         self, client, mock_site_context
     ):
         course, _form = gated_course_with_form()
@@ -1120,4 +1142,4 @@ class TestCheckYourAnswersGoogleAnalyticsFlag:
 
         client.post(_check_url(app))
 
-        assert "google_analytics_flags" not in client.session
+        assert "google_analytics_events" not in client.session

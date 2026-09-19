@@ -99,7 +99,12 @@
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '{{ google_analytics_measurement_id|escapejs }}'{% if user.is_authenticated %}, {user_id: '{{ user.pk }}'}{% endif %});
+            {% comment %}
+            A marketing landing page template fills this block with
+            content_group: 'landing_page', which GA4 then attaches to every
+            event the page sends, page_view included.
+            {% endcomment %}
+            gtag('config', '{{ google_analytics_measurement_id|escapejs }}', { {% if user.is_authenticated %}user_id: '{{ user.pk }}', {% endif %}{% block google_analytics_config_params %}{% endblock google_analytics_config_params %} });
             </script>
         {% endif %}
 

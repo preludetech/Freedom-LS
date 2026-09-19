@@ -127,6 +127,15 @@ class CourseAccessBackend:
         """
         raise NotImplementedError
 
+    def get_access_type(self, *, course: Course) -> str:
+        """Config-only machine name for how this course is entered, e.g. "free".
+
+        A stable lowercase snake_case constant, for analytics. The badge label
+        cannot stand in for it: that is display copy and may be translated, and
+        Course.access_config is backend-private.
+        """
+        raise NotImplementedError
+
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
@@ -306,6 +315,10 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
         """Every course is free, so the badge always reads "Free"."""
         return AccessBadge(label="Free")
 
+    def get_access_type(self, *, course: Course) -> str:
+        """Always free, the only access type this backend allows."""
+        return str(CourseAccessType.FREE)
+
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]
     ) -> QuerySet[Course]:
@@ -401,6 +414,14 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         # The access-model badge is owned by the inner backend; the visibility
         # wrapper never mints its own badge copy.
         return self._inner.get_access_badge(course=course)
+
+    def get_access_type(self, *, course: Course) -> str:
+        from freedom_ls.course_access.overrides import override_access_to_free
+
+        if override_access_to_free():
+            # Agrees with get_access, which hands out the free decision here.
+            return FreeOnlyCourseAccessBackend().get_access_type(course=course)
+        return self._inner.get_access_type(course=course)
 
     def filter_visible(
         self, *, user: RequestUser, courses: QuerySet[Course]

@@ -593,3 +593,44 @@ class TestGetAccessBadge:
             assert backend.get_access_badge(course=course) == AccessBadge(
                 label="By application"
             )
+
+
+@pytest.mark.django_db
+class TestGetAccessType:
+    """ApplicationCourseAccessBackend.get_access_type (config-only, no queries)."""
+
+    def test_free_course_reports_free(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.get_access_type(course=course) == "free"
+
+    def test_gated_course_reports_application_gated(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "application_gated"})
+        backend = ApplicationCourseAccessBackend()
+
+        with django_assert_num_queries(0):
+            assert backend.get_access_type(course=course) == "application_gated"
+
+    def test_invalid_config_reports_free(self, mock_site_context):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = CourseFactory(access_config={"access_type": "no_such_type"})
+        backend = ApplicationCourseAccessBackend()
+
+        assert backend.get_access_type(course=course) == "free"

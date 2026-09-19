@@ -16,6 +16,7 @@ from django.urls import reverse
 from freedom_ls.course_access.backends import (
     AccessBadge,
     CourseAccessDecision,
+    CourseAccessType,
     DashboardContribution,
     FreeOnlyCourseAccessBackend,
 )
@@ -187,6 +188,15 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         if self.is_accessible_for_free(course=course):
             return AccessBadge(label="Free")
         return AccessBadge(label="By application")
+
+    def get_access_type(self, *, course: Course) -> str:
+        """The course's configured access type; invalid config reads as free,
+        the same fallback is_accessible_for_free takes."""
+        try:
+            config = self.validate_course_config(course.access_config)
+        except ValueError:
+            return str(CourseAccessType.FREE)
+        return str(config["access_type"])
 
     def get_dashboard_contributions(
         self, *, user: RequestUser

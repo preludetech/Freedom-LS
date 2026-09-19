@@ -3,7 +3,10 @@ from functools import partial
 
 from django.http import HttpRequest
 
-from freedom_ls.base.google_analytics import pop_google_analytics_flags
+from freedom_ls.base.google_analytics import (
+    GoogleAnalyticsEventPayload,
+    pop_google_analytics_events,
+)
 from freedom_ls.deployment.config import config as deployment_config
 
 # allauth's own URL names (allauth/account/urls.py). Each carries a one-time
@@ -46,15 +49,15 @@ def posthog_config(_request: HttpRequest) -> dict[str, str | None]:
 
 def google_analytics_config(
     request: HttpRequest,
-) -> dict[str, str | None | Callable[[], list[str]]]:
+) -> dict[str, str | None | Callable[[], list[GoogleAnalyticsEventPayload]]]:
     """
     Context processor that provides Google Analytics 4 configuration.
 
-    `google_analytics_flags` is a callable rather than a resolved list: Django
-    calls it only when a template first reads the variable, so the flags are
+    `google_analytics_events` is a callable rather than a resolved list: Django
+    calls it only when a template first reads the variable, so the events are
     popped from the session only by a template that goes on to emit them. A
-    render that never reaches `partials/google_analytics_events.html` (an
-    HTMX partial, an email, a token-bearing page) leaves the flags for the
+    render that never reaches `partials/google_analytics_events.html` (most
+    HTMX partials, an email, a token-bearing page) leaves the events for the
     next page to pop.
 
     Args:
@@ -62,16 +65,16 @@ def google_analytics_config(
 
     Returns:
         dict: google_analytics_measurement_id resolved through
-        freedom_ls.deployment.config, and google_analytics_flags, a callable
-        returning this request's pending one-shot GA4 event flags.
+        freedom_ls.deployment.config, and google_analytics_events, a callable
+        returning this request's pending one-shot GA4 events.
     """
     measurement_id = deployment_config.GOOGLE_ANALYTICS_MEASUREMENT_ID
     if measurement_id is None:
         # Nothing will ever emit these, so they are discarded now instead of
         # waiting in the session for a measurement ID that may arrive weeks
         # later, or never.
-        pop_google_analytics_flags(request)
+        pop_google_analytics_events(request)
     return {
         "google_analytics_measurement_id": measurement_id,
-        "google_analytics_flags": partial(pop_google_analytics_flags, request),
+        "google_analytics_events": partial(pop_google_analytics_events, request),
     }

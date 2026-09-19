@@ -16,12 +16,29 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.utils import redirect_to_auth
+from freedom_ls.base.google_analytics import (
+    GoogleAnalyticsEvent,
+    record_google_analytics_event,
+)
 from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_access.google_analytics import course_event_params
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.models import CourseInterest
 
 _CTA_TEMPLATE = "course_interest/partials/express_interest_cta.html"
 _PENDING_INTEREST_SESSION_KEY = "course_interest_pending_slug"
+
+
+def _express_interest(request: HttpRequest, course: Course) -> None:
+    """Record the interest, and tell GA4 only when the row is new, so a repeat
+    click sends nothing."""
+    _, created = CourseInterest.objects.get_or_create(user=request.user, course=course)
+    if created:
+        record_google_analytics_event(
+            request,
+            GoogleAnalyticsEvent.COURSE_ACCESS_REQUESTED,
+            course_event_params(course) | {"request_kind": "interest"},
+        )
 
 
 @require_POST
@@ -55,7 +72,7 @@ def partial_express_interest(request: HttpRequest, course_slug: str) -> HttpResp
     if course.visibility != CourseVisibility.COMING_SOON:
         return HttpResponse(status=422)
 
-    CourseInterest.objects.get_or_create(user=request.user, course=course)
+    _express_interest(request, course)
 
     return render(
         request,
@@ -113,6 +130,6 @@ def deferred_express_interest(request: HttpRequest, course_slug: str) -> HttpRes
         pending_slug == course_slug
         and course.visibility == CourseVisibility.COMING_SOON
     ):
-        CourseInterest.objects.get_or_create(user=request.user, course=course)
+        _express_interest(request, course)
 
     return redirect("learner_interface:course_detail", course_slug=course.slug)
