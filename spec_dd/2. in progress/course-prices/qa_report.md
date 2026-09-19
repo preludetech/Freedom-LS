@@ -1,204 +1,197 @@
-# Frontend QA Report — course-prices
+# Frontend QA report: course prices
 
 ## Methodology
 
-Walked the test plan `3. frontend_qa.md` with the Playwright MCP browser at three viewports: desktop (1920x1080), mobile (375x812) and tablet (768x1024).
+Ran the plan in `3. frontend_qa.md` against a fresh `uv run python manage.py runserver` on port 8463,
+started for this run only. `#debug-branch-badge` on `/` named `course-prices` before any test began,
+confirming no other server held the port (screenshot `page-2026-09-19T07-57-33-663Z.png`).
 
-Seed data was built fresh with:
+Seed: `migrate`, `content_save demo_content DemoDev`, then `qa_create_course_price_scenarios` to build
+the six QA-only priced courses (Fixed, Range, On request, Expired sale, Coming soon priced) and the
+two learner accounts.
 
-```
-uv run manage.py migrate
-uv run manage.py content_save demo_content DemoDev
-uv run manage.py qa_create_course_price_scenarios
-```
-
-Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists in that folder.
+Checked with Playwright MCP at three viewports: desktop 1920x1080, mobile 375x812, tablet 768x1024.
+Screenshots were written to `screenshots/` beside this report; every image referenced below exists in
+that directory. Accessibility-snapshot `.yml` files and console `.log` files captured during the run
+were dropped before writing the report. A compression pass over `screenshots/` found nothing over 1MB.
 
 ## Diff scoping
 
-Scoping class: **FULL**.
-
-Changed files that triggered the full run:
-
-- `freedom_ls/learner_interface/templates/cotton/course-price.html`
-- `freedom_ls/learner_interface/templates/learner_interface/all_courses.html`
-- `freedom_ls/learner_interface/templates/learner_interface/course_detail.html`
-- `freedom_ls/learner_interface/templates/learner_interface/partials/course_card.html`
-- `freedom_ls/learner_interface/templates/learner_interface/partials/course_row.html`
-- `freedom_ls/learner_interface/templates/learner_interface/partials/course_listing_price.html`
-- `freedom_ls/content_engine/admin.py`
-- `freedom_ls/content_engine/models/courses.py`
-- `freedom_ls/content_engine/prices.py`
-- `freedom_ls/learner_interface/views.py`
-- `demo_content/*`
-
-Nothing was skipped: desktop, mobile and tablet all ran.
+Changed files touch `course-price.html`, `all_courses.html`, `course_detail.html`, `course_card.html`,
+`course_listing_price.html`, `course_row.html`, plus Python content and spec files. This is a template
+change, so the diff class is **FULL**: desktop, mobile and tablet all ran. Nothing was skipped.
 
 ## Smoke gate
 
-Status: **pass**.
-
-Pages loaded:
-
-- `http://127.0.0.1:8130/`
-- `http://127.0.0.1:8130/courses/`
+Pass. Checked `/`, `/courses/`, and
+`/courses/functionality-demo-application-gated-course/detail/`. No failure URL, no failure reason.
 
 ## Results
 
-| Test ID | Viewport | Status | Note |
-|---|---|---|---|
-| 1.1 | desktop | pass | Struck ZAR1,499.00 + ZAR999.00 under title; By application badge kept; sr-only Original price:/Now: present. |
-| 1.2 | desktop | pass | $250.00, no tax note. |
-| 1.3 | desktop | pass | From ZAR1,200.00; high amount absent. |
-| 1.4 | desktop | pass | Price on request. |
-| 1.5 | desktop | pass | ZAR800.00 only; 500 absent, no strike. |
-| 1.6 | desktop | pass | ZAR100.00 with COMING SOON eyebrow. |
-| 1.7 | desktop | pass | Unpriced rows have no price line; 103px vs 127px for priced rows. |
-| 1.8 | mobile | pass | No horizontal scroll at 375px; price on one 19px line, no overlap with Details link. |
-| 1.sr | desktop | pass | sr-only 'Original price:'/'Now:' present before amounts, neither visible on screen. |
-| 2.1.1 | desktop | pass | Price stat cell before Enrolment; struck ZAR1,499.00 + ZAR999.00, no tax note. |
-| 2.1.2 | desktop | pass | Sign-up panel shows price above 'Application required', 'incl. VAT'. |
-| 2.1.3 | desktop | pass | Heading/subtext/CTA match main backend strings; CTA redirects anon to login. |
-| 2.1.4 | desktop | pass | course-jsonld Offer price '999.00' ZAR, no priceValidUntil; isAccessibleForFree false. |
-| 2.2.1 | desktop | pass | QA Fixed price: stat/panel $250.00; JSON-LD Offer '250.00' USD. |
-| 2.2.2 | desktop | pass | QA Range price: 'From ZAR1,200.00'; panel range; AggregateOffer low/high 1200/3000, no offerCount. |
-| 2.2.3 | desktop | pass | QA On request: 'Price on request' in stat and panel; no offers key. |
-| 2.2.4 | desktop | pass | QA Expired sale: ZAR800.00 only; '500.00' not in page source; no priceValidUntil. |
-| 2.2.5 | desktop | pass | Unpriced course: no Price cell, no panel price, no offers key. |
-| 2.3 | desktop | pass | catalogue-jsonld type application/ld+json, parses as ItemList. |
-| 3.1 | desktop | pass | Learner A /courses/: prices still show; eyebrow shows NOT REGISTERED / COMING SOON. |
-| 3.2 | desktop | pass | Dashboard: priced cards show compact price under title; cards in a row share height. |
-| 3.3 | desktop | pass | Gated detail as Learner A: struck price, panel price + incl. VAT, Apply now CTA. |
-| 4.1 | desktop | pass | Learner B: gated row shows REGISTERED + 0% progress, no price. |
-| 4.2 | desktop | pass | Learner B detail: Price stat still shows; panel has no price; CTA 'Start course'. |
-| 4.3 | desktop | pass | QA Fixed price and QA Range price still shown to Learner B. |
-| 4.2-copy | desktop | fail | Registered learner sees PRICE beside 'Free · open' wording — see bug B1. |
-| 5.1 | desktop | pass | Price fieldset with 8 editable fields; amount shows '250.000' (3-dp storage). |
-| 5.2 | desktop | pass | Kind range saved; /courses/ row reads 'From $100.00'. |
-| 5.3 | desktop | pass | Fixed with stray low/high: field errors, no 500; clearing them saved. |
-| 5.4 | desktop | pass | Discounted, no sale amount: error on price_sale_amount. |
-| 5.5 | desktop | pass | Sale 250/300 rejected on price_sale_amount; 200 saved. |
-| 5.6 | desktop | pass | Range low 300 high 100 rejected on price_high_amount. |
-| 5.7 | desktop | pass | Amount 0 and -5 rejected on price_amount. |
-| 5.8 | desktop | pass | ZZZ rejected on price_currency. |
-| 5.9 | desktop | pass | JPY 1500.50 rejected; JPY 1500 and KWD 1.234 saved and render correctly. |
-| 5.10 | desktop | pass | on_request with currency/tax note rejected; bare on_request saved. |
-| 5.11 | desktop | pass | Blank kind + amount rejected; all-empty saved with no price anywhere. |
-| 5.12 | desktop | pass | Blank currency: 'Set a currency, or set DEFAULT_CURRENCY.' |
-| 5.13 | desktop | pass | Tax note with `<b>`/`<script>` renders as literal text; no markup, no dialog. |
-| 5.14 | desktop | pass | Title with script tag: no dialog, page renders whole, both JSON-LD blocks parse. |
-| 5.msg | desktop | fail | Validation messages expose internal field names/raw kind values — see bug B2. |
-| 6.1 | desktop | pass | Admin-set fixed ZAR 99.00 survives a re-load with no price: key. |
-| 6.2 | desktop | pass | price: null clears all eight price columns. |
-| 6.3 | desktop | pass | Range then fixed: low/high become None. |
-| 6.4 | desktop | pass | Bare 1499.00 fails with quoting guidance; stored price unchanged. |
-| 6.5 | desktop | pass | kind: subscription fails naming the allowed tags; price unchanged. |
-| 6.6 | desktop | pass | Fixed with no currency fails correctly, but as an uncaught ValueError traceback, not the formatted block (see general note c). |
-| 7.1 | desktop | pass | Unpriced course: no price markup; template diff vs main noted (json_ld_script rename, stats strip max-width). |
-| 7.2 | desktop | pass | Learner A on free open course: enrols and lands on course page. |
-| 7.3 | desktop | pass | No console/page errors; only pre-existing CSP report-only info messages. |
-| 7.4 | desktop | pass | Priced/unpriced cards in the same row share height; list rows 127px vs 103px. |
-| 2.1 | mobile | pass | Gated detail at 375px: stats stack, price on one line, panel full width, no horizontal scroll. |
-| 2.1-dividers | mobile | fail | Ragged divider lines when stats stack — see bug B3. |
-| 3.2 | mobile | pass | Dashboard at 375px: cards full width, no overflow. |
-| 5.1 | mobile | pass | Admin Price fieldset at 375px: inputs 317px wide, no horizontal scroll. |
-| 2.1 | tablet | pass | 768px: Lessons/Price/Enrolment on one row, panel full width, no horizontal scroll. |
-| 1.8 | tablet | pass | /courses/ rows 696px wide, no overflow. |
-| 3.2 | tablet | pass | Dashboard two-column grid; priced/unpriced cards in a row share height. |
+### §1 All courses page, anonymous (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 1.1 | desktop | pass | Gated course row: struck ZAR1,499.00 then ZAR999.00, no tax note, no % off/date; "By application" badge in eyebrow. sr-only "Original price:"/"Now:" spans precede the amounts and are visually hidden. |
+| 1.2 | desktop | pass | QA Fixed price row: $250.00, no tax note. |
+| 1.3 | desktop | pass | QA Range price row: "From ZAR1,200.00", high amount absent. |
+| 1.4 | desktop | pass | QA On request row: "Price on request". |
+| 1.5 | desktop | pass | QA Expired sale row: ZAR800.00 only, no struck-through amount, 500.00 absent. |
+| 1.6 | desktop | pass | QA Coming soon priced row: ZAR100.00 with COMING SOON eyebrow. |
+| 1.7 | desktop | pass | Unpriced rows have no price line and keep the 112px height; priced rows are uniformly 136px. |
+
+![Course listing rows for the discounted, fixed, range, on-request, expired-sale and coming-soon prices](screenshots/page-2026-09-19T07-57-56-439Z.png)
+*1.1-1.7: all six price kinds on /courses/, desktop.*
+
+### §2 Course page, anonymous (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 2.1 | desktop | pass | Gated course page: Price cell (white text) sits directly before Enrolment, struck ZAR1,499.00 + ZAR999.00, no tax note. Sign-up panel shows the same price + "incl. VAT" above "Application required". Acquisition copy unchanged vs main. Apply now -> `/applications/apply/<slug>/` -> login redirect with `next`. JSON-LD offers `{Offer, price "999.00", ZAR}`, no `priceValidUntil`; `isAccessibleForFree=false` present. |
+| 2.2.1 | desktop | pass | QA Fixed price: cell $250.00; panel "$250.00 excl. tax"; offers `Offer` price "250.00" USD. |
+| 2.2.2 | desktop | pass | QA Range price: cell "From ZAR1,200.00"; panel "ZAR1,200.00 – ZAR3,000.00"; `AggregateOffer` lowPrice "1200.00" highPrice "3000.00", no offerCount. |
+| 2.2.3 | desktop | pass | QA On request: cell and panel "Price on request"; no `offers` key. |
+| 2.2.4 | desktop | pass | QA Expired sale: cell and panel ZAR800.00 only; `Offer` price "800.00", no `priceValidUntil`. |
+| 2.2.5 | desktop | pass | Unpriced course (Course Parts): no Price cell, no price in panel, no `offers` key. |
+| 2.3 | desktop | pass | `catalogue-jsonld` script has `type="application/ld+json"` and parses. |
+
+![Application-gated course detail page with the struck-through and sale price in the stats strip and sign-up panel](screenshots/page-2026-09-19T07-58-27-516Z.png)
+*2.1: gated course detail page, desktop.*
+
+### §3 Signed-in, not registered — Learner A (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 3.1 | desktop | pass | `/courses/`: every §1 price still shows; eyebrows show NOT REGISTERED / COMING SOON instead of access badges. |
+| 3.2 | desktop | pass | Dashboard: priced not-registered cards (Pricing, Available courses) and QA Coming soon priced show the compact price under the title; unpriced cards unchanged. Cards in a row share heights. |
+| 3.3 | desktop | pass | Gated course detail as Learner A: Price cell and panel price (with "incl. VAT") both show. Learner A has a pending application left from an earlier run, so the CTA reads "View my application"; this does not affect price display. |
+
+![Learner A dashboard with compact prices under card titles](screenshots/page-2026-09-19T07-58-57-827Z.png)
+*3.2: Learner A dashboard, desktop.*
+
+### §4 Registered — Learner B (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 4.1 | desktop | pass | Learner B: gated course row reads REGISTERED + 0% progress bar, no price; dashboard "In progress" card shows no price. QA Fixed price row still shows $250.00. |
+| 4.2 | desktop | pass | Learner B detail: Price stat still shows; sign-up panel has no price, CTA "Start course". Enrolment cell and panel say "Free · open" beside the price. |
+| 4.3 | desktop | pass | Other priced courses still show prices for Learner B. |
+
+No screenshot captured for §4; the checks were made against page text and DOM state.
+
+### §5 Admin (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 5.1 | desktop | pass | Price fieldset with 8 editable fields (kind select with ''/fixed/range/discounted/on_request). Amount displays as "250.000" (3-dp storage) in admin. |
+| 5.2 | desktop | pass | Kind range low 100 high 200 saved; /courses/ row reads "From $100.00". |
+| 5.3 | desktop | pass | Fixed with stray low/high: "Not used by a fixed price." under price_low_amount and price_high_amount; top note only "Please correct the errors below."; no 500. Clearing saved. |
+| 5.4 | desktop | pass | Discounted no sale: "Required for a discounted price." on price_sale_amount. |
+| 5.5 | desktop | pass | Sale 250 and 300 rejected on price_sale_amount ("Must be less than the full amount."); 200 saved. |
+| 5.6 | desktop | pass | Range low 300 high 100 rejected on price_high_amount ("Must be greater than the low amount."). |
+| 5.7 | desktop | pass | Amount 0 and -5 rejected on price_amount ("Must be greater than zero."). |
+| 5.8 | desktop | pass | ZZZ rejected on price_currency ("'ZZZ' is not a recognised currency code."). |
+| 5.9 | desktop | pass | JPY 1500.50 rejected on price_amount; JPY 1500 saved and course page shows ¥1,500 (no decimals); KWD 1.234 saved. |
+| 5.10 | desktop | pass | on_request with currency / tax note rejected on those fields ("Not used by an on-request price."); with all else empty it saved. |
+| 5.11 | desktop | pass | Blank kind + amount rejected on price_kind; all empty saved and course page showed no price cell, no panel price, no offers. |
+| 5.12 | desktop | pass | Blank currency: "Set a currency, or set DEFAULT_CURRENCY." on price_currency. Red triangle beside the sale-ends-on date input is Django's standard timezone-offset hint, not an error. |
+| 5.13 | desktop | pass | Tax note `<b>incl</b> <script>alert(1)</script>` renders as escaped literal text, no bold, no script element, no dialog. Restored to "excl. tax". |
+| 5.14 | desktop | pass | Title `QA </script><script>alert(1)</script>`: no dialog, page renders fully, course-jsonld escapes "<" as `<` and parses with the title intact. Title restored; QA Fixed price back to fixed 250 USD excl. tax. |
+
+![Admin course change page Price fieldset with 8 fields, amount shown as 250.000](screenshots/page-2026-09-19T08-01-08-169Z.png)
+*5.1/5.12: admin Price fieldset, desktop.*
+
+![Admin tax note field showing the escaped script/bold markup as literal text](screenshots/page-2026-09-19T08-01-26-170Z.png)
+*5.13: escaped tax note markup, desktop.*
+
+### §6 Content loader (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 6.1 | desktop | pass | Copied demo course (scratchpad, "QA Loader course"); price set in admin (fixed 777 USD "admin note") survived a re-load with no `price:` key. |
+| 6.2 | desktop | pass | `price: null` cleared every price column; /courses/ row, course page (no cell, no panel price, no offers) and all 8 admin fields empty. |
+| 6.3 | desktop | pass | Range (100-200 ZAR) then fixed 300 ZAR: low/high amounts cleared to None. |
+| 6.4 | desktop | pass | Bare amount `1499.00`: validation fails at price -> fixed -> amount with "write amounts as quoted strings, e.g. \"1499.00\""; stored price unchanged. |
+| 6.5 | desktop | pass | `kind: subscription` fails and names "subscription" against the expected tags. |
+| 6.6 | desktop | pass | Fixed with no currency fails naming the course.md path and "DEFAULT_CURRENCY is not set". Unlike 6.4/6.5 it surfaces as a raw ValueError traceback rather than the formatted validation report. |
+
+No screenshot captured for §6; the checks were made against loader output and admin field state.
+
+### §7 Regression sweep (desktop)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 7.1 | desktop | pass | Unpriced course: row/card templates only gain a price include that renders nothing without a price; listing templates change only `json_script` -> `json_ld_script`. Unpriced detail page has no Price cell and no offers. Rows keep the 112px unpriced height. |
+| 7.2 | desktop | pass | Free open course (show end with Quiz) as Learner A: "Free · open to everyone / One click. No credit card. / Enrol for free", no Price cell; enrolling lands on topic 1 with the course outline at 0%. |
+| 7.3 | desktop | pass | No console errors on `/`, `/courses/`, a course detail page or the enrol flow. Only warnings come from the YouTube embed on a topic page (unrelated). |
+| 7.4 | desktop | pass | Mixed priced/unpriced rows and cards line up; cards in a dashboard row share heights. |
+
+Screenshot for 7.4 (desktop) is the same dashboard capture as 3.2, `page-2026-09-19T07-58-57-827Z.png` (above).
+
+### Mobile (375x812)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 1.8 | mobile | pass | 375px /courses/: no horizontal scroll (scrollWidth 375); every price is one line (19px), none overlaps Details or exceeds the viewport. |
+| 2.1 | mobile | pass | Gated course page at 375px: stats cells stack full width with even dividers; Price cell and panel price ("incl. VAT") fit; Apply now intact. |
+| 2.2 | mobile | pass | All 13 priced course pages at 375px: no horizontal scroll, every stat-cell and panel price stays inside its box (widest: range panel "ZAR1,200.00 – ZAR3,000.00" ends at 299px of a 359px panel). |
+| 3.2 | mobile | pass | Dashboard as Learner A at 375px: cards stack, compact prices one line, no overflow; header nav shows the avatar. |
+
+![Course listing at 375px width, single-line prices with no overflow](screenshots/page-2026-09-19T08-03-50-636Z.png)
+*1.8: /courses/ at 375px.*
+
+![Gated course detail page at 375px with stacked stat cells](screenshots/page-2026-09-19T08-03-55-891Z.png)
+*2.1: gated course detail page, mobile.*
+
+![Learner A dashboard at 375px with stacked, single-line-price cards](screenshots/page-2026-09-19T08-04-20-180Z.png)
+*3.2: Learner A dashboard, mobile.*
+
+### Tablet (768x1024)
+
+| # | Viewport | Status | Notes |
+| --- | --- | --- | --- |
+| 2.1 | tablet | pass | 768px gated course page: three stat cells in one row (Lessons / Price / Enrolment), Price cell widens to fit the discounted price; panel full width with price + incl. VAT. |
+| 2.2 | tablet | pass | Range and sale-with-end-date pages at 768px: stats cells stay on one row, no price overflows its cell or panel, no horizontal scroll. |
+| 7.4 | tablet | pass | Dashboard two-column grid: priced and unpriced cards in the same row share height and Details links align; /courses/ rows one-line prices, no scroll. |
+
+![Gated course detail page at 768px with three stat cells in one row](screenshots/page-2026-09-19T08-04-41-983Z.png)
+*2.1: gated course detail page, tablet.*
+
+![Two-column dashboard grid at 768px with aligned card heights](screenshots/page-2026-09-19T08-04-48-560Z.png)
+*7.4: dashboard grid, tablet.*
 
 ## Bugs
 
-### B1: Registered learner sees a price next to 'Free · open' wording on a gated course
-
-**Manifestations:** test 4.2-copy (desktop)
-
-**Screenshots:**
-
-![](screenshots/page-2026-09-19T06-56-26-052Z.png)
-
-**Expected:** A registered learner on a priced, application-gated course sees no copy that contradicts the price shown in the stats strip.
-
-**Actual:** Stats strip shows 'PRICE ZAR1,499.00 ZAR999.00' beside 'ENROLMENT Free · open', and the sign-up panel reads 'Free · open to everyone / One click. No credit card. / Start course'. The Free wording is pre-existing on main (registered learners fall through to the free backend's decision in `course_applications/backends.py`); the spec keeps the Price cell for registered learners, which puts the two side by side. Needs a product decision.
-
-### B2: Admin price validation messages use internal field names and raw kind values
-
-**Manifestations:** test 5.msg (desktop)
-
-**Screenshots:** none captured.
-
-**Expected:** Errors in the admin's words, e.g. 'Low amount is not used by a fixed price', 'Currency is not used by an on-request price'.
-
-**Actual:** 'low_amount is not used by a fixed price', 'currency is not used by a on_request price', 'sale_amount must be less than amount.' The errors sit on the right fields; only the wording is off.
-
-### B3: Ragged divider lines in the stacked stats strip on mobile
-
-**Manifestations:** test 2.1-dividers (mobile)
-
-**Screenshots:**
-
-![](screenshots/page-2026-09-19T07-02-10-268Z.png)
-
-**Expected:** When the stats cells stack at 375px, the dividers between them span the same width, as on main where every cell was `w-48`.
-
-**Actual:** The Price cell grows to its content (253px discounted, 213px range) while the others stay 192px, so each cell's top border ends at a different x inside the 343px box.
+No `bug` records were produced this run. No bugs found.
 
 ## Bug status
 
-- **WON'T FIX (decision)**: B1. Registered learners keep seeing the price, since they may want to tell friends what it costs. Price is display-only, so the inherited access copy and CTAs stay as they are.
-- **FIXED**: B2. Price rule messages no longer name their own field and read kinds in plain words ("Not used by an on-request price.", "Must be less than the full amount."). The bundled fls-content validator copy is re-synced.
-- **FIXED**: B3. Below `md` every stat cell spans the strip. From `md` the cells sit side by side. `sm` was not enough: at 640px a discounted price fits two cells but not three, which wrapped two-then-one. A Playwright test covers 375px and 640px.
+No bugs found this run.
 
 ## General notes
 
-a. Amounts render with no space between the currency code and the digits (`ZAR1,499.00`). The plan checks only digits and currency, so this is not a failure.
+a. Plan §0.2.9's example course "Functionality Demo - Standard markdown" does not exist; "Functionality
+   Demo - Course Parts" and "Standard Markdown - Demo Finance" served as the unpriced courses.
 
-b. The admin amount input shows 3-decimal storage (`250.000`).
+b. Learner A still has a pending application to the gated course from an earlier run, so its CTA reads
+   "View my application". Price display is unaffected. The seed command does not clear applications.
 
-c. Test 6.6 fails correctly but surfaces as an uncaught `ValueError` traceback from `content_save`, not the formatted validation block that 6.4 and 6.5 get.
+c. Admin shows stored amounts with 3 decimal places (e.g. "250.000" for USD), as in the previous run.
 
-d. The debug toolbar was hidden during capture.
+d. Loader case 6.6 (no currency, no `DEFAULT_CURRENCY`) fails with a raw ValueError traceback naming
+   the file, where 6.4/6.5 give the formatted validation report. Meets the plan; noted for consistency.
 
-e. Section 6 ran on a scratchpad copy of a demo course, which was deleted afterwards through qa-data-helper.
+e. The registered learner sees "Free · open" copy beside the Price cell (B1 from the previous run,
+   closed by decision).
 
-f. Test 7.1 compared against main at template level, not with a live main server.
+f. The red triangle beside the admin "Price sale ends on" field is Django's standard timezone-offset
+   hint.
 
-g. CSP report-only info messages for CDN scripts are pre-existing.
+g. Only console warnings seen came from a YouTube embed on a topic page.
 
-## Tax note rendering (test 5.13)
-
-![](screenshots/page-2026-09-19T06-58-00-000Z-taxnote.png)
+h. §6 used a copied course in the session scratchpad ("QA Loader course"); it was deleted from the dev
+   DB afterwards.
 
 ---
 status: ok
-reason: 3 bugs — 0 fixed, 3 unresolved (all red lane); report rendered, screenshots verified
-
-## Application-gated QA (follow-up)
-
-Priced courses are expected to be application-gated, with payment taken outside FLS: the learner sees the price, then applies. This pass walked that flow on "Functionality Demo - Application gated course" (discounted ZAR1,499.00 → ZAR999.00, incl. VAT) after the B2/B3 fixes, on a fresh `runserver` with the `course-prices` branch badge confirmed.
-
-| # | State | Viewport | Status | Note |
-|---|---|---|---|---|
-| G1 | Anonymous | desktop, mobile | pass | Price in the stats strip and the panel, "Application required", "Apply now" → apply page. Mobile: three stacked cells all span 16–358px, no horizontal scroll. |
-| G2 | Learner A, not registered | desktop | pass | Same price and "Apply now". Completed all three form pages (upload included) and submitted. The dashboard shows "Your applications: Pending review". |
-| G3 | Learner A, application pending | desktop, mobile | pass | Price still shown in the strip and the panel. CTA is "View my application". |
-| G4 | Learner B, registered | desktop, mobile | pass (B1 decision) | The Price stat shows beside "Enrolment: Free · open". The panel reads "Free · open to everyone / One click. No credit card. / Start course", with no price. |
-| G5 | `/courses/` | desktop | pass | Learner A (pending): gated row shows the struck price + sale price. Learner B: REGISTERED + 0%, no price. |
-| B3 | Stats strip at 640px and 768px | — | pass | 640px: three full-width stacked cells. 768px: one row (Lessons / Price / Enrolment). |
-
-No console errors.
-
-Observations, left alone because they are not price-related:
-
-- G3: while an application is pending, the panel still reads "Application required / Apply and we'll review your request." above "View my application". The same copy shows on courses without a price.
-- G4: "Free · open" / "One click. No credit card." sits beside a paid price for a registered learner (B1, kept by decision). The copy comes from the free backend, which registered learners fall through to.
-- G5: while an application is pending, the `/courses/` eyebrow says NOT REGISTERED.
-
-Screenshots:
-
-![](screenshots/gated-1-anon-mobile.png)
-![](screenshots/gated-2-learner-a-before-apply-desktop.png)
-![](screenshots/gated-3-pending-desktop.png)
-![](screenshots/gated-3-pending-mobile.png)
-![](screenshots/gated-4-registered-desktop.png)
-![](screenshots/gated-4-registered-mobile.png)
-![](screenshots/gated-5-listing-pending-desktop.png)
+reason: report rendered, 0 bugs documented
