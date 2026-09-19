@@ -109,6 +109,21 @@ Body content here...
 
 After the first `content_save`, the file will have a `uuid:` field added automatically.
 
+## Quoting price amounts (load-bearing)
+
+Always write a course `price`'s amount fields (`amount`, `sale_amount`, `low_amount`,
+`high_amount`) as **quoted strings**, never bare numbers:
+
+```yaml
+price:
+  kind: fixed
+  amount: "1499.00"    # correct — quoted
+```
+
+An unquoted `amount: 1499.00` is read through YAML's float parser before validation ever sees
+it — a float can't round-trip a currency amount exactly — and is refused outright. Full field
+reference: see the `fls-content:content-types` skill's `resources/course-files.md#course-pricing`.
+
 ## HTML-escaping rules
 
 `c-code-block` and `c-equation` bodies are **not** markdown-processed — they pass as raw text through the nh3 sanitiser. Authors must escape these characters:

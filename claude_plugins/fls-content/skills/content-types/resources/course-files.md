@@ -29,6 +29,7 @@ A course can contain COURSE_PARTs, but they are not required. Course parts are l
 | `children` | `list` | No | Explicit ordered list of child paths; if omitted, auto-discovered alphabetically |
 | `content` | `str` | No | Optional markdown intro body |
 | `access_config` | `dict` | No | How learners get access to the course. See [Course access configuration](#course-access-configuration) below. Absent → `free`. |
+| `price` | `dict` | No | What the course costs. Display only — no payment is processed. See [Course pricing](#course-pricing) below. Omit for no price. |
 | `tags` | `list[str]` | No | Optional tag list |
 | `meta` | `dict` | No | Arbitrary metadata |
 
@@ -255,6 +256,145 @@ define entirely different values.
 Set `access_config` deliberately — it is never inferred from course content. When editing an
 existing course file, preserve any `access_config` exactly as written; do not invent, change,
 or drop it.
+
+### Course pricing
+
+`price` declares what a course costs. It is **display only** — nothing here processes payment;
+enrolment/access is controlled separately by `access_config` above. Omit `price` entirely for a
+course with no price shown anywhere.
+
+Every `price` has a `kind`, which selects one of four shapes. Each shape takes only its own
+fields — writing a field another shape does not use fails validation with *"Not used by a
+<kind> price."*, and omitting one it requires fails with *"Required for a <kind>
+price."*
+
+| `kind` | Required fields | Optional fields | Reads as |
+|---|---|---|---|
+| `fixed` | `amount` | `currency`, `tax_note` | One amount |
+| `range` | `low_amount` | `high_amount`, `currency`, `tax_note` | A span; omit `high_amount` for an open-ended "From X" |
+| `discounted` | `amount`, `sale_amount` | `sale_ends_on`, `currency`, `tax_note` | A struck-through original amount plus a sale amount, until an optional end date |
+| `on_request` | — | — | No amount published; a visitor is told to ask |
+
+#### Amount fields
+
+`amount`, `sale_amount`, `low_amount` and `high_amount` are all the same kind of field:
+
+- **Always write an amount as a quoted string**, e.g. `amount: "1499.00"`. An unquoted number
+  (`amount: 1499.00`) is read through YAML's float parser before validation ever sees it and is
+  refused outright: *"write amounts as quoted strings, e.g. \"1499.00\""*.
+- Must be greater than zero, and finite.
+- At most 3 decimal places, and below 1,000,000,000 — *"Can have at most 3 decimal places."* /
+  *"Too large."*
+- Cannot carry more decimal places than the resolved `currency` allows, e.g. `1500.50` in `JPY`
+  fails with *"Has more decimal places than JPY allows."* (JPY has no minor units at all).
+- On a `discounted` price, `sale_amount` must be less than `amount` — *"Must be less than the
+  full amount."*
+- On a `range` price with both ends set, `low_amount` must be less than `high_amount` —
+  *"Must be greater than the low amount."* (reported against `high_amount`)
+
+#### `currency`
+
+An ISO 4217 code (e.g. `ZAR`, `USD`, `JPY`), validated against Babel's currency list — an
+unrecognised code fails with *"'XXX' is not a recognised currency code."* `on_request` never
+takes a `currency`.
+
+If `currency` is omitted on a kind that needs one, the project's configured `DEFAULT_CURRENCY`
+is used instead at save time. **The offline validator has no access to that setting**, so it
+always skips the currency-precision check when `currency` is omitted from the file — even if
+the project's `DEFAULT_CURRENCY` would have caught it. If the project has *no* `DEFAULT_CURRENCY`
+either, saving the content fails at `content_save` time (not at validation time) with *"the
+price has no currency and DEFAULT_CURRENCY is not set."* Write `currency` explicitly to avoid
+depending on a setting the validator can't see.
+
+#### `sale_ends_on`
+
+An ISO date (`YYYY-MM-DD`), only valid on `discounted`. Once the date passes, the course shows
+`amount` as a plain fixed price — the struck-through `sale_amount` disappears. Omit it for a
+sale with no end date.
+
+#### `tax_note`
+
+A short free-text string (max 100 characters), e.g. `"incl. VAT"` or `"excl. tax"`. Shown on the
+course page's sign-up panel only — never on cards or list rows.
+
+#### Clearing a price
+
+Omitting `price` entirely leaves whatever price is already stored on the course untouched —
+same as `tags`. To remove a previously-set price, write `price: null` explicitly.
+
+#### Examples
+
+**A fixed price with a tax note:**
+
+```yaml
+---
+content_type: COURSE
+title: 'Functionality Demo - Price: fixed'
+price:
+  kind: fixed
+  amount: "250.00"
+  currency: USD
+  tax_note: excl. tax
+---
+```
+
+**An open-ended range ("From X"):**
+
+```yaml
+---
+content_type: COURSE
+title: 'Functionality Demo - Price: from'
+price:
+  kind: range
+  low_amount: "500.00"
+  currency: ZAR
+---
+```
+
+**A low-high range:**
+
+```yaml
+---
+content_type: COURSE
+title: 'Functionality Demo - Price: range'
+price:
+  kind: range
+  low_amount: "1200.00"
+  high_amount: "3000.00"
+  currency: ZAR
+---
+```
+
+**A discounted price with a sale end date:**
+
+```yaml
+---
+content_type: COURSE
+title: 'Functionality Demo - Price: sale with an end date'
+price:
+  kind: discounted
+  amount: "400.00"
+  sale_amount: "300.00"
+  sale_ends_on: 2099-12-31
+  currency: EUR
+  tax_note: incl. VAT
+---
+```
+
+**No published amount:**
+
+```yaml
+---
+content_type: COURSE
+title: 'Functionality Demo - Price: on request'
+price:
+  kind: on_request
+---
+```
+
+See `demo_content/functionality_demo_price_*/course.md` for the full set of worked examples,
+including a currency with no minor units (`functionality_demo_price_zero_decimal`) and an
+already-expired sale (`functionality_demo_price_sale_expired`).
 
 ---
 
