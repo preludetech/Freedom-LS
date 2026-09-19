@@ -54,9 +54,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: course page stats-strip Price value overflows its fixed-width cell into the Enrolment cell (TDD — failing test first, then fix)
 - [x] (user) Decide how the course page's Price stat cell should hold long prices (let the cell grow past w-48, or let the price wrap), then fix the overflow
 - [x] (cmd) Re-run `/fls-dev:do_qa` to cover the open-ended range price ("From X"), the new pricing demo courses, and the widened stats strip
-- [ ] (user) Decide what a registered learner should see on a priced application-gated course page: the Price cell now sits beside the inherited 'Free · open' / 'One click. No credit card.' copy. Then hide the Price cell for registered learners or change that copy
-- [ ] (user + cmd) Fix QA bug: admin price validation messages use internal field names and raw kind values (e.g. 'currency is not used by a on_request price') (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: ragged divider lines in the stacked course-page stats strip on mobile when the Price cell is wider than the others (TDD — failing test first, then fix)
+- [x] (user) Decide what a registered learner should see on a priced application-gated course page: the Price cell now sits beside the inherited 'Free · open' / 'One click. No credit card.' copy. Then hide the Price cell for registered learners or change that copy
+- [x] (user + cmd) Fix QA bug: admin price validation messages use internal field names and raw kind values (e.g. 'currency is not used by a on_request price') (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: ragged divider lines in the stacked course-page stats strip on mobile when the Price cell is wider than the others (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

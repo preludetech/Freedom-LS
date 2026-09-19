@@ -144,9 +144,9 @@ Pages loaded:
 
 ## Bug status
 
-- **UNRESOLVED**: B1, registered learner sees a price next to "Free · open" wording on a gated course (reason: needs a product/UX decision; red lane)
-- **UNRESOLVED**: B2, admin price validation messages use internal field names and raw kind values (reason: copy decision; red lane)
-- **UNRESOLVED**: B3, ragged divider lines in the stacked stats strip on mobile (reason: CSS layout, can't be tested with pytest; red lane)
+- **WON'T FIX (decision)**: B1. Registered learners keep seeing the price, since they may want to tell friends what it costs. Price is display-only, so the inherited access copy and CTAs stay as they are.
+- **FIXED**: B2. Price rule messages no longer name their own field and read kinds in plain words ("Not used by an on-request price.", "Must be less than the full amount."). The bundled fls-content validator copy is re-synced.
+- **FIXED**: B3. Below `md` every stat cell spans the strip. From `md` the cells sit side by side. `sm` was not enough: at 640px a discounted price fits two cells but not three, which wrapped two-then-one. A Playwright test covers 375px and 640px.
 
 ## General notes
 
@@ -171,3 +171,34 @@ g. CSP report-only info messages for CDN scripts are pre-existing.
 ---
 status: ok
 reason: 3 bugs — 0 fixed, 3 unresolved (all red lane); report rendered, screenshots verified
+
+## Application-gated QA (follow-up)
+
+Priced courses are expected to be application-gated, with payment taken outside FLS: the learner sees the price, then applies. This pass walked that flow on "Functionality Demo - Application gated course" (discounted ZAR1,499.00 → ZAR999.00, incl. VAT) after the B2/B3 fixes, on a fresh `runserver` with the `course-prices` branch badge confirmed.
+
+| # | State | Viewport | Status | Note |
+|---|---|---|---|---|
+| G1 | Anonymous | desktop, mobile | pass | Price in the stats strip and the panel, "Application required", "Apply now" → apply page. Mobile: three stacked cells all span 16–358px, no horizontal scroll. |
+| G2 | Learner A, not registered | desktop | pass | Same price and "Apply now". Completed all three form pages (upload included) and submitted. The dashboard shows "Your applications: Pending review". |
+| G3 | Learner A, application pending | desktop, mobile | pass | Price still shown in the strip and the panel. CTA is "View my application". |
+| G4 | Learner B, registered | desktop, mobile | pass (B1 decision) | The Price stat shows beside "Enrolment: Free · open". The panel reads "Free · open to everyone / One click. No credit card. / Start course", with no price. |
+| G5 | `/courses/` | desktop | pass | Learner A (pending): gated row shows the struck price + sale price. Learner B: REGISTERED + 0%, no price. |
+| B3 | Stats strip at 640px and 768px | — | pass | 640px: three full-width stacked cells. 768px: one row (Lessons / Price / Enrolment). |
+
+No console errors.
+
+Observations, left alone because they are not price-related:
+
+- G3: while an application is pending, the panel still reads "Application required / Apply and we'll review your request." above "View my application". The same copy shows on courses without a price.
+- G4: "Free · open" / "One click. No credit card." sits beside a paid price for a registered learner (B1, kept by decision). The copy comes from the free backend, which registered learners fall through to.
+- G5: while an application is pending, the `/courses/` eyebrow says NOT REGISTERED.
+
+Screenshots:
+
+![](screenshots/gated-1-anon-mobile.png)
+![](screenshots/gated-2-learner-a-before-apply-desktop.png)
+![](screenshots/gated-3-pending-desktop.png)
+![](screenshots/gated-3-pending-mobile.png)
+![](screenshots/gated-4-registered-desktop.png)
+![](screenshots/gated-4-registered-mobile.png)
+![](screenshots/gated-5-listing-pending-desktop.png)
