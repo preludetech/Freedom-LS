@@ -1,0 +1,92 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - link [ref=f16e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f16e4]
+      - heading "FirstClass" [level=1] [ref=f16e5]
+    - navigation [ref=f16e6]:
+      - generic [ref=f16e7]:
+        - link "Login" [ref=f16e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f16e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f16e10]:
+    - generic [ref=f16e12]:
+      - navigation "Breadcrumb" [ref=f16e13]:
+        - list [ref=f16e14]:
+          - listitem [ref=f16e15]:
+            - link "All courses" [ref=f16e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f16e17]:
+            - generic [aria-hidden] [ref=f16e18]: /
+            - generic [ref=f16e19]: Functionality Demo - Application gated course
+      - generic [ref=f16e21]:
+        - heading "Functionality Demo - Application gated course" [level=1] [ref=f16e22]
+        - paragraph [ref=f16e23]: A course you have to apply for
+        - generic [ref=f16e25]:
+          - generic [ref=f16e26]:
+            - img "topic" [ref=f16e27]
+            - generic [ref=f16e29]:
+              - paragraph [ref=f16e30]: Lessons
+              - paragraph [ref=f16e31]: 1 lesson
+          - generic [ref=f16e32]:
+            - img "price" [ref=f16e33]
+            - generic [ref=f16e37]:
+              - paragraph [ref=f16e38]: Price
+              - paragraph [ref=f16e39]:
+                - generic [ref=f16e40]:
+                  - generic [ref=f16e41]: "Original price:"
+                  - text: ZAR1,499.00
+                  - generic [ref=f16e42]: "Now:"
+                  - text: ZAR999.00
+          - generic [ref=f16e43]:
+            - img "check" [ref=f16e44]
+            - generic [ref=f16e46]:
+              - paragraph [ref=f16e47]: Enrolment
+              - paragraph [ref=f16e48]: By application
+      - generic [ref=f16e49]:
+        - complementary [ref=f16e50]:
+          - generic [ref=f16e51]:
+            - paragraph [ref=f16e52]:
+              - generic [ref=f16e53]:
+                - generic [ref=f16e54]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f16e55]: "Now:"
+                - text: ZAR999.00 incl. VAT
+            - generic [ref=f16e56]:
+              - paragraph [ref=f16e57]: Application required
+              - paragraph [ref=f16e58]: Apply and we'll review your request.
+            - link "Apply now" [ref=f16e59] [cursor=pointer]:
+              - /url: /applications/apply/functionality-demo-application-gated-course/
+            - generic [ref=f16e60]:
+              - heading "This course includes" [level=3] [ref=f16e61]
+              - list [ref=f16e62]:
+                - listitem [ref=f16e63]: 1 lesson
+        - generic [ref=f16e64]:
+          - generic [ref=f16e65]:
+            - heading "About this course" [level=2] [ref=f16e66]
+            - paragraph [ref=f16e68]: Places on this course are limited, so we ask everyone to apply. Filling in the application takes about five minutes.
+          - generic [ref=f16e69]:
+            - heading "Course content" [level=2] [ref=f16e70]
+            - navigation "Course outline" [ref=f16e72]:
+              - list [ref=f16e73]:
+                - listitem [ref=f16e74]:
+                  - generic [ref=f16e75]:
+                    - generic [ref=f16e76]: "1."
+                    - generic [ref=f16e77]:
+                      - img "topic" [ref=f16e78]
+                      - generic [ref=f16e80]: Locked
+                    - generic [ref=f16e81]: Welcome
+  - contentinfo [ref=f16e82]:
+    - generic [ref=f16e83]:
+      - paragraph [ref=f16e84]: © 2026 FirstClass
+      - navigation "Legal" [ref=f16e85]:
+        - link "Terms and Conditions" [ref=f16e86] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f16e87] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f16e88] [cursor=pointer]: course-prices
+  - generic "Show toolbar" [ref=f16e90]: DJDT
