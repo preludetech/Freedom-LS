@@ -1,0 +1,57 @@
+- generic [ref=f96e1]:
+  - banner [ref=f96e2]:
+    - link [ref=f96e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f96e4]
+    - navigation [ref=f96e5]:
+      - generic [ref=f96e6]:
+        - button "Open user menu for QA Learner A" [expanded] [active] [ref=f96e7] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f96e8]: QL
+        - menu "User menu" [ref=f96e72]:
+          - menuitem "Profile" [ref=f96e73] [cursor=pointer]
+          - menuitem "Sign Out" [ref=f96e74] [cursor=pointer]
+  - generic:
+    - status
+    - alert
+  - main [ref=f96e9]:
+    - generic [ref=f96e75]:
+      - generic [ref=f96e76]:
+        - generic [ref=f96e77]:
+          - navigation "Breadcrumb" [ref=f96e79]:
+            - list [ref=f96e80]:
+              - listitem [ref=f96e81]:
+                - link "QA Second Course" [ref=f96e82] [cursor=pointer]:
+                  - /url: /courses/qa-second-course/detail/
+          - button "Open course outline" [ref=f96e83] [cursor=pointer]:
+            - img "table_of_contents" [ref=f96e84]
+        - generic [ref=f96e87]:
+          - progressbar "Progress for QA Second Course" [ref=f96e88]: 100%
+          - generic [ref=f96e89]: 100%
+      - generic [ref=f96e90]:
+        - generic [ref=f96e91]:
+          - img "achievement" [ref=f96e93]
+          - heading "Congratulations!" [level=1] [ref=f96e95]
+          - paragraph [ref=f96e96]:
+            - text: You have successfully completed
+            - strong [ref=f96e97]: QA Second Course
+            - text: .
+        - generic [ref=f96e98]:
+          - heading "Course Summary" [level=2] [ref=f96e99]
+          - generic [ref=f96e100]:
+            - generic [ref=f96e101]:
+              - generic [ref=f96e102]: "Started:"
+              - generic [ref=f96e103]: September 19, 2026
+            - generic [ref=f96e104]:
+              - generic [ref=f96e105]: "Completed:"
+              - generic [ref=f96e106]: September 19, 2026
+        - link "Return to Dashboard" [ref=f96e108] [cursor=pointer]:
+          - /url: /
+  - contentinfo [ref=f96e64]:
+    - generic [ref=f96e65]:
+      - paragraph [ref=f96e66]: © 2026 FirstClass
+      - navigation "Legal" [ref=f96e67]:
+        - link "Terms and Conditions" [ref=f96e68] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f96e69] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f96e70] [cursor=pointer]: google-analytics-setup

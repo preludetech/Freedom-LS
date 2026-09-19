@@ -1,162 +1,171 @@
-# Frontend QA report: google-analytics-setup
+# Frontend QA Report: Google Analytics 4
 
 ## 1. Methodology
 
-The plan (`3. frontend_qa.md`) was driven manually through Playwright MCP against a dev server on
-port 8803, started with `GOOGLE_ANALYTICS_MEASUREMENT_ID=G-QATEST0000 POSTHOG_API_KEY=phc_qatest`.
-For §1.1 the server was restarted on the same port with the GA variable removed
-(`POSTHOG_API_KEY=phc_qatest` only), per the plan's step, then restarted again with both variables
-for the rest of the run. Every check read `window.dataLayer`, the rendered page source, and network
-requests (for the `gtag/js` loader and PostHog's `config.js`).
+Manual walk of `3. frontend_qa.md` with Playwright MCP, at desktop (1920x1080), mobile (375x812)
+and tablet (768x1024). The dev server for this run was started on port 8774 with
+`GOOGLE_ANALYTICS_MEASUREMENT_ID=G-QATEST0000` and `POSTHOG_API_KEY=phc_qatest`, and restarted once
+without the GA variable (`POSTHOG_API_KEY=phc_qatest` only) to run test 1.1, then restarted again
+with both variables for the rest of the plan.
 
-The dev database was unseeded at the start of the run: the first page load returned a 500,
-`FORCE_SITE_NAME='DemoDev' does not match any Site`. The database was seeded through the
-`fls-dev:qa-data-helper` agent (demo content, superuser, Learner A, Learner B, and the two
-application-gated courses) before any test steps ran.
-
-Screenshots referenced below live in `screenshots/` beside this report; every image named in the
-Results table exists there. That folder also holds Playwright `.yml` accessibility snapshots and
-`console-*.log` browser console captures taken alongside each screenshot — those are not embedded
-here but back the notes in this report and in §7.4 particularly.
+Every check read one or more of: `window.dataLayer` (via
+`JSON.stringify(Array.from(window.dataLayer || []).map(entry => Array.from(entry)))`), the resource
+timing / network entries for `gtag/js` and PostHog requests, or the raw page source. Screenshots
+were collected into `screenshots/` beside this report; every image referenced below was confirmed
+to exist there before being embedded.
 
 ## 2. Diff scoping
 
-Scoping class: **FULL**. The changed files include templates
-(`freedom_ls/base/templates/_base.html`, `freedom_ls/base/templates/_base_interface.html`,
-`freedom_ls/base/templates/partials/google_analytics_events.html`), so the full plan ran at all
-three viewports — desktop, mobile (375x812) and tablet (768x1024) — and nothing was skipped.
+Scoping class: **FULL**.
 
-Other changed files driving this scope: `freedom_ls/base/google_analytics.py`,
-`freedom_ls/deployment/context_processors.py`, `freedom_ls/deployment/config.py`,
-`freedom_ls/accounts/allauth_account_adapter.py`, `freedom_ls/course_applications/views.py`,
-`freedom_ls/learner_interface/views.py`, `config/settings_base.py`, `legal_docs/_default/privacy.md`.
+Changed files that triggered a full run:
+- `freedom_ls/base/templates/_base.html`
+- `freedom_ls/base/templates/_base_interface.html`
+- `freedom_ls/base/templates/partials/google_analytics_events.html`
+- `freedom_ls/base/google_analytics.py`
+- `freedom_ls/learner_interface/views.py`
+- `freedom_ls/course_applications/views.py`
+- `freedom_ls/deployment/context_processors.py`
+- `config/settings_base.py`
+- `legal_docs/_default/privacy.md`
+
+Skipped: nothing. The entire test plan ran.
 
 ## 3. Smoke gate
 
-**Status: pass.**
+Outcome: **pass**.
 
 Pages checked:
-- `http://127.0.0.1:8803/` (as Learner A)
-- `http://127.0.0.1:8803/courses/standard-markdown-demo-finance/detail/` (as Learner A)
-
-No failure was hit, so the full plan proceeded.
+- `http://127.0.0.1:8774/`
+- `http://127.0.0.1:8774/courses/qa-coming-soon-course/detail/`
 
 ## 4. Results
 
-| Test ID | Viewport | Status | Notes |
-|---|---|---|---|
-| 1 | desktop | pass | Signed out `/`: `gtag/js?id=G-QATEST0000` requested (200), dataLayer has `js` + `config G-QATEST0000` with no `user_id`, `posthog.init('phc_qatest'` present, no FLS events. Only console errors are PostHog 404s for the fake key's `config.js` (expected). |
-| 1.1 | desktop | pass | No GA env var: signed out and as Learner A on the dashboard, no `googletagmanager` in source/network, `window.gtag` undefined, `window.dataLayer` undefined, PostHog still initialised. Only console errors are the fake-key PostHog 404s. |
-| 2.1-2.2 | desktop | pass | Learner A (pk 69) dashboard: config entry carries `{user_id: '69'}` (string). GA4 script block text contains no email. |
-| 2.3 | desktop | pass | After logout, landing page config entry is `['config','G-QATEST0000']` with no `user_id`. |
-| 3.5 | desktop | pass | Mismatched passwords: form re-renders with "You must type the same password each time." and no FLS event in dataLayer. |
-| 3.1-3.2 | desktop | pass | Signed up qa-signup-1@email.com; verify-your-email page has exactly one `['event','sign_up']`. |
-| 3.3 | desktop | pass | Reload of verify-your-email page: no `sign_up` event (flag one-shot). |
-| 3.4 | desktop | pass | Re-submitting sign-up with the same email lands on the same verify-your-email page (allauth enumeration prevention); no `sign_up` event. |
-| 4.1-4.2 | desktop | pass | Confirmation link taken from local Mailpit (dev `EMAIL_BACKEND` is `QueuedEmailBackend` -> SMTP localhost:1025, not the runserver console as the plan says). On `/accounts/confirm-email/<key>/`: no `googletagmanager` request or source, `window.gtag`/`window.posthog`/`window.dataLayer` undefined, no `posthog.init(` in source. |
-| 4.3 | desktop | pass | After confirming, redirected to `/accounts/login/`; `gtag` function and `posthog` object present again. |
-| 4.4 | desktop | pass | Password reset for Learner B: key URL redirects to `/accounts/password/reset/key/1y-set-password/`; no analytics requests, `gtag`/`posthog` undefined, no snippet in source. |
-| 4.5 | desktop | pass | Password set back to the email; landed on dashboard logged in as Learner B (config `user_id '70'`), both snippets back. |
-| 4.6 | desktop | pass | Ran in the strict form: signed up qa-signup-2@email.com via a POST that did not follow the redirect, so the verify page never rendered and the flag stayed pending. Token page: no analytics at all and no event script. Then `/` emitted exactly one `['event','sign_up']`. The flag survived the token page. |
-| 5.1.1-5.1.2 | desktop | pass | Learner B clicked "Apply now" on `functionality-demo-application-gated-course`; first form page (draft) has no `generate_lead`. |
-| 5.1.3 | desktop | pass (n/a) | Check-your-answers could not be reached with a required answer blank: the browser blocks it (`required` attr), and with `novalidate` the server returns 422 "Missing answers - Question 1 needs an answer before you can continue" on the page itself. No `generate_lead` on any error page or on check-your-answers. Plan allows this ("if the form lets you reach that page"). |
-| 5.1.4 | desktop | pass | Submit application -> dashboard with "Your application ... has been submitted and is pending review." and exactly one `['event','generate_lead']`. Event script removed itself from the DOM (0 remaining). |
-| 5.1.5-5.1.6 | desktop | pass | Reload: no `generate_lead`. Apply URL again redirects to `/applications/status/<pk>/` with no `generate_lead`. |
-| 5.2 | desktop | pass | No-form gated course: "Apply to ...?" confirmation page has no event; after "Submit application" the status page has exactly one `generate_lead`; revisiting the apply URL redirects to status with no second event. |
-| 6.1 | desktop | pass | Learner A opened course item 1 of `standard-markdown-demo-finance` from the dashboard: exactly one `['event','tutorial_begin']`; event script removed itself. |
-| 6.2 | desktop | pass | Reload of item 1: no `tutorial_begin`. |
-| 6.3 | desktop | pass | Next (boosted form button) to items 2 and 3: URL changed, same document (window marker survived), no new `tutorial_begin`. Django debug toolbar panel intercepted clicks until hidden (dev-only, not a bug). |
-| 6.4-6.5 | desktop | pass | Finish Course (boosted) -> `/finish/` in the same document: exactly one `['event','tutorial_complete']` added; no `#interface-main` script containing `tutorial_complete` remains. |
-| 6.6 | desktop | pass | Back then Forward (htmx history restore, same document): `tutorial_complete` count stays 1. |
-| 6.7 | desktop | pass | Reload of completion page: no `tutorial_complete`. |
-| 7.2 | desktop | pass | Unknown URL returns 404. `DEBUG` is on, so Django's technical 404 page renders, same as on main. Only console error is the 404 document itself. |
-| 7.5 | desktop | pass | Footer Privacy link -> `/accounts/legal/privacy/`: "Version 1.1 · Effective 2026-09-18", "Usage analytics" section naming Google Analytics 4 and PostHog (pages viewed, device/browser, cookie pseudonymous ID, numeric account ID; no email/name/phone), opt-out link to `https://tools.google.com/dlpage/gaoptout`. |
-| 6.8 | desktop | pass | `completed_time` reset via data helper, finish URL loaded in address bar (full page): exactly one `tutorial_complete`. Raw response HTML captured: exactly one `<script>gtag('event', 'tutorial_complete')...</script>`, located inside `#interface-main`; the `</body>` include rendered nothing. |
-| 6.9 | desktop | pass | Learner A registered for `content-widgets-demo-reference` with unread topics; direct finish URL shows "Course not complete" / "Not finished yet" with Still-to-do list, and no `tutorial_complete`. |
-| 7.1 | desktop | pass | Superuser (pk 6; config `user_id '6'` on dashboard). `/admin/` 200 "Site administration", no `googletagmanager`, no `posthog.init`, `window.gtag` undefined, no console errors/warnings. |
-| 7.3 | desktop | pass | Educator interface: sidebar Learners then Courses swapped via htmx in the same document with correct headings; no FLS event in dataLayer; no console errors/warnings. |
-| 7.4 | desktop | pass | Scanned every console log of the run: zero CSP report-only violations naming `googletagmanager.com`, `google-analytics.com`, `analytics.google.com` or `posthog.com`; no JS errors from the GA4/PostHog blocks. Report-only violations that predate this branch do appear for `cdn.jsdelivr.net` scripts (htmx, alpine, chart.js), which are not in `script-src` on main or here, and for a `sanparks.org` image in demo content. The only recurring errors are PostHog 404s for the fake key's `config.js`. |
-| 3.1-3.2 | mobile | pass | 375px: sign-up form and verify page have no horizontal overflow; exactly one `sign_up` on the verify page. |
-| 7.5 | mobile | pass | 375px privacy page: no horizontal overflow; "Usage analytics" section readable; opt-out link 248x22. |
-| 6.1-6.3 | mobile | pass | 375px, Learner A on `content-widgets-demo-reference` item 1: exactly one `tutorial_begin`, no overflow; boosted Next to item 2 in the same document adds no second `tutorial_begin`. Warnings come only from the YouTube embed and htmx "web-share" feature notice (unrelated). |
-| 6.3-6.5 | tablet | pass | 768px, Learner A on `content-widgets-demo-reference`: boosted Next x3 then Finish Course, all in the same document with no overflow. Final dataLayer events: exactly one `tutorial_begin` (from item 1 at mobile width, same document) and exactly one `tutorial_complete` on "Course complete". |
-| 7.3 | tablet | pass | 768px educator interface: sidebar collapses behind an "Open navigation panel" button; opened it and navigated to Learners then Courses; pages render with correct headings, no overflow, no FLS events. Drawer navigation did a full page load rather than an in-document swap (window marker lost), unlike the desktop sidebar. This branch does not touch that navigation, so it is a general note only. |
+### Desktop (1920x1080)
+
+| Test ID | Status | Note |
+| --- | --- | --- |
+| 1 | pass | Anonymous `/`: gtag/js requested, empty config, no FLS event; only console errors are expected PostHog 404s for the fake key. |
+| 2.1-2.2 | pass | Learner A dashboard: config carries `user_id` `'69'`; GA4 script block does not contain the learner's email. |
+| 7.1 | pass | First item of `standard-markdown-demo-finance`: one `course_started`, correct params, no `course_registered`. |
+| 7.2 | pass | Reload of the same item: no `course_started`. |
+| 7.3 | pass | "Next" is boosted (same document); no new `course_started`. |
+| 7.4-7.5 | pass | "Finish Course" (boosted): one `course_completed`; no leftover script in `#interface-main` or elsewhere. |
+| 7.6-7.7 | pass | Back/Forward: still one `course_completed`. Reload of completion page: none. |
+| 7.1-two-courses | pass | Same session, `qa-second-course` first item: one `course_started` with the correct slug/UUID; first course's event did not suppress it. |
+| 2.3 | pass | After logout, landing page config has no `user_id`. |
+| 3.1-3.2 | pass | Fresh sign-up lands on verify page with exactly one `sign_up {method: email}`. |
+| 3.3 | pass | Reload of verify page: no `sign_up`. |
+| 3.4 | pass | Re-submitting the same email: enumeration-safe response, no `sign_up`. |
+| 3.5 | pass | Mismatched passwords: form re-renders with error, no `sign_up`. |
+| 4.1-4.3 | pass | `confirm-email/<key>/` loads neither snippet; both back after confirming. Plan correction: dev mail goes to Mailpit, not the console. |
+| 4.4-4.5 | pass | Password-reset set-password page loads neither snippet; both back, and `user_id` `'70'`, after resetting. |
+| 5.1 | pass | Application-gated course with form: no event on draft page or on the 422 (missing answers); one `course_access_requested` on success; none on reload, status page, or re-visiting apply URL. |
+| 5.1.3-error | pass | Missing-answers 422 on the supporting documents page (screenshot only). |
+| 5.2 | pass | No-form application course: no event on confirmation page; one `course_access_requested` on the status page after submit; none on re-visiting apply URL. |
+| 5.3 | pass | "I'm interested" swaps in place with one `course_access_requested`; no leftover script; "Remove interest" adds no event; interested again adds one more; reload and `/courses/` add none. |
+| 6.1-6.2 | pass | "Enrol for free" lands on item 1 with exactly two events in order: `course_registered` then `course_started`. |
+| 6.3-6.4 | pass | Reload, and re-entering via the detail page CTA: neither event. |
+| 6.6 | pass | Direct registration URL for the application-gated course redirects to the application status page; no `course_registered`. |
+| 8.5 | pass | Footer Privacy link: version 1.1, "Usage analytics" section naming GA4 and PostHog, opt-out link present. |
+| 8.5-courses-line | skip | See General notes — line is an uncommitted edit, not served from git HEAD. |
+| 8.2 | skip | See General notes — DEBUG=True serves Django's technical 404, not the styled page. |
+| 4.6 | pass | Pending sign-up survives the token page: no analytics on the token page; `sign_up` fires once on the next ordinary page (`/`); reload of `/`: none. |
+| 5.4 | pass | Anonymous "I'm interested" redirects to sign-in (no event); after signing in as Learner C, one `course_access_requested` on the course page; reload and direct deferred-URL visit: none. |
+| 6.5 | pass | With the registration deactivated, "Enrol for free" re-enters the course with no `course_registered`. |
+| 7.8 | pass | Full-page route to the finish URL: exactly one `course_completed`; only one event script in the page source. |
+| 7.9 | pass | Course with an unread topic: finish URL shows "Not finished yet"; no `course_completed`. |
+| 7.2 | pass | Learner C, `qa-cohort-course`: one `course_started` with `registration_source: cohort`, no `course_registered`; "Finish Course" adds one `course_completed` with `registration_source: cohort`. |
+| 8.1 | pass | Django admin loads with no console errors and no GA4/PostHog markup. |
+| 8.3 | pass | Educator interface sidebar panel swaps work without reload; no FLS event in the data layer. |
+| 8.4 | pass | Console errors across the run are only the expected PostHog 404s and one blocked demo-content image; no JS errors from the GA4/PostHog blocks; no CSP messages naming the analytics hosts. |
+| 1.1 | pass | Server restarted without the GA variable: no GA4 request/globals on `/` or Learner A's dashboard; PostHog still initialised; expressing interest with GA off still swaps cleanly with no JS error. |
+| 8.6 | pass | Every data layer read in the run contained only the five FLS events; no `tutorial_begin`, `tutorial_complete` or `generate_lead`. |
+
+### Mobile (375x812)
+
+| Test ID | Status | Note |
+| --- | --- | --- |
+| 5.3 | pass | Coming-soon course detail: no horizontal overflow; interest toggle swaps in place with the correct event; "Remove interest" button is 32px tall (see General notes). |
+| 7-player-nav | pass | Course player: no overflow; outline opens as a bottom drawer, closes with Escape; no `course_started` on re-entry to an already-started course. |
+| 7.4-7.5 | pass | "Finish Course" on `qa-second-course` (boosted): one `course_completed`; no leftover script; completion page lays out cleanly. |
+| 3.1-3.2 | pass | Sign-out works; sign-up form fits 375px; submitting lands on verify page with one `sign_up`. |
+
+### Tablet (768x1024)
+
+| Test ID | Status | Note |
+| --- | --- | --- |
+| 7.1-7.5 | pass | Compact header with outline toggle, no fixed sidebar, no overflow; one `course_started` on the first item; boosted Next/Next/Finish Course adds one `course_completed`; no leftover script. |
+| 5.3 | pass | Coming-soon detail: "I'm interested" swaps in place with the correct event; no leftover script; no overflow. |
 
 ### Screenshots
 
-![Test 1 desktop: signed-out landing page, gtag/js requested, no user_id](screenshots/page-2026-09-18T16-00-23-630Z.png)
+Desktop:
+- ![](screenshots/page-2026-09-19T07-59-30-620Z.png) Test 1 — anonymous `/`, GA4 config with no `user_id`.
+- ![](screenshots/page-2026-09-19T08-00-13-801Z.png) Test 2.1-2.2 — Learner A dashboard, `user_id` present.
+- ![](screenshots/page-2026-09-19T08-00-25-447Z.png) Test 7.1 — first course item, `course_started` fired.
+- ![](screenshots/page-2026-09-19T08-01-05-662Z.png) Test 7.4-7.5 — completion page, `course_completed` fired.
+- ![](screenshots/page-2026-09-19T08-02-01-566Z.png) Test 3.1-3.2 — verify-your-email page after sign-up.
+- ![](screenshots/page-2026-09-19T08-02-12-979Z.png) Test 3.5 — mismatched-password error re-render.
+- ![](screenshots/page-2026-09-19T08-02-56-909Z.png) Test 4.1-4.3 — confirm-email token page, no analytics.
+- ![](screenshots/page-2026-09-19T08-04-44-875Z.png) Test 5.1.3-error — missing-answers 422 on supporting documents page.
+- ![](screenshots/page-2026-09-19T08-05-17-496Z.png) Test 5.1 — application success, `course_access_requested` fired.
+- ![](screenshots/page-2026-09-19T08-06-00-144Z.png) Test 5.3 — coming-soon course, interest toggled in place.
+- ![](screenshots/page-2026-09-19T08-06-34-330Z.png) Test 6.1-6.2 — self-registration, two events in order.
+- ![](screenshots/page-2026-09-19T08-08-28-594Z.png) Test 7.2 (cohort learner) — `course_started`/`course_completed` with `registration_source: cohort`.
+- ![](screenshots/page-2026-09-19T08-08-57-493Z.png) Test 7.9 — withheld completion, "Not finished yet".
+- ![](screenshots/page-2026-09-19T08-09-22-653Z.png) Test 8.1 — Django admin, no GA4/PostHog markup.
 
-![Test 1.1 desktop: no GA env var, Learner A dashboard with no GA4 present](screenshots/page-2026-09-18T16-00-54-104Z.png)
+Mobile:
+- ![](screenshots/page-2026-09-19T08-11-19-198Z.png) Test 5.3 (mobile) — coming-soon detail at 375px, interest toggle.
+- ![](screenshots/page-2026-09-19T08-11-34-702Z.png) Test 7-player-nav (mobile) — course player outline drawer.
+- ![](screenshots/page-2026-09-19T08-11-47-814Z.png) Test 7.4-7.5 (mobile) — completion on `qa-second-course`.
+- ![](screenshots/page-2026-09-19T08-12-05-549Z.png) Test 3.1-3.2 (mobile) — sign-up form at 375px.
 
-![Test 2.1-2.2 desktop: Learner A dashboard, config entry carries user_id '69'](screenshots/page-2026-09-18T16-01-19-646Z.png)
+Tablet:
+- ![](screenshots/page-2026-09-19T08-12-45-237Z.png) Test 7.1-7.5 (tablet) — compact header, course player at 768px.
+- ![](screenshots/page-2026-09-19T08-13-09-586Z.png) Test 5.3 (tablet) — coming-soon detail at 768px.
 
-![Test 3.5 desktop: sign-up form re-rendered with mismatched-password error](screenshots/page-2026-09-18T16-01-54-207Z.png)
+## 5. Per-bug sections
 
-![Test 3.1-3.2 desktop: verify-your-email page after sign-up, one sign_up event](screenshots/page-2026-09-18T16-02-00-792Z.png)
-
-![Test 4.4 desktop: password-reset set-password page, no analytics snippets](screenshots/page-2026-09-18T16-03-12-873Z.png)
-
-![Test 4.6 desktop: strict-form pending-flag check, confirmation token page](screenshots/page-2026-09-18T16-03-42-267Z.png)
-
-![Test 5.1.4 desktop: dashboard after application submission, one generate_lead](screenshots/page-2026-09-18T16-05-56-426Z.png)
-
-![Test 5.2 desktop: no-form application status page, one generate_lead](screenshots/page-2026-09-18T16-06-16-278Z.png)
-
-![Test 6.1 desktop: course item 1, one tutorial_begin](screenshots/page-2026-09-18T16-06-31-552Z.png)
-
-![Test 6.4-6.5 desktop: course completion page, one tutorial_complete](screenshots/page-2026-09-18T16-07-31-919Z.png)
-
-![Test 7.5 desktop: privacy policy page, Usage analytics section](screenshots/page-2026-09-18T16-08-09-920Z.png)
-
-![Test 6.9 desktop: withheld-completion finish URL, course not complete](screenshots/page-2026-09-18T16-08-57-977Z.png)
-
-![Test 7.1 desktop: Django admin as superuser, no GA4 present](screenshots/page-2026-09-18T16-09-24-265Z.png)
-
-![Test 3.1-3.2 mobile: sign-up/verify page at 375px, no overflow](screenshots/page-2026-09-18T16-10-08-434Z.png)
-
-![Test 7.5 mobile: privacy page at 375px, no overflow](screenshots/page-2026-09-18T16-10-14-811Z.png)
-
-![Test 6.1-6.3 mobile: course item 1 at 375px, one tutorial_begin](screenshots/page-2026-09-18T16-10-27-932Z.png)
-
-![Test 6.3-6.5 tablet: course player at 768px through completion](screenshots/page-2026-09-18T16-10-52-349Z.png)
-
-![Test 7.3 tablet: educator interface drawer navigation at 768px](screenshots/page-2026-09-18T16-12-12-832Z.png)
-
-## 5. Bugs
-
-No `bug` records were produced this run. No failures were found across any test step, at any
-viewport.
+There are no `bug` records from this run — no bugs were found.
 
 ## Bug status
 
-No bugs recorded this run.
+No bugs found.
 
 ## 6. General notes
 
-Observations made during the run that carry no required action:
+### Skipped checks
 
-- The plan's §3/§4 wording says to take confirmation and reset links from the runserver console.
-  Dev mail actually goes through `QueuedEmailBackend` to SMTP `localhost:1025` (Mailpit), so the
-  links were taken from the Mailpit API instead. The plan's wording should say Mailpit.
-- §4.6 was run in its strict form: the sign-up POST did not follow the redirect, so the verify page
-  never popped the flag, and the flag survived the token page and fired on `/`.
-- §5.1.3: check-your-answers can't be reached with a required answer blank. The per-page server
-  validation returns 422 "Missing answers", so that sub-step is not applicable.
-- These CSP report-only violations predate this branch and are unrelated to it: `cdn.jsdelivr.net`
-  scripts (htmx, alpine csp/collapse, chart.js) are not in `script-src` on main either. A
-  demo-content image from `sanparks.org` is blocked by the remote CORP header
-  (`ERR_BLOCKED_BY_RESPONSE.NotSameOrigin`).
-- PostHog's `config.js` returns 404 for the fake key `phc_qatest`. This is expected.
-- The Django debug toolbar's open panel intercepted clicks on the course player's Next button and
-  the tablet nav toggle. This is dev-only.
-- At tablet width, the educator drawer navigation did a full page load, not the desktop sidebar's
-  in-document htmx swap. It still worked, and this branch doesn't touch it.
-- The data helper added an uncommitted seed command,
-  `freedom_ls/qa_helpers/management/commands/qa_create_ga_setup_seed.py`, which also ran
-  `create_demo_data`, creating all demo sites.
-- Transactional email subjects carry a "[FirstClass]" prefix on the DemoDev site. This was observed
-  only; it's out of scope.
+- **8.5-courses-line** (desktop): the privacy-policy line "Which courses you request, register for,
+  start and complete." is not on the served page. It exists only as an uncommitted edit to
+  `legal_docs/_default/privacy.md`, and the page is served from git HEAD, exactly as the plan warns.
+  Not a code defect; it will show once the edit is committed.
+- **8.2** (desktop): the dev server runs with `DEBUG=True`, so a missing URL renders Django's
+  technical "Page not found" page rather than the styled 404 template. The styled page could not be
+  exercised in this setup. The only console entry was the 404 response itself.
+
+### Plan corrections found during the run
+
+1. Section 4 says to take confirmation and reset links from the `runserver` console, but dev mail
+   goes to Mailpit at `localhost:8025`.
+2. Sections 0.2.4/5.1 refer to a "By application" course, which does not exist by that title — the
+   course is "Functionality Demo - Application gated course", slug
+   `functionality-demo-application-gated-course`.
+3. Section 5.1.3 cannot reach check-your-answers with a required answer missing, because the form
+   blocks at the page with a 422.
+4. The debug toolbar covers the course player's "Next" button as well as "Remove interest".
+
+### Tangential observations
+
+- The course detail CTA reads "Start course" for a learner who has already opened the first item
+  (progress 0%).
+- The "Remove interest" button is 32px tall on mobile.
+- The `fls-dev:qa-data-helper` agent appended to its tracked note at
+  `.claude/agent-memory/fls-dev-qa-data-helper/reference_application_forms_qa_baseline.md` on its
+  first spawn. That edit is left uncommitted for review.
 
 ---
-
-status: ok · reason: report rendered, 0 bugs documented
+status: ok
+reason: 0 bugs — nothing to fix; report rendered, screenshots verified

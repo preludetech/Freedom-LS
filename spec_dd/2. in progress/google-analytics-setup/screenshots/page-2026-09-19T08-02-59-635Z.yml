@@ -1,0 +1,53 @@
+- generic [active] [ref=f23e1]:
+  - banner [ref=f23e2]:
+    - link [ref=f23e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f23e4]
+      - heading "FirstClass" [level=1] [ref=f23e5]
+    - navigation [ref=f23e6]:
+      - generic [ref=f23e7]:
+        - link "Login" [ref=f23e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f23e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status:
+      - generic [ref=f23e10]:
+        - img "success" [ref=f23e12]
+        - paragraph [ref=f23e15]: You have confirmed qa-ga-signup-0919a@email.com.
+        - button "Dismiss notification" [ref=f23e16]:
+          - img "close" [ref=f23e17]
+    - alert
+  - main [ref=f23e19]:
+    - generic [ref=f23e20]:
+      - heading "Sign In" [level=1] [ref=f23e21]
+      - paragraph [ref=f23e22]:
+        - text: If you have not created an account yet, then please
+        - link "sign up" [ref=f23e23] [cursor=pointer]:
+          - /url: /accounts/signup/
+        - text: first.
+      - generic [ref=f23e24]:
+        - paragraph [ref=f23e25]:
+          - generic [ref=f23e26]: "Email:"
+          - textbox "Email:" [ref=f23e27]:
+            - /placeholder: Email address
+        - paragraph [ref=f23e28]:
+          - generic [ref=f23e29]: "Password:"
+          - textbox "Password:" [ref=f23e30]:
+            - /placeholder: Password
+          - link "Forgot your password?" [ref=f23e32] [cursor=pointer]:
+            - /url: /accounts/password/reset/
+        - paragraph [ref=f23e33]:
+          - generic [ref=f23e34]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f23e35] [cursor=pointer]
+        - button "Sign In" [ref=f23e36] [cursor=pointer]
+  - contentinfo [ref=f23e37]:
+    - generic [ref=f23e38]:
+      - paragraph [ref=f23e39]: © 2026 FirstClass
+      - navigation "Legal" [ref=f23e40]:
+        - link "Terms and Conditions" [ref=f23e41] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f23e42] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f23e43] [cursor=pointer]: google-analytics-setup
+  - generic "Show toolbar" [ref=f23e45]: DJDT

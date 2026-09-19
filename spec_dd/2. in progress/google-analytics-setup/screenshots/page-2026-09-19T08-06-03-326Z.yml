@@ -1,0 +1,66 @@
+- generic [active] [ref=f43e1]:
+  - banner [ref=f43e2]:
+    - link [ref=f43e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f43e4]
+      - heading "FirstClass" [level=1] [ref=f43e5]
+    - navigation [ref=f43e6]:
+      - button "Open user menu for QA Learner B" [ref=f43e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f43e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f43e10]:
+    - generic [ref=f43e12]:
+      - navigation "Breadcrumb" [ref=f43e13]:
+        - list [ref=f43e14]:
+          - listitem [ref=f43e15]:
+            - link "All courses" [ref=f43e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f43e17]:
+            - generic [aria-hidden] [ref=f43e18]: /
+            - generic [ref=f43e19]: QA Coming Soon Course
+      - generic [ref=f43e21]:
+        - heading "QA Coming Soon Course" [level=1] [ref=f43e22]
+        - generic [ref=f43e24]:
+          - generic [ref=f43e25]:
+            - img "topic" [ref=f43e26]
+            - generic [ref=f43e28]:
+              - paragraph [ref=f43e29]: Lessons
+              - paragraph [ref=f43e30]: 1 lesson
+          - generic [ref=f43e31]:
+            - img "check" [ref=f43e32]
+            - generic [ref=f43e34]:
+              - paragraph [ref=f43e35]: Enrolment
+              - paragraph [ref=f43e36]: Coming soon
+      - generic [ref=f43e37]:
+        - complementary [ref=f43e38]:
+          - generic [ref=f43e39]:
+            - generic [ref=f43e40]:
+              - paragraph [ref=f43e41]: Coming soon
+              - paragraph [ref=f43e42]: Register your interest and we'll let you know when the course is ready.
+            - button "I'm interested" [ref=f43e77] [cursor=pointer]
+            - generic [ref=f43e50]:
+              - heading "This course includes" [level=3] [ref=f43e51]
+              - list [ref=f43e52]:
+                - listitem [ref=f43e53]: 1 lesson
+        - generic [ref=f43e55]:
+          - heading "Course content" [level=2] [ref=f43e56]
+          - navigation "Course outline" [ref=f43e58]:
+            - list [ref=f43e59]:
+              - listitem [ref=f43e60]:
+                - generic [ref=f43e61]:
+                  - generic [ref=f43e62]: "1."
+                  - generic [ref=f43e63]:
+                    - img "topic" [ref=f43e64]
+                    - generic [ref=f43e66]: Locked
+                  - generic [ref=f43e67]: QA Coming Soon Course - Intro
+  - contentinfo [ref=f43e68]:
+    - generic [ref=f43e69]:
+      - paragraph [ref=f43e70]: © 2026 FirstClass
+      - navigation "Legal" [ref=f43e71]:
+        - link "Terms and Conditions" [ref=f43e72] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f43e73] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f43e74] [cursor=pointer]: google-analytics-setup
