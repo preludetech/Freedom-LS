@@ -1,0 +1,34 @@
+- generic [active] [ref=f22e1]:
+  - banner [ref=f22e2]:
+    - link [ref=f22e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f22e4]
+      - heading "FirstClass" [level=1] [ref=f22e5]
+    - navigation [ref=f22e6]:
+      - generic [ref=f22e7]:
+        - link "Login" [ref=f22e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f22e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f22e10]:
+    - generic [ref=f22e11]:
+      - heading "Confirm Email Address" [level=1] [ref=f22e12]
+      - paragraph [ref=f22e13]:
+        - text: Please confirm that
+        - link "qa-ga-signup-0919a@email.com" [ref=f22e14] [cursor=pointer]:
+          - /url: mailto:qa-ga-signup-0919a@email.com
+        - text: is an email address for user qa-ga-signup-0919a@email.com.
+      - button "Confirm" [ref=f22e16] [cursor=pointer]
+  - contentinfo [ref=f22e17]:
+    - generic [ref=f22e18]:
+      - paragraph [ref=f22e19]: © 2026 FirstClass
+      - navigation "Legal" [ref=f22e20]:
+        - link "Terms and Conditions" [ref=f22e21] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f22e22] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f22e23] [cursor=pointer]: google-analytics-setup
+  - generic "Show toolbar" [ref=f22e25]: DJDT

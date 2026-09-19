@@ -1,0 +1,124 @@
+- generic [active] [ref=f29e1]:
+  - banner [ref=f29e2]:
+    - link [ref=f29e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f29e4]
+      - heading "FirstClass" [level=1] [ref=f29e5]
+    - navigation [ref=f29e6]:
+      - button "Open user menu for QA Learner B" [ref=f29e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f29e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f29e10]:
+    - generic [ref=f29e12]:
+      - paragraph [ref=f29e13]: Application for Functionality Demo - Application gated course
+      - heading "About you" [level=1] [ref=f29e14]
+      - navigation "Application pages" [ref=f29e15]:
+        - generic [ref=f29e16]: "1"
+        - generic [ref=f29e17]: "2"
+        - generic [ref=f29e18]: "3"
+      - generic [ref=f29e19]:
+        - paragraph [ref=f29e21]: We ask about your experience so we can pitch the first few weeks right. Nothing here rules you out.
+        - group "1. What is your full name? (required)" [ref=f29e22]:
+          - generic [ref=f29e23]:
+            - generic [ref=f29e24]: "1."
+            - paragraph [ref=f29e25]: What is your full name?
+            - text: "*"
+            - generic [ref=f29e26]: (required)
+          - generic [ref=f29e27]:
+            - paragraph [ref=f29e29]: What is your full name?
+            - textbox "What is your full name?" [ref=f29e30]
+        - group "2. What is your date of birth? (required)" [ref=f29e31]:
+          - generic [ref=f29e32]:
+            - generic [ref=f29e33]: "2."
+            - paragraph [ref=f29e34]: What is your date of birth?
+            - text: "*"
+            - generic [ref=f29e35]: (required)
+          - generic [ref=f29e36]:
+            - paragraph [ref=f29e38]: What is your date of birth?
+            - textbox "What is your date of birth?" [ref=f29e39]
+        - group "3. What is your email address? (required)" [ref=f29e40]:
+          - generic [ref=f29e41]:
+            - generic [ref=f29e42]: "3."
+            - paragraph [ref=f29e43]: What is your email address?
+            - text: "*"
+            - generic [ref=f29e44]: (required)
+          - generic [ref=f29e45]:
+            - paragraph [ref=f29e47]: What is your email address?
+            - textbox "What is your email address?" [ref=f29e48]
+        - group "4. What is your phone number?" [ref=f29e49]:
+          - generic [ref=f29e50]:
+            - generic [ref=f29e51]: "4."
+            - paragraph [ref=f29e52]: What is your phone number?
+          - generic [ref=f29e53]:
+            - paragraph [ref=f29e55]: What is your phone number?
+            - textbox "What is your phone number?" [ref=f29e56]
+        - group "5. Share a link to your portfolio, GitHub profile or LinkedIn, if you have one" [ref=f29e57]:
+          - generic [ref=f29e58]:
+            - generic [ref=f29e59]: "5."
+            - paragraph [ref=f29e60]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+          - generic [ref=f29e61]:
+            - paragraph [ref=f29e63]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+            - textbox "Share a link to your portfolio, GitHub profile or LinkedIn, if you have one" [ref=f29e64]
+        - group "6. How many years have you been writing software? (required)" [ref=f29e65]:
+          - generic [ref=f29e66]:
+            - generic [ref=f29e67]: "6."
+            - paragraph [ref=f29e68]: How many years have you been writing software?
+            - text: "*"
+            - generic [ref=f29e69]: (required)
+          - generic [ref=f29e70]:
+            - paragraph [ref=f29e72]: How many years have you been writing software?
+            - spinbutton "How many years have you been writing software?" [ref=f29e73]
+        - group "7. How did you hear about this course? (required)" [ref=f29e74]:
+          - generic [ref=f29e75]:
+            - generic [ref=f29e76]: "7."
+            - paragraph [ref=f29e77]: How did you hear about this course?
+            - text: "*"
+            - generic [ref=f29e78]: (required)
+          - generic [ref=f29e79]:
+            - generic [ref=f29e80] [cursor=pointer]:
+              - radio "From a friend or colleague" [ref=f29e81]
+              - generic [ref=f29e84]: From a friend or colleague
+            - generic [ref=f29e85] [cursor=pointer]:
+              - radio "A search engine" [ref=f29e86]
+              - generic [ref=f29e89]: A search engine
+            - generic [ref=f29e90] [cursor=pointer]:
+              - radio "Social media" [ref=f29e91]
+              - generic [ref=f29e94]: Social media
+            - generic [ref=f29e95] [cursor=pointer]:
+              - radio "Somewhere else" [ref=f29e96]
+              - generic [ref=f29e99]: Somewhere else
+        - group "8. Which of these interest you?" [ref=f29e100]:
+          - generic [ref=f29e101]:
+            - generic [ref=f29e102]: "8."
+            - paragraph [ref=f29e103]: Which of these interest you?
+          - paragraph [ref=f29e104]: Select all that apply.
+          - generic [ref=f29e105]:
+            - generic [ref=f29e106] [cursor=pointer]:
+              - checkbox "Building web applications" [ref=f29e107]
+              - generic [ref=f29e111]: Building web applications
+            - generic [ref=f29e112] [cursor=pointer]:
+              - checkbox "Data and analytics" [ref=f29e113]
+              - generic [ref=f29e117]: Data and analytics
+            - generic [ref=f29e118] [cursor=pointer]:
+              - checkbox "Infrastructure and deployment" [ref=f29e119]
+              - generic [ref=f29e123]: Infrastructure and deployment
+        - group "9. Why do you want to take this course?" [ref=f29e124]:
+          - generic [ref=f29e125]:
+            - generic [ref=f29e126]: "9."
+            - paragraph [ref=f29e127]: Why do you want to take this course?
+          - generic [ref=f29e128]:
+            - paragraph [ref=f29e130]: Why do you want to take this course?
+            - textbox "Why do you want to take this course?" [ref=f29e131]
+        - button "Next" [ref=f29e133] [cursor=pointer]
+  - contentinfo [ref=f29e137]:
+    - generic [ref=f29e138]:
+      - paragraph [ref=f29e139]: © 2026 FirstClass
+      - navigation "Legal" [ref=f29e140]:
+        - link "Terms and Conditions" [ref=f29e141] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f29e142] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f29e143] [cursor=pointer]: google-analytics-setup
+  - generic "Show toolbar" [ref=f29e145]: DJDT
