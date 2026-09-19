@@ -52,3 +52,46 @@ def test_long_price_stays_inside_its_stat_cell(
     assert price_box is not None
 
     assert price_box["x"] + price_box["width"] <= stat_box["x"] + stat_box["width"]
+
+
+@pytest.mark.parametrize("width", [375, 640], ids=["mobile", "small-tablet"])
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_stacked_stat_cells_share_one_width_below_md(
+    live_server,
+    live_server_site,
+    mock_site_context,
+    page: Page,
+    width,
+):
+    """When the stats stack, every cell spans the strip, so the dividers line up.
+
+    640px is wide enough for two cells but not three with a discounted price,
+    so it guards against a ragged two-then-one wrap.
+    """
+    course = CourseFactory(
+        title="Stacked Stats Course",
+        slug="stacked-stats-course",
+        access_config={"access_type": "free"},
+        price_kind=PriceKind.DISCOUNTED,
+        price_amount=Decimal("1499.00"),
+        price_sale_amount=Decimal("999.00"),
+        price_currency="ZAR",
+    )
+
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(
+        reverse_url(
+            live_server,
+            "learner_interface:course_detail",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    cells = page.get_by_test_id("price-stat").locator("xpath=../*")
+    boxes = [cells.nth(i).bounding_box() for i in range(cells.count())]
+    assert len(boxes) >= 2
+    assert all(box is not None for box in boxes)
+
+    right_edges = {round(box["x"] + box["width"]) for box in boxes if box}
+    assert len(right_edges) == 1

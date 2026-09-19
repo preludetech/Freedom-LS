@@ -26,9 +26,11 @@
     Pass stat_price instead of stat_value to render a <c-course-price> in the
     value slot rather than plain text.{% endcomment %}
     {% partialdef stat-card %}
-        {% comment %}The price cell grows past w-48 because a discounted price
-        (struck original + sale amount) is wider than the other stats.{% endcomment %}
-        <div class="flex {% if stat_price %} min-w-48 {% else %} w-48 {% endif %} items-center gap-3 border-l border-t border-white/20 px-5 py-4"{% if stat_price %} data-testid="price-stat"{% endif %}>
+        {% comment %}Below md the cells stack, and each spans the strip so the dividers
+        line up. From md the cells sit side by side at w-48, except the price
+        cell, which grows past w-48 because a discounted price (struck original
+        + sale amount) is wider than the other stats.{% endcomment %}
+        <div class="flex w-full {% if stat_price %} md:w-auto md:min-w-48 {% else %} md:w-48 {% endif %} items-center gap-3 border-l border-t border-white/20 px-5 py-4"{% if stat_price %} data-testid="price-stat"{% endif %}>
             <c-icon :name="stat_icon" class="size-5 shrink-0 opacity-80" />
             <div class="min-w-0">
                 <p class="text-xs font-semibold uppercase tracking-wider opacity-70 text-white">
@@ -91,13 +93,14 @@
                     {% endif %}
 
                     {% comment %}Stats strip — one glass surface over the hero gradient,
-                    sized to its content (not full width). Each cell is a fixed equal
-                    width, except Price, which grows to fit; the max-width leaves room for
+                    full width below md where the cells stack, sized to its content
+                    from md up. From md each cell is a fixed equal width, except
+                    Price, which grows to fit; the max-width leaves room for
                     3 cells including a wider Price cell, so a 4th wraps. Internal
                     dividers come from each cell's top/left border; the inner row is
                     nudged -1px so the outer edges tuck under the rounded border.
                     Render each stat only when present.{% endcomment %}
-                    <div class="mt-6 w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/20 backdrop-blur-md">
+                    <div class="mt-6 w-full md:w-fit max-w-full overflow-hidden rounded-xl border border-white/20 bg-white/20 backdrop-blur-md">
                         <div class="flex max-w-[41rem] flex-wrap -mt-px -ml-px">
                             {% if not course.table_of_contents_in_development %}
                                 {% with stat_icon="topic" stat_label="Lessons" stat_value=lesson_count_label %}
