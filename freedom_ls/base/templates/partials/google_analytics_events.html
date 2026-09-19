@@ -1,0 +1,16 @@
+{% comment %}
+Included twice: once as the first thing inside #interface-main
+(_base_interface.html), once directly before </body> (_base.html). Only the
+first of the two to render on a given response pops the session's pending
+flags, so an event is never emitted twice from one response -- whichever
+include point a page reaches first gets them, and the other renders nothing.
+
+Each script removes itself once it has run, so htmx's history snapshot of the
+page (taken after scripts run) does not carry it. Without that, a Back
+navigation to a cached snapshot would fire the event again.
+{% endcomment %}
+{% if analytics_enabled and google_analytics_measurement_id %}
+    {% for flag in google_analytics_flags %}
+        <script>gtag('event', '{{ flag|escapejs }}'); document.currentScript.remove();</script>
+    {% endfor %}
+{% endif %}

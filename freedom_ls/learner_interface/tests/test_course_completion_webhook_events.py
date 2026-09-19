@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -113,3 +113,77 @@ class TestCourseCompletedWebhookEvent:
             )
 
         mock_fire.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestTutorialCompleteGoogleAnalyticsFlag:
+    """`course_finish` both records and renders in the same response, so the
+    event shows up in that response's own HTML rather than surviving in the
+    session for a later page -- unlike a call site that redirects.
+    """
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_completing_course_emits_the_tutorial_complete_event(
+        self, mock_site_context: object
+    ) -> None:
+        user = UserFactory(password="testpass")
+        course = CourseFactory(slug="ga-complete-course")
+        course_progress_record(course, user)
+
+        client = Client()
+        client.force_login(user)
+
+        response = client.get(
+            reverse(
+                "learner_interface:course_finish",
+                kwargs={"course_slug": "ga-complete-course"},
+            )
+        )
+
+        assert "gtag('event', 'tutorial_complete')" in response.content.decode()
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_revisiting_finish_page_does_not_emit_the_event_again(
+        self, mock_site_context: object
+    ) -> None:
+        from django.utils import timezone
+
+        user = UserFactory(password="testpass")
+        course = CourseFactory(slug="ga-complete-course-2")
+        record = course_progress_record(course, user)
+        record.completed_time = timezone.now()
+        record.save(update_fields=["completed_time"])
+
+        client = Client()
+        client.force_login(user)
+
+        response = client.get(
+            reverse(
+                "learner_interface:course_finish",
+                kwargs={"course_slug": "ga-complete-course-2"},
+            )
+        )
+
+        assert "gtag('event'" not in response.content.decode()
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_no_event_while_an_item_is_outstanding(
+        self, mock_site_context: object
+    ) -> None:
+        user = UserFactory(password="testpass")
+        course = CourseFactory(slug="ga-outstanding-course")
+        topic = TopicFactory(title="Unread", slug="ga-outstanding-topic", content="x")
+        course.items.create(child=topic, order=0)
+        course_progress_record(course, user)
+
+        client = Client()
+        client.force_login(user)
+
+        response = client.get(
+            reverse(
+                "learner_interface:course_finish",
+                kwargs={"course_slug": "ga-outstanding-course"},
+            )
+        )
+
+        assert "gtag('event'" not in response.content.decode()

@@ -21,6 +21,10 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from freedom_ls.base.google_analytics import (
+    GoogleAnalyticsEvent,
+    record_google_analytics_flag,
+)
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -1016,6 +1020,7 @@ def view_course_item(request, course_slug, index):
         course_progress.last_accessed_time = now
         if course_progress.started_at is None:
             course_progress.started_at = now
+            record_google_analytics_flag(request, GoogleAnalyticsEvent.TUTORIAL_BEGIN)
         course_progress.save(
             update_fields=["last_accessed_item", "last_accessed_time", "started_at"]
         )
@@ -1633,6 +1638,7 @@ def course_finish(request, course_slug):
                 "course_progress_id": str(course_progress.id),
             },
         )
+        record_google_analytics_flag(request, GoogleAnalyticsEvent.TUTORIAL_COMPLETE)
 
     context = {
         "course": course,

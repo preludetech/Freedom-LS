@@ -1,0 +1,61 @@
+- generic [ref=f96e1]:
+  - banner [ref=f96e2]:
+    - link [ref=f96e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f96e4]
+    - navigation [ref=f96e5]:
+      - button "Open user menu for QA Learner A" [ref=f96e7] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f96e8]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f96e9]:
+    - generic [ref=f96e11]:
+      - dialog "Course outline" [active] [ref=f96e12]:
+        - generic [ref=f96e15]:
+          - generic [ref=f96e16]:
+            - paragraph [ref=f96e17]: Course outline
+            - paragraph [ref=f96e18]: QA Second Course
+            - generic [ref=f96e20]:
+              - progressbar "Progress for QA Second Course" [ref=f96e21]: 0%
+              - generic [ref=f96e22]: 0% complete
+          - navigation "Course outline" [ref=f96e23]:
+            - list [ref=f96e24]:
+              - listitem [ref=f96e25]:
+                - generic [ref=f96e26]:
+                  - generic [ref=f96e27]: "1."
+                  - generic [ref=f96e28]:
+                    - img "topic" [ref=f96e29]
+                    - generic [ref=f96e31]: In progress
+                  - generic [ref=f96e32]: QA Second Course - Intro
+      - generic [ref=f96e33]:
+        - generic [ref=f96e34]:
+          - generic [ref=f96e35]:
+            - navigation "Breadcrumb" [ref=f96e37]:
+              - list [ref=f96e38]:
+                - listitem [ref=f96e39]:
+                  - link "QA Second Course" [ref=f96e40] [cursor=pointer]:
+                    - /url: /courses/qa-second-course/detail/
+                - listitem [ref=f96e41]:
+                  - generic [aria-hidden] [ref=f96e42]: ">"
+                  - generic "QA Second Course - Intro" [ref=f96e43]
+            - button "Open course outline" [expanded] [ref=f96e44] [cursor=pointer]:
+              - img "table_of_contents" [ref=f96e45]
+          - generic [ref=f96e48]:
+            - progressbar "Progress for QA Second Course" [ref=f96e49]: 0%
+            - generic [ref=f96e50]: 0%
+          - heading "QA Second Course - Intro" [level=1] [ref=f96e52]
+        - generic [ref=f96e54]:
+          - generic [ref=f96e55]:
+            - heading "Welcome" [level=2] [ref=f96e56]
+            - paragraph [ref=f96e57]: QA topic for QA Second Course.
+          - button "Finish Course" [ref=f96e60] [cursor=pointer]
+  - contentinfo [ref=f96e64]:
+    - generic [ref=f96e65]:
+      - paragraph [ref=f96e66]: © 2026 FirstClass
+      - navigation "Legal" [ref=f96e67]:
+        - link "Terms and Conditions" [ref=f96e68] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f96e69] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f96e70] [cursor=pointer]: google-analytics-setup

@@ -1,8 +1,8 @@
 ---
-version: "1.0"
+version: "1.1"
 title: "Privacy Policy"
 type: "privacy"
-effective_date: "2026-04-27"
+effective_date: "2026-09-18"
 ---
 
 **This is a placeholder privacy policy shipped as the FreedomLS default. Replace it with your own legal copy before going live.**
@@ -20,11 +20,23 @@ When you create an account we collect:
 
 We may also collect information you supply during onboarding (for example, additional registration form fields configured by the site operator).
 
+### Usage analytics
+
+This platform can load Google Analytics 4 and PostHog. Each one loads only when the site operator has configured it. When active, they collect:
+
+- The pages you view.
+- Device and browser information.
+- A pseudonymous identifier held in a cookie.
+- If you are signed in, your numeric account ID.
+
+Neither service receives your email address, name, or phone number.
+
 ## 2. How we use your data
 
 - To operate the platform and deliver the educational content you have signed up for.
 - To communicate with you about your account.
 - To maintain a defensible record of your consent to these legal documents.
+- To measure how the site is used.
 
 ## 3. Retention
 
@@ -36,9 +48,11 @@ Other personal data is retained only as long as needed to operate the service an
 
 Depending on your jurisdiction, you may have rights to access, correct, export or erase the personal data we hold about you. Contact the site operator to exercise these rights.
 
+You can opt out of Google Analytics tracking with [Google's opt-out browser add-on](https://tools.google.com/dlpage/gaoptout), or by contacting the site operator to ask that usage analytics be turned off.
+
 ## 5. Sharing
 
-We do not sell your personal data. We share it only with service providers that the platform relies on to operate, and only to the extent needed for them to provide their service.
+We do not sell your personal data. We share it only with service providers that the platform relies on to operate, and only to the extent needed for them to provide their service, for example Google Analytics 4 and PostHog when the site operator has enabled them.
 
 ## 6. Changes to this policy
 
