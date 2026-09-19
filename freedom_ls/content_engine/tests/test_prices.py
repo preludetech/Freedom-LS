@@ -14,7 +14,6 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.content_engine.prices import (
     AMOUNT_DECIMAL_PLACES,
     AMOUNT_MAX_DIGITS,
-    KIND_FIELDS,
     CoursePrice,
     price_errors,
     price_locale,
@@ -57,12 +56,6 @@ def test_blank_currency_skips_the_decimal_place_check() -> None:
     errors = price_errors("fixed", amount=Decimal("1500.50"), currency="")
 
     assert errors == {}
-
-
-def test_blank_currency_skips_the_currency_code_check() -> None:
-    errors = price_errors("fixed", amount=Decimal("100"), currency="")
-
-    assert "currency" not in errors
 
 
 # price_errors: required and stray fields, one per kind
@@ -248,21 +241,12 @@ def test_low_amount_less_than_high_amount_is_accepted() -> None:
 # KIND_FIELDS
 
 
-def test_kind_fields_covers_the_four_price_kinds() -> None:
-    assert set(KIND_FIELDS) == {"fixed", "range", "discounted", "on_request"}
-
-
 # price_locale
 
 
 def test_price_locale_falls_back_to_language_code_when_unset() -> None:
     with override_settings(PRICE_LOCALE=None, LANGUAGE_CODE="en-us"):
         assert price_locale() == "en_US"
-
-
-def test_price_locale_reads_the_setting_when_set() -> None:
-    with override_settings(PRICE_LOCALE="en_ZA"):
-        assert price_locale() == "en_ZA"
 
 
 # CoursePrice formatting

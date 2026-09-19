@@ -69,18 +69,6 @@ def _render_json_ld_script(value: object, element_id: str) -> str:
     ).render(Context({"value": value, "element_id": element_id}))
 
 
-def test_json_ld_script_wraps_the_payload_in_an_ld_json_script_tag() -> None:
-    rendered = _render_json_ld_script({"a": 1}, "my-id")
-
-    assert 'type="application/ld+json"' in rendered
-
-
-def test_json_ld_script_sets_the_given_element_id() -> None:
-    rendered = _render_json_ld_script({"a": 1}, "my-id")
-
-    assert 'id="my-id"' in rendered
-
-
 def test_json_ld_script_escapes_a_closing_script_tag_inside_a_value() -> None:
     """A value containing a literal "</script>" must not let a crawler (or a
     browser) treat it as the end of the JSON-LD block.

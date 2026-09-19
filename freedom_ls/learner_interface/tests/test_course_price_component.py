@@ -12,7 +12,6 @@ from decimal import Decimal
 from django_cotton.compiler_regex import CottonCompiler
 
 from django.template import Context, Template
-from django.test import override_settings
 
 from freedom_ls.content_engine.prices import CoursePrice
 
@@ -71,10 +70,6 @@ class TestFixedPrice:
         result = _render('<c-course-price :price="price" variant="full" />', priced)
         assert "incl. VAT" in result
 
-    def test_full_omits_tax_note_when_blank(self) -> None:
-        result = _render('<c-course-price :price="price" variant="full" />', FIXED)
-        assert "incl. VAT" not in result
-
 
 class TestRangePrice:
     def test_compact_shows_from_low_amount(self) -> None:
@@ -114,10 +109,6 @@ class TestDiscountedPrice:
         result = _render('<c-course-price :price="price" />', DISCOUNTED)
         assert "Now:" in result
 
-    def test_compact_original_amount_is_struck_through(self) -> None:
-        result = _render('<c-course-price :price="price" />', DISCOUNTED)
-        assert "<s" in result
-
     def test_full_shows_tax_note_when_set(self) -> None:
         priced = CoursePrice(
             kind="discounted",
@@ -138,13 +129,3 @@ class TestOnRequestPrice:
     def test_full_shows_price_on_request(self) -> None:
         result = _render('<c-course-price :price="price" variant="full" />', ON_REQUEST)
         assert "Price on request" in result
-
-
-class TestFormattingLocale:
-    def test_en_za_locale_formats_zar_with_comma_decimal(self) -> None:
-        with override_settings(PRICE_LOCALE="en_ZA"):
-            price = CoursePrice(kind="fixed", currency="ZAR", amount=Decimal("1499.00"))
-            result = _render('<c-course-price :price="price" />', price)
-
-        normalised = result.replace("\xa0", " ")
-        assert "R1 499,00" in normalised

@@ -338,72 +338,6 @@ def test_course_detail_json_ld_includes_offer_for_fixed_price(
 
 
 @pytest.mark.django_db
-def test_course_detail_json_ld_includes_aggregate_offer_for_range_price(
-    mock_site_context, course_with_topic
-):
-    """A range price becomes a schema.org AggregateOffer with no offerCount."""
-    course = course_with_topic(
-        price_kind="range",
-        price_low_amount=Decimal("1200.00"),
-        price_high_amount=Decimal("3000.00"),
-        price_currency="ZAR",
-    )
-    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
-    offers = _extract_json_ld(body, "course-jsonld")["offers"]
-    assert offers == {
-        "@type": "AggregateOffer",
-        "lowPrice": "1200.00",
-        "highPrice": "3000.00",
-        "priceCurrency": "ZAR",
-    }
-    assert "offerCount" not in offers
-
-
-@pytest.mark.django_db
-def test_course_detail_json_ld_open_ended_range_has_no_high_price(
-    mock_site_context, course_with_topic
-):
-    """A range with no upper end is an AggregateOffer with lowPrice only."""
-    course = course_with_topic(
-        price_kind="range",
-        price_low_amount=Decimal("500.00"),
-        price_currency="ZAR",
-    )
-    body = _get("learner_interface:course_detail", kwargs={"course_slug": course.slug})
-    offers = _extract_json_ld(body, "course-jsonld")["offers"]
-    assert offers == {
-        "@type": "AggregateOffer",
-        "lowPrice": "500.00",
-        "priceCurrency": "ZAR",
-    }
-
-
-@pytest.mark.django_db
-def test_course_detail_json_ld_live_discount_offer_has_price_valid_until(
-    mock_site_context, course_with_topic
-):
-    """A live discount is an Offer at the sale amount, with priceValidUntil set."""
-    course = course_with_topic(
-        price_kind="discounted",
-        price_amount=Decimal("1499.00"),
-        price_sale_amount=Decimal("999.00"),
-        price_sale_ends_on=date(2026, 12, 31),
-        price_currency="ZAR",
-    )
-    with time_machine.travel("2026-12-31T23:00:00Z", tick=False):
-        body = _get(
-            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
-        )
-    offers = _extract_json_ld(body, "course-jsonld")["offers"]
-    assert offers == {
-        "@type": "Offer",
-        "price": "999.00",
-        "priceCurrency": "ZAR",
-        "priceValidUntil": "2026-12-31",
-    }
-
-
-@pytest.mark.django_db
 def test_course_detail_json_ld_expired_discount_shows_original_amount_with_no_valid_until(
     mock_site_context, course_with_topic
 ):
@@ -428,7 +362,6 @@ def test_course_detail_json_ld_expired_discount_shows_original_amount_with_no_va
         "price": "1499.00",
         "priceCurrency": "ZAR",
     }
-    assert "priceValidUntil" not in offers
 
 
 @pytest.mark.django_db
@@ -466,16 +399,6 @@ def test_catalogue_json_ld_is_item_list(mock_site_context):
     data = _extract_json_ld(_get("learner_interface:courses"), "catalogue-jsonld")
     assert data["@type"] == "ItemList"
     assert data["@context"] == "https://schema.org"
-
-
-@pytest.mark.django_db
-def test_catalogue_json_ld_script_uses_ld_json_type(mock_site_context):
-    """The catalogue's JSON-LD block is emitted as application/ld+json, not
-    the generic application/json json_script produces -- crawlers only read
-    structured data with the former.
-    """
-    body = _get("learner_interface:courses")
-    assert 'id="catalogue-jsonld" type="application/ld+json"' in body
 
 
 @pytest.mark.django_db

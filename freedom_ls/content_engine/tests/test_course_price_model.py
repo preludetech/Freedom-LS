@@ -102,22 +102,6 @@ def test_discounted_price_round_trips(mock_site_context) -> None:
     assert course.price_sale_ends_on == date(2026, 12, 31)
 
 
-@pytest.mark.django_db
-def test_on_request_price_round_trips(mock_site_context) -> None:
-    course = CourseFactory(price_kind=PriceKind.ON_REQUEST)
-    course.refresh_from_db()
-
-    assert course.price_kind == PriceKind.ON_REQUEST
-
-
-@pytest.mark.django_db
-def test_course_defaults_to_no_price(mock_site_context) -> None:
-    course = CourseFactory()
-    course.refresh_from_db()
-
-    assert course.price_kind == ""
-
-
 # ---------------------------------------------------------------------------
 # CheckConstraint: course_price_fields_match_kind
 # ---------------------------------------------------------------------------

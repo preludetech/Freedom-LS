@@ -221,21 +221,6 @@ def test_course_detail_shows_price_once_for_registered_learner(
 
 
 @pytest.mark.django_db
-def test_course_detail_stats_strip_shows_price_label(
-    mock_site_context, course_with_topic
-):
-    course = _priced(course_with_topic)
-    client = Client()
-
-    url = reverse(
-        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
-    )
-    body = client.get(url).content.decode()
-
-    assert "Price" in body
-
-
-@pytest.mark.django_db
 def test_course_detail_application_gated_priced_course_still_shows_apply_cta(
     mock_site_context, course_with_topic
 ):

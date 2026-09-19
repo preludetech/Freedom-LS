@@ -44,7 +44,7 @@ def test_valid_default_currency_produces_no_errors() -> None:
     assert errors == []
 
 
-def test_unset_default_currency_produces_no_errors() -> None:
+def test_unset_price_settings_produce_no_errors() -> None:
     with override_settings(DEFAULT_CURRENCY=None, PRICE_LOCALE=None):
         errors = check_price_settings()
 
@@ -62,13 +62,6 @@ def test_unknown_price_locale_reports_error() -> None:
 
 def test_valid_price_locale_produces_no_errors() -> None:
     with override_settings(DEFAULT_CURRENCY=None, PRICE_LOCALE="en_ZA"):
-        errors = check_price_settings()
-
-    assert errors == []
-
-
-def test_unset_price_locale_produces_no_errors() -> None:
-    with override_settings(DEFAULT_CURRENCY=None, PRICE_LOCALE=None):
         errors = check_price_settings()
 
     assert errors == []
