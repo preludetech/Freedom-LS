@@ -250,6 +250,66 @@ def test_clean_errors_on_a_stray_field_for_the_kind(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("fields", "field_name", "message"),
+    [
+        (
+            {"price_kind": PriceKind.ON_REQUEST, "price_currency": "ZAR"},
+            "price_currency",
+            "Not used by an on-request price.",
+        ),
+        (
+            {
+                "price_kind": PriceKind.FIXED,
+                "price_amount": Decimal("100.000"),
+                "price_low_amount": Decimal("50.000"),
+                "price_currency": "ZAR",
+            },
+            "price_low_amount",
+            "Not used by a fixed price.",
+        ),
+        (
+            {"price_kind": PriceKind.DISCOUNTED, "price_currency": "ZAR"},
+            "price_amount",
+            "Required for a discounted price.",
+        ),
+        (
+            {
+                "price_kind": PriceKind.DISCOUNTED,
+                "price_amount": Decimal("100.000"),
+                "price_sale_amount": Decimal("150.000"),
+                "price_currency": "ZAR",
+            },
+            "price_sale_amount",
+            "Must be less than the full amount.",
+        ),
+        (
+            {
+                "price_kind": PriceKind.RANGE,
+                "price_low_amount": Decimal("300.000"),
+                "price_high_amount": Decimal("100.000"),
+                "price_currency": "ZAR",
+            },
+            "price_high_amount",
+            "Must be greater than the low amount.",
+        ),
+    ],
+    ids=["stray-currency", "stray-low-amount", "missing-amount", "sale", "range"],
+)
+def test_clean_errors_are_worded_for_the_admin(
+    mock_site_context, fields: dict[str, object], field_name: str, message: str
+) -> None:
+    """Each error sits under its own admin input, so it names neither that
+    field nor a raw kind value."""
+    course = CourseFactory.build(**fields)
+
+    with pytest.raises(ValidationError) as excinfo:
+        course.clean()
+
+    assert excinfo.value.message_dict[field_name] == [message]
+
+
+@pytest.mark.django_db
 def test_clean_errors_when_price_fields_set_without_a_kind(mock_site_context) -> None:
     course = CourseFactory.build(
         price_kind="", price_amount=Decimal("100.000"), price_currency="ZAR"

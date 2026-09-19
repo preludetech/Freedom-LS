@@ -274,6 +274,16 @@ KIND_FIELDS: dict[str, tuple[frozenset[str], frozenset[str]]] = {
     "on_request": (frozenset(), frozenset()),
 }
 
+# How each kind reads inside an error message. Every message sits beside the
+# field it belongs to (under an admin input, or after a YAML key), so messages
+# never name their own field.
+KIND_PHRASES: dict[str, str] = {
+    "fixed": "a fixed price",
+    "range": "a range price",
+    "discounted": "a discounted price",
+    "on_request": "an on-request price",
+}
+
 _PRICE_AMOUNT_FIELDS = ("amount", "sale_amount", "low_amount", "high_amount")
 
 # Mirror the Course price amount columns, so an amount that passes these rules
@@ -314,17 +324,17 @@ def price_errors(
 
     for field in required:
         if values[field] is None:
-            errors.setdefault(field, f"{field} is required for a {kind} price")
+            errors.setdefault(field, f"Required for {KIND_PHRASES[kind]}.")
 
     for field, value in values.items():
         if field in allowed or value in (None, ""):
             continue
-        errors.setdefault(field, f"{field} is not used by a {kind} price")
+        errors.setdefault(field, f"Not used by {KIND_PHRASES[kind]}.")
 
     currency_valid = bool(currency) and currency in list_currencies()
     if currency and not currency_valid:
         errors.setdefault(
-            "currency", f"{currency!r} is not a currency code Babel recognises."
+            "currency", f"{currency!r} is not a recognised currency code."
         )
 
     # Collect the amounts that pass finiteness and positivity, so the
@@ -336,40 +346,38 @@ def price_errors(
         if not isinstance(value, Decimal):
             continue
         if not value.is_finite():
-            errors.setdefault(field, f"{field} must be a finite number.")
+            errors.setdefault(field, "Must be a finite number.")
             continue
         if value <= 0:
-            errors.setdefault(field, f"{field} must be greater than zero.")
+            errors.setdefault(field, "Must be greater than zero.")
             continue
         if value >= Decimal(10) ** (AMOUNT_MAX_DIGITS - AMOUNT_DECIMAL_PLACES):
-            errors.setdefault(field, f"{field} is too large.")
+            errors.setdefault(field, "Too large.")
             continue
         if decimal_places_used(value) > AMOUNT_DECIMAL_PLACES:
             errors.setdefault(
                 field,
-                f"{field} can have at most {AMOUNT_DECIMAL_PLACES} decimal places.",
+                f"Can have at most {AMOUNT_DECIMAL_PLACES} decimal places.",
             )
             continue
         finite_amounts[field] = value
         if currency_valid and decimal_places_used(value) > get_currency_precision(
             currency
         ):
-            errors.setdefault(
-                field, f"{field} has more decimal places than {currency} allows."
-            )
+            errors.setdefault(field, f"Has more decimal places than {currency} allows.")
 
     if (
         "sale_amount" in finite_amounts
         and "amount" in finite_amounts
         and finite_amounts["sale_amount"] >= finite_amounts["amount"]
     ):
-        errors.setdefault("sale_amount", "sale_amount must be less than amount.")
+        errors.setdefault("sale_amount", "Must be less than the full amount.")
     if (
         "low_amount" in finite_amounts
         and "high_amount" in finite_amounts
         and finite_amounts["low_amount"] >= finite_amounts["high_amount"]
     ):
-        errors.setdefault("high_amount", "high_amount must be greater than low_amount.")
+        errors.setdefault("high_amount", "Must be greater than the low amount.")
 
     return errors
 

@@ -71,7 +71,7 @@ def test_blank_currency_skips_the_currency_code_check() -> None:
 def test_fixed_price_missing_amount_reports_amount_required() -> None:
     errors = price_errors("fixed", currency="ZAR")
 
-    assert errors == {"amount": "amount is required for a fixed price"}
+    assert errors == {"amount": "Required for a fixed price."}
 
 
 def test_fixed_price_with_low_amount_reports_low_amount_not_used() -> None:
@@ -79,7 +79,7 @@ def test_fixed_price_with_low_amount_reports_low_amount_not_used() -> None:
         "fixed", amount=Decimal("100"), low_amount=Decimal("50"), currency="ZAR"
     )
 
-    assert errors == {"low_amount": "low_amount is not used by a fixed price"}
+    assert errors == {"low_amount": "Not used by a fixed price."}
 
 
 def test_range_price_without_high_amount_is_open_ended_and_valid() -> None:
@@ -91,7 +91,7 @@ def test_range_price_without_high_amount_is_open_ended_and_valid() -> None:
 def test_range_price_missing_low_amount_reports_low_amount_required() -> None:
     errors = price_errors("range", high_amount=Decimal("100"), currency="ZAR")
 
-    assert errors == {"low_amount": "low_amount is required for a range price"}
+    assert errors == {"low_amount": "Required for a range price."}
 
 
 def test_range_price_with_sale_amount_reports_sale_amount_not_used() -> None:
@@ -103,13 +103,13 @@ def test_range_price_with_sale_amount_reports_sale_amount_not_used() -> None:
         currency="ZAR",
     )
 
-    assert errors == {"sale_amount": "sale_amount is not used by a range price"}
+    assert errors == {"sale_amount": "Not used by a range price."}
 
 
 def test_discounted_price_missing_sale_amount_reports_sale_amount_required() -> None:
     errors = price_errors("discounted", amount=Decimal("100"), currency="ZAR")
 
-    assert errors == {"sale_amount": "sale_amount is required for a discounted price"}
+    assert errors == {"sale_amount": "Required for a discounted price."}
 
 
 def test_discounted_price_with_low_amount_reports_low_amount_not_used() -> None:
@@ -121,19 +121,19 @@ def test_discounted_price_with_low_amount_reports_low_amount_not_used() -> None:
         currency="ZAR",
     )
 
-    assert errors == {"low_amount": "low_amount is not used by a discounted price"}
+    assert errors == {"low_amount": "Not used by a discounted price."}
 
 
 def test_on_request_price_with_amount_reports_amount_not_used() -> None:
     errors = price_errors("on_request", amount=Decimal("100"))
 
-    assert errors == {"amount": "amount is not used by a on_request price"}
+    assert errors == {"amount": "Not used by an on-request price."}
 
 
 def test_on_request_price_with_currency_reports_currency_not_used() -> None:
     errors = price_errors("on_request", currency="ZAR")
 
-    assert errors == {"currency": "currency is not used by a on_request price"}
+    assert errors == {"currency": "Not used by an on-request price."}
 
 
 def test_on_request_price_with_no_fields_has_no_errors() -> None:
@@ -148,25 +148,25 @@ def test_on_request_price_with_no_fields_has_no_errors() -> None:
 def test_zero_amount_is_rejected() -> None:
     errors = price_errors("fixed", amount=Decimal("0"), currency="ZAR")
 
-    assert errors == {"amount": "amount must be greater than zero."}
+    assert errors == {"amount": "Must be greater than zero."}
 
 
 def test_negative_amount_is_rejected() -> None:
     errors = price_errors("fixed", amount=Decimal("-10"), currency="ZAR")
 
-    assert errors == {"amount": "amount must be greater than zero."}
+    assert errors == {"amount": "Must be greater than zero."}
 
 
 def test_nan_amount_is_rejected_as_not_finite() -> None:
     errors = price_errors("fixed", amount=Decimal("NaN"), currency="ZAR")
 
-    assert errors == {"amount": "amount must be a finite number."}
+    assert errors == {"amount": "Must be a finite number."}
 
 
 def test_amount_too_large_for_the_column_is_rejected() -> None:
     errors = price_errors("fixed", amount=Decimal("1000000000"), currency="IDR")
 
-    assert errors == {"amount": "amount is too large."}
+    assert errors == {"amount": "Too large."}
 
 
 def test_largest_amount_the_column_holds_is_accepted() -> None:
@@ -179,7 +179,7 @@ def test_amount_with_more_decimal_places_than_the_column_is_rejected() -> None:
     """CLF allows four decimal places, but the column stores only three."""
     errors = price_errors("fixed", amount=Decimal("0.1234"), currency="CLF")
 
-    assert errors == {"amount": "amount can have at most 3 decimal places."}
+    assert errors == {"amount": "Can have at most 3 decimal places."}
 
 
 @pytest.mark.parametrize(
@@ -202,7 +202,7 @@ def test_sale_amount_equal_to_amount_is_rejected() -> None:
         "discounted", amount=Decimal("100"), sale_amount=Decimal("100"), currency="ZAR"
     )
 
-    assert errors == {"sale_amount": "sale_amount must be less than amount."}
+    assert errors == {"sale_amount": "Must be less than the full amount."}
 
 
 def test_sale_amount_greater_than_amount_is_rejected() -> None:
@@ -210,7 +210,7 @@ def test_sale_amount_greater_than_amount_is_rejected() -> None:
         "discounted", amount=Decimal("100"), sale_amount=Decimal("150"), currency="ZAR"
     )
 
-    assert errors == {"sale_amount": "sale_amount must be less than amount."}
+    assert errors == {"sale_amount": "Must be less than the full amount."}
 
 
 def test_sale_amount_less_than_amount_is_accepted() -> None:
@@ -226,7 +226,7 @@ def test_low_amount_equal_to_high_amount_is_rejected() -> None:
         "range", low_amount=Decimal("100"), high_amount=Decimal("100"), currency="ZAR"
     )
 
-    assert errors == {"high_amount": "high_amount must be greater than low_amount."}
+    assert errors == {"high_amount": "Must be greater than the low amount."}
 
 
 def test_low_amount_greater_than_high_amount_is_rejected() -> None:
@@ -234,7 +234,7 @@ def test_low_amount_greater_than_high_amount_is_rejected() -> None:
         "range", low_amount=Decimal("200"), high_amount=Decimal("100"), currency="ZAR"
     )
 
-    assert errors == {"high_amount": "high_amount must be greater than low_amount."}
+    assert errors == {"high_amount": "Must be greater than the low amount."}
 
 
 def test_low_amount_less_than_high_amount_is_accepted() -> None:

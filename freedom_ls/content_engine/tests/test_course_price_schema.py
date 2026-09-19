@@ -255,5 +255,5 @@ price:
 """
     temp_file = make_temp_file(".md", content)
 
-    with pytest.raises(ValueError, match="amount is too large"):
+    with pytest.raises(ValueError, match="amount: Too large"):
         parse_single_file(temp_file)

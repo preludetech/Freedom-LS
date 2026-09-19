@@ -979,7 +979,7 @@ def test_price_unknown_currency_fails(tmp_path: Path) -> None:
             'price:\n  kind: fixed\n  amount: "100.00"\n  currency: ZZZ\n',
         )
     )
-    assert_validator_fails(result, "not a currency code Babel recognises")
+    assert_validator_fails(result, "not a recognised currency code")
 
 
 def test_price_too_many_decimal_places_with_explicit_currency_fails(
@@ -1003,7 +1003,7 @@ def test_price_amount_too_large_for_the_column_fails(tmp_path: Path) -> None:
             'price:\n  kind: fixed\n  amount: "1000000000"\n  currency: IDR\n',
         )
     )
-    assert_validator_fails(result, "amount is too large")
+    assert_validator_fails(result, "amount: Too large")
 
 
 def test_price_more_decimal_places_than_the_column_fails(tmp_path: Path) -> None:
@@ -1029,7 +1029,7 @@ def test_price_sale_not_below_original_fails(tmp_path: Path) -> None:
             "  currency: ZAR\n",
         )
     )
-    assert_validator_fails(result, "sale_amount must be less than amount")
+    assert_validator_fails(result, "sale_amount: Must be less than the full amount")
 
 
 def test_price_low_not_below_high_fails(tmp_path: Path) -> None:
@@ -1044,7 +1044,7 @@ def test_price_low_not_below_high_fails(tmp_path: Path) -> None:
             "  currency: ZAR\n",
         )
     )
-    assert_validator_fails(result, "high_amount must be greater than low_amount")
+    assert_validator_fails(result, "high_amount: Must be greater than the low amount")
 
 
 def test_price_bare_number_amount_fails(tmp_path: Path) -> None:
