@@ -1,0 +1,103 @@
+- generic [active] [ref=f89e1]:
+  - banner [ref=f89e2]:
+    - link [ref=f89e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f89e4]
+      - heading "FirstClass" [level=1] [ref=f89e5]
+    - navigation [ref=f89e6]:
+      - generic [ref=f89e7]:
+        - link "Login" [ref=f89e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f89e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f89e10]:
+    - generic [ref=f89e11]:
+      - heading "Change Password" [level=1] [ref=f89e12]
+      - generic [ref=f89e13]:
+        - paragraph [ref=f89e14]:
+          - generic [ref=f89e15]: "New Password:"
+          - textbox "New Password:" [ref=f89e16]:
+            - /placeholder: New Password
+        - paragraph [ref=f89e17]:
+          - generic [ref=f89e18]: "New Password (again):"
+          - textbox "New Password (again):" [ref=f89e19]:
+            - /placeholder: New Password (again)
+        - button "Change Password" [ref=f89e20] [cursor=pointer]
+        - button "Cancel" [ref=f89e21] [cursor=pointer]
+  - contentinfo [ref=f89e22]:
+    - generic [ref=f89e23]:
+      - paragraph [ref=f89e24]: © 2026 FirstClass
+      - navigation "Legal" [ref=f89e25]:
+        - link "Terms and Conditions" [ref=f89e26] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f89e27] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f89e28] [cursor=pointer]: google-analytics-setup
+  - list [ref=f89e30]:
+    - listitem [ref=f89e31]:
+      - link "Hide »" [ref=f89e32] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e33]:
+      - link "Toggle Theme" [ref=f89e34] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e37]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e38] [cursor=pointer]
+      - link "History /accounts/password/reset/key/1y-set-password/" [ref=f89e39] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e40]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e41] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f89e42] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e43]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e44] [cursor=pointer]
+      - 'link "Time CPU: 41.35ms (69.37ms)" [ref=f89e45] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f89e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e47] [cursor=pointer]
+      - link "Settings" [ref=f89e48] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e50] [cursor=pointer]
+      - link "Headers" [ref=f89e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e53] [cursor=pointer]
+      - link "Request PasswordResetFromKeyView" [ref=f89e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e56] [cursor=pointer]
+      - link "SQL 7 queries in 18.91ms" [ref=f89e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e59] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f89e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e62] [cursor=pointer]
+      - link "Templates account/password_reset_from_key.html" [ref=f89e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e65] [cursor=pointer]
+      - link "Alerts" [ref=f89e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e68] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f89e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e71] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f89e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f89e74] [cursor=pointer]
+      - link "Community" [ref=f89e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f89e76]:
+      - checkbox "Enable for next and successive requests" [ref=f89e77] [cursor=pointer]
+      - generic [ref=f89e78]: Intercept redirects
+    - listitem [ref=f89e79]:
+      - checkbox "Enable for next and successive requests" [ref=f89e80] [cursor=pointer]
+      - generic [ref=f89e81]: Profiling

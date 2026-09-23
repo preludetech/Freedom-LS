@@ -1,0 +1,22 @@
+- generic [active] [ref=f173e1]:
+  - banner [ref=f173e2]:
+    - link [ref=f173e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f173e4]
+      - heading "FirstClass" [level=1] [ref=f173e5]
+    - navigation [ref=f173e6]:
+      - button "Open user menu for QA Learner A" [ref=f173e8]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f173e9]:
+    - generic [ref=f173e11]:
+      - paragraph [ref=f173e15]: 404 · Not found
+      - heading "We cannot find that page" [level=1] [ref=f173e16]
+      - generic [ref=f173e17]:
+        - paragraph [ref=f173e18]: The web address may be wrong, or the page may have moved or been taken down. Check the address for mistakes.
+        - generic [ref=f173e19]:
+          - link "Go to your dashboard" [ref=f173e20] [cursor=pointer]:
+            - /url: /
+          - link "Browse courses" [ref=f173e24] [cursor=pointer]:
+            - /url: /courses/

@@ -1,0 +1,97 @@
+- generic [active] [ref=f141e1]:
+  - banner [ref=f141e2]:
+    - link [ref=f141e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f141e4]
+      - heading "FirstClass" [level=1] [ref=f141e5]
+    - navigation [ref=f141e6]:
+      - button "Open user menu for QA Learner A" [ref=f141e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f141e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f141e10]:
+    - generic [ref=f141e12]:
+      - dialog "Course outline" [ref=f141e13]:
+        - generic [ref=f141e149]:
+          - generic [ref=f141e150]:
+            - paragraph [ref=f141e151]: Course outline
+            - paragraph [ref=f141e152]: Standard Markdown - Demo Finance
+            - generic [ref=f141e154]:
+              - progressbar "Progress for Standard Markdown - Demo Finance" [ref=f141e155]: 33%
+              - generic [ref=f141e156]: 33% complete
+          - navigation "Course outline" [ref=f141e157]:
+            - list [ref=f141e158]:
+              - listitem [ref=f141e159]:
+                - generic [ref=f141e160]:
+                  - generic [ref=f141e161]: "1."
+                  - generic [ref=f141e162]:
+                    - img "topic" [ref=f141e163]
+                    - generic [ref=f141e165]: Completed
+                  - link "Financial Literacy" [ref=f141e167] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/1/
+              - listitem [ref=f141e168]:
+                - generic [ref=f141e169]:
+                  - generic [ref=f141e170]: "2."
+                  - generic [ref=f141e171]:
+                    - img "topic" [ref=f141e172]
+                    - generic [ref=f141e174]: Not started
+                  - generic [ref=f141e175]: Other Basic Markdown?
+              - listitem [ref=f141e176]:
+                - generic [ref=f141e177]:
+                  - generic [ref=f141e178]: "3."
+                  - generic [ref=f141e179]:
+                    - img "topic" [ref=f141e180]
+                    - generic [ref=f141e182]: Locked
+                  - generic [ref=f141e183]: The real wonder of the world?
+      - generic [ref=f141e184]:
+        - generic [ref=f141e185]:
+          - navigation "Breadcrumb" [ref=f141e188]:
+            - list [ref=f141e189]:
+              - listitem [ref=f141e190]:
+                - link "Standard Markdown - Demo Finance" [ref=f141e191] [cursor=pointer]:
+                  - /url: /courses/standard-markdown-demo-finance/detail/
+              - listitem [ref=f141e192]:
+                - generic [aria-hidden] [ref=f141e193]: ">"
+                - generic "Other Basic Markdown?" [ref=f141e194]
+          - generic [ref=f141e195]:
+            - heading "Other Basic Markdown?" [level=1] [ref=f141e196]
+            - paragraph [ref=f141e197]: subtitle of the topic
+        - generic [ref=f141e199]:
+          - generic [ref=f141e200]:
+            - paragraph [ref=f141e201]: Try to put a blank line before...
+            - separator [ref=f141e202]
+            - paragraph [ref=f141e203]: ...and after a horizontal rule.
+            - separator [ref=f141e204]
+            - paragraph [ref=f141e205]:
+              - text: Enough with the
+              - strong [ref=f141e206]: breaks
+              - text: ...
+            - heading "Links" [level=3] [ref=f141e207]
+            - paragraph [ref=f141e208]:
+              - text: "My favourite search engine is:"
+              - link "Google" [ref=f141e209] [cursor=pointer]:
+                - /url: https://google.com
+            - heading "Emails" [level=3] [ref=f141e210]
+            - paragraph [ref=f141e211]:
+              - text: To get more info on creating great courses.
+              - link "hello@prelude.tech" [ref=f141e212] [cursor=pointer]:
+                - /url: mailto:hello@prelude.tech
+            - heading "Images" [level=4] [ref=f141e213]
+            - paragraph [ref=f141e214]:
+              - img "Table Mountain is beautiful" [ref=f141e215]
+            - heading "Escaping" [level=4] [ref=f141e216]
+            - paragraph [ref=f141e217]: "* Without the backslash, this would be a bullet in an unordered list."
+          - generic [ref=f141e218]:
+            - link "Previous" [ref=f141e220] [cursor=pointer]:
+              - /url: /courses/standard-markdown-demo-finance/1/
+            - button "Next" [ref=f141e225] [cursor=pointer]
+  - contentinfo [ref=f141e89]:
+    - generic [ref=f141e90]:
+      - paragraph [ref=f141e91]: © 2026 FirstClass
+      - navigation "Legal" [ref=f141e92]:
+        - link "Terms and Conditions" [ref=f141e93] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f141e94] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f141e95] [cursor=pointer]: google-analytics-setup

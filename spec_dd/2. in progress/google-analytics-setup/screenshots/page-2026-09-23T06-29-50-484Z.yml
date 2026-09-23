@@ -1,0 +1,135 @@
+- generic [active] [ref=f104e1]:
+  - banner [ref=f104e2]:
+    - link [ref=f104e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f104e4]
+      - heading "FirstClass" [level=1] [ref=f104e5]
+    - navigation [ref=f104e6]:
+      - button "Open user menu for QA Learner B" [ref=f104e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f104e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f104e10]:
+    - generic [ref=f104e12]:
+      - paragraph [ref=f104e13]: Application for Functionality Demo - Application gated course
+      - heading "Availability" [level=1] [ref=f104e14]
+      - navigation "Application pages" [ref=f104e15]:
+        - link "1" [ref=f104e16] [cursor=pointer]:
+          - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/1/
+        - link "2" [ref=f104e17] [cursor=pointer]:
+          - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/2/
+        - generic [ref=f104e18]: "3"
+      - generic [ref=f104e19]:
+        - paragraph [ref=f104e21]: Live sessions run on weekdays. Telling us when you are usually free helps us place you in a cohort that fits your schedule.
+        - group "12. What time of day do you prefer for live sessions? (required)" [ref=f104e22]:
+          - generic [ref=f104e23]:
+            - generic [ref=f104e24]: "12."
+            - paragraph [ref=f104e25]: What time of day do you prefer for live sessions?
+            - text: "*"
+            - generic [ref=f104e26]: (required)
+          - generic [ref=f104e27]:
+            - paragraph [ref=f104e29]: What time of day do you prefer for live sessions?
+            - textbox "What time of day do you prefer for live sessions?" [ref=f104e30]
+        - group "13. Which time zone are you usually in? (required)" [ref=f104e31]:
+          - generic [ref=f104e32]:
+            - generic [ref=f104e33]: "13."
+            - paragraph [ref=f104e34]: Which time zone are you usually in?
+            - text: "*"
+            - generic [ref=f104e35]: (required)
+          - generic [ref=f104e36]:
+            - paragraph [ref=f104e38]: Which time zone are you usually in?
+            - combobox "Which time zone are you usually in?" [ref=f104e39] [cursor=pointer]:
+              - option [selected]
+              - option "Hawaii-Aleutian (UTC-10)"
+              - option "Pacific (UTC-8)"
+              - option "Mountain (UTC-7)"
+              - option "Central (UTC-6)"
+              - option "Eastern (UTC-5)"
+              - option "Brasilia (UTC-3)"
+              - option "Greenwich Mean Time (UTC+0)"
+              - option "Central European (UTC+1)"
+              - option "Eastern European (UTC+2)"
+              - option "Moscow (UTC+3)"
+              - option "India (UTC+5:30)"
+              - option "China Standard (UTC+8)"
+              - option "Japan (UTC+9)"
+              - option "Australian Eastern (UTC+10)"
+        - generic [ref=f104e40]:
+          - link "Previous" [ref=f104e41] [cursor=pointer]:
+            - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/2/
+          - button "Next" [ref=f104e45] [cursor=pointer]
+  - contentinfo [ref=f104e49]:
+    - generic [ref=f104e50]:
+      - paragraph [ref=f104e51]: © 2026 FirstClass
+      - navigation "Legal" [ref=f104e52]:
+        - link "Terms and Conditions" [ref=f104e53] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f104e54] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f104e55] [cursor=pointer]: google-analytics-setup
+  - list [ref=f104e57]:
+    - listitem [ref=f104e58]:
+      - link "Hide »" [ref=f104e59] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e60]:
+      - link "Toggle Theme" [ref=f104e61] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e65] [cursor=pointer]
+      - link "History /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/3/" [ref=f104e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e68] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f104e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e71] [cursor=pointer]
+      - 'link "Time CPU: 130.55ms (200.11ms)" [ref=f104e72] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f104e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e74] [cursor=pointer]
+      - link "Settings" [ref=f104e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e77] [cursor=pointer]
+      - link "Headers" [ref=f104e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e79]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e80] [cursor=pointer]
+      - link "Request application_form_page" [ref=f104e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e82]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e83] [cursor=pointer]
+      - link "SQL 50 queries in 73.78ms" [ref=f104e84] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e85]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e86] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f104e87] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e88]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e89] [cursor=pointer]
+      - link "Templates course_applications/form_page.html" [ref=f104e90] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e91]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e92] [cursor=pointer]
+      - link "Alerts" [ref=f104e93] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e94]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e95] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f104e96] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e97]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e98] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f104e99] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e100]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f104e101] [cursor=pointer]
+      - link "Community" [ref=f104e102] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f104e103]:
+      - checkbox "Enable for next and successive requests" [ref=f104e104] [cursor=pointer]
+      - generic [ref=f104e105]: Intercept redirects
+    - listitem [ref=f104e106]:
+      - checkbox "Enable for next and successive requests" [ref=f104e107] [cursor=pointer]
+      - generic [ref=f104e108]: Profiling

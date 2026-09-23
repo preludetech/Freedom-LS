@@ -1,0 +1,92 @@
+- generic [active] [ref=f182e1]:
+  - banner [ref=f182e2]:
+    - link [ref=f182e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f182e4]
+      - heading "FirstClass" [level=1] [ref=f182e5]
+    - navigation [ref=f182e6]:
+      - button "Open user menu for QA Learner A" [ref=f182e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f182e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f182e10]:
+    - generic [ref=f182e173]:
+      - generic [ref=f182e174]:
+        - generic [ref=f182e175]:
+          - navigation "Breadcrumb" [ref=f182e177]:
+            - list [ref=f182e178]:
+              - listitem [ref=f182e179]:
+                - link "Functionality Demo - show end with Topic" [ref=f182e180] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/detail/
+              - listitem [ref=f182e181]:
+                - generic [aria-hidden] [ref=f182e182]: ">"
+                - generic "Callouts" [ref=f182e183]
+          - button "Open course outline" [ref=f182e184] [cursor=pointer]:
+            - img "table_of_contents" [ref=f182e185]
+        - generic [ref=f182e188]:
+          - progressbar "Progress for Functionality Demo - show end with Topic" [ref=f182e189]: 14%
+          - generic [ref=f182e190]: 14%
+        - heading "Callouts" [level=1] [ref=f182e192]
+      - generic [ref=f182e194]:
+        - generic [ref=f182e195]:
+          - paragraph [ref=f182e196]: Admonitions are one of our custom Cotton components.
+          - paragraph [ref=f182e197]:
+            - strong [ref=f182e198]: A component for displaying informational alerts and notices.
+          - paragraph [ref=f182e199]:
+            - text: They support a
+            - code [ref=f182e200]: type
+            - text: attribute. Which determines how it looks.
+          - paragraph [ref=f182e201]:
+            - text: "Supports types:"
+            - emphasis [ref=f182e202]: note
+            - text: ","
+            - emphasis [ref=f182e203]: tip
+            - text: ","
+            - emphasis [ref=f182e204]: important
+            - text: ","
+            - emphasis [ref=f182e205]: warning
+            - text: ","
+            - emphasis [ref=f182e206]: danger
+            - text: ","
+            - emphasis [ref=f182e207]: key_takeaways
+            - text: ","
+            - emphasis [ref=f182e208]: checklist
+          - paragraph [ref=f182e209]: They also support a title attribute. Which determines the top level heading.
+          - paragraph [ref=f182e210]: Inside the admonition tag we support normal mark down content.
+          - heading "How to use:" [level=2] [ref=f182e211]
+          - note "Info Callout" [ref=f182e212]:
+            - generic [ref=f182e218]:
+              - paragraph [ref=f182e219]: This box has a title.
+              - paragraph [ref=f182e220]: Admonitions are a great way to break up long walls of text.
+          - note "Note" [ref=f182e221]:
+            - paragraph [ref=f182e228]: This box stands alone without a header.
+          - note "Success Callout" [ref=f182e229]:
+            - paragraph [ref=f182e236]: Success! You can proceed to graduation.
+          - note "Warning Callout" [ref=f182e237]:
+            - paragraph [ref=f182e244]: Warning has been logged.
+          - note "Error Callout" [ref=f182e245]:
+            - paragraph [ref=f182e252]:
+              - strong [ref=f182e253]: THIS IS IMPORTANT INFORMATION
+          - heading "Cheat Sheet:" [level=3] [ref=f182e254]
+          - paragraph [ref=f182e255]:
+            - code [ref=f182e256]: <c-admonition type="note" title="Note"> ... </c-admonition>
+          - paragraph [ref=f182e257]:
+            - code [ref=f182e258]: <c-admonition type="tip" title="Tip"> ... </c-admonition>
+          - paragraph [ref=f182e259]:
+            - code [ref=f182e260]: <c-admonition type="warning" title="Warning"> ... </c-admonition>
+          - paragraph [ref=f182e261]:
+            - code [ref=f182e262]: <c-admonition type="danger" title="Danger"> ... </c-admonition>
+        - generic [ref=f182e263]:
+          - link "Previous" [ref=f182e265] [cursor=pointer]:
+            - /url: /courses/functionality-demo-show-end-with-topic/1/
+          - button "Next" [ref=f182e270] [cursor=pointer]
+  - contentinfo [ref=f182e113]:
+    - generic [ref=f182e114]:
+      - paragraph [ref=f182e115]: © 2026 FirstClass
+      - navigation "Legal" [ref=f182e116]:
+        - link "Terms and Conditions" [ref=f182e117] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f182e118] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f182e119] [cursor=pointer]: google-analytics-setup

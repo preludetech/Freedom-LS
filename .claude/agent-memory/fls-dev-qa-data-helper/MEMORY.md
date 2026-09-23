@@ -70,8 +70,21 @@
 
 - [reference_clean_applicant_command.md](reference_clean_applicant_command.md) — qa_create_clean_applicant: one verified learner with zero applications/sittings and optional registrations (the A/B applicant pair); "no sitting" != "reachable" — sequential unlock still blocks the form at item 3; ContentCollectionItem uses child_id/collection_id
 - [reference_submit_on_exit_flag_flip.md](reference_submit_on_exit_flag_flip.md) — Form.submit_on_exit has no admin widget: flip it with queryset.update(); it gates the runner's "Leave and submit" button AND makes view_form/form_start auto-finalise any open attempt (finalise_stale_incomplete); content_save reverts it; CourseApplication filters on `user` not `applicant`; the question model is FormQuestion not Question
+- [reference_rearming_the_finish_page.md](reference_rearming_the_finish_page.md) — GA4 course_completed re-arm: null ONLY CourseProgress.completed_time (leave TopicProgress/percentage); the finish page's complete-vs-not branch is outstanding_items, so zero TopicProgress rows already make a "not complete" fixture; course_finish has no unlock gate
 
 ## Recurring requests
+
+**"Re-arm the course_completed event for one more page load"** (Sep 2026, google-analytics-setup,
+`qa-learner-a@email.com` pk 69 / DemoDev pk 3). The GA4 pass burns its own fixture: the very GET
+under test re-stamps `completed_time`, so the reset is needed once per pass. One-column
+`update(completed_time=None)`; explicitly leave `TopicProgress` and `progress_percentage` alone.
+It arrived paired with a "and give her a genuinely incomplete course for the withheld-completion
+page" clause — which needed **nothing created**, because an existing registration already had a
+`CourseProgress` at 0% with zero `TopicProgress` rows. Always enumerate the learner's
+registrations and run `outstanding_items()` over each before building a second fixture; the ask
+usually says "if she already has one, just tell me the slug". If the re-arm is asked a third time,
+wrap it as `qa_reset_course_completion --user EMAIL --course-slug SLUG`.
+See [[reference_rearming_the_finish_page]].
 
 **A fifth shape of the same ask: "one course per coming-soon rendering branch"** (Sep 2026, learner-dashboard-small-fixes): MIX (coming_soon beside published in a shown category), UNCAT (no category), HIDDEN (category with show_on_dashboard=False), ONLY (a category that is entirely coming soon). `qa_create_coming_soon_sections` covers all four; extend it rather than starting a new command. Read `_discovery_pools` before promising where a course will appear. See [[reference_coming_soon_section_fixtures]].
 
@@ -485,3 +498,30 @@ is the per-persona version; run it once per account. Expect the ask to keep arri
 "delete the previous run's CourseApplication then its FormProgress" clause attached that has
 nothing to delete — inspect and report "already clean" rather than hunting.
 See [[reference_clean_applicant_command]].
+
+**"Withdraw the enrolment but do NOT delete the row"** (Sep 2026, google-analytics-setup:
+`LearnerCourseRegistration.is_active` -> False for `qa-learner-b@email.com` on
+`qa-free-course-self-registration`, DemoDev). **Asked TWICE now** — same branch, same user, same
+course, same reg pk `0d04c36a-bb98-4252-b615-5ef0c533347d` (the 2nd run found it back at
+`is_active=True`, so the tester re-enrols in the browser between GA4 passes and needs it flipped
+again). Still a one-column `update()`, so it does not earn a management command yet; if a third
+run arrives, add `qa_set_registration_active --user EMAIL --course-slug SLUG --active false`.
+The `CourseProgress`/`TopicProgress` rows survived the first withdrawal and were still there
+(percentage 0, one `TopicProgress` with `complete_time=None`) at the start of the second — proof
+of the "no deactivation counterpart" design note below, not residue to clean. This is the non-destructive sibling of the
+self-service-enrolment teardown in [[reference_qa_run_residue_cleanup]] §3, and it sidesteps that
+recipe's `CourseProgress` PROTECT entirely — nothing is deleted, so nothing is protected.
+Recipe: `_base_manager.get(pk=...)`, `assert` email/user_id/course slug/course id/`site.name`,
+print the row, then `_base_manager.filter(pk=...).update(is_active=False)`, then `refresh_from_db`
+and re-read from a SECOND process to prove the commit. `registered_at` is `auto_now_add` so an
+`update()` leaves it alone.
+
+Two facts worth carrying: (a) `ensure_course_progress_on_learner_registration`
+(`learner_progress/signals.py`) returns early when `instance.is_active` is False, so even a plain
+`save()` would not have minted or announced anything — but `update()` is still the right tool
+because it writes exactly one column; (b) the signals module's own comment says there is
+**deliberately no post_delete/deactivation counterpart**: "withdrawing a registration is an access
+decision, and does not retire work already recorded". So the `CourseProgress` row surviving a
+withdrawal is designed behaviour, not leftover state — say so in the report before the tester
+files it as a bug. Verify it by diffing `values("id","progress_percentage","completed_time",
+"last_accessed_time")` before and after.

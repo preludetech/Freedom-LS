@@ -1,0 +1,128 @@
+- generic [active] [ref=f135e1]:
+  - banner [ref=f135e2]:
+    - link [ref=f135e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f135e4]
+      - heading "FirstClass" [level=1] [ref=f135e5]
+    - navigation [ref=f135e6]:
+      - button "Open user menu for QA Learner B" [ref=f135e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f135e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f135e10]:
+    - generic [ref=f135e12]:
+      - generic [ref=f135e13]:
+        - heading "Privacy Policy" [level=1] [ref=f135e14]
+        - paragraph [ref=f135e15]: Version 1.2 · Effective 2026-09-23
+      - generic [ref=f135e16]:
+        - paragraph [ref=f135e17]:
+          - strong [ref=f135e18]: This is a placeholder privacy policy shipped as the FreedomLS default. Replace it with your own legal copy before going live.
+        - heading "1. Information we collect" [level=3] [ref=f135e19]
+        - paragraph [ref=f135e20]: "When you create an account we collect:"
+        - list [ref=f135e21]:
+          - listitem [ref=f135e22]: The email address you sign up with.
+          - listitem [ref=f135e23]: Your first name (and last name, if you supply one).
+          - listitem [ref=f135e24]: "A record of your acceptance of these documents, including:"
+          - listitem [ref=f135e25]: The version and exact text of the Terms and Privacy Policy you accepted.
+          - listitem [ref=f135e26]: The date and time of acceptance.
+          - listitem [ref=f135e27]:
+            - strong [ref=f135e28]: The IP address you used at the moment of acceptance.
+            - text: This is collected and stored as legal evidence of consent under data-protection regimes such as GDPR and POPIA.
+        - paragraph [ref=f135e29]: We may also collect information you supply during onboarding (for example, additional registration form fields configured by the site operator).
+        - heading "Analytics and advertising" [level=4] [ref=f135e30]
+        - paragraph [ref=f135e31]: The site operator may use analytics and advertising services to understand how the site is used and whether their advertising leads to sign-ups. These services use cookies and collect information such as the pages you view, your device and browser, and the courses you register for. They do not receive your name or email address.
+        - heading "2. How we use your data" [level=3] [ref=f135e32]
+        - list [ref=f135e33]:
+          - listitem [ref=f135e34]: To operate the platform and deliver the educational content you have signed up for.
+          - listitem [ref=f135e35]: To communicate with you about your account.
+          - listitem [ref=f135e36]: To maintain a defensible record of your consent to these legal documents.
+          - listitem [ref=f135e37]: To understand how the site is used and how well its advertising works.
+        - heading "3. Retention" [level=3] [ref=f135e38]
+        - paragraph [ref=f135e39]:
+          - text: Consent records, including the IP address captured at acceptance, are retained for as long as your account exists, and for a further period after account closure to satisfy legal-evidence obligations.
+          - strong [ref=f135e40]: The default retention period is 7 years; site operators MUST adjust this to match their jurisdiction's requirements before relying on this template.
+        - paragraph [ref=f135e41]: Other personal data is retained only as long as needed to operate the service and to satisfy applicable legal obligations.
+        - heading "4. Your rights" [level=3] [ref=f135e42]
+        - paragraph [ref=f135e43]: Depending on your jurisdiction, you may have rights to access, correct, export or erase the personal data we hold about you. Contact the site operator to exercise these rights.
+        - heading "5. Sharing" [level=3] [ref=f135e44]
+        - paragraph [ref=f135e45]: We do not sell your personal data. We share it only with service providers the platform relies on, such as analytics and advertising providers, and only to the extent needed for them to provide their service.
+        - heading "6. Changes to this policy" [level=3] [ref=f135e46]
+        - paragraph [ref=f135e47]: We may update this policy. Where the change is material, we will ask you to re-consent.
+        - separator [ref=f135e48]
+        - paragraph [ref=f135e49]:
+          - emphasis [ref=f135e50]: This is a default placeholder. Site operators MUST replace it with a policy tailored to their jurisdiction, operations, and data flows before relying on it for compliance.
+  - contentinfo [ref=f135e51]:
+    - generic [ref=f135e52]:
+      - paragraph [ref=f135e53]: © 2026 FirstClass
+      - navigation "Legal" [ref=f135e54]:
+        - link "Terms and Conditions" [ref=f135e55] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f135e56] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f135e57] [cursor=pointer]: google-analytics-setup
+  - list [ref=f135e59]:
+    - listitem [ref=f135e60]:
+      - link "Hide »" [ref=f135e61] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e62]:
+      - link "Toggle Theme" [ref=f135e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e66]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e67] [cursor=pointer]
+      - link "History /accounts/legal/privacy/" [ref=f135e68] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e69]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e70] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f135e71] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e72]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e73] [cursor=pointer]
+      - 'link "Time CPU: 73.18ms (123.19ms)" [ref=f135e74] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f135e75]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e76] [cursor=pointer]
+      - link "Settings" [ref=f135e77] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e78]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e79] [cursor=pointer]
+      - link "Headers" [ref=f135e80] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e81]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e82] [cursor=pointer]
+      - link "Request legal_doc_view" [ref=f135e83] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e84]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e85] [cursor=pointer]
+      - link "SQL 8 queries in 33.37ms" [ref=f135e86] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e87]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e88] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f135e89] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e90]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e91] [cursor=pointer]
+      - link "Templates" [ref=f135e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e93]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e94] [cursor=pointer]
+      - link "Alerts" [ref=f135e95] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e96]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e97] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f135e98] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e99]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e100] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f135e101] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e102]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f135e103] [cursor=pointer]
+      - link "Community" [ref=f135e104] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f135e105]:
+      - checkbox "Enable for next and successive requests" [ref=f135e106] [cursor=pointer]
+      - generic [ref=f135e107]: Intercept redirects
+    - listitem [ref=f135e108]:
+      - checkbox "Enable for next and successive requests" [ref=f135e109] [cursor=pointer]
+      - generic [ref=f135e110]: Profiling

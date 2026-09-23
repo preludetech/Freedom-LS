@@ -1,0 +1,196 @@
+- generic [ref=f169e1]:
+  - banner [ref=f169e2]:
+    - link [ref=f169e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f169e4]
+      - heading "FirstClass" [level=1] [ref=f169e5]
+    - navigation [ref=f169e6]:
+      - button "Open user menu for QA Learner A" [ref=f169e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f169e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f169e10]:
+    - generic [ref=f169e12]:
+      - dialog "Course outline" [ref=f169e13]:
+        - generic [ref=f169e16]:
+          - generic [ref=f169e17]:
+            - paragraph [ref=f169e18]: Course outline
+            - paragraph [ref=f169e19]: Functionality Demo - show end with Topic
+            - generic [ref=f169e21]:
+              - progressbar "Progress for Functionality Demo - show end with Topic" [ref=f169e22]: 0%
+              - generic [ref=f169e23]: 0% complete
+          - navigation "Course outline" [ref=f169e24]:
+            - list [ref=f169e25]:
+              - listitem [ref=f169e26]:
+                - generic [ref=f169e27]:
+                  - generic [ref=f169e28]: "1."
+                  - generic [ref=f169e29]:
+                    - img "topic" [ref=f169e30]
+                    - generic [ref=f169e32]: Not started
+                  - link "Content title 1" [active] [ref=f169e34] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-show-end-with-topic/1/
+              - listitem [ref=f169e35]:
+                - generic [ref=f169e36]:
+                  - generic [ref=f169e37]: "2."
+                  - generic [ref=f169e38]:
+                    - img "topic" [ref=f169e39]
+                    - generic [ref=f169e41]: Locked
+                  - generic [ref=f169e42]: Callouts
+              - listitem [ref=f169e43]:
+                - generic [ref=f169e44]:
+                  - generic [ref=f169e45]: "3."
+                  - generic [ref=f169e46]:
+                    - img "form" [ref=f169e47]
+                    - generic [ref=f169e49]: Locked
+                  - generic [ref=f169e50]: Course Feedback Survey
+              - listitem [ref=f169e51]:
+                - generic [ref=f169e52]:
+                  - generic [ref=f169e53]: "4."
+                  - generic [ref=f169e54]:
+                    - img "topic" [ref=f169e55]
+                    - generic [ref=f169e57]: Locked
+                  - generic [ref=f169e58]: Pictures
+              - listitem [ref=f169e59]:
+                - generic [ref=f169e60]:
+                  - generic [ref=f169e61]: "5."
+                  - generic [ref=f169e62]:
+                    - img "topic" [ref=f169e63]
+                    - generic [ref=f169e65]: Locked
+                  - generic [ref=f169e66]: YouTube Videos
+              - listitem [ref=f169e67]:
+                - generic [ref=f169e68]:
+                  - generic [ref=f169e69]: "6."
+                  - generic [ref=f169e70]:
+                    - img "topic" [ref=f169e71]
+                    - generic [ref=f169e73]: Locked
+                  - generic [ref=f169e74]: Markdown Tables
+              - listitem [ref=f169e75]:
+                - generic [ref=f169e76]:
+                  - generic [ref=f169e77]: "7."
+                  - generic [ref=f169e78]:
+                    - img "topic" [ref=f169e79]
+                    - generic [ref=f169e81]: Locked
+                  - generic [ref=f169e82]: Code Snippets
+      - generic [ref=f169e83]:
+        - navigation "Breadcrumb" [ref=f169e87]:
+          - list [ref=f169e88]:
+            - listitem [ref=f169e89]:
+              - link "Functionality Demo - show end with Topic" [ref=f169e90] [cursor=pointer]:
+                - /url: /courses/functionality-demo-show-end-with-topic/detail/
+        - generic [ref=f169e91]:
+          - generic [ref=f169e92]:
+            - img "in_progress" [ref=f169e94]
+            - heading "Not finished yet" [level=1] [ref=f169e96]
+            - paragraph [ref=f169e97]:
+              - text: You have reached the end of
+              - strong [ref=f169e98]: Functionality Demo - show end with Topic
+              - text: ", but it does not count as complete until you finish the items below."
+          - generic [ref=f169e99]:
+            - heading "Still to do" [level=2] [ref=f169e100]
+            - list [ref=f169e101]:
+              - listitem [ref=f169e102]:
+                - generic [ref=f169e103]: Content title 1
+                - link "Go to item" [ref=f169e104] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/1/
+              - listitem [ref=f169e108]:
+                - generic [ref=f169e109]: Callouts
+                - link "Go to item" [ref=f169e110] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/2/
+              - listitem [ref=f169e114]:
+                - generic [ref=f169e115]: Course Feedback Survey
+                - link "Start form" [ref=f169e116] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/3/
+              - listitem [ref=f169e120]:
+                - generic [ref=f169e121]: Pictures
+                - link "Go to item" [ref=f169e122] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/4/
+              - listitem [ref=f169e126]:
+                - generic [ref=f169e127]: YouTube Videos
+                - link "Go to item" [ref=f169e128] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/5/
+              - listitem [ref=f169e132]:
+                - generic [ref=f169e133]: Markdown Tables
+                - link "Go to item" [ref=f169e134] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/6/
+              - listitem [ref=f169e138]:
+                - generic [ref=f169e139]: Code Snippets
+                - link "Go to item" [ref=f169e140] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/7/
+          - heading "Course Summary" [level=2] [ref=f169e145]
+          - link "Return to Dashboard" [ref=f169e147] [cursor=pointer]:
+            - /url: /
+  - contentinfo [ref=f169e151]:
+    - generic [ref=f169e152]:
+      - paragraph [ref=f169e153]: © 2026 FirstClass
+      - navigation "Legal" [ref=f169e154]:
+        - link "Terms and Conditions" [ref=f169e155] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f169e156] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f169e157] [cursor=pointer]: google-analytics-setup
+  - list [ref=f169e159]:
+    - listitem [ref=f169e160]:
+      - link "Hide »" [ref=f169e161] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e162]:
+      - link "Toggle Theme" [ref=f169e163] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e166]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e167] [cursor=pointer]
+      - link "History /courses/functionality-demo-show-end-with-topic/finish/" [ref=f169e168] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e169]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e170] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f169e171] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e172]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e173] [cursor=pointer]
+      - 'link "Time CPU: 106.17ms (173.83ms)" [ref=f169e174] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f169e175]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e176] [cursor=pointer]
+      - link "Settings" [ref=f169e177] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e178]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e179] [cursor=pointer]
+      - link "Headers" [ref=f169e180] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e181]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e182] [cursor=pointer]
+      - link "Request course_finish" [ref=f169e183] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e184]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e185] [cursor=pointer]
+      - link "SQL 25 queries in 60.49ms" [ref=f169e186] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e187]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e188] [cursor=pointer]
+      - link "Static files 10 files used" [ref=f169e189] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e190]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e191] [cursor=pointer]
+      - link "Templates learner_interface/course_finish.html" [ref=f169e192] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e193]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e194] [cursor=pointer]
+      - link "Alerts" [ref=f169e195] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e196]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e197] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f169e198] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e199]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e200] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f169e201] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e202]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f169e203] [cursor=pointer]
+      - link "Community" [ref=f169e204] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f169e205]:
+      - checkbox "Enable for next and successive requests" [ref=f169e206] [cursor=pointer]
+      - generic [ref=f169e207]: Intercept redirects
+    - listitem [ref=f169e208]:
+      - checkbox "Enable for next and successive requests" [ref=f169e209] [cursor=pointer]
+      - generic [ref=f169e210]: Profiling

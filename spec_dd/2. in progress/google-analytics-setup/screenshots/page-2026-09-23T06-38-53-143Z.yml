@@ -1,0 +1,136 @@
+- generic [ref=f161e1]:
+  - banner [ref=f161e2]:
+    - link [ref=f161e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f161e4]
+      - heading "FirstClass" [level=1] [ref=f161e5]
+    - navigation [ref=f161e6]:
+      - button "Open user menu for demodev@email.com" [ref=f161e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f161e9]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f161e10]:
+    - generic [ref=f161e12]:
+      - dialog "Navigation" [ref=f161e13]:
+        - generic [ref=f161e15]:
+          - generic [ref=f161e16]: DemoDev
+          - navigation "Sections" [ref=f161e18]:
+            - list [ref=f161e19]:
+              - listitem [ref=f161e20]:
+                - link "Cohorts" [active] [ref=f161e22] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f161e24]:
+                - link "Learners" [ref=f161e26] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f161e28]:
+                - link "Courses" [ref=f161e30] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+      - generic [ref=f161e32]:
+        - generic [ref=f161e33]:
+          - navigation "Breadcrumb" [ref=f161e36]:
+            - list [ref=f161e37]:
+              - listitem [ref=f161e38]:
+                - generic [ref=f161e39]: Cohorts
+          - heading "Cohorts" [level=1] [ref=f161e41]
+        - generic [ref=f161e43]:
+          - button "Create Cohort" [ref=f161e49] [cursor=pointer]
+          - table [ref=f161e54]:
+            - rowgroup [ref=f161e55]:
+              - row [ref=f161e56]:
+                - columnheader "Cohort Name" [ref=f161e57]
+                - columnheader "Active Learners" [ref=f161e58]
+                - columnheader "Registered Courses" [ref=f161e59]
+            - rowgroup [ref=f161e60]:
+              - row [ref=f161e61]:
+                - cell [ref=f161e62]:
+                  - link "Cohort 2025.03.04" [ref=f161e63] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/bf7e8059-10f0-4798-bfb1-c66ed65c0431
+                - cell "50" [ref=f161e64]
+                - cell "-" [ref=f161e65]
+              - row [ref=f161e66]:
+                - cell [ref=f161e67]:
+                  - link "Cohort 2025.04.06" [ref=f161e68] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/fbf1e06f-6dd0-4e98-8086-334697e5d74c
+                - cell "-" [ref=f161e69]
+                - cell "-" [ref=f161e70]
+              - row [ref=f161e71]:
+                - cell [ref=f161e72]:
+                  - link "QA GA Cohort" [ref=f161e73] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/cohorts/d762f188-2a92-4e42-af06-13a5b5062110
+                - cell "1" [ref=f161e74]
+                - cell "QA Cohort Course (2026-09-19)" [ref=f161e75]
+  - contentinfo [ref=f161e77]:
+    - generic [ref=f161e78]:
+      - paragraph [ref=f161e79]: © 2026 FirstClass
+      - navigation "Legal" [ref=f161e80]:
+        - link "Terms and Conditions" [ref=f161e81] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f161e82] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f161e83] [cursor=pointer]: google-analytics-setup
+  - list [ref=f161e85]:
+    - listitem [ref=f161e86]:
+      - link "Hide »" [ref=f161e87] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e88]:
+      - link "Toggle Theme" [ref=f161e89] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e92]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e93] [cursor=pointer]
+      - link "History /educator/organisations/demodev/cohorts" [ref=f161e94] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e95]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e96] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f161e97] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e98]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e99] [cursor=pointer]
+      - 'link "Time CPU: 97.82ms (94.45ms)" [ref=f161e100] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f161e101]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e102] [cursor=pointer]
+      - link "Settings" [ref=f161e103] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e104]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e105] [cursor=pointer]
+      - link "Headers" [ref=f161e106] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e107]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e108] [cursor=pointer]
+      - link "Request interface" [ref=f161e109] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e110]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e111] [cursor=pointer]
+      - link "SQL 17 queries in 22.19ms" [ref=f161e112] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e113]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e114] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f161e115] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e116]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e117] [cursor=pointer]
+      - link "Templates panel_framework/partials/modal_form.html" [ref=f161e118] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e119]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e120] [cursor=pointer]
+      - link "Alerts" [ref=f161e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e122]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e123] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f161e124] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e125]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e126] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f161e127] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e128]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f161e129] [cursor=pointer]
+      - link "Community" [ref=f161e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f161e131]:
+      - checkbox "Enable for next and successive requests" [ref=f161e132] [cursor=pointer]
+      - generic [ref=f161e133]: Intercept redirects
+    - listitem [ref=f161e134]:
+      - checkbox "Enable for next and successive requests" [ref=f161e135] [cursor=pointer]
+      - generic [ref=f161e136]: Profiling

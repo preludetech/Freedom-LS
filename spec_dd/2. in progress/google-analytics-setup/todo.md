@@ -51,6 +51,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: CSP script-src omits googleads.g.doubleclick.net, so the Google Ads conversion script violates the policy (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: privacy policy names no analytics service and offers no opt-out link (TDD — failing test first, then fix)
+- [ ] (user) Decide whether the default privacy policy should name Google Analytics 4, PostHog and Google Ads or stay vendor-neutral, then bring legal_docs/_default/privacy.md and test plan §8.5 into line with that decision
 
 ## 10. Product documentation
 

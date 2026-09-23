@@ -1,0 +1,112 @@
+- generic [active] [ref=f161e1]:
+  - banner [ref=f161e2]:
+    - link [ref=f161e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f161e4]
+      - heading "FirstClass" [level=1] [ref=f161e5]
+    - navigation [ref=f161e6]:
+      - button "Open user menu for demodev@email.com" [ref=f161e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f161e9]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f161e10]:
+    - generic [ref=f161e12]:
+      - dialog "Navigation" [ref=f161e13]:
+        - generic [ref=f161e15]:
+          - generic [ref=f161e231]: DemoDev
+          - navigation "Sections" [ref=f161e233]:
+            - list [ref=f161e234]:
+              - listitem [ref=f161e235]:
+                - link "Cohorts" [ref=f161e237] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+              - listitem [ref=f161e239]:
+                - link "Learners" [ref=f161e241] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+              - listitem [ref=f161e243]:
+                - link "Courses" [ref=f161e245] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+      - generic [ref=f161e32]:
+        - generic [ref=f161e33]:
+          - navigation "Breadcrumb" [ref=f161e247]:
+            - list [ref=f161e248]:
+              - listitem [ref=f161e249]:
+                - generic [ref=f161e250]: Courses
+          - heading "Courses" [level=1] [ref=f161e252]
+        - generic [ref=f161e254]:
+          - table [ref=f161e258]:
+            - rowgroup [ref=f161e259]:
+              - row [ref=f161e260]:
+                - columnheader "Title" [ref=f161e261]
+                - columnheader "Visibility" [ref=f161e262]
+                - columnheader "Interest" [ref=f161e263]
+                - columnheader "Active Learners" [ref=f161e264]
+                - columnheader "Active Cohorts" [ref=f161e265]
+                - columnheader "Cohorts" [ref=f161e266]
+            - rowgroup [ref=f161e267]:
+              - row [ref=f161e268]:
+                - cell [ref=f161e269]:
+                  - link "Content Widgets - Demo Reference" [ref=f161e270] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+                - cell "Coming soon" [ref=f161e271]
+                - cell "-" [ref=f161e272]
+                - cell "1" [ref=f161e273]
+                - cell "-" [ref=f161e274]
+                - cell "-" [ref=f161e275]
+              - row [ref=f161e276]:
+                - cell [ref=f161e277]:
+                  - link "Functionality Demo - Application gated course" [ref=f161e278] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/271eeb30-94db-4261-b409-19888b0ead7d
+                - cell "Published" [ref=f161e279]
+                - cell "-" [ref=f161e280]
+                - cell "-" [ref=f161e281]
+                - cell "-" [ref=f161e282]
+                - cell "-" [ref=f161e283]
+              - row [ref=f161e284]:
+                - cell [ref=f161e285]:
+                  - link "Functionality Demo - Course Parts" [ref=f161e286] [cursor=pointer]:
+                    - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+                - cell "Published" [ref=f161e287]
+                - cell "-" [ref=f161e288]
+                - cell "-" [ref=f161e289]
+                - cell "-" [ref=f161e290]
+                - cell "-" [ref=f161e291]
+              - row [ref=f161e292]:
+                - cell [ref=f161e293]:
+                  - 'link "Functionality Demo - Price: currency without cents" [ref=f161e294] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                - cell "Published" [ref=f161e295]
+                - cell "-" [ref=f161e296]
+                - cell "-" [ref=f161e297]
+                - cell "-" [ref=f161e298]
+                - cell "-" [ref=f161e299]
+              - row [ref=f161e300]:
+                - cell [ref=f161e301]:
+                  - 'link "Functionality Demo - Price: expired sale" [ref=f161e302] [cursor=pointer]':
+                    - /url: /educator/organisations/demodev/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+                - cell "Published" [ref=f161e303]
+                - cell "-" [ref=f161e304]
+                - cell "-" [ref=f161e305]
+                - cell "-" [ref=f161e306]
+                - cell "-" [ref=f161e307]
+          - generic [ref=f161e309]:
+            - generic [ref=f161e310] [cursor=pointer]: "1"
+            - link "2" [ref=f161e311] [cursor=pointer]:
+              - /url: "?page=2"
+            - link "3" [ref=f161e312] [cursor=pointer]:
+              - /url: "?page=3"
+            - link "4" [ref=f161e313] [cursor=pointer]:
+              - /url: "?page=4"
+            - link "Next" [ref=f161e314] [cursor=pointer]:
+              - /url: "?page=2"
+            - link "Last" [ref=f161e315] [cursor=pointer]:
+              - /url: "?page=4"
+  - contentinfo [ref=f161e77]:
+    - generic [ref=f161e78]:
+      - paragraph [ref=f161e79]: © 2026 FirstClass
+      - navigation "Legal" [ref=f161e80]:
+        - link "Terms and Conditions" [ref=f161e81] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f161e82] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f161e83] [cursor=pointer]: google-analytics-setup

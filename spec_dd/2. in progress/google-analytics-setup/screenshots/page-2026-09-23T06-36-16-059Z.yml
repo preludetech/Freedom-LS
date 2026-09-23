@@ -1,0 +1,82 @@
+- generic [active] [ref=f141e1]:
+  - banner [ref=f141e2]:
+    - link [ref=f141e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f141e4]
+      - heading "FirstClass" [level=1] [ref=f141e5]
+    - navigation [ref=f141e6]:
+      - button "Open user menu for QA Learner A" [ref=f141e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f141e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f141e10]:
+    - generic [ref=f141e12]:
+      - dialog "Course outline" [ref=f141e13]:
+        - generic [ref=f141e389]:
+          - generic [ref=f141e390]:
+            - paragraph [ref=f141e391]: Course outline
+            - paragraph [ref=f141e392]: Standard Markdown - Demo Finance
+            - generic [ref=f141e394]:
+              - progressbar "Progress for Standard Markdown - Demo Finance" [ref=f141e395]: 100%
+              - generic [ref=f141e396]: 100% complete
+          - navigation "Course outline" [ref=f141e397]:
+            - list [ref=f141e398]:
+              - listitem [ref=f141e399]:
+                - generic [ref=f141e400]:
+                  - generic [ref=f141e401]: "1."
+                  - generic [ref=f141e402]:
+                    - img "topic" [ref=f141e403]
+                    - generic [ref=f141e405]: Completed
+                  - link "Financial Literacy" [ref=f141e407] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/1/
+              - listitem [ref=f141e408]:
+                - generic [ref=f141e409]:
+                  - generic [ref=f141e410]: "2."
+                  - generic [ref=f141e411]:
+                    - img "topic" [ref=f141e412]
+                    - generic [ref=f141e414]: Completed
+                  - link "Other Basic Markdown?" [ref=f141e416] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/2/
+              - listitem [ref=f141e417]:
+                - generic [ref=f141e418]:
+                  - generic [ref=f141e419]: "3."
+                  - generic [ref=f141e420]:
+                    - img "topic" [ref=f141e421]
+                    - generic [ref=f141e423]: Completed
+                  - link "The real wonder of the world?" [ref=f141e425] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/3/
+      - generic [ref=f141e426]:
+        - navigation "Breadcrumb" [ref=f141e430]:
+          - list [ref=f141e431]:
+            - listitem [ref=f141e432]:
+              - link "Standard Markdown - Demo Finance" [ref=f141e433] [cursor=pointer]:
+                - /url: /courses/standard-markdown-demo-finance/detail/
+        - generic [ref=f141e434]:
+          - generic [ref=f141e435]:
+            - img "achievement" [ref=f141e437]
+            - heading "Congratulations!" [level=1] [ref=f141e439]
+            - paragraph [ref=f141e440]:
+              - text: You have successfully completed
+              - strong [ref=f141e441]: Standard Markdown - Demo Finance
+              - text: .
+          - generic [ref=f141e442]:
+            - heading "Course Summary" [level=2] [ref=f141e443]
+            - generic [ref=f141e444]:
+              - generic [ref=f141e445]:
+                - generic [ref=f141e446]: "Started:"
+                - generic [ref=f141e447]: September 23, 2026
+              - generic [ref=f141e448]:
+                - generic [ref=f141e449]: "Completed:"
+                - generic [ref=f141e450]: September 23, 2026
+          - link "Return to Dashboard" [ref=f141e452] [cursor=pointer]:
+            - /url: /
+  - contentinfo [ref=f141e89]:
+    - generic [ref=f141e90]:
+      - paragraph [ref=f141e91]: © 2026 FirstClass
+      - navigation "Legal" [ref=f141e92]:
+        - link "Terms and Conditions" [ref=f141e93] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f141e94] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f141e95] [cursor=pointer]: google-analytics-setup

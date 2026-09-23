@@ -1,0 +1,183 @@
+- generic [active] [ref=f182e1]:
+  - banner [ref=f182e2]:
+    - link [ref=f182e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f182e4]
+      - heading "FirstClass" [level=1] [ref=f182e5]
+    - navigation [ref=f182e6]:
+      - button "Open user menu for QA Learner A" [ref=f182e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f182e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f182e10]:
+    - generic [ref=f182e13]:
+      - generic [ref=f182e14]:
+        - generic [ref=f182e15]:
+          - navigation "Breadcrumb" [ref=f182e17]:
+            - list [ref=f182e18]:
+              - listitem [ref=f182e19]:
+                - link "Functionality Demo - show end with Topic" [ref=f182e20] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-show-end-with-topic/detail/
+              - listitem [ref=f182e21]:
+                - generic [aria-hidden] [ref=f182e22]: ">"
+                - generic "Content title 1" [ref=f182e23]
+          - button "Open course outline" [ref=f182e24] [cursor=pointer]:
+            - img "table_of_contents" [ref=f182e25]
+        - generic [ref=f182e28]:
+          - progressbar "Progress for Functionality Demo - show end with Topic" [ref=f182e29]: 0%
+          - generic [ref=f182e30]: 0%
+        - heading "Content title 1" [level=1] [ref=f182e32]
+      - generic [ref=f182e34]:
+        - generic [ref=f182e35]:
+          - paragraph [ref=f182e36]: "NOTE: UUID fields are automatically generated!"
+          - list [ref=f182e37]:
+            - listitem [ref=f182e38]: don't create them by hand
+            - listitem [ref=f182e39]: if one exists, don't edit it
+            - listitem [ref=f182e40]: don't duplicate uuids in different places
+          - paragraph [ref=f182e41]: This is perfectly normal markdown content.
+          - heading "H1" [level=2] [ref=f182e42]
+          - heading "H2" [level=3] [ref=f182e43]
+          - heading "H3" [level=4] [ref=f182e44]
+          - heading "H4" [level=5] [ref=f182e45]
+          - heading "H5" [level=6] [ref=f182e46]
+          - heading "H6" [level=6] [ref=f182e47]
+          - list [ref=f182e48]:
+            - listitem [ref=f182e49]: an
+            - listitem [ref=f182e50]: ordered
+            - listitem [ref=f182e51]: list
+          - paragraph [ref=f182e52]: breakey break
+          - list [ref=f182e53]:
+            - listitem [ref=f182e54]: a
+            - listitem [ref=f182e55]: numbered
+            - listitem [ref=f182e56]: list
+          - heading "Custom components" [level=2] [ref=f182e57]
+          - paragraph [ref=f182e58]:
+            - text: These are defined using Cotton components. Add it to the
+            - code [ref=f182e59]: MARKDOWN_ALLOWED_TAGS
+            - text: setting.
+          - paragraph [ref=f182e60]: "To make a new component you need to: - make a new cotton component"
+          - figure "Example of a graph Expand" [ref=f182e62]:
+            - img "Graph example" [ref=f182e63]
+            - generic [ref=f182e65]:
+              - paragraph [ref=f182e66]:
+                - generic [ref=f182e67]: Example of a graph
+              - button "Expand" [ref=f182e68] [cursor=pointer]
+          - paragraph [ref=f182e72]: And a video.
+          - figure [ref=f182e73]:
+            - iframe [ref=f182e75]:
+              - generic [ref=f183e1]:
+                - generic "YouTube Video Player" [ref=f183e3]
+                - generic [ref=f183e5]:
+                  - generic:
+                    - generic:
+                      - generic [ref=f183e6] [cursor=pointer]
+                      - button "Play video" [ref=f183e10] [cursor=pointer]
+                      - button "Hide player controls" [ref=f183e12] [cursor=pointer]
+                      - generic [ref=f183e14]:
+                        - generic [ref=f183e19]:
+                          - generic [ref=f183e20]:
+                            - link "Getting Git 02 01 what is a graph" [ref=f183e21] [cursor=pointer]:
+                              - /url: https://www.youtube.com/watch?v=IjfSA3kMQP0
+                            - link "Prelude" [ref=f183e22] [cursor=pointer]:
+                              - /url: /channel/UC88j-XU_h22lqc5Ozftnk4w
+                          - generic [ref=f183e24]:
+                            - button [ref=f183e25] [cursor=pointer]
+                            - generic [ref=f183e27]:
+                              - generic: Prelude
+                              - generic: 26 subscribers
+                        - generic [ref=f183e28]:
+                          - button "Share" [ref=f183e31] [cursor=pointer]
+                          - link "Watch on YouTube" [ref=f183e42] [cursor=pointer]:
+                            - /url: https://www.youtube.com/watch?v=IjfSA3kMQP0
+                            - generic [ref=f183e43]: Watch on
+          - text: last chapter
+          - note "Callout" [ref=f182e76]:
+            - generic [ref=f182e82]:
+              - paragraph [ref=f182e83]: You can put normal markdown content in here.
+              - list [ref=f182e84]:
+                - listitem [ref=f182e85]: one
+                - listitem [ref=f182e86]: two
+                - listitem [ref=f182e87]: three
+          - figure [ref=f182e89]:
+            - iframe [ref=f182e91]
+            - generic [ref=f182e92]: Sample PDF Document
+          - link "Download the sample PDF" [ref=f182e95] [cursor=pointer]:
+            - /url: /media/content_engine/sample22e4abed-94ea-4d25-8194-7a3dcf3a4e95.pdf
+          - note "Proceed to next lesson" [ref=f182e99]:
+            - paragraph [ref=f182e106]: Now we will learn how to implement the Freedom LS markdown features.
+        - button "Next" [ref=f182e109] [cursor=pointer]
+  - contentinfo [ref=f182e113]:
+    - generic [ref=f182e114]:
+      - paragraph [ref=f182e115]: © 2026 FirstClass
+      - navigation "Legal" [ref=f182e116]:
+        - link "Terms and Conditions" [ref=f182e117] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f182e118] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f182e119] [cursor=pointer]: google-analytics-setup
+  - list [ref=f182e121]:
+    - listitem [ref=f182e122]:
+      - link "Hide »" [ref=f182e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e124]:
+      - link "Toggle Theme" [ref=f182e125] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e128]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e129] [cursor=pointer]
+      - link "History /courses/functionality-demo-show-end-with-topic/1/" [ref=f182e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e131]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e132] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f182e133] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e134]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e135] [cursor=pointer]
+      - 'link "Time CPU: 87.59ms (142.09ms)" [ref=f182e136] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f182e137]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e138] [cursor=pointer]
+      - link "Settings" [ref=f182e139] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e140]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e141] [cursor=pointer]
+      - link "Headers" [ref=f182e142] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e143]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e144] [cursor=pointer]
+      - link "Request view_course_item" [ref=f182e145] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e146]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e147] [cursor=pointer]
+      - link "SQL 40 queries in 52.25ms" [ref=f182e148] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e149]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e150] [cursor=pointer]
+      - link "Static files 10 files used" [ref=f182e151] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e152]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e153] [cursor=pointer]
+      - link "Templates learner_interface/course_topic.html" [ref=f182e154] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e155]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e156] [cursor=pointer]
+      - link "Alerts" [ref=f182e157] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e158]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e159] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f182e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e161]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e162] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f182e163] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e164]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f182e165] [cursor=pointer]
+      - link "Community" [ref=f182e166] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f182e167]:
+      - checkbox "Enable for next and successive requests" [ref=f182e168] [cursor=pointer]
+      - generic [ref=f182e169]: Intercept redirects
+    - listitem [ref=f182e170]:
+      - checkbox "Enable for next and successive requests" [ref=f182e171] [cursor=pointer]
+      - generic [ref=f182e172]: Profiling

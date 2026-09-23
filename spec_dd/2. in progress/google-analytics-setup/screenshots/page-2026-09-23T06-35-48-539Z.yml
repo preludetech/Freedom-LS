@@ -1,0 +1,156 @@
+- generic [ref=f141e1]:
+  - banner [ref=f141e2]:
+    - link [ref=f141e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f141e4]
+      - heading "FirstClass" [level=1] [ref=f141e5]
+    - navigation [ref=f141e6]:
+      - button "Open user menu for QA Learner A" [ref=f141e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f141e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f141e10]:
+    - generic [ref=f141e12]:
+      - dialog "Course outline" [active] [ref=f141e13]:
+        - generic [ref=f141e16]:
+          - generic [ref=f141e17]:
+            - paragraph [ref=f141e18]: Course outline
+            - paragraph [ref=f141e19]: Standard Markdown - Demo Finance
+            - generic [ref=f141e21]:
+              - progressbar "Progress for Standard Markdown - Demo Finance" [ref=f141e22]: 0%
+              - generic [ref=f141e23]: 0% complete
+          - navigation "Course outline" [ref=f141e24]:
+            - list [ref=f141e25]:
+              - listitem [ref=f141e26]:
+                - generic [ref=f141e27]:
+                  - generic [ref=f141e28]: "1."
+                  - generic [ref=f141e29]:
+                    - img "topic" [ref=f141e30]
+                    - generic [ref=f141e32]: In progress
+                  - generic [ref=f141e33]: Financial Literacy
+              - listitem [ref=f141e34]:
+                - generic [ref=f141e35]:
+                  - generic [ref=f141e36]: "2."
+                  - generic [ref=f141e37]:
+                    - img "topic" [ref=f141e38]
+                    - generic [ref=f141e40]: Locked
+                  - generic [ref=f141e41]: Other Basic Markdown?
+              - listitem [ref=f141e42]:
+                - generic [ref=f141e43]:
+                  - generic [ref=f141e44]: "3."
+                  - generic [ref=f141e45]:
+                    - img "topic" [ref=f141e46]
+                    - generic [ref=f141e48]: Locked
+                  - generic [ref=f141e49]: The real wonder of the world?
+      - generic [ref=f141e50]:
+        - generic [ref=f141e51]:
+          - navigation "Breadcrumb" [ref=f141e54]:
+            - list [ref=f141e55]:
+              - listitem [ref=f141e56]:
+                - link "Standard Markdown - Demo Finance" [ref=f141e57] [cursor=pointer]:
+                  - /url: /courses/standard-markdown-demo-finance/detail/
+              - listitem [ref=f141e58]:
+                - generic [aria-hidden] [ref=f141e59]: ">"
+                - generic "Financial Literacy" [ref=f141e60]
+          - generic [ref=f141e61]:
+            - heading "Financial Literacy" [level=1] [ref=f141e62]
+            - paragraph [ref=f141e63]: Tour of Financial Literacy
+        - generic [ref=f141e65]:
+          - generic [ref=f141e66]:
+            - heading "What is Financial Literacy?" [level=3] [ref=f141e67]
+            - paragraph [ref=f141e68]: Financial Literacy is the ability to understand and use financial information. It is a skill that is important to all people.
+            - paragraph [ref=f141e69]:
+              - strong [ref=f141e70]: Personally, I would call it a human right.
+            - blockquote [ref=f141e71]:
+              - paragraph [ref=f141e72]: "Blockquote: Financial Literacy is a human right.!."
+              - paragraph [ref=f141e73]:
+                - text: Extended blockquote...
+                - emphasis [ref=f141e74]: Everything
+                - text: is going according to
+                - strong [ref=f141e75]: plan
+                - text: .
+              - blockquote [ref=f141e76]:
+                - paragraph [ref=f141e77]: Nested blockquote. This is really cool.
+            - paragraph [ref=f141e78]:
+              - text: Well? We will need some
+              - code [ref=f141e79]: code
+              - text: .
+            - paragraph [ref=f141e80]:
+              - code [ref=f141e81]: manage.py content_save XYZ ABC
+            - paragraph [ref=f141e82]: Cool, we have learned of the other tools in Markdown.
+          - button "Next" [ref=f141e85] [cursor=pointer]
+  - contentinfo [ref=f141e89]:
+    - generic [ref=f141e90]:
+      - paragraph [ref=f141e91]: © 2026 FirstClass
+      - navigation "Legal" [ref=f141e92]:
+        - link "Terms and Conditions" [ref=f141e93] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f141e94] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f141e95] [cursor=pointer]: google-analytics-setup
+  - list [ref=f141e97]:
+    - listitem [ref=f141e98]:
+      - link "Hide »" [ref=f141e99] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e100]:
+      - link "Toggle Theme" [ref=f141e101] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e104]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e105] [cursor=pointer]
+      - link "History /courses/standard-markdown-demo-finance/1/" [ref=f141e106] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e107]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e108] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f141e109] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e110]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e111] [cursor=pointer]
+      - 'link "Time CPU: 182.77ms (244.03ms)" [ref=f141e112] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f141e113]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e114] [cursor=pointer]
+      - link "Settings" [ref=f141e115] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e116]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e117] [cursor=pointer]
+      - link "Headers" [ref=f141e118] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e119]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e120] [cursor=pointer]
+      - link "Request view_course_item" [ref=f141e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e122]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e123] [cursor=pointer]
+      - link "SQL 34 queries in 95.90ms" [ref=f141e124] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e125]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e126] [cursor=pointer]
+      - link "Static files 10 files used" [ref=f141e127] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e128]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e129] [cursor=pointer]
+      - link "Templates learner_interface/course_topic.html" [ref=f141e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e131]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e132] [cursor=pointer]
+      - link "Alerts" [ref=f141e133] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e134]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e135] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f141e136] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e137]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e138] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f141e139] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e140]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f141e141] [cursor=pointer]
+      - link "Community" [ref=f141e142] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f141e143]:
+      - checkbox "Enable for next and successive requests" [ref=f141e144] [cursor=pointer]
+      - generic [ref=f141e145]: Intercept redirects
+    - listitem [ref=f141e146]:
+      - checkbox "Enable for next and successive requests" [ref=f141e147] [cursor=pointer]
+      - generic [ref=f141e148]: Profiling

@@ -1,0 +1,147 @@
+- generic [active] [ref=f141e1]:
+  - banner [ref=f141e2]:
+    - link [ref=f141e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f141e4]
+      - heading "FirstClass" [level=1] [ref=f141e5]
+    - navigation [ref=f141e6]:
+      - button "Open user menu for QA Learner A" [ref=f141e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f141e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f141e10]:
+    - generic [ref=f141e12]:
+      - dialog "Course outline" [ref=f141e13]:
+        - generic [ref=f141e229]:
+          - generic [ref=f141e230]:
+            - paragraph [ref=f141e231]: Course outline
+            - paragraph [ref=f141e232]: Standard Markdown - Demo Finance
+            - generic [ref=f141e234]:
+              - progressbar "Progress for Standard Markdown - Demo Finance" [ref=f141e235]: 67%
+              - generic [ref=f141e236]: 67% complete
+          - navigation "Course outline" [ref=f141e237]:
+            - list [ref=f141e238]:
+              - listitem [ref=f141e239]:
+                - generic [ref=f141e240]:
+                  - generic [ref=f141e241]: "1."
+                  - generic [ref=f141e242]:
+                    - img "topic" [ref=f141e243]
+                    - generic [ref=f141e245]: Completed
+                  - link "Financial Literacy" [ref=f141e247] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/1/
+              - listitem [ref=f141e248]:
+                - generic [ref=f141e249]:
+                  - generic [ref=f141e250]: "2."
+                  - generic [ref=f141e251]:
+                    - img "topic" [ref=f141e252]
+                    - generic [ref=f141e254]: Completed
+                  - link "Other Basic Markdown?" [ref=f141e256] [cursor=pointer]:
+                    - /url: /courses/standard-markdown-demo-finance/2/
+              - listitem [ref=f141e257]:
+                - generic [ref=f141e258]:
+                  - generic [ref=f141e259]: "3."
+                  - generic [ref=f141e260]:
+                    - img "topic" [ref=f141e261]
+                    - generic [ref=f141e263]: Not started
+                  - generic [ref=f141e264]: The real wonder of the world?
+      - generic [ref=f141e265]:
+        - generic [ref=f141e266]:
+          - navigation "Breadcrumb" [ref=f141e269]:
+            - list [ref=f141e270]:
+              - listitem [ref=f141e271]:
+                - link "Standard Markdown - Demo Finance" [ref=f141e272] [cursor=pointer]:
+                  - /url: /courses/standard-markdown-demo-finance/detail/
+              - listitem [ref=f141e273]:
+                - generic [aria-hidden] [ref=f141e274]: ">"
+                - generic "The real wonder of the world?" [ref=f141e275]
+          - generic [ref=f141e276]:
+            - heading "The real wonder of the world?" [level=1] [ref=f141e277]
+            - paragraph [ref=f141e278]: compound interest
+        - generic [ref=f141e280]:
+          - generic [ref=f141e281]:
+            - heading "COMPOUND INTEREST" [level=2] [ref=f141e282]
+            - paragraph [ref=f141e283]: Why is compound interest the real wonder of the world?
+            - heading "What is compound interest?" [level=3] [ref=f141e284]
+            - paragraph [ref=f141e285]: Compound interest is the interest calculated on the initial principal and also on the accumulated interest of previous periods of a deposit or loan.
+            - note "Callout" [ref=f141e286]:
+              - paragraph [ref=f141e293]: Let us work with an example of R1000. 10% interest per annum. For 10 years.
+            - note "Danger" [ref=f141e294]:
+              - paragraph [ref=f141e301]: THIS IS IMPORTANT INFORMATION
+            - note "Warning" [ref=f141e302]:
+              - paragraph [ref=f141e309]: The banks do not want you to know this, haha!
+            - separator [ref=f141e310]
+            - heading "Compound Interest Table" [level=2] [ref=f141e311]
+            - table [ref=f141e312]:
+              - rowgroup [ref=f141e313]:
+                - row [ref=f141e314]:
+                  - columnheader "Year" [ref=f141e315]
+                  - columnheader "Amount" [ref=f141e316]
+              - rowgroup [ref=f141e317]:
+                - row [ref=f141e318]:
+                  - cell "0" [ref=f141e319]
+                  - cell "R1000" [ref=f141e320]
+                - row [ref=f141e321]:
+                  - cell "1" [ref=f141e322]
+                  - cell "R1100" [ref=f141e323]
+                - row [ref=f141e324]:
+                  - cell "2" [ref=f141e325]
+                  - cell "R1210" [ref=f141e326]
+                - row [ref=f141e327]:
+                  - cell "3" [ref=f141e328]
+                  - cell "R1331" [ref=f141e329]
+                - row [ref=f141e330]:
+                  - cell "4" [ref=f141e331]
+                  - cell "R1464.1" [ref=f141e332]
+                - row [ref=f141e333]:
+                  - cell "5" [ref=f141e334]
+                  - cell "R1610.51" [ref=f141e335]
+                - row [ref=f141e336]:
+                  - cell "6" [ref=f141e337]
+                  - cell "R1771.561" [ref=f141e338]
+                - row [ref=f141e339]:
+                  - cell "7" [ref=f141e340]
+                  - cell "R1948.7171" [ref=f141e341]
+                - row [ref=f141e342]:
+                  - cell "8" [ref=f141e343]
+                  - cell "R2143.58881" [ref=f141e344]
+                - row [ref=f141e345]:
+                  - cell "9" [ref=f141e346]
+                  - cell "R2357.947691" [ref=f141e347]
+                - row [ref=f141e348]:
+                  - cell "10" [ref=f141e349]
+                  - cell "R2593.7424601" [ref=f141e350]
+            - note "^ Is using a markdown table to show the compound interest." [ref=f141e351]:
+              - paragraph [ref=f141e358]: You have mastered it!
+            - table [ref=f141e359]:
+              - rowgroup [ref=f141e360]:
+                - row [ref=f141e361]:
+                  - columnheader "Table Header 1" [ref=f141e362]
+                  - columnheader "Table Header 2" [ref=f141e363]
+                  - columnheader "Table Header 3" [ref=f141e364]
+              - rowgroup [ref=f141e365]:
+                - row [ref=f141e366]:
+                  - cell "Cell 1" [ref=f141e367]
+                  - cell "Cell 2" [ref=f141e368]
+                  - cell "Cell 3" [ref=f141e369]
+                - row [ref=f141e370]:
+                  - cell "Cell 3" [ref=f141e371]
+                  - cell "Cell 4" [ref=f141e372]
+                  - cell "Cell 5" [ref=f141e373]
+                - row [ref=f141e374]:
+                  - cell "Cell 6" [ref=f141e375]
+                  - cell "Cell 7" [ref=f141e376]
+                  - cell "Cell 8" [ref=f141e377]
+          - generic [ref=f141e378]:
+            - link "Previous" [ref=f141e380] [cursor=pointer]:
+              - /url: /courses/standard-markdown-demo-finance/2/
+            - button "Finish Course" [ref=f141e385] [cursor=pointer]
+  - contentinfo [ref=f141e89]:
+    - generic [ref=f141e90]:
+      - paragraph [ref=f141e91]: © 2026 FirstClass
+      - navigation "Legal" [ref=f141e92]:
+        - link "Terms and Conditions" [ref=f141e93] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f141e94] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f141e95] [cursor=pointer]: google-analytics-setup

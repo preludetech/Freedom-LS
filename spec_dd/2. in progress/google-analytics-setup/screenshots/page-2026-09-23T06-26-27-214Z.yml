@@ -1,0 +1,98 @@
+- generic [active] [ref=f91e1]:
+  - banner [ref=f91e2]:
+    - link [ref=f91e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f91e4]
+      - heading "FirstClass" [level=1] [ref=f91e5]
+    - navigation [ref=f91e6]:
+      - button "Open user menu for QA Learner B" [ref=f91e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f91e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f91e10]:
+    - generic [ref=f91e11]:
+      - generic [ref=f91e12]:
+        - heading "Sign Out" [level=1] [ref=f91e13]
+        - paragraph [ref=f91e14]: Are you sure you want to sign out?
+        - button "Sign Out" [ref=f91e16] [cursor=pointer]
+      - navigation [ref=f91e17]:
+        - link "Change Email" [ref=f91e18] [cursor=pointer]:
+          - /url: /accounts/email/
+        - link "Change Password" [ref=f91e19] [cursor=pointer]:
+          - /url: /accounts/password/change/
+        - button "Sign Out" [ref=f91e21] [cursor=pointer]
+  - contentinfo [ref=f91e22]:
+    - generic [ref=f91e23]:
+      - paragraph [ref=f91e24]: © 2026 FirstClass
+      - navigation "Legal" [ref=f91e25]:
+        - link "Terms and Conditions" [ref=f91e26] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f91e27] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f91e28] [cursor=pointer]: google-analytics-setup
+  - list [ref=f91e30]:
+    - listitem [ref=f91e31]:
+      - link "Hide »" [ref=f91e32] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e33]:
+      - link "Toggle Theme" [ref=f91e34] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e37]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e38] [cursor=pointer]
+      - link "History /accounts/logout/" [ref=f91e39] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e40]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e41] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f91e42] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e43]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e44] [cursor=pointer]
+      - 'link "Time CPU: 63.86ms (97.32ms)" [ref=f91e45] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f91e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e47] [cursor=pointer]
+      - link "Settings" [ref=f91e48] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e50] [cursor=pointer]
+      - link "Headers" [ref=f91e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e53] [cursor=pointer]
+      - link "Request LogoutView" [ref=f91e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e56] [cursor=pointer]
+      - link "SQL 7 queries in 30.74ms" [ref=f91e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e59] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f91e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e62] [cursor=pointer]
+      - link "Templates account/logout.html" [ref=f91e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e65] [cursor=pointer]
+      - link "Alerts" [ref=f91e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e68] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f91e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e71] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f91e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f91e74] [cursor=pointer]
+      - link "Community" [ref=f91e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f91e76]:
+      - checkbox "Enable for next and successive requests" [ref=f91e77] [cursor=pointer]
+      - generic [ref=f91e78]: Intercept redirects
+    - listitem [ref=f91e79]:
+      - checkbox "Enable for next and successive requests" [ref=f91e80] [cursor=pointer]
+      - generic [ref=f91e81]: Profiling

@@ -1,0 +1,153 @@
+- generic [active] [ref=f99e1]:
+  - banner [ref=f99e2]:
+    - link [ref=f99e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f99e4]
+      - heading "FirstClass" [level=1] [ref=f99e5]
+    - navigation [ref=f99e6]:
+      - button "Open user menu for QA Learner B" [ref=f99e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f99e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f99e10]:
+    - generic [ref=f99e12]:
+      - navigation "Breadcrumb" [ref=f99e13]:
+        - list [ref=f99e14]:
+          - listitem [ref=f99e15]:
+            - link "All courses" [ref=f99e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f99e17]:
+            - generic [aria-hidden] [ref=f99e18]: /
+            - generic [ref=f99e19]: Functionality Demo - Application gated course
+      - generic [ref=f99e21]:
+        - heading "Functionality Demo - Application gated course" [level=1] [ref=f99e22]
+        - paragraph [ref=f99e23]: A course you have to apply for
+        - generic [ref=f99e25]:
+          - generic [ref=f99e26]:
+            - img "topic" [ref=f99e27]
+            - generic [ref=f99e29]:
+              - paragraph [ref=f99e30]: Lessons
+              - paragraph [ref=f99e31]: 1 lesson
+          - generic [ref=f99e32]:
+            - img "price" [ref=f99e33]
+            - generic [ref=f99e37]:
+              - paragraph [ref=f99e38]: Price
+              - paragraph [ref=f99e39]:
+                - generic [ref=f99e40]:
+                  - generic [ref=f99e41]: "Original price:"
+                  - text: ZAR1,499.00
+                  - generic [ref=f99e42]: "Now:"
+                  - text: ZAR999.00
+          - generic [ref=f99e43]:
+            - img "check" [ref=f99e44]
+            - generic [ref=f99e46]:
+              - paragraph [ref=f99e47]: Enrolment
+              - paragraph [ref=f99e48]: By application
+      - generic [ref=f99e49]:
+        - complementary [ref=f99e50]:
+          - generic [ref=f99e51]:
+            - paragraph [ref=f99e52]:
+              - generic [ref=f99e53]:
+                - generic [ref=f99e54]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f99e55]: "Now:"
+                - text: ZAR999.00 incl. VAT
+            - generic [ref=f99e56]:
+              - paragraph [ref=f99e57]: Application required
+              - paragraph [ref=f99e58]: Apply and we'll review your request.
+            - link "Apply now" [ref=f99e59] [cursor=pointer]:
+              - /url: /applications/apply/functionality-demo-application-gated-course/
+            - generic [ref=f99e60]:
+              - heading "This course includes" [level=3] [ref=f99e61]
+              - list [ref=f99e62]:
+                - listitem [ref=f99e63]: 1 lesson
+        - generic [ref=f99e64]:
+          - generic [ref=f99e65]:
+            - heading "About this course" [level=2] [ref=f99e66]
+            - paragraph [ref=f99e68]: Places on this course are limited, so we ask everyone to apply. Filling in the application takes about five minutes.
+          - generic [ref=f99e69]:
+            - heading "Course content" [level=2] [ref=f99e70]
+            - navigation "Course outline" [ref=f99e72]:
+              - list [ref=f99e73]:
+                - listitem [ref=f99e74]:
+                  - generic [ref=f99e75]:
+                    - generic [ref=f99e76]: "1."
+                    - generic [ref=f99e77]:
+                      - img "topic" [ref=f99e78]
+                      - generic [ref=f99e80]: Locked
+                    - generic [ref=f99e81]: Welcome
+  - contentinfo [ref=f99e82]:
+    - generic [ref=f99e83]:
+      - paragraph [ref=f99e84]: © 2026 FirstClass
+      - navigation "Legal" [ref=f99e85]:
+        - link "Terms and Conditions" [ref=f99e86] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f99e87] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f99e88] [cursor=pointer]: google-analytics-setup
+  - list [ref=f99e90]:
+    - listitem [ref=f99e91]:
+      - link "Hide »" [ref=f99e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e93]:
+      - link "Toggle Theme" [ref=f99e94] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e97]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e98] [cursor=pointer]
+      - link "History /courses/functionality-demo-application-gated-course/detail/" [ref=f99e99] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e100]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e101] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f99e102] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e103]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e104] [cursor=pointer]
+      - 'link "Time CPU: 152.32ms (222.63ms)" [ref=f99e105] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f99e106]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e107] [cursor=pointer]
+      - link "Settings" [ref=f99e108] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e109]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e110] [cursor=pointer]
+      - link "Headers" [ref=f99e111] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e112]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e113] [cursor=pointer]
+      - link "Request course_detail" [ref=f99e114] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e115]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e116] [cursor=pointer]
+      - link "SQL 18 queries in 64.68ms" [ref=f99e117] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e118]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e119] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f99e120] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e121]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e122] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f99e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e124]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e125] [cursor=pointer]
+      - link "Alerts" [ref=f99e126] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e127]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e128] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f99e129] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e130]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e131] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f99e132] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f99e134] [cursor=pointer]
+      - link "Community" [ref=f99e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f99e136]:
+      - checkbox "Enable for next and successive requests" [ref=f99e137] [cursor=pointer]
+      - generic [ref=f99e138]: Intercept redirects
+    - listitem [ref=f99e139]:
+      - checkbox "Enable for next and successive requests" [ref=f99e140] [cursor=pointer]
+      - generic [ref=f99e141]: Profiling

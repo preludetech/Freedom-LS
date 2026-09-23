@@ -1,0 +1,163 @@
+- generic [active] [ref=f160e1]:
+  - banner [ref=f160e2]:
+    - heading "Page not found (404)" [level=1] [ref=f160e3]
+    - table [ref=f160e4]:
+      - rowgroup [ref=f160e5]:
+        - row [ref=f160e6]:
+          - rowheader "Request Method:" [ref=f160e7]
+          - cell "GET" [ref=f160e8]
+        - row [ref=f160e9]:
+          - rowheader "Request URL:" [ref=f160e10]
+          - cell "http://127.0.0.1:8984/this-page-does-not-exist-qa/" [ref=f160e11]
+  - main [ref=f160e12]:
+    - paragraph [ref=f160e13]:
+      - text: Using the URLconf defined in
+      - code [ref=f160e14]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f160e15]:
+      - listitem [ref=f160e16]:
+        - code [ref=f160e17]: health/
+      - listitem [ref=f160e18]:
+        - code [ref=f160e19]: admin/
+      - listitem [ref=f160e20]:
+        - code [ref=f160e21]: robots.txt [name='robots_txt']
+      - listitem [ref=f160e22]:
+        - code [ref=f160e23]: sitemap.xml [name='sitemap']
+      - listitem [ref=f160e24]:
+        - code
+        - code [ref=f160e25]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})$ [name='follow_go']"
+      - listitem [ref=f160e26]:
+        - code
+        - code [ref=f160e27]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})$ [name='follow_d']"
+      - listitem [ref=f160e28]:
+        - code [ref=f160e29]: educator/
+      - listitem [ref=f160e30]:
+        - code
+        - code [ref=f160e31]: sentry-debug/ [name='trigger_error']
+      - listitem [ref=f160e32]:
+        - code [ref=f160e33]: accounts/
+      - listitem [ref=f160e34]:
+        - code [ref=f160e35]: accounts/
+      - listitem [ref=f160e36]:
+        - code
+        - code [ref=f160e37]: "[name='dashboard']"
+      - listitem [ref=f160e38]:
+        - code
+        - code [ref=f160e39]: courses/ [name='courses']
+      - listitem [ref=f160e40]:
+        - code
+        - code [ref=f160e41]: courses/<slug:course_slug>/detail/ [name='course_detail']
+      - listitem [ref=f160e42]:
+        - code
+        - code [ref=f160e43]: courses/<slug:course_slug>/ [name='course_home']
+      - listitem [ref=f160e44]:
+        - code
+        - code [ref=f160e45]: courses/<slug:course_slug>/access/ [name='initiate_course_access']
+      - listitem [ref=f160e46]:
+        - code
+        - code [ref=f160e47]: courses/<slug:course_slug>/<int:index>/ [name='view_course_item']
+      - listitem [ref=f160e48]:
+        - code
+        - code [ref=f160e49]: courses/<slug:course_slug>/<int:index>/start_form [name='form_start']
+      - listitem [ref=f160e50]:
+        - code
+        - code [ref=f160e51]: courses/<slug:course_slug>/<int:index>/fill_form/<int:page_number> [name='form_fill_page']
+      - listitem [ref=f160e52]:
+        - code
+        - code [ref=f160e53]: courses/<slug:course_slug>/<int:index>/complete [name='course_form_complete']
+      - listitem [ref=f160e54]:
+        - code
+        - code [ref=f160e55]: courses/<slug:course_slug>/<int:index>/submit-and-exit [name='form_submit_and_exit']
+      - listitem [ref=f160e56]:
+        - code
+        - code [ref=f160e57]: courses/<slug:course_slug>/finish/ [name='course_finish']
+      - listitem [ref=f160e58]:
+        - code [ref=f160e59]: applications/
+      - listitem [ref=f160e60]:
+        - code [ref=f160e61]: forms/
+      - listitem [ref=f160e62]:
+        - code [ref=f160e63]: interest/
+      - listitem [ref=f160e64]:
+        - code [ref=f160e65]: __reload__/
+      - listitem [ref=f160e66]:
+        - code [ref=f160e67]: qa/
+      - listitem [ref=f160e68]:
+        - code [ref=f160e69]: ^media/(?P<path>.*)$
+      - listitem [ref=f160e70]:
+        - code [ref=f160e71]: ^__debug__/
+    - paragraph [ref=f160e72]:
+      - text: The current path,
+      - code [ref=f160e73]: this-page-does-not-exist-qa/
+      - text: ", didn’t match any of these."
+  - contentinfo [ref=f160e74]:
+    - paragraph [ref=f160e75]:
+      - text: You’re seeing this error because you have
+      - code [ref=f160e76]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f160e77]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - list [ref=f160e79]:
+    - listitem [ref=f160e80]:
+      - link "Hide »" [ref=f160e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e82]:
+      - link "Toggle Theme" [ref=f160e83] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e86]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e87]
+      - link "History /this-page-does-not-exist-qa/" [ref=f160e88] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e89]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e90]
+      - link "Versions Django 6.0.4" [ref=f160e91] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e92]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e93]
+      - 'link "Time CPU: 32.14ms (47.12ms)" [ref=f160e94] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f160e95]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e96]
+      - link "Settings" [ref=f160e97] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e98]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e99]
+      - link "Headers" [ref=f160e100] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e101]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e102]
+      - link "Request <no view>" [ref=f160e103] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e104]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e105]
+      - link "SQL 3 queries in 4.72ms" [ref=f160e106] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e107]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e108]
+      - link "Static files 2 files used" [ref=f160e109] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e110]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e111]
+      - link "Templates" [ref=f160e112] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e113]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e114]
+      - link "Alerts" [ref=f160e115] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e116]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e117]
+      - link "Cache 0 calls in 0.00ms" [ref=f160e118] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e119]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e120]
+      - link "Signals 77 receivers of 15 signals" [ref=f160e121] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e122]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f160e123]
+      - link "Community" [ref=f160e124] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f160e125]:
+      - checkbox "Enable for next and successive requests" [ref=f160e126]
+      - generic [ref=f160e127]: Intercept redirects
+    - listitem [ref=f160e128]:
+      - checkbox "Enable for next and successive requests" [ref=f160e129]
+      - generic [ref=f160e130]: Profiling

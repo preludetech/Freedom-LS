@@ -1,0 +1,128 @@
+- generic [active] [ref=f103e1]:
+  - banner [ref=f103e2]:
+    - link [ref=f103e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f103e4]
+      - heading "FirstClass" [level=1] [ref=f103e5]
+    - navigation [ref=f103e6]:
+      - button "Open user menu for QA Learner B" [ref=f103e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f103e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f103e10]:
+    - generic [ref=f103e12]:
+      - paragraph [ref=f103e13]: Application for Functionality Demo - Application gated course
+      - heading "Supporting documents" [level=1] [ref=f103e14]
+      - navigation "Application pages" [ref=f103e15]:
+        - link "1" [ref=f103e16] [cursor=pointer]:
+          - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/1/
+        - generic [ref=f103e17]: "2"
+        - generic [ref=f103e18]: "3"
+      - alert [ref=f103e19]:
+        - generic [ref=f103e20]:
+          - heading [level=4] [ref=f103e21]:
+            - img "error" [ref=f103e22]
+            - text: Missing answers
+          - generic [ref=f103e24]: Question 10 needs an answer before you can continue.
+      - generic [ref=f103e25]:
+        - paragraph [ref=f103e27]: We accept a JPEG, PNG or PDF up to 6 MB. Your document is stored privately and is only ever seen by the people reviewing applications.
+        - group "10. Upload a scan of your ID or a recent certificate (required)" [ref=f103e28]:
+          - generic [ref=f103e29]:
+            - generic [ref=f103e30]: "10."
+            - paragraph [ref=f103e31]: Upload a scan of your ID or a recent certificate
+            - text: "*"
+            - generic [ref=f103e32]: (required)
+          - generic [ref=f103e34]:
+            - generic [ref=f103e35] [cursor=pointer]:
+              - text: Choose a file
+              - generic [ref=f103e36]:
+                - text: for
+                - paragraph [ref=f103e37]: Upload a scan of your ID or a recent certificate
+              - button "Choose a file for Upload a scan of your ID or a recent certificate" [ref=f103e38]
+            - paragraph [ref=f103e39]: JPEG, PNG or PDF, up to 6 MB.
+        - group "11. Is there anything else we should know?" [ref=f103e40]:
+          - generic [ref=f103e41]:
+            - generic [ref=f103e42]: "11."
+            - paragraph [ref=f103e43]: Is there anything else we should know?
+          - generic [ref=f103e44]:
+            - paragraph [ref=f103e46]: Is there anything else we should know?
+            - textbox "Is there anything else we should know?" [ref=f103e47]
+        - generic [ref=f103e48]:
+          - link "Previous" [ref=f103e49] [cursor=pointer]:
+            - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/1/
+          - button "Next" [ref=f103e53] [cursor=pointer]
+  - contentinfo [ref=f103e57]:
+    - generic [ref=f103e58]:
+      - paragraph [ref=f103e59]: © 2026 FirstClass
+      - navigation "Legal" [ref=f103e60]:
+        - link "Terms and Conditions" [ref=f103e61] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f103e62] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f103e63] [cursor=pointer]: google-analytics-setup
+  - list [ref=f103e65]:
+    - listitem [ref=f103e66]:
+      - link "Hide »" [ref=f103e67] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e68]:
+      - link "Toggle Theme" [ref=f103e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e72]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e73] [cursor=pointer]
+      - link "History /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/2/" [ref=f103e74] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e75]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e76] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f103e77] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e78]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e79] [cursor=pointer]
+      - 'link "Time CPU: 109.38ms (175.83ms)" [ref=f103e80] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f103e81]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e82] [cursor=pointer]
+      - link "Settings" [ref=f103e83] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e84]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e85] [cursor=pointer]
+      - link "Headers" [ref=f103e86] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e87]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e88] [cursor=pointer]
+      - link "Request application_form_page" [ref=f103e89] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e90]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e91] [cursor=pointer]
+      - link "SQL 44 queries in 66.05ms" [ref=f103e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e93]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e94] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f103e95] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e96]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e97] [cursor=pointer]
+      - link "Templates course_applications/form_page.html" [ref=f103e98] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e99]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e100] [cursor=pointer]
+      - link "Alerts 1 alert" [ref=f103e101] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e102]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e103] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f103e104] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e105]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e106] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f103e107] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e108]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f103e109] [cursor=pointer]
+      - link "Community" [ref=f103e110] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f103e111]:
+      - checkbox "Enable for next and successive requests" [ref=f103e112] [cursor=pointer]
+      - generic [ref=f103e113]: Intercept redirects
+    - listitem [ref=f103e114]:
+      - checkbox "Enable for next and successive requests" [ref=f103e115] [cursor=pointer]
+      - generic [ref=f103e116]: Profiling

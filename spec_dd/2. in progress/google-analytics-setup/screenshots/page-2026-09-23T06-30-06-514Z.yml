@@ -1,0 +1,176 @@
+- generic [active] [ref=f105e1]:
+  - banner [ref=f105e2]:
+    - link [ref=f105e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f105e4]
+      - heading "FirstClass" [level=1] [ref=f105e5]
+    - navigation [ref=f105e6]:
+      - button "Open user menu for QA Learner B" [ref=f105e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f105e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f105e10]:
+    - generic [ref=f105e12]:
+      - generic [ref=f105e13]:
+        - paragraph [ref=f105e14]: Application for Functionality Demo - Application gated course
+        - heading "Check your answers" [level=1] [ref=f105e15]
+        - paragraph [ref=f105e16]: Nothing is sent until you press Submit application. You can change any section from here.
+      - region [ref=f105e17]:
+        - generic [ref=f105e18]:
+          - heading "About you" [level=2] [ref=f105e19]
+          - link "Edit About you" [ref=f105e20] [cursor=pointer]:
+            - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/1/?return=check
+            - text: Edit
+            - generic [ref=f105e24]: About you
+        - generic [ref=f105e25]:
+          - generic [ref=f105e26]:
+            - term [ref=f105e27]:
+              - paragraph [ref=f105e28]: What is your full name?
+            - definition [ref=f105e29]: QA Applicant B
+          - generic [ref=f105e30]:
+            - term [ref=f105e31]:
+              - paragraph [ref=f105e32]: What is your date of birth?
+            - definition [ref=f105e33]: April 12, 1995
+          - generic [ref=f105e34]:
+            - term [ref=f105e35]:
+              - paragraph [ref=f105e36]: What is your email address?
+            - definition [ref=f105e37]: qa-learner-b@email.com
+          - generic [ref=f105e38]:
+            - term [ref=f105e39]:
+              - paragraph [ref=f105e40]: What is your phone number?
+            - definition [ref=f105e41]: Not answered
+          - generic [ref=f105e42]:
+            - term [ref=f105e43]:
+              - paragraph [ref=f105e44]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+            - definition [ref=f105e45]: Not answered
+          - generic [ref=f105e46]:
+            - term [ref=f105e47]:
+              - paragraph [ref=f105e48]: How many years have you been writing software?
+            - definition [ref=f105e49]: "7"
+          - generic [ref=f105e50]:
+            - term [ref=f105e51]:
+              - paragraph [ref=f105e52]: How did you hear about this course?
+            - definition [ref=f105e53]: A search engine
+          - generic [ref=f105e54]:
+            - term [ref=f105e55]:
+              - paragraph [ref=f105e56]: Which of these interest you?
+            - definition [ref=f105e57]: Not answered
+          - generic [ref=f105e58]:
+            - term [ref=f105e59]:
+              - paragraph [ref=f105e60]: Why do you want to take this course?
+            - definition [ref=f105e61]: Not answered
+      - region [ref=f105e62]:
+        - generic [ref=f105e63]:
+          - heading "Supporting documents" [level=2] [ref=f105e64]
+          - link "Edit Supporting documents" [ref=f105e65] [cursor=pointer]:
+            - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/2/?return=check
+            - text: Edit
+            - generic [ref=f105e69]: Supporting documents
+        - generic [ref=f105e70]:
+          - generic [ref=f105e71]:
+            - term [ref=f105e72]:
+              - paragraph [ref=f105e73]: Upload a scan of your ID or a recent certificate
+            - definition [ref=f105e74]:
+              - generic [ref=f105e75]:
+                - generic [ref=f105e76]: qa-upload.png
+                - generic [ref=f105e77]: (70 bytes)
+                - link "Download qa-upload.png" [ref=f105e78] [cursor=pointer]:
+                  - /url: /forms/answer-file/6293657c-714b-4b0e-86f7-5f8ab73a8b48/
+                  - text: Download
+                  - generic [ref=f105e82]: qa-upload.png
+          - generic [ref=f105e83]:
+            - term [ref=f105e84]:
+              - paragraph [ref=f105e85]: Is there anything else we should know?
+            - definition [ref=f105e86]: Not answered
+      - region [ref=f105e87]:
+        - generic [ref=f105e88]:
+          - heading "Availability" [level=2] [ref=f105e89]
+          - link "Edit Availability" [ref=f105e90] [cursor=pointer]:
+            - /url: /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/page/3/?return=check
+            - text: Edit
+            - generic [ref=f105e94]: Availability
+        - generic [ref=f105e95]:
+          - generic [ref=f105e96]:
+            - term [ref=f105e97]:
+              - paragraph [ref=f105e98]: What time of day do you prefer for live sessions?
+            - definition [ref=f105e99]: 2 p.m.
+          - generic [ref=f105e100]:
+            - term [ref=f105e101]:
+              - paragraph [ref=f105e102]: Which time zone are you usually in?
+            - definition [ref=f105e103]: Eastern European (UTC+2)
+      - button "Submit application" [ref=f105e105] [cursor=pointer]
+  - contentinfo [ref=f105e106]:
+    - generic [ref=f105e107]:
+      - paragraph [ref=f105e108]: © 2026 FirstClass
+      - navigation "Legal" [ref=f105e109]:
+        - link "Terms and Conditions" [ref=f105e110] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f105e111] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f105e112] [cursor=pointer]: google-analytics-setup
+  - list [ref=f105e114]:
+    - listitem [ref=f105e115]:
+      - link "Hide »" [ref=f105e116] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e117]:
+      - link "Toggle Theme" [ref=f105e118] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e121]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e122] [cursor=pointer]
+      - link "History /applications/application/9ad5d548-68b0-4350-9131-104a1912f7f4/check-your-answers/" [ref=f105e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e124]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e125] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f105e126] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e127]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e128] [cursor=pointer]
+      - 'link "Time CPU: 83.20ms (126.46ms)" [ref=f105e129] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f105e130]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e131] [cursor=pointer]
+      - link "Settings" [ref=f105e132] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e134] [cursor=pointer]
+      - link "Headers" [ref=f105e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e136]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e137] [cursor=pointer]
+      - link "Request application_check_answers" [ref=f105e138] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e139]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e140] [cursor=pointer]
+      - link "SQL 19 queries in 34.96ms" [ref=f105e141] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e142]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e143] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f105e144] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e145]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e146] [cursor=pointer]
+      - link "Templates course_applications/check_your_answers.html" [ref=f105e147] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e148]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e149] [cursor=pointer]
+      - link "Alerts" [ref=f105e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e151]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e152] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f105e153] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e154]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e155] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f105e156] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e157]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f105e158] [cursor=pointer]
+      - link "Community" [ref=f105e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f105e160]:
+      - checkbox "Enable for next and successive requests" [ref=f105e161] [cursor=pointer]
+      - generic [ref=f105e162]: Intercept redirects
+    - listitem [ref=f105e163]:
+      - checkbox "Enable for next and successive requests" [ref=f105e164] [cursor=pointer]
+      - generic [ref=f105e165]: Profiling

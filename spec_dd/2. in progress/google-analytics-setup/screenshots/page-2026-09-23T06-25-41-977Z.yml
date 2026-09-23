@@ -1,0 +1,117 @@
+- generic [active] [ref=f86e1]:
+  - banner [ref=f86e2]:
+    - link [ref=f86e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f86e4]
+      - heading "FirstClass" [level=1] [ref=f86e5]
+    - navigation [ref=f86e6]:
+      - generic [ref=f86e7]:
+        - link "Login" [ref=f86e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f86e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status:
+      - generic [ref=f86e10]:
+        - img "success" [ref=f86e12]
+        - paragraph [ref=f86e15]: You have confirmed qa-ga-signup1@email.com.
+        - button "Dismiss notification" [ref=f86e16]:
+          - img "close" [ref=f86e17]
+    - alert
+  - main [ref=f86e19]:
+    - generic [ref=f86e20]:
+      - heading "Sign In" [level=1] [ref=f86e21]
+      - paragraph [ref=f86e22]:
+        - text: If you have not created an account yet, then please
+        - link "sign up" [ref=f86e23] [cursor=pointer]:
+          - /url: /accounts/signup/
+        - text: first.
+      - generic [ref=f86e24]:
+        - paragraph [ref=f86e25]:
+          - generic [ref=f86e26]: "Email:"
+          - textbox "Email:" [ref=f86e27]:
+            - /placeholder: Email address
+        - paragraph [ref=f86e28]:
+          - generic [ref=f86e29]: "Password:"
+          - textbox "Password:" [ref=f86e30]:
+            - /placeholder: Password
+          - link "Forgot your password?" [ref=f86e32] [cursor=pointer]:
+            - /url: /accounts/password/reset/
+        - paragraph [ref=f86e33]:
+          - generic [ref=f86e34]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f86e35] [cursor=pointer]
+        - button "Sign In" [ref=f86e36] [cursor=pointer]
+  - contentinfo [ref=f86e37]:
+    - generic [ref=f86e38]:
+      - paragraph [ref=f86e39]: © 2026 FirstClass
+      - navigation "Legal" [ref=f86e40]:
+        - link "Terms and Conditions" [ref=f86e41] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f86e42] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f86e43] [cursor=pointer]: google-analytics-setup
+  - list [ref=f86e45]:
+    - listitem [ref=f86e46]:
+      - link "Hide »" [ref=f86e47] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e48]:
+      - link "Toggle Theme" [ref=f86e49] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e53] [cursor=pointer]
+      - link "History /accounts/login/" [ref=f86e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e56] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f86e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e59] [cursor=pointer]
+      - 'link "Time CPU: 39.37ms (61.54ms)" [ref=f86e60] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f86e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e62] [cursor=pointer]
+      - link "Settings" [ref=f86e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e65] [cursor=pointer]
+      - link "Headers" [ref=f86e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e68] [cursor=pointer]
+      - link "Request LoginView" [ref=f86e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e71] [cursor=pointer]
+      - link "SQL 4 queries in 10.34ms" [ref=f86e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e74] [cursor=pointer]
+      - link "Static files 6 files used" [ref=f86e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e77] [cursor=pointer]
+      - link "Templates account/login.html" [ref=f86e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e79]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e80] [cursor=pointer]
+      - link "Alerts" [ref=f86e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e82]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e83] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f86e84] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e85]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e86] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f86e87] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e88]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f86e89] [cursor=pointer]
+      - link "Community" [ref=f86e90] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f86e91]:
+      - checkbox "Enable for next and successive requests" [ref=f86e92] [cursor=pointer]
+      - generic [ref=f86e93]: Intercept redirects
+    - listitem [ref=f86e94]:
+      - checkbox "Enable for next and successive requests" [ref=f86e95] [cursor=pointer]
+      - generic [ref=f86e96]: Profiling

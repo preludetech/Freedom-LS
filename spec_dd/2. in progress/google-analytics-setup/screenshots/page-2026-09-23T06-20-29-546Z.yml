@@ -1,0 +1,175 @@
+- generic [active] [ref=f55e1]:
+  - banner [ref=f55e2]:
+    - link [ref=f55e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f55e4]
+      - heading "FirstClass" [level=1] [ref=f55e5]
+    - navigation [ref=f55e6]:
+      - button "Open user menu for QA Learner A" [ref=f55e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f55e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f55e10]:
+    - generic [ref=f55e12]:
+      - navigation "Breadcrumb" [ref=f55e13]:
+        - list [ref=f55e14]:
+          - listitem [ref=f55e15]:
+            - link "All courses" [ref=f55e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f55e17]:
+            - generic [aria-hidden] [ref=f55e18]: /
+            - generic [ref=f55e19]: Standard Markdown - Demo Finance
+      - generic [ref=f55e21]:
+        - generic [ref=f55e22]: Start here
+        - heading "Standard Markdown - Demo Finance" [level=1] [ref=f55e23]
+        - paragraph [ref=f55e24]: A standard tour of the content system
+        - generic [ref=f55e26]:
+          - generic [ref=f55e27]:
+            - img "topic" [ref=f55e28]
+            - generic [ref=f55e30]:
+              - paragraph [ref=f55e31]: Lessons
+              - paragraph [ref=f55e32]: 3 lessons
+          - generic [ref=f55e33]:
+            - img "achievement" [ref=f55e34]
+            - generic [ref=f55e36]:
+              - paragraph [ref=f55e37]: Level
+              - paragraph [ref=f55e38]: Beginner
+          - generic [ref=f55e39]:
+            - img "deadline" [ref=f55e40]
+            - generic [ref=f55e42]:
+              - paragraph [ref=f55e43]: Duration
+              - paragraph [ref=f55e44]: ~1 hour 30 min
+          - generic [ref=f55e45]:
+            - img "check" [ref=f55e46]
+            - generic [ref=f55e48]:
+              - paragraph [ref=f55e49]: Enrolment
+              - paragraph [ref=f55e50]: Free · open
+      - generic [ref=f55e51]:
+        - complementary [ref=f55e52]:
+          - generic [ref=f55e53]:
+            - generic [ref=f55e54]:
+              - paragraph [ref=f55e55]: Free · open to everyone
+              - paragraph [ref=f55e56]: One click. No credit card.
+            - link "Start course" [ref=f55e57] [cursor=pointer]:
+              - /url: /courses/standard-markdown-demo-finance/1/
+            - generic [ref=f55e58]:
+              - heading "This course includes" [level=3] [ref=f55e59]
+              - list [ref=f55e60]:
+                - listitem [ref=f55e61]: 3 lessons
+        - generic [ref=f55e62]:
+          - generic [ref=f55e63]:
+            - heading "About this course" [level=2] [ref=f55e64]
+            - paragraph [ref=f55e66]: Your competitive advantage is your ability to learn.
+          - generic [ref=f55e67]:
+            - heading "What you'll learn" [level=2] [ref=f55e68]
+            - list [ref=f55e69]:
+              - listitem [ref=f55e70]:
+                - img "complete" [ref=f55e72]
+                - generic [ref=f55e74]: Understand how the markdown content system renders
+              - listitem [ref=f55e75]:
+                - img "complete" [ref=f55e77]
+                - generic [ref=f55e79]: Recognise every built-in content widget
+              - listitem [ref=f55e80]:
+                - img "complete" [ref=f55e82]
+                - generic [ref=f55e84]: Author a course with confidence
+          - generic [ref=f55e85]:
+            - heading "Course content" [level=2] [ref=f55e86]
+            - navigation "Course outline" [ref=f55e88]:
+              - list [ref=f55e89]:
+                - listitem [ref=f55e90]:
+                  - generic [ref=f55e91]:
+                    - generic [ref=f55e92]: "1."
+                    - generic [ref=f55e93]:
+                      - img "topic" [ref=f55e94]
+                      - generic [ref=f55e96]: Not started
+                    - link "Financial Literacy" [ref=f55e98] [cursor=pointer]:
+                      - /url: /courses/standard-markdown-demo-finance/1/
+                - listitem [ref=f55e99]:
+                  - generic [ref=f55e100]:
+                    - generic [ref=f55e101]: "2."
+                    - generic [ref=f55e102]:
+                      - img "topic" [ref=f55e103]
+                      - generic [ref=f55e105]: Locked
+                    - generic [ref=f55e106]: Other Basic Markdown?
+                - listitem [ref=f55e107]:
+                  - generic [ref=f55e108]:
+                    - generic [ref=f55e109]: "3."
+                    - generic [ref=f55e110]:
+                      - img "topic" [ref=f55e111]
+                      - generic [ref=f55e113]: Locked
+                    - generic [ref=f55e114]: The real wonder of the world?
+  - contentinfo [ref=f55e115]:
+    - generic [ref=f55e116]:
+      - paragraph [ref=f55e117]: © 2026 FirstClass
+      - navigation "Legal" [ref=f55e118]:
+        - link "Terms and Conditions" [ref=f55e119] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f55e120] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f55e121] [cursor=pointer]: google-analytics-setup
+  - list [ref=f55e123]:
+    - listitem [ref=f55e124]:
+      - link "Hide »" [ref=f55e125] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e126]:
+      - link "Toggle Theme" [ref=f55e127] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e130]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e131] [cursor=pointer]
+      - link "History /courses/standard-markdown-demo-finance/detail/" [ref=f55e132] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e134] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f55e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e136]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e137] [cursor=pointer]
+      - 'link "Time CPU: 120.21ms (189.65ms)" [ref=f55e138] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f55e139]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e140] [cursor=pointer]
+      - link "Settings" [ref=f55e141] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e142]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e143] [cursor=pointer]
+      - link "Headers" [ref=f55e144] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e145]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e146] [cursor=pointer]
+      - link "Request course_detail" [ref=f55e147] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e148]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e149] [cursor=pointer]
+      - link "SQL 26 queries in 66.10ms" [ref=f55e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e151]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e152] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f55e153] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e154]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e155] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f55e156] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e157]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e158] [cursor=pointer]
+      - link "Alerts" [ref=f55e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e160]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e161] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f55e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e163]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e164] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f55e165] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e166]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f55e167] [cursor=pointer]
+      - link "Community" [ref=f55e168] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f55e169]:
+      - checkbox "Enable for next and successive requests" [ref=f55e170] [cursor=pointer]
+      - generic [ref=f55e171]: Intercept redirects
+    - listitem [ref=f55e172]:
+      - checkbox "Enable for next and successive requests" [ref=f55e173] [cursor=pointer]
+      - generic [ref=f55e174]: Profiling

@@ -1,0 +1,66 @@
+- generic [active] [ref=f148e1]:
+  - banner [ref=f148e2]:
+    - link [ref=f148e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f148e4]
+      - heading "FirstClass" [level=1] [ref=f148e5]
+    - navigation [ref=f148e6]:
+      - button "Open user menu for QA Learner C" [ref=f148e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f148e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f148e10]:
+    - generic [ref=f148e12]:
+      - dialog "Course outline" [ref=f148e13]:
+        - generic [ref=f148e118]:
+          - generic [ref=f148e119]:
+            - paragraph [ref=f148e120]: Course outline
+            - paragraph [ref=f148e121]: QA Cohort Course
+            - generic [ref=f148e123]:
+              - progressbar "Progress for QA Cohort Course" [ref=f148e124]: 100%
+              - generic [ref=f148e125]: 100% complete
+          - navigation "Course outline" [ref=f148e126]:
+            - list [ref=f148e127]:
+              - listitem [ref=f148e128]:
+                - generic [ref=f148e129]:
+                  - generic [ref=f148e130]: "1."
+                  - generic [ref=f148e131]:
+                    - img "topic" [ref=f148e132]
+                    - generic [ref=f148e134]: Completed
+                  - link "QA Cohort Course - Intro" [ref=f148e136] [cursor=pointer]:
+                    - /url: /courses/qa-cohort-course/1/
+      - generic [ref=f148e137]:
+        - navigation "Breadcrumb" [ref=f148e141]:
+          - list [ref=f148e142]:
+            - listitem [ref=f148e143]:
+              - link "QA Cohort Course" [ref=f148e144] [cursor=pointer]:
+                - /url: /courses/qa-cohort-course/detail/
+        - generic [ref=f148e145]:
+          - generic [ref=f148e146]:
+            - img "achievement" [ref=f148e148]
+            - heading "Congratulations!" [level=1] [ref=f148e150]
+            - paragraph [ref=f148e151]:
+              - text: You have successfully completed
+              - strong [ref=f148e152]: QA Cohort Course
+              - text: .
+          - generic [ref=f148e153]:
+            - heading "Course Summary" [level=2] [ref=f148e154]
+            - generic [ref=f148e155]:
+              - generic [ref=f148e156]:
+                - generic [ref=f148e157]: "Started:"
+                - generic [ref=f148e158]: September 23, 2026
+              - generic [ref=f148e159]:
+                - generic [ref=f148e160]: "Completed:"
+                - generic [ref=f148e161]: September 23, 2026
+          - link "Return to Dashboard" [ref=f148e163] [cursor=pointer]:
+            - /url: /
+  - contentinfo [ref=f148e58]:
+    - generic [ref=f148e59]:
+      - paragraph [ref=f148e60]: © 2026 FirstClass
+      - navigation "Legal" [ref=f148e61]:
+        - link "Terms and Conditions" [ref=f148e62] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f148e63] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f148e64] [cursor=pointer]: google-analytics-setup

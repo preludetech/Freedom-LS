@@ -1,0 +1,133 @@
+- generic [active] [ref=f130e1]:
+  - banner [ref=f130e2]:
+    - link [ref=f130e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f130e4]
+      - heading "FirstClass" [level=1] [ref=f130e5]
+    - navigation [ref=f130e6]:
+      - button "Open user menu for QA Learner B" [ref=f130e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f130e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f130e10]:
+    - generic [ref=f130e12]:
+      - navigation "Breadcrumb" [ref=f130e13]:
+        - list [ref=f130e14]:
+          - listitem [ref=f130e15]:
+            - link "All courses" [ref=f130e16] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f130e17]:
+            - generic [aria-hidden] [ref=f130e18]: /
+            - generic [ref=f130e19]: QA Free Course (Self-Registration)
+      - generic [ref=f130e21]:
+        - heading "QA Free Course (Self-Registration)" [level=1] [ref=f130e22]
+        - generic [ref=f130e24]:
+          - generic [ref=f130e25]:
+            - img "topic" [ref=f130e26]
+            - generic [ref=f130e28]:
+              - paragraph [ref=f130e29]: Lessons
+              - paragraph [ref=f130e30]: 1 lesson
+          - generic [ref=f130e31]:
+            - img "check" [ref=f130e32]
+            - generic [ref=f130e34]:
+              - paragraph [ref=f130e35]: Enrolment
+              - paragraph [ref=f130e36]: Free · open
+      - generic [ref=f130e37]:
+        - complementary [ref=f130e38]:
+          - generic [ref=f130e39]:
+            - generic [ref=f130e40]:
+              - paragraph [ref=f130e41]: Free · open to everyone
+              - paragraph [ref=f130e42]: One click. No credit card.
+            - link "Start course" [ref=f130e43] [cursor=pointer]:
+              - /url: /courses/qa-free-course-self-registration/1/
+            - generic [ref=f130e44]:
+              - heading "This course includes" [level=3] [ref=f130e45]
+              - list [ref=f130e46]:
+                - listitem [ref=f130e47]: 1 lesson
+        - generic [ref=f130e49]:
+          - heading "Course content" [level=2] [ref=f130e50]
+          - navigation "Course outline" [ref=f130e52]:
+            - list [ref=f130e53]:
+              - listitem [ref=f130e54]:
+                - generic [ref=f130e55]:
+                  - generic [ref=f130e56]: "1."
+                  - generic [ref=f130e57]:
+                    - img "topic" [ref=f130e58]
+                    - generic [ref=f130e60]: In progress
+                  - link "QA Free Course (Self-Registration) - Intro" [ref=f130e62] [cursor=pointer]:
+                    - /url: /courses/qa-free-course-self-registration/1/
+  - contentinfo [ref=f130e63]:
+    - generic [ref=f130e64]:
+      - paragraph [ref=f130e65]: © 2026 FirstClass
+      - navigation "Legal" [ref=f130e66]:
+        - link "Terms and Conditions" [ref=f130e67] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f130e68] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f130e69] [cursor=pointer]: google-analytics-setup
+  - list [ref=f130e71]:
+    - listitem [ref=f130e72]:
+      - link "Hide »" [ref=f130e73] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e74]:
+      - link "Toggle Theme" [ref=f130e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e78]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e79] [cursor=pointer]
+      - link "History /courses/qa-free-course-self-registration/detail/" [ref=f130e80] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e81]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e82] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f130e83] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e84]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e85] [cursor=pointer]
+      - 'link "Time CPU: 77.56ms (119.74ms)" [ref=f130e86] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f130e87]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e88] [cursor=pointer]
+      - link "Settings" [ref=f130e89] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e90]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e91] [cursor=pointer]
+      - link "Headers" [ref=f130e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e93]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e94] [cursor=pointer]
+      - link "Request course_detail" [ref=f130e95] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e96]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e97] [cursor=pointer]
+      - link "SQL 26 queries in 48.39ms" [ref=f130e98] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e99]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e100] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f130e101] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e102]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e103] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f130e104] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e105]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e106] [cursor=pointer]
+      - link "Alerts" [ref=f130e107] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e108]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e109] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f130e110] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e111]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e112] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f130e113] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e114]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f130e115] [cursor=pointer]
+      - link "Community" [ref=f130e116] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f130e117]:
+      - checkbox "Enable for next and successive requests" [ref=f130e118] [cursor=pointer]
+      - generic [ref=f130e119]: Intercept redirects
+    - listitem [ref=f130e120]:
+      - checkbox "Enable for next and successive requests" [ref=f130e121] [cursor=pointer]
+      - generic [ref=f130e122]: Profiling
