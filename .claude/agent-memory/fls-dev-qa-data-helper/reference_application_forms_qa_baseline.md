@@ -86,3 +86,44 @@ Learner course URL is `/courses/<slug>/` (resume) and `/courses/<slug>/<1-based 
 [[reference_withdrawing_a_course_application]] documents it, but the source file was deleted with
 the sdd work-file cleanup (only a stale `.pyc` survives in `__pycache__`). Do not go looking for
 it — `qa_create_application_review_accounts` covers the same teardown for these three personas.
+
+## Addendum: verified on `google-analytics-setup`, Sep 19 2026 (read-only lookup)
+
+DemoDev on this worktree is Site **id 3, domain `127.0.0.1:8000`** (not `:8324` as above — the
+domain differs per worktree, so re-read it rather than trusting this file).
+
+**No demo course title contains "By application."** Callers ask for the gated course by that
+phrase, but the stored title is `Functionality Demo - Application gated course`. Match on
+`access_config["access_type"] == "application_gated"` instead of on the title.
+
+The two gated courses on THIS branch (the `advanced-product-analytics-masterclass` row named in
+the table above is not present here):
+
+| slug | pk | title | `application_form` |
+|---|---|---|---|
+| `functionality-demo-application-gated-course` | `271eeb30-94db-4261-b409-19888b0ead7d` | Functionality Demo - Application gated course | `Application form` `c974f518-5dc3-44d5-b00d-505f38b35e60` |
+| `qa-application-gated-course-no-form` | `be764892-91a9-4ee1-af10-d09b6c8312c2` | QA Application-Gated Course (No Form) | **None** |
+
+### Shape of `Application form` (slug `application-form`, strategy `UNSCORED`, `submit_on_exit=False`)
+
+3 pages, 13 questions, **9 required**:
+
+- p0 "About you" (9 q): required = full name (short_text), DOB (date), email (email),
+  years writing software (number), how did you hear (multiple_choice);
+  optional = phone, portfolio url, interests (checkboxes), why this course (long_text).
+- p1 "Supporting documents" (2 q): required = ID/certificate (**file_upload**);
+  optional = anything else (long_text).
+- p2 "Availability" (2 q): required = preferred time (time), time zone (dropdown).
+
+The required `file_upload` on p1 is the notable one — an applicant cannot complete the sitting
+without attaching a file, so any "submitted application" fixture needs a real upload.
+
+`FormQuestion.required` defaults to **True**; `FormPage`/`FormQuestion` reach via
+`FormPage._base_manager.filter(form=f)` / `FormQuestion._base_manager.filter(form_page=p)`,
+both ordered by `order` (1-based in this fixture).
+
+### QA personas
+
+`qa-learner-b@email.com` is **pk 70, site 3**. On this pass it had **zero** `CourseApplication`
+rows on any course — as did the gated course itself (zero applications from anyone, so the
+`demodev@email.com` leftover noted above is gone on this branch). Confirm before assuming residue.
