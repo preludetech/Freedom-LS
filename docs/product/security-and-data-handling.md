@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-09-23_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -10,6 +10,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Security gates run on every commit — secret and private-key detection, a Python security linter, linting, formatting, type checking, and shell linting. CI additionally runs dependency and static-analysis scans plus Django's own deployment checks.
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
+- **Built:** Google Analytics 4 and, optionally, Google Ads run in the visitor's browser once configured. Signed-in visitors are identified by account ID only, and the tag defaults to consent-denied for EEA, UK and Swiss visitors. No consent banner ships. See [analytics and advertising](#analytics-and-advertising-google-analytics-4-google-ads).
 - **Built:** Cohort progress reports are downloaded only through a permission-checked view, never a public media URL. Generating and downloading one both require the requesting staff user to be authorised to see that cohort; staff status alone is not enough.
 - **Built:** A document an applicant uploads with a course application is downloaded only through a permission-checked view, never a storage URL, whether by the applicant or by a superuser in the admin. Application answers and files are visible to superusers only.
 - **Not yet built:** FLS runs no malware or content scanning on documents applicants upload; a reviewer downloads exactly what was attached, PDF contents included. See [applicant uploads](#applicant-uploads-built).
@@ -149,6 +150,12 @@ This section applies only to a deployment that has set `EMAIL_BACKEND` to the qu
 FLS can report application errors to Sentry once an operator supplies credentials; until then it does nothing. Because FLS holds learner personal data, an error report can incidentally include it — the email of the learner who triggered the error, or the contents of the offending request.
 
 This is **off by default**: attaching personal data to error reports requires a deliberate opt-in. Left at its default, reports omit it. Automated redaction before events leave the application is **not yet built**, so a deployment that opts in should treat Sentry as a place that data now lives, with no scrubbing safety net. See [deployment](./deployment.md) for configuration.
+
+### Analytics and Advertising (Google Analytics 4, Google Ads)
+
+When configured, FLS sends browsing and course-funnel activity to Google Analytics 4, and optionally Google Ads, directly from the visitor's browser, so that data is held by Google outside South Africa. A signed-in visitor is identified only by their numeric account ID. No email address, name or phone number reaches Google, and no event parameter carries personal data. Neither snippet loads on the email-confirmation or password-reset pages, whose URLs carry a one-time token. Nothing is sent until a measurement ID is configured.
+
+**Consent.** FLS ships no consent banner. For visitors in the EEA, the UK and Switzerland, where Google's own consent policy applies, the tag defaults Google Consent Mode to denied. A deployment serving those visitors adds its own banner to grant consent. See [deployment](./deployment.md) for configuration.
 
 ### Consent Audit Trail
 

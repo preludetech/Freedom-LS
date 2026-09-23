@@ -1,8 +1,10 @@
-# Google Analytics 4 and Google Ads: platform setup
+# Google Analytics 4 and Google Ads
 
-This is the source of truth for how GA4 and Google Ads are configured for an FLS deployment. Follow
-it top to bottom. Every setting has a value, so nothing is left to decide. It assumes you know your
-way around both platforms, so it lists what to set, not where to click.
+This is the source of truth for how GA4 and Google Ads are configured for an FLS deployment.
+Sections 1 to 5 are for whoever sets up the Google platforms. Follow them top to bottom. Every
+setting has a value, so nothing is left to decide. They assume you know your way around both
+platforms, so they list what to set, not where to click. Section 6 is for developers of a concrete
+project.
 
 If something here turns out to be wrong, fix it in this file first, then on the platforms.
 
@@ -209,3 +211,57 @@ event appears once with the parameters in the first table, and `user_id` appears
 Tag Assistant, `sign_up` and `course_registered` each carry a `conversion` event with the matching
 `send_to`. Within a few hours the Ads tag conversion actions move to "Recording conversions". The
 two imported ones follow within about a day.
+
+## 6. For developers of a concrete project
+
+**Turning it off.** A project that wants neither GA4 nor Google Ads leaves `freedom_ls.google_tag`
+out of `INSTALLED_APPS` and drops its context processor. Events FLS's views record are then
+discarded.
+
+**Lead forms.** FLS ships no lead form. A project's form view records `generate_lead` after the form
+validates and saves:
+
+```python
+from freedom_ls.google_tag.events import (
+    GoogleAnalyticsEvent,
+    record_google_analytics_event,
+)
+
+record_google_analytics_event(
+    request, GoogleAnalyticsEvent.GENERATE_LEAD, {"lead_form": "call_me_back"}
+)
+```
+
+The next page the visitor sees sends it. The function takes any event name as a string and raises
+`ValueError` for a name or parameter GA4 would reject. Send the form's name, never anything the
+visitor typed. A form that belongs to one course adds `course_event_params(course)` from
+`freedom_ls.course_access.google_analytics`, so its leads line up with the course funnel.
+
+**Landing pages.** GA4 already records the first page of every session as its landing page, so a
+landing page needs no event. To tell marketing landing pages apart from other first pages, the
+landing page template overrides one block from `_base.html`:
+
+```django
+{% block google_analytics %}
+    {% include "partials/google_analytics.html" with content_group="landing_page" %}
+{% endblock %}
+```
+
+Every event from that page, `page_view` included, then carries the content group. Link onward from a
+landing page with ordinary full-page links. The content group is set once per full page load, so
+after a boosted navigation it would stick to the pages that follow. See also
+[landing pages](./landing-pages.md).
+
+**Pages that don't extend `_base.html`.** Include `partials/google_analytics.html` (and
+`partials/posthog.html` for PostHog) in the `<head>`, and `partials/google_analytics_events.html`
+directly before `</body>`. Without the events partial, an event recorded by the page's view waits in
+the session and fires on the next FLS page instead.
+
+**Campaign links.** GA4 reads `utm_*` tags from the landing URL. [Referral links](../product/referral-codes.md)
+pass the visitor's query string through to the destination, so tags on the short link reach GA4.
+GA4 ignores the referral code itself. A referral link with no `utm_*` tags shows up as direct
+traffic.
+
+**Consent.** The tag denies Consent Mode by default for the EEA, the UK and Switzerland. FLS ships no
+banner. A project that adds one replaces the `analytics_enabled` context processor with its own and
+calls `gtag('consent', 'update', …)` when a visitor accepts.
