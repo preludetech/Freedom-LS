@@ -8,6 +8,7 @@ from django.test import override_settings
 from freedom_ls.deployment.checks import (
     check_client_ip_headers_agree,
     check_database_cache_tables_exist,
+    check_google_ads_rides_on_google_analytics,
     check_media_aliases_name_their_own_bucket,
     check_media_aliases_not_on_local_disk,
     check_media_aliases_not_shared_with_default,
@@ -65,6 +66,70 @@ def test_dsn_unset_and_release_unset_returns_no_warnings() -> None:
 @override_settings(SENTRY_DSN=None, SENTRY_RELEASE="fls@1.2.3")
 def test_dsn_unset_and_release_set_returns_no_warnings() -> None:
     warnings = check_sentry_release_set_when_dsn_set(None)
+
+    assert warnings == []
+
+
+def test_google_ads_check_is_registered_via_app_ready() -> None:
+    assert (
+        check_google_ads_rides_on_google_analytics
+        in registry.registry.registered_checks
+    )
+
+
+@override_settings(
+    GOOGLE_ADS_CONVERSION_ID="AW-1",
+    GOOGLE_ANALYTICS_MEASUREMENT_ID=None,
+    GOOGLE_ADS_CONVERSION_LABELS={},
+)
+def test_ads_id_without_measurement_id_returns_w002() -> None:
+    warnings = check_google_ads_rides_on_google_analytics(None)
+
+    assert [warning.id for warning in warnings] == ["freedom_ls_deployment.W002"]
+
+
+@override_settings(
+    GOOGLE_ADS_CONVERSION_ID=None,
+    GOOGLE_ANALYTICS_MEASUREMENT_ID="G-1",
+    GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "abc"},
+)
+def test_labels_without_ads_id_returns_w003() -> None:
+    warnings = check_google_ads_rides_on_google_analytics(None)
+
+    assert [warning.id for warning in warnings] == ["freedom_ls_deployment.W003"]
+
+
+@override_settings(
+    GOOGLE_ADS_CONVERSION_ID=None,
+    GOOGLE_ANALYTICS_MEASUREMENT_ID=None,
+    GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "abc"},
+)
+def test_labels_alone_report_only_the_missing_ads_id() -> None:
+    # W002 is about an Ads ID that cannot load; with no Ads ID there is nothing
+    # for it to say, so only the labels are reported.
+    warnings = check_google_ads_rides_on_google_analytics(None)
+
+    assert [warning.id for warning in warnings] == ["freedom_ls_deployment.W003"]
+
+
+@override_settings(
+    GOOGLE_ADS_CONVERSION_ID="AW-1",
+    GOOGLE_ANALYTICS_MEASUREMENT_ID="G-1",
+    GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "abc"},
+)
+def test_complete_google_ads_configuration_returns_no_warnings() -> None:
+    warnings = check_google_ads_rides_on_google_analytics(None)
+
+    assert warnings == []
+
+
+@override_settings(
+    GOOGLE_ADS_CONVERSION_ID=None,
+    GOOGLE_ANALYTICS_MEASUREMENT_ID="G-1",
+    GOOGLE_ADS_CONVERSION_LABELS={},
+)
+def test_no_google_ads_configuration_returns_no_warnings() -> None:
+    warnings = check_google_ads_rides_on_google_analytics(None)
 
     assert warnings == []
 

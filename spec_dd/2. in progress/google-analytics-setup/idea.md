@@ -86,6 +86,40 @@ What does go with this work:
 - **CSP.** Add GA4's domains and PostHog's domains to `SECURE_CSP_REPORT_ONLY`. Neither is listed
   today, and both must be listed before the policy can move to enforcing mode.
 
+## Google Ads
+
+Added 2026-09-23. The deployment also runs Google Ads, and Google's snippet for a site with both is
+the GA4 one plus a second config line:
+
+```
+gtag('config', 'G-XXXXXXX');
+gtag('config', 'AW-XXXXXXXXX');
+```
+
+So Google Ads is a second setting, `GOOGLE_ADS_CONVERSION_ID`, rendered as that line. It shares the
+GA4 loader, so with no measurement ID nothing loads, Ads included, and a system check warns about an
+Ads ID on its own. It is off wherever GA4 is off, token-bearing pages included.
+
+Conversions reach Google Ads two ways, and FLS supports both:
+
+- **Import GA4 key events into Ads.** This is the direction the import runs; nothing imports from
+  Ads into GA4. Link the accounts, turn on auto-tagging, and in GA4 create Ads conversions from the
+  key events. No event code changes. Ads cannot see view-through conversions this way and Smart
+  Bidding gets the data a day or more late.
+- **Native Ads conversions.** `gtag('event', 'conversion', {send_to: 'AW-ID/LABEL'})` at the moment,
+  where the label names one conversion action in the Ads account. One setting,
+  `GOOGLE_ADS_CONVERSION_LABELS`, maps event names to labels
+  (`sign_up=AbCdEf,course_registered=GhIjKl`). A mapped event sends the conversion in the same
+  script as its GA4 event, so it fires once, wherever the GA4 event fires. An unmapped event sends
+  nothing extra. With no labels the behaviour is the import route.
+
+When both report the same moment, Ads marks the imported one secondary, so nothing double-counts.
+
+Ad-personalisation signals stay at Google's default, on. The privacy policy names Google Ads and
+links Google's ads settings for opting out of personalised adverts. The CSP gains Google's Ads
+hosts, including `www.google.co.za`, because Google calls `www.google.<TLD>` per country and CSP
+cannot wildcard that.
+
 ## Operator setup
 
 These GA4 property settings are the operator's job and belong in `docs/product/deployment.md` next to

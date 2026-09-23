@@ -1,6 +1,6 @@
 # Deployment
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-09-23_
 
 ## Summary
 
@@ -28,6 +28,7 @@ Built into the application and present regardless of deployment configuration:
 - **Database-backed cache** — production runs a small database-backed cache, which is what lets the login and signup rate limits hold across restarts and across worker processes instead of resetting with each one. Its table is created by `manage.py createcachetable` in the deploy sequence; a deployment check fails when that step was missed, rather than letting the gap surface later as an error on the login page.
 - **Error tracking (Sentry)** — configured by supplying a DSN, and a complete no-op until one is set, so development and unconfigured deployments send nothing. Once configured it tags events with the deployment's environment and release. Attaching learner personal data is an explicit opt-in, off by default. A staff-only endpoint lets an operator confirm a running deployment is actually reaching Sentry. If a DSN is set but the release identifier is left blank, a non-blocking deployment warning surfaces at boot and in CI, so untagged events are caught rather than quietly degrading release tracking.
 - **Analytics (Google Analytics 4)** — a client-side snippet configured by `GOOGLE_ANALYTICS_MEASUREMENT_ID`. With no ID set nothing loads and nothing is sent. Signed-in sessions carry the numeric account ID as `user_id`, never an email address. Neither analytics snippet loads on the email-confirmation or password-reset pages, whose URLs carry one-time tokens. The GA4 property needs one-off setup before its reports are useful. See [Google Analytics 4 setup](#google-analytics-4-setup).
+- **Advertising measurement (Google Ads)** — the same tag, given a Google Ads conversion ID, also reports to Google Ads. Conversions reach Ads either by importing GA4 key events, which needs no further configuration, or as native Ads conversions for the events an operator maps to conversion labels. Google Ads needs GA4 configured; a deployment warning flags an Ads ID on its own. See [Google Ads](#google-ads).
 - **Analytics (PostHog)** — a client-side snippet configured by project token and region host. With no token set the snippet does not render, so development deployments send nothing.
 - **Environment-variable configuration** — all secrets and deployment-specific settings are supplied by environment variable, with sensible in-repo defaults where one makes sense, so a deployment configures these services without copy-pasting settings code. No credentials are hardcoded. Database connection SSL mode is configurable and defaults to *preferred*, which suits a same-host containerised PostgreSQL; stricter modes are for external or managed databases. Persistent database connections are enabled with health checking, so a connection left stale by a database restart is recycled rather than failing the next request. A missing `SECRET_KEY` — or a missing `WEBHOOK_ENCRYPTION_SALT` — fails the application at startup as a visible crash-loop rather than booting into a silently broken state. See [security and data handling](./security-and-data-handling.md).
 - **HTTPS detection behind a reverse proxy** — production trusts the proxy's forwarded scheme, so requests that reached the proxy over HTTPS are correctly recognised as secure. This is what makes the HTTPS redirect and HSTS work behind a proxy instead of looping. See [security and data handling](./security-and-data-handling.md) for the trust preconditions.
@@ -85,6 +86,20 @@ The next page the visitor sees sends it. The function takes any event name as a 
 Every event from that page, `page_view` included, then carries that content group. It is a predefined GA4 dimension and needs no registration. Link onward from a landing page with ordinary full-page links. The value is set once per full page load, so after a boosted navigation it would stick to the pages that follow.
 
 **Campaign links.** GA4 reads `utm_*` tags from the landing URL. [Referral links](./referral-codes.md) pass the visitor's query string through to the destination, so tags on the short link reach GA4. GA4 ignores the referral code itself. A referral link with no `utm_*` tags shows up as direct traffic.
+
+### Google Ads
+
+Setting `GOOGLE_ADS_CONVERSION_ID` to the account's `AW-` ID adds Google Ads as a second destination of the tag GA4 already loads. Ads then sets its click and conversion cookies on every page and can build remarketing audiences. It loads through the GA4 tag, so it needs `GOOGLE_ANALYTICS_MEASUREMENT_ID` as well; an Ads ID on its own produces deployment warning `freedom_ls_deployment.W002` and loads nothing. The Ads tag is off wherever the GA4 tag is off, including the two token-bearing pages.
+
+Conversions can reach Google Ads two ways. They are not exclusive.
+
+**Import GA4 key events.** Link the GA4 property to the Ads account, turn on auto-tagging in Ads, then in GA4 open Advertising, Conversion management, New conversion, and pick the key events from the table above. Nothing in FLS changes. Ads cannot see view-through conversions this way, and imported conversions reach Smart Bidding a day or more after the event.
+
+**Native Ads conversions.** In Google Ads open Goals, Conversions, New conversion action, Website, and add the action manually. Its tag snippet ends in `send_to: 'AW-XXXXXXXXX/LABEL'`; the part after the slash is the label. Map event names to labels in `GOOGLE_ADS_CONVERSION_LABELS`, for example `sign_up=AbCdEfGhIj,course_registered=KlMnOpQrSt`. A mapped event then sends `gtag('event', 'conversion', {send_to: ...})` in the same script as its GA4 event, so the two fire together, once, wherever the GA4 event fires. An event with no label sends no conversion. Labels without an Ads ID produce warning `freedom_ls_deployment.W003`. Any event name works as a key, including a downstream project's own events, so a lead form can report `generate_lead` to Ads the same way. A malformed entry fails the application at boot.
+
+When both routes report the same moment, Ads marks the imported GA4 conversion "secondary" so it counts once for bidding. Native conversions arrive within hours and support view-through conversions, so use them as the primary conversion where the Ads campaigns include Display or YouTube.
+
+The report-only CSP names Google's Ads hosts. Google also calls `www.google.<country TLD>` for the visitor's country and CSP has no way to wildcard that, so FLS lists `www.google.co.za`; a deployment serving other countries adds theirs.
 
 ## Operator Responsibilities
 

@@ -38,3 +38,36 @@ def test_csp_report_only_header_names_ga4_and_posthog_hosts(
     assert "https://*.analytics.google.com" in directives["connect-src"]
     assert "https://www.googletagmanager.com" in directives["connect-src"]
     assert "https://*.i.posthog.com" in directives["connect-src"]
+
+
+@pytest.mark.django_db
+def test_csp_report_only_header_names_google_ads_hosts(
+    client: Client, mock_site_context: None
+) -> None:
+    """The report-only policy allows the hosts Google Ads conversion tracking talks to."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+
+    directives = dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+    assert "https://www.googleadservices.com" in directives["script-src"]
+    assert "https://www.google.com" in directives["script-src"]
+
+    assert "https://www.googleadservices.com" in directives["img-src"]
+    assert "https://googleads.g.doubleclick.net" in directives["img-src"]
+    assert "https://pagead2.googlesyndication.com" in directives["img-src"]
+    assert "https://www.google.com" in directives["img-src"]
+    assert "https://www.google.co.za" in directives["img-src"]
+
+    assert "https://www.googleadservices.com" in directives["connect-src"]
+    assert "https://googleads.g.doubleclick.net" in directives["connect-src"]
+    assert "https://pagead2.googlesyndication.com" in directives["connect-src"]
+    assert "https://www.google.com" in directives["connect-src"]
+    assert "https://www.google.co.za" in directives["connect-src"]
+    assert "https://ad.doubleclick.net" in directives["connect-src"]
+
+    assert "https://www.googletagmanager.com" in directives["frame-src"]

@@ -105,6 +105,12 @@
             event the page sends, page_view included.
             {% endcomment %}
             gtag('config', '{{ google_analytics_measurement_id|escapejs }}', { {% if user.is_authenticated %}user_id: '{{ user.pk }}', {% endif %}{% block google_analytics_config_params %}{% endblock google_analytics_config_params %} });
+            {% comment %}
+            Google Ads shares the loader above and only needs its own config
+            call. The conversions for mapped events are sent from
+            partials/google_analytics_events.html beside the GA4 event.
+            {% endcomment %}
+            {% if google_ads_conversion_id %}gtag('config', '{{ google_ads_conversion_id|escapejs }}');{% endif %}
             </script>
         {% endif %}
 

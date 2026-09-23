@@ -1,8 +1,8 @@
 ---
-version: "1.1"
+version: "1.2"
 title: "Privacy Policy"
 type: "privacy"
-effective_date: "2026-09-18"
+effective_date: "2026-09-23"
 ---
 
 **This is a placeholder privacy policy shipped as the FreedomLS default. Replace it with your own legal copy before going live.**
@@ -32,12 +32,17 @@ This platform can load Google Analytics 4 and PostHog. Each one loads only when 
 
 Neither service receives your email address, name, or phone number.
 
+### Advertising measurement
+
+This platform can also load Google Ads. It loads only when the site operator has configured it. When active, Google Ads records whether a visit that started from one of the operator's adverts went on to create an account or register for a course, and may use advertising cookies to show you the operator's adverts on other sites. Google Ads receives no email address, name, or phone number from this platform.
+
 ## 2. How we use your data
 
 - To operate the platform and deliver the educational content you have signed up for.
 - To communicate with you about your account.
 - To maintain a defensible record of your consent to these legal documents.
 - To measure how the site is used.
+- To measure whether the operator's advertising leads to sign-ups and course registrations.
 
 ## 3. Retention
 
@@ -49,11 +54,11 @@ Other personal data is retained only as long as needed to operate the service an
 
 Depending on your jurisdiction, you may have rights to access, correct, export or erase the personal data we hold about you. Contact the site operator to exercise these rights.
 
-You can opt out of Google Analytics tracking with [Google's opt-out browser add-on](https://tools.google.com/dlpage/gaoptout), or by contacting the site operator to ask that usage analytics be turned off.
+You can opt out of Google Analytics tracking with [Google's opt-out browser add-on](https://tools.google.com/dlpage/gaoptout), or by contacting the site operator to ask that usage analytics be turned off. You can turn off personalised adverts from Google in [Google's ads settings](https://adssettings.google.com).
 
 ## 5. Sharing
 
-We do not sell your personal data. We share it only with service providers that the platform relies on to operate, and only to the extent needed for them to provide their service, for example Google Analytics 4 and PostHog when the site operator has enabled them.
+We do not sell your personal data. We share it only with service providers that the platform relies on to operate, and only to the extent needed for them to provide their service, for example Google Analytics 4, Google Ads and PostHog when the site operator has enabled them.
 
 ## 6. Changes to this policy
 

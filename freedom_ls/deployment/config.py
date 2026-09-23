@@ -8,6 +8,8 @@ class DeploymentSettings(AppSettings):
     POSTHOG_API_HOST: str
     POSTHOG_UI_HOST: str | None
     GOOGLE_ANALYTICS_MEASUREMENT_ID: str | None
+    GOOGLE_ADS_CONVERSION_ID: str | None
+    GOOGLE_ADS_CONVERSION_LABELS: dict[str, str]
     SENTRY_DSN: str | None
     SENTRY_ENVIRONMENT: str | None
     SENTRY_RELEASE: str | None
@@ -30,6 +32,11 @@ class DeploymentSettings(AppSettings):
         # Google Analytics 4: the client-side snippet (context processor +
         # _base.html) reads this. Unset means nothing loads.
         "GOOGLE_ANALYTICS_MEASUREMENT_ID": Setting(default=None),
+        # Google Ads: rides on the GA4 loader, so it needs the measurement ID
+        # too. Labels map an event name to the conversion action it reports;
+        # an event with no label sends no conversion.
+        "GOOGLE_ADS_CONVERSION_ID": Setting(default=None),
+        "GOOGLE_ADS_CONVERSION_LABELS": Setting(default={}),
         # Sentry: read by init_sentry() in AppConfig.ready().
         "SENTRY_DSN": Setting(default=None),
         "SENTRY_ENVIRONMENT": Setting(default=None),

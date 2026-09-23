@@ -12,9 +12,13 @@ fires at the swap and does not wait in the session for the next full page.
 Each script removes itself once it has run, so htmx's history snapshot of the
 page (taken after scripts run) does not carry it. Without that, a Back
 navigation to a cached snapshot would fire the event again.
+
+An event mapped to a Google Ads conversion label sends that conversion in the
+same script, so the two calls share one lifetime: both fire at the swap, and
+both are gone from the snapshot.
 {% endcomment %}
 {% if analytics_enabled and google_analytics_measurement_id %}
     {% for event in google_analytics_events %}
-        <script>gtag('event', '{{ event.name|escapejs }}', {{ event.params|inline_script_json }}); document.currentScript.remove();</script>
+        <script>gtag('event', '{{ event.name|escapejs }}', {{ event.params|inline_script_json }});{% if event.send_to %} gtag('event', 'conversion', {send_to: '{{ event.send_to|escapejs }}'});{% endif %} document.currentScript.remove();</script>
     {% endfor %}
 {% endif %}

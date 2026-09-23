@@ -23,6 +23,7 @@ from django.utils.csp import (
 from freedom_ls.base.env import env_bool, env_float
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
+from freedom_ls.deployment.google_ads import parse_conversion_labels
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -483,12 +484,20 @@ WEBHOOK_EVENT_TYPES = FLS_WEBHOOK_EVENT_TYPES
 # ingestion host (e.g. us.i.posthog.com) and the assets host its snippet derives
 # from that (e.g. us-assets.i.posthog.com). A reverse-proxied PostHog needs its
 # own host added by the deployment that proxies it.
+#
+# googleadservices.com, googleads.g.doubleclick.net, pagead2.googlesyndication.com,
+# ad.doubleclick.net and www.google.com are Google Ads' conversion and remarketing
+# hosts. Google also calls www.google.<country TLD> for the visitor's country, and
+# CSP cannot wildcard the right-hand side of a host, so each TLD is listed by
+# hand: co.za here, and a deployment serving other countries adds its own.
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
     "script-src": [
         CSP.SELF,
         CSP.UNSAFE_INLINE,
         "https://www.googletagmanager.com",
+        "https://www.googleadservices.com",
+        "https://www.google.com",
         "https://*.i.posthog.com",
     ],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
@@ -497,16 +506,28 @@ SECURE_CSP_REPORT_ONLY = {
         "data:",
         "https://*.google-analytics.com",
         "https://www.googletagmanager.com",
+        "https://www.googleadservices.com",
+        "https://googleads.g.doubleclick.net",
+        "https://pagead2.googlesyndication.com",
+        "https://www.google.com",
+        "https://www.google.co.za",
     ],
     "connect-src": [
         CSP.SELF,
         "https://*.google-analytics.com",
         "https://*.analytics.google.com",
         "https://www.googletagmanager.com",
+        "https://www.googleadservices.com",
+        "https://googleads.g.doubleclick.net",
+        "https://pagead2.googlesyndication.com",
+        "https://ad.doubleclick.net",
+        "https://www.google.com",
+        "https://www.google.co.za",
         "https://*.i.posthog.com",
     ],
     "frame-src": [
         CSP.SELF,
+        "https://www.googletagmanager.com",
         "https://www.youtube.com",
         "https://www.youtube-nocookie.com",
     ],
@@ -559,11 +580,16 @@ if not _webhook_salt:
     ).decode()
 SALT_KEY = _webhook_salt
 
-# PostHog / Google Analytics / Sentry (resolved through freedom_ls.deployment.config)
+# PostHog / Google Analytics / Google Ads / Sentry (resolved through
+# freedom_ls.deployment.config)
 POSTHOG_API_KEY = os.environ.get("POSTHOG_API_KEY")
 POSTHOG_API_HOST = os.environ.get("POSTHOG_API_HOST")
 POSTHOG_UI_HOST = os.environ.get("POSTHOG_UI_HOST")
 GOOGLE_ANALYTICS_MEASUREMENT_ID = os.environ.get("GOOGLE_ANALYTICS_MEASUREMENT_ID")
+GOOGLE_ADS_CONVERSION_ID = os.environ.get("GOOGLE_ADS_CONVERSION_ID")
+GOOGLE_ADS_CONVERSION_LABELS = parse_conversion_labels(
+    os.environ.get("GOOGLE_ADS_CONVERSION_LABELS", "")
+)
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT")
 SENTRY_RELEASE = os.environ.get("SENTRY_RELEASE")

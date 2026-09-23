@@ -11,6 +11,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.deployment.context_processors import (
+    PendingGoogleAnalyticsEvent,
     analytics_enabled,
     google_analytics_config,
     posthog_config,
@@ -19,12 +20,23 @@ from freedom_ls.learner_management.factories import LearnerCourseRegistrationFac
 
 _PENDING_SIGN_UP = {"name": "sign_up", "params": {"method": "email"}}
 _SIGN_UP_SCRIPT = """gtag('event', 'sign_up', {"method": "email"})"""
+_SIGN_UP_CONVERSION_SCRIPT = (
+    f"{_SIGN_UP_SCRIPT}; gtag('event', 'conversion', "
+    f"{{send_to: '{escapejs('AW-TEST/QAsignup')}'}});"
+)
 
 
 def _request_with_session(path: str = "/") -> HttpRequest:
     request = RequestFactory().get(path)
     SessionMiddleware(lambda r: HttpResponse()).process_request(request)
     return request
+
+
+def _pending_events(request: HttpRequest) -> list[PendingGoogleAnalyticsEvent]:
+    """Resolve the lazy `google_analytics_events` value the way a template would."""
+    events = google_analytics_config(request)["google_analytics_events"]
+    assert callable(events)
+    return events()
 
 
 class TestPosthogConfig:
@@ -171,6 +183,72 @@ class TestGoogleAnalyticsConfig:
 
         assert "google_analytics_events" not in request.session
 
+    @override_settings(GOOGLE_ADS_CONVERSION_ID="AW-TEST")
+    def test_returns_configured_google_ads_conversion_id(self) -> None:
+        request = _request_with_session()
+
+        result = google_analytics_config(request)
+
+        assert result["google_ads_conversion_id"] == "AW-TEST"
+
+    @override_settings(GOOGLE_ADS_CONVERSION_ID=None)
+    def test_returns_none_google_ads_conversion_id_when_unset(self) -> None:
+        request = _request_with_session()
+
+        result = google_analytics_config(request)
+
+        assert result["google_ads_conversion_id"] is None
+
+
+class TestGoogleAnalyticsConfigPendingEvents:
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST",
+        GOOGLE_ADS_CONVERSION_ID="AW-TEST",
+        GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "QAsignup"},
+    )
+    def test_a_mapped_event_carries_its_send_to(self) -> None:
+        request = _request_with_session()
+        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+
+        events = _pending_events(request)
+
+        assert events == [{**_PENDING_SIGN_UP, "send_to": "AW-TEST/QAsignup"}]
+
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST",
+        GOOGLE_ADS_CONVERSION_ID="AW-TEST",
+        GOOGLE_ADS_CONVERSION_LABELS={"course_registered": "QAregistered"},
+    )
+    def test_an_unmapped_event_has_no_send_to(self) -> None:
+        request = _request_with_session()
+        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+
+        events = _pending_events(request)
+
+        assert events == [{**_PENDING_SIGN_UP, "send_to": None}]
+
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST",
+        GOOGLE_ADS_CONVERSION_ID=None,
+        GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "QAsignup"},
+    )
+    def test_a_label_without_a_conversion_id_gives_no_send_to(self) -> None:
+        request = _request_with_session()
+        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+
+        events = _pending_events(request)
+
+        assert events == [{**_PENDING_SIGN_UP, "send_to": None}]
+
+    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    def test_popping_empties_the_session(self) -> None:
+        request = _request_with_session()
+        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+
+        _pending_events(request)
+
+        assert "google_analytics_events" not in request.session
+
 
 @pytest.mark.django_db
 class TestGoogleAnalyticsSnippetRendering:
@@ -227,6 +305,58 @@ class TestGoogleAnalyticsSnippetRendering:
 
         content = response.content.decode()
         assert "googletagmanager.com" not in content
+
+
+@pytest.mark.django_db
+class TestGoogleAdsSnippetRendering:
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST", GOOGLE_ADS_CONVERSION_ID="AW-TEST"
+    )
+    def test_ads_config_call_renders_after_the_analytics_one(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        response = client.get("/")
+
+        content = response.content.decode()
+        analytics_config = content.index(f"gtag('config', '{escapejs('G-TEST')}'")
+        ads_config = content.index(f"gtag('config', '{escapejs('AW-TEST')}');")
+        assert analytics_config < ads_config
+
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST", GOOGLE_ADS_CONVERSION_ID=None
+    )
+    def test_no_ads_config_call_when_conversion_id_unset(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        response = client.get("/")
+
+        content = response.content.decode()
+        assert "AW-" not in content
+        assert "gtag('config'" in content
+
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID=None, GOOGLE_ADS_CONVERSION_ID="AW-TEST"
+    )
+    def test_nothing_renders_without_a_measurement_id(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        # The Ads tag rides on the GA4 loader; alone it loads nothing.
+        response = client.get("/")
+
+        content = response.content.decode()
+        assert "googletagmanager.com" not in content
+        assert "AW-" not in content
+
+    @override_settings(
+        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST", GOOGLE_ADS_CONVERSION_ID="AW-TEST"
+    )
+    def test_nothing_renders_on_a_token_bearing_page(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        response = client.get(reverse("account_confirm_email", args=["some-key"]))
+
+        content = response.content.decode()
+        assert "AW-" not in content
 
 
 @pytest.fixture
@@ -346,6 +476,111 @@ class TestGoogleAnalyticsEventsPartial:
         # the opening tag of #interface-main, the only region a boosted
         # course-player navigation keeps.
         assert content.index('id="interface-main"') < content.index(_SIGN_UP_SCRIPT)
+
+
+_ADS_SETTINGS = {
+    "GOOGLE_ANALYTICS_MEASUREMENT_ID": "G-TEST",
+    "GOOGLE_ADS_CONVERSION_ID": "AW-TEST",
+    "GOOGLE_ADS_CONVERSION_LABELS": {"sign_up": "QAsignup"},
+}
+
+
+@pytest.mark.django_db
+class TestGoogleAdsConversionRendering:
+    @override_settings(**_ADS_SETTINGS)
+    def test_a_mapped_event_sends_the_conversion_in_the_same_script(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+
+        response = client.get("/")
+
+        assert _SIGN_UP_CONVERSION_SCRIPT in response.content.decode()
+
+    @override_settings(**_ADS_SETTINGS)
+    def test_an_unmapped_event_sends_no_conversion(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["google_analytics_events"] = [
+            {"name": "course_started", "params": {"course_slug": "algebra"}}
+        ]
+        session.save()
+
+        response = client.get("/")
+
+        content = response.content.decode()
+        assert (
+            """gtag('event', 'course_started', {"course_slug": "algebra"})""" in content
+        )
+        assert "'conversion'" not in content
+
+    @override_settings(**{**_ADS_SETTINGS, "GOOGLE_ADS_CONVERSION_ID": None})
+    def test_a_label_without_a_conversion_id_sends_no_conversion(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+
+        response = client.get("/")
+
+        content = response.content.decode()
+        assert _SIGN_UP_SCRIPT in content
+        assert "'conversion'" not in content
+
+    @override_settings(**_ADS_SETTINGS)
+    def test_the_conversion_renders_once_on_a_page_that_extends_base_interface(
+        self,
+        client: Client,
+        course_player_url_and_learner: tuple[str, User],
+    ) -> None:
+        url, user = course_player_url_and_learner
+        client.force_login(user)
+        session = client.session
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+
+        response = client.get(url)
+
+        assert response.content.decode().count(_SIGN_UP_CONVERSION_SCRIPT) == 1
+
+    @override_settings(**_ADS_SETTINGS)
+    def test_a_boosted_request_keeps_the_conversion_inside_interface_main(
+        self,
+        client: Client,
+        course_player_url_and_learner: tuple[str, User],
+    ) -> None:
+        url, user = course_player_url_and_learner
+        client.force_login(user)
+        session = client.session
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+
+        response = client.get(url, HTTP_HX_REQUEST="true")
+
+        content = response.content.decode()
+        assert content.index('id="interface-main"') < content.index(
+            _SIGN_UP_CONVERSION_SCRIPT
+        )
+
+    @override_settings(
+        **{**_ADS_SETTINGS, "GOOGLE_ADS_CONVERSION_LABELS": {"sign_up": "</script><b>"}}
+    )
+    def test_a_label_that_would_close_the_script_element_is_escaped(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+
+        response = client.get("/")
+
+        content = response.content.decode()
+        assert "</script><b>" not in content[content.index("gtag('event'") :]
+        assert f"send_to: '{escapejs('AW-TEST/</script><b>')}'" in content
 
 
 @pytest.mark.django_db

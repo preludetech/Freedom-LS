@@ -8,6 +8,15 @@ from freedom_ls.base.google_analytics import (
     pop_google_analytics_events,
 )
 from freedom_ls.deployment.config import config as deployment_config
+from freedom_ls.deployment.google_ads import conversion_send_to
+
+
+class PendingGoogleAnalyticsEvent(GoogleAnalyticsEventPayload):
+    # The Google Ads conversion this event also reports, or None. Attached at
+    # render time rather than stored with the event, so a label change in the
+    # environment applies to events already waiting in a session.
+    send_to: str | None
+
 
 # allauth's own URL names (allauth/account/urls.py). Each carries a one-time
 # token in the path, so caching or replaying the page must never be assumed
@@ -47,11 +56,24 @@ def posthog_config(_request: HttpRequest) -> dict[str, str | None]:
     }
 
 
+def _pop_pending_events(request: HttpRequest) -> list[PendingGoogleAnalyticsEvent]:
+    conversion_id = deployment_config.GOOGLE_ADS_CONVERSION_ID
+    labels = deployment_config.GOOGLE_ADS_CONVERSION_LABELS
+    return [
+        {
+            "name": event["name"],
+            "params": event["params"],
+            "send_to": conversion_send_to(conversion_id, labels, event["name"]),
+        }
+        for event in pop_google_analytics_events(request)
+    ]
+
+
 def google_analytics_config(
     request: HttpRequest,
-) -> dict[str, str | None | Callable[[], list[GoogleAnalyticsEventPayload]]]:
+) -> dict[str, str | None | Callable[[], list[PendingGoogleAnalyticsEvent]]]:
     """
-    Context processor that provides Google Analytics 4 configuration.
+    Context processor that provides Google Analytics 4 and Google Ads configuration.
 
     `google_analytics_events` is a callable rather than a resolved list: Django
     calls it only when a template first reads the variable, so the events are
@@ -64,9 +86,10 @@ def google_analytics_config(
         request: The current HttpRequest.
 
     Returns:
-        dict: google_analytics_measurement_id resolved through
-        freedom_ls.deployment.config, and google_analytics_events, a callable
-        returning this request's pending one-shot GA4 events.
+        dict: google_analytics_measurement_id and google_ads_conversion_id
+        resolved through freedom_ls.deployment.config, and
+        google_analytics_events, a callable returning this request's pending
+        one-shot GA4 events, each with the Ads conversion it also reports.
     """
     measurement_id = deployment_config.GOOGLE_ANALYTICS_MEASUREMENT_ID
     if measurement_id is None:
@@ -76,5 +99,6 @@ def google_analytics_config(
         pop_google_analytics_events(request)
     return {
         "google_analytics_measurement_id": measurement_id,
-        "google_analytics_events": partial(pop_google_analytics_events, request),
+        "google_ads_conversion_id": deployment_config.GOOGLE_ADS_CONVERSION_ID,
+        "google_analytics_events": partial(_pop_pending_events, request),
     }
