@@ -1,6 +1,8 @@
 # Google Analytics 4 and Google Ads
 
-This is the source of truth for how GA4 and Google Ads are configured for an FLS deployment.
+This is the source of truth for how GA4 and Google Ads are configured for an FLS deployment. The
+deployment operates in South Africa, and the settings below assume South African visitors and
+South Africa-targeted campaigns.
 Sections 1 to 5 are for whoever sets up the Google platforms. Follow them top to bottom. Every
 setting has a value, so nothing is left to decide. They assume you know your way around both
 platforms, so they list what to set, not where to click. Section 6 is for developers of a concrete
@@ -32,8 +34,8 @@ setup.
 Staff and cohort registrations happen away from the learner's browser, so they never produce
 `course_registered`. That funnel step undercounts. `course_started` still covers those learners.
 
-Consent Mode is set in the tag itself: denied for visitors in the EEA, the UK and Switzerland. Nothing
-to configure for it.
+Consent Mode is set in the tag itself: denied for visitors in the EEA, the UK and Switzerland. South
+African visitors are unaffected. Nothing to configure for it.
 
 ## Environments
 
@@ -73,15 +75,13 @@ registered, and it never backfills.
 | Enhanced measurement: Form interactions | Off. It fires on every form, quiz pages included |
 | Enhanced measurement: Scrolls, Outbound clicks, Site search, Video engagement, File downloads | On |
 | Redact data: Email | On |
-| Redact data: Query parameters | On, with no extra parameters listed |
-| Define internal traffic | One rule named `Team`, `traffic_type` = `internal`, IP addresses of the team's office and VPN (the operator supplies the list) |
+| Redact data: Query parameters | Off. It only works with a list of parameters, and no FLS URL puts personal data in a query parameter |
 | List unwanted referrals | Empty |
 
 **Data filters.**
 
 | Filter | State |
 | --- | --- |
-| Internal Traffic | Active |
 | Developer Traffic | Active |
 
 **Custom dimensions.** Register these seven, all event-scoped. The dimension name is the parameter
@@ -98,7 +98,9 @@ name.
 | `lead_form` | Event |
 
 `course_id` never changes. A slug can be renamed, which splits a course's history across two
-`course_slug` values, so report on `course_id` and show `course_slug` beside it for readability.
+`course_slug` values. Where history across a rename matters, use a free-form exploration with `course_id`
+and `course_slug` both as rows.
+
 `method` stays unregistered.
 
 **Created event.** `course_access_requested` mixes interest clicks with applications. Create:
@@ -128,7 +130,7 @@ interest click as a conversion. `course_started` stays unmarked because it's a f
 3. `course_started`
 4. `course_completed`
 
-Breakdown: `course_id`, with `course_slug` as a second dimension.
+Breakdown: `course_slug`. Funnel explorations allow only one breakdown dimension, and a slug is readable where a UUID isn't. A renamed course shows up as two rows.
 
 ## 2. Google Ads account
 
@@ -136,6 +138,8 @@ Production only.
 
 | Setting | Value |
 | --- | --- |
+| Time zone | South Africa (GMT+02:00), matching the GA4 property |
+| Currency | South African Rand (ZAR). Set when the account is created and can't be changed afterwards |
 | Auto-tagging | On |
 | Enhanced conversions for web | Off |
 | GA4 link | Link the production GA4 property. Import site metrics on. Personalised advertising off |
@@ -262,6 +266,7 @@ pass the visitor's query string through to the destination, so tags on the short
 GA4 ignores the referral code itself. A referral link with no `utm_*` tags shows up as direct
 traffic.
 
-**Consent.** The tag denies Consent Mode by default for the EEA, the UK and Switzerland. FLS ships no
-banner. A project that adds one replaces the `analytics_enabled` context processor with its own and
-calls `gtag('consent', 'update', …)` when a visitor accepts.
+**Consent.** The tag denies Consent Mode by default for the EEA, the UK and Switzerland, and leaves
+South African visitors unaffected. FLS ships no banner. A project that adds one replaces the
+`analytics_enabled` context processor with its own and calls `gtag('consent', 'update', …)` when a
+visitor accepts.
