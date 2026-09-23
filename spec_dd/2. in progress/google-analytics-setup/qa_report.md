@@ -167,5 +167,122 @@ No bugs found.
   first spawn. That edit is left uncommitted for review.
 
 ---
+
+# Run 2 (2026-09-23): Google Ads additions
+
+## Methodology
+
+Manual walk with the Playwright MCP at desktop (1920x1080), mobile (375x812) and tablet
+(768x1024), on port 8181. The server was started with
+`GOOGLE_ANALYTICS_MEASUREMENT_ID=G-QATEST0000 GOOGLE_ADS_CONVERSION_ID=AW-QATEST000 GOOGLE_ADS_CONVERSION_LABELS=sign_up=QAsignup,course_registered=QAregistered POSTHOG_API_KEY=phc_qatest`,
+then restarted four times for §1.1: PostHog only, GA4 only, Ads only, and GA4 plus labels with no
+Ads ID, and once more to try a malformed label. Every check read `window.dataLayer`, the resource
+timing entries for `gtag/js`, or the page source. Screenshots were collected into `screenshots/`
+beside this report and every image referenced below was confirmed to exist there. The earlier
+run's report and screenshots were kept rather than cleared, because this run appends to that
+report. The dev database needed two pending migrations applied before seeding could run.
+Confirmation links were read from Mailpit.
+
+## Diff scoping
+
+Scoping class: **FULL**.
+
+Changed files that triggered a full run:
+- `freedom_ls/base/templates/_base.html`
+- `freedom_ls/base/templates/partials/google_analytics_events.html`
+- `freedom_ls/deployment/google_ads.py`
+- `freedom_ls/deployment/context_processors.py`
+- `freedom_ls/deployment/checks.py`
+- `config/settings_base.py`
+- `legal_docs/_default/privacy.md`
+
+Skipped: the GA4-only sections 2, 5 and 7 of the plan. They passed in the previous run (commit
+dba25087) and this run is scoped to the Google Ads additions.
+
+## Smoke gate
+
+Outcome: **pass**.
+
+Pages checked:
+- `http://127.0.0.1:8181/`
+- `http://127.0.0.1:8181/courses/qa-free-course-self-registration/detail/`
+
+## Results
+
+### Desktop (1920x1080)
+
+| Test ID | Status | Note |
+| --- | --- | --- |
+| 1 | pass | Anonymous `/`: gtag/js loader requested; data layer has `js`, `[config, G-QATEST0000, {}]` then `[config, AW-QATEST000]` with no third element; `posthog.init(phc_qatest)` in source; no FLS event, no conversion. Only console errors are the expected PostHog 404s for the fake key. |
+| capture-check | pass | Default-named screenshot landed in `qa-screenshots/` and no image bytes came back in the tool response. |
+| 3.1-3.2 | pass | Fresh sign-up (`qa-ads-signup-1`) lands on verify-your-email with exactly `[event, sign_up, {method: email}]` followed directly by `[event, conversion, {send_to: AW-QATEST000/QAsignup}]`; no leftover `gtag(event)` script in the DOM. |
+| 3.3 | pass | Reload of the verify page: no `sign_up` and no `conversion` entry. |
+| 3.4 | pass | Re-submitting the same email: enumeration-safe verify page, no `sign_up` and no `conversion`. |
+| 3.5 | pass | Mismatched passwords: form re-renders with the error, no `sign_up` and no `conversion`. |
+| 4.1-4.3 | pass | `confirm-email/<key>/` page: `window.gtag` and `window.posthog` undefined, no googletagmanager request, no `AW-` and no `posthog.init(` in the source, empty data layer. After confirming, the sign-in page has `gtag`, `posthog.init(phc_qatest)` and both config entries (G- then AW-) back. |
+| 4.6 | pass | Sign-up submitted with `fetch(redirect: manual)` so no page rendered and the event stayed pending. The confirmation token page then had no `gtag`, no `AW-`, no `conversion`, no googletagmanager request and an empty data layer. The next ordinary page (`/`) had `sign_up` followed by its conversion exactly once; a reload of `/` had neither. |
+| 6.1-6.2 | pass | Learner B, "Enrol for free" lands on item 1 with exactly three FLS entries in order: `course_registered` (correct slug/UUID, `access_type` free, `registration_method` self_registration), `conversion` `{send_to: AW-QATEST000/QAregistered}`, `course_started` (`registration_source` individual) with nothing after it. No leftover event script. |
+| 6.3 | pass | Reload of item 1: no FLS event and no conversion. |
+| 6.4 | pass | Detail page CTA now reads "Start course" and links straight to item 1; following it adds no event and no conversion. |
+| 6.6 | pass | Registration URL of `functionality-demo-application-gated-course` redirects to the application form; no `course_registered`, no conversion. |
+| 8.4 | pass | Console over the whole run: only the expected PostHog 404s for the fake key, zero warnings, no CSP report-only message naming googletagmanager, google-analytics, googleadservices, doubleclick, googlesyndication, google.com, google.co.za or posthog. |
+| 8.5 | pass | Privacy page served from HEAD: version 1.2, effective 2026-09-23, Usage analytics section, the courses line, an Advertising measurement section naming Google Ads, the gaoptout link, the adssettings.google.com link, and Google Ads in the sharing sentence. |
+| 6.5 | pass | With Learner B's registration set `is_active=False` by the data helper, the detail page shows "Enrol for free" again; clicking it re-enters the course with no `course_registered` and no conversion. |
+| 1.1.2-1.1.3 | pass | PostHog-only restart: on `/` with Learner C logged in, `window.gtag` undefined, no `AW-` in source, no googletagmanager request, empty data layer, `posthog.init` present and `window.posthog` an object. Only the expected PostHog 404s in the console. |
+| 1.1.4 | pass | GA4 without Ads: data layer has `js` and `[config, G-QATEST0000, {user_id: 74}]` only; no `AW-` and no `conversion` in the page source. |
+| 1.1.5 | pass | Ads without GA4: `runserver` output carries `freedom_ls_deployment.W002`; on `/` `window.gtag` undefined, no `AW-` in source, no googletagmanager request, PostHog still initialised. |
+| 1.1.6 | pass | GA4 plus `sign_up=QAsignup` label with no Ads ID: `runserver` output carries `freedom_ls_deployment.W003`; a fresh sign-up (`qa-ads-signup-l`) shows `sign_up` with no `conversion` entry and no `AW-` in the source. |
+| 1.1.7 | pass | `GOOGLE_ADS_CONVERSION_LABELS=sign_up` (no `=`): `runserver` exits at boot with `ImproperlyConfigured` naming the entry `sign_up`; port stays free. |
+| 1.1.8 | skip | Restart with the full configuration not needed: §1.1 was run last, after every other scoped section, so no test remained to serve. |
+| 8.7 | pass | Every data layer read in this run: each `conversion` entry sat directly after a `sign_up` (`send_to` AW-QATEST000/QAsignup) or `course_registered` (`send_to` AW-QATEST000/QAregistered); every `sign_up` and `course_registered` under the full configuration had one; `course_started` never had one. |
+
+### Mobile (375x812)
+
+| Test ID | Status | Note |
+| --- | --- | --- |
+| 3.1-3.2 | pass | 375px sign-up form has no horizontal overflow (`scrollWidth` 375); submitting lands on the verify page with `sign_up` followed by its conversion, once. Form screenshot: `page-2026-09-23T06-04-27-331Z.png`. |
+
+### Tablet (768x1024)
+
+| Test ID | Status | Note |
+| --- | --- | --- |
+| 6.1-6.2 | pass | 768px, Learner C: detail page has no overflow and config entries G- (`user_id` 74) then AW-; "Enrol for free" lands on item 1 with `course_registered`, `conversion` `{AW-QATEST000/QAregistered}`, `course_started` in order, no leftover script. Detail screenshot: `page-2026-09-23T06-04-50-759Z.png`. |
+
+### Screenshots
+
+- ![](screenshots/page-2026-09-23T05-59-00-603Z.png) Test 1 — anonymous `/`, GA4 config entry followed by the AW- config entry.
+- ![](screenshots/page-2026-09-23T06-00-04-301Z.png) Test 3.1-3.2 — verify-your-email page after sign-up, `sign_up` and `conversion` paired.
+- ![](screenshots/page-2026-09-23T06-00-59-964Z.png) Test 4.1-4.3 — confirm-email token page, no analytics.
+- ![](screenshots/page-2026-09-23T06-01-40-152Z.png) Test 4.6 — pending sign-up's confirmation token page, no analytics.
+- ![](screenshots/page-2026-09-23T06-02-03-458Z.png) Test 6.1-6.2 — self-registration, `course_registered`/`conversion`/`course_started` in order.
+- ![](screenshots/page-2026-09-23T06-02-54-882Z.png) Test 8.5 — privacy page v1.2 with the advertising measurement section.
+- ![](screenshots/page-2026-09-23T06-04-38-177Z.png) Test 3.1-3.2 (mobile) — sign-up form at 375px, no overflow.
+- ![](screenshots/page-2026-09-23T06-04-27-331Z.png) Test 3.1-3.2 (mobile) — sign-up form, the second screenshot named in that test's note.
+- ![](screenshots/page-2026-09-23T06-04-53-707Z.png) Test 6.1-6.2 (tablet) — self-registration at 768px, three events in order.
+- ![](screenshots/page-2026-09-23T06-04-50-759Z.png) Test 6.1-6.2 (tablet) — course detail page, the second screenshot named in that test's note.
+
+## Per-bug sections
+
+There are no `bug` records from this run — no bugs were found.
+
+## Bug status
+
+No bugs found.
+
+## General notes
+
+- 1.1.8 was skipped as unnecessary: the restart with the full configuration served no remaining
+  test, because §1.1 was run last, after every other scoped section of the plan.
+- The `fls-dev:qa-data-helper` agent appended a recipe to
+  `.claude/agent-memory/fls-dev-qa-data-helper/MEMORY.md`, left uncommitted for review, as in run 1.
+- The Playwright server also writes `.yml` snapshots and console `.log` files into its output
+  directory alongside the PNGs. This run's were deleted after collection, so only the PNGs were
+  kept.
+- The plan corrections found in run 1 (Mailpit, the course title, §5.1 step 3, the debug toolbar)
+  have been folded into the plan; no new corrections were found in this run.
+- With the fake `AW-` ID, `gtag.js` itself requested a second loader
+  (`gtag/js?id=AW-QATEST000`). That is Google's own behaviour and not something FLS renders.
+
+---
 status: ok
-reason: 0 bugs — nothing to fix; report rendered, screenshots verified
+reason: run 2 — 0 bugs, nothing to fix; report rendered, screenshots verified
