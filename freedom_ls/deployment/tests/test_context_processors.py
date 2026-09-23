@@ -617,15 +617,16 @@ class TestGoogleAnalyticsEventParameters:
 
 
 @pytest.mark.django_db
-class TestGoogleAnalyticsConfigParamsBlock:
+class TestGoogleAnalyticsContentGroup:
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_a_template_filling_the_block_adds_to_the_config_call(
+    def test_a_page_passing_a_content_group_adds_it_to_the_config_call(
         self, mock_site_context: object
     ) -> None:
         landing_page = engines["django"].from_string(
             "{% extends '_base.html' %}"
-            "{% block google_analytics_config_params %}"
-            "content_group: 'landing_page'"
+            "{% block google_analytics %}"
+            "{% include 'partials/google_analytics.html' "
+            "with content_group='landing_page' %}"
             "{% endblock %}"
         )
 
@@ -639,7 +640,7 @@ class TestGoogleAnalyticsConfigParamsBlock:
         )
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_the_block_sits_beside_user_id_for_a_logged_in_user(
+    def test_the_content_group_sits_beside_user_id_for_a_logged_in_user(
         self, mock_site_context: object
     ) -> None:
         user: User = UserFactory()
@@ -647,8 +648,9 @@ class TestGoogleAnalyticsConfigParamsBlock:
         request.user = user
         landing_page = engines["django"].from_string(
             "{% extends '_base.html' %}"
-            "{% block google_analytics_config_params %}"
-            "content_group: 'landing_page'"
+            "{% block google_analytics %}"
+            "{% include 'partials/google_analytics.html' "
+            "with content_group='landing_page' %}"
             "{% endblock %}"
         )
 

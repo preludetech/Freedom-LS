@@ -77,11 +77,15 @@ record_google_analytics_event(
 
 The next page the visitor sees sends it. The function takes any event name as a string and raises `ValueError` for a name GA4 would reject. Send the form's name and nothing the visitor typed into it. A form that belongs to one course can add `course_event_params(course)` from `freedom_ls.course_access.google_analytics`, so leads line up with the course funnel.
 
-**Landing pages.** GA4 already records the first page of every session as its landing page, so a landing page needs no event. To tell marketing landing pages from any other first page, the landing page template fills one block from `_base.html`.
+**Landing pages.** GA4 already records the first page of every session as its landing page, so a landing page needs no event. To tell marketing landing pages from any other first page, the landing page template overrides one block from `_base.html` and passes a content group to the GA4 partial.
 
 ```django
-{% block google_analytics_config_params %}content_group: 'landing_page'{% endblock %}
+{% block google_analytics %}
+    {% include "partials/google_analytics.html" with content_group="landing_page" %}
+{% endblock %}
 ```
+
+A page that does not extend `_base.html` includes the partials itself: `partials/google_analytics.html` (and `partials/posthog.html` for PostHog) in its `<head>`, and `partials/google_analytics_events.html` directly before `</body>`. Without the events partial, an event its view records waits in the session and fires on the next FLS page instead.
 
 Every event from that page, `page_view` included, then carries that content group. It is a predefined GA4 dimension and needs no registration. Link onward from a landing page with ordinary full-page links. The value is set once per full page load, so after a boosted navigation it would stick to the pages that follow.
 

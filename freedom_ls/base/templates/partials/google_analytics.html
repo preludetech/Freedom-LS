@@ -1,0 +1,26 @@
+{% comment %}
+The GA4 loader and config call, for the <head>. Included by _base.html; a page
+that does not extend _base.html includes it itself to get GA4 and Google Ads.
+Such a page also needs partials/google_analytics_events.html before </body>,
+or events recorded in its view wait in the session for the next FLS page.
+
+Optional `content_group`, passed with the include: GA4 attaches it to every
+event the page sends, page_view included. A marketing landing page passes
+content_group="landing_page".
+{% endcomment %}
+{% if analytics_enabled and google_analytics_measurement_id %}
+    <script async
+            src="https://www.googletagmanager.com/gtag/js?id={{ google_analytics_measurement_id|urlencode }}"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '{{ google_analytics_measurement_id|escapejs }}', { {% if user.is_authenticated %}user_id: '{{ user.pk }}', {% endif %}{% if content_group %}content_group: '{{ content_group|escapejs }}'{% endif %} });
+    {% comment %}
+    Google Ads shares the loader above and only needs its own config
+    call. The conversions for mapped events are sent from
+    partials/google_analytics_events.html beside the GA4 event.
+    {% endcomment %}
+    {% if google_ads_conversion_id %}gtag('config', '{{ google_ads_conversion_id|escapejs }}');{% endif %}
+    </script>
+{% endif %}
