@@ -169,8 +169,8 @@ redirects to the course page with no event.
   in that run came from uncollected static files in the temporary rig, not the product.)
 - Educator interface HTMX navigation (Learners → Courses panels, navigation count stays 1): data
   layer keeps only the two config entries, no FLS event.
-- **FAIL — 8.4**, CSP report-only violation on the Google Ads script host. Documented as **Bug B1** below.
-- **FAIL — 8.5**, privacy policy names no analytics service and has no opt-out link. Documented as **Bug B2** below.
+- **FAIL — 8.4**, CSP report-only violation on the Google Ads script host. Documented as **Bug B1** below. Since fixed.
+- **FAIL — 8.5**, privacy policy names no analytics service and has no opt-out link. Documented as **Bug B2** below. Since withdrawn: the expectation was stale, not the policy.
 - No `tutorial_begin`, `tutorial_complete` or `generate_lead` appeared anywhere in the run,
   including the two application flows in §5.
 - Every `conversion` entry seen this run sat directly after a mapped event with the right
@@ -236,8 +236,16 @@ fault.
 
 ## Bug status
 
-- **UNRESOLVED** — CSP script-src omits googleads.g.doubleclick.net (reason: security-adjacent, needs human review)
-- **UNRESOLVED** — Privacy policy names no analytics service and offers no opt-out link (reason: needs a product/legal decision)
+- **RESOLVED** — CSP script-src omits googleads.g.doubleclick.net. `SECURE_CSP_REPORT_ONLY`
+  now names `googleads.g.doubleclick.net`, `pagead2.googlesyndication.com` and `www.google.co.za`
+  under `script-src`, closing the asymmetry with `img-src` and `connect-src`, and
+  `googleads.g.doubleclick.net` under `frame-src` for the remarketing tag. The jsdelivr gap noted
+  below went the same way. `base/tests/test_csp.py` covers all of it.
+- **NOT A BUG** — Privacy policy names no analytics service and offers no opt-out link. Naming no
+  service is the deliberate decision behind `ea9297d6`, kept because FLS ships this policy as a
+  placeholder for operators who may run different services. There is no opt-out link because FLS
+  has not built a way to opt out of analytics — an absent feature, not a defect. Test plan §8.5 was
+  the stale artefact and now describes the vendor-neutral policy.
 
 ## General notes
 
@@ -268,4 +276,4 @@ fault.
 
 ---
 status: ok
-reason: 2 bugs — 0 fixed, 2 unresolved (both triaged to the red lane: B1 security-adjacent, B2 needs a product decision); report rendered, screenshots verified
+reason: 2 bugs — B1 fixed (CSP script-src and frame-src now name the Ads hosts, plus cdn.jsdelivr.net), B2 withdrawn as not a bug (vendor-neutral policy is deliberate, no opt-out exists to link); report rendered, screenshots verified
