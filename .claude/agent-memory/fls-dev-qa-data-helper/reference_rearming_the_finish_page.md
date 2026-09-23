@@ -17,7 +17,7 @@ if not course_progress.completed_time and not still_to_do:
     course_progress.completed_time = timezone.now()
     course_progress.save(update_fields=["completed_time"])
     fire_webhook_event("course.completed", ...)
-    _record_course_progress_event(request, GoogleAnalyticsEvent.COURSE_COMPLETED, ...)
+    record_course_completed(request, course, via_cohort=...)
 ```
 
 The stamp, the `course.completed` webhook and the GA4 `course_completed` event share one `if`

@@ -82,6 +82,13 @@ def record_google_analytics_event(
         request.session[GOOGLE_ANALYTICS_EVENTS_SESSION_KEY] = [*events, event]
 
 
+def record_sign_up(request: HttpRequest, method: str = "email") -> None:
+    # Social login would send its provider name as the method instead.
+    record_google_analytics_event(
+        request, GoogleAnalyticsEvent.SIGN_UP, {"method": method}
+    )
+
+
 def pop_google_analytics_events(
     request: HttpRequest,
 ) -> list[GoogleAnalyticsEventPayload]:

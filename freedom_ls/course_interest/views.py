@@ -16,12 +16,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.utils import redirect_to_auth
-from freedom_ls.base.google_analytics import (
-    GoogleAnalyticsEvent,
-    record_google_analytics_event,
-)
 from freedom_ls.content_engine.models import Course, CourseVisibility
-from freedom_ls.course_access.google_analytics import course_event_params
+from freedom_ls.course_access.google_analytics import record_interest_expressed
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.models import CourseInterest
 
@@ -34,11 +30,7 @@ def _express_interest(request: HttpRequest, course: Course) -> None:
     click sends nothing."""
     _, created = CourseInterest.objects.get_or_create(user=request.user, course=course)
     if created:
-        record_google_analytics_event(
-            request,
-            GoogleAnalyticsEvent.COURSE_ACCESS_REQUESTED,
-            course_event_params(course) | {"request_kind": "interest"},
-        )
+        record_interest_expressed(request, course)
 
 
 @require_POST

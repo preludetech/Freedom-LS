@@ -10,6 +10,7 @@ from freedom_ls.base.google_analytics import (
     GoogleAnalyticsEvent,
     pop_google_analytics_events,
     record_google_analytics_event,
+    record_sign_up,
 )
 
 
@@ -167,3 +168,14 @@ class TestPopGoogleAnalyticsEvents:
         result = pop_google_analytics_events(request)
 
         assert result == []
+
+
+class TestRecordSignUp:
+    def test_records_sign_up_with_email_as_the_default_method(self) -> None:
+        request = _request_with_session()
+
+        record_sign_up(request)
+
+        assert request.session["google_analytics_events"] == [
+            {"name": "sign_up", "params": {"method": "email"}}
+        ]

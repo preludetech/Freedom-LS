@@ -16,10 +16,7 @@ from freedom_ls.accounts.email_utils import (
     get_email_theme,
     resolved_email_logo_path,
 )
-from freedom_ls.base.google_analytics import (
-    GoogleAnalyticsEvent,
-    record_google_analytics_event,
-)
+from freedom_ls.base.google_analytics import record_sign_up
 from freedom_ls.mail.encoding import set_8bit_encoding
 from freedom_ls.site_aware_models.models import (
     get_cached_site,
@@ -147,10 +144,7 @@ class AccountAdapter(DefaultAccountAdapter):
                     "last_name": user.last_name,
                 },
             )
-            # Social login would send its provider name here instead.
-            record_google_analytics_event(
-                request, GoogleAnalyticsEvent.SIGN_UP, {"method": "email"}
-            )
+            record_sign_up(request)
         return user
 
     def send_notification_mail(
