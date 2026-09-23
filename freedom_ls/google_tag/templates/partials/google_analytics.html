@@ -1,8 +1,12 @@
+{% load fls_base_filters %}
 {% comment %}
 The GA4 loader and config call, for the <head>. Included by _base.html; a page
 that does not extend _base.html includes it itself to get GA4 and Google Ads.
 Such a page also needs partials/google_analytics_events.html before </body>,
 or events recorded in its view wait in the session for the next FLS page.
+
+`analytics_enabled` comes from freedom_ls.deployment.context_processors, which
+PostHog shares; the other variables come from this app's context processor.
 
 Optional `content_group`, passed with the include: GA4 attaches it to every
 event the page sends, page_view included. A marketing landing page passes
@@ -15,6 +19,11 @@ content_group="landing_page".
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
+    {% comment %}
+    Before any config call, so it applies to the first hit. See
+    CONSENT_MODE_DENIED_REGIONS in freedom_ls/deployment/context_processors.py.
+    {% endcomment %}
+    gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', region: {{ consent_mode_denied_regions|inline_script_json }}});
     gtag('config', '{{ google_analytics_measurement_id|escapejs }}', { {% if user.is_authenticated %}user_id: '{{ user.pk }}', {% endif %}{% if content_group %}content_group: '{{ content_group|escapejs }}'{% endif %} });
     {% comment %}
     Google Ads shares the loader above and only needs its own config

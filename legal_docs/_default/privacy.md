@@ -22,7 +22,7 @@ We may also collect information you supply during onboarding (for example, addit
 
 ### Analytics and advertising
 
-The site operator may use analytics and advertising services to understand how the site is used and whether their advertising leads to sign-ups. These services use cookies and collect information such as the pages you view, your device and browser, and the courses you register for. They do not receive your name or email address.
+The site operator may use analytics and advertising services to understand how the site is used and whether their advertising leads to sign-ups. These services use cookies and collect information such as the pages you view, your device and browser, and the courses you register for. When you are signed in they also receive your account number. They do not receive your name or email address.
 
 ## 2. How we use your data
 

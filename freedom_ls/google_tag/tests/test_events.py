@@ -4,9 +4,9 @@ import pytest
 
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpRequest, HttpResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, modify_settings
 
-from freedom_ls.base.google_analytics import (
+from freedom_ls.google_tag.events import (
     GoogleAnalyticsEvent,
     pop_google_analytics_events,
     record_google_analytics_event,
@@ -179,3 +179,13 @@ class TestRecordSignUp:
         assert request.session["google_analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
+
+
+class TestRecordingWithTheAppNotInstalled:
+    @modify_settings(INSTALLED_APPS={"remove": "freedom_ls.google_tag"})
+    def test_records_nothing_when_no_context_processor_could_pop_it(self) -> None:
+        request = _request_with_session()
+
+        record_google_analytics_event(request, GoogleAnalyticsEvent.SIGN_UP)
+
+        assert "google_analytics_events" not in request.session

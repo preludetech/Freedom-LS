@@ -56,6 +56,9 @@ def test_csp_report_only_header_names_google_ads_hosts(
 
     assert "https://www.googleadservices.com" in directives["script-src"]
     assert "https://www.google.com" in directives["script-src"]
+    assert "https://googleads.g.doubleclick.net" in directives["script-src"]
+    assert "https://pagead2.googlesyndication.com" in directives["script-src"]
+    assert "https://www.google.co.za" in directives["script-src"]
 
     assert "https://www.googleadservices.com" in directives["img-src"]
     assert "https://googleads.g.doubleclick.net" in directives["img-src"]
@@ -71,3 +74,21 @@ def test_csp_report_only_header_names_google_ads_hosts(
     assert "https://ad.doubleclick.net" in directives["connect-src"]
 
     assert "https://www.googletagmanager.com" in directives["frame-src"]
+    assert "https://googleads.g.doubleclick.net" in directives["frame-src"]
+
+
+@pytest.mark.django_db
+def test_csp_report_only_header_names_the_cdn_the_base_template_loads(
+    client: Client, mock_site_context: None
+) -> None:
+    """The report-only policy allows the CDN htmx, Alpine and Chart.js load from."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+
+    directives = dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+    assert "https://cdn.jsdelivr.net" in directives["script-src"]

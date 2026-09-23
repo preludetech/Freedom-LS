@@ -39,19 +39,6 @@ class TestWorkerHeartbeatDefaults:
         assert HEARTBEAT_TICK_SECONDS < config.WORKER_HEARTBEAT_MAX_AGE_SECONDS
 
 
-class TestGoogleAnalyticsDefaults:
-    def test_measurement_id_defaults_to_none(self) -> None:
-        assert config.GOOGLE_ANALYTICS_MEASUREMENT_ID is None
-
-
-class TestGoogleAdsDefaults:
-    def test_conversion_id_defaults_to_none(self) -> None:
-        assert config.GOOGLE_ADS_CONVERSION_ID is None
-
-    def test_conversion_labels_default_to_empty(self) -> None:
-        assert config.GOOGLE_ADS_CONVERSION_LABELS == {}
-
-
 class TestHousekeepingHeartbeatDefaults:
     def test_housekeeping_heartbeat_path_defaults_to_its_own_file(self) -> None:
         # Distinct from the worker's default: on one shared file a daily sweep would

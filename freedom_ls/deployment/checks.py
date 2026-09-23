@@ -34,10 +34,10 @@ E007 — Retired. It moved to the mail app as freedom_ls_mail.E001 along with th
        freedom_ls_deployment.E007 would end up silencing something else.
 W001 — SENTRY_DSN is set but SENTRY_RELEASE is blank, so Sentry events would
        ship untagged.
-W002 — GOOGLE_ADS_CONVERSION_ID is set but GOOGLE_ANALYTICS_MEASUREMENT_ID is
-       not. The Ads tag rides on the GA4 loader, so it would never load.
-W003 — GOOGLE_ADS_CONVERSION_LABELS is set but GOOGLE_ADS_CONVERSION_ID is
-       not, so no conversion would ever be sent.
+W002 — Retired. It moved to the google_tag app as freedom_ls_google_tag.W001
+       along with the Google Ads settings. Do not reuse the number.
+W003 — Retired. It moved to the google_tag app as freedom_ls_google_tag.W002.
+       Do not reuse the number.
 """
 
 from __future__ import annotations
@@ -84,46 +84,6 @@ def check_sentry_release_set_when_dsn_set(
             id="freedom_ls_deployment.W001",
         )
     ]
-
-
-@register()
-def check_google_ads_rides_on_google_analytics(
-    app_configs: Sequence[AppConfig] | None, **kwargs: object
-) -> list[Warning]:
-    """W002/W003: warn when the Google Ads settings cannot take effect.
-
-    Neither breaks the running app; the operator just gets no Ads data and
-    nothing says why. Silenceable via SILENCED_SYSTEM_CHECKS.
-    """
-    from freedom_ls.deployment.config import config
-
-    warnings: list[Warning] = []
-    if config.GOOGLE_ADS_CONVERSION_ID and not config.GOOGLE_ANALYTICS_MEASUREMENT_ID:
-        warnings.append(
-            Warning(
-                "GOOGLE_ADS_CONVERSION_ID is set but GOOGLE_ANALYTICS_MEASUREMENT_ID "
-                "is not. The Google Ads tag loads through the GA4 tag, so it will "
-                "never load.",
-                hint=(
-                    "Set GOOGLE_ANALYTICS_MEASUREMENT_ID as well, or unset "
-                    "GOOGLE_ADS_CONVERSION_ID."
-                ),
-                id="freedom_ls_deployment.W002",
-            )
-        )
-    if config.GOOGLE_ADS_CONVERSION_LABELS and not config.GOOGLE_ADS_CONVERSION_ID:
-        warnings.append(
-            Warning(
-                "GOOGLE_ADS_CONVERSION_LABELS is set but GOOGLE_ADS_CONVERSION_ID is "
-                "not, so no Google Ads conversion will ever be sent.",
-                hint=(
-                    "Set GOOGLE_ADS_CONVERSION_ID to the AW- ID from the Google Ads "
-                    "account the labels belong to, or unset the labels."
-                ),
-                id="freedom_ls_deployment.W003",
-            )
-        )
-    return warnings
 
 
 def _configured_media_aliases() -> dict[str, str]:

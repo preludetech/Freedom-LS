@@ -4,7 +4,7 @@ import pytest
 
 from django.core.exceptions import ImproperlyConfigured
 
-from freedom_ls.deployment.google_ads import (
+from freedom_ls.google_tag.google_ads import (
     conversion_send_to,
     parse_conversion_labels,
 )

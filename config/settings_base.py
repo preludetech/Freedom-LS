@@ -23,7 +23,7 @@ from django.utils.csp import (
 from freedom_ls.base.env import env_bool, env_float
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
-from freedom_ls.deployment.google_ads import parse_conversion_labels
+from freedom_ls.google_tag.google_ads import parse_conversion_labels
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     # xapi_learning_record_store
     "freedom_ls.base",
     "freedom_ls.deployment",
+    "freedom_ls.google_tag",
     "freedom_ls.mail",
     "freedom_ls.health",
     "freedom_ls.icons",
@@ -196,7 +197,7 @@ TEMPLATES = [
                 "freedom_ls.learner_management.context_processors.can_access_educator_interface",
                 "freedom_ls.deployment.context_processors.analytics_enabled",
                 "freedom_ls.deployment.context_processors.posthog_config",
-                "freedom_ls.deployment.context_processors.google_analytics_config",
+                "freedom_ls.google_tag.context_processors.google_tag_config",
                 "django.template.context_processors.csp",
             ],
             "builtins": [
@@ -489,15 +490,25 @@ WEBHOOK_EVENT_TYPES = FLS_WEBHOOK_EVENT_TYPES
 # ad.doubleclick.net and www.google.com are Google Ads' conversion and remarketing
 # hosts. Google also calls www.google.<country TLD> for the visitor's country, and
 # CSP cannot wildcard the right-hand side of a host, so each TLD is listed by
-# hand: co.za here, and a deployment serving other countries adds its own.
+# hand: co.za here, and a deployment serving other countries adds its own. The Ads
+# tag injects script elements from these hosts as well as fetching pixels from
+# them, so they belong in script-src, not only in img-src and connect-src, and the
+# remarketing tag frames googleads.g.doubleclick.net.
+#
+# cdn.jsdelivr.net serves htmx, the Alpine plugins and Chart.js, which _base.html
+# loads from the CDN rather than from static files.
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
     "script-src": [
         CSP.SELF,
         CSP.UNSAFE_INLINE,
+        "https://cdn.jsdelivr.net",
         "https://www.googletagmanager.com",
         "https://www.googleadservices.com",
+        "https://googleads.g.doubleclick.net",
+        "https://pagead2.googlesyndication.com",
         "https://www.google.com",
+        "https://www.google.co.za",
         "https://*.i.posthog.com",
     ],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
@@ -528,6 +539,7 @@ SECURE_CSP_REPORT_ONLY = {
     "frame-src": [
         CSP.SELF,
         "https://www.googletagmanager.com",
+        "https://googleads.g.doubleclick.net",
         "https://www.youtube.com",
         "https://www.youtube-nocookie.com",
     ],
@@ -580,8 +592,8 @@ if not _webhook_salt:
     ).decode()
 SALT_KEY = _webhook_salt
 
-# PostHog / Google Analytics / Google Ads / Sentry (resolved through
-# freedom_ls.deployment.config)
+# PostHog / Sentry (resolved through freedom_ls.deployment.config) and Google
+# Analytics / Google Ads (resolved through freedom_ls.google_tag.config)
 POSTHOG_API_KEY = os.environ.get("POSTHOG_API_KEY")
 POSTHOG_API_HOST = os.environ.get("POSTHOG_API_HOST")
 POSTHOG_UI_HOST = os.environ.get("POSTHOG_UI_HOST")

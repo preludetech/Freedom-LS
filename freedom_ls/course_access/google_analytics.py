@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from freedom_ls.base.google_analytics import (
+from freedom_ls.course_access import get_course_access_backend
+from freedom_ls.google_tag.events import (
     GoogleAnalyticsEvent,
     record_google_analytics_event,
 )
-from freedom_ls.course_access import get_course_access_backend
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

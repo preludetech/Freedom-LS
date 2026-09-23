@@ -24,6 +24,7 @@ flowchart TB
     dev_tools
     educator_interface
     form_engine
+    google_tag
     health
     icons
     learner_interface
@@ -41,6 +42,7 @@ flowchart TB
     webhooks
     xapi_learning_record_store
     accounts --> base
+    accounts --> google_tag
     accounts --> mail
     accounts --> markdown_rendering
     accounts --> site_aware_models
@@ -56,6 +58,7 @@ flowchart TB
     course_access --> accounts
     course_access --> base
     course_access --> content_engine
+    course_access --> google_tag
     course_access --> learner_management
     course_applications --> accounts
     course_applications --> content_engine
@@ -91,6 +94,7 @@ flowchart TB
     form_engine --> content_base
     form_engine --> markdown_rendering
     form_engine --> site_aware_models
+    google_tag --> base
     health --> base
     icons --> base
     learner_interface --> accounts
@@ -157,6 +161,7 @@ flowchart TB
     accounts -.-> content_engine
     accounts -.-> course_applications
     accounts -.-> course_interest
+    accounts -.-> icons
     accounts -.-> learner_management
     accounts -.-> organisations
     accounts -.-> referral_tracking
@@ -175,6 +180,9 @@ flowchart TB
     educator_interface -.-> course_interest
     educator_interface -.-> role_based_permissions
     form_engine -.-> accounts
+    google_tag -.-> accounts
+    google_tag -.-> content_engine
+    google_tag -.-> learner_management
     learner_interface -.-> course_applications
     learner_interface -.-> role_based_permissions
     learner_management -.-> learner_progress
@@ -198,11 +206,11 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, learner_management, organisations, referral_tracking |
+| accounts | base, google_tag, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
 | base | — | accounts, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | accounts |
-| course_access | accounts, base, content_engine, learner_management | course_applications |
+| course_access | accounts, base, content_engine, google_tag, learner_management | course_applications |
 | course_applications | accounts, content_engine, course_access, form_engine, learner_management, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, site_aware_models | content_engine |
@@ -210,6 +218,7 @@ flowchart TB
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications |
 | educator_interface | content_engine, form_engine, learner_management, learner_progress, organisations, panel_framework, site_aware_models | accounts, course_interest, role_based_permissions |
 | form_engine | base, content_base, markdown_rendering, site_aware_models | accounts |
+| google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
 | icons | base | — |
 | learner_interface | accounts, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, role_based_permissions |

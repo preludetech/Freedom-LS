@@ -3,9 +3,9 @@
 GA4's enhanced measurement covers page views on its own, but the events
 recorded here happen inside a view, not a page render. A view records an event
 the moment the underlying thing happens; the next render that reaches
-`freedom_ls/base/templates/partials/google_analytics_events.html` pops it and
-emits the matching `gtag('event', ...)` call. See
-`freedom_ls/deployment/context_processors.py:google_analytics_config`.
+`partials/google_analytics_events.html` pops it and emits the matching
+`gtag('event', ...)` call. See `google_tag_config` in this app's
+`context_processors.py`.
 
 Event names describe funnel moments every course access backend shares.
 Whatever varies by backend travels as a parameter value, so a new backend adds
@@ -20,6 +20,7 @@ import re
 from enum import StrEnum
 from typing import TypedDict, cast
 
+from django.apps import apps
 from django.http import HttpRequest
 
 GOOGLE_ANALYTICS_EVENTS_SESSION_KEY = "google_analytics_events"
@@ -64,6 +65,10 @@ def record_google_analytics_event(
     """
     if not _is_valid_name(name):
         raise ValueError(f"Invalid GA4 event name: {name!r}")
+    # A project that leaves this app out has no context processor to pop the
+    # queue, so recording would only grow the session.
+    if not apps.is_installed("freedom_ls.google_tag"):
+        return
     params = params or {}
     for param_name in params:
         if not _is_valid_name(param_name) or param_name in _RESERVED_PARAMETER_NAMES:
