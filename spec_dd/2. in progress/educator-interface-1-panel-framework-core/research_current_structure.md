@@ -1,8 +1,8 @@
 > **Current-state snapshot, taken 2026-09-24, before spec 1 of the educator interface rebuild.**
 > This was the idea for an earlier "full polish" draft and its value now is the description of how
 > the framework and the educator interface are put together today. Read it as a map of what exists.
-> Its "Upgrade" wording is superseded by `idea.md` beside it and by `spec-order.md` in
-> `../educator-interface-full-polish/`. Line numbers will drift.
+> Its "Upgrade" wording is superseded by `idea.md` beside it and by the "Educator interface rebuild"
+> section of `spec_dd/1. next/roadmap.md`. Line numbers will drift.
 
 # Feature: Educator interface full polish
 

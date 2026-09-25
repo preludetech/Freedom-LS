@@ -1,6 +1,8 @@
 # Reporting and dashboards
 
-Spec 10 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. Depends on specs 2 and 4. Spec 3 is useful but not required. Runs in parallel with 6 and 7.
+Spec 10 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 
@@ -36,7 +38,7 @@ The spec starts with a short measurement, because the answers change the design:
 - Which of the dashboard's numbers can come from cheap aggregates over `CourseProgress` and which need the gather?
 - Is a cached gather (per cohort, invalidated on progress events) worth it, or is live fine at the sizes FLS actually runs?
 
-Write the answers into the spec's decisions and into `spec-order.md`'s unknowns table.
+Write the answers into the spec's decisions and into the roadmap's unknowns table.
 
 ## Open until the spec
 

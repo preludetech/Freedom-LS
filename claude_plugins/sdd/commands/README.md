@@ -22,9 +22,19 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 ---
 
+## Step 0: The spec roadmap
+
+`spec_dd/1. next/roadmap.md` is the spec roadmap: one row for every directory in `spec_dd/1. next/` and `spec_dd/2. in progress/`, with what it delivers, what it depends on and whether it is waiting or in flight. It is not `docs/product/roadmap.md`, which is the product roadmap.
+
+- `/sdd:roadmap` with no argument syncs the file with the directories: adds rows for new directories, drops rows for finished ones, redraws the dependency graphs.
+- `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds the effort to the roadmap with its build order, its dependency graph and the decisions every child relies on. The cut goes by user-visible outcome, never by line count.
+- `/sdd:start` warns when a spec's dependencies are not done, and flags its row `in progress`. `/sdd:finish_worktree` removes the row; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
+
+The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
+
 ## Step 1: Capture the idea
 
-1. Create an idea file manually (a markdown file describing what you want to build and why).
+1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
 2. Optionally run `/improve_idea` to research the idea and suggest improvements.
 
 ## Step 2: Write the spec
@@ -136,7 +146,7 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 4. **Target Claude Code version.** These files target the current **2.1.x** line — per-agent/per-command `model:` frontmatter, `AskUserQuestion`, non-nesting subagents, and "commands merged into skills" all hold here. There is no runtime version check; this is a documented target, not enforced.
 
-5. **Every artifact command commits and pushes itself.** Any command that writes or edits an SDD artifact ends by delegating a commit and push to `sdd:sdd-mechanic`, following `claude_plugins/sdd/resources/commit_and_push.md`. The commit subject always leads with the spec directory name, so `git log` reads as a per-spec history. Nothing is committed on `main`/`master`, and nothing unrelated is staged.
+5. **Every artifact command commits and pushes itself.** Any command that writes or edits an SDD artifact ends by delegating a commit and push to `sdd:sdd-mechanic`, following `claude_plugins/sdd/resources/commit_and_push.md`. The commit subject always leads with the spec directory name, so `git log` reads as a per-spec history. Nothing is committed on `main`/`master`, and nothing unrelated is staged. The one exception is `spec_dd/` bookkeeping that has no worktree yet (`/sdd:start`'s move to in progress, `/sdd:roadmap`'s edits): that is committed on `main` and not pushed.
 
 6. **Why it runs this way.** See the **`claude-code-authoring`** skill for the canonical reference on the Claude Code mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
 

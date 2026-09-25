@@ -1,6 +1,8 @@
 # Learner administration
 
-Spec 7 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. Depends on specs 2, 3 and 5. Runs in parallel with 6 and 10. Specs 8 and 9 reuse what it builds.
+Spec 7 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 

@@ -1,6 +1,8 @@
 # Panel framework tables
 
-Spec 2 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. Depends on spec 1. Runs in parallel with 3, 4 and 5.
+Spec 2 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 

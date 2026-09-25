@@ -1,6 +1,6 @@
 # Comparable systems: learner-management actions
 
-Research for specs 6 to 9 of the educator interface rebuild (see `spec-order.md`). The question was: what do comparable systems let school staff do to administer learners, cohorts, course registrations and other staff, which actions are common versus long-tail, which are bulk-only, and what reversibility and audit do users expect?
+Research for specs 6 to 9 of the educator interface rebuild (see the "Educator interface rebuild" section of `spec_dd/1. next/roadmap.md`). The question was: what do comparable systems let school staff do to administer learners, cohorts, course registrations and other staff, which actions are common versus long-tail, which are bulk-only, and what reversibility and audit do users expect?
 
 The question: what do Moodle, Canvas, Open edX, TalentLMS, Docebo, LearnDash and Google Classroom let
 staff do to administer learners, cohorts, course registration and other staff? Which actions are

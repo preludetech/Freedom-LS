@@ -1,6 +1,8 @@
 # Docs and polish
 
-Spec 12 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. Depends on all eleven before it. Runs last.
+Spec 12 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 

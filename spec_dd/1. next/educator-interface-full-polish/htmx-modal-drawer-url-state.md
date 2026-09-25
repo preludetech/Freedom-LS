@@ -1,6 +1,6 @@
 # Research: quick-view drawer, modal and URL-state patterns for HTMX 2 + Alpine (CSP) + Django
 
-Question: what are the current best-practice patterns, with HTMX 2.x, Alpine.js and Django, for a non-modal quick-view drawer, a modal dialog, and URL state in a nested admin UI? Answered for specs 1, 2 and 3 of the educator interface rebuild (see `spec-order.md`).
+Question: what are the current best-practice patterns, with HTMX 2.x, Alpine.js and Django, for a non-modal quick-view drawer, a modal dialog, and URL state in a nested admin UI? Answered for specs 1, 2 and 3 of the educator interface rebuild (see the "Educator interface rebuild" section of `spec_dd/1. next/roadmap.md`).
 
 This extends `../educator-interface-3-panel-framework-dialogs/research_ux_patterns.md` and `research_ux_pitfalls.md`. Those cover the UX survey and the ARIA model (disclosure-style triggers, live region, no focus trap on desktop, modal flip on mobile, RTL, print). None of that is repeated here. This note covers the mechanics: which elements, which htmx attributes and headers, which browser APIs, and where the current FLS code will break.
 

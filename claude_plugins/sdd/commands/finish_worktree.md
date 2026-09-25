@@ -11,7 +11,9 @@ This command merges the current worktree back into the main branch after doing s
 git rebase main
 ```
 
-Fix any merge conflicts (this may need judgement — keep it on the main thread).
+Fix any merge conflicts (this may need judgement — keep it on the main thread). A conflict in
+`spec_dd/1. next/roadmap.md` means two specs finished close together: it is one row per spec, so
+keep both sides' removals and status changes.
 
 If there are any changes to the functionality or code proceed to step 2. Otherwise skip step 2 and go to step 3.
 
@@ -52,6 +54,17 @@ The spec directory should be named like this:
 yyyy-mm-dd_HH:MM_{spec title}
 ```
 
+# Step 5.5: Update the spec roadmap
+
+Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/update_roadmap.md` and
+follow its steps with `<roadmap-path>`: `spec_dd/1. next/roadmap.md` and `remove:"<spec directory
+name>"`. If there is no roadmap the helper returns `ok` and nothing happens.
+
+If the helper reports `effort retired: <parent path>`, this spec was the last of a cut effort.
+Delegate a second mechanic run: move that parent directory to `spec_dd/3. done/` named the same way
+as Step 5, `yyyy-mm-dd_HH:MM_{parent directory name}`. The archived `spec-order.md` the helper wrote
+travels with it.
+
 # Step 6: Tidy Claude project settings
 
 Invoke the `update-claude-project-settings` skill to promote any useful permissions accumulated in `.claude/settings.local.json` to the shared `.claude/settings.json`, and clean up redundant entries in the project settings.
@@ -60,7 +73,8 @@ Invoke the `update-claude-project-settings` skill to promote any useful permissi
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `close out the worktree`. Tell it to stage the moved spec directory, the
-`todo.md` inside it, and any `.claude/settings.json` change from Step 6.
+`todo.md` inside it, `spec_dd/1. next/roadmap.md` and any retired parent directory from Step 5.5,
+and any `.claude/settings.json` change from Step 6.
 
 # Step 8: Git Status
 

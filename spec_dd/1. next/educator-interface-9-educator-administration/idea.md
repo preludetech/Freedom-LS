@@ -1,6 +1,8 @@
 # Educator administration
 
-Spec 9 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. Depends on specs 5 and 7. Runs in parallel with 8.
+Spec 9 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 
@@ -12,7 +14,7 @@ There is no way to give someone an educator role except a shell or a QA helper. 
 
 ## What is settled
 
-**Who may do this.** From `spec-order.md` decision 2 and the spec 5 matrix. Organisation staff and site admins add, remove and re-scope instructors and TAs within the organisation. Only site admins grant `organisation_staff` or `site_admin`. Nobody changes their own roles. The last site admin cannot be removed.
+**Who may do this.** From decision 2 of the decisions already taken in the roadmap, and the spec 5 matrix. Organisation staff and site admins add, remove and re-scope instructors and TAs within the organisation. Only site admins grant `organisation_staff` or `site_admin`. Nobody changes their own roles. The last site admin cannot be removed.
 
 **List.** One row per person with any role in this organisation: name, email, roles with their scope (the organisation, or the cohorts), added by, added on. Search by name or email. Filter by role.
 

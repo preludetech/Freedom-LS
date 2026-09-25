@@ -1,6 +1,6 @@
-> This idea has been cut into twelve specs. The order, the dependencies, the decisions already taken
-> and the assumptions are in `spec-order.md` beside this file. Start there. The text below is the
-> original brief and is kept as written.
+> This idea has been cut into twelve specs. Their order, dependencies, the decisions already taken and
+> the assumptions are in the "Educator interface rebuild" section of `spec_dd/1. next/roadmap.md`.
+> Start there. The text below is the original brief and is kept as written.
 
 There is currently an educator interface in place, but it is very underpowered and it relies on the panels framework that needs a lot of work. Nothing currently in the Educator interface should be treated as sacred. We can throw away whatever we need to and build it up from scratch in order to get things to work. Even the learner tracking cohort progress review can be changed. It's probably the most complicated part at the moment, and it can go. Consider it an illustration of the things that we might want to do with tables though, because we can potentially use tables for all sorts of interesting things.
 

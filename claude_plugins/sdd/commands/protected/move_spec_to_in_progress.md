@@ -33,10 +33,18 @@ mv "spec_dd/1. next/my-feature" "spec_dd/2. in progress/my-feature"
 
 Do not proceed until the spec directory is in `spec_dd/2. in progress/`.
 
+## Step 2.5: Update the spec roadmap
+
+If `spec_dd/1. next/roadmap.md` exists, read `claude_plugins/sdd/commands/protected/update_roadmap.md`
+and follow its steps with `<roadmap-path>` set to that file and `status:"<spec directory name>|in progress"`.
+If it reports the row was not found, carry on and say so in Step 4 ("not on the spec roadmap; run
+`/sdd:roadmap` to sync").
+
 ## Step 3: Commit all changes
 
-Make a git commit with `uv run git commit` (per `CLAUDE.md`). This commit captures both the `todo.md`
-created in the previous `/sdd:start` step and the directory move. Lead the subject with the spec
+Make a git commit with `uv run git commit` (per `CLAUDE.md`). This commit captures the `todo.md`
+created in the previous `/sdd:start` step, the directory move, and the roadmap edit from Step 2.5
+(stage `spec_dd/1. next/roadmap.md` by path when it changed). Lead the subject with the spec
 directory name, as every SDD commit does — e.g. `interested_login: start the spec`.
 
 Do not push. This runs on the current branch before any worktree exists, and that branch is usually

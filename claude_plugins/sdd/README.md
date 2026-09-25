@@ -15,12 +15,17 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
 ## What's inside (counted from disk)
 
-### Commands (11 files)
-Flat under `commands/`: `README` (the workflow guide), `init`, `start`, `improve_idea`, `spec_from_idea`,
-`spec_review`, `plan_from_spec`, `implement_plan`, `next`, `finish_worktree`, `address_pr_review`.
+### Commands (14 files)
+Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `start`, `improve_idea`,
+`spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `next`, `commit_quickly`,
+`make_pr_quickly`, `finish_worktree`, `address_pr_review`.
 
-`commands/protected/` (4 read-and-followed helper files, not advertised as slash commands): `setup_todo_list`,
-`move_spec_to_in_progress`, `start_worktree`, `update_todo`.
+`/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the
+file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
+adds the effort, its dependency graph and its shared decisions to the roadmap.
+
+`commands/protected/` (5 read-and-followed helper files, not advertised as slash commands): `setup_todo_list`,
+`move_spec_to_in_progress`, `start_worktree`, `update_todo`, `update_roadmap`.
 
 `/sdd:next` is the workflow driver — it reads the spec's `todo.md`, finds the next unchecked step, and
 dispatches each `(cmd)` item to its owning plugin via a deterministic keep-prefix map
@@ -43,10 +48,12 @@ bare-repo/worktree mechanics (the FLS per-branch-database delta lives in an `fls
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
 `.claude/settings.local.json`.
 
-### Resources (3)
+### Resources (6)
 `agent_memory_guidelines` — the canonical home for this generic guideline (it is also duplicated into
 `ds` and `fls-dev` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and the agents that read it live in
 different plugins); `launcher_editing` — how to edit `claude.sh` (with `<MAY_CREATE>` false, since
 `/ds:init` owns the launcher skeleton); `domain_vocabulary` — use the project's existing words, and
 declare any word that really is new. The project points at its own sources via
-`## Vocabulary Sources` in `.claude/sdd/config.md`.
+`## Vocabulary Sources` in `.claude/sdd/config.md`; `writing_standard` — the rules every SDD artifact
+obeys; `commit_and_push` — the commit-and-push steps every artifact command ends with;
+`roadmap_format` — the shape, classification rules and row grammar of the spec roadmap.

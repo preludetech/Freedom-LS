@@ -1,6 +1,8 @@
 # Educator permissions
 
-Spec 5 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. Depends on spec 1. Runs in parallel with 2, 3 and 4. Specs 6, 7 and 9 build on it.
+Spec 5 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 
@@ -20,7 +22,7 @@ The old draft said "hide, don't disable, and return 403 with a message". The cur
 
 **The users.** People associated with an organisation who administer its learners. Organisation staff, instructors and TAs. Site admins see every organisation on the site.
 
-**The matrix.** Written as a table in the spec, capability by role by scope. The starting position, from the decisions in `spec-order.md`:
+**The matrix.** Written as a table in the spec, capability by role by scope. The starting position, from the decisions already taken in the roadmap:
 
 | Capability | site_admin | organisation_staff | instructor | ta |
 |---|---|---|---|---|

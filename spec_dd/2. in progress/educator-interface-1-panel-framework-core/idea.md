@@ -1,6 +1,8 @@
 # Panel framework core
 
-Spec 1 of 12 in the educator interface rebuild. Read `../educator-interface-full-polish/spec-order.md` first. This one runs alone and before all the others.
+Spec 1 of 12 in the educator interface rebuild effort. Read the "Educator interface rebuild"
+section of `spec_dd/1. next/roadmap.md` first: it holds the build order, what this spec depends on
+and may run beside, the decisions already taken and the assumptions every idea in the effort makes.
 
 ## What
 
