@@ -210,9 +210,9 @@ A module that imports an optional app's factory/model at module scope raises Dja
 
 ```python
 import pytest
-from django.conf import settings
+from django.apps import apps
 
-if "myproject.optional_feature" not in settings.INSTALLED_APPS:
+if not apps.is_installed("myproject.optional_feature"):
     pytest.skip("optional_feature not installed", allow_module_level=True)
 
 from myproject.optional_feature.factories import WidgetFactory  # now safe

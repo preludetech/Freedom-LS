@@ -53,10 +53,13 @@ uv run pytest -m "not playwright and not fls_internal and not ci_only and not we
 
 ```python
 import pytest
-from django.conf import settings
 
-if "freedom_ls.course_applications" not in settings.INSTALLED_APPS:
+from freedom_ls.tests.app_guards import app_not_installed
+
+if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory  # now safe
 ```
+
+The conftest form assigns `collect_ignore_glob` with the same call; `course_applications/tests/conftest.py` is the live example.

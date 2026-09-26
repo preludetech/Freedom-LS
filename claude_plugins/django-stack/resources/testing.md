@@ -274,15 +274,15 @@ A module that imports an optional app's factory or model at **module scope** (e.
 
 ### The guard (braces)
 
-Place a module-top `INSTALLED_APPS` check **immediately above** the offending import, keyed on a plain string check (safe to read without app-registry readiness):
+Place a module-top guard **immediately above** the offending import, using `apps.is_installed(...)`. It also matches an app registered by its `AppConfig` path, which a raw `INSTALLED_APPS` membership check misses. A conftest runs after pytest-django has set up Django, so the registry is ready by the time either example below runs.
 
 ```python
 from __future__ import annotations
 
 import pytest
-from django.conf import settings
+from django.apps import apps
 
-if "myproject.optional_feature" not in settings.INSTALLED_APPS:
+if not apps.is_installed("myproject.optional_feature"):
     pytest.skip("optional_feature not installed", allow_module_level=True)
 
 from myproject.optional_feature.factories import WidgetFactory  # now safe
@@ -301,10 +301,10 @@ Add a `conftest.py` in the **same directory** as the guarded test files (`collec
 
 ```python
 # myproject/optional_feature/tests/conftest.py
-from django.conf import settings
+from django.apps import apps
 
 collect_ignore_glob: list[str] = []
-if "myproject.optional_feature" not in settings.INSTALLED_APPS:
+if not apps.is_installed("myproject.optional_feature"):
     collect_ignore_glob = ["test_*.py"]
 ```
 
