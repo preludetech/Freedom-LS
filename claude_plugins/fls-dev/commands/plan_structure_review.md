@@ -1,6 +1,6 @@
 ---
 description: Review the implementation plan for new cross-app dependencies before any code is written
-allowed-tools: Read, Glob, Grep, Edit, Bash, Agent
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 ---
 
 You are reviewing an **implementation plan** (not code) against the project's authoritative app-dependency diagram at `docs/app_structure.md`. Your job is to catch any new cross-app imports the plan would introduce, so structural changes get approved before implementation time is spent on them.
@@ -32,6 +32,11 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 - Edit `2. plan.md` directly where a new cross-app edge can be avoided with a small, obvious restructuring (e.g. moving a helper to a more appropriate app).
 - Where accepting or rejecting a new edge is a judgement call, insert a `> **Structure concern:**` callout at the relevant section of the plan and ask the user for input.
 - Print a short summary of what changed and what still needs user input.
+
+# Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 # Step 1: Confirm prerequisites (depth 0)
 

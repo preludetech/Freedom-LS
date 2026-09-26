@@ -1,6 +1,6 @@
 ---
 description: Review the implementation plan for security issues before any code is written
-allowed-tools: Read, Glob, Grep, Edit, Bash, Agent
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 ---
 
 You are doing a security review of an **implementation plan** (not code). The plan describes *how* a feature will be built. Your job is to catch insecure design choices in the plan before implementation time is spent on them.
@@ -34,6 +34,11 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 - Edit `2. plan.md` directly to fix concrete issues where the fix is clear.
 - Where a fix requires a judgement call, add a clearly marked `> **Security concern:**` callout in the relevant section of the plan and ask the user for input.
 - Print a short summary of what you changed and what still needs user input.
+
+# Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 # Step 1: Confirm inputs
 

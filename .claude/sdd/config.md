@@ -10,6 +10,15 @@ Paths are relative to the project root. Leave a value blank if this project has 
 - Setup script: .claude/fls-dev/scripts/install_dev.sh
 - Teardown script: .claude/fls-dev/scripts/dev_db_delete.sh
 
+## Rebase Hooks
+
+Followed by the pre-step rebase before every feature-branch SDD step. Each value is a command
+or helper file that is read and followed, not a script. Leave a value blank if this project has
+no such step.
+
+- Rebase command: claude_plugins/django-stack/commands/rebase_main.md
+- Front-end check:
+
 ## Vocabulary Sources
 
 Where this project's domain vocabulary is defined, most authoritative first.

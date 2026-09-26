@@ -1,6 +1,6 @@
 ---
 description: Author the structured upgrade_notes.md for downstream FLS projects
-allowed-tools: Read, Write, Glob, Edit, Bash, Agent
+allowed-tools: Read, Write, Glob, Grep, Edit, Bash, Skill, Agent
 ---
 
 Author `upgrade_notes.md` for the current feature, so downstream projects that extend FLS know what they need to do after pulling the change.
@@ -51,6 +51,11 @@ Flag semantics:
 A renumbered or repurposed system check ID is itself a hard settings change, even when no setting's value changes: name `SILENCED_SYSTEM_CHECKS` in `changed_settings`. The sharp case is `freedom_ls_course_access.E001`, which was repurposed to mean "a required setting is unset" — a downstream project that had silenced `freedom_ls_course_access.E001` keeps silencing successfully after the change, but is now silencing a different check, with no error to tell them.
 
 Every unused list stays `[]` and every unused flag stays `false`; a list you populate switches to the block-sequence form shown in the schema.
+
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Locate the spec directory
 

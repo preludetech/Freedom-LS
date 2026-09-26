@@ -25,6 +25,17 @@ Read the file in full. Walk the checklist top-to-bottom and find the first line 
 
 If every item is already ticked, skip to Step 5 (the "all done" branch).
 
+## Step 2.5: Pre-step rebase
+
+Runs only when Step 2 found a `(cmd)` item and Step 1 matched the branch to a directory under
+`spec_dd/2. in progress/`.
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow it inline at depth 0,
+with the spec directory and `todo.md` path already resolved in Steps 1 and 2.
+
+On `ok`, continue to Step 3. On any other status, stop without dispatching the `(cmd)` item — see
+Step 5 for the summary line to give the user.
+
 ## Step 3: Act on the next item based on its marker
 
 ### If the marker is `(user)`
@@ -51,7 +62,7 @@ This is a slash command task. You run it **inline at depth 0** — read the comm
        command file — the prefix must be one of sdd / fls-dev / ds and the file must exist.
    ```
    This is deterministic — no directory probing, no prefix-stripping, no collision risk.
-3. Read the resolved file in full and **follow its steps inline at depth 0**. You already know the `todo.md` path and the spec directory from Steps 1–2, and any argument the user passed to `/sdd:next` — use them so the command doesn't re-discover them. The command ticks its own box via the `update_todo` helper when it finishes.
+3. Read the resolved file in full and **follow its steps inline at depth 0**. You already know the `todo.md` path and the spec directory from Steps 1–2, and any argument the user passed to `/sdd:next` — use them so the command doesn't re-discover them. Tell the inlined command the pre-step rebase has already run this turn, so its Step 0 skips it. The command ticks its own box via the `update_todo` helper when it finishes.
 4. When the command's steps are done, relay a short summary of the result to the user (see Step 5).
 
 Do not tick anything yourself — the command ticks its own box.
@@ -78,6 +89,7 @@ Keep the summary short. One of:
 - **All done**: "All items in `todo.md` are checked. If the PR has been merged, you're finished — otherwise pick up at the remaining manual step." (only if every item was already ticked at Step 2).
 - **Ticked a user item, next is manual**: "Ticked `<item text>`. Next up: `<next item text>` — do it by hand, then run `/sdd:next` again."
 - **Ticked a user item, next is a command**: report that, then proceed straight into the `(cmd)` branch and run the command inline. After it finishes, summarise what it did.
+- **Pre-step rebase did not return `ok`**: "Pre-step rebase `<status>`: `<reason>`." then stop — the `(cmd)` item was not dispatched.
 - **Ran a command on the main thread**: "Ran `<command>` on the main thread. Result: `<one-line summary>`. Run `/clear` then `/sdd:next` again to continue."
 - **User hasn't done it yet**: "Next up: `<item text>`. This is a manual step — do it, then run `/sdd:next` again."
 

@@ -1,6 +1,6 @@
 ---
 description: Check that the spec makes sense
-allowed-tools: Read, Glob, Grep, Edit, Skill, Agent
+allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent
 ---
 
 You are helping to refine a feature spec. The spec might have problems. You are doing a final check to make sure it can be implemented.
@@ -9,6 +9,11 @@ You are helping to refine a feature spec. The spec might have problems. You are 
 
 - Edit the spec document to overcome all the problems, then tighten it
 - Print a short summary of what you did, including the spec's line and word counts before and after
+
+# Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 # Step 1
 

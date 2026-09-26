@@ -1,9 +1,14 @@
 ---
 description: Sync the fls-content course-author plugin if this SDD run touched FLS authoring functionality
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Agent
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 ---
 
 Sync the `claude_plugins/fls-content/` course-author Claude Code plugin to reflect any changes to FLS authoring functionality made by this SDD run. This command is a **fast no-op** when nothing authoring-relevant changed.
+
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Detect authoring-relevant changes (zero-token)
 
