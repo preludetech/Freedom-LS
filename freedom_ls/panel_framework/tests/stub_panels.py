@@ -28,9 +28,14 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
-from freedom_ls.panel_framework.panels import DataTablePanel
+from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.tables import DataTable
-from freedom_ls.panel_framework.views import InstanceView, ListViewConfig
+from freedom_ls.panel_framework.views import (
+    BaseViewConfig,
+    InstanceView,
+    ListViewConfig,
+    NavGroup,
+)
 
 
 def _stub_model() -> type[Model]:
@@ -101,7 +106,7 @@ class StubCreateAction(CreateInstanceAction):
 class StubDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        return cast(QuerySet, _stub_model().objects.all())
+        return cast(QuerySet, _stub_model().objects.order_by("name"))
 
     @staticmethod
     def get_columns() -> list[dict[str, object]]:
@@ -120,10 +125,31 @@ class StubDataTablePanel(DataTablePanel):
     data_table = StubDataTable
 
 
-class StubInstanceView(InstanceView):
-    panels = {
+class StubDetailsPanel(Panel):
+    """A leaf that prints its instance's name through a template of its own."""
+
+    title = "Details"
+    template_name = "panel_framework/test_stub_details.html"
+
+
+class StubHiddenPanel(Panel):
+    title = "Hidden"
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return False
+
+
+class StubTabSet(TabSet):
+    title = "Stub sections"
+    children = {
         "default": StubDataTablePanel,
+        "details": StubDetailsPanel,
+        "hidden": StubHiddenPanel,
     }
+
+
+class StubInstanceView(InstanceView):
+    panel = StubTabSet
 
 
 class StubListConfig(ListViewConfig):
@@ -141,3 +167,14 @@ class StubListConfig(ListViewConfig):
         instance: Model = get_object_or_404(_stub_model(), pk=pk)
         assert cls.instance_view is not None
         return cls.instance_view(instance)
+
+
+class StubBaseConfig(BaseViewConfig):
+    """A base view holding an instance-free table panel."""
+
+    url_name = "stub-base"
+    menu_label = "Stub base"
+    panel = StubDataTablePanel
+
+
+STUB_CONFIG = [NavGroup("Stubs", [StubListConfig, StubBaseConfig])]

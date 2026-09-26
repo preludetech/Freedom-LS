@@ -1,225 +1,180 @@
-"""Tests for HTMX navigation with OOB fragment responses."""
+"""Response branches: full page, navigation bundle, tab and region fragments."""
 
 from __future__ import annotations
 
 import pytest
 
-from django.http import HttpRequest
-from django.test import RequestFactory
+from .conftest import _make_stub
+from .view_helpers import call_view, fetch, make_request
 
-from freedom_ls.panel_framework.views import ListViewConfig, panel_framework_view
+pytestmark = pytest.mark.django_db
 
-from .conftest import make_staff_user
-from .stub_panels import StubListConfig
-
-CONFIG: dict[str, type[ListViewConfig]] = {
-    "stubs": StubListConfig,
-}
-
-URL_NAME = "panel_framework_test:interface"
-TEMPLATE = "panel_framework/test_interface.html"
+LIST_REGION_ID = "panel-test-panel-framework-stubs"
+VARY_HEADERS = ("HX-Request", "HX-Target", "HX-History-Restore-Request")
 
 
-def _make_request(
-    path: str = "/test-panel/stubs",
-    is_htmx: bool = False,
-    hx_target: str = "",
-) -> HttpRequest:
-    """Build a GET request with optional HTMX headers."""
-    factory = RequestFactory()
-    kwargs: dict[str, str] = {}
-    if is_htmx:
-        kwargs["HTTP_HX_REQUEST"] = "true"
-    if hx_target:
-        kwargs["HTTP_HX_TARGET"] = hx_target
-    request = factory.get(path, **kwargs)
-    request.user = make_staff_user()
-    return request
+class TestFullPage:
+    def test_non_htmx_returns_full_page(self, mock_site_context) -> None:
+        response = fetch("stubs")
 
-
-@pytest.mark.django_db
-class TestHtmxNavigation:
-    def test_non_htmx_returns_full_page(self, mock_site_context: None) -> None:
-        """Non-HTMX request renders the full page template with breadcrumb content."""
-        request = _make_request(is_htmx=False)
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
         assert response.status_code == 200
         content = response.content.decode()
         assert 'id="sidebar-nav"' in content
-        # Breadcrumbs should contain the current-page label, not just an empty nav.
         assert 'aria-label="Breadcrumb"' in content
         assert 'aria-current="page"' in content
         assert "Stubs" in content
 
-    def test_htmx_navigation_returns_oob_fragments(
-        self, mock_site_context: None
+    def test_a_history_restore_of_an_instance_url_returns_the_full_page(
+        self, mock_site_context
     ) -> None:
-        """HTMX request with HX-Target=main-content returns content + OOB fragments."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
+        stub = _make_stub(name="Restored Stub")
+
+        response = fetch(f"stubs/{stub.pk}", htmx=True, restore=True)
+
+        content = response.content.decode()
+        assert 'id="sidebar-nav"' in content
+        assert "Restored Stub" in content
+
+
+class TestNavigationResponse:
+    def test_htmx_navigation_returns_oob_fragments(self, mock_site_context) -> None:
+        response = fetch("stubs", htmx=True, hx_target="main-content")
+
         assert response.status_code == 200
         content = response.content.decode()
-        # Should contain main content div
         assert 'id="main-content"' in content
-        # Should contain OOB sidebar
         assert 'id="sidebar-nav"' in content
         assert 'hx-swap-oob="true"' in content
-        # Should contain OOB breadcrumbs
         assert 'id="breadcrumbs"' in content
-        # User-visible label check: the menu/page label must render in the
-        # OOB response, not just structural ids.
         assert "Stubs" in content
 
-    def test_htmx_non_navigation_returns_fragment_only(
-        self, mock_site_context: None
+    def test_an_unknown_target_gets_the_navigation_response_not_a_fragment(
+        self, mock_site_context
     ) -> None:
-        """HTMX request without HX-Target=main-content returns only the content fragment."""
-        request = _make_request(is_htmx=True, hx_target="some-other-target")
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        assert response.status_code == 200
-        content = response.content.decode()
-        # Should NOT contain OOB attributes or navigation elements
-        assert 'hx-swap-oob="true"' not in content
-        assert 'id="sidebar-nav"' not in content
-        assert 'id="main-content"' not in content
-        # Positive content check: even without OOB chrome, the bare fragment
-        # must still render the data-table content. "Name" is the visible
-        # column header configured on StubDataTable — asserting on it pins
-        # the test to "the actual data-table renders" rather than the
-        # absence-only checks above.
-        assert "Name" in content
+        response = fetch("stubs", htmx=True, hx_target="some-other-target")
 
-    def test_htmx_navigation_includes_heading(self, mock_site_context: None) -> None:
-        """HTMX navigation response carries the heading in the OOB page-title fragment."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
         content = response.content.decode()
-        # The heading moved out of #main-content into the shared header; on HTMX
-        # navigation it is swapped in via the OOB #page-title fragment.
+        assert 'id="main-content"' in content
+        assert 'id="sidebar-nav"' in content
+
+    def test_an_htmx_request_with_no_target_gets_the_navigation_response(
+        self, mock_site_context
+    ) -> None:
+        response = fetch("stubs", htmx=True)
+
+        assert 'id="main-content"' in response.content.decode()
+
+    def test_htmx_navigation_includes_heading(self, mock_site_context) -> None:
+        content = fetch("stubs", htmx=True, hx_target="main-content").content.decode()
+
         assert 'id="page-title"' in content
         assert "Stubs" in content
 
     def test_htmx_navigation_includes_announcer_when_set(
-        self, mock_site_context: None
+        self, mock_site_context
     ) -> None:
-        """A hosting view's request.panel_announcement renders into the OOB announcer fragment."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
+        request = make_request("stubs", htmx=True, hx_target="main-content")
         request.panel_announcement = "Now viewing Acme"
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        content = response.content.decode()
+
+        content = call_view(request, "stubs").content.decode()
+
         assert 'hx-swap-oob="innerHTML:#scope-announcer"' in content
         assert "Now viewing Acme" in content
 
     def test_announcer_fragment_never_carries_the_live_regions_own_id(
-        self, mock_site_context: None
+        self, mock_site_context
     ) -> None:
-        """The fragment must update the live region's contents, never replace the
-        region itself: an id of its own would make this an outerHTML swap, and a
-        torn-down-and-rebuilt live region goes unannounced by some screen readers.
-        """
-        request = _make_request(is_htmx=True, hx_target="main-content")
+        """The fragment must update the live region's contents, never replace
+        the region itself: a torn-down-and-rebuilt live region goes
+        unannounced by some screen readers."""
+        request = make_request("stubs", htmx=True, hx_target="main-content")
         request.panel_announcement = "Now viewing Acme"
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        content = response.content.decode()
+
+        content = call_view(request, "stubs").content.decode()
+
         assert 'id="scope-announcer"' not in content
 
     def test_htmx_navigation_omits_announcer_when_unset(
-        self, mock_site_context: None
+        self, mock_site_context
     ) -> None:
-        """No request.panel_announcement attribute means no announcer fragment at all."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        content = response.content.decode()
+        content = fetch("stubs", htmx=True, hx_target="main-content").content.decode()
+
         assert "scope-announcer" not in content
 
-    def test_htmx_navigation_includes_extra_oob_fragments_when_set(
-        self, mock_site_context: None
+    def test_htmx_navigation_includes_every_extra_oob_fragment(
+        self, mock_site_context
     ) -> None:
-        """A hosting view's request.panel_extra_oob renders each named
-        template into the same OOB bundle, with no context of its own."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
-        request.panel_extra_oob = ["panel_framework/test_extra_oob_fragment.html"]
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        content = response.content.decode()
-        assert 'id="test-extra-oob-fragment"' in content
-        assert 'hx-swap-oob="true"' in content
+        request = make_request("stubs", htmx=True, hx_target="main-content")
+        request.panel_extra_oob = [
+            "panel_framework/test_extra_oob_fragment.html",
+            "panel_framework/test_second_extra_oob_fragment.html",
+        ]
+
+        content = call_view(request, "stubs").content.decode()
+
+        assert 'id="test-extra-oob-fragment" hx-swap-oob="true"' in content
         assert "extra fragment content" in content
+        assert 'id="test-second-extra-oob-fragment" hx-swap-oob="true"' in content
 
     def test_htmx_navigation_omits_extra_oob_fragments_when_unset(
-        self, mock_site_context: None
+        self, mock_site_context
     ) -> None:
-        """No request.panel_extra_oob attribute means no extra fragment at all."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name=URL_NAME,
-        )
-        content = response.content.decode()
+        content = fetch("stubs", htmx=True, hx_target="main-content").content.decode()
+
         assert 'id="test-extra-oob-fragment"' not in content
 
     def test_htmx_navigation_threads_extra_url_kwargs_into_reversed_urls(
-        self, mock_site_context: None
+        self, mock_site_context
     ) -> None:
-        """request.panel_url_kwargs reaches the sidebar and breadcrumb reverse() calls."""
-        request = _make_request(is_htmx=True, hx_target="main-content")
+        request = make_request("stubs", htmx=True, hx_target="main-content")
         request.panel_url_kwargs = {"extra": "acme"}
-        response = panel_framework_view(
-            config=CONFIG,
-            request=request,
-            path_string="stubs",
-            template_name=TEMPLATE,
-            url_name="panel_framework_test:scoped_interface",
+
+        response = call_view(
+            request, "stubs", url_name="panel_framework_test:scoped_interface"
         )
-        content = response.content.decode()
-        assert "/test-panel/scoped/acme/stubs" in content
+
+        assert "/test-panel/scoped/acme/stubs" in response.content.decode()
+
+
+class TestRegionResponse:
+    def test_a_request_targeting_the_list_region_returns_only_the_table(
+        self, mock_site_context
+    ) -> None:
+        _make_stub(name="row-1")
+
+        content = fetch("stubs", htmx=True, hx_target=LIST_REGION_ID).content.decode()
+
+        assert f'id="{LIST_REGION_ID}"' in content
+        assert "row-1" in content
+        assert "<section" not in content
+        assert "Create Item" not in content
+        assert 'id="sidebar-nav"' not in content
+
+
+class TestVary:
+    @pytest.mark.parametrize(
+        "request_kwargs",
+        [
+            {},
+            {"htmx": True, "hx_target": LIST_REGION_ID},
+            {"htmx": True, "hx_target": "main-content"},
+        ],
+        ids=["plain", "region fragment", "navigation"],
+    )
+    def test_every_branch_of_one_url_varies_on_the_htmx_headers(
+        self, mock_site_context, request_kwargs
+    ) -> None:
+        response = fetch("stubs", **request_kwargs)
+
+        for header in VARY_HEADERS:
+            assert header in response["Vary"]
+
+    def test_an_action_422_varies_on_the_htmx_headers(self, mock_site_context) -> None:
+        _make_stub(name="Taken")
+        response = fetch(
+            "stubs/__actions/create_item", method="post", data={"name": "Taken"}
+        )
+
+        assert response.status_code == 422
+        for header in VARY_HEADERS:
+            assert header in response["Vary"]

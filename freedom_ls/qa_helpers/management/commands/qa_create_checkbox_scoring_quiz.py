@@ -32,8 +32,7 @@ form is started, so the quiz can be taken repeatedly by visiting
 ``/courses/<slug>/<index>/start_form`` (the "Retry quiz" button on the results
 page points there, and is only rendered after a FAIL).
 
-The course is also registered to the multi-select QA cohort so the attempts
-show up in the educator cohort course-progress panel.
+The course is also registered to the multi-select QA cohort.
 
 Usage:
     uv run python manage.py qa_create_checkbox_scoring_quiz

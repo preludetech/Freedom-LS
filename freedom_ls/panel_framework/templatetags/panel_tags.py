@@ -1,9 +1,36 @@
 import re
 
 from django import template
+from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils.safestring import SafeString
+
+from freedom_ls.panel_framework.actions import PanelAction
+from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.panels import Panel
 
 register = template.Library()
+
+
+@register.simple_tag
+def render_panel(panel: Panel) -> SafeString:
+    """Render a bound panel through its own template and context.
+
+    `{% include %}` cannot take a context dict, so this tag is how a template
+    renders another panel. It renders against the panel's own request, so
+    context processors run as they would for a page.
+    """
+    return render_to_string(
+        panel.template_name, panel.get_context_data(), request=panel.request
+    )
+
+
+@register.simple_tag
+def render_action(action: PanelAction, ctx: PanelContext) -> SafeString:
+    """Render an action for the panel or view whose context is `ctx`."""
+    return render_to_string(
+        action.template_name, action.get_context_data(ctx), request=ctx.request
+    )
 
 
 @register.simple_tag(takes_context=True)

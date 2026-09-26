@@ -5,42 +5,49 @@ from collections import Counter
 from collections.abc import Callable
 
 from django import forms
+from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 
+from freedom_ls.panel_framework.context import PanelContext
+
 
 class PanelAction:
+    """A button on a panel, list or instance view, and what submitting it does.
+
+    It renders through `template_name` with `get_context_data(ctx)`, and its
+    URL is the owner's `ctx.base_url` plus `/__actions/<action_name>`.
+    """
+
     label: str = ""
     variant: str = "primary"
     action_name: str = ""
+    template_name: str = "panel_framework/partials/action_button.html"
 
     def has_permission(
         self, request: HttpRequest, instance: Model | None = None
     ) -> bool:
         return True
 
-    def handle_submit(
-        self, request: HttpRequest, instance: Model | None = None, base_url: str = ""
-    ) -> HttpResponse:
+    def get_action_url(self, ctx: PanelContext) -> str:
+        return f"{ctx.base_url}/__actions/{self.action_name}"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return {
+            "label": self.label,
+            "variant": self.variant,
+            "action_url": self.get_action_url(ctx),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process action submission. Override in subclasses."""
         raise NotImplementedError
 
-    def render(self, request: HttpRequest, context: object, base_url: str) -> str:
-        """Render the action button HTML."""
-        return render_to_string(
-            "panel_framework/partials/action_button.html",
-            {
-                "label": self.label,
-                "variant": self.variant,
-                "action_url": f"{base_url}/__actions/{self.action_name}",
-            },
-            request=request,
-        )
-
 
 class FormPanelAction(PanelAction):
+    template_name = "panel_framework/partials/modal_form.html"
     form_class: Callable[..., forms.ModelForm]
     form_title: str = ""
     submit_buttons: list[dict[str, str]] = [
@@ -54,19 +61,13 @@ class FormPanelAction(PanelAction):
         form = self.form_class(data, instance=instance)
         return form
 
-    def get_form_url(self, base_url: str) -> str:
-        """URL for form submission via HTMX."""
-        return f"{base_url}/__actions/{self.action_name}"
-
-    def handle_submit(
-        self, request: HttpRequest, instance: Model | None = None, base_url: str = ""
-    ) -> HttpResponse:
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process form submission."""
-        self._last_form_url = self.get_form_url(base_url)
-        form = self.get_form(request, instance)
+        self._last_form_url = self.get_action_url(ctx)
+        form = self.get_form(ctx.request, ctx.instance)
         if form.is_valid():
-            return self.form_valid(request, form)
-        return self.form_invalid(request, form)
+            return self.form_valid(ctx.request, form)
+        return self.form_invalid(ctx.request, form)
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         raise NotImplementedError
@@ -74,7 +75,7 @@ class FormPanelAction(PanelAction):
     def form_invalid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         """Return 422 with re-rendered form."""
         html = render_to_string(
-            "panel_framework/partials/modal_form.html",
+            self.template_name,
             {
                 "form": form,
                 "form_title": self.form_title,
@@ -88,23 +89,16 @@ class FormPanelAction(PanelAction):
         )
         return HttpResponse(html, status=422)
 
-    def render(self, request: HttpRequest, context: object, base_url: str) -> str:
-        """Render trigger button + modal with form."""
-        form = self.get_form(request)
-        form_url = self.get_form_url(base_url)
-        self._last_form_url = form_url
-        return render_to_string(
-            "panel_framework/partials/modal_form.html",
-            {
-                "form": form,
-                "form_title": self.form_title,
-                "form_url": form_url,
-                "variant": self.variant,
-                "label": self.label,
-                "submit_buttons": self.submit_buttons,
-            },
-            request=request,
-        )
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        """The trigger button and its modal, holding an unbound form."""
+        return {
+            "form": self.get_form(ctx.request),
+            "form_title": self.form_title,
+            "form_url": self.get_action_url(ctx),
+            "variant": self.variant,
+            "label": self.label,
+            "submit_buttons": self.submit_buttons,
+        }
 
 
 class CreateInstanceAction(FormPanelAction):
@@ -137,7 +131,7 @@ class CreateInstanceAction(FormPanelAction):
         """Re-render the modal form with an empty/unbound form."""
         form = self.form_class()
         return render_to_string(
-            "panel_framework/partials/modal_form.html",
+            self.template_name,
             {
                 "form": form,
                 "form_title": self.form_title,
@@ -217,9 +211,12 @@ class EditAction(FormPanelAction):
 
 
 class DeleteAction(PanelAction):
+    """Deletes the instance of whatever it is attached to, after confirmation."""
+
     label = "Delete"
     variant = "error"
     action_name = "delete"
+    template_name = "panel_framework/partials/delete_confirmation.html"
 
     def __init__(self, success_url: str = ""):
         self.success_url = success_url
@@ -270,55 +267,48 @@ class DeleteAction(PanelAction):
             return "".join(parts)
         return f"{', '.join(parts[:-1])} and {parts[-1]}"
 
-    def _render_confirmation(
+    def _confirmation_context(
         self,
-        request: HttpRequest,
+        ctx: PanelContext,
         instance: Model,
-        base_url: str,
         *,
         cascade_summary: list[str],
         blocked_reason: str,
         modal_open: bool = False,
-    ) -> str:
-        return render_to_string(
-            "panel_framework/partials/delete_confirmation.html",
-            {
-                "instance": instance,
-                "cascade_summary": cascade_summary,
-                "blocked_reason": blocked_reason,
-                "delete_url": f"{base_url}/__actions/delete",
-                "variant": self.variant,
-                "modal_open": "true" if modal_open else "false",
-            },
-            request=request,
-        )
+    ) -> dict[str, object]:
+        return {
+            "instance": instance,
+            "cascade_summary": cascade_summary,
+            "blocked_reason": blocked_reason,
+            "delete_url": self.get_action_url(ctx),
+            "variant": self.variant,
+            "modal_open": "true" if modal_open else "false",
+        }
 
-    def render(self, request: HttpRequest, context: object, base_url: str) -> str:
-        """Render error-variant button + confirmation modal."""
-        if not isinstance(context, Model):
-            raise TypeError("DeleteAction.render requires a Model instance")
-        instance = context
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        """The error-variant button and its confirmation modal.
+
+        A delete that a protected relation would block renders the reason in
+        place of the cascade summary, with no live delete button.
+        """
+        instance = ctx.instance
+        if instance is None:
+            raise ImproperlyConfigured("DeleteAction needs an instance to delete.")
         try:
             cascade = self.get_cascade_summary(instance)
         except ProtectedError as error:
-            return self._render_confirmation(
-                request,
+            return self._confirmation_context(
+                ctx,
                 instance,
-                base_url,
                 cascade_summary=[],
                 blocked_reason=self.get_blocked_reason(instance, error),
             )
-        return self._render_confirmation(
-            request,
-            instance,
-            base_url,
-            cascade_summary=cascade,
-            blocked_reason="",
+        return self._confirmation_context(
+            ctx, instance, cascade_summary=cascade, blocked_reason=""
         )
 
-    def handle_submit(
-        self, request: HttpRequest, instance: Model | None = None, base_url: str = ""
-    ) -> HttpResponse:
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        instance = ctx.instance
         if instance is None:
             return HttpResponse(status=400)
         try:
@@ -326,13 +316,16 @@ class DeleteAction(PanelAction):
         except ProtectedError as error:
             # The render path hides the button, so reaching here means a stale
             # page or a hand-made request. Answer it the way a form does.
-            html = self._render_confirmation(
-                request,
-                instance,
-                base_url,
-                cascade_summary=[],
-                blocked_reason=self.get_blocked_reason(instance, error),
-                modal_open=True,
+            html = render_to_string(
+                self.template_name,
+                self._confirmation_context(
+                    ctx,
+                    instance,
+                    cascade_summary=[],
+                    blocked_reason=self.get_blocked_reason(instance, error),
+                    modal_open=True,
+                ),
+                request=ctx.request,
             )
             return HttpResponse(html, status=422)
         response = HttpResponse(status=204)

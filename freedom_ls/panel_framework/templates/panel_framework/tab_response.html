@@ -1,0 +1,7 @@
+{% load panel_tags %}
+{% comment %}
+One tab's content for a tab click, plus an announcement for screen-reader
+users, who would otherwise not hear that the content below the tabs changed.
+{% endcomment %}
+{% render_panel panel %}
+{% include "panel_framework/partials/announcer.html" with message=announcement oob=True only %}

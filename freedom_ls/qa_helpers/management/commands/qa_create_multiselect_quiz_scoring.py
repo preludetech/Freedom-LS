@@ -399,8 +399,8 @@ def command(site_name: str) -> None:
     _register(learner, no_pct_course, site)
     no_pct_index = _item_index(no_pct_course, no_pct_form)
 
-    # Cohort for the educator cohort-course-progress panel, registered for BOTH
-    # courses so one panel exercises the pass-mark and the no-pass-mark quiz.
+    # A cohort registered for both courses, so one cohort holds attempts at the
+    # pass-mark and the no-pass-mark quiz.
     cohort = _get_or_create_cohort(site)
     for course in (types_course, no_pct_course):
         _register_cohort(cohort, course, site)

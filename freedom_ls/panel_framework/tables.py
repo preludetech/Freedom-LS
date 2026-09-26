@@ -3,9 +3,6 @@ from __future__ import annotations
 from django.core.paginator import Page, Paginator
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
-from django.template.loader import render_to_string
-
-DEFAULT_TABLE_ID = "data-table-container"
 
 
 class DataTable:
@@ -35,12 +32,13 @@ class DataTable:
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, columns: list[dict], filters: dict | None = None
+        cls, request: HttpRequest, columns: list[dict], queryset: QuerySet
     ) -> Page:
-        queryset = cls.get_queryset(request)
-        if filters:
-            queryset = queryset.filter(**filters)
+        """Search, sort and paginate `queryset` from the request's query string.
 
+        The queryset arrives already scoped: whoever renders the table owns
+        which rows it may show, and this method only narrows them further.
+        """
         search_query = request.GET.get("search", "").strip()
         if search_query and cls.search_fields:
             search_filter = Q()
@@ -57,34 +55,27 @@ class DataTable:
 
         page_number = request.GET.get("page", 1)
         paginator = Paginator(queryset, cls.page_size)
-        page_obj = paginator.get_page(page_number)
-
-        return page_obj
+        return paginator.get_page(page_number)
 
     @classmethod
-    def render(
+    def get_context(
         cls,
         request: HttpRequest,
-        filters: dict | None = None,
-        base_url: str = "",
-        table_id: str = DEFAULT_TABLE_ID,
-    ) -> str:
+        queryset: QuerySet,
+        base_url: str,
+        table_id: str,
+    ) -> dict[str, object]:
+        """Everything the table's region template needs to render one page."""
         columns = cls._prepare_columns()
-        sort_by = request.GET.get("sort", "")
-        sort_order = request.GET.get("order", "asc")
-        search_query = request.GET.get("search", "").strip()
-        page_obj = cls.get_rows(request, columns, filters=filters)
-        context = {
+        page_obj = cls.get_rows(request, columns, queryset)
+        return {
             "columns": columns,
             "rows": page_obj,
             "page_obj": page_obj,
-            "sort_by": sort_by,
-            "sort_order": sort_order,
+            "sort_by": request.GET.get("sort", ""),
+            "sort_order": request.GET.get("order", "asc"),
             "base_url": base_url,
             "show_search": bool(cls.search_fields),
-            "search_query": search_query,
+            "search_query": request.GET.get("search", "").strip(),
             "table_id": table_id,
         }
-        return render_to_string(
-            "panel_framework/partials/list_view.html", context, request=request
-        )

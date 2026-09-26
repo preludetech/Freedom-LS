@@ -23,7 +23,6 @@ These Alpine components are already registered in the FreedomLS codebase — reu
 | `coursePart` | `learner_interface/.../alpine-components.js` | `course_minimal_toc.html` | Expand/collapse with localStorage |
 | `equation` | `content_engine/.../alpine-components.js` | `cotton/equation.html` | Client-side KaTeX typesetting (widget-scoped) |
 | `contentLightbox` | `content_engine/.../alpine-components.js` | `cotton/picture.html` | Focus-managing image lightbox (open/close, escape, focus restore) |
-| `tabContainer` | `panel_framework/.../alpine-components.js` | Panel tabs | Tab switching |
 
 ## Icons with Alpine
 

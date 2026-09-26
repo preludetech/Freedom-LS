@@ -63,7 +63,7 @@ class TestInterfaceRoot:
         response = client.get(reverse("educator_interface:root"))
 
         assert response.status_code == 302
-        assert response["Location"] == _interface_url(organisation_a.slug, "cohorts")
+        assert response["Location"] == _interface_url(organisation_a.slug, "dashboard")
 
     def test_redirects_to_the_remembered_organisation_over_the_alphabetical_default(
         self, logged_in_client
@@ -78,7 +78,7 @@ class TestInterfaceRoot:
 
         response = client.get(reverse("educator_interface:root"))
 
-        assert response["Location"] == _interface_url(organisation_b.slug, "cohorts")
+        assert response["Location"] == _interface_url(organisation_b.slug, "dashboard")
 
     def test_remembered_organisation_is_ignored_if_no_longer_accessible(
         self, logged_in_client
@@ -94,7 +94,7 @@ class TestInterfaceRoot:
 
         response = client.get(reverse("educator_interface:root"))
 
-        assert response["Location"] == _interface_url(accessible.slug, "cohorts")
+        assert response["Location"] == _interface_url(accessible.slug, "dashboard")
 
 
 @pytest.mark.django_db

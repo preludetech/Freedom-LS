@@ -18,11 +18,17 @@ from types import SimpleNamespace
 
 import pytest
 
+from django.test import RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.educator_interface.views import (
+    CohortCourseRegistrationDataTable,
+    CourseCohortRegistrationDataTable,
+)
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
@@ -193,6 +199,51 @@ class TestCrossOrganisationIsolation:
         )
 
         assert response.status_code == 404
+
+    def test_course_detail_cohort_registrations_never_show_organisation_bs_cohort(
+        self, isolation
+    ):
+        """Courses are shared across organisations; the cohorts registered for
+        one are not."""
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_a, course=isolation.course_a
+        )
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_b, course=isolation.course_a
+        )
+
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug, f"courses/{isolation.course_a.pk}"
+            )
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert isolation.cohort_a.name in content
+        assert isolation.cohort_b.name not in content
+
+    @pytest.mark.parametrize(
+        "data_table",
+        [CohortCourseRegistrationDataTable, CourseCohortRegistrationDataTable],
+        ids=lambda table: table.__name__,
+    )
+    def test_registration_table_excludes_another_organisations_rows(
+        self, isolation, data_table
+    ):
+        registration_a = CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_a, course=isolation.course_a
+        )
+        registration_b = CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_b, course=isolation.course_a
+        )
+        request = RequestFactory().get("/")
+        request.organisation = isolation.organisation_a
+
+        rows = set(data_table.get_queryset(request))
+
+        assert registration_a in rows
+        assert registration_b not in rows
 
 
 @pytest.mark.django_db

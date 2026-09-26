@@ -48,8 +48,9 @@ def _all_panel_classes() -> list[type[Panel]]:
 def panel_errors(panel_class: type[Panel]) -> list[CheckMessage]:
     """Validate one Panel subclass's `fields`, `model` and `children` declarations."""
     errors: list[CheckMessage] = []
+    # Only some panels (InstanceDetailsPanel and its kind) declare fields.
     fields: list[str] = getattr(panel_class, "fields", [])
-    model = getattr(panel_class, "model", None)
+    model = panel_class.model
 
     if fields and model is None:
         errors.append(
@@ -76,7 +77,7 @@ def panel_errors(panel_class: type[Panel]) -> list[CheckMessage]:
                     )
                 )
 
-    children: dict[str, object] = getattr(panel_class, "children", {})
+    children: dict[str, object] = dict(panel_class.children)
     for key, value in children.items():
         if not (isinstance(value, type) and issubclass(value, Panel)):
             errors.append(

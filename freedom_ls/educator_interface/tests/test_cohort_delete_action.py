@@ -1,4 +1,9 @@
-"""The cohort panel renders for a cohort whose registrations granted progress.
+"""Deleting a cohort from its Details panel.
+
+The delete action lives on the Details panel, so it renders and submits
+through that panel's own URL.
+
+The cohort panel also renders for a cohort whose registrations granted progress.
 
 CourseProgress protects its grant FKs, so Django's Collector raises rather than
 returning a cascade preview. DeleteAction renders that preview on every GET, for
@@ -9,8 +14,10 @@ saw nothing wrong.
 
 from __future__ import annotations
 
+import lxml.html
 import pytest
 
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -20,6 +27,7 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -50,6 +58,40 @@ def _panel_url(cohort) -> str:
     )
 
 
+def _delete_url(client: Client, cohort) -> str:
+    """The delete action's URL, read off the Details panel the page renders."""
+    document = lxml.html.fromstring(client.get(_panel_url(cohort)).content)
+    (details_panel,) = document.cssselect('section[data-panel="details"]')
+    return f"{details_panel.get('hx-get')}/__actions/delete"
+
+
+@pytest.mark.django_db
+def test_an_empty_cohort_is_deleted_from_its_details_panel(
+    mock_site_context, logged_in_client
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+
+    response = client.delete(url)
+
+    assert response.status_code == 204
+    assert response["HX-Redirect"].endswith("/cohorts")
+    assert not Cohort.objects.filter(pk=cohort.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_details_panel_renders_the_delete_trigger(
+    mock_site_context, logged_in_client
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
+    client = logged_in_client(UserFactory(superuser=True))
+
+    body = client.get(_panel_url(cohort)).content.decode()
+
+    assert f'hx-delete="{_delete_url(client, cohort)}"' in body
+
+
 @pytest.mark.django_db
 def test_cohort_panel_renders_for_a_viewer_who_can_delete_it(
     cohort_with_granted_progress, logged_in_client
@@ -78,7 +120,7 @@ def test_submitting_the_blocked_delete_answers_instead_of_erroring(
     cohort_with_granted_progress, logged_in_client
 ):
     client = logged_in_client(UserFactory(superuser=True))
-    url = f"{_panel_url(cohort_with_granted_progress)}/__actions/delete"
+    url = _delete_url(client, cohort_with_granted_progress)
 
     response = client.delete(url)
 

@@ -1,0 +1,8 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% comment %}
+This is only used in the tests: a panel template that extends the framework's
+own, as a consumer's panel would.
+{% endcomment %}
+
+{% block panel_body %}<p data-stub-details>{{ panel.instance.name }}</p>{% endblock panel_body %}

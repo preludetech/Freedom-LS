@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import gc
+from typing import cast
+
+from django.core.management import call_command
+
 from freedom_ls.panel_framework.checks import panel_errors
 from freedom_ls.panel_framework.panels import Panel
 
@@ -43,7 +48,7 @@ def test_non_panel_child_raises_e003() -> None:
         pass
 
     class BadChildPanel(Panel):
-        children = {"bad": NotAPanel}
+        children = {"bad": cast(type[Panel], NotAPanel)}
 
     # Act
     errors = panel_errors(BadChildPanel)
@@ -91,3 +96,12 @@ def test_a_dunder_path_field_raises_no_error() -> None:
 
     # Assert
     assert errors == []
+
+
+def test_call_command_check_passes_on_the_real_config() -> None:
+    # The fixture panels above are defined inside test functions so they are
+    # never module-level Panel subclasses, but a class lingers in
+    # Panel.__subclasses__() until the garbage collector frees it.
+    gc.collect()
+
+    call_command("check")

@@ -4,6 +4,8 @@ import uuid
 
 import pytest
 
+from django.urls import reverse
+
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
@@ -17,6 +19,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 # -- Task 5.1: visibility column + interest count -----------------------
 
@@ -35,7 +38,9 @@ def test_course_table_includes_visibility_label(mock_site_context, site_aware_re
 
     request = site_aware_request.get("/")
     columns = CourseDataTable._prepare_columns()
-    page = CourseDataTable.get_rows(request, columns)
+    page = CourseDataTable.get_rows(
+        request, columns, CourseDataTable.get_queryset(request)
+    )
 
     row = _find_row(page, course)
     assert row.get_visibility_display() == "Coming soon"
@@ -55,7 +60,9 @@ def test_course_table_interest_count_matches_interest_rows(
 
     request = site_aware_request.get("/")
     columns = CourseDataTable._prepare_columns()
-    page = CourseDataTable.get_rows(request, columns)
+    page = CourseDataTable.get_rows(
+        request, columns, CourseDataTable.get_queryset(request)
+    )
 
     assert _find_row(page, course).interest_count == 2
     assert _find_row(page, other_course).interest_count == 1
@@ -79,7 +86,9 @@ def test_course_table_interest_count_is_site_scoped(
 
     request = site_aware_request.get("/")
     columns = CourseDataTable._prepare_columns()
-    page = CourseDataTable.get_rows(request, columns)
+    page = CourseDataTable.get_rows(
+        request, columns, CourseDataTable.get_queryset(request)
+    )
 
     row_pks = {row.pk for row in page.object_list}
     assert other_course.pk not in row_pks
@@ -88,15 +97,30 @@ def test_course_table_interest_count_is_site_scoped(
 
 @pytest.mark.django_db
 def test_course_table_renders_visibility_and_interest_columns(
-    mock_site_context, panel_request
+    mock_site_context, logged_in_client
 ):
     """The rendered table shows the visibility label and interest count."""
     course = CourseFactory(
         title="Demand Course", visibility=CourseVisibility.COMING_SOON
     )
     CourseInterestFactory(course=course, user=UserFactory())
+    organisation = OrganisationFactory()
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, organisation, "organisation_staff")
 
-    html = CourseDataTable.render(panel_request())
+    html = (
+        logged_in_client(educator)
+        .get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": "courses",
+                },
+            )
+        )
+        .content.decode()
+    )
 
     assert "Coming soon" in html
     assert "Interest" in html
@@ -140,7 +164,9 @@ class TestCourseTableTotalLearnerCountQueryCost:
         columns = CourseDataTable._prepare_columns()
 
         with django_assert_max_num_queries(8):
-            CourseDataTable.get_rows(request, columns)
+            CourseDataTable.get_rows(
+                request, columns, CourseDataTable.get_queryset(request)
+            )
 
 
 # -- Task 5.3: visibility is content-file-only, not educator/admin editable --

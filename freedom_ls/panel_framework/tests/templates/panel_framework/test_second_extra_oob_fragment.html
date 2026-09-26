@@ -1,0 +1,5 @@
+{% comment %}
+This is only used in the tests: a second extra OOB fragment, so a test can show
+the navigation response renders every one it is given.
+{% endcomment %}
+<div id="test-second-extra-oob-fragment" {% if oob %}hx-swap-oob="true"{% endif %}>second fragment</div>

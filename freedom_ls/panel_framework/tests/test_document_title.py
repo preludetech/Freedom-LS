@@ -13,14 +13,10 @@ from django.contrib.sites.models import Site
 from django.http import HttpRequest
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.views import ListViewConfig, panel_framework_view
+from freedom_ls.panel_framework.views import panel_framework_view
 
 from .conftest import make_staff_user
-from .stub_panels import StubListConfig
-
-CONFIG: dict[str, type[ListViewConfig]] = {
-    "stubs": StubListConfig,
-}
+from .stub_panels import STUB_CONFIG
 
 URL_NAME = "panel_framework_test:interface"
 TEMPLATE = "panel_framework/test_interface.html"
@@ -40,7 +36,7 @@ def _navigation_request() -> HttpRequest:
 def _navigate(request: HttpRequest) -> str:
     """Run a navigation and return the rendered OOB bundle."""
     response = panel_framework_view(
-        config=CONFIG,
+        config=STUB_CONFIG,
         request=request,
         path_string="stubs",
         template_name=TEMPLATE,

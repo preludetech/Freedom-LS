@@ -1,0 +1,31 @@
+{% load panel_tags %}
+{% comment %}
+Tabs are navigation: each link has its own URL, which renders the whole page
+with that tab active. A click swaps only the region below, and the nav sits
+outside that region so the focused link survives the swap. A document-level
+htmx:afterSwap listener moves aria-current to the clicked link.
+{% endcomment %}
+<div data-panel="{{ name }}">
+    {% block tab_nav %}
+        <nav aria-label="{{ title }}" class="border-b border-border mb-6">
+            <ul class="flex list-none ml-0 gap-1">
+                {% for tab in tabs %}
+                    <li>
+                        <a href="{{ tab.url }}"
+                           hx-get="{{ tab.url }}"
+                           hx-target="#{{ region_id }}"
+                           hx-push-url="true"
+                           hx-swap="innerHTML"
+                           {% if tab.active %}aria-current="page"{% endif %}
+                           class="block px-4 py-2 -mb-px text-sm text-muted transition-colors hover:text-on-surface aria-[current=page]:border-b-2 aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-on-surface">
+                            {{ tab.title }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% endblock tab_nav %}
+    <div id="{{ region_id }}" data-tab-set>
+        {% render_panel active_child %}
+    </div>
+</div>

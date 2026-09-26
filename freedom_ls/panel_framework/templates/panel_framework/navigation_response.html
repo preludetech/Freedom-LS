@@ -1,0 +1,12 @@
+{% comment %}
+The htmx navigation response: the new main content plus every piece of page
+chrome that depends on where the reader is, swapped out of band. Each include
+names its context explicitly, so request and site_name are passed by hand.
+{% endcomment %}
+{% include main_template_name with main=main request=request only %}
+{% include "panel_framework/partials/breadcrumbs.html" with breadcrumbs=breadcrumbs oob=True request=request only %}
+{% include "panel_framework/partials/sidebar_nav.html" with menu_groups=menu_groups oob=True request=request only %}
+{% include "partials/page_title.html" with page_title=heading oob=True only %}
+{% include "panel_framework/partials/document_title.html" with heading=heading site_name=site_name request=request only %}
+{% if announcement %}{% include "panel_framework/partials/announcer.html" with message=announcement oob=True only %}{% endif %}
+{% for extra_template_name in extra_oob %}{% include extra_template_name with oob=True request=request only %}{% endfor %}

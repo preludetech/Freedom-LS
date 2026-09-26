@@ -6,3 +6,10 @@ class PanelFrameworkConfig(AppConfig):
     name = "freedom_ls.panel_framework"
     label = "freedom_ls_panel_framework"
     verbose_name = "Panel framework"
+
+    def ready(self) -> None:
+        from django.core.checks import register
+
+        from freedom_ls.panel_framework.checks import check_panels
+
+        register(check_panels)

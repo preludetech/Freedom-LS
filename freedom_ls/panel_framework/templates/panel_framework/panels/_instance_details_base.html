@@ -1,0 +1,24 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% comment %}Stacked on small screens, a two-column table from md up.{% endcomment %}
+    <dl class="md:hidden space-y-3">
+        {% for row in rows %}
+            <div>
+                <dt class="text-sm font-semibold text-muted">{{ row.label|capfirst }}</dt>
+                <dd class="mt-1">{% include "panel_framework/panels/_details_value.html" with row=row only %}</dd>
+            </div>
+        {% endfor %}
+    </dl>
+
+    <table class="hidden md:table">
+        <tbody>
+            {% for row in rows %}
+                <tr>
+                    <th>{{ row.label|capfirst }}</th>
+                    <td>{% include "panel_framework/panels/_details_value.html" with row=row only %}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock panel_body %}

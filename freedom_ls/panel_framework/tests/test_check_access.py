@@ -17,14 +17,16 @@ from django.test import RequestFactory
 from freedom_ls.panel_framework.views import (
     InstanceView,
     ListViewConfig,
+    NavGroup,
     panel_framework_view,
 )
 
 from .conftest import StubModel, _make_stub, make_staff_user
+from .stub_panels import StubDetailsPanel
 
 
 class _StubInstanceView(InstanceView):
-    pass
+    panel = StubDetailsPanel
 
 
 class DenyByDefaultConfig(ListViewConfig):
@@ -108,7 +110,7 @@ class TestCheckAccessDenyByDefault:
         request = _authenticated_request(f"/test-panel/deny-stub/{stub.pk}")
         with pytest.raises(Http404):
             panel_framework_view(
-                config={"deny-stub": DenyByDefaultConfig},
+                config=[NavGroup("Stubs", [DenyByDefaultConfig])],
                 request=request,
                 path_string=f"deny-stub/{stub.pk}",
                 template_name=TEMPLATE,
@@ -124,7 +126,7 @@ class TestCheckAccessDenyByDefault:
         stub = _make_stub(name="Allowed Stub")
         request = _authenticated_request(f"/test-panel/allow-stub/{stub.pk}")
         response = panel_framework_view(
-            config={"allow-stub": PermissiveConfig},
+            config=[NavGroup("Stubs", [PermissiveConfig])],
             request=request,
             path_string=f"allow-stub/{stub.pk}",
             template_name=TEMPLATE,

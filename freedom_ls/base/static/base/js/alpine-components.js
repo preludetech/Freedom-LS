@@ -396,7 +396,7 @@ document.addEventListener("alpine:init", () => {
     //     modal overlay with a scrim, an inert background, a focus trap, and
     //     Escape-to-close — all native to <dialog>. showModal() does NOT push a
     //     history entry, so device/browser Back is wired manually (pushState on
-    //     open, popstate to close) mirroring the tabContainer component.
+    //     open, popstate to close).
     //
     // aria-expanded on the toggle is bound to `open`; the dialog's native
     // "close" event syncs it back and returns focus to the toggle.

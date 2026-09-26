@@ -2,9 +2,7 @@
 
 The cohort progress report's landscape summary table gets one data column per
 QUIZ form in the course, so the report's layout behaviour is driven by the
-course's *quiz* count as much as its item count. ``qa_add_course_items_for_pagination``
-appends Topics only and therefore cannot build the long course the report QA
-matrix needs.
+course's *quiz* count as much as its item count.
 
 Courses built here are standalone: every Topic and Form belongs to exactly one
 QA course (slugs carry the course key). That matters because ``TopicProgress``

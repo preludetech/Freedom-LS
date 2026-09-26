@@ -1,0 +1,15 @@
+{% extends "panel_framework/views/_main_base.html" %}
+{% load panel_tags %}
+
+{% block main %}
+    {% if main.refresh_events %}
+        {% include "panel_framework/partials/list_refresh.html" with actions=main.actions ctx=main.ctx refresh_events=main.refresh_events refresh_url=main.refresh_url refresh_target=main.panel.region_id only %}
+    {% elif main.actions %}
+        <div class="mb-6">
+            <c-button-group variant="right">
+                {% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}
+            </c-button-group>
+        </div>
+    {% endif %}
+    {% render_panel main.panel %}
+{% endblock main %}

@@ -1,0 +1,8 @@
+{% extends "panel_framework/panels/_panel_base.html" %}
+
+{% comment %}
+This is only used in the tests: a downstream override of the leaf panel
+template that keeps the framework's markup and adds to it.
+{% endcomment %}
+
+{% block panel_header %}<p data-override-marker>overridden</p>{{ block.super }}{% endblock panel_header %}

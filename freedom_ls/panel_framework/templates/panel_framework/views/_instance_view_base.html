@@ -1,0 +1,14 @@
+{% extends "panel_framework/views/_main_base.html" %}
+{% load panel_tags %}
+
+{% block main %}
+    <h1 id="instance-title">{{ main.instance }}</h1>
+    {% if main.actions %}
+        <div class="mb-6">
+            <c-button-group variant="right">
+                {% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}
+            </c-button-group>
+        </div>
+    {% endif %}
+    {% render_panel main.panel %}
+{% endblock main %}

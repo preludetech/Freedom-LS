@@ -1,0 +1,6 @@
+{% load panel_tags %}
+<div data-panel="{{ name }}" class="space-y-6">
+    {% block children %}
+        {% for child in children %}{% render_panel child %}{% endfor %}
+    {% endblock children %}
+</div>

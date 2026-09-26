@@ -9,22 +9,28 @@
 
 {% block sidebar_content %}
     {% include "educator_interface/partials/organisation_switcher.html" %}
-    {% include "panel_framework/partials/sidebar_nav.html" %}
+    {% include "panel_framework/partials/sidebar_nav.html" with menu_groups=menu_groups request=request only %}
+    <div class="mt-6 pt-4 border-t border-border px-3 min-w-0">
+        <p class="text-sm font-semibold text-on-surface truncate">{{ request.user.get_full_name }}</p>
+        <p class="text-xs text-muted truncate">{{ request.user.email }}</p>
+    </div>
 {% endblock sidebar_content %}
 
 {% block breadcrumbs %}
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
-{# Single-line so no whitespace leaks into the rendered <title>. The same partial #}
-{# feeds the OOB fragment on HTMX navigation, so both paths read identically. #}
+{% comment %}
+Single-line so no whitespace leaks into the rendered <title>. The same partial
+feeds the OOB fragment on HTMX navigation, so both paths read identically.
+{% endcomment %}
 {% block head_title %}{% include "panel_framework/partials/document_title.html#document-title" %}{% endblock head_title %}
 
 {% block page_title %}{% include "partials/page_title.html" with page_title=heading %}{% endblock page_title %}
 
 {% block content %}
     <c-page flush="true">
-        {% include "panel_framework/partials/main_content.html" %}
+        {% include main_template_name with main=main request=request only %}
     </c-page>
-    <div id="scope-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    {% include "panel_framework/partials/announcer_host.html" %}
 {% endblock content %}

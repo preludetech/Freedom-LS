@@ -1,12 +1,9 @@
 """E2E tests for DataTablePanel HTMX swap behaviour.
 
 These tests assert that HTMX-driven sort and pagination swaps inside a
-``DataTablePanel`` do not nest panel ``<section>`` wrappers in the live DOM.
-The bug they cover: ``DataTablePanel.render()`` previously wrapped the
-panel container around its content on every request, so the HTMX response
-to a sort/pagination click was a full panel re-render, which the browser
-then placed *inside* the existing panel wrapper — recursively, on every
-swap.
+``DataTablePanel`` do not nest panel ``<section>`` wrappers in the live DOM:
+a sort or page click must get back the panel's region, never the whole panel,
+or the browser places a second frame inside the first on every swap.
 """
 
 from __future__ import annotations
@@ -18,16 +15,9 @@ from playwright.sync_api import Page, expect
 
 from ..conftest import _make_stub
 from ..stub_panels import StubDataTable
+from .assertions import expect_no_nested_panel
 
 PAGE_SIZE = StubDataTable.page_size
-
-
-def _expect_no_nested_panel(page: Page) -> None:
-    """The fix's structural invariant: there is exactly one panel wrapper, and
-    it does not contain another ``<section>`` inside it."""
-    panel = page.locator("[data-panel='default']")
-    expect(panel).to_have_count(1)
-    expect(panel.locator("section")).to_have_count(0)
 
 
 @pytest.mark.playwright
@@ -44,7 +34,7 @@ def test_data_table_sort_does_not_nest_panel_wrappers(
     pk = rows[0].pk
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{pk}/")
-    _expect_no_nested_panel(page)
+    expect_no_nested_panel(page)
 
     # Three sort clicks: the original bug compounded a new <section> wrapper on
     # each swap, so the third click is the one that exposes the regression
@@ -52,7 +42,7 @@ def test_data_table_sort_does_not_nest_panel_wrappers(
     sort_link = page.get_by_role("link", name="Name")
     for _ in range(3):
         sort_link.click()
-        _expect_no_nested_panel(page)
+        expect_no_nested_panel(page)
 
 
 @pytest.mark.playwright
@@ -66,13 +56,13 @@ def test_data_table_pagination_does_not_nest_panel_wrappers(
     pk = rows[0].pk
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{pk}/")
-    _expect_no_nested_panel(page)
+    expect_no_nested_panel(page)
 
     page.get_by_role("link", name="2").first.click()
-    _expect_no_nested_panel(page)
+    expect_no_nested_panel(page)
 
     page.get_by_role("link", name="1").first.click()
-    _expect_no_nested_panel(page)
+    expect_no_nested_panel(page)
 
 
 @pytest.mark.playwright
@@ -106,20 +96,18 @@ def test_list_view_data_table_swaps_keep_single_container(
     live_server_site,
     page: Page,
 ) -> None:
-    """Regression sanity check: the standalone ``DataTable`` path (no panel)
-    keeps working unchanged across HTMX swaps."""
+    """The list page is a panel too, so its swaps keep one frame."""
     [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    table = page.locator("#data-table-container")
-    expect(table).to_have_count(1)
-    expect(page.locator("[data-panel]")).to_have_count(0)
+    expect(page.locator("[data-panel]")).to_have_count(1)
+    expect_no_nested_panel(page, name="")
 
     page.get_by_role("link", name="Name").click()
     # HTMX swap-only requests don't push the URL, so wait on the rendered
     # pagination link to confirm the swap landed.
     page2_link = page.get_by_role("link", name="2").first
     expect(page2_link).to_have_attribute("href", re.compile(r"sort=name"))
-    expect(table).to_have_count(1)
-    expect(page.locator("[data-panel]")).to_have_count(0)
+    expect(page.locator("[data-panel]")).to_have_count(1)
+    expect_no_nested_panel(page, name="")

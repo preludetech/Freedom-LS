@@ -1,87 +1,59 @@
-"""Tests for DataTablePanel.render() chrome behaviour.
+"""A table panel refreshes its region, never its whole frame.
 
-These tests pin the rule: panel chrome (the ``<section class="surface">``
-wrapper plus the ``<h2>`` title) is stripped only when the HTMX swap is
-targeting the panel's own content container — i.e. an internal sort,
-search, or pagination action. Tab-click and instance-load HTMX requests
-must keep the chrome.
+A sort, search or page click targets the panel's region id and gets back the
+region template alone. Any other request for the panel's URL gets the whole
+panel, frame and title included.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from django.test import RequestFactory
+from .conftest import _make_stub
+from .view_helpers import fetch
 
-from .conftest import _make_stub, make_staff_user
-from .stub_panels import StubDataTablePanel
+pytestmark = pytest.mark.django_db
 
 
-@pytest.mark.django_db
-def test_render_keeps_chrome_when_hx_target_is_not_panel_table(
+def _panel_path(stub_pk: object) -> str:
+    return f"stubs/{stub_pk}/__tabs/default"
+
+
+def _region_id(stub_pk: object) -> str:
+    return f"panel-test-panel-framework-stubs-{stub_pk}-__tabs-default"
+
+
+def test_a_request_targeting_the_region_gets_the_table_without_the_frame(
     mock_site_context,
 ) -> None:
-    """A tab-click HTMX request targets the tab-content div, not the table.
-    Chrome must survive."""
-    instance = _make_stub(name="row-x")
-    panel = StubDataTablePanel(instance)
-    request = RequestFactory().get(
-        "/", HTTP_HX_REQUEST="true", HTTP_HX_TARGET="tab-content-details"
-    )
-    request.user = make_staff_user()
+    stub = _make_stub(name="row-x")
 
-    html = panel.render(request, base_url="/x", panel_name="default")
+    html = fetch(
+        _panel_path(stub.pk), htmx=True, hx_target=_region_id(stub.pk)
+    ).content.decode()
 
-    assert "<section" in html
-    assert 'data-panel="default"' in html
-    assert "<h2>Stub</h2>" in html
-
-
-@pytest.mark.django_db
-def test_render_strips_chrome_when_hx_target_is_panel_table(
-    mock_site_context,
-) -> None:
-    """A panel-internal swap (sort/search/pagination) targets the table id.
-    Chrome must be stripped to avoid nested wrappers."""
-    instance = _make_stub(name="row-x")
-    panel = StubDataTablePanel(instance)
-    request = RequestFactory().get(
-        "/", HTTP_HX_REQUEST="true", HTTP_HX_TARGET="table-default"
-    )
-    request.user = make_staff_user()
-
-    html = panel.render(request, base_url="/x", panel_name="default")
-
+    assert f'id="{_region_id(stub.pk)}"' in html
+    assert "row-x" in html
     assert "<section" not in html
     assert "<h2>Stub</h2>" not in html
 
 
-@pytest.mark.django_db
-def test_render_keeps_chrome_on_full_page_load(mock_site_context) -> None:
-    """Plain non-HTMX GET keeps chrome (instance page load)."""
-    instance = _make_stub(name="row-x")
-    panel = StubDataTablePanel(instance)
-    request = RequestFactory().get("/")
-    request.user = make_staff_user()
+def test_a_plain_get_keeps_the_frame(mock_site_context) -> None:
+    stub = _make_stub(name="row-x")
 
-    html = panel.render(request, base_url="/x", panel_name="default")
+    html = fetch(_panel_path(stub.pk)).content.decode()
 
-    assert "<section" in html
+    assert 'data-panel="default"' in html
     assert "<h2>Stub</h2>" in html
 
 
-@pytest.mark.django_db
-def test_render_keeps_chrome_when_hx_request_but_no_target(
+def test_the_frame_refetches_its_own_region_on_panel_changed(
     mock_site_context,
 ) -> None:
-    """If HTMX sends no HX-Target header, the swap is not panel-internal —
-    keep chrome."""
-    instance = _make_stub(name="row-x")
-    panel = StubDataTablePanel(instance)
-    request = RequestFactory().get("/", HTTP_HX_REQUEST="true")
-    request.user = make_staff_user()
+    stub = _make_stub(name="row-x")
 
-    html = panel.render(request, base_url="/x", panel_name="default")
+    html = fetch(_panel_path(stub.pk)).content.decode()
 
-    assert "<section" in html
-    assert "<h2>Stub</h2>" in html
+    assert 'hx-trigger="panelChanged from:body"' in html
+    assert f'hx-target="#{_region_id(stub.pk)}"' in html
+    assert f'hx-get="/test-panel/framework/{_panel_path(stub.pk)}"' in html

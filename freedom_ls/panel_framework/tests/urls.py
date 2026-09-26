@@ -7,7 +7,7 @@ from django.urls import re_path
 
 from freedom_ls.panel_framework.views import panel_framework_view
 
-from .stub_panels import StubListConfig
+from .stub_panels import STUB_CONFIG
 
 app_name = "panel_framework_test"
 
@@ -18,7 +18,7 @@ def _stub_view(request: HttpRequest, path_string: str = "") -> HttpResponse:
 
 def _framework_view(request: HttpRequest, path_string: str = "") -> HttpResponse:
     return panel_framework_view(
-        config={"stubs": StubListConfig},
+        config=STUB_CONFIG,
         request=request,
         path_string=path_string,
         template_name="panel_framework/test_interface.html",

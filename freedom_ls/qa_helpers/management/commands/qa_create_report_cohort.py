@@ -3,9 +3,8 @@
 Written for the cohort progress report QA matrix, which needs cohorts of very
 different sizes whose learners carry *genuinely scored* quiz attempts. The
 existing helpers cannot do this: ``qa_create_large_cohort`` leaves every learner
-with zero progress, and ``qa_create_cohort_progress`` marks progress rows
-complete without any answers or scores, so every quiz column, at-risk flag and
-confusion tally in the report comes out empty.
+with zero progress, so every quiz column, at-risk flag and confusion tally in
+the report comes out empty.
 
 What the distribution is tuned for (see ``freedom_ls/reports/gather.py``):
 

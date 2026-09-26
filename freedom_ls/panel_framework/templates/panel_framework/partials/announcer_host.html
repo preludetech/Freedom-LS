@@ -1,0 +1,6 @@
+{% comment %}
+The live region every panel-framework announcement lands in. A host includes
+this once, outside #main-content, so navigation never replaces it: some screen
+readers never announce a live region that was torn down and rebuilt.
+{% endcomment %}
+<div id="scope-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>

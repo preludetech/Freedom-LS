@@ -1,50 +1,57 @@
 <nav id="sidebar-nav" class="sticky top-4 w-64" aria-label="Sections"
      {% if oob %}hx-swap-oob="true"{% endif %}>
-    <ul class="list-none ml-0">
-        {% for item in menu_items %}
-            <li x-data="sidebarMenuItem" data-expanded="{{ item.expanded|yesno:'true,false' }}"
-                x-on:keydown.escape="close">
-                <div class="flex items-center justify-between">
-                    <a href="{{ item.url }}"
-                       hx-get="{{ item.url }}"
-                       hx-target="#main-content"
-                       hx-push-url="true"
-                       hx-swap="outerHTML"
-                       {% if item.active and not item.expanded %}aria-current="page"{% endif %}
-                       class="flex-1 block px-3 py-2 rounded-md text-sm text-muted transition-colors hover:bg-surface-2 aria-[current=page]:bg-surface-2 aria-[current=page]:border-l-2 aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-on-surface {% if item.expanded %}border-l-2 border-primary text-on-surface{% endif %}">
-                        {{ item.label }}
-                    </a>
-                    {% if item.instance_label %}
-                    <button x-on:click="toggle"
-                            x-bind:aria-expanded="expanded"
-                            class="p-1 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
-                            aria-label="Toggle {{ item.label }} submenu">
-                        <span x-show="!expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
-                        <span x-show="expanded" x-cloak><c-icon name="collapse" class="size-4" /></span>
-                    </button>
-                    {% else %}
-                    <span class="p-1 size-4" aria-hidden="true"></span>
-                    {% endif %}
-                </div>
-                <ul x-show="expanded" x-collapse class="ml-4 mt-1 list-none" x-cloak>
-                    {% if item.instance_label %}
-                    {# instance_label is only populated for the currently viewed instance, #}
-                    {# so aria-current="page" is always correct here. The sidebar is #}
-                    {# OOB-swapped on every navigation, keeping this in sync. #}
-                    <li>
-                        <a href="{{ item.instance_url }}"
-                           hx-get="{{ item.instance_url }}"
+    {% for group in menu_groups %}
+        <h2 class="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">{{ group.heading }}</h2>
+        <ul class="list-none ml-0">
+            {% for item in group.items %}
+                <li x-data="sidebarMenuItem" data-expanded="{{ item.expanded|yesno:'true,false' }}"
+                    x-on:keydown.escape="close">
+                    <div class="flex items-center justify-between">
+                        <a href="{{ item.url }}"
+                           hx-get="{{ item.url }}"
                            hx-target="#main-content"
                            hx-push-url="true"
                            hx-swap="outerHTML"
-                           aria-current="page"
-                           class="block px-3 py-1.5 rounded-md text-sm bg-surface-2 border-l-2 border-primary font-semibold text-on-surface">
-                            {{ item.instance_label }}
+                           {% if item.active and not item.expanded %}aria-current="page"{% endif %}
+                           class="flex-1 flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted transition-colors hover:bg-surface-2 aria-[current=page]:bg-surface-2 aria-[current=page]:border-l-2 aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-on-surface {% if item.expanded %}border-l-2 border-primary text-on-surface{% endif %}">
+                            {% if item.icon %}<c-icon :name="item.icon" class="size-4 shrink-0" />{% endif %}
+                            <span>{{ item.label }}</span>
+                            {% if item.count is not None %}<span class="ml-auto tabular-nums text-xs text-muted">{{ item.count }}</span>{% endif %}
                         </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </li>
-        {% endfor %}
-    </ul>
+                        {% if item.instance_label %}
+                        <button x-on:click="toggle"
+                                x-bind:aria-expanded="expanded"
+                                class="p-1 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                                aria-label="Toggle {{ item.label }} submenu">
+                            <span x-show="!expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
+                            <span x-show="expanded" x-cloak><c-icon name="collapse" class="size-4" /></span>
+                        </button>
+                        {% else %}
+                        <span class="p-1 size-4" aria-hidden="true"></span>
+                        {% endif %}
+                    </div>
+                    <ul x-show="expanded" x-collapse class="ml-4 mt-1 list-none" x-cloak>
+                        {% if item.instance_label %}
+                        {% comment %}
+                        instance_label is only populated for the currently viewed
+                        instance, so aria-current="page" is always correct here. The
+                        sidebar is OOB-swapped on every navigation, keeping this in sync.
+                        {% endcomment %}
+                        <li>
+                            <a href="{{ item.instance_url }}"
+                               hx-get="{{ item.instance_url }}"
+                               hx-target="#main-content"
+                               hx-push-url="true"
+                               hx-swap="outerHTML"
+                               aria-current="page"
+                               class="block px-3 py-1.5 rounded-md text-sm bg-surface-2 border-l-2 border-primary font-semibold text-on-surface">
+                                {{ item.instance_label }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endfor %}
 </nav>

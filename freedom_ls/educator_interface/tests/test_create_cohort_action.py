@@ -15,6 +15,7 @@ from __future__ import annotations
 import pytest
 
 from django.core.exceptions import NON_FIELD_ERRORS
+from django.http import HttpRequest
 from django.test import RequestFactory
 from django.urls import reverse
 
@@ -24,6 +25,11 @@ from freedom_ls.educator_interface.views import CreateCohortAction
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.context import PanelContext
+
+
+def _ctx(request: HttpRequest) -> PanelContext:
+    return PanelContext(request=request, instance=None, base_url="/cohorts", name="")
 
 
 @pytest.mark.django_db
@@ -33,9 +39,7 @@ def test_creating_a_cohort_lands_it_in_request_organisation(mock_site_context):
     request.user = UserFactory(staff=True)
     request.organisation = organisation
 
-    response = CreateCohortAction().handle_submit(
-        request, instance=None, base_url="/cohorts"
-    )
+    response = CreateCohortAction().handle_submit(_ctx(request))
 
     assert response.status_code == 204
     cohort = Cohort.objects.get(name="New Cohort")
@@ -49,9 +53,7 @@ def test_success_url_carries_the_organisation_slug(mock_site_context):
     request.user = UserFactory(staff=True)
     request.organisation = organisation
 
-    response = CreateCohortAction().handle_submit(
-        request, instance=None, base_url="/cohorts"
-    )
+    response = CreateCohortAction().handle_submit(_ctx(request))
 
     cohort = Cohort.objects.get(name="Redirect Cohort")
     assert response["HX-Redirect"] == reverse(
@@ -75,9 +77,7 @@ def test_duplicate_cohort_name_in_same_organisation_is_rejected_with_a_visible_e
     request.user = UserFactory(staff=True)
     request.organisation = organisation
 
-    response = CreateCohortAction().handle_submit(
-        request, instance=None, base_url="/cohorts"
-    )
+    response = CreateCohortAction().handle_submit(_ctx(request))
 
     assert response.status_code == 422
     assert "already exists" in response.content.decode()
@@ -93,7 +93,7 @@ def test_duplicate_cohort_name_in_same_organisation_creates_no_second_row(
     request.user = UserFactory(staff=True)
     request.organisation = organisation
 
-    CreateCohortAction().handle_submit(request, instance=None, base_url="/cohorts")
+    CreateCohortAction().handle_submit(_ctx(request))
 
     assert (
         Cohort.objects.filter(organisation=organisation, name="Year 10 Science").count()
@@ -112,9 +112,7 @@ def test_creating_a_cohort_named_after_one_in_another_organisation_succeeds(
     request.user = UserFactory(staff=True)
     request.organisation = organisation
 
-    response = CreateCohortAction().handle_submit(
-        request, instance=None, base_url="/cohorts"
-    )
+    response = CreateCohortAction().handle_submit(_ctx(request))
 
     assert response.status_code == 204
     assert Cohort.objects.filter(name="Year 10 Science").count() == 2

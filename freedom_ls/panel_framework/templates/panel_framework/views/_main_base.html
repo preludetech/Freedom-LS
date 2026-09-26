@@ -1,0 +1,7 @@
+{% comment %}
+The swap target for sidebar and breadcrumb navigation. Every view template
+extends this, so #main-content is written in exactly one place.
+{% endcomment %}
+<div id="main-content" class="space-y-4 pl-2 sm:pl-6">
+    {% block main %}{% endblock main %}
+</div>

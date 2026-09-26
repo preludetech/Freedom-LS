@@ -1,11 +1,15 @@
+{% load panel_tags %}
 {% comment %}
-Registers body listeners that re-fetch the list table when a create action
-fires its created-event (HX-Trigger). Lives outside #data-table-container so
-it survives the table's outerHTML swap.
+Registers body listeners that re-fetch the list's table region when a create
+action fires its created-event (HX-Trigger). Lives outside that region so it
+survives the region's outerHTML swap.
 {% endcomment %}
 <div x-data="listRefresh"
+     class="mb-6"
      data-refresh-events="{{ refresh_events }}"
      data-refresh-url="{{ refresh_url }}"
      data-refresh-target="{{ refresh_target }}">
-    {{ actions_html|safe }}
+    <c-button-group variant="right">
+        {% for action in actions %}{% render_action action ctx %}{% endfor %}
+    </c-button-group>
 </div>

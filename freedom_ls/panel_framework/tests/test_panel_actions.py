@@ -7,6 +7,8 @@ from guardian.shortcuts import assign_perm
 
 from django import forms
 from django.db.models import Model
+from django.http import HttpRequest
+from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import (
@@ -15,6 +17,7 @@ from freedom_ls.panel_framework.actions import (
     EditAction,
     PanelAction,
 )
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
 
@@ -41,9 +44,6 @@ class _StubModelForm(forms.ModelForm):
 class StubPanel(Panel):
     title = "Test Panel"
 
-    def get_content(self, request, base_url="", panel_name=""):
-        return "<p>content</p>"
-
 
 class StubAction(PanelAction):
     label = "Do Thing"
@@ -64,6 +64,24 @@ class StubCreateAction(CreateInstanceAction):
         return "itemCreated"
 
 
+def _ctx(
+    request: HttpRequest, instance: Model | None = None, base_url: str = "/test"
+) -> PanelContext:
+    return PanelContext(request=request, instance=instance, base_url=base_url, name="")
+
+
+def _render(action: PanelAction, ctx: PanelContext) -> str:
+    return render_to_string(
+        action.template_name, action.get_context_data(ctx), request=ctx.request
+    )
+
+
+def _render_panel(panel: Panel) -> str:
+    return render_to_string(
+        panel.template_name, panel.get_context_data(), request=panel.request
+    )
+
+
 # -- PanelAction base class tests ----------------------------------------
 
 
@@ -71,21 +89,25 @@ class StubCreateAction(CreateInstanceAction):
 def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
     """Panel.get_actions() returns empty list by default."""
     item = _make_stub(name="test-item")
-    panel = StubPanel(item)
-    request = RequestFactory().get("/")
-    assert panel.get_actions(request) == []
+    panel = StubPanel(_ctx(RequestFactory().get("/"), item))
+    assert panel.get_actions() == []
 
 
 @pytest.mark.django_db
 def test_panel_action_render_returns_button_html(mock_site_context):
-    """PanelAction.render() returns button HTML."""
+    """PanelAction renders its button through its own template."""
     item = _make_stub(name="action-render")
-    panel = StubPanel(item)
-    action = StubAction()
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    html = action.render(request, panel, "/test/base")
+    html = _render(StubAction(), _ctx(request, item, "/test/base"))
     assert "Do Thing" in html
+
+
+def test_panel_action_url_hangs_off_its_owners_base_url():
+    context = StubAction().get_context_data(
+        _ctx(RequestFactory().get("/"), None, "/a/b")
+    )
+    assert context["action_url"] == "/a/b/__actions/do_thing"
 
 
 @pytest.mark.django_db
@@ -94,13 +116,12 @@ def test_panel_container_renders_actions_when_present(mock_site_context):
     item = _make_stub(name="actions-present")
 
     class PanelWithAction(StubPanel):
-        def get_actions(self, request, base_url=""):
+        def get_actions(self):
             return [StubAction()]
 
-    panel = PanelWithAction(item)
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    html = panel.render(request, base_url="/test")
+    html = _render_panel(PanelWithAction(_ctx(request, item)))
     assert "Do Thing" in html
 
 
@@ -108,10 +129,9 @@ def test_panel_container_renders_actions_when_present(mock_site_context):
 def test_panel_container_no_actions_area_when_no_actions(mock_site_context):
     """Panel container renders no actions area when no actions."""
     item = _make_stub(name="no-actions")
-    panel = StubPanel(item)
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    html = panel.render(request, base_url="/test")
+    html = _render_panel(StubPanel(_ctx(request, item)))
     assert "Do Thing" not in html
 
 
@@ -134,7 +154,7 @@ def test_create_action_form_valid_creates_instance_and_redirects(mock_site_conte
     request.user = make_staff_user()
     assign_perm("freedom_ls_panel_framework.add_stubmodel", request.user)
 
-    response = action.handle_submit(request, instance=None, base_url="/items")
+    response = action.handle_submit(_ctx(request, None, "/items"))
     assert response.status_code == 204
     item = StubModel.objects.get(name="New Item")
     assert f"/items/{item.pk}" in response["HX-Redirect"]
@@ -149,7 +169,7 @@ def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
     request = RequestFactory().post("/", {"name": "Item A", "action": "save_and_add"})
     request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=None, base_url="/items")
+    response = action.handle_submit(_ctx(request, None, "/items"))
     assert response.status_code == 200
     assert StubModel.objects.filter(name="Item A").exists()
     assert response["HX-Trigger"] == "itemCreated"
@@ -165,7 +185,7 @@ def test_create_action_duplicate_name_returns_422(mock_site_context):
     request = RequestFactory().post("/", {"name": "Existing"})
     request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=None, base_url="/items")
+    response = action.handle_submit(_ctx(request, None, "/items"))
     assert response.status_code == 422
 
 
@@ -194,8 +214,8 @@ def test_create_action_permission_denied_returns_403(mock_site_context):
     request = RequestFactory().post("/", {"name": "Forbidden"})
     request.user = user
 
-    resolved = _ResolvedAction(action, instance=None)
-    response = _handle_action(request, resolved, base_url="/items")
+    resolved = _ResolvedAction(action, _ctx(request, None, "/items"))
+    response = _handle_action(request, resolved)
     assert response.status_code == 403
     assert not StubModel.objects.filter(name="Forbidden").exists()
 
@@ -215,7 +235,7 @@ def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
     request = RequestFactory().post("/", {"name": "New Name"})
     request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=item, base_url="/test")
+    response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 204
     item.refresh_from_db()
     assert item.name == "New Name"
@@ -237,7 +257,7 @@ def test_edit_action_duplicate_name_returns_422(mock_site_context):
     request = RequestFactory().post("/", {"name": "Existing-edit"})
     request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=item, base_url="/test")
+    response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 422
 
 
@@ -275,8 +295,8 @@ def test_edit_action_permission_denied_returns_403(mock_site_context):
     request = RequestFactory().post("/", {"name": "Changed"})
     request.user = user
 
-    resolved = _ResolvedAction(action, instance=item)
-    response = _handle_action(request, resolved, base_url="/test")
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
     assert response.status_code == 403
     item.refresh_from_db()
     assert item.name == "Test-edit-403"
@@ -295,7 +315,7 @@ def test_delete_action_handle_submit_deletes_and_redirects(mock_site_context):
     request = RequestFactory().delete("/")
     request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=item, base_url="/test")
+    response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 204
     assert response["HX-Redirect"] == "/items"
     assert not StubModel.objects.filter(pk=item_pk).exists()
@@ -323,7 +343,7 @@ def test_delete_action_render_returns_confirmation_html(mock_site_context):
 
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    html = action.render(request, item, "/test")
+    html = _render(action, _ctx(request, item))
     assert "Delete" in html
     assert "/test/__actions/delete" in html
 
@@ -357,8 +377,8 @@ def test_delete_action_permission_denied_returns_403(mock_site_context):
     request = RequestFactory().delete("/")
     request.user = user
 
-    resolved = _ResolvedAction(action, instance=item)
-    response = _handle_action(request, resolved, base_url="/test")
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
     assert response.status_code == 403
     assert StubModel.objects.filter(pk=item.pk).exists()
 
@@ -373,7 +393,7 @@ def test_delete_action_render_explains_a_protected_instance(mock_site_context):
     request = RequestFactory().get("/")
     request.user = make_staff_user()
 
-    html = action.render(request, item, "/test")
+    html = _render(action, _ctx(request, item))
     assert "cannot be deleted" in html
     assert "stub protected child" in html.lower()
     # No live delete affordance: the submit would only fail the same way.
@@ -390,7 +410,7 @@ def test_delete_action_handle_submit_refuses_a_protected_instance(mock_site_cont
     request = RequestFactory().delete("/")
     request.user = make_staff_user()
 
-    response = action.handle_submit(request, instance=item, base_url="/test")
+    response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 422
     assert "cannot be deleted" in response.content.decode()
     assert StubModel.objects.filter(pk=item.pk).exists()

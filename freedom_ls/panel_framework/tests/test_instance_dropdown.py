@@ -8,16 +8,17 @@ from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.views import (
     InstanceView,
     ListViewConfig,
+    NavGroup,
     _build_menu_items,
     panel_framework_view,
 )
 
 from .conftest import StubModel, _make_stub, make_staff_user
+from .stub_panels import StubDetailsPanel
 
 
 class CohortsConfig(ListViewConfig):
@@ -30,27 +31,35 @@ class LearnersConfig(ListViewConfig):
     menu_label = "Learners"
 
 
-CONFIG: dict[str, type[ListViewConfig]] = {
-    "cohorts": CohortsConfig,
-    "learners": LearnersConfig,
-}
+CONFIG = [NavGroup("Sections", [CohortsConfig, LearnersConfig])]
 
 URL_NAME = "panel_framework_test:interface"
+
+
+def _menu_items(
+    active_section: str = "", current_instance: StubModel | None = None
+) -> list[dict[str, object]]:
+    groups = _build_menu_items(
+        CONFIG,
+        URL_NAME,
+        RequestFactory().get("/"),
+        active_section=active_section,
+        current_instance=current_instance,
+    )
+    return [item for group in groups for item in group["items"]]
 
 
 class TestBuildMenuItemsInstanceDropdown:
     def test_expanded_true_when_instance_provided_and_section_matches(self) -> None:
         instance = StubModel(pk=1, name="Test Cohort")
-        items = _build_menu_items(
-            CONFIG, URL_NAME, active_section="cohorts", current_instance=instance
-        )
+        items = _menu_items("cohorts", instance)
         cohorts_item = next(i for i in items if i["label"] == "Cohorts")
         assert cohorts_item["expanded"] is True
         assert cohorts_item["instance_label"] == "Test Cohort"
         assert "cohorts/1" in str(cohorts_item["instance_url"])
 
     def test_expanded_false_on_list_page_no_instance(self) -> None:
-        items = _build_menu_items(CONFIG, URL_NAME, active_section="cohorts")
+        items = _menu_items("cohorts")
         cohorts_item = next(i for i in items if i["label"] == "Cohorts")
         assert cohorts_item["expanded"] is False
         assert cohorts_item["instance_label"] == ""
@@ -58,9 +67,7 @@ class TestBuildMenuItemsInstanceDropdown:
 
     def test_instance_data_only_for_active_section(self) -> None:
         instance = StubModel(pk=1, name="Test Cohort")
-        items = _build_menu_items(
-            CONFIG, URL_NAME, active_section="cohorts", current_instance=instance
-        )
+        items = _menu_items("cohorts", instance)
         learners_item = next(i for i in items if i["label"] == "Learners")
         assert learners_item["expanded"] is False
         assert learners_item["instance_label"] == ""
@@ -68,24 +75,13 @@ class TestBuildMenuItemsInstanceDropdown:
 
     def test_expanded_false_when_no_active_section(self) -> None:
         instance = StubModel(pk=1, name="Test Cohort")
-        items = _build_menu_items(
-            CONFIG, URL_NAME, active_section="", current_instance=instance
-        )
+        items = _menu_items("", instance)
         assert all(item["expanded"] is False for item in items)
         assert all(item["instance_label"] == "" for item in items)
 
 
-class StubPanel(Panel):
-    title = "Details"
-
-    def get_content(
-        self, request: HttpRequest, base_url: str = "", panel_name: str = ""
-    ) -> str:
-        return "<p>stub-panel-content</p>"
-
-
 class StubInstanceView(InstanceView):
-    panels = {"details": StubPanel}
+    panel = StubDetailsPanel
 
 
 class StubDataTable(DataTable):
@@ -120,9 +116,7 @@ class StubListConfigWithModel(ListViewConfig):
         return None
 
 
-FULL_CONFIG: dict[str, type[ListViewConfig]] = {
-    "stubs": StubListConfigWithModel,
-}
+FULL_CONFIG = [NavGroup("Stubs", [StubListConfigWithModel])]
 
 TEMPLATE = "panel_framework/test_interface.html"
 

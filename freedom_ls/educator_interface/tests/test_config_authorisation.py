@@ -2,14 +2,16 @@
 
 (a) Enumerates educator_interface.views.interface_config — the only URL
 pattern behind the whole educator interface, so walking urlpatterns proves
-nothing — and checks every list, detail, __panels, __tabs and __actions path
-it can build 404s for an organisation the requesting user cannot access at
-all. Also enumerates every ListViewConfig.__subclasses__() rather than
-walking urlpatterns, which would sweep in the eight-plus test-only configs
-under panel_framework/tests/.
+nothing — and checks every section, detail, __panels, __tabs and __actions
+path it can build 404s for an organisation the requesting user cannot access
+at all. The panel paths come from binding each section's root panel and
+walking its shown children, so a new panel or tab is covered without a
+change here.
 
-(b) Checks every production ListViewConfig either defines its own
-authorise_instance or declares check_access_exempt_reason.
+(b) Checks every production section that serves a detail view either
+defines its own authorise_instance or declares check_access_exempt_reason,
+and that every section names the organisation as a required request
+attribute.
 """
 
 from __future__ import annotations
@@ -20,76 +22,115 @@ import pytest
 
 from django.db.models import Model
 from django.http import HttpRequest
+from django.test import RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.views import ListViewConfig, interface_config
+from freedom_ls.educator_interface.views import interface_config
 from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.panels import Panel
+from freedom_ls.panel_framework.views import (
+    BaseViewConfig,
+    ListViewConfig,
+    ObjectViewConfig,
+    SectionConfig,
+    sections_by_url_name,
+)
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
+SECTIONS = list(sections_by_url_name(interface_config).values())
 
-def _seed_instance(config: type[ListViewConfig], organisation: Organisation) -> Model:
-    """One instance of the config's model, living inside `organisation`
-    where the model supports that (Course does not — it is organisation-
-    exempt, per CourseConfig.check_access_exempt_reason).
+
+def _seed_instance(model: type[Model] | None, organisation: Organisation) -> Model:
+    """One instance of the model, living inside `organisation` where the
+    model supports that (Course does not — it is organisation-exempt, per
+    CourseConfig.check_access_exempt_reason).
 
     factory_boy's metaclass makes mypy see these factories as returning the
     factory class rather than the model, per pyproject's mypy override —
     cast() back to Model, the type this function actually returns.
     """
-    if config.model is Cohort:
+    if model is Cohort:
         return cast(Model, CohortFactory(organisation=organisation))
-    if config.model is Learner:
+    if model is Learner:
         return cast(Model, LearnerFactory(organisation=organisation))
-    if config.model is Course:
+    if model is Course:
         return cast(Model, CourseFactory())
     raise NotImplementedError(
-        f"test_config_authorisation has no instance seeder for {config.model}; "
+        f"test_config_authorisation has no instance seeder for {model}; "
         "add one alongside the new config."
     )
 
 
-def _config_path_strings(organisation) -> list[str]:
-    """Every path_string the interface enumerates for `organisation`: one
-    list section per config, one detail path with a seeded instance, and
-    every __panels / __tabs / __actions segment each config declares."""
-    paths: list[str] = []
-    fake_request = HttpRequest()
-
-    for url_name, config in interface_config.items():
-        paths.append(url_name)
+def _panel_paths(panel: Panel, path: str) -> list[str]:
+    """`path` itself, every action on the panel, and the same for every shown
+    child, recursively."""
+    paths = [path]
+    paths.extend(f"{path}/__actions/{a.action_name}" for a in panel.get_actions())
+    for child in panel.get_children():
         paths.extend(
-            f"{url_name}/__actions/{action.action_name}"
-            for action in config.get_actions(fake_request)
+            _panel_paths(child, f"{path}/{panel.child_segment}/{child.ctx.name}")
         )
+    return paths
 
-        if config.instance_view is None:
+
+def _bind(
+    panel_class: type[Panel], request: HttpRequest, instance: Model | None
+) -> Panel:
+    return panel_class(
+        PanelContext(request=request, instance=instance, base_url="", name="")
+    )
+
+
+def _config_path_strings(organisation: Organisation) -> list[str]:
+    """Every path_string the interface enumerates for `organisation`: each
+    section's own path, a detail path with a seeded instance, and every
+    __panels / __tabs / __actions path the bound panels declare."""
+    paths: list[str] = []
+    request = RequestFactory().get("/")
+    request.user = UserFactory(superuser=True)
+
+    for section in SECTIONS:
+        url_name = section.url_name
+        if issubclass(section, BaseViewConfig):
+            paths.extend(_panel_paths(_bind(section.panel, request, None), url_name))
             continue
 
-        instance = _seed_instance(config, organisation)
-        detail = f"{url_name}/{instance.pk}"
-        paths.append(detail)
+        if issubclass(section, ListViewConfig):
+            paths.append(url_name)
+            paths.extend(
+                f"{url_name}/__actions/{action.action_name}"
+                for action in section.get_actions(request)
+            )
+            instance = _seed_instance(section.model, organisation)
+            detail = f"{url_name}/{instance.pk}"
+        else:
+            assert issubclass(section, ObjectViewConfig)
+            instance = section.get_object(request)
+            detail = url_name
 
-        instance_view = config.instance_view(instance)
+        assert section.instance_view is not None
+        instance_view = section.instance_view(instance)
         paths.extend(
             f"{detail}/__actions/{action.action_name}"
             for action in instance_view.get_actions()
         )
-        paths.extend(f"{detail}/__panels/{name}" for name in instance_view.panels)
-        if instance_view.tabs:
-            for tab_name, tab in instance_view.tabs.items():
-                tab_path = f"{detail}/__tabs/{tab_name}"
-                paths.append(tab_path)
-                paths.extend(
-                    f"{tab_path}/__panels/{panel_name}" for panel_name in tab.panels
-                )
+        paths.extend(
+            _panel_paths(_bind(instance_view.panel, request, instance), detail)
+        )
 
     return paths
+
+
+def _authorised_sections() -> list[SectionConfig]:
+    """Sections that serve a detail view, and so must decide who may see it."""
+    return [s for s in SECTIONS if not issubclass(s, BaseViewConfig)]
 
 
 @pytest.mark.django_db
@@ -143,9 +184,7 @@ class TestProductionConfigsDeclareAuthorisation:
     the prologue itself cannot be bypassed is proven behaviourally in
     panel_framework/tests/test_check_access.py."""
 
-    @pytest.mark.parametrize(
-        "config", list(interface_config.values()), ids=lambda c: c.__name__
-    )
+    @pytest.mark.parametrize("config", _authorised_sections(), ids=lambda c: c.__name__)
     def test_config_overrides_authorise_instance_or_declares_an_exemption(self, config):
         overrides_authorise_instance = "authorise_instance" in config.__dict__
         is_declared_exempt = config.check_access_exempt_reason is not None
@@ -156,9 +195,7 @@ class TestProductionConfigsDeclareAuthorisation:
             "inherit deny-by-default"
         )
 
-    @pytest.mark.parametrize(
-        "config", list(interface_config.values()), ids=lambda c: c.__name__
-    )
+    @pytest.mark.parametrize("config", SECTIONS, ids=lambda c: c.__name__)
     def test_config_declares_the_organisation_as_a_required_request_attribute(
         self, config
     ):

@@ -14,6 +14,8 @@ from __future__ import annotations
 import pytest
 from playwright.sync_api import Page, expect
 
+from .assertions import expect_no_nested_panel
+
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
@@ -30,7 +32,7 @@ def test_save_and_add_another_refreshes_table(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     # Confirm table is present
-    table = page.locator("#data-table-container")
+    table = page.locator("[data-panel=''] [id^='panel-']")
     expect(table).to_have_count(1)
 
     # Confirm create button is present exactly once
@@ -56,3 +58,4 @@ def test_save_and_add_another_refreshes_table(
 
     # Create button must not be duplicated
     expect(page.get_by_role("button", name="Create Item")).to_have_count(1)
+    expect_no_nested_panel(page, name="")

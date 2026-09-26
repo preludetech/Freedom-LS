@@ -13,6 +13,7 @@ from typing import cast
 import pytest
 
 from django.db import connection
+from django.template.loader import render_to_string
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
@@ -211,7 +212,16 @@ class TestLearnerDataTableQueryCost:
         request.panel_url_kwargs = {"organisation_slug": organisation.slug}
 
         with CaptureQueriesContext(connection) as captured:
-            LearnerDataTable.render(request)
+            render_to_string(
+                "panel_framework/panels/data_table_region.html",
+                LearnerDataTable.get_context(
+                    request,
+                    LearnerDataTable.get_queryset(request),
+                    base_url="",
+                    table_id="t",
+                ),
+                request=request,
+            )
         return len(captured.captured_queries)
 
     def test_query_count_does_not_grow_with_learner_count(self, site_aware_request):
