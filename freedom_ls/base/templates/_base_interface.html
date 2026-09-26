@@ -244,6 +244,13 @@
                 {% endblock content %}
             </div>
         </div>
+
+        {% comment %}
+        These sit outside #interface-main and the sidebar <dialog> so any
+        overlay they host survives an htmx swap of #main-content.
+        {% endcomment %}
+        {% block quick_view_host %}{% endblock quick_view_host %}
+        {% block modal_host %}{% endblock modal_host %}
     </div>
 
 {% endblock body %}

@@ -35,6 +35,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "course_part",
     # User/system
     "user",
+    "cohort",
     "notifications",
     "achievement",
     "loading",
