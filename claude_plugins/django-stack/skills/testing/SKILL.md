@@ -17,7 +17,8 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 
 ## Key rules
 
-- Test files: `<app>/tests/test_<module>.py`
+- Tests mirror the app, subpackages included: `<app>/<module>.py` →
+  `<app>/tests/test_<module>.py`. See "Mirroring" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 - Use `@pytest.mark.django_db` for database tests
 - Use factory_boy factories for all test data creation — never use `.objects.create()` directly
 - Use `reverse()` for URLs, never hardcode

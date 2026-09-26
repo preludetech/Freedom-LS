@@ -10,9 +10,25 @@ Read `Skill(ds:testing)` first for the generic pytest/TDD/AAA methodology. This 
 
 For full FLS patterns and worked de-branding examples, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (the FLS addendum to the `ds` testing resource) and `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
 
-## Test file path convention
+## Test organisation and hygiene
+
+Read "Test organisation and hygiene" in `ds:testing`'s resource first; what follows is the FLS instance of each rule.
 
 FreedomLS tests live at `freedom_ls/<app_name>/tests/test_<module>.py`.
+
+### Mirroring
+
+No FLS app mirrors a subpackage yet: templatetag and management-command tests sit flat in `tests/` until they are moved.
+
+Test-only helper and URLconf modules that sit correctly beside their tests: `panel_framework/tests/root_urls.py`, `panel_framework/tests/stub_panels.py`, `health/tests/root_urls.py`, `reports/tests/gather_input_builders.py` and `reports/tests/report_data_builders.py`.
+
+### Cross-cutting tests
+
+`form_engine/tests/test_import_independence.py`, and `content_engine`'s `test_demo_content_*.py` and `test_katex_vendor_assets.py`, are not yet grouped in a subpackage.
+
+### Named exceptions
+
+`contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate; the module docstrings say why.
 
 ## `mock_site_context` fixture (mandatory for site-aware models)
 

@@ -16,6 +16,26 @@ Use factory_boy factories for all test data creation. Never use `.objects.create
 - See `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` for the full factory reference
 - Avoid creating fixtures that are thin wrappers around factories. Rather just use the factories
 
+## Test organisation and hygiene
+
+Two rules govern how tests are organised: mirroring decides where a test file lives, and dependency direction decides which apps it may import from. The conftest, fixture and factory conventions below follow from those two rules.
+
+### Mirroring
+
+A test file mirrors its production module: `<app>/<module>.py` becomes `<app>/tests/test_<module>.py`. That is a flat `tests/` package inside the app, one test file per production module, never a top-level mirrored tree and never a colocated `foo_test.py`.
+
+A subpackage is mirrored as a test subdirectory: `<app>/templatetags/content_tags.py` becomes `<app>/tests/templatetags/test_content_tags.py`, and `<app>/management/commands/foo.py` becomes `<app>/tests/management/commands/test_foo.py`.
+
+A browser test gets one extra hop, `<app>/tests/playwright/test_<thing>.py`, the same directory the "Markers" section names for browser tests.
+
+A helper or URLconf module that only an app's own tests use lives alongside those tests, for example `<app>/tests/root_urls.py` or `<app>/tests/builders.py`. It never lives in `conftest.py`; see "`conftest.py` vs. plain module" below.
+
+### Cross-cutting tests
+
+Some test files check a property rather than one module's behaviour: an import-order invariant, migration state, settings resolution, or a content or vendored-asset regression. They have no module to mirror, and that's fine.
+
+Group them in a clearly named test subpackage, such as `tests/demo_content/` or `tests/invariants/`, so they read as deliberate rather than as unit tests that lost their module.
+
 ## Test Patterns
 
 ### Model Tests
