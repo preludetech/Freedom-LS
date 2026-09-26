@@ -99,24 +99,23 @@ The project root `conftest.py` holds project-wide fixtures only, either autouse 
 
 ### Stub-model technique
 
-When a foundational app's tests need "some object with an assignable role" or "any model with this mixin" to prove genericity, define a tiny test-only model in that app's own `conftest.py`. Give it an explicit `Meta.app_label`, since Django registers the class in the app registry as soon as the class body runs, and create its table with `connection.schema_editor()` in a session-scoped fixture. Never give the model a factory_boy factory; a plain underscore-prefixed helper (`_make_stub`) stands in for it.
+When a foundational app's tests need "some object with an assignable role" or "any model with this mixin" to prove genericity, define a tiny test-only model in a plain module beside that app's tests, such as `tests/stub_models.py`. Give it an explicit `Meta.app_label`, since Django registers the class in the app registry as soon as the class body runs. Never give the model a factory_boy factory. A plain helper (`make_stub`) in the same module stands in for it.
+
+The app's `conftest.py` imports the model and creates its table with `connection.schema_editor()` in a session-scoped fixture. Test files import the model and the helper from `stub_models.py`, never from `conftest.py`, which keeps the conftest rule above.
+
+Import the stub module under one module path only. Use relative imports (`from .stub_models import StubModel`) in both the conftest and the test files. If the same file gets imported under two module names, Django registers the model twice and raises "Conflicting 'stubmodel' models". Code that Django loads under a different path, such as a test-only URLconf, looks the model up with `apps.get_model(app_label, model_name)` at call time instead of importing it.
 
 This is the fix for a foundational app's tests reaching for a real downstream model instead of a stub; see "Deciding an allowed exception" above.
 
 `django.test.utils.isolate_apps` (and pytest-django's `django_isolate_apps` marker) is the lighter tool when a test needs only a model class and no database rows. It creates no table, so it doesn't replace the stub-model technique.
 
 ```python
-# myproject/widgets/tests/conftest.py
+# myproject/widgets/tests/stub_models.py
 from __future__ import annotations
 
 import itertools
-from collections.abc import Iterator
 
-import pytest
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
-from django.db import connection, models
-from pytest_django.plugin import DjangoDbBlocker
+from django.db import models
 
 _counter = itertools.count(1)
 
@@ -128,6 +127,25 @@ class StubModel(models.Model):
         app_label = "myproject_widgets"
 
 
+def make_stub(name: str | None = None) -> StubModel:
+    return StubModel.objects.create(name=name or f"stub-{next(_counter)}")
+```
+
+```python
+# myproject/widgets/tests/conftest.py
+from __future__ import annotations
+
+from collections.abc import Iterator
+
+import pytest
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.db import connection
+from pytest_django.plugin import DjangoDbBlocker
+
+from .stub_models import StubModel
+
+
 @pytest.fixture(autouse=True, scope="session")
 def _stub_tables(django_db_setup: None, django_db_blocker: DjangoDbBlocker) -> Iterator[None]:
     """Create the stub table once per session; the model has no migration."""
@@ -137,10 +155,6 @@ def _stub_tables(django_db_setup: None, django_db_blocker: DjangoDbBlocker) -> I
         yield
         with connection.schema_editor() as editor:
             editor.delete_model(StubModel)
-
-
-def _make_stub(name: str | None = None) -> StubModel:
-    return StubModel.objects.create(name=name or f"stub-{next(_counter)}")
 ```
 
 ### Fixture scope and idempotent reset

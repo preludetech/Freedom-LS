@@ -52,15 +52,17 @@ Whether a role maps to the right permissions is `role_based_permissions`' own co
 
 Pattern to follow: `accounts/tests/conftest.py`, two fixtures plus the private `_seed_default_legal_docs`.
 
-Pattern to avoid: `learner_interface/tests/conftest.py`, plain functions for manual import plus a `reverse_url` re-export from the root conftest.
+Pattern to avoid: `learner_interface/tests/conftest.py`, plain functions for manual import plus a `reverse_url` re-export from the root conftest. `panel_framework/tests/conftest.py` has the same problem: test files import its stub models, its `_make_stub*` helpers and the public `make_staff_user` by hand.
 
 ### Fixture placement
 
-`freedom_ls/conftest.py` holds the autouse `_disable_force_site_name`, `_disable_preview_overrides` and `_clear_course_access_backend_cache` fixtures, and the opt-in `mock_site_context` fixture, which many apps' fixtures build on. `mock_site_context` is not autouse; a test that needs it takes it as a parameter (see "`mock_site_context` fixture" below).
+`freedom_ls/conftest.py` holds the autouse `_disable_force_site_name`, `_isolate_media_root`, `_disable_preview_overrides` and `_clear_course_access_backend_cache` fixtures, and the opt-in `mock_site_context` fixture, which many apps' fixtures build on. `mock_site_context` is not autouse; a test that needs it takes it as a parameter (see "`mock_site_context` fixture" below).
 
 ### Stub-model technique
 
-The reference implementation is `panel_framework/tests/conftest.py`: `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), with `_make_stub`, `_make_stub_child` and `_make_stub_protected_child`.
+The FLS instance is `panel_framework/tests/conftest.py`: `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), with `_make_stub`, `_make_stub_child` and `_make_stub_protected_child`. Copy its fixtures, `_panel_test_tables` and `_panel_test_permissions`. Don't copy where it puts the models and helpers. It predates the conftest rule, so they sit in `conftest.py` and test files import them by hand. New stub models go in a plain `stub_models.py`, and moving `panel_framework`'s ones there is test-code cleanup for a later spec.
+
+`panel_framework/tests/stub_panels.py` shows the double-import hazard. Django's URL resolver loads it under a different module path from the one pytest gives the conftest, so it fetches `StubModel` with `apps.get_model` at call time. Its docstring explains why.
 
 `site_aware_models` and `role_based_permissions` still borrow downstream models in their tests and need this technique.
 
