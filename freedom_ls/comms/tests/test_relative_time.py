@@ -27,6 +27,11 @@ class TestRelativeTime:
 
         assert relative_time(value, NOW) == "3 hours ago"
 
+    def test_one_hour_is_singular(self) -> None:
+        value = NOW - django_timezone.timedelta(minutes=90)
+
+        assert relative_time(value, NOW) == "1 hour ago"
+
     def test_yesterday_shows_the_time(self) -> None:
         value = datetime(2025, 9, 20, 16, 20, tzinfo=UTC)
 

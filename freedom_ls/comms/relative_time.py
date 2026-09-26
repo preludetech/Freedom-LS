@@ -23,6 +23,8 @@ def relative_time(value: datetime, now: datetime) -> str:
         return f"{minutes} min ago"
     if local_value.date() == local_now.date():
         hours = int(elapsed.total_seconds() // 3600)
+        if hours == 1:
+            return "1 hour ago"
         return f"{hours} hours ago"
     if local_value.date() == local_now.date() - timedelta(days=1):
         return f"Yesterday, {local_value.strftime('%H:%M')}"
