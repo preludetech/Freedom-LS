@@ -1,6 +1,6 @@
 {% load comms_tags %}
-<li class="flex gap-3 bg-surface px-4 py-4 hover:bg-surface-2">
-    <c-icon :name="notification.icon" class="mt-0.5 size-5 shrink-0 text-muted" />
+<li class="flex items-start gap-3 bg-surface px-4 py-4 hover:bg-surface-2 sm:items-center">
+    <c-icon :name="notification.icon" class="mt-0.5 size-5 shrink-0 text-muted sm:mt-0" />
     <div class="min-w-0 flex-1">
         <p class="text-on-surface {% if not notification.read_at %}font-semibold{% endif %}">
             {% if not notification.read_at %}<span class="sr-only">Unread. </span>{% endif %}
@@ -10,17 +10,44 @@
             {% else %}
                 <span>{{ notification.message }}</span>
             {% endif %}
-            {% if not notification.read_at %}
-                <span class="ml-2 inline-flex items-center gap-1 text-xs font-normal text-muted">
-                    <span class="size-2 rounded-full bg-primary" aria-hidden="true"></span>
-                    Unread
-                </span>
-            {% endif %}
         </p>
         <p class="mt-1 text-sm text-muted">
             {{ notification.label }} &middot;
             <time datetime="{{ notification.created_at|date:'c' }}"
                   title="{{ notification.created_at }}">{{ notification.created_at|relative_time }}</time>
         </p>
+    </div>
+    <div class="flex shrink-0 items-center gap-3">
+        {% if not notification.read_at %}
+            <span class="inline-flex items-center gap-1 text-xs font-semibold text-primary">
+                <span class="size-2 rounded-full bg-primary" aria-hidden="true"></span>
+                Unread
+            </span>
+        {% endif %}
+        {% if show_actions %}
+            {% if notification.read_at %}
+                <c-button id="notification-{{ notification.pk }}-toggle-read"
+                          variant="secondary"
+                          size="small"
+                          hx-post="{% url 'comms:notification_mark_unread' notification.pk %}{% if filter == 'unread' %}?filter=unread{% endif %}"
+                          hx-target="#notification-list"
+                          hx-swap="outerHTML"
+                          icon_left="close"
+                          aria-label="Mark unread: {{ notification.message }}">
+                    <span class="hidden sm:inline">Mark unread</span>
+                </c-button>
+            {% else %}
+                <c-button id="notification-{{ notification.pk }}-toggle-read"
+                          variant="secondary"
+                          size="small"
+                          hx-post="{% url 'comms:notification_mark_read' notification.pk %}{% if filter == 'unread' %}?filter=unread{% endif %}"
+                          hx-target="#notification-list"
+                          hx-swap="outerHTML"
+                          icon_left="check"
+                          aria-label="Mark read: {{ notification.message }}">
+                    <span class="hidden sm:inline">Mark read</span>
+                </c-button>
+            {% endif %}
+        {% endif %}
     </div>
 </li>

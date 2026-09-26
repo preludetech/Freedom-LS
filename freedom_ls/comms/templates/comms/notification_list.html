@@ -7,22 +7,81 @@
         <h1>Notifications</h1>
 
         {% partialdef list %}
-            <div id="notification-list" class="mt-6 space-y-8">
-                {% for heading, notifications in day_groups %}
-                    <section aria-labelledby="notification-day-heading-{{ forloop.counter }}">
-                        <h2 id="notification-day-heading-{{ forloop.counter }}"
-                            class="text-sm font-semibold text-muted">
-                            {{ heading }}
-                        </h2>
-                        <ul class="mt-2 divide-y divide-border rounded-md border border-border">
-                            {% for notification in notifications %}
-                                {% include "comms/partials/notification_row.html" %}
-                            {% endfor %}
-                        </ul>
-                    </section>
-                {% endfor %}
+            <div id="notification-list">
+                <div class="mt-6 flex flex-wrap items-center gap-3">
+                    <nav aria-label="Filter"
+                         class="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2 p-1">
+                        <a href="{{ base_url }}"
+                           hx-get="{{ base_url }}"
+                           hx-target="#notification-list"
+                           hx-swap="outerHTML"
+                           {% if filter != "unread" %}aria-current="page"{% endif %}
+                           class="rounded-full px-3 py-1.5 text-sm font-medium text-muted aria-[current=page]:bg-surface aria-[current=page]:text-on-surface aria-[current=page]:shadow-sm hover:text-on-surface">
+                            All
+                        </a>
+                        <a href="{{ base_url }}?filter=unread"
+                           hx-get="{{ base_url }}?filter=unread"
+                           hx-target="#notification-list"
+                           hx-swap="outerHTML"
+                           {% if filter == "unread" %}aria-current="page"{% endif %}
+                           class="rounded-full px-3 py-1.5 text-sm font-medium text-muted aria-[current=page]:bg-surface aria-[current=page]:text-on-surface aria-[current=page]:shadow-sm hover:text-on-surface">
+                            Unread
+                            {% if unread_count %}
+                                <span class="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold text-on-primary">{{ unread_count }}</span>
+                            {% endif %}
+                        </a>
+                    </nav>
+                    <span class="flex-1"></span>
+                    {% if page_obj.paginator.count %}
+                        <c-button variant="secondary"
+                                  size="small"
+                                  disabled="{% if not unread_count %}disabled{% endif %}"
+                                  hx-post="{% url 'comms:notification_mark_all_read' %}{% if filter == 'unread' %}?filter=unread{% endif %}"
+                                  hx-target="#notification-list"
+                                  hx-swap="outerHTML">
+                            Mark all as read
+                        </c-button>
+                    {% endif %}
+                </div>
 
-                <c-pagination :page_obj="page_obj" :base_url="base_url" table_id="notification-list" />
+                {% if not page_obj.paginator.count %}
+                    <div class="mt-6 rounded-lg border border-border bg-surface px-6 py-16 text-center">
+                        <c-icon name="notifications" class="mx-auto size-10 text-muted" />
+                        {% if filter == "unread" %}
+                            <h2 class="mt-4 text-lg font-semibold text-on-surface">No unread notifications.</h2>
+                        {% else %}
+                            <h2 class="mt-4 text-lg font-semibold text-on-surface">Nothing yet.</h2>
+                            <p class="mt-1 text-sm text-muted">
+                                We'll tell you here when something happens on your courses.
+                            </p>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="mt-6 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+                        {% if not unread_count %}
+                            <div role="status"
+                                 class="flex items-center gap-2 bg-success-light px-5 py-3 font-semibold text-on-success-light">
+                                <c-icon name="complete" class="size-5 shrink-0" />
+                                You're up to date. Everything has been read.
+                            </div>
+                        {% endif %}
+                        {% for heading, notifications in day_groups %}
+                            <section aria-labelledby="notification-day-heading-{{ forloop.counter }}">
+                                <h2 id="notification-day-heading-{{ forloop.counter }}"
+                                    class="bg-surface-2 px-5 py-2 text-sm font-semibold text-muted">
+                                    {{ heading }}
+                                </h2>
+                                <ul class="divide-y divide-border">
+                                    {% for notification in notifications %}
+                                        {% include "comms/partials/notification_row.html" with show_actions=True %}
+                                    {% endfor %}
+                                </ul>
+                            </section>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <c-pagination :page_obj="page_obj" :base_url="base_url" table_id="notification-list" :extra_params="extra_params" />
             </div>
         {% endpartialdef %}
         {% partial list %}

@@ -11,8 +11,10 @@ from django.db.models import Value
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.utils import redirect_to_auth
 from freedom_ls.comms.models import Notification
@@ -80,14 +82,41 @@ def _day_groups(page: Page) -> list[tuple[str, list[Notification]]]:
     ]
 
 
+def _filtered(request: HttpRequest) -> NotificationQuerySet:
+    queryset = _notifications_for(request)
+    return queryset.unread() if request.GET.get("filter") == "unread" else queryset
+
+
 def _list_context(request: HttpRequest) -> dict[str, object]:
-    page = Paginator(_notifications_for(request), 20).get_page(request.GET.get("page"))
+    filter_value = request.GET.get("filter")
+    page = Paginator(_filtered(request), 20).get_page(request.GET.get("page"))
     return {
         "page_obj": page,
         "day_groups": _day_groups(page),
         "base_url": reverse("comms:notification_list"),
         "page_title": "Notifications",
+        "filter": filter_value,
+        "unread_count": _notifications_for(request).unread().count(),
+        "extra_params": "filter=unread" if filter_value == "unread" else "",
     }
+
+
+def _mark_response(request: HttpRequest) -> HttpResponse:
+    """The fragment the surface that posted the mark action needs: the
+    re-rendered list plus the badge out of band, so the filter, the toolbar
+    count and the banners stay right after one click without a second
+    request."""
+    if request.headers.get("HX-Request") != "true":
+        return redirect("comms:notification_list")
+    body = render_to_string(
+        "comms/notification_list.html#list", _list_context(request), request
+    )
+    body += render_to_string(
+        "comms/partials/notification_badge.html",
+        {"unseen_count": _unseen_count(request), "oob": True},
+        request,
+    )
+    return HttpResponse(body)
 
 
 @login_required_htmx
@@ -123,3 +152,28 @@ def notification_open(request: HttpRequest, pk: UUID) -> HttpResponse:
     notification = get_object_or_404(_notifications_for(request), pk=pk)
     _stamp_read(_notifications_for(request).filter(pk=pk, read_at__isnull=True))
     return redirect(notification.url or reverse("comms:notification_list"))
+
+
+@login_required_htmx
+@require_POST
+def notification_mark_read(request: HttpRequest, pk: UUID) -> HttpResponse:
+    get_object_or_404(_notifications_for(request), pk=pk)
+    _stamp_read(_notifications_for(request).filter(pk=pk))
+    return _mark_response(request)
+
+
+@login_required_htmx
+@require_POST
+def notification_mark_unread(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """Clears read_at only (Decision 4): the row keeps its seen_at, so it
+    never comes back onto the badge."""
+    get_object_or_404(_notifications_for(request), pk=pk)
+    _notifications_for(request).filter(pk=pk).update(read_at=None)
+    return _mark_response(request)
+
+
+@login_required_htmx
+@require_POST
+def notification_mark_all_read(request: HttpRequest) -> HttpResponse:
+    _stamp_read(_notifications_for(request).unread())
+    return _mark_response(request)
