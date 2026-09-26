@@ -4,8 +4,8 @@
 #   <new-base> defaults to origin/main, <new-tip> defaults to HEAD.
 #
 # Exit 0: nothing to flag. Exit 1: a branch change was lost. Exit 2: a file needs
-# human review (both sides touched it, or a change appeared that neither side made
-# before). Exit 64: bad arguments.
+# human review (both sides touched it, the rebase moved it, or a file the branch never
+# changed now differs from the new base). Exit 64: bad arguments.
 
 set -euo pipefail
 
@@ -33,39 +33,63 @@ done
 declare -A before_set=()
 declare -A after_set=()
 declare -A upstream_set=()
+# A branch rename links its old and new path, so main's edit to the old path is seen as
+# overlapping the new one.
+declare -A partner=()
+# Branch files the rebase moved, such as a migration renumbered past main's.
+declare -A moved=()
 
-while IFS= read -r -d '' path; do
+while IFS= read -r -d '' status; do
+    IFS= read -r -d '' path
     before_set["$path"]=1
-done < <(git diff -z --name-only "$OLD_BASE" "$OLD_TIP")
+    if [[ "$status" == R* ]]; then
+        IFS= read -r -d '' renamed_to
+        before_set["$renamed_to"]=1
+        partner["$path"]=$renamed_to
+        partner["$renamed_to"]=$path
+    fi
+done < <(git diff -z --name-status -M "$OLD_BASE" "$OLD_TIP")
 
 while IFS= read -r -d '' path; do
     after_set["$path"]=1
-done < <(git diff -z --name-only "$NEW_BASE" "$NEW_TIP")
+done < <(git diff -z --name-only --no-renames "$NEW_BASE" "$NEW_TIP")
 
 while IFS= read -r -d '' path; do
     upstream_set["$path"]=1
-done < <(git diff -z --name-only "$OLD_BASE" "$NEW_BASE")
+done < <(git diff -z --name-only --no-renames "$OLD_BASE" "$NEW_BASE")
+
+while IFS= read -r -d '' status; do
+    IFS= read -r -d '' path
+    if [[ "$status" == R* ]]; then
+        IFS= read -r -d '' renamed_to
+        moved["$path"]=$renamed_to
+    fi
+done < <(git diff -z --name-status -M "$OLD_TIP" "$NEW_TIP")
 
 lost=()
 review=()
 
 for path in "${!before_set[@]}"; do
-    if [[ -n "${upstream_set[$path]+x}" ]]; then
+    path_partner=${partner[$path]:-}
+    if [[ -n "${upstream_set[$path]+x}" || ( -n "$path_partner" && -n "${upstream_set[$path_partner]+x}" ) ]]; then
         review+=("$path")
         continue
     fi
-    # Compared path by path (never with -r/globbing) so a rename on either side
-    # is judged by whether each of its own paths still matches, not by identity
-    # across the rename.
     old_entry=$(git ls-tree "$OLD_TIP" -- "$path")
     new_entry=$(git ls-tree "$NEW_TIP" -- "$path")
     if [[ "$old_entry" != "$new_entry" ]]; then
-        lost+=("$path")
+        if [[ -n "${moved[$path]+x}" ]]; then
+            review+=("$path" "${moved[$path]}")
+        else
+            lost+=("$path")
+        fi
     fi
 done
 
+# The branch never changed these paths, so after the rebase they must match the new base.
+# Any difference is either new or reverts main's change.
 for path in "${!after_set[@]}"; do
-    if [[ -z "${before_set[$path]+x}" && -z "${upstream_set[$path]+x}" ]]; then
+    if [[ -z "${before_set[$path]+x}" ]]; then
         review+=("$path")
     fi
 done

@@ -244,6 +244,99 @@ def test_file_only_changed_after_rebase_needs_review(repo: GitRepo) -> None:
     assert parse_section(result.stdout, "REVIEW:") == ["untouched.txt"]
 
 
+def test_main_change_reverted_in_a_file_the_branch_left_unchanged_needs_review(
+    repo: GitRepo,
+) -> None:
+    # Arrange
+    repo.write_text("a.txt", "base\n")
+    repo.write_text("x.txt", "original\n")
+    old_base = repo.commit("base")
+    repo.checkout_new_branch("feature", old_base)
+    repo.write_text("x.txt", "branch edit\n")
+    repo.commit("branch edits x")
+    repo.write_text("x.txt", "original\n")
+    repo.write_text("a.txt", "branch change\n")
+    old_tip = repo.commit("branch reverts x and changes a")
+    repo.checkout("main")
+    repo.write_text("x.txt", "main edit\n")
+    new_base = repo.commit("main edits x")
+    repo.checkout_new_branch("rebased", new_base)
+    repo.write_text("x.txt", "original\n")
+    repo.write_text("a.txt", "branch change\n")
+    new_tip = repo.commit("rebase wipes main's edit to x")
+
+    # Act
+    result = _run_script([old_base, old_tip, new_base, new_tip], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 2
+    assert parse_section(result.stdout, "LOST:") == []
+    assert parse_section(result.stdout, "REVIEW:") == ["x.txt"]
+
+
+def test_branch_rename_of_a_file_main_edited_needs_review_not_lost(
+    repo: GitRepo,
+) -> None:
+    # Arrange
+    body = "".join(f"line {number}\n" for number in range(20))
+    repo.write_text("a.py", body)
+    old_base = repo.commit("base")
+    repo.checkout_new_branch("feature", old_base)
+    repo.remove("a.py")
+    repo.write_text("b.py", body)
+    old_tip = repo.commit("branch renames a.py to b.py")
+    repo.checkout("main")
+    edited = body.replace("line 5\n", "main edit\n")
+    repo.write_text("a.py", edited)
+    new_base = repo.commit("main edits a.py")
+    repo.checkout_new_branch("rebased", new_base)
+    repo.remove("a.py")
+    repo.write_text("b.py", edited)
+    new_tip = repo.commit("rename rebased, carrying main's edit")
+
+    # Act
+    result = _run_script([old_base, old_tip, new_base, new_tip], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 2
+    assert parse_section(result.stdout, "LOST:") == []
+    assert parse_section(result.stdout, "REVIEW:") == ["a.py", "b.py"]
+
+
+def test_branch_migration_renumbered_during_rebase_needs_review_not_lost(
+    repo: GitRepo,
+) -> None:
+    # Arrange
+    operations = "".join(f"    # operation {number}\n" for number in range(20))
+    (repo.path / "migrations").mkdir()
+    repo.write_text("migrations/0004_base.py", "base\n")
+    old_base = repo.commit("base")
+    repo.checkout_new_branch("feature", old_base)
+    repo.write_text(
+        "migrations/0005_branch.py", f"dependencies = ['0004_base']\n{operations}"
+    )
+    old_tip = repo.commit("branch adds 0005_branch")
+    repo.checkout("main")
+    repo.write_text("migrations/0005_main.py", "main\n")
+    new_base = repo.commit("main adds 0005_main")
+    repo.checkout_new_branch("rebased", new_base)
+    repo.write_text(
+        "migrations/0006_branch.py", f"dependencies = ['0005_main']\n{operations}"
+    )
+    new_tip = repo.commit("branch migration renumbered to 0006")
+
+    # Act
+    result = _run_script([old_base, old_tip, new_base, new_tip], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 2
+    assert parse_section(result.stdout, "LOST:") == []
+    assert parse_section(result.stdout, "REVIEW:") == [
+        "migrations/0005_branch.py",
+        "migrations/0006_branch.py",
+    ]
+
+
 def test_non_ref_argument_exits_with_usage_error(repo: GitRepo) -> None:
     # Arrange
     repo.write_text("a.txt", "base\n")

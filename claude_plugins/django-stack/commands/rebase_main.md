@@ -114,7 +114,8 @@ A few rules on top of that loop:
 - A branch migration numbered the same as a new one on `main`: `git mv` the branch's migration so it
   sorts after `main`'s latest migration for that app (the old path's removal and the new path land
   in the same staged change), point its `dependencies` at `main`'s leaf migration, and fix any later
-  branch migration that depended on the old name. Never run `makemigrations --merge`.
+  branch migration that depended on the old name. Never run `makemigrations --merge`. Step 7
+  lists the renamed migration under `REVIEW:` as its old and new path.
 - Stop with `status: blocked` when both sides made substantive, incompatible changes to the same
   logic; when a resolution would need `--ours` or `--theirs` on a file that isn't generated; or when
   a conflict lands in a file none of the branch's own commits meant to change.
@@ -136,6 +137,16 @@ Read the exit code:
   dropped or altered change, restored the same way as for exit `1`. Then check the file
   against `git diff $OLD_BASE origin/main -- <file>`: the branch may only remove a line
   `main` added where the branch's own commit meant to remove it.
+
+  Two kinds of `REVIEW:` path need their own handling:
+
+  - A path that is absent from `git diff --name-only --no-renames $OLD_BASE $BACKUP` belongs to a file the
+    branch never changed, so it must match `origin/main`. Any difference means conflict resolution
+    undid main's change. Restore it with `git checkout origin/main -- <file>`, then
+    commit as `uv run git commit -m "<branch>: restore main's <what> reverted in rebase"`.
+  - A migration renumbered in Step 6 appears as both its old and its new path. Compare them with
+    `git diff $BACKUP:<old path> HEAD:<new path>`. The only allowed differences are the number
+    and `dependencies`.
 
 Then run:
 
