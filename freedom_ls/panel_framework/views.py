@@ -13,7 +13,7 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.cache import patch_vary_headers
 
-from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.tables import DataTable
@@ -137,6 +137,8 @@ class ListViewConfig(SectionConfigBase):
     model: type[Model] | None = None
     instance_view: type[InstanceView] | None = None
     list_view: type[DataTable] | None = None
+    #: Domain events that make the list's table region re-fetch itself.
+    refresh_events: tuple[str, ...] = ()
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
@@ -472,11 +474,6 @@ def _main_for(
             for action in section.get_actions(request)
             if action.has_permission(root.ctx)
         ]
-        created_events = [
-            action.get_created_event_name()
-            for action in list_actions
-            if isinstance(action, CreateInstanceAction)
-        ]
         return (
             "panel_framework/views/list_view.html",
             {
@@ -486,7 +483,7 @@ def _main_for(
                 "ctx": root.ctx,
                 # Space-separated event names: simple identifiers, so no JSON
                 # escaping is needed in the data-* attribute.
-                "refresh_events": " ".join(created_events),
+                "refresh_events": " ".join(section.refresh_events),
                 "refresh_url": root.ctx.base_url,
             },
             section.menu_label,

@@ -40,6 +40,11 @@ class _PlainPanel(Panel):
     title = "Plain"
 
 
+class _PanelWithTwoRefreshEvents(Panel):
+    title = "Refreshing"
+    refresh_events = ("a", "b")
+
+
 class _TabsWithAHiddenOne(TabSet):
     title = "Sections"
     children = {"shown": _PlainPanel, "hidden": StubHiddenPanel}
@@ -105,14 +110,14 @@ def test_a_panel_template_extending_the_framework_template_renders_both(
 
 
 @pytest.mark.django_db
-def test_a_leaf_refetches_its_own_region_on_panel_changed(
+def test_a_leaf_declaring_refresh_events_refetches_its_own_region(
     mock_site_context: Site,
 ) -> None:
-    panel = _bind(_PlainPanel)
+    panel = _bind(_PanelWithTwoRefreshEvents)
 
     html = _render(panel)
 
-    assert 'hx-trigger="panelChanged from:body"' in html
+    assert 'hx-trigger="a from:body, b from:body"' in html
     assert f'hx-target="#{panel.region_id}"' in html
     assert f'id="{panel.region_id}"' in html
 
@@ -136,6 +141,16 @@ def test_a_panels_heading_is_inside_the_card_not_a_sibling_of_it(
     (heading,) = card.cssselect("h2")
 
     assert heading.getparent() is not section
+
+
+@pytest.mark.django_db
+def test_a_leaf_declaring_no_refresh_events_never_refetches(
+    mock_site_context: Site,
+) -> None:
+    html = _render(_bind(_PlainPanel))
+
+    assert "hx-get" not in html
+    assert "hx-trigger" not in html
 
 
 @pytest.mark.django_db
