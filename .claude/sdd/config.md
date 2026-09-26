@@ -17,7 +17,7 @@ or helper file that is read and followed, not a script. Leave a value blank if t
 no such step.
 
 - Rebase command: claude_plugins/django-stack/commands/rebase_main.md
-- Front-end check:
+- Front-end check: claude_plugins/fls-dev/commands/protected/frontend_check.md
 
 ## Vocabulary Sources
 

@@ -41,7 +41,17 @@ Once it returns:
 
 ## Step 2: Front-end check
 
-Filled in by a later change.
+Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists — its values take
+precedence), the same way Step 1 does. Under `## Rebase Hooks`, look at the `Front-end check` value:
+
+- blank, or the file or section absent → skip this step.
+- a non-blank path → read that file and follow its steps with `<old-base>` and `<spec-dir>`.
+
+Once it returns:
+
+- `failed` → return `status: failed` with its reason as this helper's own. The caller stops.
+- `ok` with commits made → push them: `git push`. The rebase already force-pushed the branch in
+  Step 1, so this is a plain fast-forward on top of it.
 
 ## Step 3: Upstream-change scan
 
