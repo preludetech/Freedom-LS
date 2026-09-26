@@ -131,6 +131,19 @@ def test_learner_detail_page_renders_the_underlying_users_name_and_email(
 
 
 @pytest.mark.django_db
+def test_learner_detail_pages_panels_refresh_on_learner_changed(educator_client):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    content = response.content.decode()
+    assert content.count('hx-trigger="learnerChanged from:body"') >= 2
+
+
+@pytest.mark.django_db
 def test_learners_list_renders_a_registered_course_through_the_renamed_cell_template(
     educator_client,
 ):

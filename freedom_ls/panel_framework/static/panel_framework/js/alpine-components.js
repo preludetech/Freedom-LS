@@ -122,10 +122,10 @@ document.addEventListener("htmx:afterSwap", (event) => {
 });
 
 // A saved edit renames the instance it edited. Panels re-fetch themselves on
-// panelChanged through their own hx-trigger; the page heading is outside
-// every panel, so it is updated here.
-document.addEventListener("panelChanged", (event) => {
-    const title = event.detail && event.detail.instanceTitle;
+// their own declared domain events through their own hx-trigger; the page
+// heading is outside every panel, so it is updated here.
+document.addEventListener("instanceTitleChanged", (event) => {
+    const title = event.detail && event.detail.title;
     const heading = document.getElementById("instance-title");
     if (title && heading) heading.textContent = title;
 });

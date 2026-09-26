@@ -14,6 +14,7 @@ saw nothing wrong.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 import lxml.html
@@ -26,6 +27,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -36,6 +38,7 @@ from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.events import build_hx_trigger
 
 
 @pytest.fixture
@@ -77,14 +80,31 @@ def test_an_empty_cohort_is_deleted_from_its_details_panel(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
+    cohort_pk = cohort.pk
     client = logged_in_client(UserFactory(superuser=True))
     url = _delete_url(client, cohort)
 
     response = client.delete(url)
 
     assert response.status_code == 204
-    assert response["HX-Redirect"].endswith("/cohorts")
-    assert not Cohort.objects.filter(pk=cohort.pk).exists()
+    assert json.loads(response["HX-Location"])["path"].endswith("/cohorts")
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {COHORT_CHANGED: [str(cohort_pk)]}, close_modal=True
+    )
+    assert "HX-Redirect" not in response
+    assert not Cohort.objects.filter(pk=cohort_pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_cohort_pages_panels_refresh_on_cohort_changed(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Watched Cohort")
+    client = logged_in_client(UserFactory(superuser=True))
+
+    body = client.get(_panel_url(cohort)).content.decode()
+
+    assert body.count('hx-trigger="cohortChanged from:body"') >= 3
 
 
 @pytest.mark.django_db

@@ -57,14 +57,14 @@ def test_a_plain_get_keeps_the_frame(mock_site_context: Site) -> None:
     assert "<h2>Stub</h2>" in html
 
 
-def test_the_frame_refetches_its_own_region_on_panel_changed(
+def test_the_frame_refetches_its_own_region_on_the_stubs_declared_event(
     mock_site_context: Site,
 ) -> None:
     stub = _make_stub(name="row-x")
 
     html = fetch(_panel_path(stub.pk)).content.decode()
 
-    assert 'hx-trigger="panelChanged from:body"' in html
+    assert 'hx-trigger="itemChanged from:body"' in html
     assert f'hx-target="#{_region_id()}"' in html
     assert f'hx-get="/test-panel/framework/{_panel_path(stub.pk)}"' in html
 

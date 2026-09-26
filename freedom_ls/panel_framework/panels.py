@@ -51,6 +51,9 @@ class Panel:
     #: The capability this panel asks about, or None to show it whenever the
     #: page itself is reachable.
     capability: str | None = None
+    #: Domain events that make this panel re-fetch itself. Empty means the
+    #: panel never refreshes itself in place.
+    refresh_events: tuple[str, ...] = ()
 
     def __init__(self, ctx: PanelContext) -> None:
         if self.model is not None and ctx.instance is None:
@@ -149,6 +152,7 @@ class Panel:
             "actions": actions,
             "region_id": self.region_id,
             "region_template_name": self.region_template_name,
+            "refresh_events": self.refresh_events,
         }
 
 
@@ -303,6 +307,7 @@ class InstanceDetailsPanel(Panel):
                 form_class=self.form_class,
                 form_title=f"Edit {instance}",
                 instance=instance,
+                success_events=self.refresh_events,
             )
         ]
 

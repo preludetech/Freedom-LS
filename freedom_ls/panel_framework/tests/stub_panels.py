@@ -110,6 +110,7 @@ class StubCreateAction(CreateInstanceAction):
     form_title = "Create Item"
     label = "Create Item"
     action_name = "create_item"
+    success_events = ("itemChanged",)
     # form_class must be set but is not used directly — get_form and
     # has_permission are overridden below to use the lazy _build_stub_create_form
     # helper, since StubModel cannot be imported at module level (see module docstring).
@@ -146,9 +147,6 @@ class StubCreateAction(CreateInstanceAction):
 
     def get_success_url(self, instance: Model) -> str:
         return f"/items/{instance.pk}"
-
-    def get_created_event_name(self) -> str:
-        return "itemCreated"
 
 
 class StubDataTable(DataTable):
@@ -221,6 +219,7 @@ class StubDataTablePanel(DataTablePanel):
     title = "Stub"
     data_table = StubDataTable
     table_key = "stub"
+    refresh_events = ("itemChanged",)
 
     def get_bulk_actions(self) -> list[BulkAction]:
         return [StubBulkAction(), StubForbiddenBulkAction()]
@@ -352,6 +351,7 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     list_view = StubDataTable
     table_key = "stubs"
     instance_view = StubInstanceView
+    refresh_events = ("itemChanged",)
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:

@@ -28,7 +28,7 @@ from django.utils.cache import patch_vary_headers
 from django.utils.text import slugify
 
 from freedom_ls.base.csv_safety import UTF8_BOM
-from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.bulk_actions import (
     BulkAction,
     Selection,
@@ -160,6 +160,8 @@ class ListViewConfig(SectionConfigBase):
     list_view: type[DataTable] | None = None
     #: The list page's own table key. Required whenever `list_view` is set.
     table_key: str
+    #: Domain events that make the list's table region re-fetch itself.
+    refresh_events: tuple[str, ...] = ()
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
@@ -614,11 +616,6 @@ def _main_for(
             for action in section.get_actions(request)
             if action.has_permission(root.ctx)
         ]
-        created_events = [
-            action.get_created_event_name()
-            for action in list_actions
-            if isinstance(action, CreateInstanceAction)
-        ]
         return (
             "panel_framework/views/list_view.html",
             {
@@ -628,7 +625,7 @@ def _main_for(
                 "ctx": root.ctx,
                 # Space-separated event names: simple identifiers, so no JSON
                 # escaping is needed in the data-* attribute.
-                "refresh_events": " ".join(created_events),
+                "refresh_events": " ".join(section.refresh_events),
                 "refresh_url": root.ctx.base_url,
             },
             section.menu_label,

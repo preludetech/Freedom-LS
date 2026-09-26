@@ -19,6 +19,7 @@ from freedom_ls.panel_framework.actions import (
     PanelAction,
 )
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import (
     SectionConfigBase,
@@ -63,12 +64,10 @@ class StubCreateAction(CreateInstanceAction):
     form_title = "Create Item"
     label = "Create Item"
     action_name = "create_item"
+    success_events = ("itemChanged",)
 
     def get_success_url(self, instance: Model) -> str:
         return f"/items/{instance.pk}"
-
-    def get_created_event_name(self) -> str:
-        return "itemCreated"
 
 
 def _ctx(
@@ -255,30 +254,44 @@ def test_delete_action_denies_with_no_instance(mock_site_context: Site) -> None:
 def test_create_action_form_valid_creates_instance_and_redirects(
     mock_site_context: Site,
 ) -> None:
-    """Successful form submission creates instance and returns 204 + HX-Redirect."""
+    """ "Save" creates the instance and answers 204 with HX-Location, never
+    HX-Redirect."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "New Item"})
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, None, "/items"))
+
     assert response.status_code == 204
     item = StubModel.objects.get(name="New Item")
-    assert f"/items/{item.pk}" in response["HX-Redirect"]
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item.pk)]}, close_modal=True
+    )
+    assert json.loads(response["HX-Location"]) == {
+        "path": f"/items/{item.pk}",
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+    assert "HX-Redirect" not in response
 
 
 @pytest.mark.django_db
 def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
     mock_site_context: Site,
 ) -> None:
-    """'Save and add another' returns re-rendered empty form + HX-Trigger event."""
+    """'Save and add another' returns 200 with the blank form and the domain
+    event, and never closes the modal."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "Item A", "action": "save_and_add"})
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, None, "/items"))
+
     assert response.status_code == 200
-    assert StubModel.objects.filter(name="Item A").exists()
-    assert response["HX-Trigger"] == "itemCreated"
+    item = StubModel.objects.get(name="Item A")
+    assert response["HX-Trigger"] == build_hx_trigger({"itemChanged": [str(item.pk)]})
+    assert "HX-Location" not in response
+    assert "HX-Redirect" not in response
     content = response.content.decode()
     assert "Create Item" in content
 
@@ -363,23 +376,27 @@ def test_create_action_permission_denied_returns_403_fragment_for_htmx(
 def test_edit_action_form_valid_saves_and_returns_trigger(
     mock_site_context: Site,
 ) -> None:
-    """Successful edit returns 204 + HX-Trigger with panelChanged."""
+    """A successful edit answers 204 with closeModal, its declared domain
+    events and the new instance title, never HX-Redirect."""
     item = _make_stub(name="Old Name")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
         instance=item,
+        success_events=("itemChanged",),
     )
     request = RequestFactory().post("/", {"name": "New Name"})
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, item))
+
     assert response.status_code == 204
     item.refresh_from_db()
     assert item.name == "New Name"
-    trigger = json.loads(response["HX-Trigger"])
-    assert "panelChanged" in trigger
-    assert trigger["panelChanged"]["instanceTitle"] == "New Name"
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item.pk)]}, close_modal=True, title="New Name"
+    )
+    assert "HX-Redirect" not in response
 
 
 @pytest.mark.django_db
@@ -451,17 +468,27 @@ def test_edit_action_permission_denied_raises_for_a_plain_request(
 def test_delete_action_handle_submit_deletes_and_redirects(
     mock_site_context: Site,
 ) -> None:
-    """Successful deletion deletes instance and returns 204 + HX-Redirect."""
+    """A successful delete answers 204 with closeModal, the deleted pk in its
+    domain event and HX-Location to success_url, never HX-Redirect."""
     item = _make_stub(name="to-delete")
     item_pk = item.pk
-    action = DeleteAction(success_url="/items")
+    action = DeleteAction(success_url="/items", success_events=("itemChanged",))
 
     request = RequestFactory().delete("/")
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, item))
+
     assert response.status_code == 204
-    assert response["HX-Redirect"] == "/items"
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item_pk)]}, close_modal=True
+    )
+    assert json.loads(response["HX-Location"]) == {
+        "path": "/items",
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+    assert "HX-Redirect" not in response
     assert not StubModel.objects.filter(pk=item_pk).exists()
 
 
