@@ -6,9 +6,9 @@ and may run beside, the decisions already taken and the assumptions every idea i
 
 ## What
 
-Decide, on the roles that already exist, who may do each thing the educator interface offers and at what scope. Build a capability layer that answers those questions, and make the framework's permission hooks from spec 1 ask it. Record which educators belong to which organisation, so that leaving an organisation switches their grants off and rejoining switches them back on. Decide who may assign which role, and what a person sees when the answer is no.
+Decide who may do each thing the educator interface offers and at what scope, and rename the existing roles so their names say that. Build a capability layer that answers those questions, and make the framework's permission hooks from spec 1 ask it. Record which educators belong to which organisation, so that leaving an organisation switches their grants off and rejoining switches them back on. Decide who may assign which role, and what a person sees when the answer is no.
 
-No new roles. The four that matter are `site_admin`, `organisation_staff`, `instructor` and `ta`, defined in `role_based_permissions/roles.py`. `system_admin`, `learner` and `observer` exist and are untouched.
+No new roles. The four that matter are the ones defined in `role_based_permissions/roles.py` as `site_admin`, `organisation_staff`, `instructor` and `ta`. Three of them are renamed below. `system_admin`, `learner` and `observer` exist and are untouched.
 
 ## Why
 
@@ -27,11 +27,30 @@ The code state behind each point is in `research_current_permission_machinery.md
 
 ## What is settled
 
-**The users.** People associated with an organisation who administer its learners: organisation staff, instructors and TAs. Site admins see every organisation on the site.
+**The users.** People associated with an organisation who administer its learners: organisation admins, cohort admins and cohort viewers. Site admins see every organisation on the site.
+
+**The names.** A role name is its scope plus its level: `site_admin`, `organisation_admin`, `cohort_admin`, `cohort_viewer`. An admin may do everything the interface offers at that scope. A viewer may see everything at that scope and change nothing. The old names said what a person's job was, not what the role lets them do, and `instructor` and `ta` looked interchangeable when the difference is write versus read.
+
+| Old key | New key | Display name | One-line description |
+|---|---|---|---|
+| `site_admin` | `site_admin` | Site admin | Everything, in every organisation on the site. |
+| `organisation_staff` | `organisation_admin` | Organisation admin | Everything in one organisation, including who else administers it. |
+| `instructor` | `cohort_admin` | Cohort admin | Manages who is in a cohort and what it is registered for. |
+| `ta` | `cohort_viewer` | Cohort viewer | Sees a cohort and its reports. Changes nothing. |
+
+"Viewer" rather than "read only" because it names a person, works as an identifier and a display name, and is the word other systems use for the same level. "Read-only" is the description. There is no organisation viewer; the roadmap says no new roles, and the scheme leaves the slot open if one is ever wanted. `observer` stays what it is, a learner-facing role, and is not the same thing as a cohort viewer.
+
+Renaming has a cost, and the spec carries it:
+
+- `SiteRoleAssignment.role` and `ObjectRoleAssignment.role` are plain strings, so a data migration rewrites the existing rows from the old keys to the new ones.
+- Downstream role configs that reference the old keys, including any `inherits: "ta"` variant, break. The upgrade notes say so and give the mapping. `config/role_based_permissions/demodev.py` has the in-repo example, `senior_ta`.
+- The `role_based_permissions` README, the factories, the QA commands and the tests follow the rename.
+- `lti_role` is a per-role field and is unaffected. The LTI vocabulary can still map `cohort_admin` to Instructor and `cohort_viewer` to TeachingAssistant when LTI arrives.
+- Roadmap decision 2 and the scope lines for specs 5 and 9 use the old words and the old assignment rule. Amend the roadmap once this idea is confirmed.
 
 **The matrix.** The spec writes it as a table, capability by role by scope:
 
-| Capability | site_admin | organisation_staff | instructor | ta |
+| Capability | site_admin | organisation_admin | cohort_admin | cohort_viewer |
 |---|---|---|---|---|
 | See the organisation dashboard and reports | all organisations | own organisation | assigned cohorts only | assigned cohorts only |
 | Add, deactivate, reactivate learners | yes | own organisation | no | no |
@@ -39,42 +58,46 @@ The code state behind each point is in `research_current_permission_machinery.md
 | Cohort and individual registration, unregistration | yes | own organisation | within assigned cohorts | no |
 | Cohort create, edit, deactivate, delete when empty | yes | own organisation | no | no |
 | CSV import, bulk actions | yes | own organisation | no | no |
-| Add, remove, scope instructors and TAs | yes | own organisation | no | no |
-| Grant or remove organisation_staff or site_admin | yes | no | no | no |
-| Read the audit log | yes | own organisation | no | no |
+| Add, remove, scope cohort admins and cohort viewers | yes | own organisation | no | no |
+| Add and remove organisation admins | yes | own organisation | no | no |
+| Grant or remove site_admin | yes | no | no | no |
 | Generate and download reports | yes | own organisation | assigned cohorts | assigned cohorts |
 
-The product owner has confirmed these rows. An instructor adds existing organisation learners to their cohorts and never creates a learner in the organisation. A TA may download the PDF report and the roster CSV for assigned cohorts, since they show only what the TA already sees on screen. `ta` is read-only by definition and is never widened. A person may hold several roles; the union applies.
+The product owner has confirmed these rows. A cohort admin adds existing organisation learners to their cohorts and never creates a learner in the organisation. A cohort viewer may download the PDF report and the roster CSV for assigned cohorts, since they show only what the viewer already sees on screen. `cohort_viewer` is read-only by definition and is never widened. A person may hold several roles; the union applies.
 
-**Scope is the organisation for organisation roles and the cohort for cohort roles.** An instructor with a grant on one cohort sees that cohort's learners and may act on them there, and sees nothing else in the organisation. Nobody but `site_admin` can act across organisations.
+The matrix covers what specs 6 to 10 build. A capability that does not exist yet has no row. When a later spec builds one, that spec adds the row and the check together; spec 11 adds the audit log row. The completeness test below is what makes a missing row fail loudly rather than silently deny.
+
+One wrinkle in the name "cohort admin": the matrix does not let a cohort admin edit the cohort itself, only its membership and registrations. The description above says so. Whether a cohort admin may edit the name and description of a cohort they administer is open until the spec, with the default being no.
+
+**Scope is the organisation for organisation roles and the cohort for cohort roles.** A cohort admin with a grant on one cohort sees that cohort's learners and may act on them there, and sees nothing else in the organisation. Nobody but `site_admin` can act across organisations.
 
 **Organisation association.** A new (user, organisation, `is_active`) row records that an educator belongs to an organisation. It is the educator's counterpart of `Learner`. Its working name is `Educator`, a coined word that is free in both the code and the glossary. The spec settles the name and the app. Every check on something an organisation owns requires both:
 
 1. the capability, from the person's grants, and
 2. an active association with that organisation.
 
-Deactivating the association switches off every grant the person holds in that organisation without touching the grants. Reactivating it restores exactly what they had, with no set-up from scratch. `site_admin` needs no association. Whoever may add and remove instructors and TAs in an organisation may add and remove the association. Spec 9 builds the screen. Existing `organisation_staff`, `instructor` and `ta` grants must keep working after the upgrade, so current holders get an association.
+Deactivating the association switches off every grant the person holds in that organisation without touching the grants. Reactivating it restores exactly what they had, with no set-up from scratch. `site_admin` needs no association. Whoever may add and remove cohort admins and cohort viewers in an organisation may add and remove the association. Spec 9 builds the screen. Existing `organisation_staff`, `instructor` and `ta` grants must keep working after the upgrade under their new names, so current holders get an association.
 
 **A capability layer, not more permission strings.** One function answers "may this user do this capability on this organisation, cohort or learner". It reads role assignments, the association and the site's role config live. It walks from a learner or cohort up to the organisation and the site, so a grant on a container covers what is inside it without writing guardian rows onto children. The consequences:
 
 - A cohort created later is covered at once, with nothing to re-sync.
 - A downstream `FREEDOMLS_PERMISSIONS_MODULES` override takes effect on the next check, because the role config is read live.
-- Guardian stays for grants held directly on the object being checked, such as an instructor's grant on a cohort.
+- Guardian stays for grants held directly on the object being checked, such as a cohort admin's grant on a cohort.
 
 The `_visible_to` helpers stay the way the interface scopes what is listed. They become the queryset twin of the capability function, built from the same assignments and the same association, so a list and a single-object check cannot disagree. `research_scoped_capability_models.md` has the prior art and the case against copying grants onto children.
 
 **Object-aware creation.** "May this user create a cohort in this organisation" is asked of the organisation, never of nothing. The framework hook receives the request and the scope object. `CreateInstanceAction`'s objectless `has_perm` goes.
 
-**Who may assign.** Assigning is a capability like any other and is checked by the same layer, not left to spec 9's views.
+**Who may assign.** Assigning is a capability like any other and is checked by the same layer, not left to spec 9's views. An admin may hand out their own level and every level below it within their scope, and nothing above it. This replaces roadmap decision 2, which reserved organisation grants to site admins.
 
 | Grantor | May assign and remove | Where |
 |---|---|---|
-| `site_admin` | `site_admin`, `organisation_staff`, `instructor`, `ta` | anywhere on the site |
-| `organisation_staff` | `instructor`, `ta` | cohorts in their own organisation |
-| `instructor`, `ta` | nothing | |
+| `site_admin` | `site_admin`, `organisation_admin`, `cohort_admin`, `cohort_viewer` | anywhere on the site |
+| `organisation_admin` | `organisation_admin`, `cohort_admin`, `cohort_viewer` | their own organisation, and cohorts in it |
+| `cohort_admin`, `cohort_viewer` | nothing | |
 
-- Nobody assigns or removes their own grants. Only a site admin removes an `organisation_staff` grant, including the last one in an organisation; site admins can always reach it.
-- Removing the last `site_admin` on a site is refused. The count and the removal happen under a row lock, so two simultaneous removals cannot both pass.
+- Nobody assigns or removes their own grants.
+- Removing the last `site_admin` on a site is refused. An organisation admin removing the last `organisation_admin` in their organisation is refused; a site admin may do it, since site admins can always reach the organisation. The count and the removal happen under a row lock, so two simultaneous removals cannot both pass.
 - The target must be an active user.
 - Deactivating a cohort leaves the grants on it intact. What an inactive cohort still allows is spec 6's call.
 
@@ -82,9 +105,9 @@ The `_visible_to` helpers stay the way the interface scopes what is listed. They
 
 **The denied experience.**
 
-- An organisation, cohort or learner outside the user's scope is a 404, so slugs and ids cannot be enumerated. That includes a cohort an instructor has no grant on, inside an organisation they can otherwise see.
+- An organisation, cohort or learner outside the user's scope is a 404, so slugs and ids cannot be enumerated. That includes a cohort a cohort admin has no grant on, inside an organisation they can otherwise see.
 - An action they can see but may no longer perform returns 403 with a fragment that says what happened, why, and who to ask. For htmx requests the fragment renders where the form was. It goes through the existing `htmx:beforeSwap` listener in `alpine-components.js`, which already force-swaps 422s. There is no new htmx extension and no global `responseHandling` change. A full-page 403 uses the existing `403.html`.
-- "Who to ask" names a role, such as an organisation staff member, and names a person only when the user can already see that organisation's educators. The message does not distinguish "your role changed" from "you never had it".
+- "Who to ask" names a role, such as an organisation admin, and names a person only when the user can already see that organisation's educators. The message does not distinguish "your role changed" from "you never had it".
 - Controls the user may not use are not rendered. Each role's view is a complete interface, not a greyed-out admin.
 - Panels and tabs use the spec 1 hook to hide themselves per role. Lists use the visibility helpers to filter rows, and that includes the two course-detail panels above.
 
@@ -95,6 +118,7 @@ The `_visible_to` helpers stay the way the interface scopes what is listed. They
 ## Open until the spec
 
 - The association's name, app and fields, and how it relates to `Learner` for a person who is both.
+- Whether a cohort admin may edit the name and description of a cohort they administer. Default no.
 - What becomes of role sync into guardian for organisation and site roles once the capability layer answers those checks. At minimum, `site_admin`'s cohort strings stop pretending to do anything.
 
 ## Out of scope
