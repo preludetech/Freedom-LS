@@ -51,9 +51,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: notification row lists indented 24px by the global ul base style, add list-none ml-0 in notification_panel.html and notification_list.html (TDD — failing test first, then fix)
-- [ ] (user) Decide whether notification centre page and filter changes should push the URL (hx-push-url) so reload/back/share keep ?page= and filter=unread, then fix QA bug B2 accordingly (TDD — failing test first, then fix)
-- [ ] (user) Decide where keyboard focus should land after Mark all as read (panel and centre) and after Mark read removes a row in the Unread view, then fix QA bug B3 so focus no longer drops to <body> (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: notification row lists indented 24px by the global ul base style, add list-none ml-0 in notification_panel.html and notification_list.html (TDD — failing test first, then fix)
+- [x] (user) Decide whether notification centre page and filter changes should push the URL (hx-push-url) so reload/back/share keep ?page= and filter=unread, then fix QA bug B2 accordingly (TDD — failing test first, then fix)
+- [x] (user) Decide where keyboard focus should land after Mark all as read (panel and centre) and after Mark read removes a row in the Unread view, then fix QA bug B3 so focus no longer drops to <body> (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

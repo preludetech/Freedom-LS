@@ -178,9 +178,9 @@ span full width.
 ## Bug status
 
 - **FIXED** (commit: c380b9f6) — Mark read/unread on page 2+ of the centre jumps back to page 1 (B1). Re-verified in the browser: the row's hx-post carries `?page=2` and the list stays on "Page 2 of 2".
-- **UNRESOLVED** — Centre page and filter changes do not update the address bar (B2) (reason: product decision, since the spec doesn't require URL push and `c-pagination` never pushes)
-- **UNRESOLVED** — Keyboard focus is lost to `<body>` after Mark all as read (panel and centre) (B3) (reason: UX decision on where focus should land)
-- **UNRESOLVED** — Notification row lists indented 24px by the global `ul` base style (B4) (reason: visual-only, red lane; likely fix is `list-none ml-0` on both lists)
+- **FIXED** (commit: bad9a77d) — Centre page and filter changes do not update the address bar (B2). Decision: push the URL. The filter links set `hx-push-url`, `c-pagination` has an opt-in `push_url` flag, and `notification_list` returns the full page on htmx history-restore requests.
+- **FIXED** (commit: ce37b611) — Keyboard focus is lost to `<body>` after Mark all as read (panel and centre) (B3). Decision: Mark all as read focuses the panel heading or the centre's "You're up to date" banner. Mark read in the Unread view focuses the next row's Mark read button, else the new last row, else the empty-state heading.
+- **FIXED** (commit: d49e37a8) — Notification row lists indented 24px by the global `ul` base style (B4). Added `list-none ml-0` to both row lists.
 
 ## 6. General notes
 
