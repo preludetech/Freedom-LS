@@ -81,3 +81,17 @@ class TestBellOnEverySignedInPage:
         )
 
         assert BELL_MARKER in response.content.decode()
+
+
+@pytest.mark.django_db
+class TestBellWhenNotificationsDisabled:
+    def test_the_dashboard_hides_the_bell(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.NOTIFICATIONS_ENABLED = False
+        user = UserFactory()
+        client = logged_in_client(user)
+
+        response = client.get(reverse("learner_interface:dashboard"))
+
+        assert BELL_MARKER not in response.content.decode()

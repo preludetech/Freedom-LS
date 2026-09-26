@@ -2,6 +2,7 @@
 A WAI-ARIA disclosure, not <c-dropdown-menu>: the panel holds links and
 buttons rather than menu items, and it does not trap focus.
 {% endcomment %}
+{% if enabled %}
 <div x-data="notificationBell" class="relative" data-poll-seconds="{{ poll_seconds }}">
     <button type="button"
             id="notification-bell"
@@ -58,3 +59,4 @@ buttons rather than menu items, and it does not trap focus.
              class="h-full sm:h-auto"></div>
     </div>
 </div>
+{% endif %}

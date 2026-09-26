@@ -56,6 +56,8 @@ INSTALLED_APPS = [
 # commands need this to stay runnable under pytest.
 DEV_TOOLS_ENABLED = True
 
+NOTIFICATIONS_ENABLED = True
+
 _template_options = TEMPLATES[0]["OPTIONS"]  # noqa: F405
 _context_processors: list[str] = _template_options["context_processors"]  # type: ignore[index]
 _context_processors.append("freedom_ls.base.context_processors.debug_branch_info")

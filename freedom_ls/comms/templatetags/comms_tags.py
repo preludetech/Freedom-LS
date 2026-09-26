@@ -26,8 +26,11 @@ def badge_count(value: int) -> str:
 
 @register.inclusion_tag("comms/partials/notification_bell.html", takes_context=True)
 def notification_bell(context: template.Context) -> dict[str, object]:
+    if not config.NOTIFICATIONS_ENABLED:
+        return {"enabled": False}
     request = cast("HttpRequest", context["request"])
     return {
+        "enabled": True,
         "unseen_count": _unseen_count(request),
         "poll_seconds": config.NOTIFICATION_BADGE_POLL_SECONDS,
     }

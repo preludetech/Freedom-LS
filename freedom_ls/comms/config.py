@@ -8,11 +8,13 @@ from freedom_ls.base.notification_categories import (
 
 
 class CommsConfig(AppSettings):
+    NOTIFICATIONS_ENABLED: bool
     NOTIFICATION_CATEGORIES: list[NotificationCategory]
     NOTIFICATION_DELIVERY_BACKENDS: list[str]
     NOTIFICATION_BADGE_POLL_SECONDS: int
 
     declared_settings = {
+        "NOTIFICATIONS_ENABLED": Setting(default=False),
         "NOTIFICATION_CATEGORIES": Setting(default=FLS_NOTIFICATION_CATEGORIES),
         "NOTIFICATION_DELIVERY_BACKENDS": Setting(default=[]),
         "NOTIFICATION_BADGE_POLL_SECONDS": Setting(default=45),

@@ -484,6 +484,9 @@ WEBHOOK_EVENT_TYPES = FLS_WEBHOOK_EVENT_TYPES
 # NOTIFICATION_CATEGORIES = FLS_NOTIFICATION_CATEGORIES + [NotificationCategory(...)]
 NOTIFICATION_CATEGORIES = FLS_NOTIFICATION_CATEGORIES
 
+# Shows the notification bell in the header.
+NOTIFICATIONS_ENABLED = False
+
 
 # Content Security Policy (report-only mode)
 # googletagmanager.com and *.google-analytics.com/*.analytics.google.com are GA4's
