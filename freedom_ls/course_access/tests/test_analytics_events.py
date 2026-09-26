@@ -58,7 +58,7 @@ def test_course_event_is_recorded_with_its_course_params(
 
     record(request, course)
 
-    assert request.session["analytics_events"] == [
+    assert request.session["google_analytics_events"] == [
         {"name": name, "params": course_event_params(course) | extra_params}
     ]
 
@@ -87,7 +87,7 @@ def test_course_progress_event_names_the_registration_source(
 
     record(request, course, via_cohort=via_cohort)
 
-    assert request.session["analytics_events"] == [
+    assert request.session["google_analytics_events"] == [
         {
             "name": name,
             "params": course_event_params(course)

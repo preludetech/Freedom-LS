@@ -49,26 +49,26 @@ class TestAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         client.get("/")
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_a_recorded_event_stays_on_a_token_bearing_page(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(reverse("account_confirm_email", args=["some-key"]))
 
         content = response.content.decode()
         assert "gtag('event'" not in content
-        assert client.session["analytics_events"] == [_PENDING_SIGN_UP]
+        assert client.session["google_analytics_events"] == [_PENDING_SIGN_UP]
 
     @override_settings(**_ALL_PLATFORM_SETTINGS)
     def test_a_boosted_request_keeps_the_emitted_script_inside_interface_main(
@@ -79,7 +79,7 @@ class TestAnalyticsEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url, HTTP_HX_REQUEST="true", HTTP_X_VISITOR_COUNTRY="ZA")
@@ -101,7 +101,7 @@ class TestAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/", HTTP_X_VISITOR_COUNTRY="ZA")
@@ -188,7 +188,7 @@ class TestAnalyticsEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session["google_analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
         settings.INSTALLED_APPS = [
             app for app in settings.INSTALLED_APPS if app != app_name

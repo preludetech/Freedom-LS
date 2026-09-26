@@ -160,7 +160,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {
                 "name": "course_registered",
                 "params": {"course_slug": "algebra"},
@@ -181,7 +181,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {
                 "name": "course_access_requested",
                 "params": {"request_kind": "application"},
@@ -202,7 +202,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {"name": "generate_lead", "params": {"lead_form": "call_me_back"}}
         ]
         session.save()
@@ -220,7 +220,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
         session.save()
@@ -238,7 +238,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {
                 "name": "course_completed",
                 "params": {"course_slug": "algebra"},
@@ -259,7 +259,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {
                 "name": "course_access_requested",
                 "params": {"request_kind": "interest"},
@@ -276,7 +276,7 @@ class TestMetaPixelEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {"name": "generate_lead", "params": {"lead_form": "</script><b>"}}
         ]
         session.save()
@@ -298,7 +298,7 @@ class TestMetaPixelEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["analytics_events"] = [
+        session["google_analytics_events"] = [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
         session.save()

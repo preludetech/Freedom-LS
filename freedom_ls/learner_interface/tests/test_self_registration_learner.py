@@ -135,7 +135,7 @@ class TestCourseRegisteredAnalyticsEvent:
 
         client.post(_initiate_url("ga-register-course"))
 
-        assert client.session["analytics_events"] == [
+        assert client.session["google_analytics_events"] == [
             {
                 "name": "course_registered",
                 "params": {
@@ -158,7 +158,7 @@ class TestCourseRegisteredAnalyticsEvent:
 
         client.post(_initiate_url(course.slug))
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
     def test_reactivating_a_deactivated_registration_records_no_event(
         self, mock_site_context, site, logged_in_client, course_with_topic
@@ -173,7 +173,7 @@ class TestCourseRegisteredAnalyticsEvent:
 
         client.post(_initiate_url(course.slug))
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
 
 @pytest.mark.django_db

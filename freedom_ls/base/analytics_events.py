@@ -24,7 +24,7 @@ from django.http import HttpRequest
 
 from freedom_ls.base.config import config
 
-ANALYTICS_EVENTS_SESSION_KEY = "analytics_events"
+ANALYTICS_EVENTS_SESSION_KEY = "google_analytics_events"
 
 # The apps that pop the queue. A project with none of them installed has no
 # context processor to pop it, so recording would only grow the session.

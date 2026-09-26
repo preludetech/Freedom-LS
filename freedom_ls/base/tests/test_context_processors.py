@@ -140,7 +140,7 @@ class TestDebugBranchInfo:
 class TestAnalyticsEvents:
     def test_returns_a_callable_that_pops_the_session(self) -> None:
         request = _request_with_session()
-        request.session["analytics_events"] = [
+        request.session["google_analytics_events"] = [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
@@ -150,7 +150,7 @@ class TestAnalyticsEvents:
 
     def test_calling_it_twice_returns_the_events_then_an_empty_list(self) -> None:
         request = _request_with_session()
-        request.session["analytics_events"] = [
+        request.session["google_analytics_events"] = [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
         pop = analytics_events(request)["analytics_events"]

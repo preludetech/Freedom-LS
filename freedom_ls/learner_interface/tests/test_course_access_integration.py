@@ -730,4 +730,4 @@ def test_initiate_access_gated_course_records_no_course_registered_event(
         )
     )
 
-    assert "analytics_events" not in client.session
+    assert "google_analytics_events" not in client.session

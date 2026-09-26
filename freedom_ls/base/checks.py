@@ -4,18 +4,23 @@ E001 — HtmxMessagesMiddleware is not registered in MIDDLEWARE.
 E002 — HtmxMessagesMiddleware is registered before MessageMiddleware.
 E003 — VISITOR_COUNTRY_HEADER holds a request.META key instead of the header
        name itself.
+E004 — A platform app (google_tag, meta_pixel, tiktok_pixel) is installed but
+       the analytics_events context processor is not in TEMPLATES.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 
-from django.apps import AppConfig
+from django.apps import AppConfig, apps
 from django.conf import settings
 from django.core.checks import CheckMessage, Error, Tags, Warning, register
 
 HTMX_MESSAGES_MIDDLEWARE = "freedom_ls.base.middleware.HtmxMessagesMiddleware"
 DJANGO_MESSAGE_MIDDLEWARE = "django.contrib.messages.middleware.MessageMiddleware"
+ANALYTICS_EVENTS_CONTEXT_PROCESSOR = (
+    "freedom_ls.base.context_processors.analytics_events"
+)
 
 
 @register()
@@ -93,6 +98,38 @@ def check_visitor_country_header_is_not_a_meta_key(
         check_id="freedom_ls_base.E003",
         consequence="every visitor counts as unknown, so no ad pixel ever loads.",
     )
+
+
+@register(Tags.templates)
+def check_analytics_events_context_processor(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[Error]:
+    """E004: Error when a platform app is installed without the context processor.
+
+    Recording still fills the session, but partials/analytics_events.html reads
+    an undefined variable as empty, so no event is ever emitted.
+    """
+    from freedom_ls.base.analytics_events import PLATFORM_APPS
+
+    if not any(apps.is_installed(app) for app in PLATFORM_APPS):
+        return []
+    for backend in settings.TEMPLATES:
+        options = backend.get("OPTIONS", {})
+        if not isinstance(options, dict):
+            continue
+        if ANALYTICS_EVENTS_CONTEXT_PROCESSOR in options.get("context_processors", []):
+            return []
+    return [
+        Error(
+            f"{ANALYTICS_EVENTS_CONTEXT_PROCESSOR!r} is not in any TEMPLATES "
+            f"context_processors, so recorded analytics events are never sent.",
+            hint=(
+                f"Add {ANALYTICS_EVENTS_CONTEXT_PROCESSOR!r} to "
+                f"TEMPLATES[...]['OPTIONS']['context_processors']."
+            ),
+            id="freedom_ls_base.E004",
+        )
+    ]
 
 
 def pixel_without_visitor_country_warning(

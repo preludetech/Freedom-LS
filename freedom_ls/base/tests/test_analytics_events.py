@@ -33,7 +33,7 @@ class TestRecordAnalyticsEvent:
 
         record_analytics_event(request, AnalyticsEvent.SIGN_UP, {"method": "email"})
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
@@ -42,7 +42,7 @@ class TestRecordAnalyticsEvent:
 
         record_analytics_event(request, AnalyticsEvent.SIGN_UP)
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "sign_up", "params": {}}
         ]
 
@@ -56,7 +56,7 @@ class TestRecordAnalyticsEvent:
             request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
         )
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "course_started", "params": {"course_slug": "algebra"}}
         ]
 
@@ -70,7 +70,7 @@ class TestRecordAnalyticsEvent:
             request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "botany"}
         )
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "course_started", "params": {"course_slug": "algebra"}},
             {"name": "course_started", "params": {"course_slug": "botany"}},
         ]
@@ -82,7 +82,7 @@ class TestRecordAnalyticsEvent:
             request, "brochure_requested", {"lead_form": "brochure_request"}
         )
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "brochure_requested", "params": {"lead_form": "brochure_request"}}
         ]
 
@@ -93,7 +93,7 @@ class TestRecordAnalyticsEvent:
             request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "a" * 101}
         )
 
-        stored = request.session["analytics_events"][0]["params"]["course_slug"]
+        stored = request.session["google_analytics_events"][0]["params"]["course_slug"]
         assert stored == "a" * 100
 
     @pytest.mark.parametrize(
@@ -132,7 +132,7 @@ class TestRecordAnalyticsEvent:
         with pytest.raises(ValueError, match="event name"):
             record_analytics_event(request, "has-hyphen")
 
-        assert "analytics_events" not in request.session
+        assert "google_analytics_events" not in request.session
 
 
 class TestPopAnalyticsEvents:
@@ -154,7 +154,7 @@ class TestPopAnalyticsEvents:
 
         pop_analytics_events(request)
 
-        assert "analytics_events" not in request.session
+        assert "google_analytics_events" not in request.session
 
     def test_popping_with_nothing_recorded_returns_an_empty_list(self) -> None:
         request = _request_with_session()
@@ -179,7 +179,7 @@ class TestRecordSignUp:
 
         record_sign_up(request)
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
@@ -199,7 +199,7 @@ class TestRecordingWithNoPlatformAppInstalled:
 
         record_analytics_event(request, AnalyticsEvent.SIGN_UP)
 
-        assert "analytics_events" not in request.session
+        assert "google_analytics_events" not in request.session
 
 
 class TestRecordingWithOnlyMetaPixelInstalled:
@@ -209,7 +209,7 @@ class TestRecordingWithOnlyMetaPixelInstalled:
 
         record_sign_up(request)
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 

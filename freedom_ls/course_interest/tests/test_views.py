@@ -485,7 +485,7 @@ class TestExpressInterestAnalyticsEvent:
 
         client.post(_express_interest_url(course.slug))
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
     def test_removing_interest_records_no_event(self, client, mock_site_context):
         user = UserFactory()
@@ -499,7 +499,7 @@ class TestExpressInterestAnalyticsEvent:
             )
         )
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
 
 @pytest.mark.django_db
@@ -525,7 +525,7 @@ class TestDeferredExpressInterestAnalyticsEvent:
             )
         )
 
-        assert client.session["analytics_events"] == [
+        assert client.session["google_analytics_events"] == [
             {
                 "name": "course_access_requested",
                 "params": {
@@ -551,4 +551,4 @@ class TestDeferredExpressInterestAnalyticsEvent:
             )
         )
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session

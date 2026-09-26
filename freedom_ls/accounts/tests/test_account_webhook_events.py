@@ -88,7 +88,7 @@ class TestSignUpAnalyticsEvent:
         ):
             adapter.save_user(request, user, mock_form, commit=True)
 
-        assert request.session["analytics_events"] == [
+        assert request.session["google_analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
@@ -107,7 +107,7 @@ class TestSignUpAnalyticsEvent:
         ):
             adapter.save_user(request, user, mock_form, commit=False)
 
-        assert "analytics_events" not in request.session
+        assert "google_analytics_events" not in request.session
 
 
 @pytest.mark.django_db(transaction=True)

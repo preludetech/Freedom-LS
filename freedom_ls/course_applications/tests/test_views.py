@@ -1070,7 +1070,7 @@ class TestApplyAnalyticsEvent:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert client.session["analytics_events"] == [
+        assert client.session["google_analytics_events"] == [
             {
                 "name": "course_access_requested",
                 "params": {
@@ -1093,7 +1093,7 @@ class TestApplyAnalyticsEvent:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
     def test_apply_for_an_existing_application_does_not_record_an_event(
         self, client, mock_site_context
@@ -1107,7 +1107,7 @@ class TestApplyAnalyticsEvent:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
 
 
 @pytest.mark.django_db
@@ -1122,7 +1122,7 @@ class TestCheckYourAnswersAnalyticsEvent:
 
         client.post(_check_url(app))
 
-        assert client.session["analytics_events"] == [
+        assert client.session["google_analytics_events"] == [
             {
                 "name": "course_access_requested",
                 "params": {
@@ -1142,4 +1142,4 @@ class TestCheckYourAnswersAnalyticsEvent:
 
         client.post(_check_url(app))
 
-        assert "analytics_events" not in client.session
+        assert "google_analytics_events" not in client.session
