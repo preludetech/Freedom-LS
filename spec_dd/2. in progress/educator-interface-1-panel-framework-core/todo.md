@@ -51,10 +51,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user) Decide whether saving an edit should refetch only the edited panel (test plan 5.3: one GET) or every leaf panel (spec requirement 9: hx-trigger='panelChanged from:body' on every leaf), then align the spec, test plan or panel template
-- [ ] (user + cmd) Fix QA bug: edit save refetches every panel instead of only the edited one, once the refresh scope is decided (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: delete confirmation omits cascade rows Django fast-deletes, e.g. cohort memberships; DeleteAction.get_cascade_summary ignores Collector.fast_deletes (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: links in the mobile/tablet nav sheet trigger a full page reload after the htmx request; the sidePanel click handler calls window.location.replace for hx-get links (TDD — failing test first, then fix)
+- [x] (user) Decide whether saving an edit should refetch only the edited panel (test plan 5.3: one GET) or every leaf panel (spec requirement 9: hx-trigger='panelChanged from:body' on every leaf), then align the spec, test plan or panel template
+- [x] (user + cmd) Fix QA bug: edit save refetches every panel instead of only the edited one, once the refresh scope is decided (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: delete confirmation omits cascade rows Django fast-deletes, e.g. cohort memberships; DeleteAction.get_cascade_summary ignores Collector.fast_deletes (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: links in the mobile/tablet nav sheet trigger a full page reload after the htmx request; the sidePanel click handler calls window.location.replace for hx-get links (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

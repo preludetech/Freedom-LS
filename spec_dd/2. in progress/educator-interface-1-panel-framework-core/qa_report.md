@@ -138,9 +138,9 @@ No screenshot recorded for this bug (network-panel observation only).
 
 ## Bug status
 
-- B1: **UNRESOLVED**. Saving an edit refetches every panel on the page, not just the edited one. Reason: the test plan and spec requirement 9 disagree, so someone has to choose the intended behaviour.
-- B2: **UNRESOLVED**. The delete confirmation leaves out cascade-deleted rows that Django fast-deletes (such as cohort memberships). Reason: the same code is on main, so this branch did not introduce it. That fails the auto-fix lane's "regression in the feature under test" condition.
-- B3: **UNRESOLVED**. Links in the mobile/tablet navigation sheet trigger a full page reload after the htmx request. Reason: the fix is in browser JS and can't be proven with pytest alone. The same code is on main.
+- B1: **FIXED** (commit: 6224ead5): saving an edit refetches every leaf panel. This is the intended behaviour (spec requirement 9), so test plan 5.3 now expects one GET per leaf panel.
+- B2: **FIXED** (commit: c9473282): the delete confirmation now lists cascade rows Django fast-deletes.
+- B3: **FIXED** (commit: 20eb7777): links in the mobile/tablet navigation sheet no longer trigger a full page reload.
 
 ## 7. General notes
 
@@ -154,4 +154,4 @@ No screenshot recorded for this bug (network-panel observation only).
 - 3.6 pagination was not exercised on the cohort Learners card because the seeded cohort only has 3 learners (plan says to page only if there is more than one page). Paging behaviour was verified instead on the Courses list (test 8.1, 13 courses across 3 pages).
 
 status: ok
-reason: 3 bugs — 0 fixed, 3 unresolved; report rendered, screenshots verified
+reason: 3 bugs — 3 fixed (after the run), 0 unresolved; report rendered, screenshots verified
