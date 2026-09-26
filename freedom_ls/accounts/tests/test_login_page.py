@@ -72,6 +72,19 @@ def test_switch_to_signup_is_hidden_when_signups_closed(mock_site_context, apply
 
 
 @pytest.mark.django_db
+def test_switch_to_signup_is_hidden_when_socialaccount_only(
+    mock_site_context, apply_url, settings
+):
+    settings.SOCIALACCOUNT_ONLY = True
+
+    response = Client().get(f"{reverse('account_login')}?next={apply_url}")
+    html = response.content.decode()
+
+    assert 'href="None"' not in html
+    assert "Create an account" not in html
+
+
+@pytest.mark.django_db
 def test_password_reset_link_still_renders(login_page):
     _, html = login_page
 

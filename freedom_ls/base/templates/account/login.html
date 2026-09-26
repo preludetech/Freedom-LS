@@ -8,15 +8,6 @@
 {% block content %}
     {% element h1 %}{% trans "Log in" %}{% endelement %}
 
-    {% if allow_signups %}
-        <div class="flex flex-wrap items-center gap-3">
-            <span>{% trans "New here?" %}</span>
-            <c-button href="{{ signup_url }}" variant="secondary">
-                {% trans "Create an account" %}
-            </c-button>
-        </div>
-    {% endif %}
-
     {% if form.errors %}
         <div role="alert">
             {% for error in form.non_field_errors %}
@@ -51,9 +42,20 @@
                 {{ redirect_field }}
             {% endslot %}
             {% slot actions %}
-                {% element button type="submit" tags="prominent,login" %}
-                    {% trans "Log in" %}
-                {% endelement %}
+                <div class="mt-6 space-y-6">
+                    <c-button type="submit" variant="primary" class="w-full font-semibold">
+                        {% trans "Log in" %}
+                    </c-button>
+                    {# After a failed login the callout below makes the same offer, prefilled with the typed email. #}
+                    {% if allow_signups and signup_url and not form.errors %}
+                        <div class="border-t border-border pt-6 space-y-3 text-center">
+                            <p>{% trans "New here?" %}</p>
+                            <c-button href="{{ signup_url }}" variant="secondary" class="w-full font-semibold">
+                                {% trans "Create an account" %}
+                            </c-button>
+                        </div>
+                    {% endif %}
+                </div>
             {% endslot %}
         {% endelement %}
     {% endif %}
