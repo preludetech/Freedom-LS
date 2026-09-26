@@ -87,10 +87,14 @@
 
         {% comment %}
         A marketing landing page overrides this block to pass a content group:
-        {% include "partials/google_analytics.html" with content_group="landing_page" %}
+        {% if google_analytics_measurement_id %}
+            {% include "partials/google_analytics.html" with content_group="landing_page" %}
+        {% endif %}
         {% endcomment %}
         {% block google_analytics %}
-            {% include "partials/google_analytics.html" %}
+            {% if google_analytics_measurement_id %}
+                {% include "partials/google_analytics.html" %}
+            {% endif %}
         {% endblock google_analytics %}
 
     </head>
@@ -158,9 +162,9 @@
 
         {% comment %}
         Covers every page with no #interface-main (e.g. the allauth pages
-        after sign-up). See partials/google_analytics_events.html for why the
+        after sign-up). See partials/analytics_events.html for why the
         partial is included at both this point and inside #interface-main.
         {% endcomment %}
-        {% include "partials/google_analytics_events.html" %}
+        {% include "partials/analytics_events.html" %}
     </body>
 </html>

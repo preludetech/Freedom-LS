@@ -1,9 +1,12 @@
 import colorsys
 import hashlib
+from collections.abc import Callable
+from functools import partial
 
 from django.conf import settings
 from django.http import HttpRequest
 
+from freedom_ls.base.analytics_events import AnalyticsEventPayload, pop_analytics_events
 from freedom_ls.base.git_utils import get_current_branch
 
 
@@ -41,3 +44,11 @@ def debug_branch_info(_request: HttpRequest) -> dict[str, str]:
         "debug_branch_color": bg_color,
         "debug_branch_text_color": get_text_color(bg_color),
     }
+
+
+def analytics_events(
+    request: HttpRequest,
+) -> dict[str, Callable[[], list[AnalyticsEventPayload]]]:
+    """A callable, not a list: Django resolves it only when a template reads it,
+    so only a render that reaches partials/analytics_events.html pops the session."""
+    return {"analytics_events": partial(pop_analytics_events, request)}

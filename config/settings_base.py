@@ -199,6 +199,7 @@ TEMPLATES = [
                 "freedom_ls.learner_management.context_processors.can_access_educator_interface",
                 "freedom_ls.deployment.context_processors.analytics_enabled",
                 "freedom_ls.deployment.context_processors.posthog_config",
+                "freedom_ls.base.context_processors.analytics_events",
                 "freedom_ls.google_tag.context_processors.google_tag_config",
                 "django.template.context_processors.csp",
             ],

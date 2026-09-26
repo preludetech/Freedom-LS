@@ -21,9 +21,9 @@ Confirmation copy deliberately does NOT promise a notification (spec §7.2, §10
 <div id="express-interest-cta-{{ course.slug }}">
     {% comment %}
     Inside the wrapper so the outerHTML swap carries it: htmx runs the script
-    on swap, and the GA4 event fires at the click, not on the next full page.
+    on swap, and the analytics event fires at the click, not on the next full page.
     {% endcomment %}
-    {% include "partials/google_analytics_events.html" %}
+    {% include "partials/analytics_events.html" %}
     {% if is_interested %}
         <div class="flex items-center gap-3">
             <span class="flex items-center gap-1.5 text-success font-medium">

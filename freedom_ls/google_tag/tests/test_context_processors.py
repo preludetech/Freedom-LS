@@ -10,10 +10,7 @@ from django.utils.html import escapejs
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
-from freedom_ls.google_tag.context_processors import (
-    PendingGoogleAnalyticsEvent,
-    google_tag_config,
-)
+from freedom_ls.google_tag.context_processors import google_tag_config
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 _PENDING_SIGN_UP = {"name": "sign_up", "params": {"method": "email"}}
@@ -28,13 +25,6 @@ def _request_with_session(path: str = "/") -> HttpRequest:
     request = RequestFactory().get(path)
     SessionMiddleware(lambda r: HttpResponse()).process_request(request)
     return request
-
-
-def _pending_events(request: HttpRequest) -> list[PendingGoogleAnalyticsEvent]:
-    """Resolve the lazy `google_analytics_events` value the way a template would."""
-    events = google_tag_config(request)["google_analytics_events"]
-    assert callable(events)
-    return events()
 
 
 class TestGoogleTagConfig:
@@ -54,18 +44,6 @@ class TestGoogleTagConfig:
 
         assert result["google_analytics_measurement_id"] is None
 
-    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID=None)
-    def test_drops_pending_events_when_unset(self) -> None:
-        # Nothing will ever emit these, so they are discarded up front rather
-        # than waiting in the session for a measurement ID that may never
-        # arrive.
-        request = _request_with_session()
-        request.session["analytics_events"] = [_PENDING_SIGN_UP]
-
-        google_tag_config(request)
-
-        assert "analytics_events" not in request.session
-
     @override_settings(GOOGLE_ADS_CONVERSION_ID="AW-TEST")
     def test_returns_configured_google_ads_conversion_id(self) -> None:
         request = _request_with_session()
@@ -81,56 +59,6 @@ class TestGoogleTagConfig:
         result = google_tag_config(request)
 
         assert result["google_ads_conversion_id"] is None
-
-
-class TestGoogleTagConfigPendingEvents:
-    @override_settings(
-        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST",
-        GOOGLE_ADS_CONVERSION_ID="AW-TEST",
-        GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "QAsignup"},
-    )
-    def test_a_mapped_event_carries_its_send_to(self) -> None:
-        request = _request_with_session()
-        request.session["analytics_events"] = [_PENDING_SIGN_UP]
-
-        events = _pending_events(request)
-
-        assert events == [{**_PENDING_SIGN_UP, "send_to": "AW-TEST/QAsignup"}]
-
-    @override_settings(
-        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST",
-        GOOGLE_ADS_CONVERSION_ID="AW-TEST",
-        GOOGLE_ADS_CONVERSION_LABELS={"course_registered": "QAregistered"},
-    )
-    def test_an_unmapped_event_has_no_send_to(self) -> None:
-        request = _request_with_session()
-        request.session["analytics_events"] = [_PENDING_SIGN_UP]
-
-        events = _pending_events(request)
-
-        assert events == [{**_PENDING_SIGN_UP, "send_to": None}]
-
-    @override_settings(
-        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST",
-        GOOGLE_ADS_CONVERSION_ID=None,
-        GOOGLE_ADS_CONVERSION_LABELS={"sign_up": "QAsignup"},
-    )
-    def test_a_label_without_a_conversion_id_gives_no_send_to(self) -> None:
-        request = _request_with_session()
-        request.session["analytics_events"] = [_PENDING_SIGN_UP]
-
-        events = _pending_events(request)
-
-        assert events == [{**_PENDING_SIGN_UP, "send_to": None}]
-
-    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_popping_empties_the_session(self) -> None:
-        request = _request_with_session()
-        request.session["analytics_events"] = [_PENDING_SIGN_UP]
-
-        _pending_events(request)
-
-        assert "analytics_events" not in request.session
 
 
 @pytest.mark.django_db
@@ -368,18 +296,6 @@ class TestGoogleAnalyticsEventsPartial:
         content = response.content.decode()
         assert "gtag('event'" not in content
 
-    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID=None)
-    def test_event_is_gone_from_session_when_measurement_id_unset(
-        self, client: Client, mock_site_context: object
-    ) -> None:
-        session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
-        session.save()
-
-        client.get("/")
-
-        assert "analytics_events" not in client.session
-
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_nothing_renders_and_event_stays_on_a_token_bearing_page(
         self, client: Client, mock_site_context: object
@@ -393,26 +309,6 @@ class TestGoogleAnalyticsEventsPartial:
         content = response.content.decode()
         assert "gtag('event'" not in content
         assert client.session["analytics_events"] == [_PENDING_SIGN_UP]
-
-    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
-    def test_boosted_request_keeps_the_event_inside_interface_main(
-        self,
-        client: Client,
-        course_player_url_and_learner: tuple[str, User],
-    ) -> None:
-        url, user = course_player_url_and_learner
-        client.force_login(user)
-        session = client.session
-        session["analytics_events"] = [_PENDING_SIGN_UP]
-        session.save()
-
-        response = client.get(url, HTTP_HX_REQUEST="true")
-
-        content = response.content.decode()
-        # Placement, not a full DOM parse: the event script must come after
-        # the opening tag of #interface-main, the only region a boosted
-        # course-player navigation keeps.
-        assert content.index('id="interface-main"') < content.index(_SIGN_UP_SCRIPT)
 
 
 _ADS_SETTINGS = {

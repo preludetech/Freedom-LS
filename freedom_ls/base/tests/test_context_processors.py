@@ -4,14 +4,23 @@ from unittest.mock import patch
 
 import pytest
 
+from django.contrib.sessions.middleware import SessionMiddleware
+from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory
 
 from freedom_ls.base.context_processors import (
+    analytics_events,
     branch_name_to_color,
     debug_branch_info,
     get_text_color,
 )
 from freedom_ls.base.git_utils import _clear_branch_cache
+
+
+def _request_with_session() -> HttpRequest:
+    request = RequestFactory().get("/")
+    SessionMiddleware(lambda r: HttpResponse()).process_request(request)
+    return request
 
 
 @pytest.fixture(autouse=True)
@@ -126,3 +135,28 @@ class TestDebugBranchInfo:
             result = debug_branch_info(request)
 
         assert result == {}
+
+
+class TestAnalyticsEvents:
+    def test_returns_a_callable_that_pops_the_session(self) -> None:
+        request = _request_with_session()
+        request.session["analytics_events"] = [
+            {"name": "sign_up", "params": {"method": "email"}}
+        ]
+
+        pop = analytics_events(request)["analytics_events"]
+
+        assert pop() == [{"name": "sign_up", "params": {"method": "email"}}]
+
+    def test_calling_it_twice_returns_the_events_then_an_empty_list(self) -> None:
+        request = _request_with_session()
+        request.session["analytics_events"] = [
+            {"name": "sign_up", "params": {"method": "email"}}
+        ]
+        pop = analytics_events(request)["analytics_events"]
+
+        first_call = pop()
+        second_call = pop()
+
+        assert first_call == [{"name": "sign_up", "params": {"method": "email"}}]
+        assert second_call == []

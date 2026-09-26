@@ -1,16 +1,8 @@
-{% load fls_base_filters %}
+{% load fls_base_filters google_tag_tags %}
 {% comment %}
-Included twice in a full page: once as the first thing inside #interface-main
-(_base_interface.html), once directly before </body> (_base.html). Only the
-first of the two to render on a given response pops the session's pending
-events, so an event is never emitted twice from one response -- whichever
-include point a page reaches first gets them, and the other renders nothing.
-
-An HTMX partial whose view records an event includes this too, so the event
-fires at the swap and does not wait in the session for the next full page.
-
-Each script removes itself once it has run, so htmx's history snapshot of the
-page (taken after scripts run) does not carry it. Without that, a Back
+Rendered by partials/analytics_events.html with this response's events. The
+script removes itself once it has run, so htmx's history snapshot of the page
+(taken after scripts run) does not carry it -- without that, a Back
 navigation to a cached snapshot would fire the event again.
 
 An event mapped to a Google Ads conversion label sends that conversion in the
@@ -18,7 +10,9 @@ same script, so the two calls share one lifetime: both fire at the swap, and
 both are gone from the snapshot.
 {% endcomment %}
 {% if analytics_enabled and google_analytics_measurement_id %}
-    {% for event in google_analytics_events %}
-        <script>gtag('event', '{{ event.name|escapejs }}', {{ event.params|inline_script_json }});{% if event.send_to %} gtag('event', 'conversion', {send_to: '{{ event.send_to|escapejs }}'});{% endif %} document.currentScript.remove();</script>
+    {% for event in analytics_events %}
+        {% with send_to=event.name|google_ads_send_to %}
+            <script>gtag('event', '{{ event.name|escapejs }}', {{ event.params|inline_script_json }});{% if send_to %} gtag('event', 'conversion', {send_to: '{{ send_to|escapejs }}'});{% endif %} document.currentScript.remove();</script>
+        {% endwith %}
     {% endfor %}
 {% endif %}

@@ -1,0 +1,28 @@
+{% comment %}
+Included twice in a full page: once as the first thing inside #interface-main
+(_base_interface.html), once directly before </body> (_base.html). Only the
+first of the two to render on a given response pops the session's pending
+events, so an event is never emitted twice from one response.
+
+An HTMX partial whose view records an event includes this too, so the event
+fires at the swap and does not wait in the session for the next full page.
+
+The session is popped here, once, whether or not any platform is configured,
+so every platform sees the same list and an event never waits in the session
+for a pixel ID that arrives later. Each platform's partial emits a script that
+removes itself once it has run, so htmx's history snapshot of the page does
+not carry it and a Back navigation does not fire the event again.
+{% endcomment %}
+{% if analytics_enabled %}
+    {% with pending_events=analytics_events %}
+        {% if google_analytics_measurement_id %}
+            {% include "partials/google_analytics_events.html" with analytics_events=pending_events %}
+        {% endif %}
+        {% if meta_pixel_id %}
+            {% include "partials/meta_pixel_events.html" with analytics_events=pending_events %}
+        {% endif %}
+        {% if tiktok_pixel_id %}
+            {% include "partials/tiktok_pixel_events.html" with analytics_events=pending_events %}
+        {% endif %}
+    {% endwith %}
+{% endif %}
