@@ -47,7 +47,7 @@ Uses `_desktopLock="true"` (via `data-desktop-lock`) so the outline can never be
 
 ## 2. What the mockups show
 
-Source: `spec_dd/1. next/educator-interface-full-polish/Educator LMS Interface Design/`. Read `Sidebar.dc.html` in full; grepped/read `Educator Dashboard.dc.html`, `Educator Mobile Dashboard.dc.html`, `Educator Learners.dc.html` and `Educator Mobile Learners.dc.html` for the elements the idea asks about. Ignoring what `spec-order.md`'s assumptions rule out (custom roles/"create role", messaging, "reset attempt", certificates, schedule, compliance, "this week").
+Source: `spec_dd/1. next/educator-interface-full-polish/Educator LMS Interface Design/`. Read `Sidebar.dc.html` in full; grepped/read `Educator Dashboard.dc.html`, `Educator Mobile Dashboard.dc.html`, `Educator Learners.dc.html` and `Educator Mobile Learners.dc.html` for the elements the idea asks about. Ignoring what the assumptions in the "Educator interface rebuild" section of `spec_dd/1. next/roadmap.md` rule out (custom roles/"create role", messaging, "reset attempt", certificates, schedule, compliance, "this week").
 
 ### `Sidebar.dc.html` — desktop sidebar structure
 
@@ -65,7 +65,7 @@ Two grouped sections is the mockup's whole vocabulary — no third "more" or "se
 
 ### `Educator Dashboard.dc.html` — desktop page layout (1440px frame)
 
-The sidebar is imported as a shared component (`<dc-import name="Sidebar" active="Dashboard">`) sitting flush against the main content, i.e. sidebar and content are **flex siblings in one row**, not a floating overlay — matching FLS's own `.side-panel-grid` approach (grid columns rather than flex, but the same "docked column, not overlay" idea). Main content: a top bar (greeting, search box, bell icon — out of scope per spec-order.md's assumptions on notifications/search not being named in-scope here, noted only as present in the mockup), then a 4-column KPI stat-tile grid, then a two-column content area (`1.35fr` learner list / `1fr` sidebar-style cards for course progress and an agenda-style list).
+The sidebar is imported as a shared component (`<dc-import name="Sidebar" active="Dashboard">`) sitting flush against the main content, i.e. sidebar and content are **flex siblings in one row**, not a floating overlay — matching FLS's own `.side-panel-grid` approach (grid columns rather than flex, but the same "docked column, not overlay" idea). Main content: a top bar (greeting, search box, bell icon — out of scope per the roadmap's assumptions on notifications/search not being named in-scope here, noted only as present in the mockup), then a 4-column KPI stat-tile grid, then a two-column content area (`1.35fr` learner list / `1fr` sidebar-style cards for course progress and an agenda-style list).
 
 On the `Educator Learners.dc.html` screen (skimmed, not exhaustively read), the same three-region idea appears with the third region **replaced by a quick-view panel**: sidebar (264px) | table (`flex:1`) | quick view (`width:380px` or `420px` depending on state, `border-left`, flex-column). The quick view sits **in-flow as a third flex column**, not as a floating overlay — see section 5.
 
