@@ -64,9 +64,22 @@ Once it returns:
 
 ## Step 3: Upstream-change scan
 
+Resolve `PLUGINS_ROOT` the way sdd's `init.md` does ("The `PLUGINS_ROOT` rule"), stopping at the
+first step that yields a value:
+
+1. The `PLUGINS_ROOT="…"` line in `claude.sh` at the project root.
+2. The `PLUGINS_ROOT="…"` (or legacy `FLS_PATH="…"`) line in any `.sh` under `.claude/*/scripts/`
+   whose value is not `__PLUGINS_ROOT__`. If two disagree → `status: failed · reason: conflicting
+   PLUGINS_ROOT values` and stop.
+3. Otherwise `.`.
+
+The script path is `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/upstream_change_scan.sh`. When
+`PLUGINS_ROOT` is `.`, write it as `claude_plugins/sdd/scripts/upstream_change_scan.sh` with no
+`./` prefix, so it matches the project's allow entry.
+
 ```
-claude_plugins/sdd/scripts/upstream_change_scan.sh <old-base> origin/main "<spec-dir>" \
-  > .sdd-work/rebase_upstream_scan.md
+mkdir -p .sdd-work
+<script-path> <old-base> origin/main "<spec-dir>" > .sdd-work/rebase_upstream_scan.md
 ```
 
 Delete any `.sdd-work/rebase_upstream_review.md` left behind by an earlier rebase, by name. A
@@ -75,6 +88,8 @@ against a different scan.
 
 - exit 0 → delete `.sdd-work/rebase_upstream_scan.md` by name. `status: ok · rebased: yes`. Stop.
 - exit 2 → go to Step 4.
+- any other exit → `status: failed · reason: upstream-change scan exited <code>: <its stderr>`.
+  The caller stops.
 
 ## Step 4: Upstream-change review
 

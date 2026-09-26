@@ -188,6 +188,24 @@ def test_file_under_backticked_directory_reports_overlap(repo: GitRepo) -> None:
     assert parse_section(result.stdout, "Overlap") == ["libdir/inner.py"]
 
 
+def test_backticked_directory_with_trailing_slash_reports_overlap(
+    repo: GitRepo,
+) -> None:
+    # Arrange
+    repo.write_text("libdir/inner.py", "base\n")
+    old_base = repo.commit("base")
+    spec_dir = make_spec_dir(repo, "See `libdir/` for the shared helper.\n")
+    repo.write_text("libdir/inner.py", "changed\n")
+    new_base = repo.commit("main changes a file under the named directory")
+
+    # Act
+    result = _run_script([old_base, new_base, spec_dir], repo.path, repo.env)
+
+    # Assert
+    assert result.returncode == 2
+    assert parse_section(result.stdout, "Overlap") == ["libdir/inner.py"]
+
+
 def test_non_path_backticked_span_matches_nothing(repo: GitRepo) -> None:
     # Arrange
     repo.write_text("unrelated.txt", "base\n")

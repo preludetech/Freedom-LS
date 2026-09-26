@@ -57,6 +57,10 @@ while IFS= read -r -d '' md_file; do
     while IFS= read -r span; do
         candidate=${span#\`}
         candidate=${candidate%\`}
+        # A directory written `dir/` must still prefix-match paths under it.
+        while [[ "$candidate" == */ ]]; do
+            candidate=${candidate%/}
+        done
         [[ -z "$candidate" ]] && continue
         if [[ -e "$candidate" ]]; then
             named+=("$candidate")
@@ -109,7 +113,9 @@ collect_segments() {
     [[ "$dir" == "." ]] && return
     local segment
     while IFS= read -r segment; do
-        [[ -n "$segment" ]] && apps["$segment"]=1
+        if [[ -n "$segment" ]]; then
+            apps["$segment"]=1
+        fi
     done < <(tr '/' '\n' <<<"$dir")
 }
 for path in "${own[@]}"; do
