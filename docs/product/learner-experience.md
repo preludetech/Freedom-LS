@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-09-26_
 
 ## Summary
 
@@ -17,6 +17,7 @@ _Last updated: 2026-09-19_
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
 - A site footer with a copyright line and links to the site's terms of service and privacy policy appears on every page, shortened to a single line inside the course player. It is left off error pages and the form or quiz page a learner is answering.
+- When a site turns on notifications, a learner sees a bell in the header telling them when someone else has registered them for a course. See [Notifications](./notifications.md).
 
 ## Dashboard
 
@@ -84,7 +85,7 @@ On the course detail page, an unregistered learner sees an "I'm interested" cont
 
 ![Detail page after expressing interest, showing "Interested" and "Remove interest"](screenshots/learner_coming_soon_interested.png)
 
-The confirmation copy sets a soft expectation that the learner will be told when the course is ready. In the current release, expressing interest only records that interest — no email or in-app notification is sent when the course later launches, because FLS has no notification system yet. Notify-on-launch is planned future work; see [roadmap](./roadmap.md).
+The confirmation copy sets a soft expectation that the learner will be told when the course is ready. In the current release, expressing interest only records that interest — no email or in-app notification is sent when the course later launches, because course launch is not one of the events FLS [notifications](./notifications.md) cover. Notify-on-launch is planned future work; see [roadmap](./roadmap.md).
 
 There is deliberately no scarcity signalling anywhere in this flow: no queue position, no count of other interested learners, and no countdown to launch.
 

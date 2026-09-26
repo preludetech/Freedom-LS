@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-09-09_
+_Last updated: 2026-09-26_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (built but not wired into access decisions), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (built but not wired into access decisions), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
 - **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and learner detail pages are now checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
@@ -64,14 +64,14 @@ Courses can be published, coming soon, or hidden, enforced consistently across e
 
 Not built:
 
-- **Notify-on-launch** — when a coming-soon course is published, interested learners receive no notification. Expressing interest only records the interest; FLS has no email or in-app notification system to build this on. The coming-soon copy sets a soft "we'll let you know" expectation that nothing currently fulfils — a deferred dependency, not something learners can rely on today.
+- **Notify-on-launch** — when a coming-soon course is published, interested learners receive no notification. Expressing interest only records the interest; FLS's [in-app notifications](#notification-system) have no course-launch event, and there is no email to send instead. The coming-soon copy sets a soft "we'll let you know" expectation that nothing currently fulfils — a deferred dependency, not something learners can rely on today.
 - **Auto-enrolment on launch** — interested learners are not registered automatically when a course launches; they must return and enrol or apply as normal.
 
 ## Notification System
 
-**Status: Not built.**
+**Status: In-app notifications built; delivery and most events not built.**
 
-FLS has no email or in-app notification system beyond the transactional emails allauth sends for verification and password reset. This blocks notify-on-launch above, educator-to-learner messaging, and deadline reminders.
+FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). One event raises a notification: a learner being registered for a course by someone else. Still missing: email or any other delivery channel, notification preferences, digests, direct messaging between educators and learners, and notifications for course launch, removal from an organisation, deadlines and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
 
 ## Two-Factor Authentication (2FA / MFA)
 

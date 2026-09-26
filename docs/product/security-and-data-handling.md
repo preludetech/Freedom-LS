@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-09-23_
+_Last updated: 2026-09-26_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -119,6 +119,7 @@ FLS stores, in its PostgreSQL database:
 - Learning activity — course progress, quiz answers, and scores.
 - Answers to a course's application form, and any document the applicant uploaded with it, which may be a government ID scan. See [applicant uploads](#applicant-uploads-built).
 - Webhook delivery logs, which may contain user data inside the delivered payload.
+- In-app notifications: a per-user record of things that happened to that user, such as being registered for a course, with a little context such as the course title. Only that user can see them. See [notifications](./notifications.md).
 - Fully rendered outgoing email — subject and both bodies — where a deployment has turned email queueing on, held as a row on the task queue until it is sent and then pruned. This includes the single-use links in signup-verification and password-reset messages. See [queued email](#queued-email).
 
 Outside the database, FLS stores generated [cohort progress reports](./reports.md) as PDF files. Each holds real learner names, completion history, and individual quiz scores and answers, and is not anonymised — the audience is internal staff, by design. See [generated cohort reports](#generated-cohort-reports).
@@ -177,7 +178,7 @@ No incident-response runbook, breach-notification templates, or automated alerti
 
 ### Retention, Deletion, and Data-Subject Rights (not yet built)
 
-There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. Deleting a user from the admin also removes their consent records and signup attribution row by cascade, even though those records cannot be deleted one at a time. All of this is operator responsibility today. The referral link visit log is one store an operator can trim, with the `prune_referral_code_hits` command, on a schedule of their choosing. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. See the [roadmap](./roadmap.md).
+There is no retention policy, scheduled deletion, subject-access-request tooling, right-to-erasure workflow, or portability export. Deleting user data is a manual database or admin operation (hard delete), and the admin does not restrict delete permissions on user records beyond standard Django permission checks. Deleting a user from the admin also removes their consent records and signup attribution row by cascade, even though those records cannot be deleted one at a time. All of this is operator responsibility today. The referral link visit log is one store an operator can trim, with the `prune_referral_code_hits` command, on a schedule of their choosing. The same gap applies to generated cohort report files — see [generated cohort reports](#generated-cohort-reports) — and to application answers and uploaded documents, though deleting the applicant's account does take their answers and any uploaded file with it. Notifications are never aged out either, though deleting a user removes theirs. See the [roadmap](./roadmap.md).
 
 ---
 

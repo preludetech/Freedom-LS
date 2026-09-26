@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-09-26_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
@@ -24,6 +24,7 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Cohort Reports](./reports.md) | A per-cohort A4 PDF covering every course the cohort is registered for: a summary table per course, a detail section per learner, at-risk flags, and a cohort-wide analysis of which quiz questions caused the most trouble. Generated on demand from the admin and downloaded through a permission-checked link. No scheduling, no email, no retention policy. |
 | [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, organisation management, per-cohort and per-organisation educator permission grants, read-only consent records, and a webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
+| [Notifications](./notifications.md) | An in-app bell, badge and notification centre, off by default, telling a learner when someone else registers them for a course. Projects can add their own notification categories. No email delivery, no preferences, no retention policy. |
 | [Signup Attribution](./signup-attribution.md) | Where each signup came from: advert code, UTM parameters and ad-platform click identifiers frozen at first landing, a daily per-campaign tally of tracked arrivals for conversion rates, two read-only admin lists with CSV export, and the privacy questions an operator must settle before enabling it. No dashboard, no consent gate, no retention tooling. |
 | [Referral Codes](./referral-codes.md) | Named short links an operator creates in the admin — one URL for a click, one for a printed QR symbol — redirecting to a page on the site, counting how often each is followed, and feeding the code into signup attribution as a first touch. No QR image generation, no dashboard, no automatic pruning of the visit log. |
 
@@ -45,4 +46,4 @@ Each document labels its claims by actual state — built, operational (needs de
 
 | Doc | Description |
 |---|---|
-| [Roadmap](./roadmap.md) | Everything not yet complete: the educator interface authorisation gap, application review, notifications, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |
+| [Roadmap](./roadmap.md) | Everything not yet complete: the educator interface authorisation gap, application review, notification delivery and events, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |
