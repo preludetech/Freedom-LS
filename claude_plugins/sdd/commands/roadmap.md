@@ -23,18 +23,25 @@ Two modes:
 This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring`
 skill for why it works this way.
 
-1. **Declare inputs up front.** Gather any user input the phase needs now, via `AskUserQuestion`.
-   Bake the answers into each worker prompt. Subagents don't have access to `AskUserQuestion`.
+1. **Start the work; don't ask permission for it.** Never ask the user whether to research, scan
+   or fan out. Spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt
+   everything the worker needs from what the user has already said and what is on disk. Questions
+   only the user can answer are asked at depth 0 *while* the workers run: as early as possible,
+   batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and
+   never hold a worker back for an answer it doesn't need.
 2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`);
    intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`;
    spawn only missing/not-ok units.
 4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`
    (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in
-   inputs. Never one worker looping over the batch.
+   inputs. Never one worker looping over the batch. Never use the `Workflow` tool for this: it
+   puts a permission dialog in front of the owner, which amounts to asking whether to do the work
+   they already asked for.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include
-   the prior error); `blocked` → gather the listed `needs` via `AskUserQuestion`, then re-spawn a
-   fresh worker with the original brief + answers (pointing it at any partial file).
+   the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's
+   output if they can; ask via `AskUserQuestion` only if they can't. Then re-spawn a fresh worker
+   with the original brief + answers (pointing it at any partial file).
 6. **Synthesis is a separate step.** Read the output *files* (pass paths, never dump contents into
    the prompt) and produce the artifact; it can be retried without re-running workers.
 7. **Clean up on success.** Once the phase artifact is finalised, delete this command's own scratch
@@ -141,36 +148,55 @@ already exists read it and carry on from the first unfinished item.
   the roadmap.
 - **Notes.** What the source already settles: users, capability list, constraints, what is kept
   and what is thrown away.
-- **Decisions so far.** Empty at first; C5 fills it.
+- **Decisions so far.** Empty at first; C3 fills it.
 - **Not yet specified.** Every question the source leaves open that a boundary or an order depends
   on.
 - **Out of scope.** What the source excludes.
 - **Research units.** For each "not yet specified" item that the codebase, a comparable system
   or a mechanic can answer: a topic, the question, and the output path
   `<dir>/research_<topic>.md`.
-- **Grilling questions.** For each item only the product owner can answer: the question, and
-  which research unit (if any) must land before it is worth asking.
+- **Questions for the owner.** Each item that passes the test in C3 and that only the product
+  owner can answer: the question, and the research unit (if any) whose findings it waits on.
+- **Assumptions.** Defaults taken instead of asking (see C3).
 
-## C3: Confirm the map
+Do not show the map for approval. Go straight to C3.
 
-Show the destination and the two lists. `AskUserQuestion`: confirm, or add and strike research
-topics and questions. Loop until confirmed.
+## C3: Research and ask, together
 
-## C4: Research (fan-out)
+Research and questioning run at the same time, and research comes first in the sense that matters:
+no question goes to the owner if research could answer it.
 
-Apply the recipe: one `sdd:sdd-worker` per research unit, writing its durable
-`research_<topic>.md` in `<dir>` with a `status:` footer and reference URLs for web-sourced
-findings. These are the files `setup_todo_list.md` already detects, so keep the naming.
+1. **Fan out now.** Apply the recipe: one `sdd:sdd-worker` per research unit, all spawned in
+   parallel in the background, each writing its durable `research_<topic>.md` in `<dir>` with a
+   `status:` footer and reference URLs for web-sourced findings. These are the files
+   `setup_todo_list.md` already detects, so keep the naming.
+2. **Ask early, in batches.** While the workers run, ask every queued question that waits on no
+   research unit. Batch them, up to four per `AskUserQuestion`, so the owner answers while the
+   research runs and nothing sits idle waiting on the other. A question that waits on a unit
+   stays queued until that unit lands.
+3. **Fold in each research file as it lands.** Read it. Move what it settles into "Notes" or
+   "Decisions so far". Strike every queued question it answers or makes moot. Queue the new
+   owner-only questions it raises, and ask them in the next batch. For each new question the code
+   or a comparable system can answer, add a research unit to the map and spawn it at once.
+4. **Record answers as they arrive** under "Decisions so far".
 
-## C5: Grill
+Repeat 2 to 4 until no worker is running and no question is open.
 
-Ask the grilling questions in blocked-by order, one `AskUserQuestion` at a time, quoting the
-research finding that bears on each. Append every answer to the map's "Decisions so far" as it
-lands. Name things per `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. Do not decide on
-the owner's behalf. When you make a judgement call anyway, record it under an "Assumptions"
-heading in the map. It ends up in the effort's "Assumptions the ideas make".
+**What earns a question.** Ask only when all three hold:
 
-## C6: Propose the cut
+- The answer changes a boundary between children, their order, or what a child idea settles.
+- The source, the code, a finished research file or a still-running unit cannot answer it.
+- There is no default the owner would obviously accept. If there is one, take it and record it
+  under "Assumptions" in the map, with the reason. It surfaces in the cut proposal (C4), where the
+  owner can overrule it, and ends up in the effort's "Assumptions the ideas make".
+
+Never ask whether to research, whether to draft the child ideas, whether the map looks right, to confirm what the source already
+says, or anything with one sensible answer. Never ask when or where to produce something the cut
+can produce itself, such as a design brief the source asks for. Produce it in the cut (see C5). Each question quotes the source line or research
+finding that leaves it open, and offers concrete options with the recommended one first. Name
+things per `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`.
+
+## C4: Propose the cut
 
 Write `.sdd-work/roadmap_cut_<dir>.md`:
 
@@ -187,12 +213,12 @@ Write `.sdd-work/roadmap_cut_<dir>.md`:
 
 Print it. `AskUserQuestion`: accept, adjust (loop back with the changes), or stop.
 
-## C7: Write the child ideas
+## C5: Write the child ideas
 
 One `idea.md` per child at `spec_dd/1. next/<dir>-N-<slug>/`, to the child header and section
 list in the format file, written per the writing standard and the rules in
 `${CLAUDE_PLUGIN_ROOT}/commands/improve_idea.md` ("An idea is not a specification", "Never write
-these in an idea"). Each is decision-complete: everything settled in C5 that the child needs is
+these in an idea"). Each is decision-complete: everything settled in C3 that the child needs is
 stated as fact under "What is settled", and nothing claimed by a sibling is claimed again.
 
 With more than three children, fan out: one `sdd:sdd-worker` per child writing
@@ -201,27 +227,32 @@ research files that move into that child, the writing standard, the vocabulary f
 sibling scopes. Then, at depth 0, read each draft against the cut and write the final `idea.md`
 without the worker's footer. With three or fewer, write them at depth 0 directly.
 
-## C8: Move research and mark the parent
+When the source asks for work done outside an SDD run, such as mockups drawn in a design tool,
+write its brief in the same pass as the ideas: `<dir>/design_brief.md` (or a name that fits),
+covering every screen and state the children need, in the project's words. It stays in the
+parent as a shared reference. The children that build to its output say so under "Resources".
+
+## C6: Move research and mark the parent
 
 Delegate to `sdd:sdd-mechanic`, with the cut file's path:
 
 - `git mv` each research file into the child the cut file names.
 - Prepend the parent blockquote from the format file to `<dir>/idea.md`, filled in.
-- Delete only the superseded drafts the owner confirmed in C6. Nested directories the cut does not
+- Delete only the superseded drafts the owner confirmed in C4. Nested directories the cut does not
   cover stay where they are; sync lists them under the effort's "Not yet cut".
 
-## C9: Update the roadmap
+## C7: Update the roadmap
 
 Run S1 to S6. The new children classify as effort children from their header lines, the parent
 as an effort parent from its blockquote. Fold the cut file's effort-level sections in as the
 effort's `####` subsections.
 
-## C10: Clean up
+## C8: Clean up
 
 Delete `.sdd-work/roadmap_map_<dir>.md`, `.sdd-work/roadmap_cut_<dir>.md` and every
 `.sdd-work/roadmap_idea_*.md` by name.
 
-## C11: Commit
+## C9: Commit
 
 As S8, staging the child directories, the parent idea, the moved research files and the roadmap.
 Subject: `<dir>: cut into N specs and update the spec roadmap`.

@@ -60,12 +60,13 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 Fan-out is only legal at depth 0. The resilient shape (full detail in
 [resources/fanout_recipe.md](resources/fanout_recipe.md)):
 
-1. **Declare inputs up front**, gather them via `AskUserQuestion` (depth 0 only), bake into prompts.
+1. **Start the work at once**; never ask whether to. Bake what's already known into prompts; ask the
+   user's questions at depth 0 while workers run, front-loaded and batched, never what research answers.
 2. **One output file per unit** (durable artifacts keep real names; intermediate → `.sdd-work/`).
 3. **Resume = skip** units whose output already ends `status: ok`.
 4. **One subagent per unit** (never one looping over the batch), spawned in parallel.
 5. **Structured returns:** `ok` done · `failed` retry the same unit (≤2, include prior error) ·
-   `blocked` → gather `needs` via `AskUserQuestion`, re-spawn with answers.
+   `blocked` → supply `needs` from code/other units, else `AskUserQuestion`; re-spawn with answers.
 6. **Synthesis is a separate step** that reads the *files* (pass paths, never dump contents).
 7. **Clean up `.sdd-work/` on success**; an abandoned scratch dir is what makes resume cheap.
 

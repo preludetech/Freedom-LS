@@ -11,9 +11,21 @@ feature.
 
 ## The recipe (depth-0 orchestrator over units U1…Un)
 
-1. **Declare inputs up front (input contract).** Each phase lists the user input it needs. The
-   orchestrator gathers it via `AskUserQuestion` (legal only at depth 0) **before** spawning, and
-   bakes the answers into each worker prompt. *(Patterns B1/B5.)*
+1. **Start the work; don't ask permission for it.** Never ask the user whether to research, scan or
+   fan out: spawn the workers. Bake into each prompt everything the worker needs from what the user
+   has already said and what is on disk. Questions only the user can answer are asked via
+   `AskUserQuestion` (legal only at depth 0) **while the workers run**, not as a gate before them:
+   as early as possible, batched up to four per call, so the user answers while research runs.
+   A question that depends on a unit's findings waits for that unit; nothing else waits on a
+   question. As findings land, strike the questions they answer and ask the new ones they raise.
+   *(Patterns B1/B5.)*
+
+   **What earns a question.** All three hold: the answer changes what gets built or written; no
+   source file, the code, a finished unit or a running unit can answer it; and there is no default
+   the user would obviously accept (if there is, take it and record it as an assumption where the
+   user will see it). Never ask whether to do the work, to confirm what the source already says,
+   or anything with one sensible answer. Quote the line or finding that leaves the question open
+   and offer concrete options, recommended one first.
 2. **One output path per unit.** Assign a deterministic path. Durable artifacts keep their real
    names (e.g. `research_<topic>.md`); intermediate outputs go in a scratch dir `.sdd-work/` inside
    the spec directory, named `<phase>_<unit-id>.md`. *(Pattern A2.)*
@@ -27,8 +39,10 @@ feature.
    - `ok` → done.
    - `failed` → retry the **same** unit, ≤2 attempts, including the prior error in the retry brief.
      *(Pattern A5.)*
-   - `blocked` → the orchestrator gathers the listed `needs` via `AskUserQuestion`, then **re-spawns
-     a fresh worker** with the original brief + answers (pointing at any partial file). *(B3/B4.)*
+   - `blocked` → the orchestrator supplies the listed `needs` from the source, the code or another
+     unit's output where it can, and asks via `AskUserQuestion` only where it can't; then it
+     **re-spawns a fresh worker** with the original brief + answers (pointing at any partial file).
+     *(B3/B4.)*
 6. **Synthesis is a separate step.** A later step reads the output **files** (pass paths, never dump
    contents into the orchestrator prompt) and produces the artifact — so it can be retried without
    re-running workers. *(Pattern A6 — two-phase fan-in.)*

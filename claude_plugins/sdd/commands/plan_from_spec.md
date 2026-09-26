@@ -18,19 +18,19 @@ You are helping to take a comprehensive development plan, based on this a spec f
 
 This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring` skill for *why* it works this way (no subagent nesting, fan-out only at depth 0, `AskUserQuestion` is orchestrator-only, file-based hand-off, model tiering). Orchestrating units U1…Un:
 
-1. **Declare inputs up front.** Gather any user input the phase needs now, via `AskUserQuestion`. Bake the answers into each worker prompt.
+1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Questions only the user can answer are asked at depth 0 *while* the workers run: as early as possible, batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need.
 2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
 4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"` (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
-5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → gather the listed `needs` via `AskUserQuestion`, then re-spawn a fresh worker with the original brief + answers (pointing it at any partial file).
+5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's output if they can; ask via `AskUserQuestion` only if they can't. Then re-spawn a fresh worker with the original brief + answers (pointing it at any partial file).
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and produce the artifact; it can be retried without re-running workers.
 7. **Clean up on success.** Once the phase artifact is finalised, delete this command's own scratch files **by name** — never the `.sdd-work/` directory itself, which is shared with every other SDD command and may hold a concurrent run's files. Durable artifacts are not deleted; an abandoned `.sdd-work/` from an interrupted run is intentional (it makes resume cheap).
 
 # Step 1
 
-Read the spec carefully and make sure you understand what is needed.
+Read the spec carefully and make sure you understand what is needed. Spawn the Step 4 skills/MCP scan now, in the background; it needs only the spec.
 
-If there are any contradictions then ask for clarification and fix the spec before continuing.
+If there are contradictions the code can't resolve, ask about them all at once, batched up to four per `AskUserQuestion`, and carry on with Step 2 while you wait. Fix the spec with the answers before writing the plan.
 
 # Step 2
 
@@ -44,7 +44,7 @@ The spec's vocabulary is the plan's vocabulary, in every identifier the plan pro
 
 # Step 4: Skills/MCP scan (fan-out)
 
-Spawn **one `sdd:sdd-worker`** that scans the available skills and MCPs and writes `.sdd-work/plan_skill_scan.md` (atomically, with a `status:` footer). Then fold the result into the plan: update it to say what skills and MCPs should be used where. (Single unit, but file-based + structured so it is resumable/retryable per the recipe.)
+This worker was spawned in Step 1. It is **one `sdd:sdd-worker`** that scans the available skills and MCPs and writes `.sdd-work/plan_skill_scan.md` (atomically, with a `status:` footer). Then fold the result into the plan: update it to say what skills and MCPs should be used where. (Single unit, but file-based + structured so it is resumable/retryable per the recipe.)
 
 # Step 5
 
