@@ -511,6 +511,15 @@ NOTIFICATIONS_ENABLED = False
 #
 # cdn.jsdelivr.net serves htmx, the Alpine plugins and Chart.js, which _base.html
 # loads from the CDN rather than from static files.
+#
+# connect.facebook.net serves the Meta pixel's fbevents.js, and the pixel posts
+# its events to www.facebook.com/tr, which some browsers fetch as an image
+# rather than over fetch/XHR, hence that host also being in img-src.
+#
+# analytics.tiktok.com serves the TikTok pixel's events.js and receives the
+# events it posts; analytics-ipv6.tiktokw.us is the same pixel's IPv6
+# collection host. Any further host a live Pixel Helper trace shows is added
+# here with a sentence explaining what it does.
 SECURE_CSP_REPORT_ONLY = {
     "default-src": [CSP.SELF],
     "script-src": [
@@ -524,6 +533,8 @@ SECURE_CSP_REPORT_ONLY = {
         "https://www.google.com",
         "https://www.google.co.za",
         "https://*.i.posthog.com",
+        "https://connect.facebook.net",
+        "https://analytics.tiktok.com",
     ],
     "style-src": [CSP.SELF, CSP.UNSAFE_INLINE],
     "img-src": [
@@ -536,6 +547,7 @@ SECURE_CSP_REPORT_ONLY = {
         "https://pagead2.googlesyndication.com",
         "https://www.google.com",
         "https://www.google.co.za",
+        "https://www.facebook.com",
     ],
     "connect-src": [
         CSP.SELF,
@@ -549,6 +561,10 @@ SECURE_CSP_REPORT_ONLY = {
         "https://www.google.com",
         "https://www.google.co.za",
         "https://*.i.posthog.com",
+        "https://www.facebook.com",
+        "https://connect.facebook.net",
+        "https://analytics.tiktok.com",
+        "https://analytics-ipv6.tiktokw.us",
     ],
     "frame-src": [
         CSP.SELF,

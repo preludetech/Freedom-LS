@@ -78,6 +78,48 @@ def test_csp_report_only_header_names_google_ads_hosts(
 
 
 @pytest.mark.django_db
+def test_csp_report_only_header_names_meta_hosts(
+    client: Client, mock_site_context: None
+) -> None:
+    """The report-only policy allows the hosts the Meta pixel talks to."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+
+    directives = dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+    assert "https://connect.facebook.net" in directives["script-src"]
+
+    assert "https://www.facebook.com" in directives["img-src"]
+
+    assert "https://www.facebook.com" in directives["connect-src"]
+    assert "https://connect.facebook.net" in directives["connect-src"]
+
+
+@pytest.mark.django_db
+def test_csp_report_only_header_names_tiktok_hosts(
+    client: Client, mock_site_context: None
+) -> None:
+    """The report-only policy allows the hosts the TikTok pixel talks to."""
+    response = client.get("/")
+    header = response.get("Content-Security-Policy-Report-Only", "")
+
+    directives = dict(
+        directive.strip().split(" ", 1)
+        for directive in header.split(";")
+        if directive.strip()
+    )
+
+    assert "https://analytics.tiktok.com" in directives["script-src"]
+
+    assert "https://analytics.tiktok.com" in directives["connect-src"]
+    assert "https://analytics-ipv6.tiktokw.us" in directives["connect-src"]
+
+
+@pytest.mark.django_db
 def test_csp_report_only_header_names_the_cdn_the_base_template_loads(
     client: Client, mock_site_context: None
 ) -> None:
