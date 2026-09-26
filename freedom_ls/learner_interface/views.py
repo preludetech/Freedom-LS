@@ -21,6 +21,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from freedom_ls.accounts.decorators import acquisition_login_required
 from freedom_ls.content_engine.models import (
     ContentCollectionItem,
     Course,
@@ -841,7 +842,7 @@ def course_home(request, course_slug):
     )
 
 
-@login_required
+@acquisition_login_required
 def initiate_course_access(request, course_slug):
     """Act on a learner's intent to get into a course.
 

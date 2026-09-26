@@ -1,9 +1,10 @@
 """Tests for deferred login — user intent survives authentication.
 
 Covers:
-- Deferred-login flows via `@login_required`: anonymous access to
-  `initiate_course_access` / `apply` redirects to login with `?next=` set,
-  and after login the free/gated course flows land the learner correctly.
+- Deferred-login flows via `acquisition_login_required`: anonymous access to
+  `initiate_course_access` / `apply` redirects to signup (or login, once
+  signups are closed) with `?next=` set, and after login the free/gated
+  course flows land the learner correctly.
 - The signup arm of the same funnel: intent survives account creation and
   email verification, not only sign-in.
 - Open-redirect rejection in the completion view's post-submit redirect.
@@ -90,15 +91,36 @@ def test_unsafe_next_in_complete_registration_falls_back_to_login_redirect(
 
 
 # ---------------------------------------------------------------------------
-# Deferred-login flows: free course via @login_required
+# Deferred-login flows: free course via acquisition_login_required
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_initiate_redirects_to_login_with_next(
+def test_anonymous_access_to_initiate_redirects_to_signup_with_next(
     mock_site_context, course_with_topic
 ):
-    """Anonymous GET of initiate_course_access → 302 to login with ?next= set."""
+    """Anonymous GET of initiate_course_access → 302 to signup with ?next= set."""
+    course = course_with_topic(access_type="free")
+
+    client = Client()
+    access_url = reverse(
+        "learner_interface:initiate_course_access",
+        kwargs={"course_slug": course.slug},
+    )
+    response = client.get(access_url, follow=False)
+
+    assert response.status_code == 302
+    signup_url = reverse("account_signup")
+    assert response["Location"].startswith(signup_url)
+    assert _next_param(response["Location"]) == access_url
+
+
+@pytest.mark.django_db
+def test_anonymous_access_to_initiate_with_signups_closed_goes_to_login(
+    mock_site_context, course_with_topic
+):
+    """Signups closed on the site falls initiate_course_access back to login."""
+    SiteSignupPolicyFactory(allow_signups=False)
     course = course_with_topic(access_type="free")
 
     client = Client()
@@ -300,7 +322,7 @@ def test_signup_arm_records_interest_only_for_the_stashed_course(mock_site_conte
 
 
 # ---------------------------------------------------------------------------
-# Deferred-login flow: apply via @login_required
+# Deferred-login flow: apply via acquisition_login_required
 # ---------------------------------------------------------------------------
 
 
@@ -453,12 +475,13 @@ def test_anonymous_access_to_hidden_course_apply_redirects_to_signup_not_404(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_hidden_course_initiate_redirects_to_login_not_404(
+def test_anonymous_access_to_hidden_course_initiate_redirects_to_signup_not_404(
     mock_site_context,
 ):
-    """login_required runs before any visibility check, so an anonymous visitor
-    to a hidden course's access URL gets a login redirect rather than the 404
-    that confirms a registered learner would eventually see."""
+    """acquisition_login_required runs before any visibility check, so an
+    anonymous visitor to a hidden course's access URL gets a signup redirect
+    rather than the 404 that confirms a registered learner would eventually
+    see."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
     client = Client()
 
@@ -468,7 +491,7 @@ def test_anonymous_access_to_hidden_course_initiate_redirects_to_login_not_404(
     response = client.get(url, follow=False)
 
     assert response.status_code == 302
-    assert response["Location"] == f"{reverse('account_login')}?next={url}"
+    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
 
 
 @pytest.mark.django_db
