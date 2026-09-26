@@ -442,17 +442,26 @@ server.
 ### Triage gate
 
 For each bug, decide between the **green lane** (auto-fix) and the **red lane** (human todo only).
+The deciding question is whether fixing it needs a human's input. A bug the user would only answer
+with "fix it" belongs in the green lane.
 
 **Green lane — permitted ONLY when ALL of these hold:**
 
-1. The failure is a clear functional regression in the feature under test.
-2. The fix is unit-testable without a browser (pytest only).
-3. The root cause lives in a single app.
-4. No product or UX decision is required.
-5. No schema migration is required.
-6. It is not security-adjacent (no auth, no permissions, no data-exposure risk).
+1. The failure is a clear functional defect observed in this run. It does not matter whether the
+   bug predates this branch: a bug that is also on `main` still gets fixed.
+2. A pytest test can prove the fix. That includes a `@pytest.mark.playwright` browser test (the
+   project's Playwright tests run in the ordinary `uv run pytest` suite), so a defect in JS, htmx
+   swaps, `<dialog>` or history behaviour qualifies.
+3. No product or UX decision is required. When the spec, the test plan and the code disagree about
+   the intended behaviour, choosing which one is right is a product decision, even when the code
+   seems to work.
+4. No schema migration is required.
+5. It is not security-adjacent (no auth, no permissions, no data-exposure risk).
 
-If any condition fails → **red lane**: record `UNRESOLVED` and do not spawn the fixer.
+If any condition fails → **red lane**: record `UNRESOLVED` and do not spawn the fixer. The recorded
+reason must name the specific decision or risk that needs a human, and that is the text that goes
+into the report. "Predates this branch", "same code is on main", "needs a browser to reproduce" and
+"touches more than one app" are not red-lane reasons.
 
 **Limits.** At most **one fix attempt per bug**, and at most **three fixer spawns per run** — each one
 costs a full pytest suite plus a Playwright re-verify. Once the cap is reached, remaining green-lane

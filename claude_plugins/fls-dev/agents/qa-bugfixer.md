@@ -8,6 +8,8 @@ tools: Bash, Read, Edit, Write, Glob, Grep, Skill
 skills:
   - ds:testing
   - fls-dev:testing
+  - ds:playwright-tests
+  - fls-dev:playwright-tests
 model: sonnet
 ---
 
@@ -46,8 +48,9 @@ attempt to suppress or work around it. If a write is blocked, return
 ## What you do — the TDD sequence
 
 The **`ds:testing`** and **`fls-dev:testing`** skills are the authority on how tests are written
-here. They are preloaded via this agent's `skills:` frontmatter; if their content is not already in
-your context, invoke both with the `Skill` tool before writing anything.
+here, and **`ds:playwright-tests`** and **`fls-dev:playwright-tests`** cover browser tests. They are
+preloaded via this agent's `skills:` frontmatter; if their content is not already in your context,
+invoke them with the `Skill` tool before writing anything.
 
 `fls-dev:testing` is not optional: FLS models are site-aware, so a test written without the
 `mock_site_context` fixture will fail on site isolation regardless of whether your fix is correct.
@@ -63,6 +66,11 @@ them in context, draft the report file early and edit it as you go.
 Write a **single focused pytest test** that reproduces the bug described in `<bug-description>`.
 Place it in the correct test file for the affected app.
 
+Prefer a test that runs without a browser. When the defect only shows up in a real browser (JS,
+Alpine components, htmx swaps, `<dialog>` state, session history, a full page reload where an htmx
+swap was expected), write a `@pytest.mark.playwright` test instead. Put it in the app's
+`tests/playwright/` directory, reusing that directory's fixtures and helpers.
+
 ### Step 2 — Confirm RED
 
 ```
@@ -75,7 +83,8 @@ The test **must fail**. If it passes, you have not reproduced the bug — stop a
 ### Step 3 — Make the minimal fix
 
 Make the **smallest code change** that makes the failing test pass. Do not refactor unrelated code.
-Do not add features. Do not change test files at this step — only production code.
+Do not add features. Do not change test files at this step — only production code. Templates and
+static JS/CSS count as production code.
 
 ### Step 4 — Confirm GREEN
 
