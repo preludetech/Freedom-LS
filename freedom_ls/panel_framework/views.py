@@ -137,14 +137,16 @@ class ObjectViewConfig(SectionConfigBase):
 
     @classmethod
     def get_object(cls, request: HttpRequest) -> Model:
-        """The one object this section shows. The framework then runs
-        check_access on it."""
+        """The one object this section shows. Called after check_request, so
+        it may dereference required_request_attrs; the framework then runs
+        check_access on the object."""
         raise NotImplementedError
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest) -> InstanceView:
         if cls.instance_view is None:
             raise ValueError(f"{cls.__name__} must define instance_view")
+        cls.check_request(request)
         instance = cls.get_object(request)
         cls.check_access(request, instance)
         return cls.instance_view(instance)
@@ -245,11 +247,10 @@ def _bind_root(
     request: HttpRequest,
     section: SectionConfig,
     parts: list[str],
-    url_prefix: str,
+    section_url: str,
 ) -> tuple[Panel, InstanceView | None, int]:
     """Bind the section's root panel. Returns it, the instance view if there
     is one, and the index of the first path part after the root."""
-    section_url = f"{url_prefix}/{parts[0]}"
     if issubclass(section, ListViewConfig):
         if len(parts) == 1 or parts[1].startswith("__"):
             if section.list_view is None:
@@ -302,7 +303,7 @@ def _resolve_path(
     parts: list[str],
     sections: dict[str, SectionConfig],
     request: HttpRequest,
-    url_prefix: str,
+    section_url: str,
 ) -> _Resolved:
     """Walk the URL path parts down from a section to the panel or action they address.
 
@@ -314,7 +315,7 @@ def _resolve_path(
     except KeyError as err:
         raise Http404(f"Unknown path segment '{parts[0]}'") from err
 
-    root, instance_view, i = _bind_root(request, section, parts, url_prefix)
+    root, instance_view, i = _bind_root(request, section, parts, section_url)
     if not root.is_shown():
         raise Http404("Panel not shown")
 
@@ -368,14 +369,6 @@ def _vary_on_htmx(response: HttpResponse) -> HttpResponse:
         response, ["HX-Request", "HX-Target", "HX-History-Restore-Request"]
     )
     return response
-
-
-def _url_prefix(request: HttpRequest, path_string: str) -> str:
-    """request.path with the path_string cut off: the URL a section hangs off."""
-    path = request.path
-    if path_string and path.endswith(path_string):
-        return path[: -len(path_string)].rstrip("/")
-    return path.rstrip("/")
 
 
 def _main_for(
@@ -596,9 +589,13 @@ def panel_framework_view(
     main_template_name = "panel_framework/views/_main_base.html"
     heading = ""
     if parts:
-        resolved = _resolve_path(
-            parts, sections, request, _url_prefix(request, path_string)
+        # Reversed rather than sliced off request.path: a host may render a
+        # different path_string than the one it was asked for, and request.path
+        # would then point every table and action URL at the wrong page.
+        section_url = reverse(
+            url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
+        resolved = _resolve_path(parts, sections, request, section_url)
         if resolved.action is not None:
             return _vary_on_htmx(_handle_action(request, resolved.action))
         main_template_name, main, heading = _main_for(request, resolved)

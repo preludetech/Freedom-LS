@@ -141,6 +141,7 @@ class TestSwitchOnAForeignDetailPage:
             client, _interface_url(organisation_b.slug, f"cohorts/{cohort_a.pk}")
         )
         response.organisation_b = organisation_b
+        response.cohort_a = cohort_a
         return response
 
     def test_returns_the_new_organisations_list_instead_of_a_404(self, switch_response):
@@ -148,6 +149,11 @@ class TestSwitchOnAForeignDetailPage:
         content = switch_response.content.decode()
         assert "Cohort B Only" in content
         assert "Cohort A Only" not in content
+
+    def test_list_urls_hang_off_the_list_not_the_foreign_detail(self, switch_response):
+        content = switch_response.content.decode()
+
+        assert f"cohorts/{switch_response.cohort_a.pk}/cohorts" not in content
 
     def test_sets_hx_push_url_to_the_list(self, switch_response):
         assert switch_response["HX-Push-Url"] == _interface_url(

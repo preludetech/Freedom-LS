@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from guardian.shortcuts import assign_perm
 
@@ -70,8 +72,31 @@ class _TenantBaseConfig(BaseViewConfig):
     required_request_attrs = ("tenant",)
 
 
+class _TenantRequest(HttpRequest):
+    tenant: str
+
+
+class _TenantObjectConfig(ObjectViewConfig):
+    """Finds its object through a required request attribute."""
+
+    url_name = "tenant-object"
+    menu_label = "Tenant object"
+    instance_view = _ObjectInstanceView
+    required_request_attrs = ("tenant",)
+
+    @classmethod
+    def get_object(cls, request: HttpRequest) -> Model:
+        found: Model = StubModel.objects.get(name=cast(_TenantRequest, request).tenant)
+        return found
+
+
 DELETE_URL = "/test-panel/framework/first-stub/__panels/deletable/__actions/delete"
-CONFIG = [NavGroup("Configs", [_FirstStubConfig, StubBaseConfig, _TenantBaseConfig])]
+CONFIG = [
+    NavGroup(
+        "Configs",
+        [_FirstStubConfig, StubBaseConfig, _TenantBaseConfig, _TenantObjectConfig],
+    )
+]
 
 
 def _view(path_string: str, **request_kwargs: object) -> HttpResponse:
@@ -171,3 +196,10 @@ def test_a_delete_action_from_a_panel_deletes_on_submit(
     assert response.status_code == 204
     assert response["HX-Redirect"] == "/deleted"
     assert not StubModel.objects.filter(pk=stub.pk).exists()
+
+
+def test_an_object_view_missing_a_required_request_attribute_404s_before_get_object(
+    mock_site_context: Site,
+) -> None:
+    with pytest.raises(Http404):
+        _view("tenant-object")
