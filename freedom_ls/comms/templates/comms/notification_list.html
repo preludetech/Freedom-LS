@@ -71,7 +71,7 @@
                                     class="bg-surface-2 px-5 py-2 text-sm font-semibold text-muted">
                                     {{ heading }}
                                 </h2>
-                                <ul class="divide-y divide-border">
+                                <ul class="list-none ml-0 divide-y divide-border">
                                     {% for notification in notifications %}
                                         {% include "comms/partials/notification_row.html" with show_actions=True %}
                                     {% endfor %}

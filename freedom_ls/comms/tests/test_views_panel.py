@@ -3,6 +3,7 @@ count, and marking them seen on open."""
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -51,6 +52,19 @@ class TestPanelContent:
         response = client.get(reverse(PANEL_URL_NAME))
 
         assert "3 unread" in response.content.decode()
+
+    def test_the_row_list_resets_the_global_list_indent(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory(user=user)
+        client = logged_in_client(user)
+
+        response = client.get(reverse(PANEL_URL_NAME))
+
+        row_list = re.search(r'<ul class="([^"]*)"', response.content.decode())
+        assert row_list is not None
+        assert {"list-none", "ml-0"} <= set(row_list.group(1).split())
 
 
 @pytest.mark.django_db

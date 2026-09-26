@@ -4,6 +4,7 @@ notification_open."""
 
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 
 import pytest
@@ -144,6 +145,27 @@ class TestPagination:
         assert len(page1_groups["Today"]) == 15
         assert len(page1_groups["Yesterday"]) == 5
         assert len(page2_groups["Yesterday"]) == 5
+
+
+@pytest.mark.django_db
+class TestRowList:
+    def test_the_row_list_resets_the_global_list_indent(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory(user=user)
+        client = logged_in_client(user)
+
+        response = client.get(reverse(LIST_URL_NAME))
+
+        row_lists = re.findall(r'<ul class="([^"]*)"', response.content.decode())
+        # The header and footer menus render <ul>s too; the row list is the
+        # one carrying the row dividers.
+        row_list_classes = [
+            set(c.split()) for c in row_lists if "divide-border" in c.split()
+        ]
+        assert row_list_classes
+        assert all({"list-none", "ml-0"} <= c for c in row_list_classes)
 
 
 @pytest.mark.django_db
