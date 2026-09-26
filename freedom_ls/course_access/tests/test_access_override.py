@@ -286,7 +286,7 @@ class TestAccessTypeOnGatedCourse:
 @pytest.mark.django_db
 class TestCourseEventParams:
     def test_params_name_the_course_and_its_access_type(self, mock_site_context):
-        from freedom_ls.course_access.google_analytics import course_event_params
+        from freedom_ls.course_access.analytics_events import course_event_params
 
         course = CourseFactory(
             slug="intro-to-botany", access_config={"access_type": "application_gated"}

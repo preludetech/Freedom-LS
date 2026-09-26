@@ -72,7 +72,7 @@ class TestUserRegisteredWebhookEvent:
 
 
 @pytest.mark.django_db(transaction=True)
-class TestSignUpGoogleAnalyticsEvent:
+class TestSignUpAnalyticsEvent:
     def test_save_user_records_the_sign_up_event_on_commit(
         self, mock_site_context: object, mocker: object
     ) -> None:
@@ -88,7 +88,7 @@ class TestSignUpGoogleAnalyticsEvent:
         ):
             adapter.save_user(request, user, mock_form, commit=True)
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
@@ -107,11 +107,11 @@ class TestSignUpGoogleAnalyticsEvent:
         ):
             adapter.save_user(request, user, mock_form, commit=False)
 
-        assert "google_analytics_events" not in request.session
+        assert "analytics_events" not in request.session
 
 
 @pytest.mark.django_db(transaction=True)
-class TestSignUpGoogleAnalyticsEventEndToEnd:
+class TestSignUpAnalyticsEventEndToEnd:
     def test_signing_up_emits_the_sign_up_event_on_the_landing_page(
         self, mock_site_context: object
     ) -> None:

@@ -1056,7 +1056,7 @@ class TestApplicationFormPageRejectedAnswers:
 
 
 @pytest.mark.django_db
-class TestApplyGoogleAnalyticsEvent:
+class TestApplyAnalyticsEvent:
     def test_post_apply_for_a_no_form_course_records_the_access_request(
         self, client, mock_site_context
     ):
@@ -1070,7 +1070,7 @@ class TestApplyGoogleAnalyticsEvent:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert client.session["google_analytics_events"] == [
+        assert client.session["analytics_events"] == [
             {
                 "name": "course_access_requested",
                 "params": {
@@ -1093,7 +1093,7 @@ class TestApplyGoogleAnalyticsEvent:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
     def test_apply_for_an_existing_application_does_not_record_an_event(
         self, client, mock_site_context
@@ -1107,11 +1107,11 @@ class TestApplyGoogleAnalyticsEvent:
             reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         )
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
 
 @pytest.mark.django_db
-class TestCheckYourAnswersGoogleAnalyticsEvent:
+class TestCheckYourAnswersAnalyticsEvent:
     def test_submitting_a_complete_application_records_the_access_request(
         self, client, mock_site_context
     ):
@@ -1122,7 +1122,7 @@ class TestCheckYourAnswersGoogleAnalyticsEvent:
 
         client.post(_check_url(app))
 
-        assert client.session["google_analytics_events"] == [
+        assert client.session["analytics_events"] == [
             {
                 "name": "course_access_requested",
                 "params": {
@@ -1142,4 +1142,4 @@ class TestCheckYourAnswersGoogleAnalyticsEvent:
 
         client.post(_check_url(app))
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session

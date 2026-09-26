@@ -6,10 +6,11 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpRequest, HttpResponse
 from django.test import RequestFactory, modify_settings
 
-from freedom_ls.google_tag.events import (
-    GoogleAnalyticsEvent,
-    pop_google_analytics_events,
-    record_google_analytics_event,
+from freedom_ls.base.analytics_events import (
+    EU_CONSENT_POLICY_COUNTRIES,
+    AnalyticsEvent,
+    pop_analytics_events,
+    record_analytics_event,
     record_sign_up,
 )
 
@@ -20,52 +21,50 @@ def _request_with_session() -> HttpRequest:
     return request
 
 
-class TestRecordGoogleAnalyticsEvent:
+class TestRecordAnalyticsEvent:
     def test_recording_stores_the_name_and_params(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.SIGN_UP, {"method": "email"}
-        )
+        record_analytics_event(request, AnalyticsEvent.SIGN_UP, {"method": "email"})
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
     def test_recording_without_params_stores_an_empty_params_dict(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(request, GoogleAnalyticsEvent.SIGN_UP)
+        record_analytics_event(request, AnalyticsEvent.SIGN_UP)
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "sign_up", "params": {}}
         ]
 
     def test_recording_an_identical_event_twice_stores_it_once(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
+        record_analytics_event(
+            request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
         )
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
+        record_analytics_event(
+            request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
         )
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "course_started", "params": {"course_slug": "algebra"}}
         ]
 
     def test_recording_the_same_event_for_two_courses_keeps_both(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
+        record_analytics_event(
+            request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "algebra"}
         )
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.COURSE_STARTED, {"course_slug": "botany"}
+        record_analytics_event(
+            request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "botany"}
         )
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "course_started", "params": {"course_slug": "algebra"}},
             {"name": "course_started", "params": {"course_slug": "botany"}},
         ]
@@ -73,22 +72,22 @@ class TestRecordGoogleAnalyticsEvent:
     def test_an_event_name_fls_does_not_define_is_accepted(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(
+        record_analytics_event(
             request, "brochure_requested", {"lead_form": "brochure_request"}
         )
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "brochure_requested", "params": {"lead_form": "brochure_request"}}
         ]
 
     def test_a_value_longer_than_100_characters_is_cut_to_100(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.COURSE_STARTED, {"course_slug": "a" * 101}
+        record_analytics_event(
+            request, AnalyticsEvent.COURSE_STARTED, {"course_slug": "a" * 101}
         )
 
-        stored = request.session["google_analytics_events"][0]["params"]["course_slug"]
+        stored = request.session["analytics_events"][0]["params"]["course_slug"]
         assert stored == "a" * 100
 
     @pytest.mark.parametrize(
@@ -109,7 +108,7 @@ class TestRecordGoogleAnalyticsEvent:
         request = _request_with_session()
 
         with pytest.raises(ValueError, match="event name"):
-            record_google_analytics_event(request, name)
+            record_analytics_event(request, name)
 
     @pytest.mark.parametrize(
         "param_name",
@@ -119,27 +118,25 @@ class TestRecordGoogleAnalyticsEvent:
         request = _request_with_session()
 
         with pytest.raises(ValueError, match="parameter name"):
-            record_google_analytics_event(
-                request, GoogleAnalyticsEvent.SIGN_UP, {param_name: "x"}
-            )
+            record_analytics_event(request, AnalyticsEvent.SIGN_UP, {param_name: "x"})
 
     def test_a_rejected_event_stores_nothing(self) -> None:
         request = _request_with_session()
 
         with pytest.raises(ValueError, match="event name"):
-            record_google_analytics_event(request, "has-hyphen")
+            record_analytics_event(request, "has-hyphen")
 
-        assert "google_analytics_events" not in request.session
+        assert "analytics_events" not in request.session
 
 
-class TestPopGoogleAnalyticsEvents:
+class TestPopAnalyticsEvents:
     def test_popping_returns_the_recorded_events(self) -> None:
         request = _request_with_session()
-        record_google_analytics_event(
-            request, GoogleAnalyticsEvent.GENERATE_LEAD, {"lead_form": "call_me_back"}
+        record_analytics_event(
+            request, AnalyticsEvent.GENERATE_LEAD, {"lead_form": "call_me_back"}
         )
 
-        result = pop_google_analytics_events(request)
+        result = pop_analytics_events(request)
 
         assert result == [
             {"name": "generate_lead", "params": {"lead_form": "call_me_back"}}
@@ -147,16 +144,16 @@ class TestPopGoogleAnalyticsEvents:
 
     def test_popping_empties_the_session(self) -> None:
         request = _request_with_session()
-        record_google_analytics_event(request, GoogleAnalyticsEvent.SIGN_UP)
+        record_analytics_event(request, AnalyticsEvent.SIGN_UP)
 
-        pop_google_analytics_events(request)
+        pop_analytics_events(request)
 
-        assert "google_analytics_events" not in request.session
+        assert "analytics_events" not in request.session
 
     def test_popping_with_nothing_recorded_returns_an_empty_list(self) -> None:
         request = _request_with_session()
 
-        result = pop_google_analytics_events(request)
+        result = pop_analytics_events(request)
 
         assert result == []
 
@@ -165,7 +162,7 @@ class TestPopGoogleAnalyticsEvents:
         # as the context processor may see in a template unit test.
         request = RequestFactory().get("/")
 
-        result = pop_google_analytics_events(request)
+        result = pop_analytics_events(request)
 
         assert result == []
 
@@ -176,16 +173,47 @@ class TestRecordSignUp:
 
         record_sign_up(request)
 
-        assert request.session["google_analytics_events"] == [
+        assert request.session["analytics_events"] == [
             {"name": "sign_up", "params": {"method": "email"}}
         ]
 
 
-class TestRecordingWithTheAppNotInstalled:
-    @modify_settings(INSTALLED_APPS={"remove": "freedom_ls.google_tag"})
+class TestRecordingWithNoPlatformAppInstalled:
+    @modify_settings(
+        INSTALLED_APPS={
+            "remove": [
+                "freedom_ls.google_tag",
+                "freedom_ls.meta_pixel",
+                "freedom_ls.tiktok_pixel",
+            ]
+        }
+    )
     def test_records_nothing_when_no_context_processor_could_pop_it(self) -> None:
         request = _request_with_session()
 
-        record_google_analytics_event(request, GoogleAnalyticsEvent.SIGN_UP)
+        record_analytics_event(request, AnalyticsEvent.SIGN_UP)
 
-        assert "google_analytics_events" not in request.session
+        assert "analytics_events" not in request.session
+
+
+class TestEuConsentPolicyCountries:
+    def test_has_32_unique_codes(self) -> None:
+        assert len(EU_CONSENT_POLICY_COUNTRIES) == 32
+        assert len(set(EU_CONSENT_POLICY_COUNTRIES)) == 32
+
+    @pytest.mark.parametrize("code", EU_CONSENT_POLICY_COUNTRIES)
+    def test_each_code_is_two_upper_case_letters(self, code: str) -> None:
+        assert len(code) == 2
+        assert code.isalpha()
+        assert code.isupper()
+
+    def test_uses_gb_not_uk(self) -> None:
+        assert "GB" in EU_CONSENT_POLICY_COUNTRIES
+        assert "UK" not in EU_CONSENT_POLICY_COUNTRIES
+
+    def test_uses_gr_not_el(self) -> None:
+        assert "GR" in EU_CONSENT_POLICY_COUNTRIES
+        assert "EL" not in EU_CONSENT_POLICY_COUNTRIES
+
+    def test_leaves_south_africa_out(self) -> None:
+        assert "ZA" not in EU_CONSENT_POLICY_COUNTRIES

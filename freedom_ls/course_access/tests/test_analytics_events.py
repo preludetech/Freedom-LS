@@ -10,7 +10,7 @@ from django.test import RequestFactory
 
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
-from freedom_ls.course_access.google_analytics import (
+from freedom_ls.course_access.analytics_events import (
     course_event_params,
     record_application_submitted,
     record_course_completed,
@@ -58,7 +58,7 @@ def test_course_event_is_recorded_with_its_course_params(
 
     record(request, course)
 
-    assert request.session["google_analytics_events"] == [
+    assert request.session["analytics_events"] == [
         {"name": name, "params": course_event_params(course) | extra_params}
     ]
 
@@ -87,7 +87,7 @@ def test_course_progress_event_names_the_registration_source(
 
     record(request, course, via_cohort=via_cohort)
 
-    assert request.session["google_analytics_events"] == [
+    assert request.session["analytics_events"] == [
         {
             "name": name,
             "params": course_event_params(course)

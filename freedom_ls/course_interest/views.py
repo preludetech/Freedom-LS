@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.utils import redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
-from freedom_ls.course_access.google_analytics import record_interest_expressed
+from freedom_ls.course_access.analytics_events import record_interest_expressed
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_interest.models import CourseInterest
 

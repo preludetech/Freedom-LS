@@ -121,7 +121,7 @@ class TestCourseCompletedWebhookEvent:
 
 
 @pytest.mark.django_db
-class TestCourseCompletedGoogleAnalyticsEvent:
+class TestCourseCompletedAnalyticsEvent:
     """`course_finish` both records and renders in the same response, so the
     event shows up in that response's own HTML rather than surviving in the
     session for a later page -- unlike a call site that redirects.

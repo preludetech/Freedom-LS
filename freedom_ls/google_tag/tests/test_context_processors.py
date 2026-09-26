@@ -60,11 +60,11 @@ class TestGoogleTagConfig:
         # than waiting in the session for a measurement ID that may never
         # arrive.
         request = _request_with_session()
-        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        request.session["analytics_events"] = [_PENDING_SIGN_UP]
 
         google_tag_config(request)
 
-        assert "google_analytics_events" not in request.session
+        assert "analytics_events" not in request.session
 
     @override_settings(GOOGLE_ADS_CONVERSION_ID="AW-TEST")
     def test_returns_configured_google_ads_conversion_id(self) -> None:
@@ -91,7 +91,7 @@ class TestGoogleTagConfigPendingEvents:
     )
     def test_a_mapped_event_carries_its_send_to(self) -> None:
         request = _request_with_session()
-        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        request.session["analytics_events"] = [_PENDING_SIGN_UP]
 
         events = _pending_events(request)
 
@@ -104,7 +104,7 @@ class TestGoogleTagConfigPendingEvents:
     )
     def test_an_unmapped_event_has_no_send_to(self) -> None:
         request = _request_with_session()
-        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        request.session["analytics_events"] = [_PENDING_SIGN_UP]
 
         events = _pending_events(request)
 
@@ -117,7 +117,7 @@ class TestGoogleTagConfigPendingEvents:
     )
     def test_a_label_without_a_conversion_id_gives_no_send_to(self) -> None:
         request = _request_with_session()
-        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        request.session["analytics_events"] = [_PENDING_SIGN_UP]
 
         events = _pending_events(request)
 
@@ -126,11 +126,11 @@ class TestGoogleTagConfigPendingEvents:
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_popping_empties_the_session(self) -> None:
         request = _request_with_session()
-        request.session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        request.session["analytics_events"] = [_PENDING_SIGN_UP]
 
         _pending_events(request)
 
-        assert "google_analytics_events" not in request.session
+        assert "analytics_events" not in request.session
 
 
 @pytest.mark.django_db
@@ -243,22 +243,14 @@ class TestGoogleAdsSnippetRendering:
 
 
 class TestConsentModeDeniedRegions:
-    def test_covers_the_eea_the_uk_and_switzerland(self) -> None:
+    # The codes themselves are EU_CONSENT_POLICY_COUNTRIES's own contract,
+    # covered by TestEuConsentPolicyCountries in base/tests/test_analytics_events.py.
+    def test_context_value_is_a_list(self) -> None:
         request = _request_with_session()
 
         regions = google_tag_config(request)["consent_mode_denied_regions"]
 
         assert isinstance(regions, list)
-        assert {"DE", "IE", "NO", "IS", "LI", "GB", "CH"} <= set(regions)
-        assert len(regions) == 32
-
-    def test_leaves_south_africa_out(self) -> None:
-        request = _request_with_session()
-
-        regions = google_tag_config(request)["consent_mode_denied_regions"]
-
-        assert isinstance(regions, list)
-        assert "ZA" not in regions
 
 
 @pytest.mark.django_db
@@ -326,7 +318,7 @@ class TestGoogleAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
@@ -339,12 +331,12 @@ class TestGoogleAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         client.get("/")
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_event_renders_once_on_a_page_that_extends_base_interface(
@@ -355,7 +347,7 @@ class TestGoogleAnalyticsEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url)
@@ -368,7 +360,7 @@ class TestGoogleAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
@@ -381,26 +373,26 @@ class TestGoogleAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         client.get("/")
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_nothing_renders_and_event_stays_on_a_token_bearing_page(
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(reverse("account_confirm_email", args=["some-key"]))
 
         content = response.content.decode()
         assert "gtag('event'" not in content
-        assert client.session["google_analytics_events"] == [_PENDING_SIGN_UP]
+        assert client.session["analytics_events"] == [_PENDING_SIGN_UP]
 
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_boosted_request_keeps_the_event_inside_interface_main(
@@ -411,7 +403,7 @@ class TestGoogleAnalyticsEventsPartial:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url, HTTP_HX_REQUEST="true")
@@ -437,7 +429,7 @@ class TestGoogleAdsConversionRendering:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
@@ -449,7 +441,7 @@ class TestGoogleAdsConversionRendering:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [
+        session["analytics_events"] = [
             {"name": "course_started", "params": {"course_slug": "algebra"}}
         ]
         session.save()
@@ -467,7 +459,7 @@ class TestGoogleAdsConversionRendering:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
@@ -485,7 +477,7 @@ class TestGoogleAdsConversionRendering:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url)
@@ -501,7 +493,7 @@ class TestGoogleAdsConversionRendering:
         url, user = course_player_url_and_learner
         client.force_login(user)
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get(url, HTTP_HX_REQUEST="true")
@@ -518,7 +510,7 @@ class TestGoogleAdsConversionRendering:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [_PENDING_SIGN_UP]
+        session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
         response = client.get("/")
@@ -535,7 +527,7 @@ class TestGoogleAnalyticsEventParameters:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [{"name": "sign_up", "params": {}}]
+        session["analytics_events"] = [{"name": "sign_up", "params": {}}]
         session.save()
 
         response = client.get("/")
@@ -547,7 +539,7 @@ class TestGoogleAnalyticsEventParameters:
         self, client: Client, mock_site_context: object
     ) -> None:
         session = client.session
-        session["google_analytics_events"] = [
+        session["analytics_events"] = [
             {"name": "generate_lead", "params": {"lead_form": "</script><b>"}}
         ]
         session.save()

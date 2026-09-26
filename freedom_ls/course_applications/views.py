@@ -15,7 +15,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CourseVisibility
-from freedom_ls.course_access.google_analytics import record_application_submitted
+from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course

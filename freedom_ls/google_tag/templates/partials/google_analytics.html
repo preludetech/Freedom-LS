@@ -21,7 +21,7 @@ content_group="landing_page".
     gtag('js', new Date());
     {% comment %}
     Before any config call, so it applies to the first hit. See
-    CONSENT_MODE_DENIED_REGIONS in freedom_ls/deployment/context_processors.py.
+    EU_CONSENT_POLICY_COUNTRIES in freedom_ls/base/analytics_events.py.
     {% endcomment %}
     gtag('consent', 'default', {ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied', analytics_storage: 'denied', region: {{ consent_mode_denied_regions|inline_script_json }}});
     gtag('config', '{{ google_analytics_measurement_id|escapejs }}', { {% if user.is_authenticated %}user_id: '{{ user.pk }}', {% endif %}{% if content_group %}content_group: '{{ content_group|escapejs }}'{% endif %} });

@@ -126,7 +126,7 @@ def _initiate_url(course_slug: str) -> str:
 
 
 @pytest.mark.django_db
-class TestCourseRegisteredGoogleAnalyticsEvent:
+class TestCourseRegisteredAnalyticsEvent:
     def test_a_new_registration_records_the_event(
         self, mock_site_context, logged_in_client, course_with_topic
     ):
@@ -135,7 +135,7 @@ class TestCourseRegisteredGoogleAnalyticsEvent:
 
         client.post(_initiate_url("ga-register-course"))
 
-        assert client.session["google_analytics_events"] == [
+        assert client.session["analytics_events"] == [
             {
                 "name": "course_registered",
                 "params": {
@@ -158,7 +158,7 @@ class TestCourseRegisteredGoogleAnalyticsEvent:
 
         client.post(_initiate_url(course.slug))
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
     def test_reactivating_a_deactivated_registration_records_no_event(
         self, mock_site_context, site, logged_in_client, course_with_topic
@@ -173,7 +173,7 @@ class TestCourseRegisteredGoogleAnalyticsEvent:
 
         client.post(_initiate_url(course.slug))
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
 
 @pytest.mark.django_db

@@ -28,7 +28,7 @@ from freedom_ls.content_engine.models import (
     CourseVisibility,
     Topic,
 )
-from freedom_ls.course_access.google_analytics import (
+from freedom_ls.course_access.analytics_events import (
     record_course_completed,
     record_course_self_registered,
     record_course_started,

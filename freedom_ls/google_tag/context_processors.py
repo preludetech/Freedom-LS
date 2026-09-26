@@ -3,35 +3,20 @@ from functools import partial
 
 from django.http import HttpRequest
 
-from freedom_ls.google_tag.config import config
-from freedom_ls.google_tag.events import (
-    GoogleAnalyticsEventPayload,
-    pop_google_analytics_events,
+from freedom_ls.base.analytics_events import (
+    EU_CONSENT_POLICY_COUNTRIES,
+    AnalyticsEventPayload,
+    pop_analytics_events,
 )
+from freedom_ls.google_tag.config import config
 from freedom_ls.google_tag.google_ads import conversion_send_to
 
 
-class PendingGoogleAnalyticsEvent(GoogleAnalyticsEventPayload):
+class PendingGoogleAnalyticsEvent(AnalyticsEventPayload):
     # The Google Ads conversion this event also reports, or None. Attached at
     # render time rather than stored with the event, so a label change in the
     # environment applies to events already waiting in a session.
     send_to: str | None
-
-
-# Google's EU user consent policy covers visitors in the EEA, the UK and
-# Switzerland. FLS ships no consent banner, so the snippet denies all storage
-# for these regions by default and GA4 and Ads send cookieless pings there.
-# A downstream banner grants consent with gtag('consent', 'update', ...).
-CONSENT_MODE_DENIED_REGIONS = (
-    # EU member states
-    "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU",
-    "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES",
-    "SE",
-    # The rest of the EEA
-    "IS", "LI", "NO",
-    # Outside the EEA, but covered by the same policy
-    "GB", "CH",
-)  # fmt: skip
 
 
 def _pop_pending_events(request: HttpRequest) -> list[PendingGoogleAnalyticsEvent]:
@@ -43,7 +28,7 @@ def _pop_pending_events(request: HttpRequest) -> list[PendingGoogleAnalyticsEven
             "params": event["params"],
             "send_to": conversion_send_to(conversion_id, labels, event["name"]),
         }
-        for event in pop_google_analytics_events(request)
+        for event in pop_analytics_events(request)
     ]
 
 
@@ -80,10 +65,10 @@ def google_tag_config(
         # Nothing will ever emit these, so they are discarded now instead of
         # waiting in the session for a measurement ID that may arrive weeks
         # later, or never.
-        pop_google_analytics_events(request)
+        pop_analytics_events(request)
     return {
         "google_analytics_measurement_id": measurement_id,
         "google_ads_conversion_id": config.GOOGLE_ADS_CONVERSION_ID,
-        "consent_mode_denied_regions": list(CONSENT_MODE_DENIED_REGIONS),
+        "consent_mode_denied_regions": list(EU_CONSENT_POLICY_COUNTRIES),
         "google_analytics_events": partial(_pop_pending_events, request),
     }

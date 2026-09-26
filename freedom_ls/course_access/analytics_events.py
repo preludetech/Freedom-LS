@@ -1,6 +1,6 @@
-"""The GA4 events recorded along the course funnel.
+"""The analytics events recorded along the course funnel.
 
-Views call the `record_*` functions here and never build a GA4 event
+Views call the `record_*` functions here and never build an analytics event
 themselves, so event names and parameters are decided in one place.
 """
 
@@ -8,11 +8,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from freedom_ls.base.analytics_events import AnalyticsEvent, record_analytics_event
 from freedom_ls.course_access import get_course_access_backend
-from freedom_ls.google_tag.events import (
-    GoogleAnalyticsEvent,
-    record_google_analytics_event,
-)
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -21,7 +18,7 @@ if TYPE_CHECKING:
 
 
 def course_event_params(course: Course) -> dict[str, str]:
-    """Which course a GA4 event was about, and how that course is entered.
+    """Which course an analytics event was about, and how that course is entered.
 
     `course_id` is the UUID the course webhooks carry, so GA4 data joins to
     webhook data and survives a slug rename. `course_slug` is the readable one
@@ -37,9 +34,9 @@ def course_event_params(course: Course) -> dict[str, str]:
 def _record_course_access_requested(
     request: HttpRequest, course: Course, request_kind: str
 ) -> None:
-    record_google_analytics_event(
+    record_analytics_event(
         request,
-        GoogleAnalyticsEvent.COURSE_ACCESS_REQUESTED,
+        AnalyticsEvent.COURSE_ACCESS_REQUESTED,
         course_event_params(course) | {"request_kind": request_kind},
     )
 
@@ -53,16 +50,16 @@ def record_application_submitted(request: HttpRequest, course: Course) -> None:
 
 
 def record_course_self_registered(request: HttpRequest, course: Course) -> None:
-    record_google_analytics_event(
+    record_analytics_event(
         request,
-        GoogleAnalyticsEvent.COURSE_REGISTERED,
+        AnalyticsEvent.COURSE_REGISTERED,
         course_event_params(course) | {"registration_method": "self_registration"},
     )
 
 
 def _record_course_progress_event(
     request: HttpRequest,
-    event: GoogleAnalyticsEvent,
+    event: AnalyticsEvent,
     course: Course,
     via_cohort: bool,
 ) -> None:
@@ -70,7 +67,7 @@ def _record_course_progress_event(
     # register a cohort outside the learner's browser, so no course_registered
     # event is ever sent for them.
     registration_source = "cohort" if via_cohort else "individual"
-    record_google_analytics_event(
+    record_analytics_event(
         request,
         event,
         course_event_params(course) | {"registration_source": registration_source},
@@ -81,7 +78,7 @@ def record_course_started(
     request: HttpRequest, course: Course, *, via_cohort: bool
 ) -> None:
     _record_course_progress_event(
-        request, GoogleAnalyticsEvent.COURSE_STARTED, course, via_cohort
+        request, AnalyticsEvent.COURSE_STARTED, course, via_cohort
     )
 
 
@@ -89,5 +86,5 @@ def record_course_completed(
     request: HttpRequest, course: Course, *, via_cohort: bool
 ) -> None:
     _record_course_progress_event(
-        request, GoogleAnalyticsEvent.COURSE_COMPLETED, course, via_cohort
+        request, AnalyticsEvent.COURSE_COMPLETED, course, via_cohort
     )

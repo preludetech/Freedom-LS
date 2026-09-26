@@ -440,7 +440,7 @@ def _express_interest_url(course_slug: str) -> str:
 
 
 @pytest.mark.django_db
-class TestExpressInterestGoogleAnalyticsEvent:
+class TestExpressInterestAnalyticsEvent:
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_first_click_emits_the_event_in_the_swapped_partial(
         self, client, mock_site_context
@@ -485,7 +485,7 @@ class TestExpressInterestGoogleAnalyticsEvent:
 
         client.post(_express_interest_url(course.slug))
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
     def test_removing_interest_records_no_event(self, client, mock_site_context):
         user = UserFactory()
@@ -499,11 +499,11 @@ class TestExpressInterestGoogleAnalyticsEvent:
             )
         )
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
 
 
 @pytest.mark.django_db
-class TestDeferredExpressInterestGoogleAnalyticsEvent:
+class TestDeferredExpressInterestAnalyticsEvent:
     def test_the_deferred_click_records_the_event_for_the_next_page(
         self, client, mock_site_context
     ):
@@ -525,7 +525,7 @@ class TestDeferredExpressInterestGoogleAnalyticsEvent:
             )
         )
 
-        assert client.session["google_analytics_events"] == [
+        assert client.session["analytics_events"] == [
             {
                 "name": "course_access_requested",
                 "params": {
@@ -551,4 +551,4 @@ class TestDeferredExpressInterestGoogleAnalyticsEvent:
             )
         )
 
-        assert "google_analytics_events" not in client.session
+        assert "analytics_events" not in client.session
