@@ -133,7 +133,8 @@ if git rev-parse -q --verify "refs/heads/$MAIN" >/dev/null; then
 fi
 
 if [[ "$VERB" == sync ]]; then
-    echo "main: $(git rev-parse "refs/remotes/origin/$MAIN") · origin/$MAIN: $origin_sha"
+    origin_sha=$(git rev-parse "refs/remotes/origin/$MAIN")
+    echo "main: $origin_sha · origin/$MAIN: $origin_sha"
     exit 0
 fi
 
