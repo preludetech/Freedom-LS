@@ -1,12 +1,17 @@
 ---
 name: implement_plan
 description: Execute the implementation plan in resilient batches.
-allowed-tools: Read, Glob, Write, Edit, Bash, Skill, Agent
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 ---
 
 # Executing Plans
 
 This command runs at **depth 0** (the main thread) and orchestrates batch sub-agents.
+
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Read and Review the Plan
 

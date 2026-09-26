@@ -1,6 +1,6 @@
 ---
 description: Update docs/product/ for the current feature after it ships
-allowed-tools: Read, Glob, Write, Edit, Bash, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
 ---
 
 Update the product documentation under `docs/product/` to reflect the feature that was just implemented — **if** it changed something a product reader would act on. Plenty of features do not, and for those the correct output is no edit at all.
@@ -53,6 +53,11 @@ This command runs at **depth 0** and fans work out to sub-agents.
 5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's output if they can; ask via `AskUserQuestion` only if they can't. Then re-spawn a fresh worker with the original brief + answers.
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and apply edits to the real docs.
 7. **Clean up on success.** Once all edits are applied, delete this command's own scratch files **by name** — never the `.sdd-work/` directory itself, which is shared with every other SDD command. Step 5 has the exact invocation.
+
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Decide whether any doc changes — and which
 

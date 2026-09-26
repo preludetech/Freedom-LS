@@ -6,9 +6,7 @@
 # pull FLS and the plugin in as submodules).
 git submodule update --init --recursive
 
-uv sync
-npm i
-npm run tailwind_build
+"$(dirname "$0")/rebuild_after_rebase.sh"
 
 # Set up per-branch database
 "$(dirname "$0")/dev_db_init.sh"

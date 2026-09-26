@@ -114,11 +114,13 @@ has actually *initialised* — not merely that files exist — is the only check
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads two sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads three sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
-teardown scripts to run. **Vocabulary Sources**: the idea, spec and plan commands look here for the
-project's own definitions of its domain words. Everything else in this dir exists for parity and
-future settings.
+teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
+(`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
+before a feature-branch SDD step runs. **Vocabulary Sources**: the idea, spec and plan commands look
+here for the project's own definitions of its domain words. Everything else in this dir exists for
+parity and future settings.
 
 **Do not prompt the user for these values.** Write blank defaults and say where the file is.
 
@@ -139,6 +141,15 @@ future settings.
    - Setup script:
    - Teardown script:
 
+   ## Rebase Hooks
+
+   Followed by the pre-step rebase before every feature-branch SDD step. Each value is a command
+   or helper file that is read and followed, not a script. Leave a value blank if this project has
+   no such step.
+
+   - Rebase command:
+   - Front-end check:
+
    ## Vocabulary Sources
 
    Where this project's domain vocabulary is defined, most authoritative first — the files to check
@@ -154,15 +165,21 @@ future settings.
    product here — if another plugin owns those scripts in this project, the user points these keys at
    them.
 
+   A **Rebase command** value points at a file that rebases the branch onto main; the pre-step
+   rebase reads it and follows its steps inline. A **Front-end check** value points at a file that
+   verifies front-end pages after a rebase that changed them. Both are blank by default, meaning
+   "this project has no such step" — `sdd` is portable and names no product here either; if another
+   plugin owns those files in this project, the user points these keys at them.
+
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
    Write the heading with an empty list. Naming this project's actual sources is the user's job — do
    not guess them by scanning the repo. With the list empty the commands still work: they fall back
    to the code, where model class names and field names are the vocabulary of last resort.
-3. If it already exists, add the `## Worktree Scripts` and `## Vocabulary Sources` sections, and
-   either key only if missing, using the blank default. Preserve every existing value, comment, and
-   ordering.
-4. Tell the user in the summary to fill in the two paths and the vocabulary sources themselves.
+3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks` and `## Vocabulary Sources`
+   sections, and any key only if missing, using the blank default. Preserve every existing value,
+   comment, and ordering.
+4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
 ## Step 3: Update `.gitignore`
 
@@ -184,17 +201,20 @@ in-place edits.
 2. `Skill(sdd:*)` is in `permissions.allow`.
 3. `.claude/sdd/config.md` has a `## Worktree Scripts` section with both `Setup script` and
    `Teardown script` keys (blank values are valid).
-4. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
-5. `.claude/sdd/config.local.md` is listed in `.gitignore`.
-6. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
-7. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
+4. `.claude/sdd/config.md` has a `## Rebase Hooks` section with both `Rebase command` and
+   `Front-end check` keys (blank values are valid).
+5. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
+6. `.claude/sdd/config.local.md` is listed in `.gitignore`.
+7. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
+8. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
    that line expands `$PLUGINS_ROOT` only if a `PLUGINS_ROOT=` assignment exists in the file.
-8. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
-9. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-10. Report every issue found.
+9. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
+10. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
+11. Report every issue found.
 
 ## Step 6: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, and anything Step 5 flagged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths,
-and to list the project's Vocabulary Sources.
+the Rebase Hooks Rebase command and Front-end check paths, and to list the project's Vocabulary
+Sources.

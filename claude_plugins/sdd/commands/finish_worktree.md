@@ -36,6 +36,15 @@ Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists —
 - If **Teardown script** is a non-blank path, run that script now.
 - If it is blank, or the config file / section is absent, skip this step — this project has no per-worktree teardown step.
 
+Then delete the branch's backup ref if the pre-step rebase left one behind:
+
+```bash
+git show-ref --verify --quiet refs/heads/rebase-backup/<branch>
+```
+
+If that succeeds, `git branch -D rebase-backup/<branch>`. If it does not, there is no backup ref to
+remove.
+
 # Step 4: Update the todo list
 
 Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:

@@ -289,7 +289,9 @@ Run these checks and report results. A failure here is reported, never fixed sil
    `## Dev Credentials` section with `Admin email` and `Admin password` keys (blank values are
    valid), an `## Alpine.js` section with a `CSP build` value, and an `## Admin` section with both
    `Admin theme` and `Object permissions (django-guardian)` values.
-10. Report every issue found.
+10. `.claude/ds/config.md` has a `## Rebase Scripts` section with a `Rebuild script` key (a blank
+    value is valid).
+11. Report every issue found.
 
 ## Step 8: Summary and outstanding actions
 

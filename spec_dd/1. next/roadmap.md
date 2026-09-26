@@ -346,7 +346,6 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 |---|---|---|---|---|
 | `file-scanning` | Malware-scan applicant uploads (`QuestionAnswerFile`) in a background task, with a quarantine gate on the reviewer download and a sweep for stuck rows. | none | next | Has `1. spec.md`. Adds sweeps to `deployment/housekeeping.py`, as does `retry-sent-emails`; whichever lands second rebases. |
 | `form-engine-branch-logic` | Form authors gate a page, question or content block on an earlier answer; skipped pages are the routing; off-path answers are dropped at submit and `max_score` is per sitting. | none | next | Shares a per-attempt record with in-progress `compliance-form-randomization`; whichever lands first designs it for both. |
-| `git-rebase-safety` | A rebase-onto-main command that runs the tests and, when front-end code changed, a browser QA pass. | none | in progress | |
 | `mega-qa` | Whole-system QA: a locked staging reset endpoint, a durable journey-and-area QA suite with a new report format, and downstream projects inheriting the plans. | none | next | Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory, order already decided: `idea_1` staging reset, then `idea_2` whole-system suite, then `idea_3` downstream propagation). Idea 2 tests the educator interface, so it is best written after the rebuild. |
 | `phone-number-form-field` | A form-engine phone number field with country code and validation. | none | next | Has a `todo.md` from an earlier start. |
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
@@ -361,4 +360,4 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 phone-number-form-field ──── user-profile-upgrades
 ```
 
-No edges: `file-scanning`, `form-engine-branch-logic`, `git-rebase-safety`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (inside this table; `user-communication-2-notification-email` depends on it), and every spec in progress.
+No edges: `file-scanning`, `form-engine-branch-logic`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (inside this table; `user-communication-2-notification-email` depends on it), and every spec in progress.

@@ -11,6 +11,11 @@ it points every spec that builds to the design at that file.
 
 It runs at **depth 0**. It spawns only the mechanic that commits.
 
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
+
 ## Step 1: Resolve the inputs
 
 - **`<spec-dir>`**: a directory under `spec_dd/`. It is either one spec, or the parent of a cut

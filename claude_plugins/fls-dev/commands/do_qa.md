@@ -1,7 +1,7 @@
 ---
 description: Execute a frontend QA test plan using Playwright MCP
 argument-hint: [path to the test plan file, or the spec dir holding it]
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, mcp__playwright__*, mcp__plugin_ds_playwright__*
 ---
 
 Act like a human QA expert. Execute the given test plan.
@@ -122,6 +122,11 @@ structured bug records it needs in order to brief the fixer.
 ---
 
 # Instructions
+
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Clean up last QA run
 

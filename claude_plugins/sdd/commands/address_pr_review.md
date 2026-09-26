@@ -1,5 +1,10 @@
 Look at the code review comments on the PR and address all issues.
 
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
+
 ## Step 1: Fetch all review comments
 
 Run the script to fetch all PR comments:

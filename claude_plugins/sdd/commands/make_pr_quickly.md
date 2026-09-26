@@ -1,6 +1,6 @@
 ---
 description: Open a pull request for the current branch from the spec and todo, without re-reading the work
-allowed-tools: Bash, Read, Glob, Edit
+allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent
 ---
 
 Open a pull request for the current branch. Fast, from what the SDD workflow already wrote down.
@@ -11,6 +11,9 @@ to be reconstructed from the diff, and reconstructing it is what makes ordinary 
 This command runs at **depth 0**, inline. It spawns no subagents.
 
 ## The speed contract
+
+The one exception to every rule below is Step 0: the pre-step rebase reads and runs whatever it
+needs to.
 
 Read these and nothing else:
 
@@ -33,6 +36,11 @@ Run these git commands and nothing else, plus the push and `gh` calls in Step 5:
 - spawn a subagent, invoke another slash command, or launch a search
 
 If the spec does not say something, the PR body does not claim it.
+
+## Step 0: Pre-step rebase
+
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
+when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Locate the spec
 
