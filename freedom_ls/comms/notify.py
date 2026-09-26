@@ -3,12 +3,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.tasks import default_task_backend
 
+from freedom_ls.comms.config import config
 from freedom_ls.comms.models import (
     Notification,
     get_notification_category,
     message_placeholders,
 )
+from freedom_ls.comms.tasks import deliver_notification
 
 if TYPE_CHECKING:
     from django.db.models import Model
@@ -41,8 +44,14 @@ def raise_notification(
         )
 
     def write() -> None:
-        Notification.objects.create(
+        notification = Notification.objects.create(
             user=user, category=category, target=target, site_id=site_id, data=data
         )
+        for backend_path in config.NOTIFICATION_DELIVERY_BACKENDS:
+            default_task_backend.enqueue(
+                deliver_notification,
+                args=[backend_path, str(notification.pk), site_id],
+                kwargs={},
+            )
 
     transaction.on_commit(write, robust=True)

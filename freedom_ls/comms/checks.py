@@ -1,8 +1,7 @@
 """Django system checks for the comms app.
 
 E001 — Two registered notification categories share a key.
-E002 — a NOTIFICATION_DELIVERY_BACKENDS path that doesn't import (added in a later
-       slice, alongside the delivery seam itself).
+E002 — A NOTIFICATION_DELIVERY_BACKENDS path that doesn't import.
 """
 
 from __future__ import annotations
@@ -12,6 +11,7 @@ from collections.abc import Sequence
 
 from django.apps import AppConfig
 from django.core.checks import CheckMessage, Error, register
+from django.utils.module_loading import import_string
 
 from freedom_ls.comms.config import config
 
@@ -33,3 +33,22 @@ def check_notification_category_keys_are_unique(
             id="freedom_ls_comms.E001",
         )
     ]
+
+
+@register()
+def check_notification_delivery_backends_import(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[CheckMessage]:
+    errors: list[CheckMessage] = []
+    for backend_path in config.NOTIFICATION_DELIVERY_BACKENDS:
+        try:
+            import_string(backend_path)
+        except ImportError:
+            errors.append(
+                Error(
+                    f"NOTIFICATION_DELIVERY_BACKENDS path {backend_path!r} could not be imported.",
+                    hint="Check the dotted path names an importable class.",
+                    id="freedom_ls_comms.E002",
+                )
+            )
+    return errors
