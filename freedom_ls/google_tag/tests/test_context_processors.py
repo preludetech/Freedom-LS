@@ -240,7 +240,7 @@ def course_player_url_and_learner(mock_site_context: object) -> tuple[str, User]
 
 
 @pytest.mark.django_db
-class TestGoogleAnalyticsEventsPartial:
+class TestGtagEventsPartial:
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_event_recorded_in_session_renders_as_gtag_event(
         self, client: Client, mock_site_context: object
@@ -417,7 +417,7 @@ class TestGoogleAdsConversionRendering:
 
 
 @pytest.mark.django_db
-class TestGoogleAnalyticsEventParameters:
+class TestGtagEventParameters:
     @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
     def test_an_event_with_no_params_renders_an_empty_object(
         self, client: Client, mock_site_context: object
