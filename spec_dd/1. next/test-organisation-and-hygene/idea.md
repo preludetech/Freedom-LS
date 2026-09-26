@@ -1,3 +1,7 @@
+> This idea has been cut into 15 specs. Their order, dependencies, the decisions already taken and
+> the assumptions are in the "Test organisation and hygiene" section of `spec_dd/1. next/roadmap.md`. Start there.
+> The text below is the original brief and is kept as written.
+
 Sometimes tests are not organized very well. some of it seems quite chaotic.
 
 We need to make sure that tests are organized well into the right folders and files. This should not feel philosophical, it should feel obvious for the most part.
