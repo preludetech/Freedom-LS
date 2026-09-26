@@ -14,6 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.utils import redirect_to_auth
@@ -87,6 +88,20 @@ def _filtered(request: HttpRequest) -> NotificationQuerySet:
     return queryset.unread() if request.GET.get("filter") == "unread" else queryset
 
 
+def _mark_query(filter_value: str | None, page: Page) -> str:
+    """The query string a row's mark-read/unread action (or "Mark all as
+    read") must carry so the response re-renders the page the user was on,
+    combined with the active filter. Page 1 is the default Paginator
+    renders anyway, so it's left off to match how the filter is already
+    carried."""
+    params: dict[str, str] = {}
+    if filter_value == "unread":
+        params["filter"] = "unread"
+    if page.number > 1:
+        params["page"] = str(page.number)
+    return f"?{urlencode(params)}" if params else ""
+
+
 def _list_context(request: HttpRequest) -> dict[str, object]:
     filter_value = request.GET.get("filter")
     page = Paginator(_filtered(request), 20).get_page(request.GET.get("page"))
@@ -98,6 +113,7 @@ def _list_context(request: HttpRequest) -> dict[str, object]:
         "filter": filter_value,
         "unread_count": _notifications_for(request).unread().count(),
         "extra_params": "filter=unread" if filter_value == "unread" else "",
+        "mark_query": _mark_query(filter_value, page),
     }
 
 

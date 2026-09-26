@@ -36,7 +36,7 @@
                         <c-button variant="secondary"
                                   size="small"
                                   disabled="{% if not unread_count %}disabled{% endif %}"
-                                  hx-post="{% url 'comms:notification_mark_all_read' %}{% if filter == 'unread' %}?filter=unread{% endif %}"
+                                  hx-post="{% url 'comms:notification_mark_all_read' %}{{ mark_query }}"
                                   hx-target="#notification-list"
                                   hx-swap="outerHTML">
                             Mark all as read

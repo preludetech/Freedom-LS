@@ -3,6 +3,8 @@ change a notification's read_at, and the HTMX fragment they hand back."""
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.db import connection
@@ -311,6 +313,30 @@ class TestFilter:
 
         content = response.content.decode()
         assert "filter=unread" in content
+
+    def test_mark_read_button_on_page_2_keeps_the_response_on_page_2(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        notifications = NotificationFactory.create_batch(25, user=user)
+        oldest = notifications[0]
+        client = logged_in_client(user)
+
+        page_two = client.get(
+            reverse(LIST_URL_NAME), {"page": 2}, HTTP_HX_REQUEST="true"
+        )
+        row_match = re.search(
+            rf'id="notification-{oldest.pk}-toggle-read"[\s\S]*?hx-post="([^"]+)"',
+            page_two.content.decode(),
+        )
+        assert row_match is not None
+        mark_url = row_match.group(1)
+
+        response = client.post(
+            mark_url, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="notification-list"
+        )
+
+        assert "Page 2 of" in response.content.decode()
 
 
 @pytest.mark.django_db
