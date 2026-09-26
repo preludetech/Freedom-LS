@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from django.tasks import default_task_backend
 
+from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.comms.config import config
 from freedom_ls.comms.models import (
     Notification,
@@ -35,7 +36,15 @@ def raise_notification(
     transaction.on_commit(..., robust=True), so a caller's own transaction never
     sees a notification for work that was rolled back, and a failure writing the
     row can't affect the caller's own response.
+
+    An FLS category the project has left out of NOTIFICATION_CATEGORIES is an
+    opt-out, not an error: the call returns without writing anything.
     """
+    configured_keys = {c.key for c in config.NOTIFICATION_CATEGORIES}
+    fls_keys = {c.key for c in FLS_NOTIFICATION_CATEGORIES}
+    if category not in configured_keys and category in fls_keys:
+        return
+
     notification_category = get_notification_category(category)
     missing = message_placeholders(notification_category.message) - data.keys()
     if missing:

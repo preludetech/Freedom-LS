@@ -7,6 +7,7 @@ import pytest
 from django.db import transaction
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.notify import raise_notification
 from freedom_ls.content_engine.factories import CourseFactory
@@ -42,6 +43,31 @@ class TestRaiseNotificationValidation:
                 target=course,
                 site_id=mock_site_context.pk,
                 data={},
+            )
+
+        assert not Notification._base_manager.exists()
+
+
+@pytest.mark.django_db
+class TestRaiseNotificationDroppedCategory:
+    def test_an_fls_category_the_project_dropped_writes_nothing(
+        self, mock_site_context, settings, django_capture_on_commit_callbacks
+    ) -> None:
+        settings.NOTIFICATION_CATEGORIES = [
+            category
+            for category in FLS_NOTIFICATION_CATEGORIES
+            if category.key != "course.registered"
+        ]
+        course = CourseFactory()
+        user = UserFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            raise_notification(
+                user=user,
+                category="course.registered",
+                target=course,
+                site_id=mock_site_context.pk,
+                data={"course_title": str(course.title)},
             )
 
         assert not Notification._base_manager.exists()
