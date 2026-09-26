@@ -16,6 +16,12 @@ A would-be learner clicked "Apply now" on a course, landed on the login page, ha
 
 All of this has to be accessible: the error and the callout are announced to screen readers, and the calls to action are real links with clear labels.
 
+## Names
+
+- `acquisition_auth_url(request)`: the auth page an acquisition call to action sends an anonymous visitor to. Signup while the site is open for signups, otherwise `None`, which `redirect_to_auth` resolves to login.
+- `acquisition_login_required`: the `@login_required` counterpart for acquisition calls to action. Same contract, except that the anonymous redirect goes to `acquisition_auth_url` instead of `LOGIN_URL`.
+- `url_with_next` (existing tag) also takes extra query parameters, so the failed-login callout can build the signup link with both `next` and `email`.
+
 ## Constraints
 
 - Keep `ACCOUNT_PREVENT_ENUMERATION = True`. Nothing the visitor sees may depend on whether the email has an account.
