@@ -97,6 +97,10 @@
             {% endif %}
         {% endblock google_analytics %}
 
+        {% if meta_pixel_id %}
+            {% include "partials/meta_pixel.html" %}
+        {% endif %}
+
     </head>
 
     {% comment %}

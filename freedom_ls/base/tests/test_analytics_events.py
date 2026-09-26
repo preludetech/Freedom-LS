@@ -4,14 +4,17 @@ import pytest
 
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpRequest, HttpResponse
-from django.test import RequestFactory, modify_settings
+from django.test import RequestFactory, modify_settings, override_settings
+from django.urls import resolve
 
 from freedom_ls.base.analytics_events import (
     EU_CONSENT_POLICY_COUNTRIES,
     AnalyticsEvent,
+    ad_pixels_allowed,
     pop_analytics_events,
     record_analytics_event,
     record_sign_up,
+    visitor_country,
 )
 
 
@@ -194,6 +197,79 @@ class TestRecordingWithNoPlatformAppInstalled:
         record_analytics_event(request, AnalyticsEvent.SIGN_UP)
 
         assert "analytics_events" not in request.session
+
+
+class TestRecordingWithOnlyMetaPixelInstalled:
+    @modify_settings(INSTALLED_APPS={"remove": ["freedom_ls.google_tag"]})
+    def test_records_when_only_meta_pixel_can_pop_it(self) -> None:
+        request = _request_with_session()
+
+        record_sign_up(request)
+
+        assert request.session["analytics_events"] == [
+            {"name": "sign_up", "params": {"method": "email"}}
+        ]
+
+
+class TestVisitorCountry:
+    @pytest.mark.parametrize(
+        ("header_value", "expected"),
+        [
+            ("ZA", "ZA"),
+            ("za", "ZA"),
+            ("XX", None),
+            ("T1", None),
+            ("", None),
+            ("ZAF", None),
+        ],
+    )
+    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
+    def test_returns_the_expected_country_for_the_header_value(
+        self, header_value: str, expected: str | None
+    ) -> None:
+        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY=header_value)
+
+        assert visitor_country(request) == expected
+
+    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
+    def test_a_missing_header_gives_none(self) -> None:
+        request = RequestFactory().get("/")
+
+        assert visitor_country(request) is None
+
+    @override_settings(VISITOR_COUNTRY_HEADER=None)
+    def test_an_unset_setting_gives_none(self) -> None:
+        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="ZA")
+
+        assert visitor_country(request) is None
+
+
+class TestAdPixelsAllowed:
+    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
+    def test_a_south_african_visitor_is_allowed(self) -> None:
+        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="ZA")
+
+        assert ad_pixels_allowed(request) is True
+
+    @pytest.mark.parametrize("country", ["DE", "GB", "CH", "NO"])
+    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
+    def test_an_eu_consent_policy_country_is_refused(self, country: str) -> None:
+        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY=country)
+
+        assert ad_pixels_allowed(request) is False
+
+    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
+    def test_an_unknown_country_is_refused(self) -> None:
+        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="XX")
+
+        assert ad_pixels_allowed(request) is False
+
+    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
+    def test_an_educator_interface_page_is_refused_even_for_south_africa(self) -> None:
+        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="ZA")
+        request.resolver_match = resolve("/educator/organisations/some-org/cohorts")
+
+        assert ad_pixels_allowed(request) is False
 
 
 class TestEuConsentPolicyCountries:

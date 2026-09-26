@@ -106,6 +106,7 @@ INSTALLED_APPS = [
     "freedom_ls.base",
     "freedom_ls.deployment",
     "freedom_ls.google_tag",
+    "freedom_ls.meta_pixel",
     "freedom_ls.mail",
     "freedom_ls.health",
     "freedom_ls.icons",
@@ -201,6 +202,7 @@ TEMPLATES = [
                 "freedom_ls.deployment.context_processors.posthog_config",
                 "freedom_ls.base.context_processors.analytics_events",
                 "freedom_ls.google_tag.context_processors.google_tag_config",
+                "freedom_ls.meta_pixel.context_processors.meta_pixel_config",
                 "django.template.context_processors.csp",
             ],
             "builtins": [
@@ -612,6 +614,12 @@ GOOGLE_ADS_CONVERSION_ID = os.environ.get("GOOGLE_ADS_CONVERSION_ID")
 GOOGLE_ADS_CONVERSION_LABELS = parse_conversion_labels(
     os.environ.get("GOOGLE_ADS_CONVERSION_LABELS", "")
 )
+# The header the fronting proxy sets to the visitor's ISO 3166-1 alpha-2
+# code, overwritten on every request. Unset means every visitor is unknown
+# and no ad pixel ever loads (resolved through freedom_ls.base.config).
+VISITOR_COUNTRY_HEADER = os.environ.get("VISITOR_COUNTRY_HEADER")
+# Meta pixel (resolved through freedom_ls.meta_pixel.config)
+META_PIXEL_ID = os.environ.get("META_PIXEL_ID")
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT")
 SENTRY_RELEASE = os.environ.get("SENTRY_RELEASE")

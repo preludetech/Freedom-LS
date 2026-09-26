@@ -21,6 +21,8 @@ from typing import TypedDict, cast
 from django.apps import apps
 from django.http import HttpRequest
 
+from freedom_ls.base.config import config
+
 ANALYTICS_EVENTS_SESSION_KEY = "analytics_events"
 
 # The apps that pop the queue. A project with none of them installed has no
@@ -40,6 +42,11 @@ _RESERVED_PARAMETER_NAMES = frozenset(
     {"user_id", "session_id", "currency", "uid", "cid", "customer_id"}
 )
 _MAX_VALUE_LENGTH = 100
+
+_COUNTRY_CODE = re.compile(r"^[A-Z]{2}$")
+# Cloudflare sends "XX" for an unknown country. Its "T1" (Tor) already fails
+# the two-letter pattern.
+_UNKNOWN_COUNTRY_CODES = frozenset({"XX"})
 
 
 class AnalyticsEvent(StrEnum):
@@ -129,3 +136,27 @@ def pop_analytics_events(
         list[AnalyticsEventPayload],
         session.pop(ANALYTICS_EVENTS_SESSION_KEY, []),
     )
+
+
+def visitor_country(request: HttpRequest) -> str | None:
+    """The visitor's country from the proxy header, or None when unknown."""
+    header_name = config.VISITOR_COUNTRY_HEADER
+    if not header_name:
+        return None
+    value = str(request.headers.get(header_name, "")).strip().upper()
+    if not _COUNTRY_CODE.match(value) or value in _UNKNOWN_COUNTRY_CODES:
+        return None
+    return value
+
+
+def ad_pixels_allowed(request: HttpRequest) -> bool:
+    """Whether the Meta and TikTok pixels may load for this request.
+
+    Refused on any educator_interface page: no other staff-only page extends
+    _base.html, so this is the only namespace that needs naming here.
+    """
+    match = request.resolver_match
+    if match is not None and "educator_interface" in match.app_names:
+        return False
+    country = visitor_country(request)
+    return country is not None and country not in EU_CONSENT_POLICY_COUNTRIES

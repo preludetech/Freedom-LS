@@ -133,19 +133,13 @@ def check_trusted_proxy_ip_header_is_not_a_meta_key(
     Error rather than a Warning, and it runs outside --deploy so a downstream
     meets it on runserver rather than at deploy time.
     """
+    from freedom_ls.base.checks import request_meta_key_error
+
     from .config import config
 
-    header_name = config.TRUSTED_PROXY_IP_HEADER
-    if not header_name or not header_name.startswith("HTTP_"):
-        return []
-    plain_name = header_name.removeprefix("HTTP_").replace("_", "-").title()
-    return [
-        Error(
-            f"TRUSTED_PROXY_IP_HEADER is {header_name!r}, which is a request.META "
-            f"key. The setting now names the HTTP header itself, so this value "
-            f"never matches and the client IP silently falls back to the "
-            f"connecting address.",
-            hint=f"Use the header name instead, e.g. {plain_name!r}.",
-            id="freedom_ls_accounts.E003",
-        )
-    ]
+    return request_meta_key_error(
+        setting_name="TRUSTED_PROXY_IP_HEADER",
+        header_name=config.TRUSTED_PROXY_IP_HEADER,
+        check_id="freedom_ls_accounts.E003",
+        consequence="the client IP silently falls back to the connecting address.",
+    )

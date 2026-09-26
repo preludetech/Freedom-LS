@@ -1,0 +1,24 @@
+{% comment %}
+The Meta pixel loader, for the <head>, after the Google block. Included by
+_base.html; a page that does not extend _base.html includes it itself.
+
+`autoConfig` is off: without it, Meta scrapes the page's own forms and
+metadata for advanced matching FLS has not chosen to send. The pixel's own
+history listener already counts boosted and hx-push-url navigation as a
+PageView, so FLS sends no page view of its own beyond the one below.
+{% endcomment %}
+{% if analytics_enabled and meta_pixel_id %}
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('set', 'autoConfig', false, '{{ meta_pixel_id|escapejs }}');
+    fbq('init', '{{ meta_pixel_id|escapejs }}');
+    fbq('track', 'PageView');
+    </script>
+{% endif %}

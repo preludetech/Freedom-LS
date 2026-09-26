@@ -1,0 +1,7 @@
+{% comment %}
+partials/analytics_events.html includes this whenever meta_pixel_id is set,
+independently of whether any event is pending, so the include must exist as
+soon as the pixel can load. The event mapping (meta_pixel/events.py, the
+meta_pixel_call filter) fills this in with one self-removing fbq(...) call
+per mapped event; until then it renders nothing.
+{% endcomment %}
