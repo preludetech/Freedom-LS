@@ -1,157 +1,207 @@
-# Frontend QA report: educator-interface-1-panel-framework-core
+# Frontend QA report: panel framework core
 
-## 1. Methodology
+## Methodology
 
-Testing was driven manually through the Playwright MCP tool against a dev server on port 8304, with the branch badge in the footer verified before starting. Three viewports were exercised: desktop (1920x1080), mobile (375x812) and tablet (768x1024). Screenshots were collected into `screenshots/` beside this report; every screenshot referenced below was confirmed to exist in that folder via a directory listing.
+Manual QA using the Playwright MCP against a dev server on port 8075, branch `educator-interface-1-panel-framework-core`. Three viewports were exercised: desktop (1920x1080), mobile (375x812) and tablet (768x1024). Screenshots were collected into `screenshots/` beside this report; every image linked below was confirmed to exist in that folder before linking.
 
-Seed notes:
+## Diff scoping
 
-- The dev DB was empty, so `create_demo_data --yes` and `content_save demo_content DemoDev` were run before the test plan's §0 seeds (`qa_create_organisation_scenarios`, `qa_create_educator_modal_target`).
-- `qa_create_educator_modal_target` needs a `DemoDev` argument that the test plan omits.
-- The first run of the modal-target seed happened before course content existed, so its target cohort ended up with a cohort membership only — no course registration and no progress record. A later re-seed (after content existed) added a registration and a progress record. This is why test 6.5 below shows two distinct observed branches (one with no cascade summary at all, one with a correct "cannot be deleted" block) rather than one.
+Class: **FULL**. Changed files touched templates and static assets across the panel framework and educator interface (`freedom_ls/base/templates/_base.html`, `freedom_ls/base/static/base/js/alpine-components.js`, `freedom_ls/panel_framework/templates/**`, `freedom_ls/panel_framework/static/panel_framework/js/alpine-components.js`, `freedom_ls/educator_interface/templates/**`, `freedom_ls/panel_framework/*.py`, `freedom_ls/educator_interface/views.py` — roughly 150 files in total). Because `templates/` and `static/` paths were touched, the run was classed FULL: every test in `3. frontend_qa.md` ran, across all three viewports. Nothing was skipped.
 
-## 2. Diff scoping
+## Smoke gate
 
-Scoping class: **FULL**.
+Status: **pass**. Pages checked: `http://127.0.0.1:8075/` and `http://127.0.0.1:8075/educator/` (which redirected to `/educator/organisations/demodev/dashboard`). No failure.
 
-Triggering files:
-- `freedom_ls/panel_framework/templates/**`
-- `freedom_ls/panel_framework/static/panel_framework/js/alpine-components.js`
-- `freedom_ls/base/static/base/js/alpine-components.js`
-- `freedom_ls/base/templates/_base.html`
-- `freedom_ls/base/templates/_base_interface.html`
-- `freedom_ls/educator_interface/templates/**`
-- `freedom_ls/panel_framework/*.py`
-- `freedom_ls/educator_interface/views.py`
-- `freedom_ls/icons/*.py`
+## Results
 
-Nothing was skipped: desktop, mobile and tablet viewports were all run against the full plan.
+### Desktop (1920x1080)
 
-## 3. Smoke gate
+| Test | Status | Note |
+| --- | --- | --- |
+| 1.1 | pass | `/educator/` redirected to DemoDev dashboard (admin's first organisation). |
+| 1.2 | pass | Tab title "Dashboard — DemoDev — DemoDev"; h1 "Dashboard". |
+| 1.3 | pass | One "Reporting" card, placeholder sentence, no tiles/lists. |
+| 1.4 | pass | Switcher, TEACHING heading, four nav items with icons; Dashboard highlighted, no counts. |
+| 1.5 | pass | Footer shows email only (admin has blank first/last name); no role, no settings link. |
+| 1.6 | pass | `no.access` gets 404 on `/educator/` and on the RPAS Training dashboard. |
+| 2.1 | pass | Clicking Cohorts is one XHR, no reload, heading/breadcrumb/title/highlight all update. |
+| 2.2 | pass | `Vary` header includes HX-Request, HX-Target, HX-History-Restore-Request, Cookie. |
+| 2.3 | pass | Back does a fresh GET (history-restore) of the dashboard, highlight returns to Dashboard. |
+| 2.4 | pass | Forward refetches Cohorts, heading and highlight follow. |
+| 2.5 | pass | htmx-config meta present with historyCacheSize 0 / historyRestoreAsHxRequest false; one `#scope-announcer` outside `#main-content`. |
+| 3.1 | pass | Cohorts list shows Year 10 Science and Year 9 Maths with counts; Create Cohort button above table. |
+| 3.2 | pass | Detail page: h1, one "Details" tab (current), then Details/Course Registrations/Learners cards. |
+| 3.3 | pass | Delete button lives inside the Details card; nothing above the tab strip. |
+| 3.4 | pass | Sidebar shows the cohort nested under Cohorts, highlighted. |
+| 3.5 | pass | Breadcrumb "Cohorts › Year 9 Maths"; clicking Cohorts is one XHR, no reload. |
+| 3.6 | pass | Sorting Learners by First Name only refreshes the panel region; one `section[data-panel="learners"]`, no nesting. |
+| 3.7 | pass | Searching "Pri" narrows to Priya via panel XHR, keeping sort params. |
+| 4.1 | pass | Activating the Details tab pushes `__tabs/details`, one XHR, three cards once each, focus stays sane. |
+| 4.2 | pass | XHR body has the three cards plus an OOB `#scope-announcer` update; no sidebar/`<html>`. |
+| 4.3 | pass | Back returns to the detail URL via a fresh history-restore GET. |
+| 4.4 | pass | Opening the tab URL directly returns the full page, Details current. |
+| 4.5 | pass | Bad tab/panel URL combinations 404 as expected. |
+| 4.6 | pass | Replaying with `HX-Target: something-else` returns the full navigation bundle, never a bare fragment. |
+| 5.1 | pass | Edit opens "Edit Year 9 Maths" modal with Name field. |
+| 5.2 | pass | Duplicate name returns 422, modal stays open with the uniqueness error under the field. |
+| 5.3 | pass | Rename triggers one POST then one GET per leaf panel (Details/Course Registrations/Learners), each targeting its own region; modal closes, name updates everywhere except the (expected) stale sidebar disclosure. |
+| 5.4 | pass | Reload shows the new name in h1 and sidebar disclosure. |
+| 5.5 | pass | Rename-back persisted after reload. |
+| 6.1 | pass | Create Cohort modal has Save / Save and add another; new cohort redirects to its detail page. |
+| 6.2 | pass | Delete confirmation reads "Are you sure you want to delete QA Empty Cohort?", no cascade list. |
+| 6.3 | pass | Confirming redirects to the list with the cohort gone. |
+| 6.4 | pass | "Save and add another" keeps the modal open, refreshes the list behind it without a reload; second cohort's own Save lands on its detail page. |
+| 6.5 | pass | `qa_educator` sees only its own cohort, no Create/Edit buttons; delete is blocked with a "still has 1 course progress record" message and Close only. |
+| 6.6 | pass | DELETE to the correct (post-spec-§159) action URL returns 422 with the blocked reason and correct `Vary`; the plan's own URL is stale (see General notes). |
+| 7.1 | pass | Learners list search/sort/clear all work without a reload. |
+| 7.2 | pass | Learner detail has Details card (sentence-case labels) and a Cohorts card scoped to that learner. |
+| 7.3 | pass | Learner with no cohort shows an empty table with the empty-state message, not an error. |
+| 8.1 | pass | Course list shows Title/Visibility/Interest/Active Learners/Active Cohorts/Cohorts columns. |
+| 8.2 | pass | Course detail scopes Cohort Registrations to the current organisation. |
+| 8.3 | pass | Switching organisation on a course page keeps the same course and re-scopes Cohort Registrations. |
+| 9.1 | pass | `org.educator` lands on a dashboard for one of its two organisations; switcher lists both. |
+| 9.2 | pass | Switching organisation on the cohorts list re-renders list, URL and sidebar, and announces via `#scope-announcer`. |
+| 9.3 | pass | Switching away from a Northside cohort detail redirects to the RPAS cohorts list with a notice that the cohort isn't in this organisation. |
+| 9.4 | pass | `legacy.educator` is correctly scoped to Year 9 Maths only (list, detail 404s, Learners column). |
+| 11.1 | pass | Learner course player renders with a 3-part course outline sidebar, no console errors. |
+| 11.3 | pass | Page source has only whitespace around the content grid; htmx-config meta present. |
+| 12.1 | pass | The four removed qa management commands are gone from `manage.py help`. |
+| 12.2 | pass | No Course Progress tab/matrix remains; its tab URL 404s. |
+| 12.3 | pass | No console/page errors and no Alpine `tabContainer` expression error after navigating tabs/sidebar. |
 
-Outcome: **pass**.
+#### 1.3 / 1.4 / 1.5 — Dashboard reporting card and sidebar
 
-Pages checked:
-- `http://127.0.0.1:8304/`
-- `http://127.0.0.1:8304/educator/organisations/rpas-training/dashboard`
+![](screenshots/page-2026-09-26T14-18-54-143Z.png)
 
-## 4. Results table
+#### 2.1 / 3.1 — Cohorts list reached over htmx
 
-| Test ID | Viewport | Status | Note |
-| --- | --- | --- | --- |
-| 1.1 | desktop | pass | `/educator/` redirected to `/educator/organisations/demodev/dashboard` (first org for admin) |
-| 1.2 | desktop | pass | Title "Dashboard — RPAS Training — DemoDev"; heading "Dashboard" |
-| 1.3 | desktop | pass | Single "Reporting" card with one sentence; no tiles/lists |
-| 1.4 | desktop | pass | Switcher, TEACHING heading, Dashboard/Cohorts/Learners/Courses with 4 icons; Dashboard highlighted; no counts |
-| 1.5 | desktop | pass | Footer shows email only (admin has blank first/last name); no role, no settings link |
-| 2.1 | desktop | pass | One XHR, no reload; heading/breadcrumb/title/sidebar highlight all moved to Cohorts |
-| 2.2 | desktop | pass | Vary: HX-Request, HX-Target, HX-History-Restore-Request, Cookie |
-| 2.3 | desktop | pass | Back issued a fresh GET of the dashboard (not a cache restore); highlight on Dashboard |
-| 2.4 | desktop | pass | Forward refetched Cohorts |
-| 2.5 | desktop | pass | htmx-config meta present with historyCacheSize 0 / historyRestoreAsHxRequest false; one `#scope-announcer`, outside `#main-content` |
-| 3.1 | desktop | pass | Year 10 Science (1, -) and Year 9 Maths (3, Functionality Demo - Course Parts); Create Cohort button above table |
-| 3.2 | desktop | pass | h1, one "Details" tab underlined (aria-current=page), Details/Course Registrations/Learners cards; Edit+Delete at foot of Details |
-| 3.3 | desktop | pass | No buttons above the tab strip; Delete inside Details card |
-| 3.4 | desktop | pass | Sidebar shows Year 9 Maths nested under Cohorts, highlighted |
-| 3.5 | desktop | pass | Breadcrumb "Cohorts / Year 9 Maths"; clicking Cohorts returned to list without reload |
-| 3.6 | desktop | pass | Sort by First Name toggles asc/desc in place; URL unchanged; exactly one `section[data-panel=learners]`; only 3 learners so pagination not exercised |
-| 3.7 | desktop | pass | Search "Tom" narrowed to one row in place; focus stayed in input; one heading, no nesting |
-| 4.1 | desktop | pass | URL -> `.../__tabs/details`, one XHR, cards rendered once, tab aria-current=page, focus stays on tab; Tab moves to Edit button; Enter also triggers request |
-| 4.2 | desktop | pass | Body has `hx-swap-oob="innerHTML:#scope-announcer"` with "Showing Details"; no sidebar-nav, no `<html>` |
-| 4.3 | desktop | pass | Back returned to cohort URL with a fresh request; same three cards |
-| 4.4 | desktop | pass | Direct load of `__tabs/details` renders full page with sidebar and breadcrumbs, tab current |
-| 4.5 | desktop | pass | `__tabs/nope`, `__panels/details`, `__tabs/details/__panels/nope` all 404 |
-| 4.6 | desktop | pass | HX-Request + HX-Target: something-else returned navigation bundle containing `id=sidebar-nav`, no `<html>` |
-| 1.6 | desktop | pass | no.access@example.com: `/educator/` and `/educator/organisations/rpas-training/dashboard` both 404 |
-| 5.1 | desktop | pass | Modal "Edit Year 9 Maths" with Name field |
-| 5.2 | desktop | pass | 422; modal stays open with uniqueness error under the field; Name row and h1 unchanged |
-| 5.3 | desktop | **fail** | Save worked without reload, but network shows one POST followed by THREE GETs (details/courses/learners), not the single GET the plan expects. See bug B1 |
-| 5.4 | desktop | pass | After reload h1 and sidebar disclosure show new name. Without reload sidebar stays stale (plan only requires it after reload) |
-| 5.5 | desktop | pass | Renamed back to Year 9 Maths |
-| 6.1 | desktop | pass | Create "QA Empty Cohort" redirected to its detail page |
-| 6.2 | desktop | pass | "Are you sure you want to delete QA Empty Cohort?" with no cascade list |
-| 6.3 | desktop | pass | Redirected to cohorts list without QA Empty Cohort |
-| 6.4 | desktop | pass | Save and add another: modal stays open with empty input, list updated in place, no nested section; second cohort landed on its own page; both deleted |
-| 6.5 | desktop | **fail** | qa_educator: no Create Cohort, no Edit (pass). But first-seed delete modal showed no cascade summary despite 1 membership being deleted. See bug B2 |
-| 6.6 | desktop | pass | DELETE on blocked cohort: 422 with blocked reason, no HX-Redirect, Vary present, cohort still 200; earlier DELETE on the deletable first-seed cohort removed it (then 404) |
-| 7.1 | desktop | pass | Search "Priya" narrowed to 1 row without reload; clearing restored 5; Last Name sort ascending correct |
-| 7.2 | desktop | pass | Details card rows sentence-case; Cohorts card lists only Year 9 Maths; h1 shows Learner `__str__` per requirement 11 |
-| 7.3 | desktop | pass | Nell Unregistered: Cohorts table shows empty message, no error |
-| 8.1 | desktop | pass | Columns as specified; 13 courses across 3 pages; paging in place, URL unchanged, no nested section. Cohorts column not org-scoped (known gap, see general notes) |
-| 8.2 | desktop | pass | Title + Dashboard category "Reference"; gated course shows "-"; Cohort Registrations lists only RPAS Year 9 Maths; Direct Registrations present |
-| 8.3 | desktop | pass | Switching to Northside on course page stayed on same course without reload; Cohort Registrations became empty; announcer fired; switched back |
-| 9.1 | desktop | pass | org.educator landed on Northside dashboard; switcher lists Northside and RPAS Training only |
-| 9.2 | desktop | pass | Switching on cohorts list: list changed, URL changed, no reload, announcer "Now viewing RPAS Training" |
-| 9.3 | desktop | pass | Switching orgs from a Northside cohort landed on RPAS cohorts list with URL pushed; notice rendered as a bottom-right toast rather than inline (plan says inline — see general notes) |
-| 9.4 | desktop | pass | legacy.educator: cohorts list only Year 9 Maths; Year 10 Science detail 404; Learners Cohorts column names only Year 9 Maths; Northside dashboard 404 |
-| 11.1 | desktop | pass | Course player for Course Parts renders with outline sidebar on desktop |
-| 11.3 | desktop | pass | Only whitespace before `</main>`; htmx-config meta present |
-| 12.1 | desktop | pass | `manage.py help` grep for the four removed commands prints nothing |
-| 12.2 | desktop | pass | Only a Details tab; no Course Progress; `__tabs/course_progress` 404 |
-| 12.3 | desktop | pass | No console errors or Alpine Expression Errors after tab click and sidebar links |
-| 10.1 | mobile | pass | Sidebar closed at 375px; toggle (44x48) opens bottom sheet with switcher, TEACHING group, user footer. Minor: nav links 36px tall, nav column 256px wide inside a 375px sheet (see general notes) |
-| 10.2 | mobile | **fail** | Tapping Cohorts in the sheet reaches the list but not over htmx: XHR fires, then a full document load follows (JS marker lost). See bug B3 |
-| 10.3 | mobile | pass | Tab strip and three cards stack in one column; Details row renders label above value; no page horizontal scroll |
-| 10.4 | mobile | pass | With sheet open, Back closed the sheet and stayed on the page; a second Back navigated to the previous page |
-| 11.2 | mobile | pass | Course player "Open course outline" opens the outline as a dialog sheet; Escape closes it |
-| 10.1 | tablet | pass | 768px is below the lg breakpoint so tablet gets the mobile nav; toggle opens a full-width bottom sheet; Courses table fits the card, pagination readable, no overflow |
-| 10.2 | tablet | **fail** | Same as mobile: tapping Learners in the sheet fires the htmx XHR then a full document load. See bug B3 |
-| 5.1 | tablet | pass | Edit modal centred at a sensible width; no overflow |
+![](screenshots/page-2026-09-26T14-19-42-999Z.png)
 
-## 5. Bugs
+#### 3.2 / 3.3 / 3.4 — Cohort detail layout
 
-### B1: Saving an edit refetches every panel on the page, not just the edited one
+![](screenshots/page-2026-09-26T14-20-07-693Z.png)
 
-Manifestations: 5.3 (desktop).
+#### 3.7 — Learners card search narrows to Priya
 
-Expected (test plan 5.3): one POST then one GET, the GET's `HX-Target` equal to the Details card's id.
+![](screenshots/page-2026-09-26T14-21-12-015Z.png)
 
-Actual: One POST then three GETs (details, courses, learners), each targeting its own region. Every leaf panel carries `hx-trigger="panelChanged from:body"` as spec requirement 9 prescribes, so a single `panelChanged` event refreshes every leaf panel on the page. The test plan and the spec disagree on the expected network shape; functionally the edit works and nothing duplicates or corrupts on screen.
+#### 5.1 — Edit Year 9 Maths modal
 
-No screenshot recorded for this bug (network-panel observation only).
+![](screenshots/page-2026-09-26T14-22-52-439Z.png)
 
-### B2: Delete confirmation omits cascade-deleted rows that Django fast-deletes (e.g. cohort memberships)
+#### 5.2 — Duplicate-name validation error
 
-Manifestations: 6.5 (desktop).
+![](screenshots/page-2026-09-26T14-23-45-891Z.png)
 
-![](screenshots/page-2026-09-26T07-51-15-405Z.png)
+#### 6.2 — Delete confirmation, no cascade list
 
-Expected: Deleting a cohort with 1 membership shows a "This will also delete" summary listing 1 cohort membership.
+![](screenshots/page-2026-09-26T14-24-29-988Z.png)
 
-Actual: Plain "Are you sure you want to delete QA Modal Cohort?" with no summary, even though the delete removes 1 `CohortMembership` row. Cause: `DeleteAction.get_cascade_summary` (`freedom_ls/panel_framework/actions.py`) iterates only `Collector.data` and ignores `Collector.fast_deletes`, where signal-free cascades such as `CohortMembership` land. Identical code exists on `main`, so this is not a regression introduced by this branch.
+#### 6.4 — Save and add another keeps the modal open
 
-After a re-seed added a registration and a progress record to the same target cohort, the "blocked" branch of the same dialog rendered correctly:
+![](screenshots/page-2026-09-26T14-24-47-901Z.png)
 
-![](screenshots/page-2026-09-26T07-53-01-230Z.png)
+#### 6.5 — qa_educator's blocked delete
 
-"This cohort cannot be deleted because it still has 1 course progress record." with a Close button only — this branch of the flow is correct; only the cascade-summary branch for fast-deleted rows is affected.
+![](screenshots/page-qa-educator-delete-confirm.png)
 
-### B3: Links in the mobile/tablet navigation sheet trigger a full page reload after the htmx request
+#### 7.2 — Learner detail (Priya)
 
-Manifestations: 10.2 (mobile), 10.2 (tablet).
+![](screenshots/page-learner-priya.png)
 
-Expected: Tapping a sheet link closes the sheet and loads the section over htmx, with no full reload.
+#### 8.1 — Course list columns
 
-Actual: The htmx XHR fires, then a full document load follows (the JS marker used to detect reloads was lost both times). Cause: the sidePanel dialog click handler in `freedom_ls/base/static/base/js/alpine-components.js` (around lines 450-473) calls `event.preventDefault(); window.location.replace(link.href)` for every plain link click inside the mobile sheet, including `hx-get` links. This code is unchanged from `main` apart from a comment, so the bug predates this branch. The desktop sidebar nav uses htmx only and is unaffected.
+![](screenshots/page-courses-list.png)
 
-No screenshot recorded for this bug (network-panel observation only).
+#### 8.3 — Course detail after switching to Northside
+
+![](screenshots/page-course-northside.png)
+
+#### 9.2 — Cohorts list after switching organisation
+
+![](screenshots/page-org-switch-cohorts.png)
+
+#### 9.3 — Notice after switching away from a Northside cohort
+
+![](screenshots/page-org-switch-notice.png)
+
+#### 11.1 — Learner course player, desktop
+
+![](screenshots/page-player-desktop.png)
+
+### Mobile (375x812)
+
+| Test | Status | Note |
+| --- | --- | --- |
+| 10.1 | pass | Sidebar closed on load; nav toggle opens a bottom sheet with switcher, TEACHING group and footer. |
+| 10.2 | pass | Tapping Cohorts in the sheet is one XHR, no reload, sheet closes. |
+| 10.3 | pass | Tab strip and three cards stack in one column; Details rows stack label above value; no page-level horizontal overflow; Edit modal fits the viewport. |
+| 10.4 | pass | Device Back closes an open sheet before navigating. |
+| 11.2 | pass | Course player outline becomes a bottom sheet below 1024px, closes with Escape. |
+
+#### 10.1 — Mobile navigation sheet
+
+![](screenshots/page-2026-09-26T14-30-02-491Z.png)
+
+#### 10.2 — Cohorts list loaded from the sheet
+
+![](screenshots/page-mobile-cohorts.png)
+
+#### 10.3 — Cohort detail, single-column layout
+
+![](screenshots/page-mobile-cohort-detail.png)
+
+#### 10.3 — Edit modal fits the mobile viewport
+
+![](screenshots/page-mobile-edit-modal.png)
+
+#### 11.2 — Course outline as a mobile sheet
+
+![](screenshots/page-mobile-player-sheet.png)
+
+### Tablet (768x1024)
+
+| Test | Status | Note |
+| --- | --- | --- |
+| 10.1 | pass | At 768px the tablet uses the mobile navigation pattern: hidden sidebar, toggle opens the bottom sheet. |
+| 10.2 | pass | Tapping Learners in the sheet loads the list over htmx with no horizontal overflow. |
+| 10.3 | pass | Cohort detail cards are full-width single column; Details renders as label/value columns; Learners table fits with wrapped headers. |
+
+#### 10.1 — Tablet navigation sheet
+
+![](screenshots/page-tablet-sheet.png)
+
+#### 10.2 — Learners list on tablet
+
+![](screenshots/page-tablet-learners.png)
+
+#### 10.3 — Cohort detail on tablet
+
+![](screenshots/page-tablet-cohort-detail.png)
+
+## Bugs
+
+No failures were found during this run. There are no bug records to report.
 
 ## Bug status
 
-- B1: **FIXED** (commit: 6224ead5): saving an edit refetches every leaf panel. This is the intended behaviour (spec requirement 9), so test plan 5.3 now expects one GET per leaf panel.
-- B2: **FIXED** (commit: c9473282): the delete confirmation now lists cascade rows Django fast-deletes.
-- B3: **FIXED** (commit: 20eb7777): links in the mobile/tablet navigation sheet no longer trigger a full page reload.
+There are no bugs to track this run.
 
-## 7. General notes
+## General notes
 
-- Instance-page document titles omit the instance name (e.g. no "RPAS Training — DemoDev" suffix on the tab title observed during this run comes from the org/site, not the instance). `_main_for` passes an empty heading for instance views, and `main` did the same before this branch, so this is not a regression.
-- The learner detail h1 shows the Learner `__str__` ("email - Organisation"), which matches spec requirement 11 (`{{ instance }}`).
-- The Courses list Cohorts column is not organisation-scoped (a DemoDev-org cohort appeared under both RPAS Training and Northside courses). This is a known, declared gap on `CourseConfig` (`@claude` comment / `check_access_exempt_reason`), deferred to `critical_security_fixes`.
-- The sidebar cohort name stays stale after an edit until reload; the plan only requires the new name to appear after reload, so this is expected behaviour, not a bug.
-- The 9.3 notice ("Switched to RPAS Training — that cohort isn't in this organisation") renders as a bottom-right toast rather than an inline notice in the content area, though the plan's wording says inline.
-- On mobile, sheet nav links are 36px tall, under the 44px touch target guideline; the nav column itself is 256px wide inside a 375px sheet.
-- Admin `demodev@email.com` has no first/last name set, so the footer shows the email only rather than a full name plus email.
-- 3.6 pagination was not exercised on the cohort Learners card because the seeded cohort only has 3 learners (plan says to page only if there is more than one page). Paging behaviour was verified instead on the Courses list (test 8.1, 13 courses across 3 pages).
+- No failures, so no bug records and Step 13 (fix loop) had nothing to do.
+- Test plan step 6.6 uses a stale URL: `<detail-url>/__actions/delete` returns 404 by design, because spec item 159 moved DeleteAction from `CohortInstanceView` onto `CohortDetailsPanel`. The working URL is `<detail-url>/__tabs/details/__panels/details/__actions/delete` (422 + `Vary` as expected). The plan text should be updated.
+- Course list (8.1): the Active Learners, Active Cohorts and Cohorts columns are not organisation-scoped. Every organisation lists DemoDev's "QA Modal Cohort" against Content Widgets. Same code as main; declared via `CourseConfig.check_access_exempt_reason`; planned in `spec_dd/1. next/educator-interface-6-cohort-administration`.
+- Instance pages (cohort, learner, course detail) have a browser tab title of "<Organisation> — <site>" with no instance name. Same as main, not required by this plan.
+- Learner detail h1 is the model `__str__` ("y9.learner2@example.com - RPAS Training") rather than the learner's name.
+- Duplicate-name error reads "Cohort with this Site, Organisation and Name already exists." (Django `unique_together` default wording that exposes "Site").
+- Edit/create modal has an empty footer strip below the Save row (desktop and mobile).
+- The org-switch "that cohort isn't in this organisation" notice (9.3) shows as a bottom-right toast; the plan says "inline notice". Judged a pass.
+- Cohort Learners card has only 3 learners, so pagination in 3.6 was not exercised (the plan makes it conditional). Northside has no cohort course registrations, so 8.3's "lists only Northside cohorts" showed an empty table; scoping was otherwise confirmed by Content Widgets' detail omitting DemoDev's cohort.
+- The seed command `qa_create_educator_modal_target` needs a `SITE_NAME` argument (DemoDev), which plan §0.2 omits. Its summary text also says Delete is "top of the page", which is now out of date.
+- `/educator/` for the admin lands on the DemoDev organisation's dashboard (first organisation), not RPAS Training; the plan allows "remembered or first".
+- Debug toolbar panels open by default in fresh browser contexts and can intercept clicks; hidden via its Hide button during the run.
+- Observation from test 1.5: the admin persona's footer shows email only (no name line) because that user's first/last name fields are blank — a data characteristic of the seeded admin account, not a defect.
 
 status: ok
-reason: 3 bugs — 3 fixed (after the run), 0 unresolved; report rendered, screenshots verified
+reason: report rendered, 0 bugs documented
