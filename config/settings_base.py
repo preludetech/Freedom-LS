@@ -21,6 +21,7 @@ from django.utils.csp import (
 )
 
 from freedom_ls.base.env import env_bool, env_float
+from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR, configure_theme
 from freedom_ls.base.webhook_event_types import FLS_WEBHOOK_EVENT_TYPES
 from freedom_ls.google_tag.google_ads import parse_conversion_labels
@@ -136,6 +137,7 @@ INSTALLED_APPS = [
     "encrypted_fields",
     "django_ace",
     "freedom_ls.webhooks",
+    "freedom_ls.comms",
     "allauth",
     "allauth.account",
     "axes",
@@ -477,6 +479,10 @@ LOGIN_REDIRECT_URL = "/"
 
 # Webhook event types
 WEBHOOK_EVENT_TYPES = FLS_WEBHOOK_EVENT_TYPES
+
+# Notification categories. A downstream project appends its own, e.g.:
+# NOTIFICATION_CATEGORIES = FLS_NOTIFICATION_CATEGORIES + [NotificationCategory(...)]
+NOTIFICATION_CATEGORIES = FLS_NOTIFICATION_CATEGORIES
 
 
 # Content Security Policy (report-only mode)

@@ -131,6 +131,7 @@ def _ensure_and_announce(
     registration is written -- a management command with no ambient request,
     or a request whose ambient site is not the learner's own.
     """
+    from freedom_ls.comms.notify import raise_notification
     from freedom_ls.webhooks.events import fire_webhook_event
 
     learner = Learner._base_manager.select_related("user").get(
@@ -139,6 +140,14 @@ def _ensure_and_announce(
     record = ensure_course_progress_record(learner, registration.course, registration)
     if not announce:
         return
+
+    raise_notification(
+        user=learner.user,
+        category="course.registered",
+        target=registration.course,
+        site_id=registration.site_id,
+        data={"course_title": registration.course.title},
+    )
 
     fire_webhook_event(
         "course.registered",

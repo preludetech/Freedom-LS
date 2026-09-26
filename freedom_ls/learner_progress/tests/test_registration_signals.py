@@ -12,7 +12,9 @@ from unittest.mock import patch
 import pytest
 
 from django.core import serializers
+from django.urls import reverse
 
+from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -27,6 +29,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.learner_progress.signals import _ensure_and_announce
 
 
 @pytest.mark.django_db
@@ -336,4 +339,149 @@ class TestCourseRegisteredWebhook:
 
         assert CourseProgress._base_manager.filter(
             learner_registration=registration
+        ).exists()
+
+
+@pytest.mark.django_db
+class TestCourseRegisteredNotification:
+    def test_a_factory_created_active_registration_notifies_once(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        learner = LearnerFactory()
+        course = CourseFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+        notifications = Notification._base_manager.filter(
+            user=learner.user, category="course.registered"
+        )
+        assert notifications.count() == 1
+        assert notifications.get().data == {"course_title": course.title}
+
+    def test_a_registration_created_through_the_admin_notifies_once(
+        self, mock_site_context, staff_client, django_capture_on_commit_callbacks
+    ) -> None:
+        learner = LearnerFactory()
+        course = CourseFactory()
+        url = reverse(
+            "admin:freedom_ls_learner_management_learnercourseregistration_add"
+        )
+
+        with django_capture_on_commit_callbacks(execute=True):
+            response = staff_client.post(
+                url,
+                {
+                    "learner": str(learner.pk),
+                    "course": str(course.pk),
+                    "is_active": "on",
+                    "deadlines-TOTAL_FORMS": "0",
+                    "deadlines-INITIAL_FORMS": "0",
+                    "deadlines-MIN_NUM_FORMS": "0",
+                    "deadlines-MAX_NUM_FORMS": "1000",
+                },
+            )
+
+        assert response.status_code == 302
+        assert (
+            Notification._base_manager.filter(
+                user=learner.user, category="course.registered"
+            ).count()
+            == 1
+        )
+
+    def test_reactivating_a_registration_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            registration = LearnerCourseRegistrationFactory()
+        Notification._base_manager.all().delete()
+
+        registration.is_active = False
+        registration.save()
+        with django_capture_on_commit_callbacks(execute=True):
+            registration.is_active = True
+            registration.save()
+
+        assert not Notification._base_manager.exists()
+
+    def test_deactivating_a_registration_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            registration = LearnerCourseRegistrationFactory()
+        Notification._base_manager.all().delete()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            registration.is_active = False
+            registration.save()
+
+        assert not Notification._base_manager.exists()
+
+    def test_an_inactive_create_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            LearnerCourseRegistrationFactory(is_active=False)
+
+        assert not Notification._base_manager.exists()
+
+    def test_a_raw_save_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        registration: LearnerCourseRegistration = LearnerCourseRegistrationFactory()
+        Notification._base_manager.all().delete()
+        serialized = serializers.serialize("json", [registration])
+        LearnerCourseRegistration.objects.filter(pk=registration.pk).delete()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            for deserialized in serializers.deserialize("json", serialized):
+                deserialized.save()
+
+        assert not Notification._base_manager.exists()
+
+    def test_a_cohort_registration_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        cohort = CohortFactory()
+        CohortMembershipFactory(cohort=cohort)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            CohortCourseRegistrationFactory(cohort=cohort)
+
+        assert not Notification._base_manager.exists()
+
+    def test_a_notification_write_failure_does_not_stop_the_registration(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with (
+            patch(
+                "freedom_ls.comms.models.Notification.objects.create",
+                side_effect=RuntimeError,
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            registration = LearnerCourseRegistrationFactory()
+
+        assert LearnerCourseRegistration.objects.filter(pk=registration.pk).exists()
+
+    def test_a_webhook_failure_does_not_stop_the_notification(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        """raise_notification runs before fire_webhook_event, so the notification
+        is already written by the time a webhook failure happens."""
+        registration = LearnerCourseRegistrationFactory()
+
+        with (
+            patch(
+                "freedom_ls.webhooks.events.fire_webhook_event",
+                side_effect=RuntimeError,
+            ),
+            pytest.raises(RuntimeError),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            _ensure_and_announce(registration, announce=True)
+
+        assert Notification._base_manager.filter(
+            user=registration.learner.user, category="course.registered"
         ).exists()

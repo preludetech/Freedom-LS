@@ -10,11 +10,14 @@ creates, its idempotence, and reactivation of a removed learner.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.comms.models import Notification
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
@@ -173,3 +176,49 @@ class TestCourseRegisteredGoogleAnalyticsEvent:
         client.post(_initiate_url(course.slug))
 
         assert "google_analytics_events" not in client.session
+
+
+@pytest.mark.django_db
+class TestCourseRegisteredNotificationOnSelfRegistration:
+    def test_self_registering_notifies_the_learner_once(
+        self,
+        mock_site_context,
+        logged_in_client,
+        course_with_topic,
+        django_capture_on_commit_callbacks,
+    ) -> None:
+        course = course_with_topic(access_type="free")
+        user = UserFactory()
+        client = logged_in_client(user)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            client.post(_initiate_url(course.slug))
+
+        assert (
+            Notification._base_manager.filter(
+                user=user, category="course.registered"
+            ).count()
+            == 1
+        )
+
+    def test_self_registering_still_redirects_when_the_notification_write_raises(
+        self,
+        mock_site_context,
+        logged_in_client,
+        course_with_topic,
+        django_capture_on_commit_callbacks,
+    ) -> None:
+        course = course_with_topic(access_type="free")
+        user = UserFactory()
+        client = logged_in_client(user)
+
+        with (
+            patch(
+                "freedom_ls.comms.models.Notification.objects.create",
+                side_effect=RuntimeError,
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            response = client.post(_initiate_url(course.slug))
+
+        assert response.status_code == 302
