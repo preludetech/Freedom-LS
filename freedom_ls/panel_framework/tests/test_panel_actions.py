@@ -23,6 +23,7 @@ from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
 
 from .conftest import (
+    StubGrandchild,
     StubModel,
     _make_stub,
     _make_stub_child,
@@ -344,6 +345,25 @@ def test_delete_action_cascade_summary_includes_related_objects(mock_site_contex
     assert len(summary) > 0
     summary_text = " ".join(summary).lower()
     assert "stub child" in summary_text
+
+
+@pytest.mark.django_db
+def test_delete_action_cascade_summary_counts_fast_deleted_rows(
+    mock_site_context: Site,
+) -> None:
+    """Rows Django bulk-deletes without loading them still appear in the summary.
+
+    StubGrandchild has no dependents of its own, so the Collector fast-deletes
+    it rather than putting it in ``Collector.data``.
+    """
+    item = _make_stub(name="fast-delete-parent")
+    child = _make_stub_child(parent=item)
+    for _ in range(3):
+        StubGrandchild.objects.create(parent=child)
+
+    summary = DeleteAction(success_url="/items").get_cascade_summary(item)
+
+    assert "3 stub grandchilds" in summary
 
 
 @pytest.mark.django_db

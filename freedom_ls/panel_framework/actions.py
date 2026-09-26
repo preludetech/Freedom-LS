@@ -233,13 +233,18 @@ class DeleteAction(PanelAction):
         db = instance._state.db or "default"
         collector = Collector(using=db)
         collector.collect([instance])
-        summary = []
+        counts: Counter[type[Model]] = Counter()
         for model, objs in collector.data.items():
-            if model is not type(instance):
-                count = len(objs)
-                if count:
-                    summary.append(f"{count} {model._meta.verbose_name_plural}")
-        return summary
+            counts[model] += len(objs)
+        # Rows with no signals or dependents of their own are bulk-deleted
+        # later rather than loaded into collector.data.
+        for fast_delete in collector.fast_deletes:
+            counts[fast_delete.model] += fast_delete.count()
+        return [
+            f"{count} {model._meta.verbose_name_plural}"
+            for model, count in counts.items()
+            if count and model is not type(instance)
+        ]
 
     def get_blocked_reason(self, instance: Model, error: ProtectedError) -> str:
         """One plain sentence naming what still depends on this instance."""
