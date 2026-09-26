@@ -24,7 +24,7 @@ class TestNotificationRendering:
         course.title = "New Title"
         course.save(update_fields=["title"])
 
-        assert notification.message == "You're registered for Original Title"
+        assert notification.message == "You've been registered for Original Title"
 
     def test_url_follows_the_courses_new_slug(self, mock_site_context) -> None:
         course = CourseFactory(slug="old-slug")
@@ -49,10 +49,10 @@ class TestNotificationRendering:
         assert notification.url is None
 
     def test_label_and_icon_come_from_the_category(self, mock_site_context) -> None:
-        notification = NotificationFactory(category="course.completed")
+        notification = NotificationFactory(category="course.registered")
 
-        assert notification.label == "Course completion"
-        assert notification.icon == "achievement"
+        assert notification.label == "Course registration"
+        assert notification.icon == "course"
 
 
 @pytest.mark.django_db

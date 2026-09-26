@@ -116,6 +116,11 @@ class LearnerCourseRegistration(SiteAwareModel):
     )
     learner = models.ForeignKey(Learner, on_delete=models.CASCADE)
     is_active = models.BooleanField(default=True)
+    # False for registrations made before this field existed, whoever made them.
+    self_registered = models.BooleanField(
+        default=False,
+        help_text="The learner registered themselves rather than being registered by staff.",
+    )
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

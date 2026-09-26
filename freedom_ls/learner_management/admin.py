@@ -378,11 +378,11 @@ class LearnerCourseRegistrationAdmin(SiteAwareModelAdmin):
         "course__title",
     ]
     autocomplete_fields = ["learner", "course"]
-    readonly_fields = ["registered_at"]
+    readonly_fields = ["self_registered", "registered_at"]
     inlines = [LearnerDeadlineInline]
 
     fieldsets = (
-        (None, {"fields": ("learner", "course", "is_active")}),
+        (None, {"fields": ("learner", "course", "is_active", "self_registered")}),
         ("Timestamps", {"fields": ("registered_at",), "classes": ("collapse",)}),
     )
 

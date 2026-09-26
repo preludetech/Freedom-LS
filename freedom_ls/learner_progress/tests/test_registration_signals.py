@@ -359,6 +359,25 @@ class TestCourseRegisteredNotification:
         assert notifications.count() == 1
         assert notifications.get().data == {"course_title": course.title}
 
+    def test_a_self_registration_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            LearnerCourseRegistrationFactory(self_registered=True)
+
+        assert not Notification._base_manager.exists()
+
+    def test_a_self_registration_still_fires_the_webhook(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with (
+            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            LearnerCourseRegistrationFactory(self_registered=True)
+
+        assert fire.call_args.args[0] == "course.registered"
+
     def test_a_registration_created_through_the_admin_notifies_once(
         self, mock_site_context, staff_client, django_capture_on_commit_callbacks
     ) -> None:

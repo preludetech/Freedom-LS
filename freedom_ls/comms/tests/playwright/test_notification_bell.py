@@ -1,7 +1,7 @@
 """Browser-only behaviour of the bell panel: opening and closing it by mouse
 and keyboard, the badge zeroing in the same response, marking all as read
-from the panel, the live poll picking up a new notification, a real
-self-registration showing up, and the mobile full-width sheet. None of this
+from the panel, the live poll picking up a new notification, a registration
+someone else made showing up, a self-registration adding nothing, and the mobile full-width sheet. None of this
 is observable under the Django test client, which never runs the Alpine
 component or executes the hx-get a real browser fires on click.
 """
@@ -16,6 +16,7 @@ from django.urls import reverse
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import NotificationFactory
 from freedom_ls.conftest import reverse_url
+from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -155,10 +156,28 @@ def test_badge_refresh_picks_up_a_new_notification_and_keeps_focus_on_the_bell(
     assert page.evaluate("document.activeElement.id") == "notification-bell"
 
 
-def test_self_registering_shows_the_registration_notification_in_the_panel(
+def test_a_registration_someone_else_made_shows_in_the_panel(
     live_server,
     logged_in_page: Page,
     logged_in_user: User,
+    mock_site_context,
+    course_with_topic,
+) -> None:
+    course = course_with_topic(access_type="free", title="Playwright Fundamentals")
+    LearnerCourseRegistrationFactory(learner__user=logged_in_user, course=course)
+    page = logged_in_page
+
+    page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+    _bell(page).click()
+
+    expect(
+        page.get_by_text("You've been registered for Playwright Fundamentals")
+    ).to_be_visible()
+
+
+def test_self_registering_adds_nothing_to_the_panel(
+    live_server,
+    logged_in_page: Page,
     mock_site_context,
     course_with_topic,
 ) -> None:
@@ -176,7 +195,7 @@ def test_self_registering_shows_the_registration_notification_in_the_panel(
     _bell(page).click()
 
     expect(
-        page.get_by_text("You're registered for Playwright Fundamentals")
+        page.locator("#notification-panel").get_by_text("Nothing yet.")
     ).to_be_visible()
 
 

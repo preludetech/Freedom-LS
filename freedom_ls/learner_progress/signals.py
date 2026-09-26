@@ -122,10 +122,14 @@ def recalculate_course_progress_on_form_attempt(
 def _ensure_and_announce(
     registration: LearnerCourseRegistration, *, announce: bool
 ) -> None:
-    """Mint this registration's record, then announce it to integrators.
+    """Mint this registration's record, then announce it.
 
     `announce` is decided when the signal is received, not here: by the time
     the transaction commits, `created` is long gone.
+
+    Integrators hear about every registration. The learner is only notified
+    when someone else registered them: a learner who registered themselves is
+    already in the course.
 
     _base_manager on the Learner lookup, because this runs from anywhere a
     registration is written -- a management command with no ambient request,
@@ -141,13 +145,14 @@ def _ensure_and_announce(
     if not announce:
         return
 
-    raise_notification(
-        user=learner.user,
-        category="course.registered",
-        target=registration.course,
-        site_id=registration.site_id,
-        data={"course_title": registration.course.title},
-    )
+    if not registration.self_registered:
+        raise_notification(
+            user=learner.user,
+            category="course.registered",
+            target=registration.course,
+            site_id=registration.site_id,
+            data={"course_title": registration.course.title},
+        )
 
     fire_webhook_event(
         "course.registered",

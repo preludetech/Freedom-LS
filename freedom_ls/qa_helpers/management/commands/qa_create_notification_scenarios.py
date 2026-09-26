@@ -289,10 +289,10 @@ def _seed(site: Site) -> None:
         created = now - timedelta(days=days, hours=index % 5, minutes=7 * index)
         seen = created + timedelta(minutes=30)
         read = created + timedelta(hours=2)
-        category = "course.completed" if index % 3 == 1 else "course.registered"
+        category = "course.registered"
         course = history[index % 3]
         if index == DELETED_INDEX:
-            course, category = deleted_course, "course.registered"
+            course = deleted_course
         if index == LEGACY_INDEX:
             category = "legacy.unregistered"
         notification = _notify(
@@ -324,7 +324,6 @@ def _seed(site: Site) -> None:
             learner_c,
             history[i % 3],
             now - timedelta(minutes=30 * i),
-            category="course.completed" if i % 2 else "course.registered",
         )
 
     click.echo("\n=== Summary ===")

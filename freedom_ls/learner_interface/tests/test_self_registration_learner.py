@@ -10,8 +10,6 @@ creates, its idempotence, and reactivation of a removed learner.
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
 import pytest
 
 from django.urls import reverse
@@ -179,8 +177,8 @@ class TestCourseRegisteredGoogleAnalyticsEvent:
 
 
 @pytest.mark.django_db
-class TestCourseRegisteredNotificationOnSelfRegistration:
-    def test_self_registering_notifies_the_learner_once(
+class TestSelfRegistrationRaisesNoNotification:
+    def test_self_registering_notifies_nothing(
         self,
         mock_site_context,
         logged_in_client,
@@ -194,31 +192,24 @@ class TestCourseRegisteredNotificationOnSelfRegistration:
         with django_capture_on_commit_callbacks(execute=True):
             client.post(_initiate_url(course.slug))
 
-        assert (
-            Notification._base_manager.filter(
-                user=user, category="course.registered"
-            ).count()
-            == 1
-        )
+        assert LearnerCourseRegistration.objects.get(
+            learner__user=user, course=course
+        ).self_registered
+        assert not Notification._base_manager.filter(user=user).exists()
 
-    def test_self_registering_still_redirects_when_the_notification_write_raises(
-        self,
-        mock_site_context,
-        logged_in_client,
-        course_with_topic,
-        django_capture_on_commit_callbacks,
+    def test_reactivating_an_admin_registration_leaves_it_marked_as_not_self_registered(
+        self, mock_site_context, site, logged_in_client, course_with_topic
     ) -> None:
         course = course_with_topic(access_type="free")
         user = UserFactory()
+        learner = LearnerFactory(user=user, organisation=get_default_organisation(site))
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=course, is_active=False
+        )
         client = logged_in_client(user)
 
-        with (
-            patch(
-                "freedom_ls.comms.models.Notification.objects.create",
-                side_effect=RuntimeError,
-            ),
-            django_capture_on_commit_callbacks(execute=True),
-        ):
-            response = client.post(_initiate_url(course.slug))
+        client.post(_initiate_url(course.slug))
 
-        assert response.status_code == 302
+        assert not LearnerCourseRegistration.objects.get(
+            learner=learner, course=course
+        ).self_registered

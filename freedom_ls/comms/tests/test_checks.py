@@ -16,7 +16,7 @@ def test_duplicate_category_keys_produce_an_error() -> None:
         key="course.registered",
         label="Course registration",
         icon="course",
-        message="You're registered for %(course_title)s",
+        message="You've been registered for %(course_title)s",
         url_builder=None,
     )
 

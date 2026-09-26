@@ -894,10 +894,13 @@ def initiate_course_access(request, course_slug):
     # update_or_create, not get_or_create: defaults only apply on create, so a
     # registration an admin had deactivated would stay inactive and the learner
     # would be bounced back out of the course they just asked to enter.
+    # self_registered only on create: reactivating an admin's registration
+    # doesn't change who made it.
     _, created = LearnerCourseRegistration.objects.update_or_create(
         learner=learner,
         course=course,
         defaults={"is_active": True},
+        create_defaults={"is_active": True, "self_registered": True},
     )
     # Only a new registration. Reactivating one an admin had switched off is
     # not a second registration, and a repeat visit to this URL is not one either.
@@ -1637,16 +1640,7 @@ def course_finish(request, course_slug):
         course_progress.completed_time = timezone.now()
         course_progress.save(update_fields=["completed_time"])
 
-        from freedom_ls.comms.notify import raise_notification
         from freedom_ls.webhooks.events import fire_webhook_event
-
-        raise_notification(
-            user=request.user,
-            category="course.completed",
-            target=course,
-            site_id=course_progress.site_id,
-            data={"course_title": course.title},
-        )
 
         fire_webhook_event(
             "course.completed",

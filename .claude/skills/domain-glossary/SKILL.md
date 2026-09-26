@@ -57,7 +57,7 @@ for the row and **child** for the resolved object.
 | Term | Defined at | Means |
 | --- | --- | --- |
 | `Learner` | `models.py:51` | **A user's association with one organisation.** One row per `(user, organisation)` — `unique_learner_per_organisation` (`:76`). Fields: `user`, `organisation`, `is_active`, `created_at`. See the note below. |
-| `LearnerCourseRegistration` | `:109` | One learner registered for one course. Fields: `learner`, `course`, `is_active`, `registered_at`. Keyed `(site, learner, course)` (`:125`). It has **no** `organisation` field — that comes from `learner.organisation`. |
+| `LearnerCourseRegistration` | `:109` | One learner registered for one course. Fields: `learner`, `course`, `is_active`, `self_registered` (the learner made it, not staff; false on rows older than the field), `registered_at`. Keyed `(site, learner, course)` (`:125`). It has **no** `organisation` field — that comes from `learner.organisation`. |
 | `CohortCourseRegistration` | `:133` | A cohort registered for a course. Its organisation is reached through `cohort.organisation`. |
 | `Cohort` | `:32` | A group of learners, owned by an organisation. |
 | `CohortMembership` | `:84` | One learner's membership of a cohort, keyed `(learner, cohort)` (`:91`). **Not** a registration — a membership grants access via the cohort's registrations. Its `clean()` (`:96`) enforces that the learner and the cohort share an organisation. |
