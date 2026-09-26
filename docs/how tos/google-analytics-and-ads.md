@@ -10,6 +10,10 @@ project.
 
 If something here turns out to be wrong, fix it in this file first, then on the platforms.
 
+Campaigns that also run on Meta or TikTok use the sibling
+[Meta and TikTok pixels](./meta-and-tiktok-pixels.md) guide. Each platform is switched on
+separately, and the sections below are Google setup only.
+
 ## What FLS sends
 
 One gtag.js tag on every page. Page views come from GA4's enhanced measurement, not from FLS.
@@ -219,27 +223,25 @@ two imported ones follow within about a day.
 ## 6. For developers of a concrete project
 
 **Turning it off.** A project that wants neither GA4 nor Google Ads leaves `freedom_ls.google_tag`
-out of `INSTALLED_APPS` and drops its context processor. Events FLS's views record are then
-discarded.
+out of `INSTALLED_APPS` and drops its context processor. Events FLS's views record are still
+recorded if `freedom_ls.meta_pixel` or `freedom_ls.tiktok_pixel` is installed; only GA4 and Ads stop
+seeing them.
 
 **Lead forms.** FLS ships no lead form. A project's form view records `generate_lead` after the form
 validates and saves:
 
 ```python
-from freedom_ls.google_tag.events import (
-    GoogleAnalyticsEvent,
-    record_google_analytics_event,
-)
+from freedom_ls.base.analytics_events import AnalyticsEvent, record_analytics_event
 
-record_google_analytics_event(
-    request, GoogleAnalyticsEvent.GENERATE_LEAD, {"lead_form": "call_me_back"}
+record_analytics_event(
+    request, AnalyticsEvent.GENERATE_LEAD, {"lead_form": "call_me_back"}
 )
 ```
 
 The next page the visitor sees sends it. The function takes any event name as a string and raises
 `ValueError` for a name or parameter GA4 would reject. Send the form's name, never anything the
 visitor typed. A form that belongs to one course adds `course_event_params(course)` from
-`freedom_ls.course_access.google_analytics`, so its leads line up with the course funnel.
+`freedom_ls.course_access.analytics_events`, so its leads line up with the course funnel.
 
 **Landing pages.** GA4 already records the first page of every session as its landing page, so a
 landing page needs no event. To tell marketing landing pages apart from other first pages, the
@@ -257,9 +259,10 @@ after a boosted navigation it would stick to the pages that follow. See also
 [landing pages](./landing-pages.md).
 
 **Pages that don't extend `_base.html`.** Include `partials/google_analytics.html` (and
-`partials/posthog.html` for PostHog) in the `<head>`, and `partials/google_analytics_events.html`
-directly before `</body>`. Without the events partial, an event recorded by the page's view waits in
-the session and fires on the next FLS page instead.
+`partials/posthog.html` for PostHog) in the `<head>`, guarded by
+`{% if google_analytics_measurement_id %}`, and `partials/analytics_events.html` directly before
+`</body>`. Without the events partial, an event recorded by the page's view waits in the session
+and fires on the next FLS page instead.
 
 **Campaign links.** GA4 reads `utm_*` tags from the landing URL. [Referral links](../product/referral-codes.md)
 pass the visitor's query string through to the destination, so tags on the short link reach GA4.

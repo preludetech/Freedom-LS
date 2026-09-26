@@ -32,6 +32,7 @@ flowchart TB
     learner_progress
     mail
     markdown_rendering
+    meta_pixel
     organisations
     panel_framework
     qa_helpers
@@ -39,10 +40,10 @@ flowchart TB
     reports
     role_based_permissions
     site_aware_models
+    tiktok_pixel
     webhooks
     xapi_learning_record_store
     accounts --> base
-    accounts --> google_tag
     accounts --> mail
     accounts --> markdown_rendering
     accounts --> site_aware_models
@@ -58,7 +59,6 @@ flowchart TB
     course_access --> accounts
     course_access --> base
     course_access --> content_engine
-    course_access --> google_tag
     course_access --> learner_management
     course_applications --> accounts
     course_applications --> content_engine
@@ -123,6 +123,7 @@ flowchart TB
     learner_progress --> webhooks
     mail --> base
     markdown_rendering --> base
+    meta_pixel --> base
     organisations --> base
     organisations --> site_aware_models
     qa_helpers --> accounts
@@ -155,6 +156,7 @@ flowchart TB
     role_based_permissions --> base
     role_based_permissions --> site_aware_models
     site_aware_models --> base
+    tiktok_pixel --> base
     webhooks --> base
     webhooks --> site_aware_models
     xapi_learning_record_store --> site_aware_models
@@ -166,6 +168,7 @@ flowchart TB
     accounts -.-> organisations
     accounts -.-> referral_tracking
     base -.-> accounts
+    base -.-> content_engine
     base -.-> learner_management
     base -.-> organisations
     base -.-> role_based_permissions
@@ -190,6 +193,11 @@ flowchart TB
     learner_progress -.-> organisations
     mail -.-> deployment
     markdown_rendering -.-> content_engine
+    meta_pixel -.-> accounts
+    meta_pixel -.-> content_engine
+    meta_pixel -.-> learner_management
+    meta_pixel -.-> organisations
+    meta_pixel -.-> role_based_permissions
     organisations -.-> accounts
     organisations -.-> role_based_permissions
     reports -.-> role_based_permissions
@@ -199,6 +207,11 @@ flowchart TB
     site_aware_models -.-> learner_management
     site_aware_models -.-> learner_progress
     site_aware_models -.-> organisations
+    tiktok_pixel -.-> accounts
+    tiktok_pixel -.-> content_engine
+    tiktok_pixel -.-> learner_management
+    tiktok_pixel -.-> organisations
+    tiktok_pixel -.-> role_based_permissions
     webhooks -.-> accounts
 ```
 
@@ -206,11 +219,11 @@ flowchart TB
 
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
-| accounts | base, google_tag, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
-| base | — | accounts, learner_management, organisations, role_based_permissions |
+| accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
+| base | — | accounts, content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | accounts |
-| course_access | accounts, base, content_engine, google_tag, learner_management | course_applications |
+| course_access | accounts, base, content_engine, learner_management | course_applications |
 | course_applications | accounts, content_engine, course_access, form_engine, learner_management, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
 | course_recommendations | accounts, site_aware_models | content_engine |
@@ -226,6 +239,7 @@ flowchart TB
 | learner_progress | accounts, content_engine, form_engine, learner_management, site_aware_models, webhooks | organisations |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
+| meta_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | — | — |
 | qa_helpers | accounts, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
@@ -233,6 +247,7 @@ flowchart TB
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |
 | site_aware_models | base | accounts, content_engine, learner_management, learner_progress, organisations |
+| tiktok_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
 | webhooks | base, site_aware_models | accounts |
 | xapi_learning_record_store | site_aware_models | — |
 
