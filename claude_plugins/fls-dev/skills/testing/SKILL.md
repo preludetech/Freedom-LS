@@ -58,6 +58,12 @@ Pattern to avoid: `learner_interface/tests/conftest.py`, plain functions for man
 
 `freedom_ls/conftest.py` holds the autouse `_disable_force_site_name`, `_disable_preview_overrides` and `_clear_course_access_backend_cache` fixtures, and the opt-in `mock_site_context` fixture, which many apps' fixtures build on. `mock_site_context` is not autouse; a test that needs it takes it as a parameter (see "`mock_site_context` fixture" below).
 
+### Stub-model technique
+
+The reference implementation is `panel_framework/tests/conftest.py`: `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), with `_make_stub`, `_make_stub_child` and `_make_stub_protected_child`.
+
+`site_aware_models` and `role_based_permissions` still borrow downstream models in their tests and need this technique.
+
 ## `mock_site_context` fixture (mandatory for site-aware models)
 
 Any test that touches a site-aware model **must** take the `mock_site_context` fixture — never manually set `site`. The fixture sets the thread-local site context that `SiteAwareFactory` and the site-aware managers read.

@@ -97,6 +97,50 @@ Put a fixture in the shallowest directory whose `conftest.py` reaches every cons
 
 The project root `conftest.py` holds project-wide fixtures only, either autouse or opted into from many apps. An app's `tests/conftest.py` holds fixtures used by more than one test file in that app. A fixture used by only one test file stays in that file.
 
+### Stub-model technique
+
+When a foundational app's tests need "some object with an assignable role" or "any model with this mixin" to prove genericity, define a tiny test-only model in that app's own `conftest.py`. Give it an explicit `Meta.app_label`, since Django registers the class in the app registry as soon as the class body runs, and create its table with `connection.schema_editor()` in a session-scoped fixture. Never give the model a factory_boy factory; a plain underscore-prefixed helper (`_make_stub`) stands in for it.
+
+This is the fix for a foundational app's tests reaching for a real downstream model instead of a stub; see "Deciding an allowed exception" above.
+
+`django.test.utils.isolate_apps` (and pytest-django's `django_isolate_apps` marker) is the lighter tool when a test needs only a model class and no database rows. It creates no table, so it doesn't replace the stub-model technique.
+
+```python
+# myproject/widgets/tests/conftest.py
+from __future__ import annotations
+
+import itertools
+from collections.abc import Iterator
+
+import pytest
+from django.db import connection, models
+from pytest_django.plugin import DjangoDbBlocker
+
+_counter = itertools.count(1)
+
+
+class StubModel(models.Model):
+    name = models.CharField(max_length=120, unique=True)
+
+    class Meta:
+        app_label = "myproject_widgets"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _stub_tables(django_db_setup: None, django_db_blocker: DjangoDbBlocker) -> Iterator[None]:
+    """Create the stub table once per session; the model has no migration."""
+    with django_db_blocker.unblock():
+        with connection.schema_editor() as editor:
+            editor.create_model(StubModel)
+        yield
+        with connection.schema_editor() as editor:
+            editor.delete_model(StubModel)
+
+
+def _make_stub(name: str | None = None) -> StubModel:
+    return StubModel.objects.create(name=name or f"stub-{next(_counter)}")
+```
+
 ## Test Patterns
 
 ### Model Tests
