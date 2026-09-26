@@ -91,16 +91,21 @@ def check_worker_heartbeat(path: str | Path, max_age_seconds: int) -> None:
 def start_watchdog(
     path: str | Path,
     max_age_seconds: int,
-    poll_seconds: int = WATCHDOG_POLL_SECONDS,
+    poll_seconds: float = WATCHDOG_POLL_SECONDS,
+    stop: threading.Event | None = None,
 ) -> threading.Thread:
     """Start the daemon watchdog thread and return it.
 
     daemon=True so a clean shutdown is never held open by this thread.
+
+    The worker never passes `stop`, so its watchdog polls for the life of the
+    process. Setting `stop` ends the thread, which tests need so that a watchdog
+    they started can't call os._exit on the test run later.
     """
+    stop = stop or threading.Event()
 
     def _poll_forever() -> None:
-        while True:
-            time.sleep(poll_seconds)
+        while not stop.wait(poll_seconds):
             try:
                 check_worker_heartbeat(path, max_age_seconds)
             except OSError:

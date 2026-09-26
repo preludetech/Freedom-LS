@@ -136,10 +136,6 @@ class TestStartWatchdog:
         # An OSError from stat -- a mode change on the parent, a full or read-only
         # filesystem -- used to end the daemon thread and leave the worker running
         # with no watchdog at all, silently.
-        # A real, fresh heartbeat: start_watchdog's thread polls forever by design,
-        # so it outlives this test. Once mocker restores the real check at teardown,
-        # a fresh file is what keeps that thread from calling the real os._exit and
-        # taking the whole test run down with it.
         heartbeat = tmp_path / "heartbeat"
         heartbeat.touch()
         checks: list[str] = []
@@ -159,13 +155,21 @@ class TestStartWatchdog:
             side_effect=lambda *a, **k: logged.set(),
         )
 
-        thread = start_watchdog(str(heartbeat), 300, poll_seconds=0.01)
+        stop = threading.Event()
+        thread = start_watchdog(str(heartbeat), 300, poll_seconds=0.01, stop=stop)
         logged.wait(timeout=2)
         time.sleep(0.05)
+        alive_after_oserror = thread.is_alive()
+        # Stopped here, while the check is still mocked. A watchdog left running
+        # would call the real check after teardown, and once the heartbeat aged
+        # out, os._exit would end the whole test run.
+        stop.set()
+        thread.join(timeout=2)
 
         assert logged.is_set()
-        assert thread.is_alive()
+        assert alive_after_oserror
         assert len(checks) > 1
+        assert not thread.is_alive()
 
 
 class TestTouchUntilCapped:
