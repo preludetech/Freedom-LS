@@ -1,8 +1,8 @@
 ---
-version: "1.2"
+version: "1.3"
 title: "Privacy Policy"
 type: "privacy"
-effective_date: "2026-09-23"
+effective_date: "2026-09-26"
 ---
 
 **This is a placeholder privacy policy shipped as the FreedomLS default. Replace it with your own legal copy before going live.**
@@ -22,7 +22,9 @@ We may also collect information you supply during onboarding (for example, addit
 
 ### Analytics and advertising
 
-The site operator may use analytics and advertising services to understand how the site is used and whether their advertising leads to sign-ups. These services use cookies and collect information such as the pages you view, your device and browser, and the courses you register for. When you are signed in they also receive your account number. They do not receive your name or email address.
+The site operator may use analytics and advertising services to understand how the site is used and whether their advertising leads to sign-ups: Google Analytics, Google Ads, Meta (Facebook and Instagram) and TikTok. These services use cookies and collect information such as the pages you view, your device and browser, and the courses you register for. When you are signed in, Google Analytics also receives your account number; the others do not. None of these services receive your name or email address.
+
+Meta and TikTok also use the data they collect for their own purposes, and they process it outside South Africa. Their pixels are not used for visitors in the EEA, the UK or Switzerland.
 
 ## 2. How we use your data
 
@@ -43,7 +45,7 @@ Depending on your jurisdiction, you may have rights to access, correct, export o
 
 ## 5. Sharing
 
-We do not sell your personal data. We share it only with service providers the platform relies on, such as analytics and advertising providers, and only to the extent needed for them to provide their service.
+We do not sell your personal data. We share it only with service providers the platform relies on, such as Google Analytics, Google Ads, Meta and TikTok, and only to the extent needed for them to provide their service.
 
 ## 6. Changes to this policy
 
