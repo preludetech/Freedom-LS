@@ -1,0 +1,155 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=e4]
+      - heading "FirstClass" [level=1] [ref=e5]
+    - navigation [ref=e6]:
+      - generic [ref=e7]:
+        - link "Login" [ref=e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=e10]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - heading "Teach the way your learners need." [level=1] [ref=e14]
+        - paragraph [ref=e15]: "Most learning platforms are digital textbooks — linear, rigid, and full of opinions about how learning should work. This is different: a learning system that flexes around your learners, not the other way around."
+        - link "Browse all courses" [ref=e17] [cursor=pointer]:
+          - /url: /courses/
+      - status [ref=e18]
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - heading "Available courses" [level=2] [ref=e23]
+          - generic [ref=e24]:
+            - generic [ref=e25]:
+              - generic [ref=e26]: 1 to 3 of 3
+              - navigation "Available courses pages" [ref=e27]:
+                - link "Previous page" [disabled] [ref=e28] [cursor=pointer]:
+                  - img "previous" [ref=e29]
+                - link "Next page" [disabled] [ref=e31] [cursor=pointer]:
+                  - img "next" [ref=e32]
+              - link "Browse all courses" [ref=e34] [cursor=pointer]:
+                - /url: /courses/
+            - generic [ref=e39]:
+              - article [ref=e40]:
+                - generic [ref=e44]:
+                  - generic [ref=e45]: By application
+                  - heading [level=3] [ref=e47]:
+                    - link "QA Application-Gated Course (Access Types)" [ref=e48] [cursor=pointer]:
+                      - /url: /courses/qa-application-gated-course-access-types/detail/
+                  - link "Details" [ref=e50] [cursor=pointer]:
+                    - /url: /courses/qa-application-gated-course-access-types/detail/
+              - article [ref=e54]:
+                - generic [ref=e58]:
+                  - generic [ref=e59]: Free
+                  - heading [level=3] [ref=e61]:
+                    - link "QA Free Course (Access Types)" [ref=e62] [cursor=pointer]:
+                      - /url: /courses/qa-free-course-access-types/detail/
+                  - link "Details" [ref=e64] [cursor=pointer]:
+                    - /url: /courses/qa-free-course-access-types/detail/
+              - article [ref=e68]:
+                - generic [ref=e72]:
+                  - generic [ref=e73]: Free
+                  - heading [level=3] [ref=e75]:
+                    - link "QA Published Free Course (Visibility)" [ref=e76] [cursor=pointer]:
+                      - /url: /courses/qa-published-free-visibility/detail/
+                  - link "Details" [ref=e78] [cursor=pointer]:
+                    - /url: /courses/qa-published-free-visibility/detail/
+        - generic [ref=e82]:
+          - heading "Coming soon" [level=2] [ref=e84]
+          - generic [ref=e85]:
+            - generic [ref=e86]:
+              - generic [ref=e87]: 1 to 1 of 1
+              - navigation "Coming soon pages" [ref=e88]:
+                - link "Previous page" [disabled] [ref=e89] [cursor=pointer]:
+                  - img "previous" [ref=e90]
+                - link "Next page" [disabled] [ref=e92] [cursor=pointer]:
+                  - img "next" [ref=e93]
+              - link "Browse all courses" [ref=e95] [cursor=pointer]:
+                - /url: /courses/
+            - article [ref=e101]:
+              - generic [ref=e105]:
+                - paragraph [ref=e107]: Coming soon
+                - heading [level=3] [ref=e111]:
+                  - link "QA Coming Soon Course (Visibility)" [ref=e112] [cursor=pointer]:
+                    - /url: /courses/qa-coming-soon-visibility/detail/
+                - link "Details" [ref=e114] [cursor=pointer]:
+                  - /url: /courses/qa-coming-soon-visibility/detail/
+  - contentinfo [ref=e118]:
+    - generic [ref=e119]:
+      - paragraph [ref=e120]: © 2026 FirstClass
+      - navigation "Legal" [ref=e121]:
+        - link "Terms and Conditions" [ref=e122] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=e123] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=e124] [cursor=pointer]: more-prominent-signup-button
+  - list [ref=e126]:
+    - listitem [ref=e127]:
+      - link "Hide »" [ref=e128] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e129]:
+      - link "Toggle Theme" [ref=e130] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e133]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e134] [cursor=pointer]
+      - link "History /" [ref=e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e136]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e137] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=e138] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e139]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e140] [cursor=pointer]
+      - 'link "Time CPU: 122.75ms (136.86ms)" [ref=e141] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=e142]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e143] [cursor=pointer]
+      - link "Settings" [ref=e144] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e145]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e146] [cursor=pointer]
+      - link "Headers" [ref=e147] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e148]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e149] [cursor=pointer]
+      - link "Request dashboard" [ref=e150] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e151]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e152] [cursor=pointer]
+      - link "SQL 7 queries in 10.09ms" [ref=e153] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e154]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e155] [cursor=pointer]
+      - link "Static files 7 files used" [ref=e156] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e157]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e158] [cursor=pointer]
+      - link "Templates learner_interface/dashboard.html" [ref=e159] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e160]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e161] [cursor=pointer]
+      - link "Alerts" [ref=e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e163]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e164] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=e165] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e166]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e167] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=e168] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e169]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e170] [cursor=pointer]
+      - link "Community" [ref=e171] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e172]:
+      - checkbox "Enable for next and successive requests" [ref=e173] [cursor=pointer]
+      - generic [ref=e174]: Intercept redirects
+    - listitem [ref=e175]:
+      - checkbox "Enable for next and successive requests" [ref=e176] [cursor=pointer]
+      - generic [ref=e177]: Profiling
