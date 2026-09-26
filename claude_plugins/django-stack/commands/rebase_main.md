@@ -76,6 +76,18 @@ git log --merges --oneline $OLD_BASE..HEAD
 If this prints anything, stop with `status: blocked`. A rebase replays only a merge commit's first
 parent and drops the rest without a conflict, so a human has to decide what to do with it.
 
+Then check that no other worktree is halfway through merging this branch:
+
+```
+common=$(git rev-parse --git-common-dir)
+cat "$common"/MERGE_HEAD "$common"/worktrees/*/MERGE_HEAD 2>/dev/null
+```
+
+If any printed sha equals `git rev-parse HEAD`, stop with `status: blocked · reason: a worktree
+has a merge of this branch in progress; finish or abort it there first`. Rewriting the branch now
+would orphan that merge: its MERGE_HEAD would point at a commit no branch holds, and whoever
+started it would be left with a conflicted tree and nothing to finish it against.
+
 Otherwise, back up the branch's current tip before rewriting it:
 
 ```

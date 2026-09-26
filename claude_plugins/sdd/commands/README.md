@@ -29,7 +29,7 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 - `/sdd:roadmap` with no argument syncs the file with the directories: adds rows for new directories, drops rows for finished ones, redraws the dependency graphs.
 - `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds the effort to the roadmap with its build order, its dependency graph and the decisions every child relies on. The cut goes by user-visible outcome, never by line count.
 - "Ready to start" lists the waiting specs whose dependencies are done and that can go straight to `/sdd:start`. "Needs work on main first" lists the ones that can't yet, because something has to happen on main before a worktree branches off, such as a cut. The row's Notes cell says what, starting `Before starting:`.
-- `/sdd:start` warns when a spec has a precursor or its dependencies are not done, flags its row `in progress` and takes it off both start lists. `/sdd:finish_worktree` removes the row and adds any spec it unblocks to the right start list; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
+- `/sdd:start` warns when a spec has a precursor or its dependencies are not done, flags its row `in progress` and takes it off both start lists. `/sdd:finish_worktree` removes the row, lands the result on `main` and adds any spec it unblocks to the right start list; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
 - `/sdd:improve_idea` runs on main without starting the spec, so it leaves the roadmap alone.
 
 The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
@@ -133,7 +133,11 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 1. Run `/make_pr_quickly` to open the pull request. It builds the title and body from the first 80 lines of the spec plus the `todo.md` checkboxes, so the PR states plainly which SDD steps have run and which have not, then pushes and calls `gh pr create`. It reads nothing else — no plan, no research files, no diff — which is what keeps it fast.
 2. Run `/address_pr_review` to work through review feedback.
-3. Once merged, run `/finish_worktree` to clean up the worktree.
+3. Once the PR is approved (or already merged), run `/finish_worktree`. It rebases, archives the
+   spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the
+   main worktree up to date. It stops, changing nothing on `main`, if the main worktree has
+   uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by
+   hand.
 
 `/commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise `mine` (the files Claude touched this conversation) or `all`, and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs pytest first.
 
