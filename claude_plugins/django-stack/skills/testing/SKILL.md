@@ -19,6 +19,9 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 
 - Tests mirror the app, subpackages included: `<app>/<module>.py` →
   `<app>/tests/test_<module>.py`. See "Mirroring" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+- An app's tests import only apps the app depends on at runtime. A test that spans several apps
+  belongs in the lowest app that depends on every app it touches. See "Test organisation and
+  hygiene" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 - Use `@pytest.mark.django_db` for database tests
 - Use factory_boy factories for all test data creation — never use `.objects.create()` directly
 - Use `reverse()` for URLs, never hardcode
@@ -236,5 +239,6 @@ from myproject.optional_feature.factories import WidgetFactory  # now safe
 | Multiple assertions on unrelated behaviours | "and" test; unclear failure signal | Split into separate tests |
 | Patches `request.user` to skip auth | Bypasses real permission code | Use `client.force_login(user)` |
 | Asserts a hardcoded value derived from live config (a settings value, a theme `.css`) | Breaks when config legitimately changes; duplicates the controlled-input tests | Test the function with explicit inputs; guard real config with a system check |
+| Test imports an app its own app does not depend on | Hides a real dependency, couples unrelated apps | Move the test to the lowest app that depends on everything it touches, or replace the import with a local stub or fixture |
 
 For the longer list of red flags, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.

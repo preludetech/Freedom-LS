@@ -30,6 +30,22 @@ Test-only helper and URLconf modules that sit correctly beside their tests: `pan
 
 `contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate; the module docstrings say why.
 
+### Dependency direction
+
+`docs/app_structure.md`'s dependency table is the source of truth. Regenerate it with the `/ds:app_map` command (`generate_app_map.py`) rather than editing it by hand.
+
+The string-reference case in FLS: `base` depends on `learner_management`, because `TEMPLATES` in `config/settings_base.py` registers `freedom_ls.learner_management.context_processors.can_access_educator_interface`, and `base`'s header template reads the context variable it produces. The dependency table cannot see this edge.
+
+Any app's tests may use `accounts`' `UserFactory`.
+
+### Granting permissions in tests
+
+Use `guardian.shortcuts.assign_perm(codename, user, obj)`, not `role_based_permissions`' `assign_object_role`. The role layer is transparent at check time: its README says the role system manages what permissions a user should have, and guardian enforces them.
+
+`reports`, `educator_interface`, `learner_management`, `base` and `organisations` check only `has_perm` and `get_objects_for_user`, so an `assign_object_role` call in their tests is a stand-in for a guardian grant. `reports/tests/test_admin.py` already uses `assign_perm` next to one.
+
+Whether a role maps to the right permissions is `role_based_permissions`' own concern, tested in its own suite.
+
 ## `mock_site_context` fixture (mandatory for site-aware models)
 
 Any test that touches a site-aware model **must** take the `mock_site_context` fixture — never manually set `site`. The fixture sets the thread-local site context that `SiteAwareFactory` and the site-aware managers read.

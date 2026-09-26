@@ -36,6 +36,24 @@ Some test files check a property rather than one module's behaviour: an import-o
 
 Group them in a clearly named test subpackage, such as `tests/demo_content/` or `tests/invariants/`, so they read as deliberate rather than as unit tests that lost their module.
 
+### Dependency direction
+
+An app's tests import only apps the app depends on at runtime. A test that spans several apps belongs in the lowest app that depends on every app it touches, not the app whose behaviour happens to be exercised first.
+
+The project's app dependency map is the source of truth for what an app depends on, and for where the rule is violated today: the `/ds:app_map` command generates it into `docs/app_structure.md`, with a "Runtime deps" column and a "Test-only deps" column per app.
+
+The generator reads Python imports only, so it misses two dependencies that are just as real. A model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, is a runtime dependency on the app that owns the target, and so is a settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
+
+### Deciding an allowed exception
+
+Whether an import that crosses the dependency direction is allowed is a judgement made once per case, not a lookup against a fixed list. Ask whether the "wrong" import is intrinsic to what the test checks, meaning the thing under test cannot exist without a real row from the other app, or whether it is standing in for something a local stub or fixture could provide just as well.
+
+An intrinsic case gets a one-line comment at the import saying why, and no code change. A stand-in gets replaced; see "Stub-model technique" below.
+
+### Granting permissions in tests
+
+When an app's code checks permissions through the authorisation layer's standard API, such as `user.has_perm(...)` or `get_objects_for_user(...)`, its tests grant exactly the permission the code checks, through that same layer (`assign_perm(codename, user, obj)` for guardian). They do not go through a higher-level role layer the app does not depend on to reach that permission. Whether a role maps to the right permissions is that role layer's own concern, tested in its own suite.
+
 ## Test Patterns
 
 ### Model Tests
