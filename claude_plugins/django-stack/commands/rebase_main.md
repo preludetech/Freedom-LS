@@ -148,7 +148,13 @@ is incomplete: fix it and commit.
 
 ## Step 8: Rebuild and migrate
 
-For now, this step only applies migrations:
+Read `.claude/ds/config.md` (and `.claude/ds/config.local.md` if it exists; its values take
+precedence). Under `## Rebase Scripts`, the `Rebuild script` value:
+
+- non-blank path → run it from the project root. A non-zero exit is `status: failed`.
+- blank, or the file or section absent → skip.
+
+Then:
 
 ```
 uv run manage.py migrate

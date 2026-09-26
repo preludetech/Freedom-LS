@@ -25,3 +25,10 @@ takes precedence over this file.
 
 - Admin theme: standard
 - Object permissions (django-guardian): disabled
+
+## Rebase Scripts
+
+Run by `/ds:rebase_main` after a rebase and before the tests. Leave a value blank if this
+project has no such step.
+
+- Rebuild script:
