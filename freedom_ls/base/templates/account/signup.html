@@ -2,17 +2,17 @@
 {% load allauth i18n %}
 
 {% block head_title %}
-    {% trans "Signup" %}
+    {% trans "Create an account" %}
 {% endblock head_title %}
 
 {% block content %}
-    {% element h1 %}
-        {% trans "Sign Up" %}
-    {% endelement %}
-    {% element p %}
-        {% trans "Already have an account? Then please" %}
-        <a href="{{ login_url }}" class="text-primary underline">{% trans "sign in" %}</a>.
-    {% endelement %}
+    {% element h1 %}{% trans "Create an account" %}{% endelement %}
+    <div class="flex flex-wrap items-center gap-3">
+        <span>{% trans "Already have an account?" %}</span>
+        <c-button href="{{ login_url }}" variant="secondary">
+            {% trans "Log in" %}
+        </c-button>
+    </div>
 
     {% if not SOCIALACCOUNT_ONLY %}
         {% url 'account_signup' as action_url %}
