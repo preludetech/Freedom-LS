@@ -30,6 +30,8 @@ Test-only helper and URLconf modules that sit correctly beside their tests: `pan
 
 `contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate; the module docstrings say why.
 
+`mail/tests/conftest.py`: its docstring says the helpers are public, not underscore-prefixed, because serialisation, the worker send and the backend are all tested against the same message shape.
+
 ### Dependency direction
 
 `docs/app_structure.md`'s dependency table is the source of truth. Regenerate it with the `/ds:app_map` command (`generate_app_map.py`) rather than editing it by hand.
@@ -45,6 +47,16 @@ Use `guardian.shortcuts.assign_perm(codename, user, obj)`, not `role_based_permi
 `reports`, `educator_interface`, `learner_management`, `base` and `organisations` check only `has_perm` and `get_objects_for_user`, so an `assign_object_role` call in their tests is a stand-in for a guardian grant. `reports/tests/test_admin.py` already uses `assign_perm` next to one.
 
 Whether a role maps to the right permissions is `role_based_permissions`' own concern, tested in its own suite.
+
+### `conftest.py` vs. plain module
+
+Pattern to follow: `accounts/tests/conftest.py`, two fixtures plus the private `_seed_default_legal_docs`.
+
+Pattern to avoid: `learner_interface/tests/conftest.py`, plain functions for manual import plus a `reverse_url` re-export from the root conftest.
+
+### Fixture placement
+
+`freedom_ls/conftest.py` holds the autouse `_disable_force_site_name`, `_disable_preview_overrides` and `_clear_course_access_backend_cache` fixtures, and the opt-in `mock_site_context` fixture, which many apps' fixtures build on. `mock_site_context` is not autouse; a test that needs it takes it as a parameter (see "`mock_site_context` fixture" below).
 
 ## `mock_site_context` fixture (mandatory for site-aware models)
 

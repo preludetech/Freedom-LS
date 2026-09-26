@@ -54,6 +54,49 @@ An intrinsic case gets a one-line comment at the import saying why, and no code 
 
 When an app's code checks permissions through the authorisation layer's standard API, such as `user.has_perm(...)` or `get_objects_for_user(...)`, its tests grant exactly the permission the code checks, through that same layer (`assign_perm(codename, user, obj)` for guardian). They do not go through a higher-level role layer the app does not depend on to reach that permission. Whether a role maps to the right permissions is that role layer's own concern, tested in its own suite.
 
+### `conftest.py` vs. plain module
+
+A `conftest.py` holds only `@pytest.fixture` functions, plus the private, underscore-prefixed helpers those fixtures call. A plain function that test files import by hand belongs in a plain module beside the app's tests, such as `helpers.py` or `builders.py`, never in `conftest.py`. pytest does not discover a plain conftest function the way it discovers a fixture, so a test still has to import it explicitly, which defeats the point of putting it there. pytest's own maintainers discourage importing from `conftest.py` for the same reason (pytest issue #13148).
+
+A plain helper may stay in `conftest.py` only when more than one test file in the app needs it, and a comment at its definition says why.
+
+```python
+# myproject/widgets/tests/conftest.py
+from __future__ import annotations
+
+import pytest
+
+from myproject.widgets.factories import WidgetFactory
+from myproject.widgets.models import Widget
+
+
+@pytest.fixture
+def widget_catalog() -> list[Widget]:
+    return _seed_widget_catalog()
+
+
+def _seed_widget_catalog() -> list[Widget]:
+    return [WidgetFactory(name=name) for name in ("small", "medium", "large")]
+```
+
+```python
+# myproject/widgets/tests/helpers.py
+from __future__ import annotations
+
+from myproject.widgets.factories import WidgetFactory
+from myproject.widgets.models import Widget
+
+
+def make_discounted_widget(price: int, discount_percent: int) -> Widget:
+    return WidgetFactory(price=price * (100 - discount_percent) // 100)
+```
+
+### Fixture placement
+
+Put a fixture in the shallowest directory whose `conftest.py` reaches every consumer. The mechanism is pytest's own: conftest files are collected by walking up from the test being collected, and the nearest definition wins over one defined higher up.
+
+The project root `conftest.py` holds project-wide fixtures only, either autouse or opted into from many apps. An app's `tests/conftest.py` holds fixtures used by more than one test file in that app. A fixture used by only one test file stays in that file.
+
 ## Test Patterns
 
 ### Model Tests
