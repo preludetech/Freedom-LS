@@ -223,6 +223,7 @@ class LearnerDataTable(DataTable):
 
 
 class LearnerDetailsPanel(InstanceDetailsPanel):
+    model = Learner
     fields = [
         "user.first_name",
         "user.last_name",
@@ -246,6 +247,7 @@ class LearnerInstanceView(InstanceView):
 
 
 class CohortDetailsPanel(InstanceDetailsPanel):
+    model = Cohort
     fields = ["name"]
     editable = True
     form_class = CohortForm
@@ -1030,6 +1032,7 @@ class CourseDataTable(DataTable):
 
 
 class CourseDetailsPanel(InstanceDetailsPanel):
+    model = Course
     fields = ["title", "dashboard_category"]
 
 

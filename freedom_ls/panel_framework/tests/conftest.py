@@ -23,12 +23,26 @@ from django.db import connection, models
 
 class StubModel(models.Model):
     name = models.CharField(max_length=120, unique=True)
+    kind = models.CharField(
+        max_length=8,
+        choices=[("a", "Alpha"), ("b", "Beta")],
+        default="a",
+    )
+    is_active = models.BooleanField(default=True)
+    sat_score = models.IntegerField(null=True, blank=True, verbose_name="SAT score")
 
     class Meta:
         app_label = "freedom_ls_panel_framework"
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def display_name(self) -> str:
+        return self.name.upper()
+
+    def describe(self) -> str:
+        return f"{self.name} ({self.kind})"
 
 
 class StubChild(models.Model):
