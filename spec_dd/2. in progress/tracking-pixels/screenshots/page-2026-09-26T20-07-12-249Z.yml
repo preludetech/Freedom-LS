@@ -1,0 +1,188 @@
+- generic [active] [ref=f50e1]:
+  - banner [ref=f50e2]:
+    - link [ref=f50e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f50e4]
+      - heading "FirstClass" [level=1] [ref=f50e5]
+    - navigation [ref=f50e6]:
+      - button "Open user menu for QA Learner B" [ref=f50e8] [cursor=pointer]:
+        - generic [aria-hidden] [ref=f50e9]: QL
+  - generic:
+    - status
+    - alert
+  - main [ref=f50e10]:
+    - generic [ref=f50e12]:
+      - paragraph [ref=f50e13]: Application for Functionality Demo - Application gated course
+      - heading "About you" [level=1] [ref=f50e14]
+      - navigation "Application pages" [ref=f50e15]:
+        - generic [ref=f50e16]: "1"
+        - generic [ref=f50e17]: "2"
+        - generic [ref=f50e18]: "3"
+      - generic [ref=f50e19]:
+        - paragraph [ref=f50e21]: We ask about your experience so we can pitch the first few weeks right. Nothing here rules you out.
+        - group "1. What is your full name? (required)" [ref=f50e22]:
+          - generic [ref=f50e23]:
+            - generic [ref=f50e24]: "1."
+            - paragraph [ref=f50e25]: What is your full name?
+            - text: "*"
+            - generic [ref=f50e26]: (required)
+          - generic [ref=f50e27]:
+            - paragraph [ref=f50e29]: What is your full name?
+            - textbox "What is your full name?" [ref=f50e30]
+        - group "2. What is your date of birth? (required)" [ref=f50e31]:
+          - generic [ref=f50e32]:
+            - generic [ref=f50e33]: "2."
+            - paragraph [ref=f50e34]: What is your date of birth?
+            - text: "*"
+            - generic [ref=f50e35]: (required)
+          - generic [ref=f50e36]:
+            - paragraph [ref=f50e38]: What is your date of birth?
+            - textbox "What is your date of birth?" [ref=f50e39]
+        - group "3. What is your email address? (required)" [ref=f50e40]:
+          - generic [ref=f50e41]:
+            - generic [ref=f50e42]: "3."
+            - paragraph [ref=f50e43]: What is your email address?
+            - text: "*"
+            - generic [ref=f50e44]: (required)
+          - generic [ref=f50e45]:
+            - paragraph [ref=f50e47]: What is your email address?
+            - textbox "What is your email address?" [ref=f50e48]
+        - group "4. What is your phone number?" [ref=f50e49]:
+          - generic [ref=f50e50]:
+            - generic [ref=f50e51]: "4."
+            - paragraph [ref=f50e52]: What is your phone number?
+          - generic [ref=f50e53]:
+            - paragraph [ref=f50e55]: What is your phone number?
+            - textbox "What is your phone number?" [ref=f50e56]
+        - group "5. Share a link to your portfolio, GitHub profile or LinkedIn, if you have one" [ref=f50e57]:
+          - generic [ref=f50e58]:
+            - generic [ref=f50e59]: "5."
+            - paragraph [ref=f50e60]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+          - generic [ref=f50e61]:
+            - paragraph [ref=f50e63]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+            - textbox "Share a link to your portfolio, GitHub profile or LinkedIn, if you have one" [ref=f50e64]
+        - group "6. How many years have you been writing software? (required)" [ref=f50e65]:
+          - generic [ref=f50e66]:
+            - generic [ref=f50e67]: "6."
+            - paragraph [ref=f50e68]: How many years have you been writing software?
+            - text: "*"
+            - generic [ref=f50e69]: (required)
+          - generic [ref=f50e70]:
+            - paragraph [ref=f50e72]: How many years have you been writing software?
+            - spinbutton "How many years have you been writing software?" [ref=f50e73]
+        - group "7. How did you hear about this course? (required)" [ref=f50e74]:
+          - generic [ref=f50e75]:
+            - generic [ref=f50e76]: "7."
+            - paragraph [ref=f50e77]: How did you hear about this course?
+            - text: "*"
+            - generic [ref=f50e78]: (required)
+          - generic [ref=f50e79]:
+            - generic [ref=f50e80] [cursor=pointer]:
+              - radio "From a friend or colleague" [ref=f50e81]
+              - generic [ref=f50e84]: From a friend or colleague
+            - generic [ref=f50e85] [cursor=pointer]:
+              - radio "A search engine" [ref=f50e86]
+              - generic [ref=f50e89]: A search engine
+            - generic [ref=f50e90] [cursor=pointer]:
+              - radio "Social media" [ref=f50e91]
+              - generic [ref=f50e94]: Social media
+            - generic [ref=f50e95] [cursor=pointer]:
+              - radio "Somewhere else" [ref=f50e96]
+              - generic [ref=f50e99]: Somewhere else
+        - group "8. Which of these interest you?" [ref=f50e100]:
+          - generic [ref=f50e101]:
+            - generic [ref=f50e102]: "8."
+            - paragraph [ref=f50e103]: Which of these interest you?
+          - paragraph [ref=f50e104]: Select all that apply.
+          - generic [ref=f50e105]:
+            - generic [ref=f50e106] [cursor=pointer]:
+              - checkbox "Building web applications" [ref=f50e107]
+              - generic [ref=f50e111]: Building web applications
+            - generic [ref=f50e112] [cursor=pointer]:
+              - checkbox "Data and analytics" [ref=f50e113]
+              - generic [ref=f50e117]: Data and analytics
+            - generic [ref=f50e118] [cursor=pointer]:
+              - checkbox "Infrastructure and deployment" [ref=f50e119]
+              - generic [ref=f50e123]: Infrastructure and deployment
+        - group "9. Why do you want to take this course?" [ref=f50e124]:
+          - generic [ref=f50e125]:
+            - generic [ref=f50e126]: "9."
+            - paragraph [ref=f50e127]: Why do you want to take this course?
+          - generic [ref=f50e128]:
+            - paragraph [ref=f50e130]: Why do you want to take this course?
+            - textbox "Why do you want to take this course?" [ref=f50e131]
+        - button "Next" [ref=f50e133] [cursor=pointer]
+  - contentinfo [ref=f50e137]:
+    - generic [ref=f50e138]:
+      - paragraph [ref=f50e139]: © 2026 FirstClass
+      - navigation "Legal" [ref=f50e140]:
+        - link "Terms and Conditions" [ref=f50e141] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f50e142] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f50e143] [cursor=pointer]: tracking-pixels
+  - list [ref=f50e145]:
+    - listitem [ref=f50e146]:
+      - link "Hide »" [ref=f50e147] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e148]:
+      - link "Toggle Theme" [ref=f50e149] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e152]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e153] [cursor=pointer]
+      - link "History /applications/application/983dfb03-174c-4d7e-a94a-a77f203ee53a/page/1/" [ref=f50e154] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e155]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e156] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f50e157] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e158]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e159] [cursor=pointer]
+      - 'link "Time CPU: 160.24ms (231.33ms)" [ref=f50e160] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f50e161]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e162] [cursor=pointer]
+      - link "Settings" [ref=f50e163] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e164]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e165] [cursor=pointer]
+      - link "Headers" [ref=f50e166] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e167]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e168] [cursor=pointer]
+      - link "Request application_form_page" [ref=f50e169] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e170]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e171] [cursor=pointer]
+      - link "SQL 70 queries in 77.47ms" [ref=f50e172] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e173]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e174] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f50e175] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e176]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e177] [cursor=pointer]
+      - link "Templates course_applications/form_page.html" [ref=f50e178] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e179]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e180] [cursor=pointer]
+      - link "Alerts" [ref=f50e181] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e182]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e183] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f50e184] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e185]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e186] [cursor=pointer]
+      - link "Signals 77 receivers of 15 signals" [ref=f50e187] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e188]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f50e189] [cursor=pointer]
+      - link "Community" [ref=f50e190] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f50e191]:
+      - checkbox "Enable for next and successive requests" [ref=f50e192] [cursor=pointer]
+      - generic [ref=f50e193]: Intercept redirects
+    - listitem [ref=f50e194]:
+      - checkbox "Enable for next and successive requests" [ref=f50e195] [cursor=pointer]
+      - generic [ref=f50e196]: Profiling
