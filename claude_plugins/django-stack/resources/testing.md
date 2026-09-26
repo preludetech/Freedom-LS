@@ -14,7 +14,7 @@ Use factory_boy factories for all test data creation. Never use `.objects.create
 - Override only the fields relevant to the test; let factories provide sensible defaults
 - Always check existing factories before creating new ones
 - See `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` for the full factory reference
-- Avoid creating fixtures that are thin wrappers around factories. Rather just use the factories
+- See "The thin-wrapper rule" in "Test organisation and hygiene" below for when a fixture is a thin wrapper around a factory, and when it isn't
 
 ## Test organisation and hygiene
 
@@ -113,6 +113,8 @@ import itertools
 from collections.abc import Iterator
 
 import pytest
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.db import connection, models
 from pytest_django.plugin import DjangoDbBlocker
 
@@ -140,6 +142,34 @@ def _stub_tables(django_db_setup: None, django_db_blocker: DjangoDbBlocker) -> I
 def _make_stub(name: str | None = None) -> StubModel:
     return StubModel.objects.create(name=name or f"stub-{next(_counter)}")
 ```
+
+### Fixture scope and idempotent reset
+
+Default to function scope. Widen to module or session scope only for setup that profiling shows is expensive, never to save typing.
+
+A session- or module-scoped fixture must never hand back mutable state that a test then mutates. That's an isolation bug, and `pytest-randomly` exposes it: it reorders tests and reseeds factory_boy and Faker for each test. See "Test order independence" below.
+
+Where cost justifies a wider scope, build the expensive read-only part at that scope and reset or verify the per-test mutable part at function scope, idempotently (`get_or_create`, an explicit cache clear). Rows created at session scope don't survive a test marked `transaction=True`, which flushes the database; see "`transaction=True` is expensive — justify it" below.
+
+The session-scoped `_stub_tables` fixture above is the expensive read-only part. Pair it with a function-scoped autouse fixture that resets the mutable part, in the same conftest:
+
+```python
+@pytest.fixture(autouse=True)
+def _stub_permissions(db: None) -> None:
+    """Runs per test: a transaction=True test elsewhere flushes session-scoped rows,
+    and the ContentType cache can hold a PK from a rolled-back transaction."""
+    ContentType.objects.clear_cache()
+    ct, _ = ContentType.objects.get_or_create(app_label="myproject_widgets", model="stubmodel")
+    Permission.objects.get_or_create(
+        content_type=ct, codename="change_stubmodel", defaults={"name": "Can change stub model"}
+    )
+```
+
+### The thin-wrapper rule
+
+Avoid creating fixtures that are thin wrappers around factories. Rather just use the factories. A fixture is thin when its entire body is one factory call with fixed keyword arguments; delete it and call the factory directly in the test.
+
+A fixture that composes several factory calls, adds relationship logic no single factory expresses, or builds on another fixture is not thin. That's the correct use of a fixture.
 
 ## Test Patterns
 

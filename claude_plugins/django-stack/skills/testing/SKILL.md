@@ -28,6 +28,9 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 - A foundational app proves genericity with a stub model in its own `tests/conftest.py`, never by
   importing a downstream app's model. See "Stub-model technique" in
   `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+- Fixtures are function-scoped unless profiling justifies wider, and a wide-scoped fixture never
+  hands back state a test mutates. See "Fixture scope and idempotent reset" in
+  `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
 - Use `@pytest.mark.django_db` for database tests
 - Use factory_boy factories for all test data creation — never use `.objects.create()` directly
 - Use `reverse()` for URLs, never hardcode
@@ -183,7 +186,7 @@ For anything with a validation rule, test that invalid input is **rejected**, no
 ### Test hygiene
 
 - No `if`, `for`, `try` in test bodies. Tests are linear.
-- No shared mutable state between tests — use factories or fixtures; tests must pass in any order.
+- No shared mutable state between tests — use factories or fixtures; tests must pass in any order. See "Fixture scope and idempotent reset" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` for the case of a wide-scoped fixture handing back state a test mutates.
 - Delete flaky tests. A flaky test is worse than no test. Fix the flakiness or remove it.
 - Keep tests fast. A unit test taking >100ms is probably hitting real I/O.
 - Coverage is a signal, not a goal. High coverage with weak assertions is worse than moderate coverage with strong ones.
@@ -246,5 +249,6 @@ from myproject.optional_feature.factories import WidgetFactory  # now safe
 | Patches `request.user` to skip auth | Bypasses real permission code | Use `client.force_login(user)` |
 | Asserts a hardcoded value derived from live config (a settings value, a theme `.css`) | Breaks when config legitimately changes; duplicates the controlled-input tests | Test the function with explicit inputs; guard real config with a system check |
 | Test imports an app its own app does not depend on | Hides a real dependency, couples unrelated apps | Move the test to the lowest app that depends on everything it touches, or replace the import with a local stub or fixture |
+| A session-scoped fixture returns rows a test mutates | Order-dependent failures under `pytest-randomly`, wiped by `transaction=True` | Build the read-only part at wide scope, reset the mutable part per test |
 
 For the longer list of red flags, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.

@@ -64,6 +64,41 @@ The reference implementation is `panel_framework/tests/conftest.py`: `StubModel`
 
 `site_aware_models` and `role_based_permissions` still borrow downstream models in their tests and need this technique.
 
+### Fixture scope and idempotent reset
+
+The FLS worked example is `panel_framework/tests/conftest.py`, quoted near-verbatim below and trimmed to the two fixture signatures, the unblock/schema-editor lines and `_panel_test_permissions`'s docstring:
+
+```python
+@pytest.fixture(autouse=True, scope="session")
+def _panel_test_tables(django_db_setup, django_db_blocker):
+    """Create stub tables once per test session."""
+    with django_db_blocker.unblock():
+        ...
+        with connection.schema_editor() as editor:
+            editor.create_model(StubModel)
+            ...
+        yield
+        with connection.schema_editor() as editor:
+            ...
+
+
+@pytest.fixture(autouse=True)
+def _panel_test_permissions(db):
+    """Ensure stub-model ContentType and Permissions exist before every test.
+
+    Function-scoped because tests using ``@pytest.mark.django_db(transaction=True)``
+    elsewhere in the suite flush the DB between tests, wiping any session-scoped
+    setup. The ContentType in-memory cache must also be cleared so that
+    ``get_for_model(StubModel)`` does not return a stale PK from a prior
+    rolled-back transaction. Idempotent via ``get_or_create``.
+    """
+    ...
+```
+
+### The thin-wrapper rule
+
+Root-conftest fixtures that are correctly not thin: `course_with_topic` (two factory calls plus `.items.create(...)`) and `staff_client` (builds on `mock_site_context` and `logged_in_client`).
+
 ## `mock_site_context` fixture (mandatory for site-aware models)
 
 Any test that touches a site-aware model **must** take the `mock_site_context` fixture — never manually set `site`. The fixture sets the thread-local site context that `SiteAwareFactory` and the site-aware managers read.
