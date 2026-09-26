@@ -22,7 +22,8 @@ against last week's `main` can be heading somewhere that `main` has since turned
 ## What happens on a rebase
 
 1. **Commit, then rebase.** If the worktree has uncommitted changes, commit them first and carry on.
-   Fetch `origin/main` and keep a backup ref of the branch's tip before rewriting it. If
+   Fetch `origin/main` and keep a backup ref of the branch's tip before rewriting it
+   (`rebase-backup/<branch>`, one per branch, moved on every rebase). If
    `origin/main` is already in the branch's history there is nothing to do, which keeps the check
    cheap enough to run before every step.
 2. **Resolve conflicts, then prove nothing was lost.** Claude resolves conflicts itself. Every
@@ -60,14 +61,30 @@ This builds on the existing `/ds:rebase_main`, with each concern in the plugin i
 
 - **`ds`**: `/ds:rebase_main` gets the generic hardening: commit-then-rebase, the backup ref,
   lost-change checks, lockfile and migration handling, and the automatic force-push. It stays the
-  command a human runs by hand.
-- **`sdd`**: runs the rebase before every feature-branch command. That covers dispatch through
-  `/sdd:next` and also each command invoked directly. It owns the upstream-change review and the
-  pause. It does not run on `main` (`/sdd:start`, `/sdd:roadmap`). `/sdd:finish_worktree` keeps its
-  existing post-merge rebase.
-- **`fls-dev`**: supplies the Tailwind rebuild and the Playwright MCP check through a project hook
-  in `.claude/sdd/config.md`, the way `## Worktree Scripts` already lets `sdd` reach
-  project-specific setup. `sdd` stays free of Playwright.
+  command a human runs by hand. The mechanical half of the lost-change check is a script,
+  `rebase_lost_change_check.sh`, so it is deterministic and tested. Because the command runs the
+  test suite, it also runs the project's **Rebuild script** first: a `## Rebase Scripts` key in
+  `.claude/ds/config.md`, blank by default, which this project points at `fls-dev`'s
+  `rebuild_after_rebase.sh`.
+- **`sdd`**: runs the rebase before every feature-branch command, as the **pre-step rebase**: a
+  protected helper, `commands/protected/pre_step_rebase.md`, that `/sdd:next` follows before it
+  dispatches a `(cmd)` item and that each feature-branch command follows as its own Step 0 when
+  invoked directly. `sdd` reaches the rebase itself through a **Rebase command** key in the
+  `## Rebase Hooks` section of `.claude/sdd/config.md`, blank by default, which this project points
+  at `/ds:rebase_main`'s file, so `sdd` never names `ds`. It owns the upstream-change review and the
+  pause. The mechanical scan is a script, `scripts/upstream_change_scan.sh`, so it is tested. The
+  finding goes to `upstream_change_review.md` beside the spec, and a `(user)` item in `todo.md`
+  holds the workflow until the human ticks it; `update_todo.md` gains an `add_first:` argument so
+  that item lands above the first unchecked item. It does not run on `main` (`/sdd:start`,
+  `/sdd:roadmap`). `/sdd:finish_worktree` keeps its existing post-merge rebase and deletes the
+  branch's backup ref.
+- **`fls-dev`**: supplies the Tailwind rebuild and the Playwright MCP check through project hooks,
+  the way `## Worktree Scripts` already lets `sdd` reach project-specific setup. The rebuild is
+  the `rebuild_after_rebase.sh` script (`uv sync`, `npm i`, `npm run tailwind_build`), which
+  `install_dev.sh` also calls. The Playwright MCP check is the **front-end check**, a helper file
+  `commands/protected/frontend_check.md` that the pre-step rebase reads and follows through the
+  **Front-end check** key of a `## Rebase Hooks` section in `.claude/sdd/config.md`, blank by
+  default. `sdd` stays free of Playwright.
 
 `research_sdd_workflow_integration.md` maps the branch model, every existing rebase, and the
 command/skill/plugin precedents behind this split.
