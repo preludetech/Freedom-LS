@@ -7,12 +7,6 @@
 
 {% block content %}
     {% element h1 %}{% trans "Create an account" %}{% endelement %}
-    <div class="flex flex-wrap items-center gap-3">
-        <span>{% trans "Already have an account?" %}</span>
-        <c-button href="{{ login_url }}" variant="secondary">
-            {% trans "Log in" %}
-        </c-button>
-    </div>
 
     {% if not SOCIALACCOUNT_ONLY %}
         {% url 'account_signup' as action_url %}
@@ -71,9 +65,17 @@
                 {{ redirect_field }}
             {% endslot %}
             {% slot actions %}
-                {% element button tags="prominent,signup" type="submit" %}
-                    {% trans "Sign Up" %}
-                {% endelement %}
+                <div class="mt-6 space-y-6">
+                    <c-button type="submit" variant="primary" class="w-full font-semibold">
+                        {% trans "Sign Up" %}
+                    </c-button>
+                    <div class="border-t border-border pt-6 space-y-3 text-center">
+                        <p>{% trans "Already have an account?" %}</p>
+                        <c-button href="{{ login_url }}" variant="secondary" class="w-full font-semibold">
+                            {% trans "Log in" %}
+                        </c-button>
+                    </div>
+                </div>
             {% endslot %}
         {% endelement %}
     {% endif %}
