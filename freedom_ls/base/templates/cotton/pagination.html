@@ -5,7 +5,8 @@
         sort_order=""
         search_query=""
         extra_params=""
-        page_param_name="page" />
+        page_param_name="page"
+        push_url="" />
 
 {% load pagination_tags %}
 
@@ -20,6 +21,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
+                   {% if push_url %}hx-push-url="true"{% endif %}
                    class="btn btn-secondary px-4 py-3">
                     Previous
                 </a>
@@ -34,6 +36,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
+                   {% if push_url %}hx-push-url="true"{% endif %}
                    class="btn btn-secondary px-4 py-3">
                     Next
                 </a>
@@ -49,6 +52,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}=1{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
+                   {% if push_url %}hx-push-url="true"{% endif %}
                    class="btn btn-secondary">
                     First
                 </a>
@@ -56,6 +60,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
+                   {% if push_url %}hx-push-url="true"{% endif %}
                    class="btn btn-secondary">
                     Previous
                 </a>
@@ -69,6 +74,7 @@
                        hx-get="{{ base_url }}?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
+                       {% if push_url %}hx-push-url="true"{% endif %}
                        class="btn btn-secondary">
                         {{ num }}
                     </a>
@@ -84,6 +90,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.next_page_number }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
+                   {% if push_url %}hx-push-url="true"{% endif %}
                    class="btn btn-secondary">
                     Next
                 </a>
@@ -91,6 +98,7 @@
                    hx-get="{{ base_url }}?{{ page_param_name }}={{ page_obj.paginator.num_pages }}{{ suffix }}"
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
+                   {% if push_url %}hx-push-url="true"{% endif %}
                    class="btn btn-secondary">
                     Last
                 </a>
@@ -115,6 +123,13 @@ Usage Examples:
                 :base_url="base_url"
                 table_id="course-progress-content"
                 extra_params="registration=abc&page=2" />
+
+  Pushing each page's URL into the address bar, so reload, Back and a
+  shared link keep the page (off by default):
+  <c-pagination :page_obj="page_obj"
+                :base_url="base_url"
+                table_id="notification-list"
+                push_url="true" />
 
   With a custom page-parameter name (default is "page"):
   <c-pagination :page_obj="col_page"

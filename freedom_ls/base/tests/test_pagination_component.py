@@ -98,3 +98,12 @@ class TestPaginationComponent:
         assert "?page=10" in result
         assert "First" in result
         assert "Last" in result
+
+    def test_links_do_not_push_the_url_by_default(self) -> None:
+        result = _render(_BASE.format(extras=""), page_obj=_page(2, 3))
+        assert "hx-push-url" not in result
+
+    def test_every_link_pushes_the_url_when_push_url_is_set(self) -> None:
+        result = _render(_BASE.format(extras='push_url="true"'), page_obj=_page(2, 3))
+        assert result.count("hx-get=") == result.count('hx-push-url="true"')
+        assert result.count("hx-get=") > 0

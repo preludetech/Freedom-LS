@@ -15,6 +15,7 @@
                            hx-get="{{ base_url }}"
                            hx-target="#notification-list"
                            hx-swap="outerHTML"
+                           hx-push-url="true"
                            {% if filter != "unread" %}aria-current="page"{% endif %}
                            class="rounded-full px-3 py-1.5 text-sm font-medium text-muted aria-[current=page]:bg-surface aria-[current=page]:text-on-surface aria-[current=page]:shadow-sm hover:text-on-surface">
                             All
@@ -23,6 +24,7 @@
                            hx-get="{{ base_url }}?filter=unread"
                            hx-target="#notification-list"
                            hx-swap="outerHTML"
+                           hx-push-url="true"
                            {% if filter == "unread" %}aria-current="page"{% endif %}
                            class="rounded-full px-3 py-1.5 text-sm font-medium text-muted aria-[current=page]:bg-surface aria-[current=page]:text-on-surface aria-[current=page]:shadow-sm hover:text-on-surface">
                             Unread
@@ -81,7 +83,7 @@
                     </div>
                 {% endif %}
 
-                <c-pagination :page_obj="page_obj" :base_url="base_url" table_id="notification-list" :extra_params="extra_params" />
+                <c-pagination :page_obj="page_obj" :base_url="base_url" table_id="notification-list" :extra_params="extra_params" push_url="true" />
             </div>
         {% endpartialdef %}
         {% partial list %}

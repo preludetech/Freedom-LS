@@ -152,10 +152,16 @@ def _mark_response(request: HttpRequest) -> HttpResponse:
 def notification_list(request: HttpRequest) -> HttpResponse:
     """The notification centre. Visiting marks the user's unseen rows seen."""
     _mark_seen(request)
-    is_htmx = request.headers.get("HX-Request") == "true"
+    # The filter links and pagination push their URLs, so on a history-cache
+    # miss htmx re-fetches one of them with HX-Request set and swaps the
+    # response in as the whole body: that request needs the full page.
+    is_fragment = (
+        request.headers.get("HX-Request") == "true"
+        and request.headers.get("HX-History-Restore-Request") != "true"
+    )
     template_name = (
         "comms/notification_list.html#list"
-        if is_htmx
+        if is_fragment
         else "comms/notification_list.html"
     )
     return render(request, template_name, _list_context(request))

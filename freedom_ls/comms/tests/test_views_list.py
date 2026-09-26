@@ -120,6 +120,53 @@ class TestPagination:
         assert "<html" not in content.lower()
         assert 'id="notification-list"' in content
 
+    def test_an_htmx_history_restore_gets_the_full_page(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory.create_batch(25, user=user)
+        client = logged_in_client(user)
+
+        response = client.get(
+            reverse(LIST_URL_NAME),
+            {"page": 2},
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_HISTORY_RESTORE_REQUEST="true",
+        )
+
+        assert "<html" in response.content.decode().lower()
+
+    def test_filter_links_push_the_url(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory(user=user)
+        client = logged_in_client(user)
+
+        response = client.get(reverse(LIST_URL_NAME))
+
+        filter_links = re.findall(
+            r'<a href="[^"]*"\s+hx-get="[^"]*"[^>]*>', response.content.decode()
+        )
+        filter_links = [link for link in filter_links if "notification-list" in link]
+        assert len(filter_links) == 2
+        assert all('hx-push-url="true"' in link for link in filter_links)
+
+    def test_pagination_links_push_the_url(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory.create_batch(25, user=user)
+        client = logged_in_client(user)
+
+        response = client.get(reverse(LIST_URL_NAME))
+
+        page_two_link = re.search(
+            r'<a[^>]*hx-get="[^"]*\?page=2[^"]*"[^>]*>', response.content.decode()
+        )
+        assert page_two_link is not None
+        assert 'hx-push-url="true"' in page_two_link.group(0)
+
     def test_day_groups_split_correctly_across_a_page_boundary(
         self, mock_site_context, logged_in_client
     ) -> None:
