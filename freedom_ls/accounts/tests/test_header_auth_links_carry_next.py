@@ -17,19 +17,7 @@ from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 from django.test import Client
 from django.urls import reverse
 
-
-def _hrefs_to(html: str, url_name: str) -> list[str]:
-    """Every href on the page that points at `url_name`."""
-    target_path = reverse(url_name)
-    hrefs = [unescape(h) for h in re.findall(r'href="([^"]*)"', html)]
-    return [h for h in hrefs if urlparse(h).path == target_path]
-
-
-def _header_html(html: str) -> str:
-    """The `<header>…</header>` fragment of the page."""
-    match = re.search(r"<header.*?</header>", html, re.DOTALL)
-    assert match, "page has no <header> element"
-    return match.group(0)
+from freedom_ls.accounts.tests._auth_page_helpers import _header_html, _hrefs_to
 
 
 def _signup_via(client: Client, signup_href: str, email: str) -> str:
@@ -60,14 +48,19 @@ def _signup_via(client: Client, signup_href: str, email: str) -> str:
 
 @pytest.fixture
 def login_page_for_apply(mock_site_context, course_with_topic):
-    """An anonymous client that clicked Apply, and the sign-in page it reached."""
+    """The sign-in page reached directly with a pending apply-page `next`.
+
+    Apply itself now sends an anonymous visitor to signup (see
+    test_acquisition_login_required.py), so this fixture reaches the sign-in
+    page the way the header's own Login link and a closed-signups site would:
+    directly, with `next` already set to the apply URL.
+    """
     course = course_with_topic(access_type="application_gated")
     apply_url = reverse(
         "course_applications:apply", kwargs={"course_slug": course.slug}
     )
     client = Client()
-    login_redirect = client.get(apply_url)
-    login_page = client.get(login_redirect["Location"])
+    login_page = client.get(f"{reverse('account_login')}?next={apply_url}")
     return client, apply_url, login_page.content.decode()
 
 

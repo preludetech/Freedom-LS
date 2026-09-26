@@ -2,17 +2,11 @@
 {% load allauth i18n %}
 
 {% block head_title %}
-    {% trans "Signup" %}
+    {% trans "Create an account" %}
 {% endblock head_title %}
 
 {% block content %}
-    {% element h1 %}
-        {% trans "Sign Up" %}
-    {% endelement %}
-    {% element p %}
-        {% trans "Already have an account? Then please" %}
-        <a href="{{ login_url }}" class="text-primary underline">{% trans "sign in" %}</a>.
-    {% endelement %}
+    {% element h1 %}{% trans "Create an account" %}{% endelement %}
 
     {% if not SOCIALACCOUNT_ONLY %}
         {% url 'account_signup' as action_url %}
@@ -71,9 +65,17 @@
                 {{ redirect_field }}
             {% endslot %}
             {% slot actions %}
-                {% element button tags="prominent,signup" type="submit" %}
-                    {% trans "Sign Up" %}
-                {% endelement %}
+                <div class="mt-6 space-y-6">
+                    <c-button type="submit" variant="primary" class="w-full font-semibold">
+                        {% trans "Create account" %}
+                    </c-button>
+                    <div class="border-t border-border pt-6 space-y-3 text-center">
+                        <p>{% trans "Already have an account?" %}</p>
+                        <c-button href="{{ login_url }}" variant="secondary" class="w-full font-semibold">
+                            {% trans "Log in" %}
+                        </c-button>
+                    </div>
+                </div>
             {% endslot %}
         {% endelement %}
     {% endif %}

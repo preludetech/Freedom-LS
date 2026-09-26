@@ -15,7 +15,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from freedom_ls.accounts.utils import redirect_to_auth
+from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.google_analytics import record_interest_expressed
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
@@ -37,12 +37,13 @@ def _express_interest(request: HttpRequest, course: Course) -> None:
 def partial_express_interest(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Express interest in a coming-soon course (HTMX, POST-only).
 
-    An anonymous visitor is sent to sign in with next pointed at
-    deferred_express_interest, the GET-safe view that records the interest
-    once they return — resolved before the course lookup so an anonymous POST
-    for any slug gets an identical redirect and confirms nothing about the
-    course. The slug is stashed in the session so that view can tell a real
-    click from a bare GET of its URL.
+    Express interest is an acquisition call to action, so an anonymous
+    visitor is sent to signup (or login, once signups are closed), with next
+    pointed at deferred_express_interest, the GET-safe view that records the
+    interest once they return — resolved before the course lookup so an
+    anonymous POST for any slug gets an identical redirect and confirms
+    nothing about the course. The slug is stashed in the session so that view
+    can tell a real click from a bare GET of its URL.
 
     Returns 404 if the course is hidden and the user is not registered (never
     confirms a hidden course exists). Returns HTTP 422 if the course is not
@@ -56,7 +57,9 @@ def partial_express_interest(request: HttpRequest, course_slug: str) -> HttpResp
             kwargs={"course_slug": course_slug},
         )
         request.session[_PENDING_INTEREST_SESSION_KEY] = course_slug
-        return redirect_to_auth(request, next_url=next_url)
+        return redirect_to_auth(
+            request, next_url=next_url, auth_url=acquisition_auth_url(request)
+        )
 
     course = get_object_or_404(Course, slug=course_slug)
 

@@ -1,6 +1,6 @@
 # Authentication
 
-_Last updated: 2026-08-30_
+_Last updated: 2026-09-27_
 
 ## Summary
 
@@ -47,7 +47,7 @@ This is the canonical description of the consent trail; other docs link here. Ho
 
 **Signup rate limiting.** Signups are capped per minute, per IP address and per key.
 
-**Email-enumeration prevention.** Responses do not distinguish "email not registered" from "password incorrect", so the login and reset flows cannot be used to discover which addresses have accounts.
+**Email-enumeration prevention.** Responses do not distinguish "email not registered" from "password incorrect", so the login and reset flows cannot be used to discover which addresses have accounts. A failed login also prompts the visitor to [create an account](./learner-experience.md#deferred-login-intent-completion), and that prompt is the same whatever email was typed, so it gives nothing away.
 
 Development settings deliberately relax exactly two of these: the password validators are emptied and the signup/login rate limits are switched off. Both are active in production. The brute-force lockout is not relaxed — it applies in development too. See [security and data handling](./security-and-data-handling.md).
 

@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-09-26_
+_Last updated: 2026-09-27_
 
 ## Summary
 
@@ -120,7 +120,7 @@ An author can flag a course as still being built so its table-of-contents surfac
 - Application-gated course, no prior application → **"Apply now"**, which starts an application.
 - Application-gated course, existing application → **"View my application"**, which links to the learner's application status page.
 
-The CTA label is action-forward and does not mention login; an anonymous visitor is taken through the standard login or signup flow automatically when they click the CTA (see [Deferred-login intent completion](#deferred-login-intent-completion) below). See [configuration and extension](./configuration-and-extension.md) for how access types are configured per course.
+The CTA label is action-forward and does not mention login; an anonymous visitor who clicks it is sent to signup and brought back afterwards (see [Deferred-login intent completion](#deferred-login-intent-completion) below). See [configuration and extension](./configuration-and-extension.md) for how access types are configured per course.
 
 **Progress-aware CTA (already-registered learners).** For learners who are already enrolled, the detail page shows a progress-aware CTA regardless of access model: "Start course", "Continue", or "Review course", pointing at the appropriate position in the course.
 
@@ -138,10 +138,11 @@ Prices are authored with the rest of the course metadata; see [content editing w
 
 ## Deferred-login Intent Completion
 
-When an anonymous visitor clicks an acquisition CTA ("Enrol for free" or "Apply now"), they are sent through the standard full-page login or signup flow via a `?next=` parameter. After authenticating, their intended action completes automatically:
+When an anonymous visitor clicks an acquisition CTA ("Enrol for free", "Apply now", or "I'm interested" on a coming-soon course), they land on the signup page, or on the login page when the site is closed for signups. Every other login-required page sends them to login. The login and signup pages each carry a prominent button to switch to the other, and a failed login offers signup with the typed email already filled in. After authenticating, their intended action completes automatically:
 
 - **"Enrol for free"** — after login or signup, the learner is enrolled and dropped straight into the course content with no additional click.
 - **"Apply now"** — after login or signup, the learner lands on the first page of the course's application form, or on the apply confirmation page when the course has no form. The application is not auto-submitted; it is sent only from the check-your-answers page, or by confirming, so applying is a deliberate action.
+- **"I'm interested"** — after login or signup, the interest is recorded and the visitor returns to the course page.
 
 This intent is preserved even through the new-user signup path that requires completing additional registration forms. For how the intended destination is preserved through signup, see [Authentication](./authentication.md).
 
