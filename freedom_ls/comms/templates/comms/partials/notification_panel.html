@@ -1,0 +1,44 @@
+{% load comms_tags %}
+<div class="flex h-full flex-col sm:h-auto sm:max-h-[32rem]">
+    <div class="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <h2 id="notification-panel-heading" class="text-base font-semibold text-on-surface">
+            Notifications
+            {% if unread_count %}
+                <span class="ml-2 text-sm font-medium text-muted">{{ unread_count }} unread</span>
+            {% endif %}
+        </h2>
+        <button type="button"
+                x-on:click="close"
+                aria-label="Close notifications"
+                class="sm:hidden rounded-full p-2 text-muted hover:bg-surface-2 hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
+            <c-icon name="close" class="size-5" />
+        </button>
+    </div>
+    <div class="min-h-0 flex-1 overflow-y-auto">
+        {% if notifications %}
+            <ul class="divide-y divide-border">
+                {% for notification in notifications %}
+                    {% include "comms/partials/notification_row.html" with show_actions=False %}
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="px-4 py-8 text-center text-sm text-muted">Nothing yet.</p>
+        {% endif %}
+    </div>
+    <div class="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-3">
+        <c-button variant="ghost"
+                  size="small"
+                  disabled="{% if not unread_count %}disabled{% endif %}"
+                  hx-post="{% url 'comms:notification_mark_all_read' %}"
+                  hx-target="#notification-panel"
+                  hx-swap="innerHTML">
+            Mark all as read
+        </c-button>
+        <c-button variant="ghost"
+                  size="small"
+                  href="{% url 'comms:notification_list' %}"
+                  icon_right="next">
+            See all
+        </c-button>
+    </div>
+</div>

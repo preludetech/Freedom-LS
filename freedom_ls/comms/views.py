@@ -101,16 +101,29 @@ def _list_context(request: HttpRequest) -> dict[str, object]:
     }
 
 
+def _panel_context(request: HttpRequest) -> dict[str, object]:
+    return {
+        "notifications": list(_notifications_for(request)[:8]),
+        "unread_count": _notifications_for(request).unread().count(),
+    }
+
+
 def _mark_response(request: HttpRequest) -> HttpResponse:
     """The fragment the surface that posted the mark action needs: the
-    re-rendered list plus the badge out of band, so the filter, the toolbar
-    count and the banners stay right after one click without a second
-    request."""
+    re-rendered list or panel plus the badge out of band, so the filter, the
+    toolbar count and the banners stay right after one click without a
+    second request. HX-Target names which surface posted the action, since
+    both the panel and the centre share these URLs."""
     if request.headers.get("HX-Request") != "true":
         return redirect("comms:notification_list")
-    body = render_to_string(
-        "comms/notification_list.html#list", _list_context(request), request
-    )
+    if request.headers.get("HX-Target") == "notification-panel":
+        body = render_to_string(
+            "comms/partials/notification_panel.html", _panel_context(request), request
+        )
+    else:
+        body = render_to_string(
+            "comms/notification_list.html#list", _list_context(request), request
+        )
     body += render_to_string(
         "comms/partials/notification_badge.html",
         {"unseen_count": _unseen_count(request), "oob": True},
@@ -140,6 +153,23 @@ def notification_badge(request: HttpRequest) -> HttpResponse:
         "comms/partials/notification_badge.html",
         {"unseen_count": _unseen_count(request)},
     )
+
+
+@login_required_htmx
+def notification_panel(request: HttpRequest) -> HttpResponse:
+    """The bell panel: the eight newest notifications. Opening marks the
+    user's unseen rows seen, and the badge OOB fragment goes along so the
+    header updates in the same response."""
+    _mark_seen(request)
+    body = render_to_string(
+        "comms/partials/notification_panel.html", _panel_context(request), request
+    )
+    body += render_to_string(
+        "comms/partials/notification_badge.html",
+        {"unseen_count": _unseen_count(request), "oob": True},
+        request,
+    )
+    return HttpResponse(body)
 
 
 @login_required_htmx

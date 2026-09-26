@@ -7,6 +7,7 @@ app_name = "comms"
 urlpatterns = [
     path("", views.notification_list, name="notification_list"),
     path("badge/", views.notification_badge, name="notification_badge"),
+    path("panel/", views.notification_panel, name="notification_panel"),
     path("<uuid:pk>/open/", views.notification_open, name="notification_open"),
     path(
         "<uuid:pk>/read/", views.notification_mark_read, name="notification_mark_read"

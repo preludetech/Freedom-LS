@@ -14,9 +14,9 @@ document.addEventListener("alpine:init", () => {
     // which the CSP build forbids, so the visibility check lives here and
     // triggers the hx-get via a plain DOM event instead.
     //
-    // `open`, `loading` and `failed` back the panel added in a later slice;
-    // they are declared now so that slice doesn't have to touch this
-    // component's shape.
+    // `open`, `loading` and `failed` also drive the panel: it loads from
+    // notification_panel each time it opens (openPanel), not once up front,
+    // so the eight rows and the unread count are never stale.
     Alpine.data("notificationBell", () => ({
         open: false,
         loading: false,
@@ -36,6 +36,21 @@ document.addEventListener("alpine:init", () => {
             // The first count already came from the page render, so the
             // initial start doesn't also fire an immediate refresh.
             this.startPolling(seconds, false);
+
+            this.$refs.panel.addEventListener("htmx:beforeRequest", () => {
+                this.loading = true;
+            });
+            this.$refs.panel.addEventListener("htmx:afterSwap", () => {
+                this.loading = false;
+            });
+            this.$refs.panel.addEventListener("htmx:responseError", () => {
+                this.loading = false;
+                this.failed = true;
+            });
+            this.$refs.panel.addEventListener("htmx:sendError", () => {
+                this.loading = false;
+                this.failed = true;
+            });
         },
         startPolling(seconds, refreshNow) {
             this.stopPolling();
@@ -47,6 +62,29 @@ document.addEventListener("alpine:init", () => {
         },
         refreshBadge() {
             this.$refs.badge.dispatchEvent(new CustomEvent("refresh"));
+        },
+        toggle() {
+            if (this.open) {
+                this.close();
+            } else {
+                this.openPanel();
+            }
+        },
+        openPanel() {
+            this.open = true;
+            this.failed = false;
+            this.$refs.panel.dispatchEvent(new CustomEvent("refresh"));
+        },
+        close() {
+            const focusWasInPanel = this.$refs.panel.contains(document.activeElement);
+            const focusWasOnBell = document.activeElement === this.$refs.bell;
+            this.open = false;
+            if (focusWasInPanel || focusWasOnBell) {
+                this.$refs.bell.focus();
+            }
+        },
+        retry() {
+            this.openPanel();
         },
         destroy() {
             this.stopPolling();

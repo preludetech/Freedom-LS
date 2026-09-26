@@ -1,15 +1,20 @@
 {% comment %}
-A WAI-ARIA disclosure, not <c-dropdown-menu>: the panel it opens (slice 6)
-holds links and buttons rather than menu items. Opening/closing itself is
-added in slice 6; this slice only wires up the badge and its poll.
+A WAI-ARIA disclosure, not <c-dropdown-menu>: the panel holds links and
+buttons rather than menu items, and it does not trap focus.
 {% endcomment %}
 <div x-data="notificationBell" class="relative" data-poll-seconds="{{ poll_seconds }}">
     <button type="button"
+            id="notification-bell"
             x-ref="bell"
+            x-on:click="toggle"
             aria-labelledby="notification-bell-label"
-            aria-expanded="false"
+            x-bind:aria-expanded="open"
+            aria-controls="notification-panel"
             class="relative inline-flex size-10 items-center justify-center rounded-full text-on-header hover:bg-header-action hover:text-on-header-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2">
-        <c-icon name="notifications" class="size-6" />
+        {% comment %}<c-icon> is server-rendered, so the open state toggles
+        between two rendered icons rather than swapping one client-side.{% endcomment %}
+        <span x-show="!open"><c-icon name="notifications" class="size-6" /></span>
+        <span x-show="open" x-cloak><c-icon name="notifications" variant="solid" class="size-6" /></span>
     </button>
     <span id="notification-badge"
           role="status"
@@ -20,4 +25,28 @@ added in slice 6; this slice only wires up the badge and its poll.
           hx-swap="innerHTML">
         {% include "comms/partials/notification_badge.html" %}
     </span>
+    <div id="notification-panel"
+         x-ref="panel"
+         x-show="open"
+         x-cloak
+         x-on:click.away="close"
+         x-on:keydown.escape.window="close"
+         aria-labelledby="notification-panel-heading"
+         hx-get="{% url 'comms:notification_panel' %}"
+         hx-trigger="refresh"
+         hx-target="this"
+         hx-swap="innerHTML"
+         class="fixed inset-0 z-50 bg-surface sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:rounded-lg sm:border sm:border-border sm:shadow-lg">
+        <div x-show="loading" class="p-8">
+            <c-loading-indicator />
+        </div>
+        <div x-show="failed" role="alert" class="p-6 text-center text-sm text-on-surface">
+            Couldn't load your notifications.
+            <button type="button"
+                    x-on:click="retry"
+                    class="mt-2 block w-full text-center font-medium text-primary hover:underline">
+                Try again
+            </button>
+        </div>
+    </div>
 </div>
