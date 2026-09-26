@@ -1,7 +1,16 @@
+{% load fls_base_filters meta_pixel_tags %}
 {% comment %}
-partials/analytics_events.html includes this whenever meta_pixel_id is set,
-independently of whether any event is pending, so the include must exist as
-soon as the pixel can load. The event mapping (meta_pixel/events.py, the
-meta_pixel_call filter) fills this in with one self-removing fbq(...) call
-per mapped event; until then it renders nothing.
+Rendered by partials/analytics_events.html with this response's events. The
+script removes itself once it has run, so htmx's history snapshot of the page
+does not carry it -- without that, a Back navigation to a cached snapshot
+would fire the event again.
 {% endcomment %}
+{% if analytics_enabled and meta_pixel_id %}
+    {% for event in analytics_events %}
+        {% with call=event|meta_pixel_call %}
+            {% if call %}
+                <script>fbq('{{ call.method }}', '{{ call.name|escapejs }}', {{ event.params|inline_script_json }}); document.currentScript.remove();</script>
+            {% endif %}
+        {% endwith %}
+    {% endfor %}
+{% endif %}

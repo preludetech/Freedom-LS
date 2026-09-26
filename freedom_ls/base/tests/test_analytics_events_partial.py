@@ -11,10 +11,21 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
 _PENDING_SIGN_UP = {"name": "sign_up", "params": {"method": "email"}}
 _SIGN_UP_SCRIPT = """gtag('event', 'sign_up', {"method": "email"})"""
+_META_SIGN_UP_SCRIPT = """fbq('trackCustom', 'SignUp', {"method": "email"})"""
+
+# TikTok joins this set in slice 5; setting its ID here is harmless since
+# nothing reads it yet.
+_ALL_PLATFORM_SETTINGS = {
+    "GOOGLE_ANALYTICS_MEASUREMENT_ID": "G-TEST",
+    "META_PIXEL_ID": "123",
+    "TIKTOK_PIXEL_ID": "456",
+    "VISITOR_COUNTRY_HEADER": "X-Visitor-Country",
+}
 
 
 @pytest.fixture
@@ -60,7 +71,7 @@ class TestAnalyticsEventsPartial:
         assert "gtag('event'" not in content
         assert client.session["analytics_events"] == [_PENDING_SIGN_UP]
 
-    @override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+    @override_settings(**_ALL_PLATFORM_SETTINGS)
     def test_a_boosted_request_keeps_the_emitted_script_inside_interface_main(
         self,
         client: Client,
@@ -72,13 +83,47 @@ class TestAnalyticsEventsPartial:
         session["analytics_events"] = [_PENDING_SIGN_UP]
         session.save()
 
-        response = client.get(url, HTTP_HX_REQUEST="true")
+        response = client.get(url, HTTP_HX_REQUEST="true", HTTP_X_VISITOR_COUNTRY="ZA")
 
         content = response.content.decode()
         # Placement, not a full DOM parse: the event script must come after
         # the opening tag of #interface-main, the only region a boosted
         # course-player navigation keeps.
         assert content.index('id="interface-main"') < content.index(_SIGN_UP_SCRIPT)
+        assert content.index('id="interface-main"') < content.index(
+            _META_SIGN_UP_SCRIPT
+        )
+
+    @override_settings(**_ALL_PLATFORM_SETTINGS)
+    def test_one_recorded_event_renders_one_call_per_platform_from_the_same_pop(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        session = client.session
+        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+
+        response = client.get("/", HTTP_X_VISITOR_COUNTRY="ZA")
+
+        content = response.content.decode()
+        assert content.count(_SIGN_UP_SCRIPT) == 1
+        assert content.count(_META_SIGN_UP_SCRIPT) == 1
+
+    @override_settings(**_ALL_PLATFORM_SETTINGS)
+    def test_the_express_interest_swap_carries_the_ga4_call_and_no_meta_call(
+        self, client: Client, mock_site_context: object
+    ) -> None:
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        user: User = UserFactory()
+        client.force_login(user)
+        url = reverse(
+            "course_interest:express_interest", kwargs={"course_slug": course.slug}
+        )
+
+        response = client.post(url, HTTP_HX_REQUEST="true", HTTP_X_VISITOR_COUNTRY="ZA")
+
+        content = response.content.decode()
+        assert "gtag('event', 'course_access_requested'" in content
+        assert "fbq(" not in content
 
     def test_pages_render_without_google_tag_installed(
         self,

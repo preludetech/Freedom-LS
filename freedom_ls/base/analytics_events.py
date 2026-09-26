@@ -15,8 +15,9 @@ form, with `lead_form` naming the form. Never pass anything a visitor typed.
 """
 
 import re
+from collections.abc import Mapping
 from enum import StrEnum
-from typing import TypedDict, cast
+from typing import NamedTuple, TypedDict, cast
 
 from django.apps import apps
 from django.http import HttpRequest
@@ -160,3 +161,29 @@ def ad_pixels_allowed(request: HttpRequest) -> bool:
         return False
     country = visitor_country(request)
     return country is not None and country not in EU_CONSENT_POLICY_COUNTRIES
+
+
+class PixelCall(NamedTuple):
+    """One platform call for an analytics event."""
+
+    method: str  # e.g. "track" or "trackCustom"
+    name: str  # the platform's event name
+    # Parameters the analytics event must carry for the row to apply.
+    condition: Mapping[str, str] = {}
+
+
+def pixel_call(
+    mapping: Mapping[str, PixelCall], event: AnalyticsEventPayload
+) -> PixelCall | None:
+    """The platform call for `event` per `mapping`, or None when it does not apply.
+
+    An unmapped event name, or one whose parameters don't match the row's
+    condition (e.g. an interest registration where only an application
+    should fire), gives None.
+    """
+    call = mapping.get(event["name"])
+    if call is None:
+        return None
+    if any(event["params"].get(key) != value for key, value in call.condition.items()):
+        return None
+    return call

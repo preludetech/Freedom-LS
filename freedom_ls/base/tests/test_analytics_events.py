@@ -10,7 +10,10 @@ from django.urls import resolve
 from freedom_ls.base.analytics_events import (
     EU_CONSENT_POLICY_COUNTRIES,
     AnalyticsEvent,
+    AnalyticsEventPayload,
+    PixelCall,
     ad_pixels_allowed,
+    pixel_call,
     pop_analytics_events,
     record_analytics_event,
     record_sign_up,
@@ -293,3 +296,50 @@ class TestEuConsentPolicyCountries:
 
     def test_leaves_south_africa_out(self) -> None:
         assert "ZA" not in EU_CONSENT_POLICY_COUNTRIES
+
+
+class TestPixelCall:
+    def test_a_row_without_a_condition_matches_on_name_alone(self) -> None:
+        event: AnalyticsEventPayload = {
+            "name": "sign_up",
+            "params": {"method": "email"},
+        }
+        mapping = {"sign_up": PixelCall("trackCustom", "SignUp")}
+
+        assert pixel_call(mapping, event) == PixelCall("trackCustom", "SignUp")
+
+    def test_a_row_with_a_condition_matches_only_when_every_parameter_equals(
+        self,
+    ) -> None:
+        event: AnalyticsEventPayload = {
+            "name": "course_access_requested",
+            "params": {"request_kind": "application"},
+        }
+        mapping = {
+            "course_access_requested": PixelCall(
+                "track", "SubmitApplication", {"request_kind": "application"}
+            )
+        }
+
+        assert pixel_call(mapping, event) == PixelCall(
+            "track", "SubmitApplication", {"request_kind": "application"}
+        )
+
+    def test_a_condition_that_does_not_match_gives_none(self) -> None:
+        event: AnalyticsEventPayload = {
+            "name": "course_access_requested",
+            "params": {"request_kind": "interest"},
+        }
+        mapping = {
+            "course_access_requested": PixelCall(
+                "track", "SubmitApplication", {"request_kind": "application"}
+            )
+        }
+
+        assert pixel_call(mapping, event) is None
+
+    def test_an_unknown_name_gives_none(self) -> None:
+        event: AnalyticsEventPayload = {"name": "course_started", "params": {}}
+        mapping = {"sign_up": PixelCall("trackCustom", "SignUp")}
+
+        assert pixel_call(mapping, event) is None
