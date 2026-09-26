@@ -195,3 +195,32 @@ def test_the_open_panel_is_a_full_width_sheet_at_375px(
     assert box is not None
     assert box["width"] == pytest.approx(_MOBILE_VIEWPORT["width"], abs=1)
     expect(page.get_by_role("button", name="Close notifications")).to_be_visible()
+
+
+def test_a_failed_reopen_shows_the_error_and_try_again_recovers(
+    live_server, logged_in_page: Page, logged_in_user: User, mock_site_context
+) -> None:
+    NotificationFactory(user=logged_in_user, target__title="First Course")
+    page = logged_in_page
+    page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+    bell = _bell(page)
+    list_ = page.locator("#notification-panel ul")
+    bell.click()
+    expect(list_).to_be_visible()
+    bell.click()
+    panel_url = f"**{reverse('comms:notification_panel')}*"
+    page.route(panel_url, lambda route: route.fulfill(status=500))
+
+    bell.click()
+
+    error = page.get_by_role("alert").filter(
+        has_text="Couldn't load your notifications"
+    )
+    expect(error).to_be_visible()
+    expect(list_).to_be_hidden()
+
+    page.unroute(panel_url)
+    page.get_by_role("button", name="Try again").click()
+
+    expect(list_).to_be_visible()
+    expect(error).to_be_hidden()

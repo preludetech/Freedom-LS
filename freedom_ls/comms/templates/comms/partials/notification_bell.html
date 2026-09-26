@@ -25,17 +25,16 @@ buttons rather than menu items, and it does not trap focus.
           hx-swap="innerHTML">
         {% include "comms/partials/notification_badge.html" %}
     </span>
-    <div id="notification-panel"
-         x-ref="panel"
+    {% comment %}
+    The loading and error blocks sit beside #notification-panel, not inside
+    it: the panel swaps its own innerHTML, which would otherwise delete them
+    on the first successful load.
+    {% endcomment %}
+    <div x-ref="panel"
          x-show="open"
          x-cloak
          x-on:click.away="close"
          x-on:keydown.escape.window="close"
-         aria-labelledby="notification-panel-heading"
-         hx-get="{% url 'comms:notification_panel' %}"
-         hx-trigger="refresh"
-         hx-target="this"
-         hx-swap="innerHTML"
          class="fixed inset-0 z-50 bg-surface sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 sm:rounded-lg sm:border sm:border-border sm:shadow-lg">
         <div x-show="loading" class="p-8">
             <c-loading-indicator />
@@ -48,5 +47,14 @@ buttons rather than menu items, and it does not trap focus.
                 Try again
             </button>
         </div>
+        <div id="notification-panel"
+             x-ref="content"
+             x-show="contentVisible"
+             aria-labelledby="notification-panel-heading"
+             hx-get="{% url 'comms:notification_panel' %}"
+             hx-trigger="refresh"
+             hx-target="this"
+             hx-swap="innerHTML"
+             class="h-full sm:h-auto"></div>
     </div>
 </div>

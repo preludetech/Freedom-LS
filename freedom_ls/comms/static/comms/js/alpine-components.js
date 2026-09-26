@@ -37,20 +37,28 @@ document.addEventListener("alpine:init", () => {
             // initial start doesn't also fire an immediate refresh.
             this.startPolling(seconds, false);
 
-            this.$refs.panel.addEventListener("htmx:beforeRequest", () => {
+            // Only the panel's own load drives loading/failed. Mark-all and row
+            // actions bubble their htmx events up through the same element,
+            // and hiding the content for those would lose keyboard focus.
+            const content = this.$refs.content;
+            const onPanelLoad = (handler) => (event) => {
+                if (event.detail.elt === content) handler();
+            };
+            content.addEventListener("htmx:beforeRequest", onPanelLoad(() => {
                 this.loading = true;
-            });
-            this.$refs.panel.addEventListener("htmx:afterSwap", () => {
+            }));
+            content.addEventListener("htmx:afterSwap", onPanelLoad(() => {
                 this.loading = false;
-            });
-            this.$refs.panel.addEventListener("htmx:responseError", () => {
-                this.loading = false;
-                this.failed = true;
-            });
-            this.$refs.panel.addEventListener("htmx:sendError", () => {
+            }));
+            const onFailure = onPanelLoad(() => {
                 this.loading = false;
                 this.failed = true;
             });
+            content.addEventListener("htmx:responseError", onFailure);
+            content.addEventListener("htmx:sendError", onFailure);
+        },
+        get contentVisible() {
+            return !this.loading && !this.failed;
         },
         startPolling(seconds, refreshNow) {
             this.stopPolling();
@@ -73,7 +81,7 @@ document.addEventListener("alpine:init", () => {
         openPanel() {
             this.open = true;
             this.failed = false;
-            this.$refs.panel.dispatchEvent(new CustomEvent("refresh"));
+            this.$refs.content.dispatchEvent(new CustomEvent("refresh"));
         },
         close() {
             const focusWasInPanel = this.$refs.panel.contains(document.activeElement);
