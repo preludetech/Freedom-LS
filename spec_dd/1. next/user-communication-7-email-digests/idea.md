@@ -85,6 +85,8 @@ options.
 
 ## Resources
 
+- `spec_dd/1. next/user-communication/design.md`: the Claude Design design, including the preferences page drawn with daily and weekly
+  digest and quiet hours (brief section 3). Read it through the Claude Design integration, as that file says.
 - `spec_dd/1. next/user-communication-2-notification-email/`: the preferences page, per-site
   defaults row, unsubscribe and notification email templates this spec extends.
 - `spec_dd/1. next/user-communication-1-notifications-core/`: the notification model and

@@ -64,8 +64,8 @@ message. This spec avoids each of those.
   screen. Unread state is conveyed by text and icon, not colour alone. Unread counts and newly
   arrived messages are announced politely to screen readers.
 - **The design comes from Claude Design.** The inbox, thread and composer, with their empty,
-  unread and error states, follow the mockups drawn from `design_brief.md` in the parent
-  directory.
+  unread and error states, follow the design registered in `user-communication/design.md`, drawn
+  from `design_brief.md` in the parent directory.
 
 ## Open until the spec
 
@@ -115,8 +115,9 @@ Shared research in `spec_dd/1. next/user-communication/`:
   and mobile requirements.
 - `research_comms_patterns.md`: direct-messaging data model and participant read tracking.
 - `research_lms_comms_landscape.md`: the wider LMS comparison.
-- `design_brief.md` and the Claude Design mockups of the inbox, thread and composer, once they land
-  in the parent directory.
+- `spec_dd/1. next/user-communication/design.md`: the Claude Design design for the learner inbox, the thread and composer, and the
+  recipient picker (brief sections 5 to 7). Read it through the Claude Design integration, as that file says.
+- `spec_dd/1. next/user-communication/design_brief.md`: the brief it was drawn from.
 
 Specs this builds on: `user-communication-1-notifications-core` (notification API, bell, header
 bar placement) and `user-communication-3-messaging-policy` (the `MessagingPolicy` and relationship

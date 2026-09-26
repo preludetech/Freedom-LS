@@ -127,8 +127,8 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 ### User communication
 
-Parent: `user-communication` (source idea, `design_brief.md` for Claude Design, the mockups once
-they land, and five shared research files). Cut 2026-09-26 into eight specs. Read this section
+Parent: `user-communication` (source idea, `design_brief.md` for Claude Design, `design.md`
+registering the Claude Design design drawn from it, and five shared research files). Cut 2026-09-26 into eight specs. Read this section
 before starting any of them; each idea assumes you have.
 
 The source idea asks for notifications about a user's own activity, messaging between learners
@@ -164,7 +164,7 @@ External edges: 2 needs `retry-sent-emails`; 5 needs `educator-interface-3-panel
 - **Specs 5 and 6 run in parallel after 4.** 5 also waits on the educator interface's spec 3. Both add controls to the thread view 4 builds: 5 owns the educator-side layout, 6 owns the report and block controls on both sides, so whoever lands second rebases.
 - **Spec 7 any time after 2. Spec 8 last.**
 - Shortest path to something a learner sees: 1 alone. Shortest path to educator-learner messaging: 1 and 3, then 4, then 5.
-- The UI specs (1, 2, 4, 5, 6) build to the Claude Design mockups. Start their spec phase once the mockups for their screens are in the parent directory.
+- The UI specs (1, 2, 4, 5, 6, 7) build to the Claude Design design registered in `user-communication/design.md`. Read it through the Claude Design integration, as that file says.
 
 #### Decisions already taken
 

@@ -52,7 +52,7 @@ was built with room for a composer so that this spec could add one.
 - Every surface works on HTMX polling alone. Nothing here needs Django Channels.
 - This spec owns the educator-side layout of the thread view. The report and block controls on
   that view belong to moderation (spec 6).
-- Both surfaces work at 375px and meet WCAG 2.2 AA, and they build to the Claude Design mockups.
+- Both surfaces work at 375px and meet WCAG 2.2 AA, and they build to the Claude Design design registered in `user-communication/design.md`.
 
 ## Open until the spec
 
@@ -76,8 +76,9 @@ was built with room for a composer so that this spec could add one.
 
 ## Resources
 
-- `user-communication/design_brief.md` and the Claude Design mockups for the educator inbox
-  section and the quick-view message tab, which will land in the parent directory.
+- `spec_dd/1. next/user-communication/design.md`: the Claude Design design for the educator inbox section and the quick-view
+  Messages tab (brief sections 8 and 9). Read it through the Claude Design integration, as that file says.
+- `spec_dd/1. next/user-communication/design_brief.md`: the brief it was drawn from.
 - `research_messaging_relationships_and_surfaces.md` (shared, in `spec_dd/1. next/user-communication/`),
   covering how FLS decides which learners an educator can see, the quick view reserving room for
   a composer, and why the inbox must target spec 1's panel API.

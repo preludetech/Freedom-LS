@@ -31,7 +31,7 @@ FLS has none of this today.
   it and when, so the history stays auditable.
 - **Report and block controls sit on both sides of the thread view.** This spec owns them in the
   learner thread and in the educator-side view of a conversation, following the Claude Design
-  mockups for the thread, report, block and report-queue screens.
+  design (`user-communication/design.md`) for the thread, report, block and report-queue screens.
 - **A block only ever removes permission.** `MessagingPolicy` decides who may message whom; a
   block is checked on top of it and never lets anyone message someone the policy forbids. A
   blocked user does not appear as a recipient in the composer.
@@ -67,8 +67,9 @@ FLS has none of this today.
 ## Resources
 
 - `spec_dd/1. next/user-communication/idea.md`: the source idea.
-- `spec_dd/1. next/user-communication/design_brief.md` and the Claude Design mockups that will
-  land beside it: report, block, the report queue, and the blocked and hidden-message states.
+- `spec_dd/1. next/user-communication/design.md`: the Claude Design design for report, block, the report queue, and the blocked and
+  hidden-message states (brief sections 5, 6, 10 and 11). Read it through the Claude Design integration, as that file says.
+- `spec_dd/1. next/user-communication/design_brief.md`: the brief it was drawn from.
 - `spec_dd/1. next/user-communication-4-direct-messaging/` and
   `spec_dd/1. next/user-communication-3-messaging-policy/`: the conversations, thread view and
   `MessagingPolicy` this spec adds to.

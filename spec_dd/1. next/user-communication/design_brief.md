@@ -1,8 +1,8 @@
 # Design brief: user communication
 
 This brief is for Claude Design. It lists every screen and state the User communication effort
-needs drawn. Put the mockups in `spec_dd/1. next/user-communication/` next to this file. The
-specs build to their layout, density and component shapes.
+needs drawn. The design drawn from it is registered in `design.md` next to this file, which says
+how to read it and how faithfully to build to it.
 
 ## Product context
 

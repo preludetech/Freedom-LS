@@ -51,8 +51,8 @@ that matter. This spec adds email with the controls in place from the first mess
   in the same terms `retry-sent-emails` uses.
 - **Background sends pass `site_id` explicitly.** No request is in play, so the site's defaults,
   theme and absolute links resolve from the site the notification was raised on.
-- **Mockups come from Claude Design** via `design_brief.md`. This spec builds the preferences
-  page and the unsubscribe confirmation to them.
+- **The design comes from Claude Design**, registered in `user-communication/design.md`. This
+  spec builds the preferences page, the unsubscribe confirmation and the notification email to it.
 
 ## Open until the spec
 
@@ -84,8 +84,9 @@ that matter. This spec adds email with the controls in place from the first mess
 ## Resources
 
 - `spec_dd/1. next/user-communication/idea.md`: the source idea.
-- `spec_dd/1. next/user-communication/design_brief.md` and the Claude Design mockups that will land
-  beside it: the preferences page and its empty and error states.
+- `spec_dd/1. next/user-communication/design.md`: the Claude Design design for the preferences page (Immediately / Off version), the
+  unsubscribe landing page and the notification email. Read it through the Claude Design integration, as that file says.
+- `spec_dd/1. next/user-communication/design_brief.md` (sections 3 and 4): the brief it was drawn from.
 - `spec_dd/1. next/user-communication-1-notifications-core/`: the notification layer, the category
   registry and the notification centre this spec plugs into.
 - `spec_dd/1. next/retry-sent-emails/1. spec.md`: the `OutboundEmail` transport under every email
