@@ -138,7 +138,7 @@ on in the parent and the children.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 1 | `user-communication-1-notifications-core` | A new `comms` app and one call that raises a notification. In-app notifications with a bell and unread badge in the shared header bar, polled over HTMX, a notification centre, mark-as-read. First events: individual course registration and course completion. | none | next |
+| 1 | `user-communication-1-notifications-core` | A new `comms` app and one call that raises a notification. In-app notifications with a bell and unread badge in the shared header bar, polled over HTMX, a notification centre, mark-as-read. First events: individual course registration and course completion. | none | in progress |
 | 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate-or-off preferences page, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
 | 3 | `user-communication-3-messaging-policy` | Who may message whom, as a swappable `MessagingPolicy`. Layered config at site, organisation, cohort or course registration, and learner, closed by default, edited in the Django admin. The educators-of-a-learner and peer queries. | none | next |
 | 4 | `user-communication-4-direct-messaging` | One-to-one conversations with read state. Learner inbox and thread, a composer offering only permitted recipients with a "who will see this" line, polling, one rolled-up notification per unread conversation. | `user-communication-1-notifications-core`, `user-communication-3-messaging-policy` | next |
