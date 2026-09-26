@@ -1637,7 +1637,16 @@ def course_finish(request, course_slug):
         course_progress.completed_time = timezone.now()
         course_progress.save(update_fields=["completed_time"])
 
+        from freedom_ls.comms.notify import raise_notification
         from freedom_ls.webhooks.events import fire_webhook_event
+
+        raise_notification(
+            user=request.user,
+            category="course.completed",
+            target=course,
+            site_id=course_progress.site_id,
+            data={"course_title": course.title},
+        )
 
         fire_webhook_event(
             "course.completed",

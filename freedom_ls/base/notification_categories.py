@@ -32,4 +32,11 @@ FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
         message=_("You're registered for %(course_title)s"),
         url_builder="freedom_ls.learner_interface.notification_urls.course_home_url",
     ),
+    NotificationCategory(
+        key="course.completed",
+        label=_("Course completion"),
+        icon="achievement",
+        message=_("You completed %(course_title)s"),
+        url_builder="freedom_ls.learner_interface.notification_urls.course_home_url",
+    ),
 ]
