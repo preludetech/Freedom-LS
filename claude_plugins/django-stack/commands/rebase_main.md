@@ -121,7 +121,30 @@ A few rules on top of that loop:
 
 ## Step 7: Lost-change check
 
-Filled in by a later change.
+```
+.claude/ds/scripts/rebase_lost_change_check.sh $OLD_BASE $BACKUP
+```
+
+Read the exit code:
+
+- `0` → lost-change check: pass. Continue to Step 8.
+- `1` → for each path under `LOST:`, restore the branch's own change from the backup:
+  `git diff $OLD_BASE $BACKUP -- <file>` is the hunk to re-apply. Commit it as
+  `uv run git commit -m "<branch>: restore <what> lost in rebase"`, then re-run the script.
+- `2` → read the range-diff printed for each path under `REVIEW:`. A benign difference is
+  context drift; a `-`/`+` pair inside a commit that never meant to touch that code is a
+  dropped or altered change, restored the same way as for exit `1`. Then check the file
+  against `git diff $OLD_BASE origin/main -- <file>`: the branch may only remove a line
+  `main` added where the branch's own commit meant to remove it.
+
+Then run:
+
+```
+uv run manage.py makemigrations --check --dry-run
+```
+
+"No changes detected" is the only pass. Anything else means the Step 6 migration renumbering
+is incomplete: fix it and commit.
 
 ## Step 8: Rebuild and migrate
 
