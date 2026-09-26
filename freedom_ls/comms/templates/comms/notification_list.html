@@ -1,0 +1,30 @@
+{% extends "_base.html" %}
+
+{% block head_title %}Notifications{% endblock head_title %}
+
+{% block content %}
+    <c-page width="narrow">
+        <h1>Notifications</h1>
+
+        {% partialdef list %}
+            <div id="notification-list" class="mt-6 space-y-8">
+                {% for heading, notifications in day_groups %}
+                    <section aria-labelledby="notification-day-heading-{{ forloop.counter }}">
+                        <h2 id="notification-day-heading-{{ forloop.counter }}"
+                            class="text-sm font-semibold text-muted">
+                            {{ heading }}
+                        </h2>
+                        <ul class="mt-2 divide-y divide-border rounded-md border border-border">
+                            {% for notification in notifications %}
+                                {% include "comms/partials/notification_row.html" %}
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endfor %}
+
+                <c-pagination :page_obj="page_obj" :base_url="base_url" table_id="notification-list" />
+            </div>
+        {% endpartialdef %}
+        {% partial list %}
+    </c-page>
+{% endblock content %}

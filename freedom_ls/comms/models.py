@@ -8,6 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.db.models import Q
+from django.utils.module_loading import import_string
 
 from freedom_ls.comms.config import config
 from freedom_ls.site_aware_models.models import SiteAwareManager, SiteAwareModel
@@ -111,3 +112,24 @@ class Notification(SiteAwareModel):
 
     def __str__(self) -> str:
         return f"{self.category} notification for {self.user}"
+
+    @property
+    def message(self) -> str:
+        return cast(
+            str, str(get_notification_category(self.category).message) % self.data
+        )
+
+    @property
+    def label(self) -> str:
+        return str(get_notification_category(self.category).label)
+
+    @property
+    def icon(self) -> str:
+        return get_notification_category(self.category).icon
+
+    @property
+    def url(self) -> str | None:
+        builder = get_notification_category(self.category).url_builder
+        if builder is None or self.target is None:
+            return None
+        return cast(str, import_string(builder)(self.target))

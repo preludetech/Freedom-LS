@@ -1,0 +1,26 @@
+{% load comms_tags %}
+<li class="flex gap-3 bg-surface px-4 py-4 hover:bg-surface-2">
+    <c-icon :name="notification.icon" class="mt-0.5 size-5 shrink-0 text-muted" />
+    <div class="min-w-0 flex-1">
+        <p class="text-on-surface {% if not notification.read_at %}font-semibold{% endif %}">
+            {% if not notification.read_at %}<span class="sr-only">Unread. </span>{% endif %}
+            {% if notification.url %}
+                <a href="{% url 'comms:notification_open' notification.pk %}"
+                   class="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">{{ notification.message }}</a>
+            {% else %}
+                <span>{{ notification.message }}</span>
+            {% endif %}
+            {% if not notification.read_at %}
+                <span class="ml-2 inline-flex items-center gap-1 text-xs font-normal text-muted">
+                    <span class="size-2 rounded-full bg-primary" aria-hidden="true"></span>
+                    Unread
+                </span>
+            {% endif %}
+        </p>
+        <p class="mt-1 text-sm text-muted">
+            {{ notification.label }} &middot;
+            <time datetime="{{ notification.created_at|date:'c' }}"
+                  title="{{ notification.created_at }}">{{ notification.created_at|relative_time }}</time>
+        </p>
+    </div>
+</li>
