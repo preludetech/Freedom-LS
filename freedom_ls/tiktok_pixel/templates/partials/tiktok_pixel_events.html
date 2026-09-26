@@ -1,0 +1,16 @@
+{% load fls_base_filters tiktok_pixel_tags %}
+{% comment %}
+Rendered by partials/analytics_events.html with this response's events. The
+script removes itself once it has run, so htmx's history snapshot of the page
+does not carry it -- without that, a Back navigation to a cached snapshot
+would fire the event again.
+{% endcomment %}
+{% if analytics_enabled and tiktok_pixel_id %}
+    {% for event in analytics_events %}
+        {% with call=event|tiktok_pixel_call %}
+            {% if call %}
+                <script>ttq.{{ call.method }}('{{ call.name|escapejs }}', {{ event.params|inline_script_json }}); document.currentScript.remove();</script>
+            {% endif %}
+        {% endwith %}
+    {% endfor %}
+{% endif %}

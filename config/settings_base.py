@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     "freedom_ls.deployment",
     "freedom_ls.google_tag",
     "freedom_ls.meta_pixel",
+    "freedom_ls.tiktok_pixel",
     "freedom_ls.mail",
     "freedom_ls.health",
     "freedom_ls.icons",
@@ -203,6 +204,7 @@ TEMPLATES = [
                 "freedom_ls.base.context_processors.analytics_events",
                 "freedom_ls.google_tag.context_processors.google_tag_config",
                 "freedom_ls.meta_pixel.context_processors.meta_pixel_config",
+                "freedom_ls.tiktok_pixel.context_processors.tiktok_pixel_config",
                 "django.template.context_processors.csp",
             ],
             "builtins": [
@@ -620,6 +622,8 @@ GOOGLE_ADS_CONVERSION_LABELS = parse_conversion_labels(
 VISITOR_COUNTRY_HEADER = os.environ.get("VISITOR_COUNTRY_HEADER")
 # Meta pixel (resolved through freedom_ls.meta_pixel.config)
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID")
+# TikTok pixel (resolved through freedom_ls.tiktok_pixel.config)
+TIKTOK_PIXEL_ID = os.environ.get("TIKTOK_PIXEL_ID")
 SENTRY_DSN = os.environ.get("SENTRY_DSN")
 SENTRY_ENVIRONMENT = os.environ.get("SENTRY_ENVIRONMENT")
 SENTRY_RELEASE = os.environ.get("SENTRY_RELEASE")

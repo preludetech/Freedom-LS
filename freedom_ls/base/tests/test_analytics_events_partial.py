@@ -17,9 +17,8 @@ from freedom_ls.learner_management.factories import LearnerCourseRegistrationFac
 _PENDING_SIGN_UP = {"name": "sign_up", "params": {"method": "email"}}
 _SIGN_UP_SCRIPT = """gtag('event', 'sign_up', {"method": "email"})"""
 _META_SIGN_UP_SCRIPT = """fbq('trackCustom', 'SignUp', {"method": "email"})"""
+_TIKTOK_SIGN_UP_SCRIPT = """ttq.track('SignUp', {"method": "email"})"""
 
-# TikTok joins this set in slice 5; setting its ID here is harmless since
-# nothing reads it yet.
 _ALL_PLATFORM_SETTINGS = {
     "GOOGLE_ANALYTICS_MEASUREMENT_ID": "G-TEST",
     "META_PIXEL_ID": "123",
@@ -93,6 +92,9 @@ class TestAnalyticsEventsPartial:
         assert content.index('id="interface-main"') < content.index(
             _META_SIGN_UP_SCRIPT
         )
+        assert content.index('id="interface-main"') < content.index(
+            _TIKTOK_SIGN_UP_SCRIPT
+        )
 
     @override_settings(**_ALL_PLATFORM_SETTINGS)
     def test_one_recorded_event_renders_one_call_per_platform_from_the_same_pop(
@@ -107,6 +109,7 @@ class TestAnalyticsEventsPartial:
         content = response.content.decode()
         assert content.count(_SIGN_UP_SCRIPT) == 1
         assert content.count(_META_SIGN_UP_SCRIPT) == 1
+        assert content.count(_TIKTOK_SIGN_UP_SCRIPT) == 1
 
     @override_settings(**_ALL_PLATFORM_SETTINGS)
     def test_the_express_interest_swap_carries_the_ga4_call_and_no_meta_call(
@@ -124,6 +127,7 @@ class TestAnalyticsEventsPartial:
         content = response.content.decode()
         assert "gtag('event', 'course_access_requested'" in content
         assert "fbq(" not in content
+        assert "ttq." not in content
 
     def test_pages_render_without_google_tag_installed(
         self,
@@ -152,3 +156,55 @@ class TestAnalyticsEventsPartial:
         assert player_response.status_code == 200
         assert "gtag(" not in home_response.content.decode()
         assert "gtag(" not in player_response.content.decode()
+
+    @pytest.mark.parametrize(
+        ("app_name", "context_processor", "absent_string", "other_scripts"),
+        [
+            (
+                "freedom_ls.meta_pixel",
+                "freedom_ls.meta_pixel.context_processors.meta_pixel_config",
+                "fbq(",
+                (_SIGN_UP_SCRIPT, _TIKTOK_SIGN_UP_SCRIPT),
+            ),
+            (
+                "freedom_ls.tiktok_pixel",
+                "freedom_ls.tiktok_pixel.context_processors.tiktok_pixel_config",
+                "ttq.",
+                (_SIGN_UP_SCRIPT, _META_SIGN_UP_SCRIPT),
+            ),
+        ],
+    )
+    @override_settings(**_ALL_PLATFORM_SETTINGS)
+    def test_the_other_platforms_still_emit_with_one_platform_uninstalled(
+        self,
+        client: Client,
+        settings: pytest_django.fixtures.SettingsWrapper,
+        course_player_url_and_learner: tuple[str, User],
+        app_name: str,
+        context_processor: str,
+        absent_string: str,
+        other_scripts: tuple[str, str],
+    ) -> None:
+        url, user = course_player_url_and_learner
+        client.force_login(user)
+        session = client.session
+        session["analytics_events"] = [_PENDING_SIGN_UP]
+        session.save()
+        settings.INSTALLED_APPS = [
+            app for app in settings.INSTALLED_APPS if app != app_name
+        ]
+        templates = copy.deepcopy(settings.TEMPLATES)
+        templates[0]["OPTIONS"]["context_processors"] = [
+            processor
+            for processor in templates[0]["OPTIONS"]["context_processors"]
+            if processor != context_processor
+        ]
+        settings.TEMPLATES = templates
+
+        response = client.get(url, HTTP_X_VISITOR_COUNTRY="ZA")
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert absent_string not in content
+        for other_script in other_scripts:
+            assert other_script in content

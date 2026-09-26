@@ -101,6 +101,10 @@
             {% include "partials/meta_pixel.html" %}
         {% endif %}
 
+        {% if tiktok_pixel_id %}
+            {% include "partials/tiktok_pixel.html" %}
+        {% endif %}
+
     </head>
 
     {% comment %}
