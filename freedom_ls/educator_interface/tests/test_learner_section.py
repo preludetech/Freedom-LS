@@ -213,14 +213,20 @@ class TestLearnerDataTableQueryCost:
         request.organisation = organisation
         request.panel_url_kwargs = {"organisation_slug": organisation.slug}
 
+        query = LearnerDataTable.parse_query(request, "learners")
+        queryset = LearnerDataTable.filter_queryset(
+            request, LearnerDataTable.get_queryset(request), query
+        )
         with CaptureQueriesContext(connection) as captured:
             render_to_string(
                 "panel_framework/panels/data_table_region.html",
                 LearnerDataTable.get_context(
                     request,
-                    LearnerDataTable.get_queryset(request),
+                    query,
+                    queryset,
                     base_url="",
-                    table_id="t",
+                    page_url="",
+                    region_id="t",
                 ),
                 request=request,
             )

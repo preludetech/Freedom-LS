@@ -36,7 +36,7 @@ def test_save_and_add_another_refreshes_table(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     # Confirm table is present
-    table = page.locator("[data-panel=''] [id^='panel-']")
+    table = page.locator("[data-panel=''] #stubs-table")
     expect(table).to_have_count(1)
 
     # Confirm create button is present exactly once

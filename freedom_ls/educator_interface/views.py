@@ -42,7 +42,7 @@ from freedom_ls.panel_framework.panels import (
     PanelStack,
     TabSet,
 )
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import DataTable, TableQuery
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -244,6 +244,7 @@ class LearnerDetailsPanel(InstanceDetailsPanel):
 class LearnerCohortsPanel(DataTablePanel):
     title = "Cohorts"
     data_table = CohortDataTable
+    table_key = "cohorts"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (
@@ -325,6 +326,7 @@ class CohortCourseRegistrationDataTable(DataTable):
 class CohortLearnersPanel(DataTablePanel):
     title = "Learners"
     data_table = LearnerDataTable
+    table_key = "learners"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (
@@ -335,6 +337,7 @@ class CohortLearnersPanel(DataTablePanel):
 class CourseRegistrationsPanel(DataTablePanel):
     title = "Course Registrations"
     data_table = CohortCourseRegistrationDataTable
+    table_key = "course_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(cohort=self.instance)
@@ -398,6 +401,7 @@ class CohortConfig(OrganisationSectionConfig, ListViewConfig):
     icon = "cohort"
     model = Cohort
     list_view = CohortDataTable
+    table_key = "cohorts"
     instance_view = CohortInstanceView
 
     @classmethod
@@ -421,6 +425,7 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
     icon = "user"
     model = Learner
     list_view = LearnerDataTable
+    table_key = "learners"
     instance_view = LearnerInstanceView
 
     @classmethod
@@ -486,9 +491,9 @@ class CourseDataTable(DataTable):
 
     @classmethod
     def get_rows(
-        cls, request: HttpRequest, columns: list[dict], queryset: QuerySet
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> Page:
-        page_obj = super().get_rows(request, columns, queryset)
+        page_obj = super().get_rows(request, queryset, query)
         cls._annotate_total_learner_count(page_obj)
         return page_obj
 
@@ -575,6 +580,7 @@ class CourseCohortRegistrationDataTable(DataTable):
 class CourseCohortRegistrationsPanel(DataTablePanel):
     title = "Cohort Registrations"
     data_table = CourseCohortRegistrationDataTable
+    table_key = "cohort_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(course=self.instance)
@@ -636,6 +642,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
 class CourseLearnerRegistrationsPanel(DataTablePanel):
     title = "Direct Registrations"
     data_table = CourseLearnerRegistrationDataTable
+    table_key = "learner_registrations"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(course=self.instance)
@@ -659,6 +666,7 @@ class CourseConfig(OrganisationSectionConfig, ListViewConfig):
     icon = "course"
     model = Course
     list_view = CourseDataTable
+    table_key = "courses"
     instance_view = CourseInstanceView
 
     check_access_exempt_reason = (

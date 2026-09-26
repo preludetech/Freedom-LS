@@ -137,6 +137,8 @@ class ListViewConfig(SectionConfigBase):
     model: type[Model] | None = None
     instance_view: type[InstanceView] | None = None
     list_view: type[DataTable] | None = None
+    #: The list page's own table key. Required whenever `list_view` is set.
+    table_key: str
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
@@ -302,20 +304,24 @@ def _bind_root(
                     name="",
                     config=section,
                     scope=section.get_scope(request),
+                    page_url=section_url,
                 )
             )
             table.data_table = section.list_view
+            table.table_key = section.table_key
             return table, None, 1
         instance_view = section.get_instance_view(request, parts[1])
+        instance_base_url = f"{section_url}/{parts[1]}"
         return (
             instance_view.panel(
                 PanelContext(
                     request=request,
                     instance=instance_view.instance,
-                    base_url=f"{section_url}/{parts[1]}",
+                    base_url=instance_base_url,
                     name="",
                     config=section,
                     scope=section.get_scope(request),
+                    page_url=instance_base_url,
                 )
             ),
             instance_view,
@@ -332,6 +338,7 @@ def _bind_root(
                     name="",
                     config=section,
                     scope=section.get_scope(request),
+                    page_url=section_url,
                 )
             ),
             instance_view,
@@ -347,6 +354,7 @@ def _bind_root(
                 name="",
                 config=section,
                 scope=section.get_scope(request),
+                page_url=section_url,
             )
         ),
         None,
@@ -498,6 +506,15 @@ def _main_for(
     )
 
 
+def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
+    """The URL a table region's response pushes into the address bar: the
+    page this panel's tab owns, carrying the request's full query string."""
+    query_string = request.META.get("QUERY_STRING", "")
+    if query_string:
+        return f"{panel.ctx.page_url}?{query_string}"
+    return panel.ctx.page_url
+
+
 def _respond(
     request: HttpRequest,
     resolved: _Resolved | None,
@@ -537,11 +554,14 @@ def _respond(
             {"panel": panel, "announcement": f"Showing {panel.title}"},
         )
     if hx_target == panel.region_id:
-        return render(
+        response = render(
             request,
             panel.region_template_name or panel.template_name,
             panel.get_context_data(),
         )
+        if isinstance(panel, DataTablePanel):
+            response["HX-Push-Url"] = _history_url(panel, request)
+        return response
     return render(
         request, "panel_framework/navigation_response.html", navigation_context
     )

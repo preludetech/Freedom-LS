@@ -44,9 +44,9 @@ def test_course_table_includes_visibility_label(
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
 
     request = site_aware_request.get("/")
-    columns = CourseDataTable._prepare_columns()
+    query = CourseDataTable.parse_query(request, "courses")
     page = CourseDataTable.get_rows(
-        request, columns, CourseDataTable.get_queryset(request)
+        request, CourseDataTable.get_queryset(request), query
     )
 
     row = _find_row(page, course)
@@ -66,9 +66,9 @@ def test_course_table_interest_count_matches_interest_rows(
     CourseInterestFactory(course=other_course, user=UserFactory())
 
     request = site_aware_request.get("/")
-    columns = CourseDataTable._prepare_columns()
+    query = CourseDataTable.parse_query(request, "courses")
     page = CourseDataTable.get_rows(
-        request, columns, CourseDataTable.get_queryset(request)
+        request, CourseDataTable.get_queryset(request), query
     )
 
     assert _find_row(page, course).interest_count == 2
@@ -92,9 +92,9 @@ def test_course_table_interest_count_is_site_scoped(
     )
 
     request = site_aware_request.get("/")
-    columns = CourseDataTable._prepare_columns()
+    query = CourseDataTable.parse_query(request, "courses")
     page = CourseDataTable.get_rows(
-        request, columns, CourseDataTable.get_queryset(request)
+        request, CourseDataTable.get_queryset(request), query
     )
 
     row_pks = {row.pk for row in page.object_list}
@@ -168,11 +168,11 @@ class TestCourseTableTotalLearnerCountQueryCost:
         _add_registrations(course, OrganisationFactory(), registration_count)
 
         request = site_aware_request.get("/")
-        columns = CourseDataTable._prepare_columns()
+        query = CourseDataTable.parse_query(request, "courses")
 
         with django_assert_max_num_queries(8):
             CourseDataTable.get_rows(
-                request, columns, CourseDataTable.get_queryset(request)
+                request, CourseDataTable.get_queryset(request), query
             )
 
 

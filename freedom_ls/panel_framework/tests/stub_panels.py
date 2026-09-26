@@ -29,7 +29,12 @@ from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
+from freedom_ls.panel_framework.panels import (
+    DataTablePanel,
+    Panel,
+    PanelStack,
+    TabSet,
+)
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -155,6 +160,24 @@ class StubDataTable(DataTable):
 class StubDataTablePanel(DataTablePanel):
     title = "Stub"
     data_table = StubDataTable
+    table_key = "stub"
+
+
+class StubATablePanel(DataTablePanel):
+    title = "A"
+    data_table = StubDataTable
+    table_key = "a"
+
+
+class StubBTablePanel(DataTablePanel):
+    title = "B"
+    data_table = StubDataTable
+    table_key = "b"
+
+
+class StubPairStack(PanelStack):
+    title = "Pair"
+    children = {"a": StubATablePanel, "b": StubBTablePanel}
 
 
 class StubDetailsPanel(Panel):
@@ -177,6 +200,7 @@ class StubTabSet(TabSet):
         "default": StubDataTablePanel,
         "details": StubDetailsPanel,
         "hidden": StubHiddenPanel,
+        "pair": StubPairStack,
     }
 
 
@@ -188,6 +212,7 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     url_name = "stubs"
     menu_label = "Stubs"
     list_view = StubDataTable
+    table_key = "stubs"
     instance_view = StubInstanceView
 
     @classmethod

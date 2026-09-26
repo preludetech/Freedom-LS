@@ -20,11 +20,14 @@ class PanelContext:
 
     `base_url` is the URL of this panel's own path segment. `name` is this
     panel's key in its parent's `children` dict, and is the empty string for
-    a root panel. A container builds each child's context with
-    `dataclasses.replace(ctx, base_url=..., name=...)` rather than mutating
-    the parent's context, and a new field can be added here with a default
-    without breaking any existing subclass -- `config` has none, because
-    every construction site passes it.
+    a root panel. `page_url` is the URL the browser's address bar should show
+    while this panel is current: it advances at a tab boundary, since a tab
+    has its own page, and stays put through a panel stack, since a stack's
+    panels all share the one page their tab already named. A container
+    builds each child's context with `dataclasses.replace(ctx, base_url=...,
+    name=...)` rather than mutating the parent's context, and a new field can
+    be added here with a default without breaking any existing subclass --
+    `config` has none, because every construction site passes it.
     """
 
     request: HttpRequest
@@ -33,6 +36,7 @@ class PanelContext:
     name: str
     config: type[SectionConfigBase]
     scope: Model | None = None
+    page_url: str = ""
 
     def scope_object(self) -> Model | None:
         """The object a permission check runs against: the bound instance,

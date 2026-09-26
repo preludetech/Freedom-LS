@@ -6,6 +6,7 @@ from django_cotton.compiler_regex import CottonCompiler
 
 from django.core.paginator import Paginator
 from django.template import Context, Template
+from django.test import RequestFactory
 
 _cotton_compiler = CottonCompiler()
 
@@ -107,3 +108,24 @@ class TestPaginationComponent:
         result = _render(_BASE.format(extras='push_url="true"'), page_obj=_page(2, 3))
         assert result.count("hx-get=") == result.count('hx-push-url="true"')
         assert result.count("hx-get=") > 0
+
+    def test_renders_from_links_with_page_url_and_preserves_other_params(self) -> None:
+        """When ``links`` is passed, hrefs are built from ``page_url`` and
+        ``hx-get`` from ``base_url``, both keeping every other request param."""
+        request = RequestFactory().get("/panel/", {"other": "1"})
+        links = {
+            "previous": None,
+            "next": None,
+            "pages": [{"number": 3, "changes": {"t-page": 3}, "current": False}],
+        }
+        template = (
+            '<c-pagination :page_obj="page_obj" base_url="/panel/" page_url="/items/" '
+            ':links="links" table_id="my-table" />'
+        )
+
+        result = _render(template, page_obj=_page(2, 3), links=links, request=request)
+
+        assert 'href="/items/?' in result
+        assert 'hx-get="/panel/?' in result
+        assert "t-page=3" in result
+        assert "other=1" in result

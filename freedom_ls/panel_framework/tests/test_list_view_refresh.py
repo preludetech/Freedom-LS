@@ -13,7 +13,7 @@ from .view_helpers import fetch
 
 pytestmark = pytest.mark.django_db
 
-LIST_REGION_ID = "panel-test-panel-framework-stubs"
+LIST_REGION_ID = "stubs-table"
 
 
 def test_the_refresh_wiring_targets_the_list_panels_region(

@@ -11,7 +11,7 @@ from .view_helpers import call_view, fetch, make_request
 
 pytestmark = pytest.mark.django_db
 
-LIST_REGION_ID = "panel-test-panel-framework-stubs"
+LIST_REGION_ID = "stubs-table"
 VARY_HEADERS = ("HX-Request", "HX-Target", "HX-History-Restore-Request")
 
 

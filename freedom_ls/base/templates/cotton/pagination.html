@@ -6,11 +6,92 @@
         search_query=""
         extra_params=""
         page_param_name="page"
-        push_url="" />
+        push_url=""
+        links=""
+        page_url="" />
 
 {% load pagination_tags %}
 
-{% if page_obj and page_obj.paginator.num_pages > 1 %}
+{% if links %}
+    {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        {# Mobile pagination: Previous / Page X of Y / Next #}
+        <div class="flex sm:hidden items-center justify-between mt-6 px-4">
+            <div>
+                {% if links.previous %}
+                    {% querystring request.GET links.previous.changes as qs %}
+                    <a href="{{ page_url }}{{ qs }}"
+                       hx-get="{{ base_url }}{{ qs }}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-secondary px-4 py-3">
+                        Previous
+                    </a>
+                {% endif %}
+            </div>
+            <span class="text-sm text-muted">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+            </span>
+            <div>
+                {% if links.next %}
+                    {% querystring request.GET links.next.changes as qs %}
+                    <a href="{{ page_url }}{{ qs }}"
+                       hx-get="{{ base_url }}{{ qs }}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-secondary px-4 py-3">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Desktop pagination: numbered buttons with ellipsis #}
+        <div class="hidden sm:flex items-center justify-between mt-6 px-4">
+            <div class="flex gap-2">
+                {% if links.previous %}
+                    {% querystring request.GET links.previous.changes as qs %}
+                    <a href="{{ page_url }}{{ qs }}"
+                       hx-get="{{ base_url }}{{ qs }}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-secondary">
+                        Previous
+                    </a>
+                {% endif %}
+
+                {% for link in links.pages %}
+                    {% if link.number %}
+                        {% if link.current %}
+                            <span class="btn btn-primary">{{ link.number }}</span>
+                        {% else %}
+                            {% querystring request.GET link.changes as qs %}
+                            <a href="{{ page_url }}{{ qs }}"
+                               hx-get="{{ base_url }}{{ qs }}"
+                               hx-target="#{{ table_id }}"
+                               hx-swap="outerHTML"
+                               class="btn btn-secondary">
+                                {{ link.number }}
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        <span class="btn btn-secondary pointer-events-none">...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if links.next %}
+                    {% querystring request.GET links.next.changes as qs %}
+                    <a href="{{ page_url }}{{ qs }}"
+                       hx-get="{{ base_url }}{{ qs }}"
+                       hx-target="#{{ table_id }}"
+                       hx-swap="outerHTML"
+                       class="btn btn-secondary">
+                        Next
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{% elif page_obj and page_obj.paginator.num_pages > 1 %}
     {% pagination_suffix sort_by=sort_by sort_order=sort_order search_query=search_query extra_params=extra_params as suffix %}
 
     {# Mobile pagination: Previous / Page X of Y / Next #}

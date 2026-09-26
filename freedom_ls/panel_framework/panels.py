@@ -26,7 +26,7 @@ from freedom_ls.panel_framework.field_display import (
     label_for_field,
     lookup_field,
 )
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import DataTable, TableQuery
 
 
 class Panel:
@@ -93,16 +93,21 @@ class Panel:
 
     @cached_property
     def _shown_children(self) -> list[Panel]:
-        bound = [
-            child_class(
-                replace(
-                    self.ctx,
-                    base_url=f"{self.ctx.base_url}/{self.child_segment}/{name}",
-                    name=name,
+        bound = []
+        for name, child_class in self.children.items():
+            base_url = f"{self.ctx.base_url}/{self.child_segment}/{name}"
+            # A tab has its own page in the address bar; a panel inside a
+            # stack shares the page its tab already named.
+            page_url = (
+                base_url
+                if self.child_segment == TabSet.child_segment
+                else self.ctx.page_url
+            )
+            bound.append(
+                child_class(
+                    replace(self.ctx, base_url=base_url, name=name, page_url=page_url)
                 )
             )
-            for name, child_class in self.children.items()
-        ]
         return [child for child in bound if child.is_shown()]
 
     def get_children(self) -> list[Panel]:
@@ -201,6 +206,15 @@ class DataTablePanel(Panel):
     template_name = "panel_framework/panels/data_table.html"
     region_template_name = "panel_framework/panels/data_table_region.html"
     data_table: type[DataTable]
+    #: This table's namespace for its own query parameters (`<table_key>-page`,
+    #: and so on), and the source of its region id. Every concrete subclass
+    #: must set one; two DataTablePanels sharing a container must set
+    #: different ones.
+    table_key: str
+
+    @property
+    def region_id(self) -> str:
+        return f"{self.table_key}-table"
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         """The rows this panel may show.
@@ -211,14 +225,27 @@ class DataTablePanel(Panel):
         """
         return self.data_table.get_queryset(request)
 
+    def narrow(self, request: HttpRequest) -> tuple[TableQuery, QuerySet]:
+        """This table's own query, and its scoped rows searched and sorted
+        from it. The one place a table's request parameters are parsed and
+        applied, so a render and an export narrow identically."""
+        query = self.data_table.parse_query(request, self.table_key)
+        rows = self.data_table.filter_queryset(
+            request, self.get_queryset(request), query
+        )
+        return query, rows
+
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
+        query, queryset = self.narrow(self.request)
         context.update(
             self.data_table.get_context(
                 self.request,
-                self.get_queryset(self.request),
+                query,
+                queryset,
                 base_url=self.ctx.base_url,
-                table_id=self.region_id,
+                page_url=self.ctx.page_url,
+                region_id=self.region_id,
             )
         )
         return context

@@ -17,9 +17,13 @@ from freedom_ls.panel_framework.views import SectionConfigBase
 from .conftest import StubModel, _make_stub
 from .stub_panels import (
     RecordingCapabilityConfig,
+    StubATablePanel,
+    StubBTablePanel,
     StubDataTablePanel,
     StubDetailsPanel,
     StubHiddenPanel,
+    StubPairStack,
+    StubTabSet,
 )
 
 
@@ -32,7 +36,7 @@ class _AllHiddenTabs(TabSet):
 
 
 class _Tabs(TabSet):
-    children = {"details": StubDataTablePanel, "details2": StubDataTablePanel}
+    children = {"details": StubATablePanel, "details2": StubBTablePanel}
 
 
 class _ModelPanel(Panel):
@@ -187,3 +191,17 @@ def test_a_panel_whose_capability_is_granted_renders_and_is_asked_about_the_inst
 
     assert gated.ctx.name == "gated"
     assert RecordingCapabilityConfig.asked == [(_GatedPanel.capability, instance)]
+
+
+def test_page_url_advances_through_tabs_not_stacks() -> None:
+    tabs = StubTabSet(_ctx())
+
+    pair = next(child for child in tabs.get_children() if child.ctx.name == "pair")
+    assert isinstance(pair, StubPairStack)
+    # A tab's page_url is its own base_url: the address bar advances here.
+    assert pair.ctx.page_url == pair.ctx.base_url
+
+    a_child = next(child for child in pair.get_children() if child.ctx.name == "a")
+    # A stack child shares its parent's page_url rather than getting its own.
+    assert a_child.ctx.page_url == pair.ctx.page_url
+    assert a_child.ctx.page_url != a_child.ctx.base_url

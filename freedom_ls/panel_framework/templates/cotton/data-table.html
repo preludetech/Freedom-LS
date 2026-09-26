@@ -8,18 +8,20 @@
         base_url=""
         show_search=""
         search_query=""
-        table_id="data-table-container" />
+        region_id="data-table-container"
+        page_url=""
+        pagination="" />
 
-<div id="{{ table_id }}">
+<div id="{{ region_id }}">
     {% if show_search %}
         <div class="mb-4">
             <form hx-get="{{ base_url }}"
-                  hx-target="#{{ table_id }}"
-                  hx-trigger="submit, input delay:300ms from:#{{ table_id }}-search"
-                  hx-include="#{{ table_id }}-search"
+                  hx-target="#{{ region_id }}"
+                  hx-trigger="submit, input delay:300ms from:#{{ region_id }}-search"
+                  hx-include="#{{ region_id }}-search"
                   hx-swap="outerHTML">
                 <input type="search"
-                       id="{{ table_id }}-search"
+                       id="{{ region_id }}-search"
                        name="search"
                        placeholder="Search..."
                        value="{{ search_query }}"
@@ -45,7 +47,7 @@
                                         {% if sort_order == 'asc' %}
                                             <a href="?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
                                                hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                               hx-target="#{{ table_id }}"
+                                               hx-target="#{{ region_id }}"
                                                hx-swap="outerHTML"
                                                class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                                 {{ column.header }}
@@ -54,7 +56,7 @@
                                         {% else %}
                                             <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                                hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                               hx-target="#{{ table_id }}"
+                                               hx-target="#{{ region_id }}"
                                                hx-swap="outerHTML"
                                                class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                                 {{ column.header }}
@@ -65,7 +67,7 @@
                                         {% comment %}Not currently sorted{% endcomment %}
                                         <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
                                            hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-target="#{{ table_id }}"
+                                           hx-target="#{{ region_id }}"
                                            hx-swap="outerHTML"
                                            class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
                                             {{ column.header }}
@@ -105,77 +107,10 @@
 
     <c-pagination :page_obj="page_obj"
                   :base_url="base_url"
-                  :table_id="table_id"
+                  :table_id="region_id"
                   :sort_by="sort_by"
                   :sort_order="sort_order"
-                  :search_query="search_query" />
+                  :search_query="search_query"
+                  :links="pagination"
+                  :page_url="page_url" />
 </div>
-
-{% comment %}
-Usage Examples:
-
-The data-table provides generic cell templates for common patterns:
-- cotton/data-table-cells/text.html - Simple attribute display
-- cotton/data-table-cells/link.html - Links with URL generation
-
-Basic text columns (no custom templates needed):
-  columns = [
-      {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name'},
-      {'header': 'Email', 'template': 'cotton/data-table-cells/text.html', 'attr': 'email'},
-      {'header': 'Learner Count', 'template': 'cotton/data-table-cells/text.html', 'attr': 'learner_count'},
-  ]
-  rows = Cohort.objects.all()
-
-Link columns (no custom templates needed):
-  columns = [
-      {
-          'header': 'Cohort Name',
-          'template': 'cotton/data-table-cells/link.html',
-          'text_attr': 'name',
-          'url_name': 'educator_interface:cohort_detail',
-          'url_param': 'pk'
-      },
-      {'header': 'Learners', 'template': 'cotton/data-table-cells/text.html', 'attr': 'learner_count'},
-  ]
-
-Nested attributes (related models):
-  {'header': 'User Email', 'template': 'cotton/data-table-cells/text.html', 'attr': 'user.email'}
-  {'header': 'Cohort Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'cohort.name'}
-
-Custom templates for complex cells:
-  columns = [
-      {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name'},
-      {'header': 'Courses', 'template': 'educator_interface/cells/cohort_courses.html'},
-      {'header': 'Actions', 'template': 'educator_interface/cells/actions.html', 'cell_class': 'text-right'},
-  ]
-
-  # educator_interface/cells/cohort_courses.html
-  {% for registration in object.course_registrations.all %}
-      {{ registration.course.title }}{% if not forloop.last %}, {% endif %}
-  {% empty %}
-      -
-  {% endfor %}
-
-  # educator_interface/cells/actions.html
-  <div class="flex gap-2 justify-end">
-      <a href="{% url 'edit' object.pk %}" class="btn btn-secondary">Edit</a>
-      <a href="{% url 'delete' object.pk %}" class="btn btn-error">Delete</a>
-  </div>
-
-Column styling:
-  columns = [
-      {'header': 'ID', 'template': 'cotton/data-table-cells/text.html', 'attr': 'id', 'header_class': 'w-16'},
-      {'header': 'Name', 'template': 'cotton/data-table-cells/text.html', 'attr': 'name', 'header_class': 'w-1/3'},
-      {'header': 'Actions', 'template': 'cells/actions.html', 'cell_class': 'text-right'},
-  ]
-
-Custom empty message:
-  <c-data-table columns=columns rows=rows empty_message="No cohorts found" />
-
-Pro tips:
-  - Use cotton/data-table-cells/text.html for simple attribute display
-  - Use cotton/data-table-cells/link.html for links with URL generation
-  - Create custom templates only for complex cells (loops, buttons, badges, etc.)
-  - Each template receives 'object' (the row) and 'column' (the config)
-  - Supports nested attributes with dot notation (e.g., 'user.email')
-{% endcomment %}

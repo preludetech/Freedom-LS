@@ -78,7 +78,8 @@ def test_pagination_preserves_sort_param_through_clicks(
     """Sorting then paginating must keep ``sort=name`` in the request URL —
     proves the new ``pagination_suffix`` template tag round-trips query
     params through pagination clicks, not just renders them in a given
-    context."""
+    context. The page number itself is now keyed by the list's table key,
+    ``stubs-page``."""
     [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
@@ -89,7 +90,7 @@ def test_pagination_preserves_sort_param_through_clicks(
     page.get_by_role("link", name="Name").click()
     page2_link = page.get_by_role("link", name="2").first
     expect(page2_link).to_have_attribute("href", re.compile(r"sort=name"))
-    expect(page2_link).to_have_attribute("href", re.compile(r"page=2"))
+    expect(page2_link).to_have_attribute("href", re.compile(r"stubs-page=2"))
 
 
 @pytest.mark.playwright
@@ -112,5 +113,26 @@ def test_list_view_data_table_swaps_keep_single_container(
     # pagination link to confirm the swap landed.
     page2_link = page.get_by_role("link", name="2").first
     expect(page2_link).to_have_attribute("href", re.compile(r"sort=name"))
+    expect(page2_link).to_have_attribute("href", re.compile(r"stubs-page=2"))
     expect(page.locator("[data-panel]")).to_have_count(1)
     expect_no_nested_panel(page, name="")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_nested_table_pushes_page_url(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """Clicking page 2 of a table nested two levels down (a tab holding a
+    stack of two tables) pushes the tab's own URL, never the panel's."""
+    stub = _make_stub(name="row-00")
+    [_make_stub(name=f"row-{i:02d}") for i in range(1, PAGE_SIZE + 2)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/pair")
+
+    page.locator("#a-table").get_by_role("link", name="2").first.click()
+
+    expect(page).to_have_url(re.compile(r"__tabs/pair\?a-page=2$"))
+    expect(page).not_to_have_url(re.compile(r"__panels"))
