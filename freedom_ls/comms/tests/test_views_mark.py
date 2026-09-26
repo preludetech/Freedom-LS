@@ -4,6 +4,7 @@ change a notification's read_at, and the HTMX fragment they hand back."""
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 
 import pytest
 
@@ -11,6 +12,7 @@ from django.db import connection
 from django.test import Client
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.comms.factories import NotificationFactory
@@ -337,6 +339,148 @@ class TestFilter:
         )
 
         assert "Page 2 of" in response.content.decode()
+
+
+def _autofocused_ids(content: str) -> list[str]:
+    """The id of every element the response asks htmx to focus after the
+    swap."""
+    ids = []
+    for tag in re.findall(r"<[a-z0-9]+\b[^>]*\bautofocus\b[^>]*>", content):
+        id_match = re.search(r'\bid="([^"]+)"', tag)
+        assert id_match is not None, f"autofocused element has no id: {tag}"
+        ids.append(id_match.group(1))
+    return ids
+
+
+def _unread_rows_newest_first(user, count: int) -> list[Notification]:
+    """Unread rows a minute apart, so the list order is fixed rather than
+    left to the id tie-break."""
+    rows = NotificationFactory.create_batch(count, user=user)
+    now = timezone.now()
+    for minutes_ago, row in enumerate(rows):
+        Notification._base_manager.filter(pk=row.pk).update(
+            created_at=now - timedelta(minutes=minutes_ago)
+        )
+    return rows
+
+
+def _toggle_id(notification: Notification) -> str:
+    return f"notification-{notification.pk}-toggle-read"
+
+
+@pytest.mark.django_db
+class TestFocusAfterMarking:
+    def test_mark_all_from_the_panel_focuses_the_panel_heading(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory.create_batch(2, user=user)
+        client = logged_in_client(user)
+
+        response = client.post(
+            reverse(MARK_ALL_READ_URL_NAME),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="notification-panel",
+        )
+
+        assert _autofocused_ids(response.content.decode()) == [
+            "notification-panel-heading"
+        ]
+
+    def test_mark_all_from_the_centre_focuses_the_up_to_date_banner(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory.create_batch(2, user=user)
+        client = logged_in_client(user)
+
+        response = client.post(
+            reverse(MARK_ALL_READ_URL_NAME),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="notification-list",
+        )
+
+        assert _autofocused_ids(response.content.decode()) == [
+            "notification-list-up-to-date"
+        ]
+
+    def test_plain_renders_of_the_centre_and_panel_focus_nothing(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        read = NotificationFactory(user=user)
+        read.read_at = read.created_at
+        read.save(update_fields=["read_at"])
+        client = logged_in_client(user)
+
+        centre = client.get(reverse(LIST_URL_NAME))
+        panel = client.get(reverse("comms:notification_panel"))
+
+        assert "You're up to date" in centre.content.decode()
+        assert _autofocused_ids(centre.content.decode()) == []
+        assert _autofocused_ids(panel.content.decode()) == []
+
+    def test_mark_read_in_the_all_view_focuses_nothing_new(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        rows = _unread_rows_newest_first(user, 2)
+        client = logged_in_client(user)
+
+        response = client.post(
+            reverse(MARK_READ_URL_NAME, kwargs={"pk": rows[0].pk}),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="notification-list",
+        )
+
+        assert _autofocused_ids(response.content.decode()) == []
+
+    def test_removing_a_row_from_the_unread_view_focuses_the_next_row(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        _newest, middle, oldest = _unread_rows_newest_first(user, 3)
+        client = logged_in_client(user)
+
+        response = client.post(
+            reverse(MARK_READ_URL_NAME, kwargs={"pk": middle.pk}) + "?filter=unread",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="notification-list",
+        )
+
+        assert _autofocused_ids(response.content.decode()) == [_toggle_id(oldest)]
+
+    def test_removing_the_last_row_from_the_unread_view_focuses_the_new_last_row(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        _newest, middle, oldest = _unread_rows_newest_first(user, 3)
+        client = logged_in_client(user)
+
+        response = client.post(
+            reverse(MARK_READ_URL_NAME, kwargs={"pk": oldest.pk}) + "?filter=unread",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="notification-list",
+        )
+
+        assert _autofocused_ids(response.content.decode()) == [_toggle_id(middle)]
+
+    def test_removing_the_only_row_from_the_unread_view_focuses_the_empty_heading(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        (only,) = _unread_rows_newest_first(user, 1)
+        client = logged_in_client(user)
+
+        response = client.post(
+            reverse(MARK_READ_URL_NAME, kwargs={"pk": only.pk}) + "?filter=unread",
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET="notification-list",
+        )
+
+        assert _autofocused_ids(response.content.decode()) == [
+            "notification-list-empty-heading"
+        ]
 
 
 @pytest.mark.django_db

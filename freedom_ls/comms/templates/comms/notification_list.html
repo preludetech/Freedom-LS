@@ -50,7 +50,12 @@
                     <div class="mt-6 rounded-lg border border-border bg-surface px-6 py-16 text-center">
                         <c-icon name="notifications" class="mx-auto size-10 text-muted" />
                         {% if filter == "unread" %}
-                            <h2 class="mt-4 text-lg font-semibold text-on-surface">No unread notifications.</h2>
+                            <h2 id="notification-list-empty-heading"
+                                tabindex="-1"
+                                {% if focus == "row_removed" %}autofocus{% endif %}
+                                class="mt-4 text-lg font-semibold text-on-surface focus:outline-none">
+                                No unread notifications.
+                            </h2>
                         {% else %}
                             <h2 class="mt-4 text-lg font-semibold text-on-surface">Nothing yet.</h2>
                             <p class="mt-1 text-sm text-muted">
@@ -61,8 +66,11 @@
                 {% else %}
                     <div class="mt-6 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
                         {% if not unread_count %}
-                            <div role="status"
-                                 class="flex items-center gap-2 bg-success-light px-5 py-3 font-semibold text-on-success-light">
+                            <div id="notification-list-up-to-date"
+                                 role="status"
+                                 tabindex="-1"
+                                 {% if focus == "mark_all" %}autofocus{% endif %}
+                                 class="flex items-center gap-2 bg-success-light px-5 py-3 font-semibold text-on-success-light focus:outline-none">
                                 <c-icon name="complete" class="size-5 shrink-0" />
                                 You're up to date. Everything has been read.
                             </div>

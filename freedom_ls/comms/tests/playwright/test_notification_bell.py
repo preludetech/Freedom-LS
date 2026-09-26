@@ -124,6 +124,23 @@ def test_mark_all_as_read_updates_the_panel_and_badge_with_one_request(
     assert len(mark_all_requests) == 1
 
 
+def test_keyboard_mark_all_as_read_moves_focus_to_the_panel_heading(
+    live_server, logged_in_page: Page, logged_in_user: User, mock_site_context
+) -> None:
+    NotificationFactory.create_batch(2, user=logged_in_user)
+    page = logged_in_page
+    page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+    _bell(page).click()
+    mark_all = page.get_by_role("button", name="Mark all as read")
+    expect(mark_all).to_be_enabled()
+
+    mark_all.focus()
+    page.keyboard.press("Enter")
+
+    expect(mark_all).to_be_disabled()
+    expect(page.locator("#notification-panel-heading")).to_be_focused()
+
+
 def test_badge_refresh_picks_up_a_new_notification_and_keeps_focus_on_the_bell(
     live_server, logged_in_page: Page, logged_in_user: User, mock_site_context, settings
 ) -> None:

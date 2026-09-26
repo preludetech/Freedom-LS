@@ -1,7 +1,10 @@
 {% load comms_tags %}
 <div class="flex h-full flex-col sm:h-auto sm:max-h-[32rem]">
     <div class="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 id="notification-panel-heading" class="text-base font-semibold text-on-surface">
+        <h2 id="notification-panel-heading"
+            tabindex="-1"
+            {% if focus == "mark_all" %}autofocus{% endif %}
+            class="text-base font-semibold text-on-surface focus:outline-none">
             Notifications
             {% if unread_count %}
                 <span class="ml-2 text-sm font-medium text-muted">{{ unread_count }} unread</span>

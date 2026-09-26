@@ -44,6 +44,7 @@
                           hx-target="#notification-list"
                           hx-swap="outerHTML"
                           icon_left="check"
+                          autofocus="{% if notification.pk == focus_pk %}true{% endif %}"
                           aria-label="Mark read: {{ notification.message }}">
                     <span class="hidden sm:inline">Mark read</span>
                 </c-button>

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from functools import wraps
 from itertools import groupby
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 from uuid import UUID
 
 from django.core.paginator import Paginator
@@ -102,12 +102,36 @@ def _mark_query(filter_value: str | None, page: Page) -> str:
     return f"?{urlencode(params)}" if params else ""
 
 
-def _list_context(request: HttpRequest) -> dict[str, object]:
+# What a mark response asks htmx to focus once it swaps in, rendered as
+# `autofocus`: the focused control is otherwise replaced (Mark all as read)
+# or removed (Mark read in the Unread view), dropping focus to <body>.
+Focus = Literal["", "mark_all", "row_removed"]
+
+
+def _row_to_focus_after_removal(page: Page, removed: Notification) -> UUID | None:
+    """The row that took the removed row's place: the first one on the page
+    that sorts after it under Notification.Meta.ordering, else the new last
+    row, else None when the page is now empty."""
+    rows: list[Notification] = list(page.object_list)
+    removed_key = (removed.created_at, removed.id)
+    later = [row for row in rows if (row.created_at, row.id) < removed_key]
+    if later:
+        return later[0].id
+    return rows[-1].id if rows else None
+
+
+def _list_context(
+    request: HttpRequest, focus: Focus = "", removed: Notification | None = None
+) -> dict[str, object]:
     filter_value = request.GET.get("filter")
     page = Paginator(_filtered(request), 20).get_page(request.GET.get("page"))
     return {
         "page_obj": page,
         "day_groups": _day_groups(page),
+        "focus": focus,
+        "focus_pk": (
+            _row_to_focus_after_removal(page, removed) if removed is not None else None
+        ),
         "base_url": reverse("comms:notification_list"),
         "page_title": "Notifications",
         "filter": filter_value,
@@ -117,14 +141,17 @@ def _list_context(request: HttpRequest) -> dict[str, object]:
     }
 
 
-def _panel_context(request: HttpRequest) -> dict[str, object]:
+def _panel_context(request: HttpRequest, focus: Focus = "") -> dict[str, object]:
     return {
+        "focus": focus,
         "notifications": list(_notifications_for(request)[:8]),
         "unread_count": _notifications_for(request).unread().count(),
     }
 
 
-def _mark_response(request: HttpRequest) -> HttpResponse:
+def _mark_response(
+    request: HttpRequest, focus: Focus = "", removed: Notification | None = None
+) -> HttpResponse:
     """The fragment the surface that posted the mark action needs: the
     re-rendered list or panel plus the badge out of band, so the filter, the
     toolbar count and the banners stay right after one click without a
@@ -134,11 +161,15 @@ def _mark_response(request: HttpRequest) -> HttpResponse:
         return redirect("comms:notification_list")
     if request.headers.get("HX-Target") == "notification-panel":
         body = render_to_string(
-            "comms/partials/notification_panel.html", _panel_context(request), request
+            "comms/partials/notification_panel.html",
+            _panel_context(request, focus),
+            request,
         )
     else:
         body = render_to_string(
-            "comms/notification_list.html#list", _list_context(request), request
+            "comms/notification_list.html#list",
+            _list_context(request, focus, removed),
+            request,
         )
     body += render_to_string(
         "comms/partials/notification_badge.html",
@@ -209,8 +240,11 @@ def notification_open(request: HttpRequest, pk: UUID) -> HttpResponse:
 @login_required_htmx
 @require_POST
 def notification_mark_read(request: HttpRequest, pk: UUID) -> HttpResponse:
-    get_object_or_404(_notifications_for(request), pk=pk)
+    notification = get_object_or_404(_notifications_for(request), pk=pk)
     _stamp_read(_notifications_for(request).filter(pk=pk))
+    if request.GET.get("filter") == "unread":
+        # The row drops out of the Unread view, taking the focused button.
+        return _mark_response(request, "row_removed", notification)
     return _mark_response(request)
 
 
@@ -228,4 +262,4 @@ def notification_mark_unread(request: HttpRequest, pk: UUID) -> HttpResponse:
 @require_POST
 def notification_mark_all_read(request: HttpRequest) -> HttpResponse:
     _stamp_read(_notifications_for(request).unread())
-    return _mark_response(request)
+    return _mark_response(request, "mark_all")
