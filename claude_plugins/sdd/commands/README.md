@@ -28,7 +28,9 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 - `/sdd:roadmap` with no argument syncs the file with the directories: adds rows for new directories, drops rows for finished ones, redraws the dependency graphs.
 - `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds the effort to the roadmap with its build order, its dependency graph and the decisions every child relies on. The cut goes by user-visible outcome, never by line count.
-- `/sdd:start` warns when a spec's dependencies are not done, and flags its row `in progress`. `/sdd:finish_worktree` removes the row; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
+- "Ready to start" lists the waiting specs whose dependencies are done and that can go straight to `/sdd:start`. "Needs work on main first" lists the ones that can't yet, because something has to happen on main before a worktree branches off, such as a cut. The row's Notes cell says what, starting `Before starting:`.
+- `/sdd:start` warns when a spec has a precursor or its dependencies are not done, flags its row `in progress` and takes it off both start lists. `/sdd:finish_worktree` removes the row and adds any spec it unblocks to the right start list; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
+- `/sdd:improve_idea` runs on main without starting the spec, so it leaves the roadmap alone.
 
 The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
 

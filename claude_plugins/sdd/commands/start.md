@@ -8,7 +8,17 @@ This command kicks off Spec-Driven Development for a new spec. It is a thin orch
 ## Step 0: Check the spec roadmap
 
 If `spec_dd/1. next/roadmap.md` exists and has a row for this spec (the Directory cell is the spec's
-directory name), read its Depends on cell. A dependency is met when a directory named
+directory name), check its precursor first, then its dependencies.
+
+**Precursor.** A worktree branches off main, so work that has to happen on main comes first. The
+spec has a precursor if its row's Notes cell starts with `Before starting:`, or if the directory
+needs a cut by the test in `claude_plugins/sdd/resources/roadmap_format.md` (more than one
+`idea*.md`, a nested idea or spec, or empty). Say what the precursor is and ask via
+`AskUserQuestion`: "Stop and do it on main first (Recommended)" or "Start anyway". If the answer
+is stop, stop here and name the command that does the precursor, e.g. `/sdd:roadmap <dir>` for a
+cut.
+
+**Dependencies.** Read the row's Depends on cell. A dependency is met when a directory named
 `spec_dd/3. done/*_<name>` exists. For each unmet one, say where it stands (`next` or `in progress`
 per its own row) and ask via `AskUserQuestion` whether to start anyway or stop. This is a warning,
 never a block: an effort's own ordering notes sometimes allow a spec to start before a dependency

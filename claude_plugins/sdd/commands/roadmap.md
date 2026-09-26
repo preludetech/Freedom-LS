@@ -72,6 +72,12 @@ Work out, without writing anything yet:
   whether it is now in `3. done/` or is simply gone.
 - **Status to correct**: a row whose Status does not match its directory's location.
 - **Efforts to retire**: an effort whose parent directory is gone and whose rows are all gone.
+- **Precursors to add**: a standalone row that needs a cut but whose Notes cell does not start
+  with `Before starting:`.
+- **Start lists to correct**: a bullet in "Ready to start" or "Needs work on main first" that
+  rule 8 of the format file does not put there (an `in progress` row, a row with unmet
+  dependencies, a row with a precursor listed as ready), and a row the rule puts there that is
+  missing.
 
 ## S4: Write the new rows (fan-out)
 
@@ -87,12 +93,14 @@ directory writing `.sdd-work/roadmap_entry_<dir>.md` with:
 - `needs_cut:` the reason, or `none`.
 - `status:` footer.
 
-With fewer than four, read the ideas at depth 0 and write the rows yourself.
+With fewer than four, read the ideas at depth 0 and write the rows yourself. A `needs_cut:`
+reason becomes the row's precursor: its Notes cell starts
+`` Before starting: cut it with `/sdd:roadmap <dir>` (<reason>). ``
 
 ## S5: Confirm
 
-Print the diff: adds, drops, status corrections, retirements, unresolved dependencies, and any
-cycle in the depends-on graph. A drop whose directory is neither done nor in progress is called
+Print the diff: adds, drops, status corrections, retirements, precursors added, start-list
+corrections, unresolved dependencies, and any cycle in the depends-on graph. A drop whose directory is neither done nor in progress is called
 out on its own line. One `AskUserQuestion`: apply, or stop.
 
 ## S6: Rewrite the file
@@ -100,14 +108,20 @@ out on its own line. One `AskUserQuestion`: apply, or stop.
 Rewrite the roadmap whole, per `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`:
 
 - The header paragraph from the skeleton.
-- "Ready to start": every row with status `next` whose dependencies are all in `3. done/`.
+- "Ready to start": every row with status `next` whose dependencies are all in `3. done/` and
+  whose Notes cell does not start with `Before starting:`.
+- "Needs work on main first": every row with status `next` whose dependencies are all in
+  `3. done/` and whose Notes cell starts with `Before starting:`, with the precursor text from
+  that cell. Existing `Before starting:` notes are kept word for word; a person may have written
+  them.
 - Every effort section: its `Parent:` line, its table, its graph, then its `####` subsections
   **byte for byte as they were**. Sync never edits those.
 - The Standalone specs table and its graph.
 
 Every graph is drawn from the Depends on cells: ASCII, one block per effort and one for the
 standalone specs, parallel branches side by side as in the skeleton. Then validate: one row per
-directory, every dependency names a known directory or a done name, no cycles.
+directory, every dependency names a known directory or a done name, no cycles, and neither start
+list names an `in progress` row.
 
 ## S7: Clean up
 
@@ -244,7 +258,8 @@ Delegate to `sdd:sdd-mechanic`, with the cut file's path:
 ## C7: Update the roadmap
 
 Run S1 to S6. The new children classify as effort children from their header lines, the parent
-as an effort parent from its blockquote. Fold the cut file's effort-level sections in as the
+as an effort parent from its blockquote. The parent's old row goes, and so does its bullet in
+"Needs work on main first": the cut was its precursor. Fold the cut file's effort-level sections in as the
 effort's `####` subsections.
 
 ## C8: Clean up

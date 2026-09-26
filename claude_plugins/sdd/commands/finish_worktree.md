@@ -13,7 +13,8 @@ git rebase main
 
 Fix any merge conflicts (this may need judgement — keep it on the main thread). A conflict in
 `spec_dd/1. next/roadmap.md` means two specs finished close together: it is one row per spec, so
-keep both sides' removals and status changes.
+keep both sides' removals and status changes, and both sides' bullet edits in "Ready to start" and
+"Needs work on main first".
 
 If there are any changes to the functionality or code proceed to step 2. Otherwise skip step 2 and go to step 3.
 

@@ -4,7 +4,8 @@
 directory under `spec_dd/1. next/` and `spec_dd/2. in progress/`, with what it delivers, what it
 depends on and where it stands. A row leaves when its spec is done. This file is the single
 definition of the roadmap's shape. `/sdd:roadmap` writes it, `protected/update_roadmap.md` edits
-single rows, and `/sdd:start` reads a row's dependencies.
+single rows and keeps the two start lists current, and `/sdd:start` reads a row's dependencies and
+precursor.
 
 It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and is a different file.
 
@@ -18,8 +19,11 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
 3. **Dependencies live here and nowhere else.** The Depends on cell is the only edge list. A child
    idea carries a pointer line to its effort's section and says nothing about order. A dependency
    is met when the named directory is in `3. done/` (its name there is `<timestamp>_<name>`).
-4. **Derived text is regenerated, never edited.** "Ready to start", every Status cell and every
-   graph are computed from the tables by `/sdd:roadmap`. Hand edits go in the Scope, Depends on
+4. **Derived text is regenerated, never edited by hand.** "Ready to start", "Needs work on main
+   first", every Status cell and every graph are computed from the tables by `/sdd:roadmap`.
+   Between syncs, `protected/update_roadmap.md` keeps the two lists true as specs start and
+   finish, so neither list ever names a spec that has already started. Status cells and graphs
+   change only through sync or that helper's row edits. Hand edits go in the Scope, Depends on
    and Notes cells and in an effort's `####` subsections.
 5. **A cut is an effort.** A big idea cut by `/sdd:roadmap <dir>` becomes an effort: a `###`
    section holding its children's table, its graph and the material every child needs
@@ -29,6 +33,18 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
 6. **When the last child finishes**, the effort's section is archived to
    `<parent>/spec-order.md` and the parent directory moves to `3. done/`, so the pointers in
    the done children still lead to the record.
+7. **A precursor keeps a spec off "Ready to start".** A precursor is work that has to happen on
+   main before `/sdd:start` can branch a worktree off it. A row has one when its Notes cell
+   starts with `Before starting:`. Sync writes that note for a directory that needs a cut (below).
+   A person writes it by hand for any other job, such as a spec that has to be merged first or a
+   draft that has to be split. A `next` row whose dependencies are all done goes under "Needs
+   work on main first" if it has a precursor, and under "Ready to start" if it does not.
+   Improving an idea (`/sdd:improve_idea`) happens on main without starting the spec, so it
+   changes neither list.
+8. **The two lists partition the startable rows.** "Ready to start" lists every `next` row with
+   all dependencies done and no precursor. "Needs work on main first" lists every `next` row with
+   all dependencies done and a precursor. A row is never in both, and an `in progress` row is in
+   neither.
 
 ## Classifying a directory
 
@@ -41,8 +57,10 @@ one applies.
 | Effort child | Its name is `<parent>-N-<slug>` for a known parent, or its idea's first paragraph after the title begins `Spec N of M in the … effort`. |
 | Standalone | Anything else. |
 
-Needs a cut, noted in the Notes cell: the directory holds more than one `idea*.md`; or it nests a
-subdirectory that contains an `idea.md` or `1. spec.md`; or it is empty.
+Needs a cut: the directory holds more than one `idea*.md`; or it nests a
+subdirectory that contains an `idea.md` or `1. spec.md`; or it is empty. It is noted in the Notes
+cell as a precursor: `` Before starting: cut it with `/sdd:roadmap <dir>` (<reason>). ``, followed by
+any other notes.
 
 ## Row grammar
 
@@ -54,7 +72,14 @@ The grammar a mechanic edits by, with no judgement needed:
 - Status is exactly `next` or `in progress`.
 - An effort is a `###` heading followed by a line starting `Parent:` with the parent directory
   in backticks. Its `####` subsections are hand-authored and preserved by every sync.
-- The Standalone specs table has a Notes cell; effort tables do not.
+- The Standalone specs table has a Notes cell; effort tables do not, so only a standalone row can
+  carry a precursor.
+- A precursor is a Notes cell that starts with `Before starting:`. The precursor text runs to the
+  end of that sentence.
+- "Ready to start" and "Needs work on main first" hold one bullet per line, sorted
+  alphabetically by directory name. A Ready bullet is `` - `<dir>` ``. A Needs work bullet is
+  `` - `<dir>`: <precursor text> ``, with the `Before starting:` prefix dropped. An empty list
+  holds the single line `None.`
 
 ## Skeleton
 
@@ -70,9 +95,17 @@ spec roadmap. The product roadmap is `docs/product/roadmap.md`.
 
 ## Ready to start
 
-Status `next` with every dependency done. Regenerated by `/sdd:roadmap`.
+Status `next`, every dependency done, and nothing to do on main first. Regenerated by
+`/sdd:roadmap`; `/sdd:start` and `/sdd:finish_worktree` keep it current between syncs.
 
 - `file-scanning`
+
+## Needs work on main first
+
+Status `next` and every dependency done, but something has to happen on main before `/sdd:start`.
+Each bullet says what.
+
+- `mega-qa`: cut it with `/sdd:roadmap mega-qa` (three `idea_*.md` in one directory).
 
 ## Efforts
 
@@ -104,7 +137,7 @@ Cut 2026-09-24 into twelve specs. Read this section before starting any of them.
 | Directory | Scope | Depends on | Status | Notes |
 |---|---|---|---|---|
 | `file-scanning` | Scan applicant uploads for malware … | none | next | |
-| `mega-qa` | Staging reset, whole-system QA suite … | none | next | needs a cut: three `idea_*.md` |
+| `mega-qa` | Staging reset, whole-system QA suite … | none | next | Before starting: cut it with `/sdd:roadmap mega-qa` (three `idea_*.md` in one directory). |
 
 ```
 retry-sent-emails ── user-communication
