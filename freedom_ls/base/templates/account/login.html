@@ -1,5 +1,5 @@
 {% extends "account/base_entrance.html" %}
-{% load allauth i18n %}
+{% load accounts_tags allauth i18n %}
 
 {% block head_title %}
     {% trans "Log in" %}
@@ -17,9 +17,20 @@
         </div>
     {% endif %}
 
-    {% for error in form.non_field_errors %}
-        <p class="text-error text-sm">{{ error }}</p>
-    {% endfor %}
+    {% if form.errors %}
+        <div role="alert">
+            {% for error in form.non_field_errors %}
+                <p class="text-error text-sm">{{ error }}</p>
+            {% endfor %}
+            {% if allow_signups %}
+                {% url_with_next "account_signup" email=form.data.login as signup_with_email_url %}
+                <c-callout level="info" title="{% trans "New here?" %}">
+                    <p>{% trans "If you don't have an account yet, create one and you'll be sent straight back to where you were." %}</p>
+                    <c-button href="{{ signup_with_email_url }}" variant="primary">{% trans "Create an account" %}</c-button>
+                </c-callout>
+            {% endif %}
+        </div>
+    {% endif %}
 
     {% if not SOCIALACCOUNT_ONLY %}
         {% url 'account_login' as action_url %}
