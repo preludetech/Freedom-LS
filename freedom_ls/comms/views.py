@@ -56,6 +56,13 @@ def _mark_seen(request: HttpRequest) -> None:
     _notifications_for(request).unseen().update(seen_at=timezone.now())
 
 
+def _unseen_count(request: HttpRequest) -> int:
+    """The one place the unseen count is computed: the bell tag, the badge
+    view, and (from slice 5 onward) the panel and mark responses all call
+    this rather than counting separately."""
+    return _notifications_for(request).unseen().count()
+
+
 def _stamp_read(queryset: NotificationQuerySet) -> None:
     """The one place read implies seen: a row marked read and then unread must
     not come back onto the badge."""
@@ -94,6 +101,16 @@ def notification_list(request: HttpRequest) -> HttpResponse:
         else "comms/notification_list.html"
     )
     return render(request, template_name, _list_context(request))
+
+
+@login_required_htmx
+def notification_badge(request: HttpRequest) -> HttpResponse:
+    """The badge fragment only, for polling. Does not extend a base template."""
+    return render(
+        request,
+        "comms/partials/notification_badge.html",
+        {"unseen_count": _unseen_count(request)},
+    )
 
 
 @login_required_htmx

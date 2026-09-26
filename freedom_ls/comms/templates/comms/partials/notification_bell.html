@@ -1,0 +1,23 @@
+{% comment %}
+A WAI-ARIA disclosure, not <c-dropdown-menu>: the panel it opens (slice 6)
+holds links and buttons rather than menu items. Opening/closing itself is
+added in slice 6; this slice only wires up the badge and its poll.
+{% endcomment %}
+<div x-data="notificationBell" class="relative" data-poll-seconds="{{ poll_seconds }}">
+    <button type="button"
+            x-ref="bell"
+            aria-labelledby="notification-bell-label"
+            aria-expanded="false"
+            class="relative inline-flex size-10 items-center justify-center rounded-full text-on-header hover:bg-header-action hover:text-on-header-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2">
+        <c-icon name="notifications" class="size-6" />
+    </button>
+    <span id="notification-badge"
+          role="status"
+          x-ref="badge"
+          hx-get="{% url 'comms:notification_badge' %}"
+          hx-trigger="refresh"
+          hx-target="this"
+          hx-swap="innerHTML">
+        {% include "comms/partials/notification_badge.html" %}
+    </span>
+</div>

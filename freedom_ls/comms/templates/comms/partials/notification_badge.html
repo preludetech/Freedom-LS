@@ -1,0 +1,14 @@
+{% load comms_tags %}
+{% comment %}
+Two render modes, like partials/messages.html:
+- Default: the badge content only, for the initial page render inside
+  #notification-badge and for the polling hx-get response that swaps into it.
+- OOB (oob=True, added from slice 5 onward): wraps itself so a mark-read
+  response can update the badge alongside its own fragment.
+{% endcomment %}
+{% if oob %}<div hx-swap-oob="innerHTML:#notification-badge">{% endif %}
+<span id="notification-bell-label" class="sr-only">Notifications, {% if unseen_count %}{{ unseen_count }} new{% else %}none new{% endif %}</span>
+<span class="absolute -top-0.5 -right-0.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-error px-1 text-xs font-semibold text-on-error"
+      aria-hidden="true"
+      {% if not unseen_count %}hidden{% endif %}>{{ unseen_count|badge_count }}</span>
+{% if oob %}</div>{% endif %}
