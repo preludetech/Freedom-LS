@@ -17,19 +17,7 @@ from allauth.account.models import EmailAddress, EmailConfirmationHMAC
 from django.test import Client
 from django.urls import reverse
 
-
-def _hrefs_to(html: str, url_name: str) -> list[str]:
-    """Every href on the page that points at `url_name`."""
-    target_path = reverse(url_name)
-    hrefs = [unescape(h) for h in re.findall(r'href="([^"]*)"', html)]
-    return [h for h in hrefs if urlparse(h).path == target_path]
-
-
-def _header_html(html: str) -> str:
-    """The `<header>…</header>` fragment of the page."""
-    match = re.search(r"<header.*?</header>", html, re.DOTALL)
-    assert match, "page has no <header> element"
-    return match.group(0)
+from freedom_ls.accounts.tests._auth_page_helpers import _header_html, _hrefs_to
 
 
 def _signup_via(client: Client, signup_href: str, email: str) -> str:

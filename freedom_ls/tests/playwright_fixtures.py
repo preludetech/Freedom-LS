@@ -131,10 +131,10 @@ def _login_via_ui(page: Page, live_server, email: str, password: str) -> None:
     # The allauth LoginForm uses ``EmailField`` with label "Email" when
     # ``ACCOUNT_LOGIN_METHODS == {"email"}`` (set in settings_base.py); the
     # password field's label is "Password"; the submit button's text is
-    # "Sign In". All three are sourced from allauth's i18n catalogue.
+    # "Log in", set by the project's own account/login.html override.
     page.get_by_label("Email").fill(email)
     page.get_by_label("Password").fill(password)
-    page.get_by_role("button", name="Sign In").click()
+    page.get_by_role("button", name="Log in").click()
 
     # Auto-wait for the redirect away from the login URL. ``LOGIN_REDIRECT_URL``
     # is "/" in settings_base.py; assert we left ``account_login`` rather than
