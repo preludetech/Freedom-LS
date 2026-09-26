@@ -12,6 +12,7 @@ from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 
 
 class PanelAction:
@@ -25,11 +26,19 @@ class PanelAction:
     variant: str = "primary"
     action_name: str = ""
     template_name: str = "panel_framework/partials/action_button.html"
+    #: Domain events this action's mutation fires on success. An action whose
+    #: mutation touches an entity other than its own instance overrides
+    #: get_success_events instead of relying on the default mapping.
+    success_events: tuple[str, ...] = ()
 
     def has_permission(
         self, request: HttpRequest, instance: Model | None = None
     ) -> bool:
         return True
+
+    def get_success_events(self, instance: Model | None) -> dict[str, list[str]]:
+        ids = [str(instance.pk)] if instance is not None else []
+        return {name: list(ids) for name in self.success_events}
 
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
@@ -105,7 +114,7 @@ class CreateInstanceAction(FormPanelAction):
     """Base class for actions that create a new instance via a modal form.
 
     Subclasses must define: form_class, form_title, label, action_name.
-    Subclasses must implement: get_success_url(instance) and get_created_event_name().
+    Subclasses must implement: get_success_url(instance).
     """
 
     variant: str = "primary"
@@ -121,10 +130,6 @@ class CreateInstanceAction(FormPanelAction):
 
     def get_success_url(self, instance: Model) -> str:
         """Return the URL to redirect to after successful creation."""
-        raise NotImplementedError
-
-    def get_created_event_name(self) -> str:
-        """Return the HTMX event name to trigger on 'save and add another'."""
         raise NotImplementedError
 
     def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
@@ -157,13 +162,21 @@ class CreateInstanceAction(FormPanelAction):
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         instance = form.save()
+        events = self.get_success_events(instance)
         if request.POST.get("action") == "save_and_add":
             html = self._render_empty_form(request, self._last_form_url)
             response = HttpResponse(html)
-            response["HX-Trigger"] = self.get_created_event_name()
+            response["HX-Trigger"] = build_hx_trigger(events)
             return response
         response = HttpResponse(status=204)
-        response["HX-Redirect"] = self.get_success_url(instance)
+        response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+        response["HX-Location"] = json.dumps(
+            {
+                "path": self.get_success_url(instance),
+                "target": "#main-content",
+                "swap": "outerHTML",
+            }
+        )
         return response
 
 
@@ -180,10 +193,12 @@ class EditAction(FormPanelAction):
         form_class: Callable[..., forms.ModelForm],
         form_title: str,
         instance: Model,
+        success_events: tuple[str, ...] = (),
     ) -> None:
         self.form_class = form_class
         self.form_title = form_title
         self._instance = instance
+        self.success_events = success_events
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
@@ -196,8 +211,10 @@ class EditAction(FormPanelAction):
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         form.save()
         response = HttpResponse(status=204)
-        response["HX-Trigger"] = json.dumps(
-            {"panelChanged": {"instanceTitle": str(form.instance)}}
+        response["HX-Trigger"] = build_hx_trigger(
+            self.get_success_events(form.instance),
+            close_modal=True,
+            title=str(form.instance),
         )
         return response
 
@@ -218,8 +235,9 @@ class DeleteAction(PanelAction):
     action_name = "delete"
     template_name = "panel_framework/partials/delete_confirmation.html"
 
-    def __init__(self, success_url: str = ""):
+    def __init__(self, success_url: str = "", success_events: tuple[str, ...] = ()):
         self.success_url = success_url
+        self.success_events = success_events
 
     def get_cascade_summary(self, instance: Model) -> list[str]:
         """Use Django's Collector to show what will be cascade-deleted.
@@ -316,6 +334,9 @@ class DeleteAction(PanelAction):
         instance = ctx.instance
         if instance is None:
             return HttpResponse(status=400)
+        # Read before delete(): Django sets the pk to None once the row is
+        # gone, and the event still needs to name what was deleted.
+        events = self.get_success_events(instance)
         try:
             instance.delete()
         except ProtectedError as error:
@@ -334,7 +355,10 @@ class DeleteAction(PanelAction):
             )
             return HttpResponse(html, status=422)
         response = HttpResponse(status=204)
-        response["HX-Redirect"] = self.success_url
+        response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+        response["HX-Location"] = json.dumps(
+            {"path": self.success_url, "target": "#main-content", "swap": "outerHTML"}
+        )
         return response
 
     def has_permission(

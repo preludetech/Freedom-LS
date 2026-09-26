@@ -1,4 +1,4 @@
-"""The list view's create action refreshes the list's table region."""
+"""ListViewConfig.refresh_events refreshes the list's table region."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ def test_the_refresh_wiring_targets_the_list_panels_region(
     html = fetch("stubs").content.decode()
 
     assert html.count('x-data="listRefresh"') == 1
-    assert 'data-refresh-events="itemCreated"' in html
+    assert 'data-refresh-events="itemChanged"' in html
     assert f'data-refresh-target="{LIST_REGION_ID}"' in html
     assert f'id="{LIST_REGION_ID}"' in html
 

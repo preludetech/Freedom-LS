@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.learner_management.models import (
@@ -199,11 +200,13 @@ class LearnerDetailsPanel(InstanceDetailsPanel):
         "user__last_name",
         "user__email",
     ]
+    refresh_events = (LEARNER_CHANGED,)
 
 
 class LearnerCohortsPanel(DataTablePanel):
     title = "Cohorts"
     data_table = CohortDataTable
+    refresh_events = (LEARNER_CHANGED,)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (
@@ -229,6 +232,7 @@ class CohortDetailsPanel(InstanceDetailsPanel):
     fields = ["name"]
     editable = True
     form_class = CohortForm
+    refresh_events = (COHORT_CHANGED,)
 
     def get_actions(self) -> list[PanelAction]:
         # The instance already carries its own organisation, so the success
@@ -243,7 +247,8 @@ class CohortDetailsPanel(InstanceDetailsPanel):
                         "organisation_slug": cohort.organisation.slug,
                         "path_string": "cohorts",
                     },
-                )
+                ),
+                success_events=(COHORT_CHANGED,),
             ),
         ]
 
@@ -285,6 +290,7 @@ class CohortCourseRegistrationDataTable(DataTable):
 class CohortLearnersPanel(DataTablePanel):
     title = "Learners"
     data_table = LearnerDataTable
+    refresh_events = (COHORT_CHANGED,)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (
@@ -295,6 +301,7 @@ class CohortLearnersPanel(DataTablePanel):
 class CourseRegistrationsPanel(DataTablePanel):
     title = "Course Registrations"
     data_table = CohortCourseRegistrationDataTable
+    refresh_events = (COHORT_CHANGED,)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(cohort=self.instance)
@@ -323,6 +330,7 @@ class CreateCohortAction(CreateInstanceAction):
     form_class = CohortForm
     form_title = "Create Cohort"
     action_name = "create_cohort"
+    success_events = (COHORT_CHANGED,)
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
@@ -348,9 +356,6 @@ class CreateCohortAction(CreateInstanceAction):
             },
         )
 
-    def get_created_event_name(self) -> str:
-        return "cohortCreated"
-
 
 class CohortConfig(ListViewConfig):
     url_name = "cohorts"
@@ -359,6 +364,7 @@ class CohortConfig(ListViewConfig):
     model = Cohort
     list_view = CohortDataTable
     instance_view = CohortInstanceView
+    refresh_events = (COHORT_CHANGED,)
 
     required_request_attrs = ("organisation",)
 
@@ -384,6 +390,7 @@ class LearnerConfig(ListViewConfig):
     model = Learner
     list_view = LearnerDataTable
     instance_view = LearnerInstanceView
+    refresh_events = (LEARNER_CHANGED,)
 
     required_request_attrs = ("organisation",)
 

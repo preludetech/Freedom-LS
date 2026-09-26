@@ -12,6 +12,8 @@ test_config_authorisation.py.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from django.contrib.sites.models import Site
@@ -21,12 +23,14 @@ from django.test import RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.views import CreateCohortAction
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 
 
 def _ctx(request: HttpRequest) -> PanelContext:
@@ -59,13 +63,21 @@ def test_success_url_carries_the_organisation_slug(mock_site_context: Site) -> N
     response = CreateCohortAction().handle_submit(_ctx(request))
 
     cohort = Cohort.objects.get(name="Redirect Cohort")
-    assert response["HX-Redirect"] == reverse(
-        "educator_interface:interface",
-        kwargs={
-            "organisation_slug": organisation.slug,
-            "path_string": f"cohorts/{cohort.pk}",
-        },
+    assert json.loads(response["HX-Location"]) == {
+        "path": reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"cohorts/{cohort.pk}",
+            },
+        ),
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {COHORT_CHANGED: [str(cohort.pk)]}, close_modal=True
     )
+    assert "HX-Redirect" not in response
 
 
 @pytest.mark.django_db
