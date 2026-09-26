@@ -17,7 +17,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `phone-number-form-field`
 - `referral-attribution-over-time`
 - `retry-sent-emails`
-- `test-organisation-and-hygene-1-testing-standards`
 - `user-communication-3-messaging-policy`
 
 ## Needs work on main first
@@ -240,7 +239,7 @@ standard up. Specs 4 to 15 clean up to it.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 1 | `test-organisation-and-hygene-1-testing-standards` | The test rules in `ds:testing`: tests mirror the app's file layout, an app's tests import only apps it depends on, conftest, fixture and factory layering, the stub-model technique. `fls-dev:testing` points at them and adds FLS specifics. | none | next |
+| 1 | `test-organisation-and-hygene-1-testing-standards` | The test rules in `ds:testing`: tests mirror the app's file layout, an app's tests import only apps it depends on, conftest, fixture and factory layering, the stub-model technique. `fls-dev:testing` points at them and adds FLS specifics. | none | in progress |
 | 2 | `test-organisation-and-hygene-2-sdd-review-and-boy-scout` | `implement_plan` writes tests with the testing skills loaded, reviews each batch for test organisation, and runs a boy-scout agent that tidies touched tests and flags obvious bugs. | `test-organisation-and-hygene-1-testing-standards` | next |
 | 3 | `test-organisation-and-hygene-3-enforcement-checks` | Pre-commit and CI checks for both rules: import-linter contracts generated with `docs/app_structure.md`, a mirroring script, and baselines of today's violations that only shrink. | `test-organisation-and-hygene-1-testing-standards` | next |
 | 4 | `test-organisation-and-hygene-4-shared-test-infrastructure` | Root `conftest.py` and `freedom_ls/tests/`: the Playwright re-export, fixture placement, `SiteFactory` moved to `site_aware_models`, missing optional-app collection guards, dead test directories. | `test-organisation-and-hygene-3-enforcement-checks` | next |
