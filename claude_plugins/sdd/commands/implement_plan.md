@@ -21,7 +21,7 @@ This command runs at **depth 0** (the main thread) and orchestrates batch sub-ag
 
 ## Step 2: Batch and Execute (resilient)
 
-Split the plan's tasks into batches of related steps. Each batch should be a coherent unit of work (e.g. "add model + migration", "add views + templates + urls"). Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch N] <summary>`.
+Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch N] <summary>`.
 
 **Resume scan (before spawning):** scan `git log` for existing `[batch N]` commits and **skip completed batches**. Only spawn batches whose marker commit is missing.
 

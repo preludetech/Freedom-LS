@@ -42,6 +42,16 @@ Write the plan document.
 
 The spec's vocabulary is the plan's vocabulary, in every identifier the plan proposes. A concept the plan turns up that the spec never named gets its name in the spec, not here.
 
+## Order the plan as vertical slices
+
+Structure the plan as a sequence of vertical slices, not horizontal layers. A slice is a thin piece of behaviour that runs end to end through every layer it needs (model, migration, service, view, URL, template, tests) and leaves the system working and testable when it is done.
+
+- Make the first slice the thinnest one that runs end to end. Later slices widen it: more fields, more cases, permissions, error branches, edge cases.
+- Order slices by value and dependency. Each slice builds only on slices before it.
+- Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with the full test suite passing.
+- Don't group work by layer ("all the models", then "all the views", then "all the templates"). A slice holds only the model, view or template changes its behaviour needs.
+- Put shared groundwork in its own step only when no single slice can own it. Keep it as small as possible and put it immediately before the first slice that uses it.
+
 # Step 4: Skills/MCP scan (fan-out)
 
 This worker was spawned in Step 1. It is **one `sdd:sdd-worker`** that scans the available skills and MCPs and writes `.sdd-work/plan_skill_scan.md` (atomically, with a `status:` footer). Then fold the result into the plan: update it to say what skills and MCPs should be used where. (Single unit, but file-based + structured so it is resumable/retryable per the recipe.)
@@ -79,6 +89,7 @@ IMPORTANT: We will be generating a webserver port at random. we wont be using po
 The review dimensions below become **one `sdd:sdd-worker` per dimension**, each writing `.sdd-work/plan_review_<dim>.md` (structured status). Apply resume/retry/blocked per the recipe. Then read the findings (files, not dumped contents) and edit `2. plan.md` accordingly. Dimensions:
 
 - All the success criteria will be met by the plan in place
+- The plan is ordered as vertical slices (see Step 3): each slice delivers working, tested behaviour end to end, the first slice is the thinnest one that runs end to end, and no step groups work by layer
 - No step in the plan contradicts any skill
 - No step will result in junk files that need to be manually cleaned up
 - All suggested code changes are clean and simple
