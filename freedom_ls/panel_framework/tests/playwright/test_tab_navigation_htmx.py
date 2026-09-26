@@ -9,7 +9,10 @@ from __future__ import annotations
 import re
 
 import pytest
+import pytest_django.live_server_helper
 from playwright.sync_api import Page, expect
+
+from django.contrib.sites.models import Site
 
 from ..conftest import _make_stub
 from .assertions import expect_no_nested_panel
@@ -18,8 +21,8 @@ from .assertions import expect_no_nested_panel
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_tab_switch_back_and_forward_keep_url_and_tab_together(
-    live_server,
-    live_server_site,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
     page: Page,
 ) -> None:
     stub = _make_stub(name="Tabbed Stub")

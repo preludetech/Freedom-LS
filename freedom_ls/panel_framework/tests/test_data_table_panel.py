@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
+
 from .conftest import _make_stub
 from .view_helpers import fetch
 
@@ -24,7 +26,7 @@ def _region_id(stub_pk: object) -> str:
 
 
 def test_a_request_targeting_the_region_gets_the_table_without_the_frame(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     stub = _make_stub(name="row-x")
 
@@ -38,7 +40,7 @@ def test_a_request_targeting_the_region_gets_the_table_without_the_frame(
     assert "<h2>Stub</h2>" not in html
 
 
-def test_a_plain_get_keeps_the_frame(mock_site_context) -> None:
+def test_a_plain_get_keeps_the_frame(mock_site_context: Site) -> None:
     stub = _make_stub(name="row-x")
 
     html = fetch(_panel_path(stub.pk)).content.decode()
@@ -48,7 +50,7 @@ def test_a_plain_get_keeps_the_frame(mock_site_context) -> None:
 
 
 def test_the_frame_refetches_its_own_region_on_panel_changed(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     stub = _make_stub(name="row-x")
 

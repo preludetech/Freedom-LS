@@ -4,16 +4,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
 
 from django.contrib.sessions.backends.db import SessionStore
 from django.core.handlers.wsgi import WSGIRequest
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.views import (
     LAST_ORGANISATION_SESSION_KEY,
     interface,
@@ -51,8 +53,8 @@ class TestInterfaceRoot:
         assert response.status_code == 404
 
     def test_falls_back_to_first_accessible_when_nothing_remembered(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         user = UserFactory(staff=True)
         organisation_a = OrganisationFactory(name="Alpha")
         organisation_b = OrganisationFactory(name="Beta")
@@ -66,8 +68,8 @@ class TestInterfaceRoot:
         assert response["Location"] == _interface_url(organisation_a.slug, "dashboard")
 
     def test_redirects_to_the_remembered_organisation_over_the_alphabetical_default(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         user = UserFactory(staff=True)
         organisation_a = OrganisationFactory(name="Alpha")
         organisation_b = OrganisationFactory(name="Beta")
@@ -81,8 +83,8 @@ class TestInterfaceRoot:
         assert response["Location"] == _interface_url(organisation_b.slug, "dashboard")
 
     def test_remembered_organisation_is_ignored_if_no_longer_accessible(
-        self, logged_in_client
-    ):
+        self, logged_in_client: Callable[[User], Client]
+    ) -> None:
         """The session value is only ever a hint — it is re-checked against
         what the user can currently access, never trusted on its own."""
         user = UserFactory(staff=True)

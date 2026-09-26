@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import QuerySet
 from django.http import Http404, HttpRequest
@@ -108,7 +109,7 @@ def test_a_panel_without_a_model_binds_without_an_instance() -> None:
 
 
 @pytest.mark.django_db
-def test_a_get_queryset_override_narrows_the_rows(mock_site_context) -> None:
+def test_a_get_queryset_override_narrows_the_rows(mock_site_context: Site) -> None:
     _make_stub(name="keep-me")
     _make_stub(name="drop-me")
 

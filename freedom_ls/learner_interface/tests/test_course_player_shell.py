@@ -1,9 +1,12 @@
 """Tests for the overlay host blocks in the shared interface shell."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
@@ -18,7 +21,9 @@ BASE_INTERFACE_TEMPLATE: Path = (
 
 
 @pytest.mark.django_db
-def test_course_player_renders_with_empty_overlay_host_blocks(mock_site_context):
+def test_course_player_renders_with_empty_overlay_host_blocks(
+    mock_site_context: Site,
+) -> None:
     course = CourseFactory(title="Shell Course", slug="shell-course")
     topic = TopicFactory(title="Only Topic", slug="only-topic", content="x")
     course.items.create(child=topic, order=0)

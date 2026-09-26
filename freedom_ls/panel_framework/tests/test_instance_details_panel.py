@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
+from django.db.models import Model
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
@@ -23,7 +25,9 @@ class StubChildDetails(InstanceDetailsPanel):
     fields = ["parent__name"]
 
 
-def _bind(panel_class: type[InstanceDetailsPanel], instance) -> InstanceDetailsPanel:
+def _bind(
+    panel_class: type[InstanceDetailsPanel], instance: Model
+) -> InstanceDetailsPanel:
     return panel_class(
         PanelContext(
             request=RequestFactory().get("/"),
@@ -35,7 +39,7 @@ def _bind(panel_class: type[InstanceDetailsPanel], instance) -> InstanceDetailsP
 
 
 @pytest.mark.django_db
-def test_rows_carry_label_value_and_is_boolean(mock_site_context) -> None:
+def test_rows_carry_label_value_and_is_boolean(mock_site_context: Site) -> None:
     stub = _make_stub(name="Detailed", kind="b", is_active=True)
 
     rows = _bind(StubInstanceDetails, stub).get_rows()
@@ -49,7 +53,7 @@ def test_rows_carry_label_value_and_is_boolean(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_a_dunder_path_resolves_through_the_relation(mock_site_context) -> None:
+def test_a_dunder_path_resolves_through_the_relation(mock_site_context: Site) -> None:
     child = _make_stub_child(_make_stub(name="Parent Stub"))
 
     (row,) = _bind(StubChildDetails, child).get_rows()
@@ -58,7 +62,7 @@ def test_a_dunder_path_resolves_through_the_relation(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_the_template_capitalises_the_label_once(mock_site_context) -> None:
+def test_the_template_capitalises_the_label_once(mock_site_context: Site) -> None:
     stub = _make_stub(name="Detailed")
     panel = _bind(StubInstanceDetails, stub)
 
@@ -70,7 +74,7 @@ def test_the_template_capitalises_the_label_once(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_no_edit_action_when_the_panel_is_not_editable(mock_site_context) -> None:
+def test_no_edit_action_when_the_panel_is_not_editable(mock_site_context: Site) -> None:
     stub = _make_stub(name="Detailed")
 
     assert _bind(StubInstanceDetails, stub).get_actions() == []

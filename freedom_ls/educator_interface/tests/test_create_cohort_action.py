@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.http import HttpRequest
 from django.test import RequestFactory
@@ -33,7 +34,9 @@ def _ctx(request: HttpRequest) -> PanelContext:
 
 
 @pytest.mark.django_db
-def test_creating_a_cohort_lands_it_in_request_organisation(mock_site_context):
+def test_creating_a_cohort_lands_it_in_request_organisation(
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     request = RequestFactory().post("/", {"name": "New Cohort"})
     request.user = UserFactory(staff=True)
@@ -47,7 +50,7 @@ def test_creating_a_cohort_lands_it_in_request_organisation(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_success_url_carries_the_organisation_slug(mock_site_context):
+def test_success_url_carries_the_organisation_slug(mock_site_context: Site) -> None:
     organisation = OrganisationFactory()
     request = RequestFactory().post("/", {"name": "Redirect Cohort"})
     request.user = UserFactory(staff=True)
@@ -67,8 +70,8 @@ def test_success_url_carries_the_organisation_slug(mock_site_context):
 
 @pytest.mark.django_db
 def test_duplicate_cohort_name_in_same_organisation_is_rejected_with_a_visible_error(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     """422 so HTMX swaps the form fragment back in rather than redirecting,
     with the clash named in that fragment."""
     organisation = OrganisationFactory()
@@ -85,8 +88,8 @@ def test_duplicate_cohort_name_in_same_organisation_is_rejected_with_a_visible_e
 
 @pytest.mark.django_db
 def test_duplicate_cohort_name_in_same_organisation_creates_no_second_row(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     organisation = OrganisationFactory()
     CohortFactory(organisation=organisation, name="Year 10 Science")
     request = RequestFactory().post("/", {"name": "Year 10 Science"})
@@ -103,8 +106,8 @@ def test_duplicate_cohort_name_in_same_organisation_creates_no_second_row(
 
 @pytest.mark.django_db
 def test_creating_a_cohort_named_after_one_in_another_organisation_succeeds(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     other_organisation = OrganisationFactory()
     organisation = OrganisationFactory()
     CohortFactory(organisation=other_organisation, name="Year 10 Science")

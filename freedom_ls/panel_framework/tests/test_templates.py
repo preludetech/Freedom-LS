@@ -8,6 +8,8 @@ from pathlib import Path
 import pytest
 import pytest_django.fixtures
 
+from django.contrib.sites.models import Site
+from django.db.models import Model
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
@@ -30,7 +32,9 @@ class _TabsWithAHiddenOne(TabSet):
     children = {"shown": _PlainPanel, "hidden": StubHiddenPanel}
 
 
-def _bind(panel_class: type[Panel], instance=None, name: str = "x") -> Panel:
+def _bind(
+    panel_class: type[Panel], instance: Model | None = None, name: str = "x"
+) -> Panel:
     return panel_class(
         PanelContext(
             request=RequestFactory().get("/p"),
@@ -67,7 +71,7 @@ def test_no_panel_framework_template_uses_safe() -> None:
 
 @pytest.mark.usefixtures("leaf_override")
 @pytest.mark.django_db
-def test_an_override_of_the_leaf_keeps_the_base_markup(mock_site_context) -> None:
+def test_an_override_of_the_leaf_keeps_the_base_markup(mock_site_context: Site) -> None:
     html = _render(_bind(_PlainPanel))
 
     assert "<p data-override-marker>overridden</p>" in html
@@ -77,7 +81,7 @@ def test_an_override_of_the_leaf_keeps_the_base_markup(mock_site_context) -> Non
 
 @pytest.mark.django_db
 def test_a_panel_template_extending_the_framework_template_renders_both(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     html = _render(_bind(StubDetailsPanel, _make_stub(name="Extended")))
 
@@ -87,7 +91,9 @@ def test_a_panel_template_extending_the_framework_template_renders_both(
 
 
 @pytest.mark.django_db
-def test_a_leaf_refetches_its_own_region_on_panel_changed(mock_site_context) -> None:
+def test_a_leaf_refetches_its_own_region_on_panel_changed(
+    mock_site_context: Site,
+) -> None:
     panel = _bind(_PlainPanel)
 
     html = _render(panel)
@@ -98,7 +104,7 @@ def test_a_leaf_refetches_its_own_region_on_panel_changed(mock_site_context) -> 
 
 
 @pytest.mark.django_db
-def test_a_hidden_tab_gets_no_link_in_the_nav(mock_site_context) -> None:
+def test_a_hidden_tab_gets_no_link_in_the_nav(mock_site_context: Site) -> None:
     html = _render(_bind(_TabsWithAHiddenOne, name=""))
 
     assert "__tabs/shown" in html
@@ -107,7 +113,9 @@ def test_a_hidden_tab_gets_no_link_in_the_nav(mock_site_context) -> None:
 
 
 @pytest.mark.django_db
-def test_tab_set_markup_is_navigation_not_an_aria_tab_widget(mock_site_context) -> None:
+def test_tab_set_markup_is_navigation_not_an_aria_tab_widget(
+    mock_site_context: Site,
+) -> None:
     html = _render(_bind(_TabsWithAHiddenOne, name=""))
 
     assert '<nav aria-label="Sections"' in html

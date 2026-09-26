@@ -6,6 +6,7 @@ import pytest
 from guardian.shortcuts import assign_perm
 
 from django import forms
+from django.contrib.sites.models import Site
 from django.db.models import Model
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -86,7 +87,9 @@ def _render_panel(panel: Panel) -> str:
 
 
 @pytest.mark.django_db
-def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
+def test_panel_get_actions_returns_empty_list_by_default(
+    mock_site_context: Site,
+) -> None:
     """Panel.get_actions() returns empty list by default."""
     item = _make_stub(name="test-item")
     panel = StubPanel(_ctx(RequestFactory().get("/"), item))
@@ -94,7 +97,7 @@ def test_panel_get_actions_returns_empty_list_by_default(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_panel_action_render_returns_button_html(mock_site_context):
+def test_panel_action_render_returns_button_html(mock_site_context: Site) -> None:
     """PanelAction renders its button through its own template."""
     item = _make_stub(name="action-render")
     request = RequestFactory().get("/")
@@ -103,7 +106,7 @@ def test_panel_action_render_returns_button_html(mock_site_context):
     assert "Do Thing" in html
 
 
-def test_panel_action_url_hangs_off_its_owners_base_url():
+def test_panel_action_url_hangs_off_its_owners_base_url() -> None:
     context = StubAction().get_context_data(
         _ctx(RequestFactory().get("/"), None, "/a/b")
     )
@@ -111,12 +114,12 @@ def test_panel_action_url_hangs_off_its_owners_base_url():
 
 
 @pytest.mark.django_db
-def test_panel_container_renders_actions_when_present(mock_site_context):
+def test_panel_container_renders_actions_when_present(mock_site_context: Site) -> None:
     """Panel container renders action buttons when actions exist."""
     item = _make_stub(name="actions-present")
 
     class PanelWithAction(StubPanel):
-        def get_actions(self):
+        def get_actions(self) -> list[PanelAction]:
             return [StubAction()]
 
     request = RequestFactory().get("/")
@@ -126,7 +129,9 @@ def test_panel_container_renders_actions_when_present(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_panel_container_no_actions_area_when_no_actions(mock_site_context):
+def test_panel_container_no_actions_area_when_no_actions(
+    mock_site_context: Site,
+) -> None:
     """Panel container renders no actions area when no actions."""
     item = _make_stub(name="no-actions")
     request = RequestFactory().get("/")
@@ -147,7 +152,9 @@ def test_panel_action_has_permission_returns_true_by_default(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_create_action_form_valid_creates_instance_and_redirects(mock_site_context):
+def test_create_action_form_valid_creates_instance_and_redirects(
+    mock_site_context: Site,
+) -> None:
     """Successful form submission creates instance and returns 204 + HX-Redirect."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "New Item"})
@@ -162,8 +169,8 @@ def test_create_action_form_valid_creates_instance_and_redirects(mock_site_conte
 
 @pytest.mark.django_db
 def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
-    mock_site_context,
-):
+    mock_site_context: Site,
+) -> None:
     """'Save and add another' returns re-rendered empty form + HX-Trigger event."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "Item A", "action": "save_and_add"})
@@ -178,7 +185,7 @@ def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
 
 
 @pytest.mark.django_db
-def test_create_action_duplicate_name_returns_422(mock_site_context):
+def test_create_action_duplicate_name_returns_422(mock_site_context: Site) -> None:
     """Duplicate name within site returns 422 with validation error."""
     _make_stub(name="Existing")
     action = StubCreateAction()
@@ -206,7 +213,7 @@ def test_create_action_has_permission_checks_add_perm(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_create_action_permission_denied_returns_403(mock_site_context):
+def test_create_action_permission_denied_returns_403(mock_site_context: Site) -> None:
     """_handle_action returns 403 when user lacks add permission."""
     action = StubCreateAction()
     user = make_staff_user()
@@ -224,7 +231,9 @@ def test_create_action_permission_denied_returns_403(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
+def test_edit_action_form_valid_saves_and_returns_trigger(
+    mock_site_context: Site,
+) -> None:
     """Successful edit returns 204 + HX-Trigger with panelChanged."""
     item = _make_stub(name="Old Name")
     action = EditAction(
@@ -245,7 +254,7 @@ def test_edit_action_form_valid_saves_and_returns_trigger(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_edit_action_duplicate_name_returns_422(mock_site_context):
+def test_edit_action_duplicate_name_returns_422(mock_site_context: Site) -> None:
     """Duplicate name returns 422 with validation error."""
     _make_stub(name="Existing-edit")
     item = _make_stub(name="Original")
@@ -283,7 +292,7 @@ def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_co
 
 
 @pytest.mark.django_db
-def test_edit_action_permission_denied_returns_403(mock_site_context):
+def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> None:
     """_handle_action returns 403 when user lacks change permission."""
     item = _make_stub(name="Test-edit-403")
     action = EditAction(
@@ -306,7 +315,9 @@ def test_edit_action_permission_denied_returns_403(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_delete_action_handle_submit_deletes_and_redirects(mock_site_context):
+def test_delete_action_handle_submit_deletes_and_redirects(
+    mock_site_context: Site,
+) -> None:
     """Successful deletion deletes instance and returns 204 + HX-Redirect."""
     item = _make_stub(name="to-delete")
     item_pk = item.pk
@@ -336,7 +347,9 @@ def test_delete_action_cascade_summary_includes_related_objects(mock_site_contex
 
 
 @pytest.mark.django_db
-def test_delete_action_render_returns_confirmation_html(mock_site_context):
+def test_delete_action_render_returns_confirmation_html(
+    mock_site_context: Site,
+) -> None:
     """Rendered delete confirmation includes delete button and action URL."""
     item = _make_stub(name="delete-render")
     action = DeleteAction(success_url="/items")
@@ -368,7 +381,7 @@ def test_delete_action_has_permission_checks_object_level_delete_perm(
 
 
 @pytest.mark.django_db
-def test_delete_action_permission_denied_returns_403(mock_site_context):
+def test_delete_action_permission_denied_returns_403(mock_site_context: Site) -> None:
     """_handle_action returns 403 when user lacks delete permission."""
     item = _make_stub(name="delete-403")
     action = DeleteAction(success_url="/items")
@@ -384,7 +397,9 @@ def test_delete_action_permission_denied_returns_403(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_delete_action_render_explains_a_protected_instance(mock_site_context):
+def test_delete_action_render_explains_a_protected_instance(
+    mock_site_context: Site,
+) -> None:
     """A protected instance renders an explanation, not a ProtectedError."""
     item = _make_stub(name="protected-render")
     _make_stub_protected_child(parent=item)
@@ -401,7 +416,9 @@ def test_delete_action_render_explains_a_protected_instance(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_delete_action_handle_submit_refuses_a_protected_instance(mock_site_context):
+def test_delete_action_handle_submit_refuses_a_protected_instance(
+    mock_site_context: Site,
+) -> None:
     """Submitting a blocked delete returns the explanation, not a 500."""
     item = _make_stub(name="protected-submit")
     _make_stub_protected_child(parent=item)

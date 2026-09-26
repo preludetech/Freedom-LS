@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import lxml.html
 import pytest
 
+from django.contrib.sites.models import Site
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture
-def sidebar(mock_site_context, logged_in_client):
+def sidebar(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> tuple[lxml.html.HtmlElement, str]:
     """The rendered #sidebar-nav and the whole page, for a logged-in educator."""
     organisation = OrganisationFactory()
     user = UserFactory(
@@ -32,7 +39,9 @@ def sidebar(mock_site_context, logged_in_client):
 
 
 @pytest.mark.django_db
-def test_sidebar_groups_its_sections_under_a_teaching_heading(sidebar):
+def test_sidebar_groups_its_sections_under_a_teaching_heading(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
     nav, _page = sidebar
 
     headings = [h.text_content().strip() for h in nav.cssselect("h2")]
@@ -41,7 +50,9 @@ def test_sidebar_groups_its_sections_under_a_teaching_heading(sidebar):
 
 
 @pytest.mark.django_db
-def test_sidebar_lists_the_four_sections_each_with_an_icon(sidebar):
+def test_sidebar_lists_the_four_sections_each_with_an_icon(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
     nav, _page = sidebar
 
     links = nav.cssselect("ul > li > div > a")
@@ -56,7 +67,9 @@ def test_sidebar_lists_the_four_sections_each_with_an_icon(sidebar):
 
 
 @pytest.mark.django_db
-def test_sidebar_footer_names_the_signed_in_user(sidebar):
+def test_sidebar_footer_names_the_signed_in_user(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
     _nav, page = sidebar
 
     assert "Ada Lovelace" in page

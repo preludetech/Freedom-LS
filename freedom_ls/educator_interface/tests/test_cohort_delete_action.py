@@ -14,13 +14,18 @@ saw nothing wrong.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import lxml.html
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -34,10 +39,12 @@ from freedom_ls.organisations.factories import OrganisationFactory
 
 
 @pytest.fixture
-def cohort_with_granted_progress(mock_site_context, course_with_topic):
+def cohort_with_granted_progress(
+    mock_site_context: Site, course_with_topic: Callable[..., Course]
+) -> Cohort:
     """A cohort holding a registration that has already granted a record."""
     organisation = OrganisationFactory()
-    cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
+    cohort: Cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
     course = course_with_topic()
     registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
     learner = LearnerFactory(organisation=organisation)
@@ -58,7 +65,7 @@ def _panel_url(cohort) -> str:
     )
 
 
-def _delete_url(client: Client, cohort) -> str:
+def _delete_url(client: Client, cohort: Cohort) -> str:
     """The delete action's URL, read off the Details panel the page renders."""
     document = lxml.html.fromstring(client.get(_panel_url(cohort)).content)
     (details_panel,) = document.cssselect('section[data-panel="details"]')
@@ -67,8 +74,8 @@ def _delete_url(client: Client, cohort) -> str:
 
 @pytest.mark.django_db
 def test_an_empty_cohort_is_deleted_from_its_details_panel(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))
     url = _delete_url(client, cohort)
@@ -82,8 +89,8 @@ def test_an_empty_cohort_is_deleted_from_its_details_panel(
 
 @pytest.mark.django_db
 def test_the_details_panel_renders_the_delete_trigger(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))
 
@@ -117,8 +124,8 @@ def test_the_delete_dialog_says_why_the_cohort_cannot_go(
 
 @pytest.mark.django_db
 def test_submitting_the_blocked_delete_answers_instead_of_erroring(
-    cohort_with_granted_progress, logged_in_client
-):
+    cohort_with_granted_progress: Cohort, logged_in_client: Callable[[User], Client]
+) -> None:
     client = logged_in_client(UserFactory(superuser=True))
     url = _delete_url(client, cohort_with_granted_progress)
 

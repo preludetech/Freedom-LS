@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 
 import pytest
+import pytest_django.fixtures
 
+from django.contrib.sites.models import Site
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
@@ -32,7 +37,9 @@ def _find_row(page, course: Course):
 
 
 @pytest.mark.django_db
-def test_course_table_includes_visibility_label(mock_site_context, site_aware_request):
+def test_course_table_includes_visibility_label(
+    mock_site_context: Site, site_aware_request: RequestFactory
+) -> None:
     """Each course row exposes its visibility human label."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
 
@@ -48,8 +55,8 @@ def test_course_table_includes_visibility_label(mock_site_context, site_aware_re
 
 @pytest.mark.django_db
 def test_course_table_interest_count_matches_interest_rows(
-    mock_site_context, site_aware_request
-):
+    mock_site_context: Site, site_aware_request: RequestFactory
+) -> None:
     """The annotated interest count equals the number of CourseInterest rows."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
     CourseInterestFactory(course=course, user=UserFactory())
@@ -70,8 +77,8 @@ def test_course_table_interest_count_matches_interest_rows(
 
 @pytest.mark.django_db
 def test_course_table_interest_count_is_site_scoped(
-    mock_site_context, site_aware_request
-):
+    mock_site_context: Site, site_aware_request: RequestFactory
+) -> None:
     """Interest on a course belonging to another site never leaks into the table."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
     CourseInterestFactory(course=course, user=UserFactory())
@@ -97,8 +104,8 @@ def test_course_table_interest_count_is_site_scoped(
 
 @pytest.mark.django_db
 def test_course_table_renders_visibility_and_interest_columns(
-    mock_site_context, logged_in_client
-):
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
     """The rendered table shows the visibility label and interest count."""
     course = CourseFactory(
         title="Demand Course", visibility=CourseVisibility.COMING_SOON
@@ -152,11 +159,11 @@ class TestCourseTableTotalLearnerCountQueryCost:
     @pytest.mark.parametrize("registration_count", [1, 4])
     def test_query_count_does_not_grow_with_registration_count(
         self,
-        mock_site_context,
-        site_aware_request,
-        django_assert_max_num_queries,
-        registration_count,
-    ):
+        mock_site_context: Site,
+        site_aware_request: RequestFactory,
+        django_assert_max_num_queries: pytest_django.fixtures.DjangoAssertNumQueries,
+        registration_count: int,
+    ) -> None:
         course = CourseFactory()
         _add_registrations(course, OrganisationFactory(), registration_count)
 

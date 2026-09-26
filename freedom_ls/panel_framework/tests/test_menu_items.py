@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from django.db.models import Model
 from django.http import HttpRequest
 from django.test import RequestFactory
 
@@ -45,14 +46,18 @@ CONFIG = [
 URL_NAME = "panel_framework_test:interface"
 
 
-def _items(active_section: str = "", **kwargs) -> list[dict[str, object]]:
+def _items(
+    active_section: str = "", **kwargs: Model | dict[str, str] | None
+) -> list[dict[str, object]]:
     groups = _build_menu_items(
         CONFIG, URL_NAME, RequestFactory().get("/"), active_section, **kwargs
     )
     return [item for group in groups for item in group["items"]]
 
 
-def _by_label(active_section: str = "", **kwargs) -> dict[str, dict[str, object]]:
+def _by_label(
+    active_section: str = "", **kwargs: Model | dict[str, str] | None
+) -> dict[str, dict[str, object]]:
     return {item["label"]: item for item in _items(active_section, **kwargs)}
 
 

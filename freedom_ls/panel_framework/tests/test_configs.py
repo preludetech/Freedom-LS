@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from guardian.shortcuts import assign_perm
 
+from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
@@ -73,12 +74,12 @@ DELETE_URL = "/test-panel/framework/first-stub/__panels/deletable/__actions/dele
 CONFIG = [NavGroup("Configs", [_FirstStubConfig, StubBaseConfig, _TenantBaseConfig])]
 
 
-def _view(path_string: str, **request_kwargs: object):
+def _view(path_string: str, **request_kwargs: object) -> HttpResponse:
     return call_view(make_request(path_string, **request_kwargs), path_string, CONFIG)
 
 
 def test_an_object_view_renders_its_object_at_the_section_url(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     _make_stub(name="alpha")
 
@@ -88,14 +89,18 @@ def test_an_object_view_renders_its_object_at_the_section_url(
     assert "<h2>Deletable</h2>" in html
 
 
-def test_an_object_view_runs_check_access_on_its_object(mock_site_context) -> None:
+def test_an_object_view_runs_check_access_on_its_object(
+    mock_site_context: Site,
+) -> None:
     _make_stub(name="secret-alpha")
 
     with pytest.raises(Http404):
         _view("first-stub")
 
 
-def test_a_base_view_renders_an_instance_free_table_panel(mock_site_context) -> None:
+def test_a_base_view_renders_an_instance_free_table_panel(
+    mock_site_context: Site,
+) -> None:
     _make_stub(name="row-in-base-view")
 
     html = fetch("stub-base").content.decode()
@@ -106,7 +111,7 @@ def test_a_base_view_renders_an_instance_free_table_panel(mock_site_context) -> 
 
 
 def test_a_base_view_missing_a_required_request_attribute_404s(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     with pytest.raises(Http404):
         _view("tenant-base")
@@ -122,7 +127,7 @@ def test_a_duplicate_url_name_is_improperly_configured() -> None:
         sections_by_url_name(config)
 
 
-def test_a_hidden_panel_is_not_rendered(mock_site_context) -> None:
+def test_a_hidden_panel_is_not_rendered(mock_site_context: Site) -> None:
     _make_stub(name="alpha")
 
     html = _view("first-stub").content.decode()
@@ -130,7 +135,7 @@ def test_a_hidden_panel_is_not_rendered(mock_site_context) -> None:
     assert "<h2>Hidden</h2>" not in html
 
 
-def test_a_hidden_panels_url_404s(mock_site_context) -> None:
+def test_a_hidden_panels_url_404s(mock_site_context: Site) -> None:
     _make_stub(name="alpha")
 
     with pytest.raises(Http404):
@@ -145,7 +150,9 @@ def _as_a_user_who_may_delete(
     return call_view(request, path_string, CONFIG)
 
 
-def test_a_delete_action_from_a_panel_renders_its_trigger(mock_site_context) -> None:
+def test_a_delete_action_from_a_panel_renders_its_trigger(
+    mock_site_context: Site,
+) -> None:
     stub = _make_stub(name="alpha")
 
     html = _as_a_user_who_may_delete(stub, "first-stub").content.decode()
@@ -153,7 +160,9 @@ def test_a_delete_action_from_a_panel_renders_its_trigger(mock_site_context) -> 
     assert f'hx-delete="{DELETE_URL}"' in html
 
 
-def test_a_delete_action_from_a_panel_deletes_on_submit(mock_site_context) -> None:
+def test_a_delete_action_from_a_panel_deletes_on_submit(
+    mock_site_context: Site,
+) -> None:
     stub = _make_stub(name="alpha")
     path_string = DELETE_URL.removeprefix("/test-panel/framework/")
 

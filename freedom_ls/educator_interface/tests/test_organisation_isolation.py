@@ -35,6 +35,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
@@ -201,8 +202,8 @@ class TestCrossOrganisationIsolation:
         assert response.status_code == 404
 
     def test_course_detail_cohort_registrations_never_show_organisation_bs_cohort(
-        self, isolation
-    ):
+        self, isolation: SimpleNamespace
+    ) -> None:
         """Courses are shared across organisations; the cohorts registered for
         one are not."""
         CohortCourseRegistrationFactory(
@@ -229,8 +230,8 @@ class TestCrossOrganisationIsolation:
         ids=lambda table: table.__name__,
     )
     def test_registration_table_excludes_another_organisations_rows(
-        self, isolation, data_table
-    ):
+        self, isolation: SimpleNamespace, data_table: type[DataTable]
+    ) -> None:
         registration_a = CohortCourseRegistrationFactory(
             cohort=isolation.cohort_a, course=isolation.course_a
         )

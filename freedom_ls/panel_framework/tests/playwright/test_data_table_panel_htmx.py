@@ -11,7 +11,10 @@ from __future__ import annotations
 import re
 
 import pytest
+import pytest_django.live_server_helper
 from playwright.sync_api import Page, expect
+
+from django.contrib.sites.models import Site
 
 from ..conftest import _make_stub
 from ..stub_panels import StubDataTable
@@ -23,8 +26,8 @@ PAGE_SIZE = StubDataTable.page_size
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_data_table_sort_does_not_nest_panel_wrappers(
-    live_server,
-    live_server_site,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
     page: Page,
 ) -> None:
     """Clicking the sort header on a panel-rendered DataTable should swap the
@@ -48,8 +51,8 @@ def test_data_table_sort_does_not_nest_panel_wrappers(
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_data_table_pagination_does_not_nest_panel_wrappers(
-    live_server,
-    live_server_site,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
     page: Page,
 ) -> None:
     rows = [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
@@ -92,8 +95,8 @@ def test_pagination_preserves_sort_param_through_clicks(
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_list_view_data_table_swaps_keep_single_container(
-    live_server,
-    live_server_site,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
     page: Page,
 ) -> None:
     """The list page is a panel too, so its swaps keep one frame."""

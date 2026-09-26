@@ -12,7 +12,10 @@ so the create button appears for anonymous users in the test environment.
 from __future__ import annotations
 
 import pytest
+import pytest_django.live_server_helper
 from playwright.sync_api import Page, expect
+
+from django.contrib.sites.models import Site
 
 from .assertions import expect_no_nested_panel
 
@@ -20,8 +23,8 @@ from .assertions import expect_no_nested_panel
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
 def test_save_and_add_another_refreshes_table(
-    live_server,
-    live_server_site,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
     page: Page,
 ) -> None:
     """'Save and add another' creates a row and the table refreshes with it,

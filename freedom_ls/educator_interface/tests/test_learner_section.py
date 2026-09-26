@@ -14,7 +14,7 @@ import pytest
 
 from django.db import connection
 from django.template.loader import render_to_string
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -200,7 +200,9 @@ class TestLearnerDataTableQueryCost:
                 learner=learner, course=CourseFactory(), is_active=True
             )
 
-    def _render_query_count(self, site_aware_request, learner_count: int) -> int:
+    def _render_query_count(
+        self, site_aware_request: RequestFactory, learner_count: int
+    ) -> int:
         organisation = OrganisationFactory()
         educator = UserFactory(staff=True)
         assign_object_role(educator, organisation, "organisation_staff")

@@ -6,6 +6,7 @@ from __future__ import annotations
 import lxml.html
 import pytest
 
+from django.contrib.sites.models import Site
 from django.http import Http404
 
 from .conftest import _make_stub
@@ -28,7 +29,9 @@ def _tab_region_id(stub_pk: object) -> str:
     return str(region.get("id"))
 
 
-def test_the_instance_url_shows_the_first_tab_as_current(mock_site_context) -> None:
+def test_the_instance_url_shows_the_first_tab_as_current(
+    mock_site_context: Site,
+) -> None:
     stub = _make_stub(name="Tabbed Stub")
 
     links = _tab_links(fetch(f"stubs/{stub.pk}").content.decode())
@@ -37,7 +40,7 @@ def test_the_instance_url_shows_the_first_tab_as_current(mock_site_context) -> N
     assert links["Details"].get("aria-current") is None
 
 
-def test_a_hidden_tab_has_no_link(mock_site_context) -> None:
+def test_a_hidden_tab_has_no_link(mock_site_context: Site) -> None:
     stub = _make_stub(name="Tabbed Stub")
 
     links = _tab_links(fetch(f"stubs/{stub.pk}").content.decode())
@@ -46,7 +49,7 @@ def test_a_hidden_tab_has_no_link(mock_site_context) -> None:
 
 
 def test_a_plain_get_of_a_tab_url_renders_the_full_page_with_that_tab_current(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     stub = _make_stub(name="Tabbed Stub")
 
@@ -58,7 +61,9 @@ def test_a_plain_get_of_a_tab_url_renders_the_full_page_with_that_tab_current(
     assert "<p data-stub-details>Tabbed Stub</p>" in html
 
 
-def test_tab_links_push_their_own_url_into_the_tab_region(mock_site_context) -> None:
+def test_tab_links_push_their_own_url_into_the_tab_region(
+    mock_site_context: Site,
+) -> None:
     stub = _make_stub(name="Tabbed Stub")
     region_id = _tab_region_id(stub.pk)
 
@@ -71,7 +76,9 @@ def test_tab_links_push_their_own_url_into_the_tab_region(mock_site_context) -> 
     assert link.get("hx-push-url") == "true"
 
 
-def test_a_tab_click_returns_that_tab_and_an_announcement(mock_site_context) -> None:
+def test_a_tab_click_returns_that_tab_and_an_announcement(
+    mock_site_context: Site,
+) -> None:
     stub = _make_stub(name="Tabbed Stub")
 
     response = fetch(
@@ -89,7 +96,7 @@ def test_a_tab_click_returns_that_tab_and_an_announcement(mock_site_context) -> 
 
 
 def test_a_history_restore_of_a_tab_url_returns_the_full_page(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     stub = _make_stub(name="Tabbed Stub")
 
@@ -100,7 +107,7 @@ def test_a_history_restore_of_a_tab_url_returns_the_full_page(
     assert _tab_links(html)["Details"].get("aria-current") == "page"
 
 
-def test_a_panel_inside_a_tab_renders_that_panel(mock_site_context) -> None:
+def test_a_panel_inside_a_tab_renders_that_panel(mock_site_context: Site) -> None:
     stub = _make_stub(name="row-in-tab")
 
     response = fetch(f"stubs/{stub.pk}/__tabs/default")
@@ -113,7 +120,7 @@ def test_a_panel_inside_a_tab_renders_that_panel(mock_site_context) -> None:
     ["__tabs/hidden", "__tabs/no-such-tab", "__tabs", "__panels/default"],
     ids=["hidden tab", "unknown tab", "missing tab name", "wrong child segment"],
 )
-def test_unreachable_tab_paths_404(mock_site_context, suffix: str) -> None:
+def test_unreachable_tab_paths_404(mock_site_context: Site, suffix: str) -> None:
     stub = _make_stub(name="Tabbed Stub")
 
     with pytest.raises(Http404):
