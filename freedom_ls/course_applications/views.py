@@ -13,6 +13,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
+from freedom_ls.accounts.decorators import acquisition_login_required
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.google_analytics import record_application_submitted
@@ -55,7 +56,7 @@ def _start_application(user: User, course: Course) -> CourseApplication:
     return app
 
 
-@login_required
+@acquisition_login_required
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Apply entry view.
 
@@ -77,7 +78,9 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
       ApplicationStateTransition audit row.
     """
     course = get_object_or_404(Course, slug=course_slug)
-    user = cast(User, request.user)  # login_required guarantees an authenticated User
+    user = cast(
+        User, request.user
+    )  # acquisition_login_required guarantees an authenticated User
 
     # Enforce course visibility: hidden courses 404 for unregistered users.
     raise_404_if_hidden_unregistered(user, course)

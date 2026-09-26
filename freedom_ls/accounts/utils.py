@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import ipaddress
 
+from allauth.account.adapter import get_adapter
+
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
 from django.contrib.sites.models import Site
 from django.core.exceptions import PermissionDenied
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import redirect, resolve_url
+from django.urls import reverse
 
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -105,6 +108,17 @@ def get_effective_additional_registration_forms(
     if policy is not None:
         return list(policy.additional_registration_forms)
     return list(config.ADDITIONAL_REGISTRATION_FORMS)
+
+
+def acquisition_auth_url(request: HttpRequest) -> str | None:
+    """The auth page an acquisition call to action sends an anonymous visitor to.
+
+    Signup while the site is open for signups. Otherwise None, which
+    redirect_to_auth resolves to LOGIN_URL, the same page login_required uses.
+    """
+    if get_adapter(request).is_open_for_signup(request):
+        return reverse("account_signup")
+    return None
 
 
 def redirect_to_auth(
