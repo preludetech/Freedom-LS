@@ -203,7 +203,7 @@ def test_deferred_login_gated_course_lands_on_apply_page(
 
 
 # ---------------------------------------------------------------------------
-# Deferred-login flow: express interest via @login_required
+# Deferred-login flow: express interest sends anonymous visitors to signup
 # ---------------------------------------------------------------------------
 
 
