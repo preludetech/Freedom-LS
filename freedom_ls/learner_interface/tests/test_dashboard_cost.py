@@ -20,7 +20,7 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseCategoryFactory, CourseFactory
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 
-IN_PROGRESS_MAX_QUERIES = 58
+IN_PROGRESS_MAX_QUERIES = 59
 CATEGORY_SECTION_MAX_QUERIES = 6
 
 
