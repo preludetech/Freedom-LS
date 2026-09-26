@@ -1,6 +1,6 @@
 ---
 name: testing
-description: FreedomLS-specific extension of the ds:testing skill. Adds the site-aware mock_site_context fixture rule, the fls_internal/playwright/ci_only/weasyprint marker taxonomy for downstream distribution, and FLS collection-safety. Use alongside ds:testing when writing pytest tests in the FreedomLS repo.
+description: FreedomLS-specific extension of the ds:testing skill. Adds the FLS instances of the test organisation and hygiene rules (mirroring, dependency direction, and the conftest/fixture/factory layering), the site-aware mock_site_context fixture rule, the fls_internal/playwright/ci_only/weasyprint marker taxonomy for downstream distribution, and FLS collection-safety. Use alongside ds:testing when writing pytest tests in the FreedomLS repo.
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -98,6 +98,10 @@ def _panel_test_permissions(db):
 ### The thin-wrapper rule
 
 Root-conftest fixtures that are correctly not thin: `course_with_topic` (two factory calls plus `.items.create(...)`) and `staff_client` (builds on `mock_site_context` and `logged_in_client`).
+
+### Factory cross-app direction
+
+No FLS factory breaks the direction rule today, and none uses the dotted-string form yet, so this is new guidance rather than a description of existing code. The caller-side guard in FLS is `app_not_installed(...)`, already shown in "Collection safety for optional apps — FLS example" below.
 
 ## `mock_site_context` fixture (mandatory for site-aware models)
 

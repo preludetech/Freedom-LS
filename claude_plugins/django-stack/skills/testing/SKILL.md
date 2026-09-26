@@ -31,6 +31,9 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 - Fixtures are function-scoped unless profiling justifies wider, and a wide-scoped fixture never
   hands back state a test mutates. See "Fixture scope and idempotent reset" in
   `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+- A factory imports another app's factory only in the runtime dependency direction; a cycle
+  between peers uses the dotted-string form. See "Factory cross-app direction" in
+  `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
 - Use `@pytest.mark.django_db` for database tests
 - Use factory_boy factories for all test data creation — never use `.objects.create()` directly
 - Use `reverse()` for URLs, never hardcode

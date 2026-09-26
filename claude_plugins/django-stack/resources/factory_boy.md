@@ -45,6 +45,33 @@ author = factory.SubFactory(UserFactory)
 category = factory.SubFactory(CategoryFactory)
 ```
 
+### Factory cross-app direction
+
+A factory module imports another app's factory at module scope only in the direction the runtime dependency already runs. An optional or feature app's factories may import a core app's factories directly. A core app's factory never imports an optional app's, in either form.
+
+Where two peer factories need each other, use the dotted-string form instead of a class reference: `factory.SubFactory("myapp.factories.OtherFactory")`, the full import path ending in the class name. `RelatedFactory` takes the same form; see the dotted string in the `RelatedFactory` example below. factory_boy resolves the string at first use, so neither module needs the other at load time.
+
+The string form only breaks the import cycle. It doesn't change which app depends on which, and it doesn't make a factory safe to use when its target app isn't installed. That safety comes from the `INSTALLED_APPS` guard, which belongs in the test file or conftest that imports an optional app's factory, never in the factory module itself. A `factories.py` file imports freely, and the caller carries the guard. See "Collection safety for optional apps" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+
+Two peer feature apps that reference each other are the case a plain import can't handle:
+
+```python
+# myproject/scheduling/factories.py
+class SessionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Session
+
+    reminder = factory.SubFactory("myproject.notifications.factories.ReminderFactory")
+
+
+# myproject/notifications/factories.py
+class ReminderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Reminder
+
+    session = factory.SubFactory("myproject.scheduling.factories.SessionFactory")
+```
+
 ### RelatedFactory
 
 Use `RelatedFactory` when a related object must be created **after** the parent has been saved — e.g. reverse-FK rows, m2m through-models, or any side object that needs the parent's PK. `SubFactory` runs before save and won't work for these cases.

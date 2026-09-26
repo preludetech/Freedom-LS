@@ -382,6 +382,7 @@ Decision guidance for which factory_boy primitive to reach for. Deep examples li
 | A field that needs to call a function (no obj reference) | `factory.LazyFunction` | `factory_boy.md` — LazyFunction |
 | Reusable named field combinations (e.g. `staff=True`) | `factory.Trait` in `Params` | `factory_boy.md` — Traits |
 | Logic that must run after the model is saved (e.g. set password, attach m2m) | `@factory.post_generation` | `factory_boy.md` — post_generation |
+| A related factory in a peer app that also imports this one | dotted-string `factory.SubFactory` | `factory_boy.md` — Factory cross-app direction |
 
 If you find yourself calling `.objects.create()` in a test, stop and add a factory instead. See `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` for the full pattern reference.
 
