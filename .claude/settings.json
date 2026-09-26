@@ -96,7 +96,8 @@
       "Bash(uv run python manage.py content_save:*)",
       "Bash(uv run python manage.py recalculate_progress_percentages:*)",
       "Bash(uv run python manage.py showmigrations:*)",
-      "Bash(uv run python manage.py qa_*)"
+      "Bash(uv run python manage.py qa_*)",
+      "Bash(claude_plugins/sdd/scripts/*.sh:*)"
     ],
     "deny": [
       "Bash(git commit --no-verify:*)",

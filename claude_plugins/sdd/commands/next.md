@@ -89,7 +89,7 @@ Keep the summary short. One of:
 - **All done**: "All items in `todo.md` are checked. If the PR has been merged, you're finished — otherwise pick up at the remaining manual step." (only if every item was already ticked at Step 2).
 - **Ticked a user item, next is manual**: "Ticked `<item text>`. Next up: `<next item text>` — do it by hand, then run `/sdd:next` again."
 - **Ticked a user item, next is a command**: report that, then proceed straight into the `(cmd)` branch and run the command inline. After it finishes, summarise what it did.
-- **Pre-step rebase did not return `ok`**: "Pre-step rebase `<status>`: `<reason>`." then stop — the `(cmd)` item was not dispatched.
+- **Pre-step rebase did not return `ok`**: "Pre-step rebase `<status>`: `<reason>`." then stop — the `(cmd)` item was not dispatched. When `<status>` is `paused`, say instead: "Paused: read `<spec-dir>/upstream_change_review.md`, change the idea, spec or plan as it says, then run `/sdd:next` and answer yes to the new item."
 - **Ran a command on the main thread**: "Ran `<command>` on the main thread. Result: `<one-line summary>`. Run `/clear` then `/sdd:next` again to continue."
 - **User hasn't done it yet**: "Next up: `<item text>`. This is a manual step — do it, then run `/sdd:next` again."
 
