@@ -64,14 +64,14 @@ class TestApplyViewGet:
 
         assert course.title in response.content.decode()
 
-    def test_get_unauthenticated_redirects_to_login(self, client, mock_site_context):
-        """GET apply without login redirects to login with next set to the apply URL."""
+    def test_get_unauthenticated_redirects_to_signup(self, client, mock_site_context):
+        """GET apply without login redirects to signup with next set to the apply URL."""
         course = CourseFactory()
         url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         response = client.get(url)
 
         assert response.status_code == 302
-        assert response["Location"] == f"{reverse('account_login')}?next={url}"
+        assert response["Location"] == f"{reverse('account_signup')}?next={url}"
 
     def test_get_nonexistent_course_returns_404(self, client, mock_site_context):
         """GET apply for a non-existent course slug returns 404."""

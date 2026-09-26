@@ -142,10 +142,10 @@ def test_deferred_login_free_course_enrolls_and_redirects(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_apply_redirects_to_login_with_next(
+def test_anonymous_access_to_apply_redirects_to_signup_with_next(
     mock_site_context, course_with_topic
 ):
-    """Anonymous GET of apply → 302 to login?next=<apply-url>."""
+    """Anonymous GET of apply → 302 to signup?next=<apply-url>."""
     course = course_with_topic(access_type="application_gated")
     client = Client()
     apply_url = reverse(
@@ -154,8 +154,8 @@ def test_anonymous_access_to_apply_redirects_to_login_with_next(
     response = client.get(apply_url, follow=False)
 
     assert response.status_code == 302
-    login_url = reverse("account_login")
-    assert response["Location"].startswith(login_url)
+    signup_url = reverse("account_signup")
+    assert response["Location"].startswith(signup_url)
     assert _next_param(response["Location"]) == apply_url
 
 
@@ -435,20 +435,36 @@ def test_deferred_login_application_status_non_owner_gets_404(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "url_name",
-    ["course_applications:apply", "learner_interface:initiate_course_access"],
-)
-def test_anonymous_access_to_hidden_course_redirects_to_login_not_404(
-    mock_site_context, url_name
+def test_anonymous_access_to_hidden_course_apply_redirects_to_signup_not_404(
+    mock_site_context,
 ):
-    """login_required runs before any visibility check, so an anonymous visitor
-    to a hidden course's apply or access URL gets a login redirect rather than
-    the 404 that confirms a registered learner would eventually see."""
+    """acquisition_login_required runs before any visibility check, so an
+    anonymous visitor to a hidden course's apply URL gets a signup redirect
+    rather than the 404 that confirms a registered learner would eventually
+    see."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
     client = Client()
 
-    url = reverse(url_name, kwargs={"course_slug": course.slug})
+    url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+    response = client.get(url, follow=False)
+
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+
+
+@pytest.mark.django_db
+def test_anonymous_access_to_hidden_course_initiate_redirects_to_login_not_404(
+    mock_site_context,
+):
+    """login_required runs before any visibility check, so an anonymous visitor
+    to a hidden course's access URL gets a login redirect rather than the 404
+    that confirms a registered learner would eventually see."""
+    course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+    client = Client()
+
+    url = reverse(
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course.slug}
+    )
     response = client.get(url, follow=False)
 
     assert response.status_code == 302
