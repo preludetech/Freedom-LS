@@ -55,3 +55,17 @@ def test_switch_to_login_is_a_link_labelled_log_in(signup_page):
     assert len(switch_hrefs) == 1
     assert "Log in" in non_header_html
     assert parse_qs(urlparse(switch_hrefs[0]).query).get("next") == [apply_url]
+
+
+@pytest.mark.django_db
+def test_email_from_query_prefills_the_form(mock_site_context):
+    response = Client().get(f"{reverse('account_signup')}?email=a@b.example")
+
+    assert 'value="a@b.example"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_invalid_email_from_query_is_dropped(mock_site_context):
+    response = Client().get(f"{reverse('account_signup')}?email=not-an-email")
+
+    assert "not-an-email" not in response.content.decode()

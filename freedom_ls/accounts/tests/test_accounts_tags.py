@@ -40,3 +40,55 @@ def test_url_with_next_falls_back_to_bare_url_with_no_request_in_context():
     rendered = template.render(Context({}))
 
     assert rendered == "/accounts/signup/"
+
+
+@pytest.mark.parametrize(
+    ("next_value", "expected"),
+    [
+        (
+            "/applications/apply/x/",
+            # The tag's return value is autoescaped like any other rendered
+            # output, so a real caller reads this the same way a browser
+            # does: as one `&`-joined query string.
+            "/accounts/signup/?next=%2Fapplications%2Fapply%2Fx%2F&amp;email=a%40b.example",
+        ),
+        (None, "/accounts/signup/?email=a%40b.example"),
+    ],
+)
+def test_url_with_next_also_carries_an_extra_query_kwarg(rf, next_value, expected):
+    params = {"next": next_value} if next_value is not None else {}
+    request = rf.get("/accounts/signup/", params)
+    template = Template(
+        '{% load accounts_tags %}{% url_with_next "account_signup" email="a@b.example" %}'
+    )
+
+    with request_context(request):
+        rendered = template.render(Context({"request": request}))
+
+    assert rendered == expected
+
+
+def test_url_with_next_drops_an_empty_extra_kwarg(rf):
+    request = rf.get("/accounts/signup/")
+    template = Template(
+        '{% load accounts_tags %}{% url_with_next "account_signup" email="" %}'
+    )
+
+    with request_context(request):
+        rendered = template.render(Context({"request": request}))
+
+    assert rendered == "/accounts/signup/"
+
+
+def test_url_with_next_reads_next_from_the_post_body(rf):
+    request = rf.post("/accounts/login/", {"next": "/applications/apply/x/"})
+    template = Template(
+        '{% load accounts_tags %}{% url_with_next "account_signup" email="a@b.example" %}'
+    )
+
+    with request_context(request):
+        rendered = template.render(Context({"request": request}))
+
+    assert rendered == (
+        "/accounts/signup/?next=%2Fapplications%2Fapply%2Fx%2F&amp;email=a%40b.example"
+    )
