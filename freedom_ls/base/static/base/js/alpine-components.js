@@ -456,9 +456,13 @@ document.addEventListener("alpine:init", () => {
                 // entry with the destination instead, so Back goes to the page
                 // the learner actually came from. Plain left-clicks only —
                 // modified / non-default-target clicks keep native behaviour.
+                // Links htmx handles are left to htmx: the htmx:beforeRequest
+                // listener below closes the sheet for them, and a replace here
+                // would reload the page over the swap htmx already started.
                 const link = event.target.closest("a[href]");
                 if (
                     !link ||
+                    link.closest("[hx-get], [hx-post], [hx-boost='true']") ||
                     event.button !== 0 ||
                     event.metaKey ||
                     event.ctrlKey ||

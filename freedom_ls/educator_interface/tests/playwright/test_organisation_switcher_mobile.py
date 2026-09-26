@@ -1,4 +1,4 @@
-"""The organisation switcher driven from the mobile navigation sheet.
+"""The organisation switcher and section links driven from the mobile navigation sheet.
 
 Below the ``lg`` breakpoint the sidebar is a modal ``<dialog>`` opened with
 ``showModal()``, so switching organisation from it has to dismiss the sheet
@@ -107,3 +107,35 @@ def test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_tog
     expect(sheet).to_be_hidden()
     expect(page.locator("#organisation-switcher")).to_contain_text("Org A")
     expect(page.get_by_role("link", name="Alpha Cohort")).to_be_visible()
+
+
+def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_reload(
+    live_server,
+    mobile_educator_page: Page,
+    mobile_educator: User,
+):
+    page = mobile_educator_page
+    organisation = OrganisationFactory(name="Org A")
+    CohortFactory(organisation=organisation, name="Alpha Cohort")
+    assign_object_role(mobile_educator, organisation, "organisation_staff")
+
+    page.goto(_interface_url(live_server, organisation.slug, "dashboard"))
+    # A full document load wipes window state, so a surviving marker proves the
+    # section loaded over htmx.
+    page.evaluate("window.__noReloadMarker = true")
+
+    sheet = page.locator("dialog[aria-label='Navigation']")
+    page.get_by_role("button", name="Open navigation panel").click()
+    expect(sheet).to_be_visible()
+
+    sheet.get_by_role("link", name="Cohorts").click()
+
+    expect(page).to_have_url(_interface_url(live_server, organisation.slug, "cohorts"))
+    expect(page.get_by_role("link", name="Alpha Cohort")).to_be_visible()
+    expect(sheet).to_be_hidden()
+    assert page.evaluate("window.__noReloadMarker === true")
+
+    page.go_back()
+    expect(page).to_have_url(
+        _interface_url(live_server, organisation.slug, "dashboard")
+    )
