@@ -4,7 +4,13 @@ This is a **Claude Design** design, drawn in claude.ai from `design_brief.md`.
 
 - Link: https://claude.ai/design/p/019df696-b642-74bb-a97b-ad6a760b0491?file=User+Communication.html
 - Project id: `019df696-b642-74bb-a97b-ad6a760b0491`
-- Entry file: `User Communication.html`
+- Entry file: `User Communication.html`, a canvas of artboards, one section per brief section
+- Made of: `uc/uc-shell.jsx` (header, bell, layouts), `uc/uc-notify.jsx` (panel, centre,
+  preferences, unsubscribe, email), `uc/uc-msg.jsx` (inbox, thread, picker, report, block),
+  `uc/uc-edu.jsx` (educator inbox, quick view, report queue), `uc/uc-data.jsx` (sample data),
+  `uc/uc.css`
+- The project ("learner experience") holds other designs too. Ignore its other files, including
+  `design-system/`, which is the other theme.
 - Registered: 2026-09-26
 
 ## How to read it
@@ -26,9 +32,12 @@ It is a reference, not the source of truth. The spec decides scope. Where the de
 something the spec does not ask for, leave it out and do not add it to the spec. Where the design
 and the spec disagree on behaviour, the spec wins.
 
-Colours, type and spacing come from FLS's own theme tokens and components (the `brand-guidelines`
-skill, `c-icon`). Never copy a hex value, font or spacing scale out of the design, and never add a
-theme token to match it.
+The project's existing design system wins over the design. Use its theme tokens, components,
+widgets and icons, and follow its conventions, even where the design's colours, fonts, spacing or
+component styling disagree. Take the design's structure and intent, not its styling. Never copy a
+raw colour, font or spacing value out of the design, never add a theme token to match it, and
+never build a new component where the project already has one that does the job. In FLS that
+means the `brand-guidelines` skill's role tokens, the existing cotton components and `c-icon`.
 
 - The design was drawn with a different theme from FLS's. Its colours, fonts and visual styling
   are not FLS's; take the structure and use FLS's current tokens.
@@ -38,23 +47,23 @@ theme token to match it.
 
 ## What it covers
 
-Not yet read: the rows below come from `design_brief.md`, which the design was drawn from. The
-first spec to read the design checks them against its files and corrects this table.
+Section and artboard names as they appear in `User Communication.html`. Every artboard is drawn at
+1280px, and most at 375px as well.
 
-| Screen or state | Brief section | Built by |
+| Design section: artboards | Brief section | Built by |
 |---|---|---|
-| Bell and unread badge in the header bar, with the dropdown panel | 1 | `user-communication-1-notifications-core` |
-| Notification centre page | 2 | `user-communication-1-notifications-core` |
-| Preferences page, email as Immediately / Off, with site-disabled categories and saved state | 3 | `user-communication-2-notification-email` |
-| Preferences page with daily and weekly digest and quiet hours | 3 | `user-communication-7-email-digests` |
-| Unsubscribe landing page | 3 | `user-communication-2-notification-email` |
-| Notification email | 4 | `user-communication-2-notification-email` |
-| Learner inbox: populated and empty states | 5 | `user-communication-4-direct-messaging` |
-| Learner inbox: conversation with a blocked person | 5 | `user-communication-6-moderation` |
-| Conversation thread and composer, with the "who will see this" line, failed send and replying no longer allowed | 6 | `user-communication-4-direct-messaging` |
-| Thread: message hidden by a moderator | 6 | `user-communication-6-moderation` |
-| Starting a conversation: recipient picker and its empty state | 7 | `user-communication-4-direct-messaging` |
-| Educator inbox in the educator interface | 8 | `user-communication-5-educator-messaging` |
-| Messages tab in the learner quick view | 9 | `user-communication-5-educator-messaging` |
-| Report and block: menu, report dialog, block confirmation, blocked banner | 10 | `user-communication-6-moderation` |
-| Report queue for site admins | 11 | `user-communication-6-moderation` |
+| 1 Bell and unread badge: header states, panel open (latest eight, one message item), full-width sheet on mobile | 1 | `user-communication-1-notifications-core` |
+| 2 Notification centre: populated, all read, empty, long list | 2 | `user-communication-1-notifications-core` |
+| 3 Notification preferences: Immediately / Off with a site-disabled category, saved confirmation | 3 | `user-communication-2-notification-email` |
+| 3 Notification preferences: four email options and quiet hours; at 375px email becomes a select | 3 | `user-communication-7-email-digests` |
+| 3 Unsubscribe landing, and after Undo | 3 | `user-communication-2-notification-email` |
+| 4 Notification email: new messages, course completion. Message content is never put in the email | 4 | `user-communication-2-notification-email` |
+| 5 Learner inbox: populated, empty and able to start, empty and messaging not available, mobile list and thread with back | 5 | `user-communication-4-direct-messaging` |
+| 5 Learner inbox: blocked conversation | 5 | `user-communication-6-moderation` |
+| 6 Thread and composer: new conversation, long thread, failed to send, replying closed (configuration changed; other person left the organisation) | 6 | `user-communication-4-direct-messaging` |
+| 6 Thread: hidden message | 6 | `user-communication-6-moderation` |
+| 7 Starting a conversation: recipient picker, search, no one to message | 7 | `user-communication-4-direct-messaging` |
+| 8 Educator inbox: populated, empty, two organisations with the switcher open | 8 | `user-communication-5-educator-messaging` |
+| 9 Quick view Messages tab: existing conversation, no conversation yet, educator may not message this learner | 9 | `user-communication-5-educator-messaging` |
+| 10 Report and block: message menu, report dialog, report sent, block confirmation, banner with Unblock | 10 | `user-communication-6-moderation` |
+| 11 Report queue: open, resolved | 11 | `user-communication-6-moderation` |
