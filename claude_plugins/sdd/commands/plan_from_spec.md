@@ -30,6 +30,8 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 
 Read the spec carefully and make sure you understand what is needed. Spawn the Step 4 skills/MCP scan now, in the background; it needs only the spec.
 
+If the spec or its directory names a `design.md`, it registers a Claude Design design. Read the design through the Claude Design integration as that file says, and have the plan name, per slice, the design screens and states it builds and the `design.md` path.
+
 If there are contradictions the code can't resolve, ask about them all at once, batched up to four per `AskUserQuestion`, and carry on with Step 2 while you wait. Fix the spec with the answers before writing the plan.
 
 # Step 2

@@ -36,6 +36,7 @@ The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_for
 
 1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
 2. Optionally run `/improve_idea` to research the idea and suggest improvements.
+3. If the work has a design drawn in Claude Design, run `/sdd:register_design <dir> <claude-design-url>` on the spec (or on a cut effort's parent). It writes `design.md`, which tells every later step how to read the design through the Claude Design integration and how faithfully to build to it.
 
 ## Step 2: Write the spec
 

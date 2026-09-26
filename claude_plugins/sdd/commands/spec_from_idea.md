@@ -57,6 +57,11 @@ The idea file, every sibling `*.md` beside it (notes files, `research_*.md`), an
 step 1. Those are the inputs the spec is written **against**. They are not material to reproduce.
 They sit in the same directory and the next command reads them too.
 
+A `design.md`, beside the idea or named under its "Resources", registers a Claude Design design
+(see `/sdd:register_design`). Read the design itself the way that file says, and treat it the way
+it says. The spec names the `design.md` path under its resources, so the plan and the
+implementation read it too.
+
 ## What the spec is for
 
 Its readers are `/sdd:plan_from_spec` and the human approving it. It answers one question: what has

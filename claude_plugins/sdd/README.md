@@ -15,14 +15,19 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
 ## What's inside (counted from disk)
 
-### Commands (14 files)
-Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `start`, `improve_idea`,
+### Commands (15 files)
+Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`, `improve_idea`,
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `next`, `commit_quickly`,
 `make_pr_quickly`, `finish_worktree`, `address_pr_review`.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the
 file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
 adds the effort, its dependency graph and its shared decisions to the roadmap.
+
+`/sdd:register_design <dir> <claude-design-url>` records a design drawn in Claude Design on a spec or a
+cut effort's parent: it writes `<dir>/design.md` (the link, how to read it through the Claude Design
+integration rather than the web, how faithfully to build to it, which spec owns each screen) and points
+the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `design.md` they are pointed at.
 
 `commands/protected/` (5 read-and-followed helper files, not advertised as slash commands): `setup_todo_list`,
 `move_spec_to_in_progress`, `start_worktree`, `update_todo`, `update_roadmap`.
