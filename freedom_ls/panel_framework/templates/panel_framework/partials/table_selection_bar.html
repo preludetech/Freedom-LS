@@ -1,0 +1,29 @@
+{% comment %}
+The selection bar: the result count and one submit button per permitted bulk
+action, hidden until a row is checked, sharing its footer row with the
+pagination — which stays visible regardless of selection.
+{% endcomment %}
+<div class="mt-6 flex flex-wrap items-center justify-between gap-4 px-4">
+    <div aria-live="polite" x-show="hasSelection" class="flex flex-wrap items-center gap-4">
+        <span class="text-sm">
+            <span x-text="count"></span> selected
+            · showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} {{ noun }}
+        </span>
+        {% for entry in bulk_actions %}
+            {% querystring request.GET as qs %}
+            <c-button type="submit"
+                      variant="secondary"
+                      formaction="{{ entry.url }}{{ qs }}"
+                      hx-post="{{ entry.url }}{{ qs }}"
+                      hx-target="#{{ query.key }}-bulk-modal"
+                      hx-swap="innerHTML">
+                {{ entry.action.label }}
+            </c-button>
+        {% endfor %}
+    </div>
+    <c-pagination :page_obj="page_obj"
+                  :base_url="base_url"
+                  :table_id="region_id"
+                  :links="pagination"
+                  :page_url="page_url" />
+</div>

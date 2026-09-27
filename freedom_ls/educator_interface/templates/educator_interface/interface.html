@@ -35,7 +35,7 @@ panel-page-header, so the shared page_title region stays empty here — passing
 
 {% block content %}
     <c-page flush="true">
-        {% include main_template_name with main=main request=request only %}
+        {% include main_template_name with main=main request=request csrf_token=csrf_token only %}
     </c-page>
     {% include "panel_framework/partials/announcer_host.html" %}
 {% endblock content %}

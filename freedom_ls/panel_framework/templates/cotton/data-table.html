@@ -15,16 +15,28 @@
         toolbar=""
         add_filter=""
         clear_changes=""
-        any_filter_set="False" />
+        any_filter_set="False"
+        bulk_actions=""
+        noun="" />
 
 <div id="{{ region_id }}" data-table-region>
     <div tabindex="-1" data-table-anchor></div>
     {% include "panel_framework/partials/table_toolbar.html" %}
 
+    {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys">{% endif %}
+
     <c-scroll-table-labels class="overflow-x-auto {{ class }}">
         <table>
                 <thead>
                     <tr>
+                        {% if bulk_actions %}
+                            <th>
+                                <input type="checkbox"
+                                       aria-label="Select all on this page"
+                                       data-select-all
+                                       x-on:change="toggleAll">
+                            </th>
+                        {% endif %}
                         {% for header in header_columns %}
                             <th {% if header.column.header_class %}class="{{ header.column.header_class }}"{% endif %}>
                                 {% if header.column.sortable %}
@@ -54,9 +66,18 @@
                     {% if rows %}
                         {% for row in rows %}
                             <tr>
+                                {% if bulk_actions %}
+                                    <td>
+                                        <input type="checkbox"
+                                               name="keys"
+                                               value="{{ row.object.pk }}"
+                                               aria-label="Select {{ row.label }}"
+                                               x-on:change="update">
+                                    </td>
+                                {% endif %}
                                 {% for column in columns %}
                                     <td {% if column.cell_class %}class="{{ column.cell_class }}"{% endif %}>
-                                        {% include column.template with object=row column=column %}
+                                        {% include column.template with object=row.object column=column %}
 
                                     </td>
                                 {% endfor %}
@@ -64,7 +85,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="{{ columns|length }}" class="text-center text-muted py-8">
+                            <td colspan="{% if bulk_actions %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center text-muted py-8">
                                 {{ empty_message }}
                             </td>
                         </tr>
@@ -73,9 +94,15 @@
             </table>
     </c-scroll-table-labels>
 
-    <c-pagination :page_obj="page_obj"
-                  :base_url="base_url"
-                  :table_id="region_id"
-                  :links="pagination"
-                  :page_url="page_url" />
+    {% if bulk_actions %}
+        {% include "panel_framework/partials/table_selection_bar.html" %}
+        <div id="{{ query.key }}-bulk-modal"></div>
+    </form>
+    {% else %}
+        <c-pagination :page_obj="page_obj"
+                      :base_url="base_url"
+                      :table_id="region_id"
+                      :links="pagination"
+                      :page_url="page_url" />
+    {% endif %}
 </div>

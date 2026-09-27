@@ -20,6 +20,50 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // Row selection for a table's bulk-action bar (cotton/data-table.html).
+    // Lives on the wrapping <form>, so every row and header checkbox reaches
+    // it, including cards once slice 8 adds them to the same form. There is
+    // no persisted state: every region swap re-renders the form from
+    // scratch, which is how a sort, search or filter change clears the
+    // selection.
+    //
+    // Both handlers find the form from the triggering event's target rather
+    // than `this.$el`: a shared Alpine.data() method's `$el` is the element
+    // the firing x-on directive is declared on, not the component's x-data
+    // root, so `this.$el` inside update() would be the checkbox itself.
+    Alpine.data("tableSelection", () => ({
+        count: 0,
+
+        get hasSelection() {
+            return this.count > 0;
+        },
+
+        // Recount checked rows and sync every header "select all" checkbox
+        // to match: unchecked when none are selected, indeterminate when
+        // some are, checked when every row on the page is.
+        update(event) {
+            const form = event.target.closest("form");
+            const rowBoxes = Array.from(form.querySelectorAll('input[name="keys"]'));
+            const checkedBoxes = rowBoxes.filter((box) => box.checked);
+            this.count = checkedBoxes.length;
+            const allChecked =
+                rowBoxes.length > 0 && checkedBoxes.length === rowBoxes.length;
+            form.querySelectorAll("[data-select-all]").forEach((box) => {
+                box.checked = allChecked;
+                box.indeterminate = this.count > 0 && !allChecked;
+            });
+        },
+
+        toggleAll(event) {
+            const form = event.target.closest("form");
+            const checked = event.target.checked;
+            form.querySelectorAll('input[name="keys"]').forEach((box) => {
+                box.checked = checked;
+            });
+            this.update(event);
+        },
+    }));
+
     // List-view table auto-refresh (panel_framework/partials/list_refresh.html).
     // Re-fetches the list's table region when a create action's HX-Trigger
     // event fires.

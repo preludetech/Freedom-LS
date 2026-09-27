@@ -52,16 +52,17 @@ def test_save_and_add_another_refreshes_table(
     # Table should refresh — "Alpha" row must appear without full page reload.
     # A table cell, not get_by_text: StubModel's "kind" choices are also
     # labelled Alpha/Beta, and the table's Kind filter renders those labels
-    # too.
-    expect(table.get_by_role("cell", name="Alpha")).to_be_visible()
+    # too. exact=True: the row's checkbox cell is named "Select Alpha", which
+    # would otherwise match too.
+    expect(table.get_by_role("cell", name="Alpha", exact=True)).to_be_visible()
 
     # --- Second create ---
     page.get_by_label("Name").fill("Beta")
     page.get_by_role("button", name="Save and add another").click()
 
     # Both rows must be present
-    expect(table.get_by_role("cell", name="Alpha")).to_be_visible()
-    expect(table.get_by_role("cell", name="Beta")).to_be_visible()
+    expect(table.get_by_role("cell", name="Alpha", exact=True)).to_be_visible()
+    expect(table.get_by_role("cell", name="Beta", exact=True)).to_be_visible()
 
     # Create button must not be duplicated
     expect(page.get_by_role("button", name="Create Item")).to_have_count(1)

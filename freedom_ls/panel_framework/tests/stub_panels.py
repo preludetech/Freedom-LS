@@ -28,6 +28,7 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import (
     BooleanFilter,
@@ -187,10 +188,29 @@ class StubDataTable(DataTable):
         ]
 
 
+class StubBulkAction(BulkAction):
+    label = "Mark processed"
+    action_name = "stub_bulk"
+
+    def execute(self, request: HttpRequest, queryset: QuerySet) -> None:
+        queryset.update(is_active=False)
+
+
+class StubForbiddenBulkAction(BulkAction):
+    label = "Forbidden bulk action"
+    action_name = "stub_forbidden_bulk"
+
+    def has_permission(self, request: HttpRequest) -> bool:
+        return False
+
+
 class StubDataTablePanel(DataTablePanel):
     title = "Stub"
     data_table = StubDataTable
     table_key = "stub"
+
+    def get_bulk_actions(self) -> list[BulkAction]:
+        return [StubBulkAction(), StubForbiddenBulkAction()]
 
 
 class StubChildDataTable(DataTable):
@@ -288,6 +308,10 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
         return [StubCreateAction()]
+
+    @classmethod
+    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
+        return [StubBulkAction()]
 
     @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:

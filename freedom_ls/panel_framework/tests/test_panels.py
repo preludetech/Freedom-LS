@@ -135,7 +135,7 @@ def test_a_get_queryset_override_narrows_the_rows(mock_site_context: Site) -> No
 
     context = _NarrowedTablePanel(_ctx()).get_context_data()
 
-    assert [row.name for row in context["rows"]] == ["keep-me"]
+    assert [row["object"].name for row in context["rows"]] == ["keep-me"]
 
 
 @pytest.mark.django_db

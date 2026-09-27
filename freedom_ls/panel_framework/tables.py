@@ -7,6 +7,7 @@ from typing import Literal
 from django.core.paginator import Page, Paginator
 from django.db.models import Model, Q, QuerySet
 from django.http import HttpRequest
+from django.utils.functional import SimpleLazyObject
 
 from freedom_ls.base.csv_safety import escape_csv_formula
 from freedom_ls.panel_framework.filters import TableFilter
@@ -197,6 +198,11 @@ class DataTable:
         """Filters this table's rows may be narrowed by, in toolbar order."""
         return []
 
+    @staticmethod
+    def get_row_label(row: Model) -> str:
+        """One row's accessible name, for its selection checkbox's aria-label."""
+        return str(row)
+
     @classmethod
     def get_export_columns(cls) -> list[ExportColumn]:
         """Columns this table serves through its CSV export, in export
@@ -317,13 +323,22 @@ class DataTable:
         toolbar = [
             _toolbar_entry(request, query, table_filter) for table_filter in filters
         ]
+
+        # The label is lazy: a table with no bulk action never renders it (the
+        # checkbox is the only place it's read), and get_row_label defaults to
+        # str(row), which would otherwise cost a query per row on a model
+        # whose __str__ reads an un-prefetched relation.
+        def _lazy_label(row: Model) -> SimpleLazyObject:
+            return SimpleLazyObject(lambda: cls.get_row_label(row))
+
+        rows = [{"object": row, "label": _lazy_label(row)} for row in page_obj]
         return {
             "columns": columns,
             "header_columns": header_columns,
             "sorted_by": sorted_by,
             "announcement": announcement,
             "searchable": bool(cls.search_fields),
-            "rows": page_obj,
+            "rows": rows,
             "page_obj": page_obj,
             "query": query,
             "base_url": base_url,

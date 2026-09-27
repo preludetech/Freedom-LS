@@ -8,7 +8,7 @@ from django import forms
 from django.contrib.sites.models import Site
 from django.core.exceptions import PermissionDenied
 from django.db.models import Model
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
@@ -346,7 +346,7 @@ def test_create_action_permission_denied_returns_403_fragment_for_htmx(
 
     resolved = _ResolvedAction(action, _ctx(request, None, "/items"))
     response = _handle_action(request, resolved)
-
+    assert isinstance(response, HttpResponse)
     assert response.status_code == 403
     html = response.content.decode()
     assert "data-htmx-swap-error" in html

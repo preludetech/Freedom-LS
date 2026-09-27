@@ -38,6 +38,6 @@ consumer that fed it `heading` would show the same text twice.
 {% block page_title %}{% include "partials/page_title.html" %}{% endblock page_title %}
 
 {% block content %}
-    {% include main_template_name with main=main request=request only %}
+    {% include main_template_name with main=main request=request csrf_token=csrf_token only %}
     {% include "panel_framework/partials/announcer_host.html" %}
 {% endblock content %}

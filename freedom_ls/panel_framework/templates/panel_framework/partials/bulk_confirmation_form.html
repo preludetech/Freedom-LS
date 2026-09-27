@@ -1,0 +1,16 @@
+{% if not error %}
+    <form method="post"
+          action="{{ action_url }}"
+          hx-post="{{ action_url }}"
+          hx-target="closest div[x-data]"
+          hx-swap="outerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        {% csrf_token %}
+        <input type="hidden" name="mode" value="keys">
+        {% for key in selection.keys %}
+            <input type="hidden" name="keys" value="{{ key }}">
+        {% endfor %}
+        <input type="hidden" name="confirmed" value="1">
+        <c-button type="submit" variant="primary" loading="true">{{ action.label }}</c-button>
+    </form>
+{% endif %}

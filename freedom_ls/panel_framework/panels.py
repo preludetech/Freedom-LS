@@ -19,6 +19,7 @@ from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest
 
 from freedom_ls.panel_framework.actions import EditAction, PanelAction
+from freedom_ls.panel_framework.bulk_actions import BulkAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.field_display import (
     display_for_field,
@@ -231,6 +232,12 @@ class DataTablePanel(Panel):
         panel scoped to one instance overrides it."""
         return ""
 
+    def get_bulk_actions(self) -> list[BulkAction]:
+        """Bulk actions this table offers, in button order. Empty by
+        default; ListViewPanel overrides this to return its ListViewConfig's
+        own bulk actions instead."""
+        return []
+
     def narrow(self, request: HttpRequest) -> tuple[TableQuery, QuerySet]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and
@@ -254,6 +261,12 @@ class DataTablePanel(Panel):
                 region_id=self.region_id,
             )
         )
+        context["bulk_actions"] = [
+            {"action": action, "url": action.get_action_url(self.ctx)}
+            for action in self.get_bulk_actions()
+            if action.has_permission(self.request)
+        ]
+        context["noun"] = queryset.model._meta.verbose_name_plural
         return context
 
 

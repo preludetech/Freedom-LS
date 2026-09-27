@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import Protocol
 
 from django.core.exceptions import (
     ImproperlyConfigured,
@@ -14,9 +15,11 @@ from django.http import (
     Http404,
     HttpRequest,
     HttpResponse,
+    HttpResponseRedirect,
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import patch_vary_headers
@@ -24,6 +27,12 @@ from django.utils.text import slugify
 
 from freedom_ls.base.csv_safety import UTF8_BOM
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.bulk_actions import (
+    BulkAction,
+    Selection,
+    parse_selection,
+    resolve_selection,
+)
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.tables import DataTable
@@ -155,6 +164,10 @@ class ListViewConfig(SectionConfigBase):
         return []
 
     @classmethod
+    def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
+        return []
+
+    @classmethod
     def get_action(cls, request: HttpRequest, action_name: str) -> PanelAction | None:
         return _find_action(cls.get_actions(request), action_name)
 
@@ -211,10 +224,15 @@ class ListViewPanel(DataTablePanel):
 
     The framework binds it as a root panel and sets `data_table` from the
     config's `list_view` on the bound instance, so every list refreshes the
-    same way a table panel does.
+    same way a table panel does. `bulk_actions` is set the same way, from the
+    config's `get_bulk_actions`.
     """
 
     title = ""
+    bulk_actions: list[BulkAction] = []
+
+    def get_bulk_actions(self) -> list[BulkAction]:
+        return self.bulk_actions
 
 
 type SectionConfig = (
@@ -245,7 +263,7 @@ def sections_by_url_name(config: list[NavGroup]) -> dict[str, SectionConfig]:
 
 @dataclass(frozen=True)
 class _ResolvedAction:
-    action: PanelAction
+    action: PanelAction | BulkAction
     ctx: PanelContext
 
 
@@ -260,7 +278,11 @@ class _Resolved:
     action: _ResolvedAction | None = None
 
 
-def _find_action(actions: list[PanelAction], name: str) -> PanelAction | None:
+class _NamedAction(Protocol):
+    action_name: str
+
+
+def _find_action[T: _NamedAction](actions: list[T], name: str) -> T | None:
     for action in actions:
         if action.action_name == name:
             return action
@@ -285,10 +307,14 @@ def _resolve_action(
             action = instance_view.get_action(name)
             if action is not None:
                 return _ResolvedAction(action, root.ctx)
-    action = _find_action(current.get_actions(), name)
-    if action is None:
-        raise Http404(f"Action '{name}' not found")
-    return _ResolvedAction(action, current.ctx)
+    panel_action = _find_action(current.get_actions(), name)
+    if panel_action is not None:
+        return _ResolvedAction(panel_action, current.ctx)
+    if isinstance(current, DataTablePanel):
+        bulk_action = _find_action(current.get_bulk_actions(), name)
+        if bulk_action is not None:
+            return _ResolvedAction(bulk_action, current.ctx)
+    raise Http404(f"Action '{name}' not found")
 
 
 def _bind_root(
@@ -319,6 +345,7 @@ def _bind_root(
             )
             table.data_table = section.list_view
             table.table_key = section.table_key
+            table.bulk_actions = section.get_bulk_actions(request)
             return table, None, 1
         instance_view = section.get_instance_view(request, parts[1])
         instance_base_url = f"{section_url}/{parts[1]}"
@@ -422,10 +449,103 @@ def _resolve_path(
     )
 
 
-def _handle_action(request: HttpRequest, resolved: _ResolvedAction) -> HttpResponse:
-    """Check permission, then submit (POST, DELETE) or render (GET) the action."""
+@dataclass(frozen=True)
+class _BulkConfirmation:
+    """A bulk action's confirmation or error state for a JavaScript-off
+    request. Rendered as a full interface page rather than an htmx fragment,
+    so the reader sees the same message with the surrounding page chrome."""
+
+    count: int
+    noun: str
+    action: BulkAction
+    action_url: str
+    selection: Selection
+    error: str
+    status: int
+
+
+def _handle_bulk_action(
+    request: HttpRequest, action: BulkAction, ctx: PanelContext, panel: DataTablePanel
+) -> HttpResponse | _BulkConfirmation:
+    """Permission, selection, resolution, confirmation and execution for one
+    bulk-action POST.
+
+    An htmx request always gets an HTML fragment back. A plain request gets
+    one too once confirmed and executed; until then it gets a
+    `_BulkConfirmation`, since the confirmation step must render with the
+    page's own chrome rather than as a bare fragment.
+    """
+    if not action.has_permission(request):
+        return HttpResponse(status=403)
+
+    is_htmx = request.headers.get("HX-Request") == "true"
+    action_url = action.get_action_url(ctx)
+    noun = str(panel.get_queryset(request).model._meta.verbose_name_plural)
+
+    def _confirm(
+        selection: Selection, count: int, error: str, status: int
+    ) -> HttpResponse | _BulkConfirmation:
+        if is_htmx:
+            html = render_to_string(
+                action.confirm_template_name,
+                {
+                    "action": action,
+                    "action_url": action_url,
+                    "selection": selection,
+                    "count": count,
+                    "noun": noun,
+                    "error": error,
+                    "modal_open": True,
+                },
+                request=request,
+            )
+            return HttpResponse(html, status=status)
+        return _BulkConfirmation(
+            count, noun, action, action_url, selection, error, status
+        )
+
+    selection = parse_selection(request)
+    if selection.mode != "keys":
+        return _confirm(selection, 0, "Not supported yet", 422)
+
+    queryset = resolve_selection(panel, request, selection)
+    count = queryset.count()
+    if count == 0:
+        return _confirm(selection, count, "Nothing selected", 422)
+    if count > action.max_rows:
+        message = f"{count} selected; the limit is {action.max_rows}"
+        return _confirm(selection, count, message, 422)
+
+    if request.POST.get("confirmed") != "1":
+        return _confirm(selection, count, "", 200)
+
+    action.execute(request, queryset)
+    redirect_url = _history_url(panel, request)
+    if is_htmx:
+        response = HttpResponse(status=204)
+        response["HX-Redirect"] = redirect_url
+        return response
+    return HttpResponseRedirect(redirect_url, status=303)
+
+
+def _handle_action(
+    request: HttpRequest, resolved: _ResolvedAction, panel: Panel | None = None
+) -> HttpResponse | _BulkConfirmation:
+    """Check permission, then submit (POST, DELETE) or render (GET) the action.
+
+    A BulkAction runs the confirm-then-act flow instead, over `panel` — the
+    DataTablePanel it was resolved on, always set by the caller for a
+    BulkAction.
+    """
     action = resolved.action
     ctx = resolved.ctx
+
+    if isinstance(action, BulkAction):
+        if not isinstance(panel, DataTablePanel):
+            raise ImproperlyConfigured(
+                "A BulkAction must resolve with its DataTablePanel."
+            )
+        return _handle_bulk_action(request, action, ctx, panel)
 
     if not action.has_permission(ctx):
         if request.headers.get("HX-Request") != "true":
@@ -748,6 +868,7 @@ def panel_framework_view(
     main: dict[str, object] = {}
     main_template_name = "panel_framework/views/_main_base.html"
     heading = ""
+    bulk_status = 200
     if parts:
         # Reversed rather than sliced off request.path: a host may render a
         # different path_string than the one it was asked for, and request.path
@@ -770,8 +891,27 @@ def panel_framework_view(
                 )
             raise
         if resolved.action is not None:
-            return _vary_on_htmx(_handle_action(request, resolved.action))
-        main_template_name, main, heading = _main_for(request, resolved)
+            result = _handle_action(request, resolved.action, resolved.panel)
+            if not isinstance(result, _BulkConfirmation):
+                return _vary_on_htmx(result)
+            # A JavaScript-off bulk-action POST: render its message and
+            # confirm form as this page's main content, with the page's own
+            # chrome (menu, breadcrumbs) built the same way as any other
+            # request below, rather than as a bare fragment.
+            main_template_name = "panel_framework/views/bulk_confirmation.html"
+            main = {
+                "action": result.action,
+                "action_url": result.action_url,
+                "count": result.count,
+                "noun": result.noun,
+                "selection": result.selection,
+                "error": result.error,
+                "page_url": resolved.panel.ctx.page_url,
+            }
+            heading = result.action.label
+            bulk_status = result.status
+        else:
+            main_template_name, main, heading = _main_for(request, resolved)
 
     page_context: dict[str, object] = {
         "menu_groups": _build_menu_items(
@@ -793,4 +933,6 @@ def panel_framework_view(
         "main": main,
         "main_template_name": main_template_name,
     }
-    return _vary_on_htmx(_respond(request, resolved, template_name, page_context))
+    response = _vary_on_htmx(_respond(request, resolved, template_name, page_context))
+    response.status_code = bulk_status
+    return response
