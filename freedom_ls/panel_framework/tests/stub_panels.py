@@ -141,6 +141,8 @@ class StubCreateAction(CreateInstanceAction):
 
 
 class StubDataTable(DataTable):
+    search_fields = ["name"]
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         return cast(QuerySet, _stub_model().objects.order_by("name"))

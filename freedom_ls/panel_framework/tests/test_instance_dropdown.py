@@ -105,6 +105,7 @@ class StubListConfigWithModel(ListViewConfig):
     model = StubModel
     instance_view = StubInstanceView
     list_view = StubDataTable
+    table_key = "stubs"
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:

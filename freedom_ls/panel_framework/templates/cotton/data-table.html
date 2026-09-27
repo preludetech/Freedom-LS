@@ -7,32 +7,35 @@
         query=""
         hidden_inputs=""
         sorted_by=""
+        searchable="False"
         base_url=""
         region_id="data-table-container"
         page_url=""
         pagination="" />
 
 <div id="{{ region_id }}" data-table-region>
-    <div class="mb-4">
-        <form id="{{ query.key }}-search"
-              method="get"
-              action="{{ page_url }}"
-              hx-get="{{ base_url }}"
-              hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
-              hx-sync="this:replace"
-              hx-target="#{{ region_id }}"
-              hx-swap="outerHTML">
-            {% for name, value in hidden_inputs %}
-                <input type="hidden" name="{{ name }}" value="{{ value }}">
-            {% endfor %}
-            <input type="search"
-                   id="{{ query.key }}-q"
-                   name="{{ query.key }}-q"
-                   placeholder="Search..."
-                   value="{{ query.search }}"
-                   class="max-w-md">
-        </form>
-    </div>
+    {% if searchable %}
+        <div class="mb-4">
+            <form id="{{ query.key }}-search"
+                  method="get"
+                  action="{{ page_url }}"
+                  hx-get="{{ base_url }}"
+                  hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
+                  hx-sync="this:replace"
+                  hx-target="#{{ region_id }}"
+                  hx-swap="outerHTML">
+                {% for name, value in hidden_inputs %}
+                    <input type="hidden" name="{{ name }}" value="{{ value }}">
+                {% endfor %}
+                <input type="search"
+                       id="{{ query.key }}-q"
+                       name="{{ query.key }}-q"
+                       placeholder="Search..."
+                       value="{{ query.search }}"
+                       class="max-w-md">
+            </form>
+        </div>
+    {% endif %}
 
     <c-scroll-table-labels class="overflow-x-auto {{ class }}">
         <table>

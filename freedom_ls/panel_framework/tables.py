@@ -241,6 +241,7 @@ class DataTable:
             "columns": columns,
             "header_columns": header_columns,
             "sorted_by": sorted_by,
+            "searchable": bool(cls.search_fields),
             "rows": page_obj,
             "page_obj": page_obj,
             "query": query,

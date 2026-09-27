@@ -11,8 +11,14 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.template.loader import render_to_string
+from django.test import RequestFactory
+
+from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.panels import DataTablePanel
 
 from .conftest import _make_stub
+from .stub_panels import StubDataTable, StubDataTablePanel
 from .view_helpers import fetch
 
 pytestmark = pytest.mark.django_db
@@ -198,6 +204,55 @@ def test_search_text_is_url_encoded(mock_site_context: Site) -> None:
     assert "%26" in href  # the encoded "&"
     assert "%2B" in href  # the encoded "+"
     assert "%23" in href  # the encoded "#"
+
+
+class _NoSearchDataTable(StubDataTable):
+    """The same rows and columns as StubDataTable, with no search box."""
+
+    search_fields: list[str] = []
+
+
+class _NoSearchTablePanel(DataTablePanel):
+    title = "No search"
+    data_table = _NoSearchDataTable
+    table_key = "nosearch"
+
+
+def _bind_table_panel(panel_class: type[DataTablePanel]) -> DataTablePanel:
+    return panel_class(
+        PanelContext(
+            request=RequestFactory().get("/p"),
+            instance=None,
+            base_url="/p",
+            name="",
+            page_url="/p",
+        )
+    )
+
+
+def test_a_table_without_search_fields_renders_no_search_input(
+    mock_site_context: Site,
+) -> None:
+    panel = _bind_table_panel(_NoSearchTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert 'type="search"' not in html
+    assert 'id="nosearch-table"' in html
+
+
+def test_a_table_with_search_fields_renders_a_search_input(
+    mock_site_context: Site,
+) -> None:
+    panel = _bind_table_panel(StubDataTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert 'type="search"' in html
 
 
 def test_search_form_hidden_inputs_carry_other_state(mock_site_context: Site) -> None:
