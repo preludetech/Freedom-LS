@@ -20,7 +20,7 @@ on it.
 
 FLS installs communicate in very different ways. A free self-paced course must not let a learner
 who has just signed up message staff or other learners. A paid arrangement may let a learner message
-their TA directly. A cohort-based programme may want peers in the same cohort to talk to each other.
+their cohort admin directly. A cohort-based programme may want peers in the same cohort to talk to each other.
 A single site-wide switch cannot express this, and hard-coded rules would force every install into
 one shape. If the answer lives in one policy, the composer, the inbox and the educator quick view
 all agree on who can reach whom, and an install that needs different rules replaces one class.
@@ -41,7 +41,7 @@ all agree on who can reach whom, and an install that needs different rules repla
   reply. A learner may not start a conversation with an educator or with another learner.
 - **"Educators of a learner" is the inverse of `learners_visible_to`.** An educator counts as one of
   a learner's educators exactly when that learner is visible to them, so the two directions never
-  disagree. The query is new. It is built from the same role assignment rows (`instructor` and `ta`
+  disagree. The query is new. It is built from the same role assignment rows (`cohort_admin` and `cohort_viewer`
   on the learner's cohorts, the organisation-scoped roles on the learner's organisation) and in the
   same organisation-first, cohort-second shape as the existing visibility helpers in
   `learner_management/queries.py`. It is written once and reused by every surface.
@@ -59,7 +59,7 @@ all agree on who can reach whom, and an install that needs different rules repla
 - **The site level is one row per site**, shaped like `SiteSignupPolicy`: the row beats the
   settings default, and a site with no row uses the settings default.
 - **The learner level is how a paid or premium arrangement is expressed today.** Opening
-  learner-to-TA messaging for one learner is a learner-level setting. The design must leave room
+  learner-to-educator messaging for one learner is a learner-level setting. The design must leave room
   for a later platform-wide per-user level of service (for example, a paid subscription) without
   a rework.
 - **Messaging configuration is its own set of rows**, separate from notification configuration.
@@ -87,8 +87,8 @@ all agree on who can reach whom, and an install that needs different rules repla
 - **What happens to an existing conversation when the rules change** (configuration closed, a
   registration made inactive, a learner removed from the organisation). Can either side still
   reply? Does the conversation stay readable?
-- **Which of the three roles on an organisation or site** (`organisation_staff`, `site_admin`,
-  cohort `instructor`/`ta`) a learner is offered as an educator when learner-to-educator messaging
+- **Which of the roles on an organisation, site or cohort** (`organisation_admin`, `site_admin`,
+  `cohort_admin`, `cohort_viewer`) a learner is offered as an educator when learner-to-educator messaging
   is open. The inverse-visibility rule settles who counts. What the composer offers may be
   narrower.
 

@@ -46,7 +46,7 @@ Renaming has a cost, and the spec carries it:
 - Downstream role configs that reference the old keys, including any `inherits: "ta"` variant, break. The upgrade notes say so and give the mapping. `config/role_based_permissions/demodev.py` has the in-repo example, `senior_ta`.
 - The `role_based_permissions` README, the factories, the QA commands and the tests follow the rename.
 - `lti_role` is a per-role field and is unaffected. The LTI vocabulary can still map `cohort_admin` to Instructor and `cohort_viewer` to TeachingAssistant when LTI arrives.
-- Roadmap decision 2 and the scope lines for specs 5 and 9 use the old words and the old assignment rule. Amend the roadmap once this idea is confirmed.
+- The roadmap and the other educator-interface ideas already use the new names and the new assignment rule. Research files keep the old words where they describe the code as it stands.
 
 **The matrix.** The spec writes it as a table, capability by role by scope:
 
@@ -71,7 +71,7 @@ One wrinkle in the name "cohort admin": the matrix does not let a cohort admin e
 
 **Scope is the organisation for organisation roles and the cohort for cohort roles.** A cohort admin with a grant on one cohort sees that cohort's learners and may act on them there, and sees nothing else in the organisation. Nobody but `site_admin` can act across organisations.
 
-**Organisation association.** A new (user, organisation, `is_active`) row records that an educator belongs to an organisation. It is the educator's counterpart of `Learner`. Its working name is `Educator`, a coined word that is free in both the code and the glossary. The spec settles the name and the app. Every check on something an organisation owns requires both:
+**Organisation association.** A new (user, organisation, `is_active`) row records that a person helps run an organisation's learners, whether or not they teach. It is the counterpart of `Learner`. It is called `OrganisationMember` and lives in `learner_management`. Every check on something an organisation owns requires both:
 
 1. the capability, from the person's grants, and
 2. an active association with that organisation.

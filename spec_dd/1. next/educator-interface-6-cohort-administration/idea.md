@@ -24,13 +24,13 @@ The courses section today lists every course on the site to every educator, hidd
 
 **Create and edit.** Name only, plus anything the `Cohort` model gains. The organisation is the current one. The name is unique per organisation and the form says so on a clash. Create is a modal with "save" and "save and add another" as today.
 
-**Detail.** Per the cohort detail mockup, cut to what exists: a header with name, status badge and actions; tabs for overview (details, course completion per registered course, needs-attention summary once spec 10 lands, otherwise a placeholder), learners (owned by spec 7), courses, settings (deactivate, reactivate, delete). The instructors block from the mockup shows the educators with grants on this cohort, read-only here; spec 9 makes it editable.
+**Detail.** Per the cohort detail mockup, cut to what exists: a header with name, status badge and actions; tabs for overview (details, course completion per registered course, needs-attention summary once spec 10 lands, otherwise a placeholder), learners (owned by spec 7), courses, settings (deactivate, reactivate, delete). The educators block from the mockup shows the cohort admins and cohort viewers with grants on this cohort, read-only here; spec 9 makes it editable.
 
 **Course registration.** From the courses tab: register the cohort for a course chosen from the courses visible in this organisation, and unregister. Unregister sets `is_active` false on the `CohortCourseRegistration` and reads as reversible; re-register reactivates the same row. Registering fans out course progress records to members as the existing signals already do. The unregister confirmation says that members keep their progress, and names any member who also holds an individual registration for the same course and so keeps access.
 
 **Courses section.** Lists courses that are registered to at least one cohort or learner in this organisation, or that are visible on the site and not hidden, whichever the spec decides after checking `content_engine` visibility. Course detail shows the course, its cohort registrations in this organisation with links to the cohort, and its individual registrations in this organisation. No actions here; management happens from the cohort and learner sides. `CourseConfig.check_access_exempt_reason` and the `@claude` comment above it are removed because the gap they declared is closed, not because they are in the way.
 
-**Permissions.** From the spec 5 matrix. Organisation staff and site admins manage cohorts; instructors see their assigned cohorts; TAs read.
+**Permissions.** From the spec 5 matrix. Organisation admins and site admins manage cohorts; cohort admins act within their assigned cohorts; cohort viewers read.
 
 **Webhooks.** Spec 7 decides which events fire for cohort registration changes. This spec fires whatever spec 7 named, and if 7 has not landed, leaves a clearly named seam and a test that documents the absence.
 

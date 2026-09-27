@@ -31,8 +31,8 @@ was built with room for a composer so that this spec could add one.
   messages, and the one rolled-up notification per unread conversation all come from direct
   messaging (spec 4). This spec puts them inside the educator interface and does not build a
   second messaging model.
-- Conversations are one-to-one. An educator sees only the conversations they are part of. A TA
-  cannot read an instructor's conversation with the same learner, and a `site_admin` browsing the
+- Conversations are one-to-one. An educator sees only the conversations they are part of. A cohort
+  viewer cannot read a cohort admin's conversation with the same learner, and a `site_admin` browsing the
   inbox sees only their own conversations. Reading other people's messages is moderation's job
   (spec 6).
 - Who may message whom is decided by the `MessagingPolicy` (spec 3). This spec never decides

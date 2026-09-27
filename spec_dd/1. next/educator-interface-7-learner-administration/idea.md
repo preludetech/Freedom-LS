@@ -34,7 +34,7 @@ The vocabulary matters here and the `domain-glossary` skill has it. A `Learner` 
 
 **Webhooks.** `course.registered` fires today only for a new individual registration. The spec decides which events cohort registration, membership add, remove and move, deactivate and unregister should fire, names them in `base/webhook_event_types.py`, and fires them through `fire_webhook_event`. Spec 6 and 8 use the same names.
 
-**Permissions.** From the spec 5 matrix. Instructors act within assigned cohorts, TAs read.
+**Permissions.** From the spec 5 matrix. Cohort admins act within assigned cohorts, cohort viewers read.
 
 **Docs.** The learners section of `docs/product/educator-interface.md` rewritten. Upgrade notes flag any new setting (email subject, rate limit) and any new event type.
 

@@ -61,7 +61,7 @@ FLS has none of this today.
 - Pre-delivery moderation, where messages wait in a queue before the recipient sees them.
 - Retention periods and scheduled purging of hidden messages.
 - Moderating notifications, or anything outside direct messaging.
-- Moderation by instructors, TAs or organisation staff; the queue belongs to site admins.
+- Moderation by cohort admins, cohort viewers or organisation admins; the queue belongs to site admins.
 - Automated content filtering or spam detection.
 
 ## Resources

@@ -10,7 +10,7 @@ A staff-readable record of who did what to whom in an organisation. One append-o
 
 ## Why
 
-Five of the seven comparable systems have one, and the earlier permission research recommended it. FLS has none. The role assignment utilities carry six `# TODO: AuditLog entry` comments, `system_admin` has a `view_audit_log` permission pencilled in as future, and the only audit-shaped records are `LegalConsent`, `WebhookEvent` and the `assigned_by` fields. Once organisation staff can deactivate learners and remove educators from a screen, "who did this" is a question someone will ask.
+Five of the seven comparable systems have one, and the earlier permission research recommended it. FLS has none. The role assignment utilities carry six `# TODO: AuditLog entry` comments, `system_admin` has a `view_audit_log` permission pencilled in as future, and the only audit-shaped records are `LegalConsent`, `WebhookEvent` and the `assigned_by` fields. Once organisation admins can deactivate learners and remove educators from a screen, "who did this" is a question someone will ask.
 
 The product owner chose to build this as its own spec after the actions exist, rather than fold a model into each of specs 6 to 9, so those specs could run in parallel without sharing a model.
 
@@ -24,7 +24,7 @@ The product owner chose to build this as its own spec after the actions exist, r
 
 **Writers.** The role utilities close their TODOs. Every action in specs 6 to 9 writes one entry per object, and a bulk run writes one summary entry with the per-object detail in the JSON field. Writing happens inside the action's transaction.
 
-**Readers.** A history tab on the learner and cohort detail pages (spec 7 left the slot), newest first, paged. An organisation-level log as a section, filterable by actor, action and date, through spec 2's table. Spec 5's matrix says who reads it: site admins and organisation staff.
+**Readers.** A history tab on the learner and cohort detail pages (spec 7 left the slot), newest first, paged. An organisation-level log as a section, filterable by actor, action and date, through spec 2's table. Spec 5's matrix has no row for it yet. This spec adds the row: site admins and organisation admins.
 
 **Retention.** Decided in the spec. Default: keep everything; add a management command to prune older than a configurable age, not run by default.
 

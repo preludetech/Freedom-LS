@@ -14,15 +14,15 @@ There is no way to give someone an educator role except a shell or a QA helper. 
 
 ## What is settled
 
-**Who may do this.** From decision 2 of the decisions already taken in the roadmap, and the spec 5 matrix. Organisation staff and site admins add, remove and re-scope instructors and TAs within the organisation. Only site admins grant `organisation_staff` or `site_admin`. Nobody changes their own roles. The last site admin cannot be removed.
+**Who may do this.** From decision 2 of the decisions already taken in the roadmap, and the spec 5 assignment table. An admin hands out their own level and below, within their scope. Organisation admins and site admins add, remove and re-scope cohort admins and cohort viewers within the organisation, and add and remove organisation admins. Only site admins grant `site_admin`. Nobody changes their own roles. The last site admin cannot be removed. An organisation admin cannot remove the last organisation admin in their organisation; a site admin can.
 
 **List.** One row per person with any role in this organisation: name, email, roles with their scope (the organisation, or the cohorts), added by, added on. Search by name or email. Filter by role.
 
-**Add.** Email first. An existing user is matched case-insensitively; a new address gets an account through spec 7's shared creation path, with the same setup email. Then a role from the ones the current user may grant, with a one-sentence description under each. For `instructor` and `ta`, a cohort picker limited to this organisation's active cohorts. Confirmation restates what the person will be able to do.
+**Add.** Email first. An existing user is matched case-insensitively; a new address gets an account through spec 7's shared creation path, with the same setup email. Then a role from the ones the current user may grant, with a one-sentence description under each. For `cohort_admin` and `cohort_viewer`, a cohort picker limited to this organisation's active cohorts. Confirmation restates what the person will be able to do.
 
-**Role descriptions.** Written for a school administrator, not a developer. The spec drafts them from the spec 5 matrix and they are the same strings used in the audit log and the product docs. Site admin: full access to every organisation on this site. Organisation staff: manage learners, cohorts, courses and educators in this organisation. Instructor: manage learners and their progress in assigned cohorts. TA: view learners and progress in assigned cohorts.
+**Role descriptions.** Written for a school administrator, not a developer. The spec drafts them from the spec 5 matrix and they are the same strings used in the audit log and the product docs. Site admin: full access to every organisation on this site. Organisation admin: manage learners, cohorts, courses and educators in this organisation. Cohort admin: manage learners and their progress in assigned cohorts. Cohort viewer: view learners and progress in assigned cohorts.
 
-**Change scope.** Add or remove cohorts from an instructor's or TA's grant without removing the role. Confirmation on removal.
+**Change scope.** Add or remove cohorts from a cohort admin's or cohort viewer's grant without removing the role. Confirmation on removal.
 
 **Remove.** Deactivates the assignment (the models already do this; nothing is deleted) and drops the guardian permissions through the existing sync. Confirmation names what the person loses.
 
@@ -32,7 +32,7 @@ There is no way to give someone an educator role except a shell or a QA helper. 
 
 **Cohort deletion and orphan grants.** When spec 6 deletes an empty cohort, its `ObjectRoleAssignment` rows and guardian permissions would be orphaned because the target is a generic key. This spec adds the cleanup, or spec 6 does and this spec tests it; decide by who lands first.
 
-**The cohort page.** The instructors block on the cohort overview (spec 6 renders it read-only) gains an "add" action here for those allowed.
+**The cohort page.** The educators block on the cohort overview (spec 6 renders it read-only) gains an "add" action here for those allowed.
 
 **Permission-denied.** A person whose role was removed while they had the interface open sees the spec 5 denied experience on their next action.
 

@@ -34,7 +34,7 @@ files). Cut 2026-09-24 into twelve specs. Read this section before starting any 
 idea assumes you have.
 
 The source idea asks for three things. A panel framework that is complete and self-contained. An
-educator interface where organisation staff administer learners, cohorts, course registrations
+educator interface where organisation admins administer learners, cohorts, course registrations
 and other educators. Reporting on learner progress built on the cohort report machinery. That is
 too much for one SDD run, so it is twelve.
 
@@ -42,11 +42,11 @@ too much for one SDD run, so it is twelve.
 |---|---|---|---|---|
 | 2 | `educator-interface-2-panel-framework-tables` | Table layer moves into the framework. Per-table prefixed query state, declared filters, row selection with a bulk-action hook, CSV export hook, stacked rows on mobile. | `educator-interface-1-panel-framework-core` | in progress |
 | 3 | `educator-interface-3-panel-framework-dialogs` | One shared native dialog for modal forms and read-only content. The right-hand quick view, non-blocking on desktop, with its trigger component, endpoint convention and invalidation. | `educator-interface-1-panel-framework-core` | in progress |
-| 5 | `educator-interface-5-permissions` | The permission matrix on the existing roles. Role permission strings and the sync fix, object-aware creation checks through the framework hook, who may assign which role, and what a denied user sees. | `educator-interface-1-panel-framework-core` | in progress |
+| 5 | `educator-interface-5-permissions` | The permission matrix on the existing roles, renamed to `site_admin`, `organisation_admin`, `cohort_admin` and `cohort_viewer`. Role permission strings and the sync fix, object-aware creation checks through the framework hook, who may assign which role, and what a denied user sees. | `educator-interface-1-panel-framework-core` | in progress |
 | 6 | `educator-interface-6-cohort-administration` | Cohort list and detail, create and edit, `is_active` on `Cohort`, deactivate and reactivate, delete only when empty, cohort course registration and unregistration. The courses section rebuilt read-only and organisation-scoped. | `educator-interface-2-panel-framework-tables`, `educator-interface-3-panel-framework-dialogs`, `educator-interface-5-permissions` | next |
 | 7 | `educator-interface-7-learner-administration` | Add a learner (new account with a setup email, or an existing user), list and detail, deactivate and reactivate, cohort membership add, remove and move, individual course registration and unregistration, resend the setup email. | `educator-interface-2-panel-framework-tables`, `educator-interface-3-panel-framework-dialogs`, `educator-interface-5-permissions` | next |
 | 8 | `educator-interface-8-bulk-operations` | CSV import as a page flow with a preview and per-row outcome labels. Multi-select bulk actions on the learner and cohort tables. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration` | next |
-| 9 | `educator-interface-9-educator-administration` | An educators section. Add, remove and scope instructors and TAs; grant organisation staff; role descriptions; confirmation on escalation and removal. | `educator-interface-5-permissions`, `educator-interface-7-learner-administration` | next |
+| 9 | `educator-interface-9-educator-administration` | An educators section. Add, remove and scope cohort admins and cohort viewers; add and remove organisation admins; role descriptions; confirmation on escalation and removal. | `educator-interface-5-permissions`, `educator-interface-7-learner-administration` | next |
 | 10 | `educator-interface-10-reporting-dashboards` | Organisation dashboard as a base view, the cohort report on screen from the existing gathered data, a learner drill-down that replaces the deleted matrix, PDF generation and download from the interface, roster CSV. | `educator-interface-2-panel-framework-tables`, `educator-interface-4-panel-framework-components` | next |
 | 11 | `educator-interface-11-audit-log` | An append-only audit log recorded by the role utilities and every action in specs 6 to 9, shown per organisation, learner and cohort. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration`, `educator-interface-9-educator-administration` | next |
 | 12 | `educator-interface-12-docs-and-polish` | Product doc and an `fls-dev` skill for the panel framework, the educator product doc rewritten, a mobile and accessibility pass across all slices, consolidated upgrade notes, leftovers deleted. | `educator-interface-8-bulk-operations`, `educator-interface-10-reporting-dashboards`, `educator-interface-11-audit-log` | next |
@@ -74,7 +74,7 @@ Together, 1 and the four after it are the "foundation". If you want an earlier v
 These were settled with the product owner while cutting the specs. The ideas rely on them and do not reopen them.
 
 1. **Deactivate, never delete, in the educator interface.** Learners, registrations and cohorts get deactivate and reactivate. A cohort can be deleted only when it has no memberships and no course registrations. Hard deletion of a `User` stays in the Django admin, where GDPR requests are handled. The data model agrees: a course progress record protects the registration that minted it, so a cohort with any progress cannot be deleted anyway.
-2. **Organisation staff manage instructors and TAs** inside their own organisation. Only `site_admin` may grant `organisation_staff` or `site_admin`. No new roles.
+2. **An admin hands out their own level and below, within their scope.** `organisation_admin` adds and removes `organisation_admin`, `cohort_admin` and `cohort_viewer` inside their own organisation. Only `site_admin` grants `site_admin`. No new roles, but spec 5 renames three: `organisation_staff` becomes `organisation_admin`, `instructor` becomes `cohort_admin`, `ta` becomes `cohort_viewer`.
 3. **An audit log is in scope**, as spec 11, after the actions it records exist.
 4. **The old drafts are gone.** The six sub-drafts and the wayfinder output that used to sit in the parent directory were deleted once their research had moved into the new spec directories. This section and the twelve ideas are the record.
 
@@ -172,7 +172,7 @@ These were settled with the product owner while cutting the specs. The ideas rel
 
 1. **Two channels: notifications and direct messaging.** Announcements, discussion forums and inline feedback on content are not in this effort.
 2. **HTMX polling is the transport.** Every surface works on polling alone. Django Channels comes last, optional and off by default, because it needs an ASGI server and a channel layer FLS deployments do not run today.
-3. **Messaging permissions are layered and closed by default.** Installs communicate very differently, so who may message whom is configured at site, organisation, cohort or course registration, and learner level, the most specific level winning. A free course sign-up must not let a learner message staff or other learners; a premium arrangement may let a learner message their TA. The policy is a swappable class, like `COURSE_ACCESS_BACKEND`.
+3. **Messaging permissions are layered and closed by default.** Installs communicate very differently, so who may message whom is configured at site, organisation, cohort or course registration, and learner level, the most specific level winning. A free course sign-up must not let a learner message staff or other learners; a premium arrangement may let a learner message their cohort admin. The policy is a swappable class, like `COURSE_ACCESS_BACKEND`.
 4. **Notification settings are simpler**: Django settings defaults, a per-site override row, and per-user preferences. No course or registration level for notifications.
 5. **Moderation is report, hide and block.** Site admins work a report queue. Nothing is hard deleted.
 6. **Email is immediate or off per category first.** Messages roll up, so an active conversation never sends one email per message. Digests and quiet hours are spec 7.

@@ -26,7 +26,7 @@ The cohort report (`freedom_ls/reports/`) has proved useful. It gathers, per coh
 
 **Downloads.** Generate the cohort report PDF from the cohort page and download it there, reusing `GeneratedReport`, the existing task and the existing `can_view_cohort` gate. The one-in-flight-per-cohort rule is surfaced as "a report is being generated". Roster export (members plus the educators with grants, as CSV) through spec 2's export hook. The admin route stays.
 
-**Permissions.** From the spec 5 matrix. Instructors and TAs see dashboards and reports for their assigned cohorts only; the organisation dashboard aggregates only what they may see.
+**Permissions.** From the spec 5 matrix. Cohort admins and cohort viewers see dashboards and reports for their assigned cohorts only; the organisation dashboard aggregates only what they may see.
 
 **Docs.** `docs/product/reports.md` gains the on-screen and in-interface paths; `docs/product/educator-interface.md` gains a reporting section.
 
