@@ -308,6 +308,17 @@ class StubDeleteAction(DeleteAction):
         return True
 
 
+class StubReadOnlyAction(PanelAction):
+    """A test-only read-only modal fragment: a heading with no form, proving
+    that a PanelAction needs neither a form nor a delete confirmation to open
+    the shared modal."""
+
+    label = "View Info"
+    action_name = "view_info"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/test_read_only_fragment.html"
+
+
 class StubDetailsPanel(Panel):
     """A leaf that prints its instance's name through a template of its own."""
 
@@ -315,7 +326,10 @@ class StubDetailsPanel(Panel):
     template_name = "panel_framework/test_stub_details.html"
 
     def get_actions(self) -> list[PanelAction]:
-        return [StubDeleteAction(success_url="/test-panel/framework/stubs")]
+        return [
+            StubDeleteAction(success_url="/test-panel/framework/stubs"),
+            StubReadOnlyAction(),
+        ]
 
 
 class StubHiddenPanel(Panel):

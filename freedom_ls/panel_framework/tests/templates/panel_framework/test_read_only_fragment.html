@@ -1,0 +1,9 @@
+{% extends "panel_framework/modal/read_only.html" %}
+
+{% comment %}
+This is only used in the tests: a read-only modal fragment consumer, the way
+a real one (e.g. a topic preview) would extend read_only.html.
+{% endcomment %}
+
+{% block title %}Stub Info{% endblock title %}
+{% block content %}<p data-stub-read-only>Some read-only content.</p>{% endblock content %}
