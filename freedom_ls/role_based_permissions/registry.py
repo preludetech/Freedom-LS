@@ -54,7 +54,7 @@ PERMISSIONS: dict[str, str] = {
     "freedom_ls_learner_management.add_cohort": "Can add cohort",
     "freedom_ls_learner_management.change_cohort": "Can change cohort",
     "freedom_ls_learner_management.delete_cohort": "Can delete cohort",
-    # "freedom_ls_learner_management.view_learner": "Can view learner",
+    "freedom_ls_learner_management.view_learner": "Can view learner",
     # "freedom_ls_learner_management.add_learner": "Can add learner",
     # "freedom_ls_learner_management.change_learner": "Can change learner",
     # "freedom_ls_learner_management.delete_learner": "Can delete learner",

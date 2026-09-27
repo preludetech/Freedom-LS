@@ -21,6 +21,7 @@ from freedom_ls.panel_framework.templatetags.panel_tags import (
     times,
     tone,
 )
+from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import _make_stub
 from .stub_panels import StubDetailsPanel
@@ -90,6 +91,7 @@ def test_render_panel_renders_the_panels_template_with_its_context(
             instance=stub,
             base_url="/stubs/1",
             name="details",
+            config=SectionConfigBase,
         )
     )
     template = Template("{% load panel_tags %}{% render_panel panel %}")
@@ -105,7 +107,11 @@ def test_render_action_builds_the_action_url_from_the_context(
     mock_site_context: None,
 ) -> None:
     ctx = PanelContext(
-        request=RequestFactory().get("/"), instance=None, base_url="/a/b", name=""
+        request=RequestFactory().get("/"),
+        instance=None,
+        base_url="/a/b",
+        name="",
+        config=SectionConfigBase,
     )
     template = Template("{% load panel_tags %}{% render_action action ctx %}")
 

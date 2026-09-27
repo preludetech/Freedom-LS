@@ -5,8 +5,9 @@ page reload, and that the create button is not duplicated after repeated
 creates.
 
 Note: the test panel URL has no authentication middleware, and
-``StubCreateAction.has_permission`` always returns True (see stub_panels.py),
-so the create button appears for anonymous users in the test environment.
+``StubCreateAction.has_permission`` always returns True regardless of the
+context it is asked about (see stub_panels.py), so the create button appears
+for anonymous users in the test environment.
 """
 
 from __future__ import annotations

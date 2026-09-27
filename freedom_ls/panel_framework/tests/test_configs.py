@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import cast
 
 import pytest
-from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
@@ -23,7 +22,12 @@ from freedom_ls.panel_framework.views import (
 )
 
 from .conftest import StubModel, _make_stub
-from .stub_panels import StubBaseConfig, StubDataTablePanel, StubHiddenPanel
+from .stub_panels import (
+    RecordingCapabilityConfig,
+    StubBaseConfig,
+    StubDataTablePanel,
+    StubHiddenPanel,
+)
 from .view_helpers import call_view, fetch, make_request
 
 pytestmark = pytest.mark.django_db
@@ -47,7 +51,7 @@ class _ObjectInstanceView(InstanceView):
     panel = _PanelsWithAHiddenOne
 
 
-class _FirstStubConfig(ObjectViewConfig):
+class _FirstStubConfig(RecordingCapabilityConfig, ObjectViewConfig):
     """Shows whichever stub sorts first by name."""
 
     url_name = "first-stub"
@@ -187,20 +191,22 @@ def test_a_hidden_panels_url_404s(mock_site_context: Site) -> None:
         _view("first-stub/__panels/hidden")
 
 
-def _as_a_user_who_may_delete(
-    stub: StubModel, path_string: str, **request_kwargs: object
+def _as_a_user_permitted_to_delete(
+    path_string: str, **request_kwargs: object
 ) -> HttpResponse:
+    """The recording stub config answers has_capability True, standing in for
+    a role grant _FirstStubConfig would otherwise ask about."""
+    RecordingCapabilityConfig.reset(answer=True)
     request = make_request(path_string, **request_kwargs)
-    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, stub)
     return call_view(request, path_string, CONFIG)
 
 
 def test_a_delete_action_from_a_panel_renders_its_trigger(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub(name="alpha")
+    _make_stub(name="alpha")
 
-    html = _as_a_user_who_may_delete(stub, "first-stub").content.decode()
+    html = _as_a_user_permitted_to_delete("first-stub").content.decode()
 
     assert f'hx-delete="{DELETE_URL}"' in html
 
@@ -211,7 +217,7 @@ def test_a_delete_action_from_a_panel_deletes_on_submit(
     stub = _make_stub(name="alpha")
     path_string = DELETE_URL.removeprefix("/test-panel/framework/")
 
-    response = _as_a_user_who_may_delete(stub, path_string, method="delete")
+    response = _as_a_user_permitted_to_delete(path_string, method="delete")
 
     assert response.status_code == 204
     assert response["HX-Redirect"] == "/deleted"

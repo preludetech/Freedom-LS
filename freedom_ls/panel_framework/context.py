@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from django.db.models import Model
 from django.http import HttpRequest
+
+if TYPE_CHECKING:
+    # Under TYPE_CHECKING only: views.py imports context.py, so a runtime
+    # import the other way round would cycle.
+    from freedom_ls.panel_framework.views import SectionConfigBase
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -17,10 +23,18 @@ class PanelContext:
     a root panel. A container builds each child's context with
     `dataclasses.replace(ctx, base_url=..., name=...)` rather than mutating
     the parent's context, and a new field can be added here with a default
-    without breaking any existing subclass.
+    without breaking any existing subclass -- `config` has none, because
+    every construction site passes it.
     """
 
     request: HttpRequest
     instance: Model | None
     base_url: str
     name: str
+    config: type[SectionConfigBase]
+    scope: Model | None = None
+
+    def scope_object(self) -> Model | None:
+        """The object a permission check runs against: the bound instance,
+        or, on a list or base view with none, the list-level scope."""
+        return self.instance if self.instance is not None else self.scope

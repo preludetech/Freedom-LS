@@ -93,8 +93,9 @@ URL_NAME = "panel_framework_test:interface"
 def _authenticated_request(path: str) -> HttpRequest:
     """A request carrying an authenticated user and no scope attribute at all.
 
-    That is what a host app with no scope concept sends, and it satisfies the
-    prologue for any config that declares no required_request_attrs.
+    That is what a host app sends for a config that declares no
+    required_request_attrs: get_scope's default needs nothing further, so
+    the prologue is satisfied without one.
     """
     request = RequestFactory().get(path)
     request.user = make_staff_user()

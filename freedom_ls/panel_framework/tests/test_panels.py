@@ -12,6 +12,7 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, PanelStack, TabSet
+from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import StubModel, _make_stub
 from .stub_panels import StubDataTablePanel, StubDetailsPanel, StubHiddenPanel
@@ -44,6 +45,7 @@ def _ctx(path: str = "/base", instance: StubModel | None = None) -> PanelContext
         instance=instance,
         base_url="/base",
         name="",
+        config=SectionConfigBase,
     )
 
 

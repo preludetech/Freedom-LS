@@ -54,7 +54,7 @@ def _title_text(html: str) -> str:
 def test_navigation_bundle_names_the_page_and_the_site(
     mock_site_context: Site,
 ) -> None:
-    """A host with no scope concept gets no empty segment or stray dash."""
+    """A host that never sets panel_scope_name gets no empty segment or stray dash."""
     content = _navigate(_navigation_request())
 
     assert _title_text(content) == f"Stubs — {mock_site_context.name}"

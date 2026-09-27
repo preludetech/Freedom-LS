@@ -5,9 +5,11 @@ CreateCohortAction attaches request.organisation to the instance before the
 form validates, so the per-organisation uniqueness constraint is checked while
 cleaning instead of blowing up as an IntegrityError at the database.
 
-These are unit tests of the action, so they hand-build the request. That the
-view actually sets request.organisation is covered end to end in
-test_config_authorisation.py.
+Most of these are unit tests of the action, so they hand-build the request.
+That the view actually sets request.organisation is covered end to end in
+test_config_authorisation.py. The one true end-to-end test here proves the
+success criterion this slice exists for: an organisation admin with no
+superuser flag can create a cohort through the interface.
 """
 
 from __future__ import annotations
@@ -22,15 +24,22 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.forms import CohortForm
-from freedom_ls.educator_interface.views import CreateCohortAction
+from freedom_ls.educator_interface.views import CohortConfig, CreateCohortAction
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 def _ctx(request: HttpRequest) -> PanelContext:
-    return PanelContext(request=request, instance=None, base_url="/cohorts", name="")
+    return PanelContext(
+        request=request,
+        instance=None,
+        base_url="/cohorts",
+        name="",
+        config=CohortConfig,
+    )
 
 
 @pytest.mark.django_db
@@ -140,3 +149,37 @@ def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
 
     assert not form.is_valid()
     assert NON_FIELD_ERRORS in form.errors
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_with_no_superuser_flag_creates_a_cohort(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    """The success criterion this slice exists for."""
+    organisation = OrganisationFactory()
+    user = UserFactory()
+    assign_object_role(user, organisation, "organisation_admin")
+    client = logged_in_client(user)
+
+    list_response = client.get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
+        )
+    )
+    assert "Create Cohort" in list_response.content.decode()
+
+    create_response = client.post(
+        reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": "cohorts/__actions/create_cohort",
+            },
+        ),
+        {"name": "New Cohort"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert create_response.status_code == 204
+    assert Cohort.objects.filter(organisation=organisation, name="New Cohort").exists()

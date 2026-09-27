@@ -18,6 +18,7 @@ from django.test import RequestFactory
 from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, TabSet
+from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import _make_stub
 from .stub_panels import StubDetailsPanel, StubHiddenPanel
@@ -53,6 +54,7 @@ def _bind(
             instance=instance,
             base_url="/p",
             name=name,
+            config=SectionConfigBase,
         )
     )
 

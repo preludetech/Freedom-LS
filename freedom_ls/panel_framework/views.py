@@ -52,14 +52,33 @@ class SectionConfigBase:
     #: a detail view is served. A host app that scopes its requests — to an
     #: organisation, a tenant, a workspace — names those attributes here, and
     #: authorise_instance can then dereference them without a None check of
-    #: its own. Empty by default: panel_framework has no scope concept, so a
-    #: host that has none serves detail views normally.
+    #: its own. Empty by default: the framework asks get_scope for a scope
+    #: object rather than assuming one, so a host that names none here still
+    #: requires no request attribute of its own.
     required_request_attrs: tuple[str, ...] = ()
 
     @classmethod
     def get_menu_count(cls, request: HttpRequest) -> int | None:
         """A number to show beside the menu label, or None to show none."""
         return None
+
+    @classmethod
+    def get_scope(cls, request: HttpRequest) -> Model | None:
+        """The object a list-level action or panel is asked about, when this
+        section scopes its requests to one. None by default."""
+        return None
+
+    @classmethod
+    def has_capability(
+        cls, request: HttpRequest, capability: str, scope: Model
+    ) -> bool:
+        """Whether `request` may exercise `capability` on `scope`.
+
+        Deny by default, like authorise_instance: a config that does not
+        override this cannot grant anything, so a new config that forgets to
+        wire capability checks fails closed instead of leaking.
+        """
+        return False
 
     @classmethod
     def check_request(cls, request: HttpRequest) -> None:
@@ -255,9 +274,17 @@ def _bind_root(
         if len(parts) == 1 or parts[1].startswith("__"):
             if section.list_view is None:
                 raise ValueError(f"{section.__name__} must define list_view")
+            # No check_request here, as today: the list root binds (and the
+            # unauthenticated stub playwright tests browse it) before any
+            # access check runs.
             table = ListViewPanel(
                 PanelContext(
-                    request=request, instance=None, base_url=section_url, name=""
+                    request=request,
+                    instance=None,
+                    base_url=section_url,
+                    name="",
+                    config=section,
+                    scope=section.get_scope(request),
                 )
             )
             table.data_table = section.list_view
@@ -270,6 +297,8 @@ def _bind_root(
                     instance=instance_view.instance,
                     base_url=f"{section_url}/{parts[1]}",
                     name="",
+                    config=section,
+                    scope=section.get_scope(request),
                 )
             ),
             instance_view,
@@ -284,6 +313,8 @@ def _bind_root(
                     instance=instance_view.instance,
                     base_url=section_url,
                     name="",
+                    config=section,
+                    scope=section.get_scope(request),
                 )
             ),
             instance_view,
@@ -292,7 +323,14 @@ def _bind_root(
     section.check_request(request)
     return (
         section.panel(
-            PanelContext(request=request, instance=None, base_url=section_url, name="")
+            PanelContext(
+                request=request,
+                instance=None,
+                base_url=section_url,
+                name="",
+                config=section,
+                scope=section.get_scope(request),
+            )
         ),
         None,
         1,
@@ -354,7 +392,7 @@ def _handle_action(request: HttpRequest, resolved: _ResolvedAction) -> HttpRespo
     action = resolved.action
     ctx = resolved.ctx
 
-    if not action.has_permission(request, ctx.instance):
+    if not action.has_permission(ctx):
         return HttpResponse(status=403)
 
     if request.method in ("POST", "DELETE"):
@@ -381,7 +419,7 @@ def _main_for(
         actions = [
             action
             for action in resolved.instance_view.get_actions()
-            if action.has_permission(request, resolved.instance)
+            if action.has_permission(root.ctx)
         ]
         return (
             "panel_framework/views/instance_view.html",
@@ -397,7 +435,7 @@ def _main_for(
         list_actions = [
             action
             for action in section.get_actions(request)
-            if action.has_permission(request)
+            if action.has_permission(root.ctx)
         ]
         created_events = [
             action.get_created_event_name()

@@ -12,9 +12,15 @@ import pytest_django.fixtures
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
-from django.contrib.auth.models import Permission
-from django.contrib.contenttypes.models import ContentType
 from django.db import connection, models
+
+# Relative, not the freedom_ls.-prefixed absolute form: this project's
+# namespace-package layout (no freedom_ls/__init__.py) makes pytest import
+# every module under tests/ as panel_framework.tests.*, so an absolute import
+# here would load stub_panels.py under a second module name and hand this
+# fixture a RecordingCapabilityConfig the test files never see -- the same
+# hazard stub_panels.py's own module docstring works around for StubModel.
+from .stub_panels import RecordingCapabilityConfig
 
 # ---------------------------------------------------------------------------
 # Lightweight test-only models
@@ -119,28 +125,12 @@ def _panel_test_tables(django_db_setup, django_db_blocker):
 
 
 @pytest.fixture(autouse=True)
-def _panel_test_permissions(db):
-    """Ensure stub-model ContentType and Permissions exist before every test.
-
-    Function-scoped because tests using ``@pytest.mark.django_db(transaction=True)``
-    elsewhere in the suite flush the DB between tests, wiping any session-scoped
-    setup. The ContentType in-memory cache must also be cleared so that
-    ``get_for_model(StubModel)`` does not return a stale PK from a prior
-    rolled-back transaction. Idempotent via ``get_or_create``.
-    """
-    # Clear the ContentType cache before the lookup so any stale PKs from
-    # earlier rolled-back transactions are dropped.
-    ContentType.objects.clear_cache()
-    ct, _ = ContentType.objects.get_or_create(
-        app_label="freedom_ls_panel_framework",
-        model="stubmodel",
-    )
-    for codename in ("add_stubmodel", "change_stubmodel", "delete_stubmodel"):
-        Permission.objects.get_or_create(
-            content_type=ct,
-            codename=codename,
-            defaults={"name": f"Can {codename.split('_')[0]} stub model"},
-        )
+def _reset_recording_capability_config():
+    """Every test gets a clean recording stub config: the default canned
+    answer, no recorded scope and an empty call log."""
+    RecordingCapabilityConfig.reset()
+    yield
+    RecordingCapabilityConfig.reset()
 
 
 # ---------------------------------------------------------------------------

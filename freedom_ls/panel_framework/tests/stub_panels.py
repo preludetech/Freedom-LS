@@ -18,7 +18,7 @@ registered it under the ``freedom_ls_panel_framework`` app label.
 
 from __future__ import annotations
 
-from typing import cast
+from typing import ClassVar, cast
 
 from django import forms
 from django.apps import apps
@@ -28,6 +28,7 @@ from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.views import (
@@ -35,7 +36,40 @@ from freedom_ls.panel_framework.views import (
     InstanceView,
     ListViewConfig,
     NavGroup,
+    SectionConfigBase,
 )
+
+
+class RecordingCapabilityConfig(SectionConfigBase):
+    """A `has_capability` that records every (capability, scope) it is asked
+    and answers a class-level canned decision, so a permission test can
+    assert on both without a real role config behind it.
+
+    ``reset()`` clears the recording and sets the answer and scope for one
+    test; the autouse fixture in conftest.py calls it between every test so
+    none of this state leaks across the suite.
+    """
+
+    answer: ClassVar[bool] = True
+    scope: ClassVar[Model | None] = None
+    asked: ClassVar[list[tuple[str, Model]]] = []
+
+    @classmethod
+    def reset(cls, *, answer: bool = True, scope: Model | None = None) -> None:
+        cls.answer = answer
+        cls.scope = scope
+        cls.asked = []
+
+    @classmethod
+    def get_scope(cls, request: HttpRequest) -> Model | None:
+        return cls.scope
+
+    @classmethod
+    def has_capability(
+        cls, request: HttpRequest, capability: str, scope: Model
+    ) -> bool:
+        cls.asked.append((capability, scope))
+        return cls.answer
 
 
 def _stub_model() -> type[Model]:
@@ -88,9 +122,7 @@ class StubCreateAction(CreateInstanceAction):
             request=request,
         )
 
-    def has_permission(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> bool:
+    def has_permission(self, ctx: PanelContext) -> bool:
         # Stub: always allow in tests so the create button appears in playwright tests
         # without needing login. Permission enforcement is tested separately in
         # test_panel_actions.py using its own StubCreateAction.
@@ -152,7 +184,7 @@ class StubInstanceView(InstanceView):
     panel = StubTabSet
 
 
-class StubListConfig(ListViewConfig):
+class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     url_name = "stubs"
     menu_label = "Stubs"
     list_view = StubDataTable
@@ -169,7 +201,7 @@ class StubListConfig(ListViewConfig):
         return cls.instance_view(instance)
 
 
-class StubBaseConfig(BaseViewConfig):
+class StubBaseConfig(RecordingCapabilityConfig, BaseViewConfig):
     """A base view holding an instance-free table panel."""
 
     url_name = "stub-base"

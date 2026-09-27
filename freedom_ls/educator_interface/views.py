@@ -15,6 +15,7 @@ from django.urls import reverse
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -46,6 +47,7 @@ from freedom_ls.panel_framework.views import (
     InstanceView,
     ListViewConfig,
     NavGroup,
+    SectionConfigBase,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -74,6 +76,22 @@ class _OrganisationScopedRequest(HttpRequest):
     path_string: str
     panel_announcement: str
     panel_extra_oob: list[str]
+
+
+class OrganisationSectionConfig(SectionConfigBase):
+    """Shared by every section scoped to the organisation interface() resolves."""
+
+    required_request_attrs = ("organisation",)
+
+    @classmethod
+    def get_scope(cls, request: HttpRequest) -> Model | None:
+        return cast(_OrganisationScopedRequest, request).organisation
+
+    @classmethod
+    def has_capability(
+        cls, request: HttpRequest, capability: str, scope: Model
+    ) -> bool:
+        return can(request.user, capability, scope)
 
 
 # TODO
@@ -352,15 +370,13 @@ class CreateCohortAction(CreateInstanceAction):
         return "cohortCreated"
 
 
-class CohortConfig(ListViewConfig):
+class CohortConfig(OrganisationSectionConfig, ListViewConfig):
     url_name = "cohorts"
     menu_label = "Cohorts"
     icon = "cohort"
     model = Cohort
     list_view = CohortDataTable
     instance_view = CohortInstanceView
-
-    required_request_attrs = ("organisation",)
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
@@ -377,15 +393,13 @@ class CohortConfig(ListViewConfig):
             raise OrganisationScopeDenied
 
 
-class LearnerConfig(ListViewConfig):
+class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
     url_name = "learners"
     menu_label = "Learners"
     icon = "user"
     model = Learner
     list_view = LearnerDataTable
     instance_view = LearnerInstanceView
-
-    required_request_attrs = ("organisation",)
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
@@ -617,15 +631,13 @@ class CourseInstanceView(InstanceView):
     panel = CoursePanelStack
 
 
-class CourseConfig(ListViewConfig):
+class CourseConfig(OrganisationSectionConfig, ListViewConfig):
     url_name = "courses"
     menu_label = "Courses"
     icon = "course"
     model = Course
     list_view = CourseDataTable
     instance_view = CourseInstanceView
-
-    required_request_attrs = ("organisation",)
 
     check_access_exempt_reason = (
         "Courses are shared across the Site and are not organisation-scoped "
@@ -646,13 +658,11 @@ class DashboardPanel(Panel):
     template_name = "educator_interface/panels/dashboard.html"
 
 
-class DashboardConfig(BaseViewConfig):
+class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
     url_name = "dashboard"
     menu_label = "Dashboard"
     icon = "home"
     panel = DashboardPanel
-
-    required_request_attrs = ("organisation",)
 
 
 interface_config = [

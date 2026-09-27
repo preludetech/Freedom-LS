@@ -11,6 +11,7 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import InstanceDetailsPanel
+from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import StubChild, StubModel, _make_stub, _make_stub_child
 
@@ -34,6 +35,7 @@ def _bind(
             instance=instance,
             base_url="/x",
             name="details",
+            config=SectionConfigBase,
         )
     )
 

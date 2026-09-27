@@ -16,116 +16,18 @@ attribute.
 
 from __future__ import annotations
 
-from typing import cast
-
 import pytest
 
-from django.db.models import Model
-from django.http import HttpRequest
-from django.test import RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.views import interface_config
-from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
-from freedom_ls.learner_management.models import Cohort, Learner
-from freedom_ls.organisations.factories import OrganisationFactory
-from freedom_ls.organisations.models import Organisation
-from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.panels import Panel
-from freedom_ls.panel_framework.views import (
-    BaseViewConfig,
-    ListViewConfig,
-    ObjectViewConfig,
-    SectionConfig,
-    sections_by_url_name,
+from freedom_ls.educator_interface.tests.interface_walk import (
+    SECTIONS,
+    config_path_strings,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.views import BaseViewConfig, SectionConfig
 from freedom_ls.role_based_permissions.utils import assign_object_role
-
-SECTIONS = list(sections_by_url_name(interface_config).values())
-
-
-def _seed_instance(model: type[Model] | None, organisation: Organisation) -> Model:
-    """One instance of the model, living inside `organisation` where the
-    model supports that (Course does not — it is organisation-exempt, per
-    CourseConfig.check_access_exempt_reason).
-
-    factory_boy's metaclass makes mypy see these factories as returning the
-    factory class rather than the model, per pyproject's mypy override —
-    cast() back to Model, the type this function actually returns.
-    """
-    if model is Cohort:
-        return cast(Model, CohortFactory(organisation=organisation))
-    if model is Learner:
-        return cast(Model, LearnerFactory(organisation=organisation))
-    if model is Course:
-        return cast(Model, CourseFactory())
-    raise NotImplementedError(
-        f"test_config_authorisation has no instance seeder for {model}; "
-        "add one alongside the new config."
-    )
-
-
-def _panel_paths(panel: Panel, path: str) -> list[str]:
-    """`path` itself, every action on the panel, and the same for every shown
-    child, recursively."""
-    paths = [path]
-    paths.extend(f"{path}/__actions/{a.action_name}" for a in panel.get_actions())
-    for child in panel.get_children():
-        paths.extend(
-            _panel_paths(child, f"{path}/{panel.child_segment}/{child.ctx.name}")
-        )
-    return paths
-
-
-def _bind(
-    panel_class: type[Panel], request: HttpRequest, instance: Model | None
-) -> Panel:
-    return panel_class(
-        PanelContext(request=request, instance=instance, base_url="", name="")
-    )
-
-
-def _config_path_strings(organisation: Organisation) -> list[str]:
-    """Every path_string the interface enumerates for `organisation`: each
-    section's own path, a detail path with a seeded instance, and every
-    __panels / __tabs / __actions path the bound panels declare."""
-    paths: list[str] = []
-    request = RequestFactory().get("/")
-    request.user = UserFactory(superuser=True)
-
-    for section in SECTIONS:
-        url_name = section.url_name
-        if issubclass(section, BaseViewConfig):
-            paths.extend(_panel_paths(_bind(section.panel, request, None), url_name))
-            continue
-
-        if issubclass(section, ListViewConfig):
-            paths.append(url_name)
-            paths.extend(
-                f"{url_name}/__actions/{action.action_name}"
-                for action in section.get_actions(request)
-            )
-            instance = _seed_instance(section.model, organisation)
-            detail = f"{url_name}/{instance.pk}"
-        else:
-            assert issubclass(section, ObjectViewConfig)
-            instance = section.get_object(request)
-            detail = url_name
-
-        assert section.instance_view is not None
-        instance_view = section.instance_view(instance)
-        paths.extend(
-            f"{detail}/__actions/{action.action_name}"
-            for action in instance_view.get_actions()
-        )
-        paths.extend(
-            _panel_paths(_bind(instance_view.panel, request, instance), detail)
-        )
-
-    return paths
 
 
 def _authorised_sections() -> list[SectionConfig]:
@@ -143,7 +45,7 @@ class TestEveryConfiguredSurface404sForAnInaccessibleOrganisation:
         self, logged_in_client
     ):
         organisation = OrganisationFactory()
-        paths = _config_path_strings(organisation)
+        paths = config_path_strings(organisation)
         # A role on a *different* organisation — access to organisation
         # itself is what must be denied, not access to the interface at all.
         other_organisation = OrganisationFactory()

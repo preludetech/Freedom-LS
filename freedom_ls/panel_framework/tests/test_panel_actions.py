@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-from guardian.shortcuts import assign_perm
 
 from django import forms
 from django.contrib.sites.models import Site
@@ -20,7 +19,11 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel
-from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
+from freedom_ls.panel_framework.views import (
+    SectionConfigBase,
+    _handle_action,
+    _ResolvedAction,
+)
 
 from .conftest import (
     StubGrandchild,
@@ -30,6 +33,7 @@ from .conftest import (
     _make_stub_protected_child,
     make_staff_user,
 )
+from .stub_panels import RecordingCapabilityConfig
 
 # -- Shared test form ---------------------------------------------------
 
@@ -69,7 +73,13 @@ class StubCreateAction(CreateInstanceAction):
 def _ctx(
     request: HttpRequest, instance: Model | None = None, base_url: str = "/test"
 ) -> PanelContext:
-    return PanelContext(request=request, instance=instance, base_url=base_url, name="")
+    return PanelContext(
+        request=request,
+        instance=instance,
+        base_url=base_url,
+        name="",
+        config=RecordingCapabilityConfig,
+    )
 
 
 def _render(action: PanelAction, ctx: PanelContext) -> str:
@@ -141,12 +151,100 @@ def test_panel_container_no_actions_area_when_no_actions(
     assert "Do Thing" not in html
 
 
-@pytest.mark.django_db
-def test_panel_action_has_permission_returns_true_by_default(mock_site_context):
-    """PanelAction.has_permission() returns True by default."""
+def test_panel_action_has_permission_returns_true_when_it_declares_no_capability() -> (
+    None
+):
+    """The default has_permission needs no capability check at all when the
+    action declares none."""
     action = StubAction()
     request = RequestFactory().get("/")
-    assert action.has_permission(request) is True
+    assert action.has_permission(_ctx(request)) is True
+
+
+@pytest.mark.django_db
+def test_a_list_level_create_action_is_asked_about_ctx_scope(
+    mock_site_context: Site,
+) -> None:
+    """A create action with no bound instance is a list-level action: the
+    permission check runs against the list's own scope object."""
+    scope = _make_stub(name="list-scope")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    ctx = PanelContext(
+        request=request,
+        instance=None,
+        base_url="/items",
+        name="",
+        config=RecordingCapabilityConfig,
+        scope=scope,
+    )
+
+    StubCreateAction().has_permission(ctx)
+
+    assert RecordingCapabilityConfig.asked == [
+        ("freedom_ls_panel_framework.add_stubmodel", scope)
+    ]
+
+
+@pytest.mark.django_db
+def test_a_create_action_inside_an_instance_view_is_asked_about_ctx_instance(
+    mock_site_context: Site,
+) -> None:
+    instance = _make_stub(name="instance-scope")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    StubCreateAction().has_permission(_ctx(request, instance))
+
+    assert RecordingCapabilityConfig.asked == [
+        ("freedom_ls_panel_framework.add_stubmodel", instance)
+    ]
+
+
+@pytest.mark.django_db
+def test_built_in_actions_deny_under_a_config_left_at_its_default(
+    mock_site_context: Site,
+) -> None:
+    """CreateInstanceAction, EditAction and DeleteAction all deny when the
+    bound config never overrides has_capability."""
+    item = _make_stub(name="default-deny")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    ctx = PanelContext(
+        request=request,
+        instance=item,
+        base_url="/items",
+        name="",
+        config=SectionConfigBase,
+    )
+
+    assert StubCreateAction().has_permission(ctx) is False
+    assert (
+        EditAction(
+            form_class=_StubModelForm, form_title="Edit Item", instance=item
+        ).has_permission(ctx)
+        is False
+    )
+    assert DeleteAction(success_url="/items").has_permission(ctx) is False
+
+
+@pytest.mark.django_db
+def test_delete_action_denies_with_no_instance(mock_site_context: Site) -> None:
+    """DeleteAction never falls back to a list-level scope -- there is
+    nothing to delete without a bound instance."""
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    scope = _make_stub(name="delete-no-instance-scope")
+    ctx = PanelContext(
+        request=request,
+        instance=None,
+        base_url="/items",
+        name="",
+        config=RecordingCapabilityConfig,
+        scope=scope,
+    )
+
+    assert DeleteAction(success_url="/items").has_permission(ctx) is False
 
 
 # -- CreateInstanceAction tests ------------------------------------------
@@ -160,7 +258,6 @@ def test_create_action_form_valid_creates_instance_and_redirects(
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "New Item"})
     request.user = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.add_stubmodel", request.user)
 
     response = action.handle_submit(_ctx(request, None, "/items"))
     assert response.status_code == 204
@@ -198,27 +295,29 @@ def test_create_action_duplicate_name_returns_422(mock_site_context: Site) -> No
 
 
 @pytest.mark.django_db
-def test_create_action_has_permission_checks_add_perm(mock_site_context):
-    """has_permission returns True only when user has add permission."""
+def test_create_action_has_permission_reflects_the_configs_answer(
+    mock_site_context: Site,
+) -> None:
     action = StubCreateAction()
-
-    user_with_perm = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.add_stubmodel", user_with_perm)
+    item = _make_stub(name="create-permission-check")
     request = RequestFactory().get("/")
-    request.user = user_with_perm
-    assert action.has_permission(request) is True
+    request.user = make_staff_user()
+    ctx = _ctx(request, item)
 
-    user_without_perm = make_staff_user()
-    request.user = user_without_perm
-    assert action.has_permission(request) is False
+    RecordingCapabilityConfig.reset(answer=True)
+    assert action.has_permission(ctx) is True
+
+    RecordingCapabilityConfig.reset(answer=False)
+    assert action.has_permission(ctx) is False
 
 
 @pytest.mark.django_db
 def test_create_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks add permission."""
+    """_handle_action returns 403 when the config denies the capability."""
+    scope = _make_stub(name="create-403-scope")
+    RecordingCapabilityConfig.reset(answer=False, scope=scope)
     action = StubCreateAction()
     user = make_staff_user()
-    # No add permission
     request = RequestFactory().post("/", {"name": "Forbidden"})
     request.user = user
 
@@ -272,29 +371,30 @@ def test_edit_action_duplicate_name_returns_422(mock_site_context: Site) -> None
 
 
 @pytest.mark.django_db
-def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_context):
-    """has_permission checks object-level change permission."""
-    item = _make_stub(name="edit-perm-check")
+def test_edit_action_has_permission_reflects_the_configs_answer(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="edit-permission-check")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
         instance=item,
     )
-
-    user_with_perm = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.change_stubmodel", user_with_perm, item)
     request = RequestFactory().get("/")
-    request.user = user_with_perm
-    assert action.has_permission(request) is True
+    request.user = make_staff_user()
+    ctx = _ctx(request, item)
 
-    user_without_perm = make_staff_user()
-    request.user = user_without_perm
-    assert action.has_permission(request) is False
+    RecordingCapabilityConfig.reset(answer=True)
+    assert action.has_permission(ctx) is True
+
+    RecordingCapabilityConfig.reset(answer=False)
+    assert action.has_permission(ctx) is False
 
 
 @pytest.mark.django_db
 def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks change permission."""
+    """_handle_action returns 403 when the config denies the capability."""
+    RecordingCapabilityConfig.reset(answer=False)
     item = _make_stub(name="Test-edit-403")
     action = EditAction(
         form_class=_StubModelForm,
@@ -382,27 +482,27 @@ def test_delete_action_render_returns_confirmation_html(
 
 
 @pytest.mark.django_db
-def test_delete_action_has_permission_checks_object_level_delete_perm(
-    mock_site_context,
-):
-    """has_permission checks object-level delete permission."""
-    item = _make_stub(name="delete-perm-check")
+def test_delete_action_has_permission_reflects_the_configs_answer(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="delete-permission-check")
     action = DeleteAction(success_url="/items")
 
-    user_with_perm = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.delete_stubmodel", user_with_perm, item)
     request = RequestFactory().get("/")
-    request.user = user_with_perm
-    assert action.has_permission(request, item) is True
+    request.user = make_staff_user()
+    ctx = _ctx(request, item)
 
-    user_without_perm = make_staff_user()
-    request.user = user_without_perm
-    assert action.has_permission(request, item) is False
+    RecordingCapabilityConfig.reset(answer=True)
+    assert action.has_permission(ctx) is True
+
+    RecordingCapabilityConfig.reset(answer=False)
+    assert action.has_permission(ctx) is False
 
 
 @pytest.mark.django_db
 def test_delete_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks delete permission."""
+    """_handle_action returns 403 when the config denies the capability."""
+    RecordingCapabilityConfig.reset(answer=False)
     item = _make_stub(name="delete-403")
     action = DeleteAction(success_url="/items")
 

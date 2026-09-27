@@ -123,9 +123,7 @@ class Panel:
         use are already filtered out.
         """
         actions = [
-            action
-            for action in self.get_actions()
-            if action.has_permission(self.request, self.instance)
+            action for action in self.get_actions() if action.has_permission(self.ctx)
         ]
         return {
             "panel": self,

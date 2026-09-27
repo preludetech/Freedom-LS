@@ -21,7 +21,9 @@ BASE_ROLES = SiteRolesConfig(
             permissions=frozenset(
                 {
                     # Django built-in permissions
+                    "freedom_ls_organisations.view_organisation",
                     "freedom_ls_learner_management.view_cohort",
+                    "freedom_ls_learner_management.view_learner",
                     "freedom_ls_learner_management.add_cohort",
                     "freedom_ls_learner_management.change_cohort",
                     "freedom_ls_learner_management.delete_cohort",
@@ -38,6 +40,7 @@ BASE_ROLES = SiteRolesConfig(
                 {
                     # Django built-in permissions
                     "freedom_ls_learner_management.view_cohort",
+                    "freedom_ls_learner_management.view_learner",
                     # FUTURE: add course-level permissions as features are built
                 }
             ),
@@ -51,6 +54,7 @@ BASE_ROLES = SiteRolesConfig(
                 {
                     # Django built-in permissions
                     "freedom_ls_learner_management.view_cohort",
+                    "freedom_ls_learner_management.view_learner",
                     # FUTURE: add grading/analytics permissions as features are built
                 }
             ),
@@ -60,14 +64,16 @@ BASE_ROLES = SiteRolesConfig(
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,
             description="Everything in one organisation, including who else administers it.",
-            # FUTURE: letting this role manage cohorts takes an object-aware permission
-            # check in panel_framework, not extra permission strings here. Two things
-            # block the string-only route: CreateInstanceAction checks add_cohort at
-            # model level with no object, and guardian's backend denies every objectless
-            # check; and permissions are filtered to the target object's content type as
-            # they sync into guardian, so a role assigned on an Organisation can only
-            # ever grant freedom_ls_organisations.* permissions.
-            permissions=frozenset({"freedom_ls_organisations.view_organisation"}),
+            permissions=frozenset(
+                {
+                    "freedom_ls_organisations.view_organisation",
+                    "freedom_ls_learner_management.view_cohort",
+                    "freedom_ls_learner_management.view_learner",
+                    "freedom_ls_learner_management.add_cohort",
+                    "freedom_ls_learner_management.change_cohort",
+                    "freedom_ls_learner_management.delete_cohort",
+                }
+            ),
         ),
         # --- Placeholder roles (no permissions exist yet) ---
         # These roles are defined for completeness but have empty permission

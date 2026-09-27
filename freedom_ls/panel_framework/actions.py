@@ -14,6 +14,12 @@ from django.template.loader import render_to_string
 from freedom_ls.panel_framework.context import PanelContext
 
 
+def _model_capability(model: type[Model] | Model, verb: str) -> str:
+    """The capability string for `verb`-ing `model`, in `app_label.codename` form."""
+    meta = model._meta
+    return f"{meta.app_label}.{verb}_{meta.model_name}"
+
+
 class PanelAction:
     """A button on a panel, list or instance view, and what submitting it does.
 
@@ -25,11 +31,26 @@ class PanelAction:
     variant: str = "primary"
     action_name: str = ""
     template_name: str = "panel_framework/partials/action_button.html"
+    #: The capability this action asks about, or None to allow it whenever
+    #: the config lets the action render at all.
+    capability: str | None = None
 
-    def has_permission(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> bool:
-        return True
+    def get_capability(self, ctx: PanelContext) -> str | None:
+        return self.capability
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        """The object a capability is asked about: the instance, or, on a
+        list-level action, the list's own scope."""
+        return ctx.scope_object()
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        capability = self.get_capability(ctx)
+        if capability is None:
+            return True
+        scope = self.permission_object(ctx)
+        if scope is None:
+            return False
+        return ctx.config.has_capability(ctx.request, capability, scope)
 
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
@@ -144,16 +165,14 @@ class CreateInstanceAction(FormPanelAction):
             request=request,
         )
 
-    def has_permission(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> bool:
+    def get_capability(self, ctx: PanelContext) -> str | None:
+        if self.capability is not None:
+            return self.capability
         meta = getattr(self.form_class, "Meta", None)
         if meta is None:
             raise ValueError("form_class must define a Meta class with model")
         model: type[Model] = meta.model
-        app_label = model._meta.app_label
-        model_name = model._meta.model_name
-        return request.user.has_perm(f"{app_label}.add_{model_name}")
+        return _model_capability(model, "add")
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         instance = form.save()
@@ -201,13 +220,8 @@ class EditAction(FormPanelAction):
         )
         return response
 
-    def has_permission(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> bool:
-        instance = instance or self._instance
-        model_name = instance._meta.model_name
-        app_label = instance._meta.app_label
-        return request.user.has_perm(f"{app_label}.change_{model_name}", instance)
+    def get_capability(self, ctx: PanelContext) -> str | None:
+        return self.capability or _model_capability(self._instance, "change")
 
 
 class DeleteAction(PanelAction):
@@ -337,11 +351,15 @@ class DeleteAction(PanelAction):
         response["HX-Redirect"] = self.success_url
         return response
 
-    def has_permission(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> bool:
-        if instance is None:
-            return False
-        model_name = instance._meta.model_name
-        app_label = instance._meta.app_label
-        return request.user.has_perm(f"{app_label}.delete_{model_name}", instance)
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        """The instance to delete only -- never a list-level scope fallback,
+        since there is nothing to delete without one."""
+        return ctx.instance
+
+    def get_capability(self, ctx: PanelContext) -> str | None:
+        if ctx.instance is None:
+            return self.capability
+        return self.capability or _model_capability(ctx.instance, "delete")
+
+    def has_permission(self, ctx: PanelContext) -> bool:
+        return ctx.instance is not None and super().has_permission(ctx)
