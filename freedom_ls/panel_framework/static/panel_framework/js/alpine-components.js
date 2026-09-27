@@ -5,12 +5,15 @@
  * alpine-components.js script.
  */
 
-// Adds a listener and records it alongside its target and type, so a
-// component's destroy() can remove every listener it registered without
-// hand-listing them a second time. Shared by appModal and quickView.
-function trackListener(handlers, target, type, handler) {
-    target.addEventListener(type, handler);
-    handlers.push([target, type, handler]);
+// Adds a listener and records it alongside its target, type and options, so
+// a component's destroy() can remove every listener it registered without
+// hand-listing them a second time. options is passed through to both calls
+// unchanged (e.g. `true` for a capture-phase listener), since
+// removeEventListener only matches a listener registered with the same
+// capture flag. Shared by appModal and quickView.
+function trackListener(handlers, target, type, handler, options) {
+    target.addEventListener(type, handler, options);
+    handlers.push([target, type, handler, options]);
 }
 
 // Returns focus to whichever element opened a dialog, or to #main-content
@@ -115,8 +118,8 @@ document.addEventListener("alpine:init", () => {
             });
         },
         destroy() {
-            this._handlers.forEach(([target, type, handler]) => {
-                target.removeEventListener(type, handler);
+            this._handlers.forEach(([target, type, handler, options]) => {
+                target.removeEventListener(type, handler, options);
             });
         },
         requestClose() {
@@ -195,6 +198,190 @@ document.addEventListener("alpine:init", () => {
             prompt.hidden = false;
             const keepEditingButton = prompt.querySelector("[autofocus]");
             if (keepEditingButton) keepEditingButton.focus();
+        },
+    }));
+
+    // The drawer (partials/quick_view_host.html) a row's quick-view trigger
+    // loads into. It sits inside sidePanel's x-data scope alongside appModal
+    // (both are siblings under _base_interface.html's sidebar wrapper), so —
+    // for the same reason appModal's own state is prefixed — every name here
+    // is one neither sidePanel nor appModal already owns. That has to hold
+    // even for a name each of them only assigns inside init() rather than
+    // declaring up front (as appModal's own _dialog and _body do): Alpine
+    // resolves an as-yet-undeclared "this.x = …" against the whole scope
+    // chain, so appModal's and quickView's _open() ended up sharing one
+    // dialog reference — whichever component's init() ran last — until each
+    // of _dialog/_body/_trigger/_handlers below got its own "qv" name.
+    Alpine.data("quickView", () => ({
+        _isMobile: false,
+        _qvTrigger: null,
+        _shownUrl: null,
+        _stale: false,
+        _entityId: null,
+        _refreshHandlers: [],
+        _lastUrl: null,
+        _qvHandlers: [],
+        init() {
+            this._qvDialog = this.$el;
+            this._qvBody = document.getElementById("quick-view-body");
+            this._title = document.getElementById("quick-view-title");
+            this._openLink = document.getElementById("quick-view-open");
+            this._status = document.getElementById("quick-view-status");
+            this._skeletonTemplate = this._qvDialog.querySelector(
+                "[data-quick-view-skeleton]",
+            );
+            this._errorTemplate = this._qvDialog.querySelector("[data-quick-view-error]");
+            this._isMobile = !window.matchMedia("(min-width: 768px)").matches;
+
+            // htmx only leaves modifier-key clicks alone on boosted anchors.
+            // This trigger is a plain hx-get anchor, so without this it would
+            // still be intercepted; capture phase gets in ahead of htmx's own
+            // (bubble-phase) click listener so the browser follows the
+            // trigger's href natively instead.
+            trackListener(
+                this._qvHandlers,
+                document,
+                "click",
+                (event) => {
+                    if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+                        return;
+                    }
+                    if (event.target.closest('[aria-controls="quick-view"]')) {
+                        event.stopPropagation();
+                    }
+                },
+                true,
+            );
+
+            trackListener(this._qvHandlers, document, "htmx:confirm", (event) => {
+                const trigger = event.detail.elt;
+                if (!trigger || !trigger.matches('[aria-controls="quick-view"]')) return;
+                const url = event.detail.path;
+                if (url === this._shownUrl && this._qvDialog.open) {
+                    event.preventDefault();
+                    this._close();
+                    return;
+                }
+                if (url === this._shownUrl && !this._stale) {
+                    event.preventDefault();
+                    this._open(trigger);
+                    return;
+                }
+                this._open(trigger);
+                this._startLoading(trigger, url);
+            });
+
+            trackListener(this._qvHandlers, document, "htmx:afterSwap", (event) => {
+                if (event.detail.target === this._qvBody) {
+                    this._afterBodySwap(event);
+                }
+                // Any swap can recreate a trigger (e.g. a table refetch), so
+                // this runs unconditionally rather than only for the body.
+                this._syncExpanded();
+            });
+
+            trackListener(this._qvHandlers, document, "htmx:responseError", (event) =>
+                this._handleBodyError(event),
+            );
+            trackListener(this._qvHandlers, document, "htmx:sendError", (event) =>
+                this._handleBodyError(event),
+            );
+
+            trackListener(this._qvHandlers, this._qvDialog, "close", () => {
+                this._syncExpanded();
+                focusTriggerOrMain(this._qvTrigger);
+            });
+
+            // showModal() gives the mobile sheet native Esc-to-close; show()
+            // gives the desktop drawer none, so this covers that case only,
+            // and steps aside when some other dialog (e.g. #app-modal) is
+            // the one currently in the top layer.
+            trackListener(this._qvHandlers, document, "keydown", (event) => {
+                if (event.key !== "Escape") return;
+                if (!this._qvDialog.open || this._isMobile) return;
+                if (document.querySelector("dialog[open]:modal")) return;
+                this._close();
+            });
+        },
+        destroy() {
+            this._qvHandlers.forEach(([target, type, handler, options]) => {
+                target.removeEventListener(type, handler, options);
+            });
+        },
+        requestClose() {
+            this._close();
+        },
+        retry() {
+            htmx.ajax("GET", this._lastUrl, {
+                target: "#quick-view-body",
+                swap: "innerHTML",
+            });
+        },
+        followOpenLink(event) {
+            event.preventDefault();
+            this._close();
+            window.location.assign(this._openLink.href);
+        },
+        _open(trigger) {
+            if (!this._qvDialog.open) {
+                if (this._isMobile) {
+                    this._qvDialog.showModal();
+                } else {
+                    this._qvDialog.show();
+                }
+            }
+            this._title.textContent = trigger.dataset.quickViewTitle || "";
+            this._openLink.href = trigger.href;
+            // No focus trap and no scroll lock on desktop, so returning
+            // focus to the trigger is the only focus management needed
+            // there. The mobile modal sheet gets native focus containment.
+            if (!this._isMobile) trigger.focus();
+            this._qvTrigger = trigger;
+            this._syncExpanded();
+        },
+        _startLoading(trigger, url) {
+            const clone = this._skeletonTemplate.content.cloneNode(true);
+            const root = clone.firstElementChild;
+            if (root) {
+                Array.from(trigger.attributes)
+                    .filter((attr) => attr.name.startsWith("data-"))
+                    .forEach((attr) => root.setAttribute(attr.name, attr.value));
+            }
+            this._qvBody.replaceChildren(clone);
+            this._qvBody.setAttribute("aria-busy", "true");
+        },
+        _afterBodySwap(event) {
+            this._qvBody.removeAttribute("aria-busy");
+            const frame = this._qvBody.firstElementChild;
+            const title = (frame && frame.dataset.quickViewTitle) || "";
+            this._title.textContent = title;
+            this._entityId = frame ? frame.dataset.entityId : null;
+            this._shownUrl = event.detail.pathInfo.requestPath;
+            this._stale = false;
+            this._status.textContent = "Showing " + title;
+            this._registerRefreshEvents(frame ? frame.dataset.refreshEvents : "");
+        },
+        _handleBodyError(event) {
+            if (event.detail.target !== this._qvBody) return;
+            this._qvBody.removeAttribute("aria-busy");
+            this._qvBody.replaceChildren(this._errorTemplate.content.cloneNode(true));
+            this._lastUrl = event.detail.pathInfo.requestPath;
+        },
+        _syncExpanded() {
+            document.querySelectorAll('[aria-controls="quick-view"]').forEach((trigger) => {
+                const isShown =
+                    this._qvDialog.open && trigger.getAttribute("hx-get") === this._shownUrl;
+                trigger.setAttribute("aria-expanded", isShown ? "true" : "false");
+            });
+        },
+        // The events the shown content depends on. Turning them into live
+        // listeners — so a matching domain event can refetch or mark the
+        // drawer stale — is separate work; for now this only records them.
+        _registerRefreshEvents(names) {
+            this._refreshHandlers = (names || "").split(/\s+/).filter(Boolean);
+        },
+        _close() {
+            if (this._qvDialog.open) this._qvDialog.close();
         },
     }));
 

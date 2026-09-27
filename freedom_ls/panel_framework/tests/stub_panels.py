@@ -33,6 +33,7 @@ from freedom_ls.panel_framework.actions import (
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
+from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -128,8 +129,11 @@ class StubDataTable(DataTable):
         return [
             {
                 "header": "Name",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "name",
+                "url_name": "panel_framework_test:framework",
+                "url_path_template": "stubs/{pk}",
+                "quick_view": True,
                 "sortable": True,
             },
         ]
@@ -193,12 +197,18 @@ class StubInstanceView(InstanceView):
     panel = StubTabSet
 
 
+class StubQuickView(QuickView):
+    template_name = "panel_framework/test_stub_quick_view.html"
+    refresh_events = ("itemChanged",)
+
+
 class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     url_name = "stubs"
     menu_label = "Stubs"
     list_view = StubDataTable
     instance_view = StubInstanceView
     refresh_events = ("itemChanged",)
+    quick_view = StubQuickView
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
