@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from django.core.paginator import Page, Paginator
 from django.db.models import Q, QuerySet
@@ -30,7 +31,7 @@ class TableQuery:
         """
         params: dict[str, list[str]] = {}
         if self.search:
-            params[self.param("search")] = [self.search]
+            params[self.param("q")] = [self.search]
         if self.sort:
             params[self.param("sort")] = [self.sort]
         if self.page:
@@ -43,6 +44,17 @@ class TableQuery:
     def page_changes(self, number: int) -> dict[str, object]:
         """The `{% querystring %}` changes that link to page `number`."""
         return {self.param("page"): number}
+
+    def sort_changes(self, column: Column) -> dict[str, object]:
+        """The `{% querystring %}` changes that sort by `column`, flipping
+        its direction when it is already the sorted column. Sorting always
+        returns to page 1, since the current page may not exist in the new
+        order."""
+        currently_ascending = self.sort == column.sort_field
+        next_sort = (
+            f"-{column.sort_field}" if currently_ascending else column.sort_field
+        )
+        return {self.param("sort"): next_sort, self.param("page"): None}
 
 
 def page_links(page_obj: Page, query: TableQuery) -> dict[str, object]:
@@ -73,6 +85,62 @@ def page_links(page_obj: Page, query: TableQuery) -> dict[str, object]:
     }
 
 
+def hidden_inputs(
+    request: HttpRequest, query: TableQuery, exclude: tuple[str, ...]
+) -> list[tuple[str, str]]:
+    """Every current query parameter a table's search or sheet form must
+    carry as a hidden input, so submitting it doesn't drop another table's
+    state, an unrelated parameter, or this table's own state the form itself
+    doesn't already supply.
+
+    Every parameter outside this table's own namespace is carried as-is from
+    the request. This table's own state comes from `query.to_params()`
+    instead of the raw request, so a value that failed validation (an
+    unknown sort, a dropped filter) is never re-submitted, and `exclude`
+    leaves out the names the form's own fields already supply.
+    """
+    prefix = f"{query.key}-"
+    excluded_params = {query.param(name) for name in exclude}
+    pairs: list[tuple[str, str]] = [
+        (name, value)
+        for name, values in request.GET.lists()
+        if not name.startswith(prefix)
+        for value in values
+    ]
+    for name, values in query.to_params().items():
+        if name in excluded_params:
+            continue
+        pairs.extend((name, value) for value in values)
+    return pairs
+
+
+@dataclass
+class Column:
+    """One column of a table: what it shows and, if sortable, how it sorts.
+
+    A dataclass, so a typo in a declaration fails loudly instead of quietly
+    reading `None` from a dict. A cell template that needs more fields than
+    these gets a subclass, declared beside the table that uses it.
+    """
+
+    header: str
+    template: str
+    attr: str = ""
+    text_attr: str = ""
+    sortable: bool = False
+    sort_field: str = ""
+    url_name: str = ""
+    url_path_template: str = ""
+    htmx_nav: bool = False
+    header_class: str = ""
+    cell_class: str = ""
+    card: Literal["primary", "secondary", "md_only"] = "secondary"
+
+    def __post_init__(self) -> None:
+        if self.sortable and not self.sort_field:
+            self.sort_field = (self.text_attr or self.attr).replace(".", "__")
+
+
 class DataTable:
     """Abstract class used for rendering data tables"""
 
@@ -84,34 +152,26 @@ class DataTable:
         raise NotImplementedError
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         raise NotImplementedError
-
-    @classmethod
-    def _prepare_columns(cls) -> list[dict[str, object]]:
-        """Enrich columns: derive sort_field from text_attr/attr for sortable columns."""
-        columns: list[dict[str, object]] = cls.get_columns()
-        for col in columns:
-            if col.get("sortable") and "sort_field" not in col:
-                attr = col.get("text_attr") or col.get("attr", "")
-                if isinstance(attr, str):
-                    col["sort_field"] = attr.replace(".", "__")
-        return columns
 
     @classmethod
     def parse_query(cls, request: HttpRequest, key: str) -> TableQuery:
         """This table's own state from the request, keyed by `key`.
 
-        Only the page number is read under its prefixed name so far — search
-        and sort still read the old unprefixed `search`/`sort`/`order` names
-        two tables on one page would collide on, until every table's state is
-        namespaced by key.
+        A sort naming a field none of this table's columns sort by is
+        dropped rather than passed through to `order_by`, which would raise
+        `FieldError` on a guessed or stale query parameter.
         """
         page = request.GET.get(f"{key}-page", "1")
-        search = request.GET.get("search", "").strip()
-        sort_field = request.GET.get("sort", "")
-        order = request.GET.get("order", "asc")
-        sort = f"-{sort_field}" if sort_field and order == "desc" else sort_field
+        search = request.GET.get(f"{key}-q", "").strip()
+        sort = request.GET.get(f"{key}-sort", "")
+        sortable_fields = {
+            column.sort_field for column in cls.get_columns() if column.sortable
+        }
+        sort_field = sort[1:] if sort.startswith("-") else sort
+        if sort_field not in sortable_fields:
+            sort = ""
         return TableQuery(key=key, search=search, sort=sort, page=page)
 
     @classmethod
@@ -128,10 +188,7 @@ class DataTable:
                 search_filter |= Q(**{f"{search_field}__icontains": query.search})
             queryset = queryset.filter(search_filter)
 
-        columns = cls._prepare_columns()
-        sortable_fields = {col["sort_field"] for col in columns if col.get("sortable")}
-        sort_field = query.sort[1:] if query.sort.startswith("-") else query.sort
-        if sort_field in sortable_fields:
+        if query.sort:
             queryset = queryset.order_by(query.sort)
         return queryset
 
@@ -154,10 +211,36 @@ class DataTable:
         region_id: str,
     ) -> dict[str, object]:
         """Everything the table's region template needs to render one page."""
-        columns = cls._prepare_columns()
+        columns = cls.get_columns()
         page_obj = cls.get_rows(request, queryset, query)
+
+        def _sort_state(column: Column) -> Literal["asc", "desc", ""]:
+            if query.sort == column.sort_field:
+                return "asc"
+            if query.sort == f"-{column.sort_field}":
+                return "desc"
+            return ""
+
+        header_columns = [
+            {
+                "column": column,
+                "changes": query.sort_changes(column) if column.sortable else {},
+                "state": _sort_state(column) if column.sortable else "",
+            }
+            for column in columns
+        ]
+        sorted_by = next(
+            (
+                column.header
+                for column in columns
+                if column.sortable and _sort_state(column)
+            ),
+            "",
+        )
         return {
             "columns": columns,
+            "header_columns": header_columns,
+            "sorted_by": sorted_by,
             "rows": page_obj,
             "page_obj": page_obj,
             "query": query,
@@ -165,10 +248,5 @@ class DataTable:
             "page_url": page_url,
             "region_id": region_id,
             "pagination": page_links(page_obj, query),
-            # The old, unprefixed names the region template still renders
-            # from until slice 2 moves sort and search onto `query`.
-            "sort_by": request.GET.get("sort", ""),
-            "sort_order": request.GET.get("order", "asc"),
-            "show_search": bool(cls.search_fields),
-            "search_query": request.GET.get("search", "").strip(),
+            "hidden_inputs": hidden_inputs(request, query, exclude=("q", "page")),
         }

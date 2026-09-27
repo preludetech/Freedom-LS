@@ -560,7 +560,11 @@ def _respond(
             panel.get_context_data(),
         )
         if isinstance(panel, DataTablePanel):
-            response["HX-Push-Url"] = _history_url(panel, request)
+            history_url = _history_url(panel, request)
+            if request.headers.get("HX-Trigger") == f"{panel.table_key}-search":
+                response["HX-Replace-Url"] = history_url
+            else:
+                response["HX-Push-Url"] = history_url
         return response
     return render(
         request, "panel_framework/navigation_response.html", navigation_context

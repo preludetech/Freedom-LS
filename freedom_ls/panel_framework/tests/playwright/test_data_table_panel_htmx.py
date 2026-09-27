@@ -75,11 +75,9 @@ def test_pagination_preserves_sort_param_through_clicks(
     live_server_site,
     page: Page,
 ) -> None:
-    """Sorting then paginating must keep ``sort=name`` in the request URL —
-    proves the new ``pagination_suffix`` template tag round-trips query
-    params through pagination clicks, not just renders them in a given
-    context. The page number itself is now keyed by the list's table key,
-    ``stubs-page``."""
+    """Sorting then paginating must keep ``stubs-sort=name`` in the request
+    URL — proves sort state round-trips through pagination clicks under the
+    list's own table key, alongside ``stubs-page``."""
     [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
@@ -89,7 +87,7 @@ def test_pagination_preserves_sort_param_through_clicks(
     # the sort param baked in.
     page.get_by_role("link", name="Name").click()
     page2_link = page.get_by_role("link", name="2").first
-    expect(page2_link).to_have_attribute("href", re.compile(r"sort=name"))
+    expect(page2_link).to_have_attribute("href", re.compile(r"stubs-sort=name"))
     expect(page2_link).to_have_attribute("href", re.compile(r"stubs-page=2"))
 
 
@@ -136,3 +134,29 @@ def test_nested_table_pushes_page_url(
 
     expect(page).to_have_url(re.compile(r"__tabs/pair\?a-page=2$"))
     expect(page).not_to_have_url(re.compile(r"__panels"))
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_back_after_sort_restores_matching_table(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """Sorting pushes ``stubs-sort`` into history; paging further pushes
+    ``stubs-page`` too. Going back must restore the sorted-but-unpaged state,
+    in both the address bar and the rendered table."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("link", name="Name").click()
+    page.get_by_role("link", name="2").first.click()
+    expect(page).to_have_url(re.compile(r"stubs-page=2"))
+
+    page.go_back()
+
+    expect(page).to_have_url(re.compile(r"stubs-sort=name"))
+    expect(page).not_to_have_url(re.compile(r"stubs-page"))
+    first_row = page.locator("#stubs-table tbody tr").first
+    expect(first_row).to_contain_text("row-00")

@@ -1,82 +1,63 @@
 <c-vars columns=""
+        header_columns=""
         rows=""
         empty_message="No data available"
         class=""
         page_obj=""
-        sort_by=""
-        sort_order=""
+        query=""
+        hidden_inputs=""
+        sorted_by=""
         base_url=""
-        show_search=""
-        search_query=""
         region_id="data-table-container"
         page_url=""
         pagination="" />
 
-<div id="{{ region_id }}">
-    {% if show_search %}
-        <div class="mb-4">
-            <form hx-get="{{ base_url }}"
-                  hx-target="#{{ region_id }}"
-                  hx-trigger="submit, input delay:300ms from:#{{ region_id }}-search"
-                  hx-include="#{{ region_id }}-search"
-                  hx-swap="outerHTML">
-                <input type="search"
-                       id="{{ region_id }}-search"
-                       name="search"
-                       placeholder="Search..."
-                       value="{{ search_query }}"
-                       class="max-w-md">
-                {% if sort_by %}
-                    <input type="hidden" name="sort" value="{{ sort_by }}">
-                    <input type="hidden" name="order" value="{{ sort_order }}">
-                {% endif %}
-            </form>
-        </div>
-    {% endif %}
+<div id="{{ region_id }}" data-table-region>
+    <div class="mb-4">
+        <form id="{{ query.key }}-search"
+              method="get"
+              action="{{ page_url }}"
+              hx-get="{{ base_url }}"
+              hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
+              hx-sync="this:replace"
+              hx-target="#{{ region_id }}"
+              hx-swap="outerHTML">
+            {% for name, value in hidden_inputs %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+            <input type="search"
+                   id="{{ query.key }}-q"
+                   name="{{ query.key }}-q"
+                   placeholder="Search..."
+                   value="{{ query.search }}"
+                   class="max-w-md">
+        </form>
+    </div>
 
     <c-scroll-table-labels class="overflow-x-auto {{ class }}">
         <table>
                 <thead>
                     <tr>
-                        {% for column in columns %}
-                            <th {% if column.header_class %}class="{{ column.header_class }}"{% endif %}>
-                                {% if column.sortable %}
-                                    {% comment %}Sortable header{% endcomment %}
-                                    {% if sort_by == column.sort_field %}
-                                        {% comment %}Currently sorted by this column{% endcomment %}
-                                        {% if sort_order == 'asc' %}
-                                            <a href="?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                               hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=desc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                               hx-target="#{{ region_id }}"
-                                               hx-swap="outerHTML"
-                                               class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
-                                                {{ column.header }}
-                                                <c-icon name="sort_asc" class="size-4" />
-                                            </a>
+                        {% for header in header_columns %}
+                            <th {% if header.column.header_class %}class="{{ header.column.header_class }}"{% endif %}>
+                                {% if header.column.sortable %}
+                                    {% querystring request.GET header.changes as qs %}
+                                    <a href="{{ page_url }}{{ qs }}"
+                                       hx-get="{{ base_url }}{{ qs }}"
+                                       hx-target="#{{ region_id }}"
+                                       hx-swap="outerHTML"
+                                       class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
+                                        {{ header.column.header }}
+                                        {% if header.state == 'asc' %}
+                                            <c-icon name="sort_asc" class="size-4" />
+                                        {% elif header.state == 'desc' %}
+                                            <c-icon name="sort_desc" class="size-4" />
                                         {% else %}
-                                            <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                               hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                               hx-target="#{{ region_id }}"
-                                               hx-swap="outerHTML"
-                                               class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
-                                                {{ column.header }}
-                                                <c-icon name="sort_desc" class="size-4" />
-                                            </a>
-                                        {% endif %}
-                                    {% else %}
-                                        {% comment %}Not currently sorted{% endcomment %}
-                                        <a href="?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-get="{{ base_url }}?sort={{ column.sort_field }}&order=asc{% if search_query %}&search={{ search_query }}{% endif %}"
-                                           hx-target="#{{ region_id }}"
-                                           hx-swap="outerHTML"
-                                           class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
-                                            {{ column.header }}
                                             <c-icon name="sort_neutral" class="size-4 text-muted" />
-                                        </a>
-                                    {% endif %}
+                                        {% endif %}
+                                    </a>
                                 {% else %}
-                                    {% comment %}Non-sortable header{% endcomment %}
-                                    {{ column.header }}
+                                    {{ header.column.header }}
                                 {% endif %}
                             </th>
                         {% endfor %}
@@ -108,9 +89,6 @@
     <c-pagination :page_obj="page_obj"
                   :base_url="base_url"
                   :table_id="region_id"
-                  :sort_by="sort_by"
-                  :sort_order="sort_order"
-                  :search_query="search_query"
                   :links="pagination"
                   :page_url="page_url" />
 </div>

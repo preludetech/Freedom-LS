@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import cast
+from dataclasses import dataclass
+from typing import Literal, cast
 from uuid import UUID
 
 from django import forms
@@ -42,7 +43,7 @@ from freedom_ls.panel_framework.panels import (
     PanelStack,
     TabSet,
 )
-from freedom_ls.panel_framework.tables import DataTable, TableQuery
+from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -127,6 +128,55 @@ class OrganisationSectionConfig(SectionConfigBase):
 # instance, other actions (eg: send_email)
 
 
+@dataclass
+class RelationLinkColumn(Column):
+    """A cell listing every related object in `relation_set`, each linked
+    through `url_name`/`url_path_template` (inherited from `Column`) and
+    resolved against `link_object_attr`."""
+
+    relation_set: str = ""
+    link_object_attr: str = ""
+    link_text_attr: str = ""
+
+
+def _interface_link(
+    header: str,
+    text_attr: str,
+    path_template: str,
+    *,
+    sortable: bool = False,
+    card: Literal["primary", "secondary", "md_only"] = "secondary",
+) -> Column:
+    """A link column into the educator interface, the shape every table's
+    name/title column shares."""
+    return Column(
+        header=header,
+        template="cotton/data-table-cells/link.html",
+        text_attr=text_attr,
+        url_name="educator_interface:interface",
+        url_path_template=path_template,
+        htmx_nav=True,
+        sortable=sortable,
+        card=card,
+    )
+
+
+def _registration_columns() -> list[Column]:
+    """The Active/Registered columns the three registration tables share."""
+    return [
+        Column(
+            header="Active",
+            template="cotton/data-table-cells/boolean.html",
+            attr="is_active",
+        ),
+        Column(
+            header="Registered",
+            template="cotton/data-table-cells/text.html",
+            attr="registered_at",
+        ),
+    ]
+
+
 class CohortDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -141,25 +191,18 @@ class CohortDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "Cohort Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "cohorts/{pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Active Learners",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "learner_count",
-            },
-            {
-                "header": "Registered Courses",
-                "template": "educator_interface/data-table-cells/cohort_courses.html",
-            },
+            _interface_link("Cohort Name", "name", "cohorts/{pk}"),
+            Column(
+                header="Active Learners",
+                template="cotton/data-table-cells/text.html",
+                attr="learner_count",
+            ),
+            Column(
+                header="Registered Courses",
+                template="educator_interface/data-table-cells/cohort_courses.html",
+            ),
         ]
 
 
@@ -192,43 +235,33 @@ class LearnerDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "First Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.first_name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "learners/{pk}",
-                "sortable": True,
-                "htmx_nav": True,
-            },
-            {
-                "header": "Last Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "user.last_name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "learners/{pk}",
-                "sortable": True,
-                "htmx_nav": True,
-            },
-            {
-                "header": "Email",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "user.email",
-                # "sortable": True,
-            },
-            {
-                "header": "Cohorts",
-                "template": "educator_interface/data-table-cells/cohort_links.html",
-                "relation_set": "cohortmembership_set.all",
-                "link_object_attr": "cohort",
-                "link_text_attr": "cohort.name",
-            },
-            {
-                "header": "Registered Courses",
-                "template": "educator_interface/data-table-cells/learner_courses.html",
-            },
+            _interface_link(
+                "First Name", "user.first_name", "learners/{pk}", sortable=True
+            ),
+            _interface_link(
+                "Last Name", "user.last_name", "learners/{pk}", sortable=True
+            ),
+            Column(
+                header="Email",
+                template="cotton/data-table-cells/text.html",
+                attr="user.email",
+                # sortable=True,
+            ),
+            RelationLinkColumn(
+                header="Cohorts",
+                template="educator_interface/data-table-cells/cohort_links.html",
+                relation_set="cohortmembership_set.all",
+                link_object_attr="cohort",
+                link_text_attr="cohort.name",
+                url_name="educator_interface:interface",
+                url_path_template="cohorts/{pk}",
+            ),
+            Column(
+                header="Registered Courses",
+                template="educator_interface/data-table-cells/learner_courses.html",
+            ),
         ]
 
 
@@ -300,26 +333,10 @@ class CohortCourseRegistrationDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "Course",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "course.title",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "courses/{course.pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Active",
-                "template": "cotton/data-table-cells/boolean.html",
-                "attr": "is_active",
-            },
-            {
-                "header": "Registered",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "registered_at",
-            },
+            _interface_link("Course", "course.title", "courses/{course.pk}"),
+            *_registration_columns(),
         ]
 
 
@@ -498,43 +515,38 @@ class CourseDataTable(DataTable):
         return page_obj
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "Title",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "title",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "courses/{pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Visibility",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "get_visibility_display",
-            },
-            {
-                "header": "Interest",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "interest_count",
-            },
-            {
-                "header": "Active Learners",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "total_learner_count",
-            },
-            {
-                "header": "Active Cohorts",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "cohort_count",
-            },
-            {
-                "header": "Cohorts",
-                "template": "educator_interface/data-table-cells/cohort_links.html",
-                "relation_set": "cohort_registrations.all",
-                "link_object_attr": "cohort",
-                "link_text_attr": "cohort.name",
-            },
+            _interface_link("Title", "title", "courses/{pk}"),
+            Column(
+                header="Visibility",
+                template="cotton/data-table-cells/text.html",
+                attr="get_visibility_display",
+            ),
+            Column(
+                header="Interest",
+                template="cotton/data-table-cells/text.html",
+                attr="interest_count",
+            ),
+            Column(
+                header="Active Learners",
+                template="cotton/data-table-cells/text.html",
+                attr="total_learner_count",
+            ),
+            Column(
+                header="Active Cohorts",
+                template="cotton/data-table-cells/text.html",
+                attr="cohort_count",
+            ),
+            RelationLinkColumn(
+                header="Cohorts",
+                template="educator_interface/data-table-cells/cohort_links.html",
+                relation_set="cohort_registrations.all",
+                link_object_attr="cohort",
+                link_text_attr="cohort.name",
+                url_name="educator_interface:interface",
+                url_path_template="cohorts/{pk}",
+            ),
         ]
 
 
@@ -554,26 +566,10 @@ class CourseCohortRegistrationDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "Cohort",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "cohort.name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "cohorts/{cohort.pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Active",
-                "template": "cotton/data-table-cells/boolean.html",
-                "attr": "is_active",
-            },
-            {
-                "header": "Registered",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "registered_at",
-            },
+            _interface_link("Cohort", "cohort.name", "cohorts/{cohort.pk}"),
+            *_registration_columns(),
         ]
 
 
@@ -603,39 +599,20 @@ class CourseLearnerRegistrationDataTable(DataTable):
         )
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "First Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "learner.user.first_name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "learners/{learner.pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Last Name",
-                "template": "cotton/data-table-cells/link.html",
-                "text_attr": "learner.user.last_name",
-                "url_name": "educator_interface:interface",
-                "url_path_template": "learners/{learner.pk}",
-                "htmx_nav": True,
-            },
-            {
-                "header": "Email",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "learner.user.email",
-            },
-            {
-                "header": "Active",
-                "template": "cotton/data-table-cells/boolean.html",
-                "attr": "is_active",
-            },
-            {
-                "header": "Registered",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "registered_at",
-            },
+            _interface_link(
+                "First Name", "learner.user.first_name", "learners/{learner.pk}"
+            ),
+            _interface_link(
+                "Last Name", "learner.user.last_name", "learners/{learner.pk}"
+            ),
+            Column(
+                header="Email",
+                template="cotton/data-table-cells/text.html",
+                attr="learner.user.email",
+            ),
+            *_registration_columns(),
         ]
 
 

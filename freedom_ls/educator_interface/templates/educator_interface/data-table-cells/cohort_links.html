@@ -1,7 +1,10 @@
 {% load data_table_tags panel_tags %}
 {% with items=object|getattr_str:column.relation_set %}
 {% for item in items %}
-    <a href="{% resolve_url_path_template item|getattr_str:column.link_object_attr 'educator_interface:interface' 'cohorts/{pk}' %}">{{ item|getattr_str:column.link_text_attr }}</a>{% if not forloop.last %}, {% endif %}
+    {% with link_object=item|getattr_str:column.link_object_attr %}
+        {% resolve_url_path_template link_object column.url_name column.url_path_template as resolved_url %}
+        <a href="{{ resolved_url }}">{{ item|getattr_str:column.link_text_attr }}</a>{% if not forloop.last %}, {% endif %}
+    {% endwith %}
 {% empty %}
     -
 {% endfor %}

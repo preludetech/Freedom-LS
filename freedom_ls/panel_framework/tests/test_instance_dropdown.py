@@ -8,7 +8,7 @@ from django.db.models import Model, QuerySet
 from django.http import HttpRequest
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import Column, DataTable
 from freedom_ls.panel_framework.views import (
     InstanceView,
     ListViewConfig,
@@ -91,13 +91,11 @@ class StubDataTable(DataTable):
         return qs
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "Name",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "name",
-            },
+            Column(
+                header="Name", template="cotton/data-table-cells/text.html", attr="name"
+            ),
         ]
 
 

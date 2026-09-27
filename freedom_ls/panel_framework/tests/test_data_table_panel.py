@@ -141,3 +141,77 @@ def test_plain_get_renders_pushed_state(mock_site_context: Site) -> None:
     assert "row-29" in table_a.text_content()
     assert "row-00" not in table_a.text_content()
     assert 'data-panel="a"' in html
+
+
+def test_search_trigger_sets_replace_url(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x")
+
+    response = fetch(
+        _panel_path(stub.pk),
+        data={"stub-q": "row"},
+        htmx=True,
+        hx_target=_region_id(),
+        hx_trigger="stub-search",
+    )
+
+    assert "HX-Push-Url" not in response
+    assert (
+        response["HX-Replace-Url"]
+        == f"/test-panel/framework/{_panel_path(stub.pk)}?stub-q=row"
+    )
+
+
+def test_sort_link_resets_page(mock_site_context: Site) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+
+    html = fetch(
+        f"stubs/{stubs[0].pk}/__tabs/pair", data={"a-page": "2"}
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table_a,) = document.cssselect("#a-table")
+    sort_links = [
+        link
+        for link in table_a.cssselect("a[href]")
+        if "a-sort=name" in link.get("href", "")
+    ]
+    assert sort_links
+    for link in sort_links:
+        assert "a-page" not in link.get("href")
+
+
+def test_search_text_is_url_encoded(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x")
+
+    html = fetch(_panel_path(stub.pk), data={"stub-q": "a & b + c #"}).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (search_input,) = document.cssselect("input[name='stub-q']")
+    assert search_input.get("value") == "a & b + c #"
+    (sort_link,) = [
+        link
+        for link in document.cssselect("a[href]")
+        if "stub-sort=name" in link.get("href", "")
+    ]
+    href = sort_link.get("href")
+    assert "stub-q=a" in href
+    assert "%26" in href  # the encoded "&"
+    assert "%2B" in href  # the encoded "+"
+    assert "%23" in href  # the encoded "#"
+
+
+def test_search_form_hidden_inputs_carry_other_state(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x")
+
+    html = fetch(
+        _panel_path(stub.pk), data={"stub-sort": "name", "b-page": "2"}
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (form,) = document.cssselect("#stub-search")
+    names = [element.get("name") for element in form.cssselect("input[type='hidden']")]
+    assert names.count("stub-sort") == 1
+    assert "stub-q" not in names
+    assert "stub-page" not in names
+    assert "b-page" in names
+    assert len(names) == len(set(names))

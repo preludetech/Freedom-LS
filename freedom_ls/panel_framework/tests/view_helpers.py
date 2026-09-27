@@ -21,6 +21,7 @@ def make_request(
     data: dict[str, str] | None = None,
     htmx: bool = False,
     hx_target: str = "",
+    hx_trigger: str = "",
     restore: bool = False,
 ) -> HttpRequest:
     """A request from a logged-in staff user for `path_string` under the stub URLconf."""
@@ -29,6 +30,8 @@ def make_request(
         headers["HTTP_HX_REQUEST"] = "true"
     if hx_target:
         headers["HTTP_HX_TARGET"] = hx_target
+    if hx_trigger:
+        headers["HTTP_HX_TRIGGER"] = hx_trigger
     if restore:
         headers["HTTP_HX_HISTORY_RESTORE_REQUEST"] = "true"
     request: HttpRequest = getattr(RequestFactory(), method)(

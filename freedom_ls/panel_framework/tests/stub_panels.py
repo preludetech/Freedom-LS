@@ -35,7 +35,7 @@ from freedom_ls.panel_framework.panels import (
     PanelStack,
     TabSet,
 )
-from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.panel_framework.tables import Column, DataTable
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -146,14 +146,14 @@ class StubDataTable(DataTable):
         return cast(QuerySet, _stub_model().objects.order_by("name"))
 
     @staticmethod
-    def get_columns() -> list[dict[str, object]]:
+    def get_columns() -> list[Column]:
         return [
-            {
-                "header": "Name",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "name",
-                "sortable": True,
-            },
+            Column(
+                header="Name",
+                template="cotton/data-table-cells/text.html",
+                attr="name",
+                sortable=True,
+            ),
         ]
 
 
