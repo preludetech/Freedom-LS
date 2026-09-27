@@ -237,10 +237,20 @@ class DataTable:
             ),
             "",
         )
+        if page_obj.paginator.count == 0:
+            announcement = "No results"
+        else:
+            announcement = (
+                f"Showing {page_obj.start_index()}\u2013{page_obj.end_index()} "
+                f"of {page_obj.paginator.count}"
+            )
+            if sorted_by:
+                announcement += f", sorted by {sorted_by}"
         return {
             "columns": columns,
             "header_columns": header_columns,
             "sorted_by": sorted_by,
+            "announcement": announcement,
             "searchable": bool(cls.search_fields),
             "rows": page_obj,
             "page_obj": page_obj,

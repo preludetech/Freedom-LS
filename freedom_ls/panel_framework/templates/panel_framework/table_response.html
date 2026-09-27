@@ -1,0 +1,6 @@
+{% comment %}
+A table region swap, plus an announcement for screen-reader users, who would
+otherwise not hear that the rows below changed.
+{% endcomment %}
+{% include region_template_name %}
+{% include "panel_framework/partials/announcer.html" with message=announcement oob=True only %}

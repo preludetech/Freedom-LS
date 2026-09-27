@@ -554,17 +554,18 @@ def _respond(
             {"panel": panel, "announcement": f"Showing {panel.title}"},
         )
     if hx_target == panel.region_id:
-        response = render(
-            request,
-            panel.region_template_name or panel.template_name,
-            panel.get_context_data(),
-        )
+        context = panel.get_context_data()
         if isinstance(panel, DataTablePanel):
+            response = render(request, "panel_framework/table_response.html", context)
             history_url = _history_url(panel, request)
             if request.headers.get("HX-Trigger") == f"{panel.table_key}-search":
                 response["HX-Replace-Url"] = history_url
             else:
                 response["HX-Push-Url"] = history_url
+        else:
+            response = render(
+                request, panel.region_template_name or panel.template_name, context
+            )
         return response
     return render(
         request, "panel_framework/navigation_response.html", navigation_context

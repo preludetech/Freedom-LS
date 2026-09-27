@@ -160,3 +160,22 @@ def test_back_after_sort_restores_matching_table(
     expect(page).not_to_have_url(re.compile(r"stubs-page"))
     first_row = page.locator("#stubs-table tbody tr").first
     expect(first_row).to_contain_text("row-00")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_focus_moves_to_table_anchor_after_swap(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """A sort click swaps the table region; the reader's focus should land on
+    the table's own anchor, not stay behind on the removed sort link."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("link", name="Name").click()
+
+    anchor = page.locator("#stubs-table [data-table-anchor]")
+    expect(anchor).to_be_focused()

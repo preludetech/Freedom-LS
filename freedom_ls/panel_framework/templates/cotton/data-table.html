@@ -14,6 +14,7 @@
         pagination="" />
 
 <div id="{{ region_id }}" data-table-region>
+    <div tabindex="-1" data-table-anchor></div>
     {% if searchable %}
         <div class="mb-4">
             <form id="{{ query.key }}-search"

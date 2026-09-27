@@ -255,6 +255,52 @@ def test_a_table_with_search_fields_renders_a_search_input(
     assert 'type="search"' in html
 
 
+def test_region_response_includes_announcement(mock_site_context: Site) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+
+    html = fetch(
+        _panel_path(stubs[0].pk), htmx=True, hx_target=_region_id()
+    ).content.decode()
+
+    assert 'hx-swap-oob="innerHTML:#scope-announcer"' in html
+    assert "Showing 1\u201325 of 30" in html
+    assert ", sorted by" not in html
+
+
+def test_region_response_announcement_includes_sort(mock_site_context: Site) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+
+    html = fetch(
+        _panel_path(stubs[0].pk),
+        data={"stub-sort": "name"},
+        htmx=True,
+        hx_target=_region_id(),
+    ).content.decode()
+
+    assert "Showing 1\u201325 of 30, sorted by Name" in html
+
+
+def test_region_response_announcement_with_no_rows(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x")
+
+    html = fetch(
+        _panel_path(stub.pk),
+        data={"stub-q": "no-match"},
+        htmx=True,
+        hx_target=_region_id(),
+    ).content.decode()
+
+    assert "No results" in html
+
+
+def test_plain_get_has_no_announcer_fragment(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x")
+
+    html = fetch(_panel_path(stub.pk)).content.decode()
+
+    assert "hx-swap-oob" not in html
+
+
 def test_search_form_hidden_inputs_carry_other_state(mock_site_context: Site) -> None:
     stub = _make_stub(name="row-x")
 

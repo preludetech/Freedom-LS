@@ -71,3 +71,15 @@ document.addEventListener("panelChanged", (event) => {
     const heading = document.getElementById("instance-title");
     if (title && heading) heading.textContent = title;
 });
+
+// A table region swap replaces the whole region element (outerHTML), so the
+// element in event.detail.target is the one about to be removed. Look the
+// new element back up by id and focus its anchor, so a sort, search or page
+// click moves focus onto the table instead of leaving it on a removed link.
+document.addEventListener("htmx:afterSettle", (event) => {
+    const target = event.detail.target;
+    if (!target || !target.hasAttribute("data-table-region")) return;
+    const region = document.getElementById(target.id);
+    const anchor = region && region.querySelector("[data-table-anchor]");
+    if (anchor) anchor.focus();
+});
