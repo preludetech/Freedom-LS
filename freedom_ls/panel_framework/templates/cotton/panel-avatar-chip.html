@@ -1,0 +1,51 @@
+<c-vars name="" user_id="" initials="" secondary="" size="md" name_hidden="" />
+
+{% load panel_tags %}
+
+{% comment %}
+Avatar chip — an initials circle beside a name, e.g. a learner row's leading
+element.
+
+Attributes:
+  name         Display name, and the accessible name (required).
+  user_id      Picks the colour slot, via the `avatar_slot` filter
+                (required).
+  initials     Overrides the initials derived from `name` (default none:
+               derive from the first and last words, uppercased; one word
+               gives one letter, an empty name gives none).
+  secondary    Email or role, second line, text-muted (default none).
+  size         "md" (default, list rows) or "lg" (profile header).
+  name_hidden  Falsy (default). Truthy: the name and second line are not
+               rendered, for a caller that shows the name itself (the
+               attention row's subject link, so the row keeps one visible
+               subject rather than two).
+
+The initials circle is aria-hidden; the name carries the accessible name.
+
+Six colour slots, not the course accent slots theme.css reserves for course
+branding: `success`, `warning` and `error` are left out so no avatar can be
+mistaken for a status. Each is a `color-mix` of a role token into
+`--color-surface` at 22% or 42%, chosen so the mix stays light enough for
+`text-on-surface` (near-black in both shipped themes) to clear 4.5:1 against
+it. A theme recolours the set by redefining these properties or shadowing
+this component.
+{% endcomment %}
+
+<style>@layer components {
+    .panel-avatar-1 { background-color: color-mix(in oklab, var(--color-primary) 22%, var(--color-surface)); }
+    .panel-avatar-2 { background-color: color-mix(in oklab, var(--color-secondary) 22%, var(--color-surface)); }
+    .panel-avatar-3 { background-color: color-mix(in oklab, var(--color-accent) 25%, var(--color-surface)); }
+    .panel-avatar-4 { background-color: color-mix(in oklab, var(--color-info) 22%, var(--color-surface)); }
+    .panel-avatar-5 { background-color: color-mix(in oklab, var(--color-primary) 42%, var(--color-surface)); }
+    .panel-avatar-6 { background-color: color-mix(in oklab, var(--color-secondary) 42%, var(--color-surface)); }
+}</style>
+
+<div class="flex items-center gap-3" {{ attrs }}>
+    <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
+    {% if not name_hidden %}
+        <span class="min-w-0">
+            <span class="block truncate">{{ name }}</span>
+            {% if secondary %}<span class="block truncate text-sm text-muted">{{ secondary }}</span>{% endif %}
+        </span>
+    {% endif %}
+</div>

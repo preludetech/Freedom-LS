@@ -1,4 +1,6 @@
 import re
+import uuid
+import zlib
 
 from django import template
 from django.template.loader import render_to_string
@@ -35,6 +37,29 @@ def heading_level(value: str, default: str) -> str:
 def clamp_percentage(value: int | float | str) -> int:
     """Clamp a percentage to the 0-100 range the progress bar can render."""
     return min(100, max(0, int(float(value))))
+
+
+@register.filter
+def avatar_slot(value: int | str | uuid.UUID) -> int:
+    """Pick one of six avatar colour slots for `value`.
+
+    `crc32` (unlike `hash()`) is stable across processes, so the same id
+    always lands in the same slot for every request and every worker.
+    """
+    return zlib.crc32(str(value).encode()) % 6 + 1
+
+
+@register.filter
+def initials(name: str) -> str:
+    """Derive avatar initials from the first and last words of `name`.
+
+    One word gives one letter, and an empty name gives none.
+    """
+    words = str(name).split()
+    if not words:
+        return ""
+    letters = words[0][0] if len(words) == 1 else words[0][0] + words[-1][0]
+    return letters.upper()
 
 
 @register.simple_tag

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from types import SimpleNamespace
 
 import pytest
@@ -12,8 +13,10 @@ from django.test import RequestFactory
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.templatetags.panel_tags import (
+    avatar_slot,
     clamp_percentage,
     heading_level,
+    initials,
     tone,
 )
 
@@ -139,3 +142,38 @@ def test_clamp_percentage_clamps_to_0_100(
     value: int | float | str, expected: int
 ) -> None:
     assert clamp_percentage(value) == expected
+
+
+def test_avatar_slot_is_within_1_to_6() -> None:
+    for value in range(20):
+        assert 1 <= avatar_slot(value) <= 6
+
+
+def test_avatar_slot_is_the_same_for_an_int_and_its_string() -> None:
+    assert avatar_slot(42) == avatar_slot("42")
+
+
+def test_avatar_slot_is_stable_across_repeated_calls() -> None:
+    assert avatar_slot(42) == avatar_slot(42)
+
+
+def test_avatar_slot_is_stable_for_a_uuid() -> None:
+    value = uuid.uuid4()
+
+    assert avatar_slot(value) == avatar_slot(value)
+
+
+def test_avatar_slot_spreads_across_more_than_one_slot() -> None:
+    slots = {avatar_slot(user_id) for user_id in range(20)}
+
+    assert len(slots) > 1
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("Thandi Mokoena", "TM"), ("Cher", "C"), ("", "")],
+)
+def test_initials_derives_from_the_first_and_last_words(
+    name: str, expected: str
+) -> None:
+    assert initials(name) == expected
