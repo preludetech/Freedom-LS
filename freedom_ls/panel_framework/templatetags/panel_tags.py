@@ -31,6 +31,12 @@ def heading_level(value: str, default: str) -> str:
     return value if str(value) in HEADING_LEVELS else default
 
 
+@register.filter
+def clamp_percentage(value: int | float | str) -> int:
+    """Clamp a percentage to the 0-100 range the progress bar can render."""
+    return min(100, max(0, int(float(value))))
+
+
 @register.simple_tag
 def render_panel(panel: Panel) -> SafeString:
     """Render a bound panel through its own template and context.

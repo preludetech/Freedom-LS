@@ -1,0 +1,61 @@
+<c-vars percentage="0" label="Progress" show_label="" />
+
+{% load panel_tags %}
+
+{% comment %}
+Progress bar — a native <progress> with its percentage as text beside it.
+
+Attributes:
+  percentage   0-100 (default 0). Clamped by the `clamp_percentage` filter,
+               so an out-of-range value never renders an invalid `value`.
+  label        The <progress> aria-label (default "Progress"), and visible
+               text when show_label is set.
+  show_label   Falsy (default): label is only the aria-label. Truthy: label
+               also renders as visible text beside the bar.
+
+Unlike `c-course-progress-bar`, the fill is `--color-primary`, a UI role
+token, not a course accent slot: this bar sits in educator chrome, which has
+no course to tint from. It is a candidate to move next to the learner
+interface's progress bar once that pattern is shared rather than duplicated.
+
+Under forced-colors, a border and the Field/Highlight system colours keep
+the track and fill visible once tinted backgrounds are suppressed.
+{% endcomment %}
+
+<style>
+@layer components {
+    /* Firefox reads the track colour from the element's own background,
+       not from a pseudo-element, unlike Chrome/Safari below. */
+    .panel-progress-bar {
+        background-color: var(--color-surface-2);
+    }
+    .panel-progress-bar::-webkit-progress-bar {
+        background-color: var(--color-surface-2);
+    }
+    .panel-progress-bar::-webkit-progress-value,
+    .panel-progress-bar::-moz-progress-bar {
+        background-color: var(--color-primary);
+    }
+
+    @media (forced-colors: active) {
+        .panel-progress-bar {
+            border: 1px solid CanvasText;
+        }
+        .panel-progress-bar::-webkit-progress-bar {
+            background-color: Field;
+        }
+        .panel-progress-bar::-webkit-progress-value,
+        .panel-progress-bar::-moz-progress-bar {
+            background-color: Highlight;
+        }
+    }
+}
+</style>
+
+{% with value=percentage|clamp_percentage %}
+<div class="flex items-center gap-2" {{ attrs }}>
+    {% if show_label %}<span class="text-sm text-muted">{{ label }}</span>{% endif %}
+    <progress class="panel-progress-bar w-full h-2 rounded-full overflow-hidden" aria-label="{{ label }}" value="{{ value }}" max="100">{{ value }}%</progress>
+    <span class="text-sm font-medium tabular-nums text-muted whitespace-nowrap">{{ value }}%</span>
+</div>
+{% endwith %}

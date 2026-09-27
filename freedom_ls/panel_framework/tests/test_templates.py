@@ -15,6 +15,7 @@ from django.db.models import Model
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 
+from freedom_ls.base.theming import FREEDOM_LS_PACKAGE_DIR
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, TabSet
 
@@ -24,6 +25,7 @@ from .stub_panels import StubDetailsPanel, StubHiddenPanel
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 OVERRIDES_DIR = Path(__file__).resolve().parent / "template_overrides"
 COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
+TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
 
 RAW_HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
 RAW_TAILWIND_PALETTE_CLASS = re.compile(
@@ -160,8 +162,11 @@ def test_forced_colours_rules_live_with_their_components() -> None:
     """Each component's forced-colors rule is proved from its own source,
     not from the built CSS, so a later slice's rule shows up here too."""
     status_badge = (COMPONENTS_DIR / "panel-status-badge.html").read_text()
+    progress_bar = (COMPONENTS_DIR / "panel-progress-bar.html").read_text()
 
     assert "forced-colors:border" in status_badge
+    assert "forced-colors: active" in progress_bar
+    assert "panel-progress-bar" not in TAILWIND_COMPONENTS_CSS.read_text()
 
 
 def test_no_panel_component_uses_raw_colours() -> None:

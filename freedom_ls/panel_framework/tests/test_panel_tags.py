@@ -11,7 +11,11 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.templatetags.panel_tags import heading_level, tone
+from freedom_ls.panel_framework.templatetags.panel_tags import (
+    clamp_percentage,
+    heading_level,
+    tone,
+)
 
 from .conftest import _make_stub
 from .stub_panels import StubDetailsPanel
@@ -125,3 +129,13 @@ def test_heading_level_falls_back_to_the_default_for_anything_else(
     value: str,
 ) -> None:
     assert heading_level(value, "2") == "2"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(-5, 0), (150, 100), ("72", 72), (72.6, 72)],
+)
+def test_clamp_percentage_clamps_to_0_100(
+    value: int | float | str, expected: int
+) -> None:
+    assert clamp_percentage(value) == expected
