@@ -18,7 +18,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `referral-attribution-over-time`
 - `retry-sent-emails`
 - `test-organisation-and-hygene-2-sdd-review-and-boy-scout`
-- `test-organisation-and-hygene-3-enforcement-checks`
 - `user-communication-3-messaging-policy`
 
 ## Needs work on main first
@@ -240,7 +239,7 @@ standard up. Specs 4 to 15 clean up to it.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 2 | `test-organisation-and-hygene-2-sdd-review-and-boy-scout` | `implement_plan` writes tests with the testing skills loaded, reviews each batch for test organisation, and runs a boy-scout agent that tidies touched tests and flags obvious bugs. | `test-organisation-and-hygene-1-testing-standards` | next |
-| 3 | `test-organisation-and-hygene-3-enforcement-checks` | Pre-commit and CI checks for both rules: import-linter contracts generated with `docs/app_structure.md`, a mirroring script, and baselines of today's violations that only shrink. | `test-organisation-and-hygene-1-testing-standards` | next |
+| 3 | `test-organisation-and-hygene-3-enforcement-checks` | Pre-commit and CI checks for both rules: import-linter contracts generated with `docs/app_structure.md`, a mirroring script, and baselines of today's violations that only shrink. | `test-organisation-and-hygene-1-testing-standards` | in progress |
 | 4 | `test-organisation-and-hygene-4-shared-test-infrastructure` | Root `conftest.py` and `freedom_ls/tests/`: the Playwright re-export, fixture placement, `SiteFactory` moved to `site_aware_models`, missing optional-app collection guards, dead test directories. | `test-organisation-and-hygene-3-enforcement-checks` | next |
 | 5 | `test-organisation-and-hygene-5-foundational-apps` | `site_aware_models`, `role_based_permissions`, `organisations`, `base`: local stub models replace borrowed downstream models. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
 | 6 | `test-organisation-and-hygene-6-small-apps` | The apps with one violation or none: `health`, `content_base`, `icons`, `qa_helpers`, `webhooks`, `mail`, `google_tag`, `dev_tools`, `course_interest`, `course_recommendations`, `deployment`, `referral_tracking`, `contrib/conformance`. | `test-organisation-and-hygene-4-shared-test-infrastructure` | next |
@@ -286,7 +285,7 @@ External edge: 15 needs `educator-interface-12-docs-and-polish`.
 These were settled with the product owner while cutting the specs. The ideas rely on them and do not reopen them.
 
 1. **Hygiene means placement plus layering.** The two rules, and conftest, fixture scope and factory layering. General test quality (weak assertions, redundant tests, coverage) is not in this effort.
-2. **The boy scout fixes test organisation only.** In code it touches it also flags obvious, genuinely broken code without fixing it. When a flagged item turns out not to be a bug, a comment at that spot says why, so it is not flagged again.
+2. **The boy scout fixes test organisation only.** In code it touches it also flags obvious, genuinely broken code without fixing it. The user decides each flagged item in the conversation, never the boy scout. When one turns out not to be a bug, a comment at that spot says why, so it is not flagged again. Nothing extra goes into the PR. A short record of what the boy scout and the review did lives in the spec directory instead.
 3. **Both rules are enforced by pre-commit and CI.** A baseline of today's violations keeps the checks green on the day they land, so only new violations fail. Each cleanup spec deletes its apps' baseline lines. The rule 2 baseline is edited by hand and never regenerated.
 4. **The cleanup is grouped by the kind of fix**, not one spec per app.
 5. **`educator_interface` is cleaned up after its rebuild**, not before.
@@ -301,7 +300,7 @@ Nobody asked about these; they were judgement calls. Say so in the spec if one t
 - **A model relation declared by string label is a runtime dependency** (`"content_engine.Course"`, `settings.AUTH_USER_MODEL`) on the app that owns the model, even though the import graph cannot see it.
 - **`SiteFactory` belongs in `site_aware_models`**, which every site-aware app already depends on. Spec 4 moves it.
 - **A test that spans apps belongs in the lowest app that depends on every app it touches.**
-- **The boy scout's limits.** "Touched" means test files the batch adds or edits. It makes only behaviour-preserving moves. Its budget is about 3 test files moved and 1 cross-app dependency removed per branch; beyond that it records a follow-up against the matching cleanup spec. It makes its own labelled commit in the same PR, with the move in one commit and the edit in the next.
+- **The boy scout's limits.** "Touched" means files the batch's own commit adds or edits. It makes only behaviour-preserving moves. Its budget is about 3 test files moved and 1 cross-app dependency removed per branch, and it covers mess that was already there. The batch's own organisation mistakes are the review's to fix and don't count against it. Beyond the budget it records a follow-up against the matching cleanup spec, or a new idea when no cleanup spec covers the app. It makes its own labelled commits, separate from the batch's, with the move in one commit and the edit in the next.
 - **The mirroring check gates "every test file maps to a source module"**, with an exemption list (conftest, factories, underscore helpers, Playwright directories). It does not gate "every module has a test".
 - **The checks are dev-time only.** They sit in the dev dependency group and run outside pytest, and none of it ships to downstream projects.
 
@@ -314,7 +313,6 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | How a test grants a role when its app does not depend on `role_based_permissions` at runtime: an intrinsic dependency, a runtime edge the graph misses, or a local fixture. | 1 | 5, 8, 11, 13, 15 |
 | How the rule 2 check and `docs/app_structure.md` learn the string-label relation edges and the `UserFactory` allowance. | 3 | 6, 9, 12 |
 | Keep the root conftest's Playwright wildcard re-export or scope it to Playwright directories; where `course_with_scored_quiz` and `sit_quiz` live. | 4 | 13, 14 |
-| Where a flagged bug is reported and who decides it is not a bug. | 2 | none |
 | Which app receives `accounts`' integration tests such as `test_deferred_login.py`. Only `qa_helpers` depends on every app it touches. | 12 | 13, 14 |
 | Where the `content_engine` demo-content and KaTeX test files go. | 10 | none |
 | Whether the rebuilt `educator_interface` calls `role_based_permissions` from its own code. | 15 | none |
