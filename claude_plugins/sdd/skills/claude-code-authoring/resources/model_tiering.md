@@ -11,7 +11,8 @@ Source: https://code.claude.com/docs/en/sub-agents · https://code.claude.com/do
 - **Haiku** (`sdd:sdd-mechanic`, + low/medium `effort`): test runs, git commits, todo ticking, file
   moves, worktree housekeeping — well-scoped, low-reasoning, tool-driven.
 - **Sonnet** (`sdd:sdd-worker`): non-interactive fan-out units (research, review dimensions, scans).
-- **Sonnet** (`sdd:sdd-implementer`): Bash/Edit work that needs judgement (plan batches, fixes).
+- **Sonnet** (`sdd:sdd-implementer`, `sdd:sdd-boy-scout`): Bash/Edit work that needs judgement (plan
+  batches, fixes, tidying a batch's touched test files).
 - **Session model (depth 0):** interactive authoring/review commands (spec/plan/review) — so run the
   session itself on a strong model.
 - Caveat: if a "mechanical" step must interpret an ambiguous failure, keep that judgement at depth 0

@@ -54,15 +54,16 @@ The `Pre-test rebuild` key in the same section names a script `/sdd:finish_workt
 `.claude/sdd/` config). It expects the shared launcher artifacts (`claude.sh`, the `SessionStart` hook,
 the `.gitignore` `settings.local.json` line) to exist and does not create them.
 
-### Agents (5)
+### Agents (6)
 `sdd-worker` (Sonnet) — one non-interactive unit of fan-out work (research topic / review dimension /
 scan); `sdd-mechanic` (Haiku) — mechanical chores (test runs, commits, file moves, todo ticking);
-`sdd-implementer` (Sonnet) — one unit of implementation work, test first, a plan batch or a fix. Spawn
-one per unit from a depth-0 SDD command. Each agent's `model:` frontmatter sets its tier. `qa-data-helper` (Opus) — creates, resets or
+`sdd-implementer` (Sonnet) — one unit of implementation work, test first, a plan batch or a fix;
+`sdd-boy-scout` (Sonnet) — tidies test organisation in one batch's touched files within a budget.
+Spawn one per unit from a depth-0 SDD command. Each agent's `model:` frontmatter sets its tier. `qa-data-helper` (Opus) — creates, resets or
 deletes development-database records a QA run needs, following the project's `Data helper guide`; its
 memory lives at `.claude/agent-memory/sdd-qa-data-helper/`. `qa-bugfixer` (Sonnet) — fixes one
-QA-reported bug TDD-style (failing test, fix, targeted tier, commit). `sdd-implementer` and
-`qa-bugfixer` load the skills under `## Testing Skills` in `.claude/sdd/config.md`.
+QA-reported bug TDD-style (failing test, fix, targeted tier, commit). `sdd-implementer`,
+`sdd-boy-scout` and `qa-bugfixer` load the skills under `## Testing Skills` in `.claude/sdd/config.md`.
 
 ### Skills (4)
 `claude-code-authoring` (+4 resources: `subagents`, `model_tiering`, `fanout_recipe`, `interactive_cli`) —
@@ -72,9 +73,10 @@ bare-repo/worktree mechanics;
 `.claude/settings.local.json`; `planning-references-in-code` — keeps spec, plan, slice, batch, QA-bug and
 `spec_dd/` references out of code comments, docstrings and test names.
 
-### Scripts (9 files)
+### Scripts (10 files)
 `upstream_change_scan.sh`, `land_on_main.sh`, `design_screenshots.sh` (+ `design_screenshots.py`) — the
-rebase upstream scan, the close-out landing and design screenshots. The QA scripts, allow-listed at
+rebase upstream scan, the close-out landing and design screenshots. `batch_scope_check.sh` — checks that
+a batch's boy-scout commits stay inside that batch's touched files. The QA scripts, allow-listed at
 `claude_plugins/sdd/scripts/`: `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`
 (+ `compress_screenshots.py`) and `delete_sdd_work_files.sh`. `qa_collect_screenshots.sh` takes the
 spec directory and the screenshot source directory, and refuses either unless it is inside the project.

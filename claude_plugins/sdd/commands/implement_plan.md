@@ -127,9 +127,24 @@ Every commit a batch produces carries its id (later slices add more rows):
 | `[batch <id>] <summary>` | implementer |
 | `[batch <id>] design fix <n>`, `[batch <id>] review fix <n>`, `[batch <id>] integration fix` | fix batch, for the Design check, the Batch review or an integration failure |
 | `[batch <id> review-fix] <summary>` | fix agent, for a mechanical test-organisation finding |
+| `[batch <id> boy-scout] move <old-path> -> <new-path>` | boy-scout; exactly one file, no content change |
+| `[batch <id> boy-scout] edit <summary>` | boy-scout; the edit that goes with the move before it |
+| `[batch <id> boy-scout] edit split <path> into <a>, <b>` | boy-scout; a split |
+| `[batch <id> boy-scout] edit drop <app> test dependency on <other-app>` | boy-scout; one cross-app dependency removed |
 | `[batch <id> record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
 
 Matching `[batch <id>]` needs the closing bracket straight after the id, so no follow-on commit reads as the implementation's commit, and the resume pattern above never matches one. Resume, and later the budget and the scope check, read subjects only, never SHAs, because `pre_step_rebase` rewrites every SHA on each rebase.
+
+The boy-scout's budget is counted fresh each time from `git log`, never carried in memory:
+
+```bash
+LOG=$(git log --format=%s "$(git merge-base origin/main HEAD)..HEAD")
+moved=$(grep -cE '^\[batch [^] ]+ boy-scout\] (move |edit split )' <<<"$LOG" || true)   # cap 3
+dropped=$(grep -cE '^\[batch [^] ]+ boy-scout\] edit drop ' <<<"$LOG" || true)          # cap 1
+```
+
+Remaining budget is the cap minus the count, floored at 0. The boy-scout still runs at zero
+budget, so it can report deferred items.
 
 ### Touched files
 
@@ -154,7 +169,7 @@ This is the same rule the scope-check script uses for its own allowed set, kept 
 
 Run these in order after a batch's Batch review. All of them are skipped when `## Testing Skills` is blank. Later follow-ons go between Review fixes and Record, and Record is always last. They run at depth 0 in the feature worktree, one batch at a time in plan order, before the next batch wave forms.
 
-On resume, a batch whose follow-ons are pending reuses `.sdd-work/test_org_review_batch_<id>.md` when it ends `status: ok`; a `[batch <id> review-fix]` commit means the mechanical fixes have already landed, so don't send them again. A batch with `[batch <id> record]` is done, but first delete any leftover `.sdd-work/test_org_review_batch_<id>.md` by name: an interrupt can land between the record commit and its own deletes.
+On resume, a batch whose follow-ons are pending reuses `.sdd-work/test_org_review_batch_<id>.md` when it ends `status: ok`; a `[batch <id> review-fix]` commit means the mechanical fixes have already landed, so don't send them again. Reuse `.sdd-work/boy_scout_batch_<id>.md` the same way when it ends `status: ok`, and give a re-spawned boy-scout's brief the batch's existing `[batch <id> boy-scout]` commits so it finishes a half-done pair instead of repeating it. A batch with `[batch <id> record]` is done, but first delete any leftover `.sdd-work/test_org_review_batch_<id>.md` and `.sdd-work/boy_scout_batch_<id>.md` by name: an interrupt can land between the record commit and its own deletes.
 
 #### Review (follow-on 1)
 
@@ -183,9 +198,21 @@ One `sdd:sdd-worker`, spawned per the fan-out recipe as in `plan_from_spec.md` S
 
 If there are mechanical findings, send them all to one `sdd:sdd-implementer` with the skill line and the subject `[batch <id> review-fix] <summary>`. It may edit any file the fix needs, for example an app's existing `tests/conftest.py`. Put judgement findings to the user right away, up to four per `AskUserQuestion`, with the reviewer's recommendation as the first option. An answer that needs code takes the same fix path. If the answer accepts a new cross-app edge, the record says so and names `/app_map` as needing a re-run.
 
+#### Boy-scout (follow-on 3)
+
+Skip when no touched file is a test file (under a `tests/` directory, or named `test_*.py` or `conftest.py`) or production code (any other source file); markdown, `docs/` and `spec_dd/` paths count as neither. Otherwise record `FROM_REF=$(git rev-parse HEAD)` and spawn one `sdd:sdd-boy-scout` with the batch id, the touched files, the remaining budget, whether `docs/app_structure.md` exists, and — on a resumed run — the batch's existing `[batch <id> boy-scout]` commits. Before spawning, note `git status --porcelain`. `failed` → restore modified tracked files with `git restore --staged --worktree <paths>` and delete, by name, any untracked file that was not in the earlier listing, then retry up to twice with the prior error in the brief; its commits stay. `blocked` → as for the review.
+
+#### Scope check (follow-on 4)
+
+Via `sdd:sdd-mechanic`, run `batch_scope_check.sh <id> <from-ref>`, with the script path resolved as in `pre_step_rebase.md` Step 3. `<from-ref>` is `FROM_REF`; on resume it is the parent of the batch's oldest `[batch <id> boy-scout]` commit, or `HEAD` when there is none. Exit 1 stops the run and puts the `OUT_OF_SCOPE:` paths to the user. Commits are never reverted automatically. Any other non-zero exit is `failed`.
+
+#### Deferred items (follow-on 6)
+
+For each `Deferred` entry: if a row with status `next` in `spec_dd/1. next/roadmap.md` has a Scope covering the item's app, append a bullet to that directory's `idea.md` under `## Follow-ups from other specs`, creating the heading if needed. Otherwise write a new `spec_dd/1. next/<slug>/idea.md` with `## What`, `## Why` and `## Resources`. Never edit `roadmap.md`, because `/sdd:roadmap` picks new ideas up. On a resumed run, skip an item whose bullet or `idea.md` already exists in the working tree.
+
 #### Record (follow-on 7)
 
-Append a `## Batch <id>` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, and any accepted edge for `/app_map`. Commit it via `sdd:sdd-mechanic` as `[batch <id> record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` by explicit path. Then delete `.sdd-work/test_org_review_batch_<id>.md` by name.
+Append a `## Batch <id>` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, any accepted edge for `/app_map`, what the boy-scout tidied, and each deferred item with where it went. Commit it via `sdd:sdd-mechanic` as `[batch <id> record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` and any follow-up `idea.md` files by explicit path. Then delete `.sdd-work/test_org_review_batch_<id>.md` and `.sdd-work/boy_scout_batch_<id>.md` by name.
 
 ### QA never runs inside a batch
 QA runs in Step 5, never inside a batch, and a plan step that says to run it is ignored.

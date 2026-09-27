@@ -62,9 +62,18 @@ Run `/implement_plan` to execute the implementation plan. It runs batch waves: u
 Once a batch's tier passes, one `sdd:sdd-worker` reviews the batch's touched files for test
 organisation, against the mirroring and dependency-direction rules the named skills define.
 Mechanical findings go to one `sdd:sdd-implementer`, which commits `[batch <id> review-fix]`;
-judgement findings go to the user via `AskUserQuestion`. Each batch ends with a `[batch <id> record]`
-commit that appends a `## Batch <id>` section to `boy_scout_record.md` in the spec directory. All of
-this is skipped when `## Testing Skills` is blank.
+judgement findings go to the user via `AskUserQuestion`.
+
+After review fixes land, one `sdd:sdd-boy-scout` tidies the batch's touched test files: it moves a
+misplaced test to mirror its app, splits a test module that covers more than one source module, or
+drops a cross-app test dependency, up to a budget of 3 files moved and 1 dependency dropped per
+branch. `batch_scope_check.sh` then proves its commits touched only the batch's own files; a
+violation stops the run and goes to the user. Whatever the boy-scout leaves past its budget becomes
+a deferred item: a bullet on an existing `next` cleanup spec's `idea.md`, or a new one.
+
+Each batch ends with a `[batch <id> record]` commit that appends a `## Batch <id>` section to
+`boy_scout_record.md` in the spec directory, covering the review findings, what the boy-scout
+tidied and what it deferred. All of this is skipped when `## Testing Skills` is blank.
 
 The project's own pre-commit checks and Claude Code's `/security-review` cover the code diff ad hoc; no SDD step runs a security review.
 
@@ -111,7 +120,7 @@ Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It reba
 
 ## How the workflow runs
 
-2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `sdd:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `sdd:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the agent file's `model:` frontmatter** (`claude_plugins/sdd/agents/sdd-mechanic.md`, `sdd-worker.md`, `sdd-implementer.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` forces one model for **all** subagents, but it **overrides every per-agent `model:` frontmatter**, so leave it **unset (or `inherit`)** for normal tiered operation.
+2. **Model tiering & the override knob.** Defaults: mechanical work (test runs, commits, file moves, todo ticking) → the `sdd:sdd-mechanic` agent (Haiku); non-interactive fan-out (research topics, review dimensions, scans) → the `sdd:sdd-worker` agent (Sonnet); interactive authoring/review commands run at depth 0 on the **user's session model** (so run the session on a strong model). To change a step's model, **edit the agent file's `model:` frontmatter** (`claude_plugins/sdd/agents/sdd-mechanic.md`, `sdd-worker.md`, `sdd-implementer.md`, `sdd-boy-scout.md`). The env var `CLAUDE_CODE_SUBAGENT_MODEL` forces one model for **all** subagents, but it **overrides every per-agent `model:` frontmatter**, so leave it **unset (or `inherit`)** for normal tiered operation.
 
 3. **Aliases vs pinned IDs.** The agents use aliases (`haiku`/`sonnet`). For frozen, reproducible automation, pin dated IDs (e.g. `claude-haiku-4-5`) in the agent files instead.
 
