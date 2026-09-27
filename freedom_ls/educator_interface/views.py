@@ -16,6 +16,7 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.educator_interface.quick_views import CohortQuickView, LearnerQuickView
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -57,15 +58,16 @@ from freedom_ls.panel_framework.views import (
 LAST_ORGANISATION_SESSION_KEY = "educator_interface_last_organisation_slug"
 
 
-class _OrganisationScopedRequest(HttpRequest):
+class OrganisationScopedRequest(HttpRequest):
     """Typing-only view of a request after interface() has resolved and
     authorised an organisation onto it.
 
     panel_framework names none of these: the scope it enforces is whatever a
     config lists in required_request_attrs, and the title segment reads
-    panel_scope_name. So this class exists purely so this module can
-    type-check the attribute access without a type: ignore, and is never
-    instantiated; only used with cast().
+    panel_scope_name. So this class exists purely so this module -- and
+    quick_views.py, which imports it only under TYPE_CHECKING to avoid a
+    runtime import cycle -- can type-check the attribute access without a
+    type: ignore. Never instantiated; only used with cast().
     """
 
     organisation: Organisation
@@ -91,7 +93,7 @@ class _OrganisationScopedRequest(HttpRequest):
 class CohortDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        request = cast(_OrganisationScopedRequest, request)
+        request = cast(OrganisationScopedRequest, request)
         return (
             cohorts_visible_to(request.user, request.organisation)
             .annotate(
@@ -110,7 +112,7 @@ class CohortDataTable(DataTable):
                 "text_attr": "name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "cohorts/{pk}",
-                "htmx_nav": True,
+                "quick_view": True,
             },
             {
                 "header": "Active Learners",
@@ -129,7 +131,7 @@ class LearnerDataTable(DataTable):
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        request = cast(_OrganisationScopedRequest, request)
+        request = cast(OrganisationScopedRequest, request)
         organisation = request.organisation
         return (
             learners_visible_to(request.user, organisation)
@@ -162,7 +164,7 @@ class LearnerDataTable(DataTable):
                 "url_name": "educator_interface:interface",
                 "url_path_template": "learners/{pk}",
                 "sortable": True,
-                "htmx_nav": True,
+                "quick_view": True,
             },
             {
                 "header": "Last Name",
@@ -171,7 +173,7 @@ class LearnerDataTable(DataTable):
                 "url_name": "educator_interface:interface",
                 "url_path_template": "learners/{pk}",
                 "sortable": True,
-                "htmx_nav": True,
+                "quick_view": True,
             },
             {
                 "header": "Email",
@@ -256,7 +258,7 @@ class CohortDetailsPanel(InstanceDetailsPanel):
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        organisation = cast(_OrganisationScopedRequest, request).organisation
+        organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             CohortCourseRegistration.objects.select_related("course")
             .filter(cohort__organisation=organisation)
@@ -342,7 +344,7 @@ class CreateCohortAction(CreateInstanceAction):
         # uniqueness constraint can only be checked while cleaning if the
         # instance already carries its organisation.
         form = super().get_form(request, instance)
-        organisation = cast(_OrganisationScopedRequest, request).organisation
+        organisation = cast(OrganisationScopedRequest, request).organisation
         cast(Cohort, form.instance).organisation = organisation
         self._organisation_slug = organisation.slug
         return form
@@ -365,6 +367,7 @@ class CohortConfig(ListViewConfig):
     list_view = CohortDataTable
     instance_view = CohortInstanceView
     refresh_events = (COHORT_CHANGED,)
+    quick_view = CohortQuickView
 
     required_request_attrs = ("organisation",)
 
@@ -374,7 +377,7 @@ class CohortConfig(ListViewConfig):
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        organisation = cast(_OrganisationScopedRequest, request).organisation
+        organisation = cast(OrganisationScopedRequest, request).organisation
         if (
             not cohorts_visible_to(request.user, organisation)
             .filter(pk=instance.pk)
@@ -391,12 +394,13 @@ class LearnerConfig(ListViewConfig):
     list_view = LearnerDataTable
     instance_view = LearnerInstanceView
     refresh_events = (LEARNER_CHANGED,)
+    quick_view = LearnerQuickView
 
     required_request_attrs = ("organisation",)
 
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        organisation = cast(_OrganisationScopedRequest, request).organisation
+        organisation = cast(OrganisationScopedRequest, request).organisation
         if (
             not learners_visible_to(request.user, organisation)
             .filter(pk=instance.pk)
@@ -512,7 +516,7 @@ class CourseDetailsPanel(InstanceDetailsPanel):
 class CourseCohortRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        organisation = cast(_OrganisationScopedRequest, request).organisation
+        organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             CohortCourseRegistration.objects.select_related("cohort", "course")
             .filter(cohort__organisation=organisation)
@@ -557,7 +561,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
         # Courses themselves are not organisation-scoped (CourseConfig is
         # exempt), but the individual registrations rendered here belong to
         # one organisation each and must not leak across them.
-        organisation = cast(_OrganisationScopedRequest, request).organisation
+        organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             LearnerCourseRegistration.objects.select_related("learner__user", "course")
             .filter(learner__organisation=organisation)
@@ -573,7 +577,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
                 "text_attr": "learner.user.first_name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "learners/{learner.pk}",
-                "htmx_nav": True,
+                "quick_view": True,
             },
             {
                 "header": "Last Name",
@@ -581,7 +585,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
                 "text_attr": "learner.user.last_name",
                 "url_name": "educator_interface:interface",
                 "url_path_template": "learners/{learner.pk}",
-                "htmx_nav": True,
+                "quick_view": True,
             },
             {
                 "header": "Email",
@@ -706,7 +710,7 @@ def interface(
         .exists()
     ):
         raise Http404
-    scoped_request = cast(_OrganisationScopedRequest, request)
+    scoped_request = cast(OrganisationScopedRequest, request)
     scoped_request.organisation = organisation
     scoped_request.panel_scope_name = organisation.name
     scoped_request.panel_url_kwargs = {"organisation_slug": organisation.slug}

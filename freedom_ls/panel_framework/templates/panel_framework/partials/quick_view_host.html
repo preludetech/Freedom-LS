@@ -17,6 +17,10 @@ and the close button.
         max-block-size: 85dvh;
         margin: 0;
         border: none;
+        /* show()'d rather than showModal()'d on desktop (see the media query
+         * below), so it never reaches the top layer and must out-rank the
+         * sticky site header (.header's z-30) by hand to stay clickable. */
+        z-index: 40;
         opacity: 0;
         transform: translateY(100%);
         transition:
