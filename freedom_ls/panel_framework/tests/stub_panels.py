@@ -45,6 +45,7 @@ from freedom_ls.panel_framework.panels import (
     PanelStack,
     TabSet,
 )
+from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import Column, DataTable, ExportColumn
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -146,8 +147,11 @@ class StubDataTable(DataTable):
         return [
             Column(
                 header="Name",
-                template="cotton/data-table-cells/text.html",
-                attr="name",
+                template="cotton/data-table-cells/link.html",
+                text_attr="name",
+                url_name="panel_framework_test:framework",
+                url_path_template="stubs/{pk}",
+                quick_view=True,
                 sortable=True,
                 card="primary",
             ),
@@ -355,6 +359,11 @@ class StubInstanceView(InstanceView):
     panel = StubTabSet
 
 
+class StubQuickView(QuickView):
+    template_name = "panel_framework/test_stub_quick_view.html"
+    refresh_events = ("itemChanged",)
+
+
 class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     url_name = "stubs"
     menu_label = "Stubs"
@@ -362,6 +371,7 @@ class StubListConfig(RecordingCapabilityConfig, ListViewConfig):
     table_key = "stubs"
     instance_view = StubInstanceView
     refresh_events = ("itemChanged",)
+    quick_view = StubQuickView
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:

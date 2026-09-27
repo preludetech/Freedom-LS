@@ -18,6 +18,7 @@ These Alpine components are already registered in the FreedomLS codebase — reu
 | `message` | `base/.../alpine-components.js` | `partials/messages.html` | Auto-dismiss toasts |
 | `sidebarComponent` | `base/.../alpine-components.js` | `_base_interface.html` | Toggle open/close, localStorage, responsive |
 | `appModal` | `panel_framework/.../alpine-components.js` | `panel_framework/partials/modal_host.html` | Native `<dialog>` host: trigger tracking, open on swap, focus after 422/re-render, close on `closeModal` |
+| `quickView` | `panel_framework/.../alpine-components.js` | `panel_framework/partials/quick_view_host.html` | Drawer `<dialog>` host: `show()`/`showModal()` by breakpoint, skeleton while loading, retry on error, `aria-expanded` sync |
 | `debugBadge` | `base/.../alpine-components.js` | `_base.html` | Collapsible debug badge |
 | `coursePart` | `learner_interface/.../alpine-components.js` | `course_minimal_toc.html` | Expand/collapse with localStorage |
 | `equation` | `content_engine/.../alpine-components.js` | `cotton/equation.html` | Client-side KaTeX typesetting (widget-scoped) |

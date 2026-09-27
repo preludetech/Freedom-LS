@@ -1,0 +1,18 @@
+<c-vars href url title />
+
+{% comment %}
+Opens the #quick-view drawer with url's GET, fed to Alpine.data("quickView")
+(panel_framework/.../alpine-components.js). href is the shareable full page,
+so a plain click opens the drawer while a modified click, a middle click or
+"open in new tab" still reaches the page natively. No hx-push-url: the
+drawer's state is never in the URL.
+{% endcomment %}
+<a href="{{ href }}"
+   hx-get="{{ url }}"
+   hx-target="#quick-view-body"
+   hx-swap="innerHTML"
+   hx-sync="#quick-view-body:replace"
+   aria-controls="quick-view"
+   aria-expanded="false"
+   data-quick-view-title="{{ title }}"
+   {{ attrs }}>{{ slot }}</a>

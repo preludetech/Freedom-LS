@@ -151,6 +151,8 @@ class Column:
     url_name: str = ""
     url_path_template: str = ""
     htmx_nav: bool = False
+    #: Open the row in the quick-view drawer instead of navigating to it.
+    quick_view: bool = False
     header_class: str = ""
     cell_class: str = ""
     card: Literal["primary", "secondary", "md_only"] = "secondary"
