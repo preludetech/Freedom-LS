@@ -508,7 +508,7 @@ class CourseCohortRegistrationDataTable(DataTable):
         organisation = cast(_OrganisationScopedRequest, request).organisation
         return (
             CohortCourseRegistration.objects.select_related("cohort", "course")
-            .filter(cohort__organisation=organisation)
+            .filter(cohort__in=cohorts_visible_to(request.user, organisation))
             .order_by("cohort__name")
         )
 
@@ -549,11 +549,14 @@ class CourseLearnerRegistrationDataTable(DataTable):
     def get_queryset(request: HttpRequest) -> QuerySet:
         # Courses themselves are not organisation-scoped (CourseConfig is
         # exempt), but the individual registrations rendered here belong to
-        # one organisation each and must not leak across them.
+        # one organisation each and must not leak across them. Scoped through
+        # learners_visible_to, not a plain organisation filter, so a
+        # cohort-scoped educator sees only the learners in cohorts they hold
+        # a grant on, not the whole organisation's roster.
         organisation = cast(_OrganisationScopedRequest, request).organisation
         return (
             LearnerCourseRegistration.objects.select_related("learner__user", "course")
-            .filter(learner__organisation=organisation)
+            .filter(learner__in=learners_visible_to(request.user, organisation))
             .order_by("learner__user__first_name", "learner__user__last_name")
         )
 

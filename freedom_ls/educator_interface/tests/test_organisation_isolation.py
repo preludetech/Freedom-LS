@@ -10,15 +10,20 @@ test_course_visibility_and_interest.py, generalised from "other site" to
 Plus the lock-out case: an educator holding only per-cohort guardian grants
 and no organisation role can still enter the interface and sees exactly
 their cohorts.
+
+Also: within a single organisation, a course-detail panel narrows further
+still, to the cohorts and learners a cohort-scoped educator holds a grant on
+-- not merely to the organisation as a whole.
 """
 
 from __future__ import annotations
 
+import re
 from types import SimpleNamespace
 
 import pytest
 
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -49,6 +54,24 @@ def _interface_url(organisation_slug: str, path_string: str) -> str:
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation_slug, "path_string": path_string},
     )
+
+
+def _course_panel_region_id(
+    organisation_slug: str, course_pk: object, panel_name: str
+) -> str:
+    """The htmx target that fetches one course-detail panel's own region.
+
+    Mirrors Panel.region_id (panel_framework/panels.py): a panel's region id
+    is derived from its base_url, which nests the section's own URL under the
+    course instance and then the child segment. Computed rather than
+    hardcoded so it can never drift from the URLconf.
+    """
+    section_url = reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation_slug, "path_string": "courses"},
+    )
+    base_url = f"{section_url}/{course_pk}/__panels/{panel_name}"
+    return "panel-" + re.sub(r"[^\w-]+", "-", base_url).strip("-")
 
 
 @pytest.mark.django_db
@@ -102,6 +125,7 @@ class TestCrossOrganisationIsolation:
             shared=shared,
             course_a=course_a,
             course_b=course_b,
+            educator=educator,
             client=logged_in_client(educator),
         )
 
@@ -240,6 +264,7 @@ class TestCrossOrganisationIsolation:
         )
         request = RequestFactory().get("/")
         request.organisation = isolation.organisation_a
+        request.user = isolation.educator
 
         rows = set(data_table.get_queryset(request))
 
@@ -320,3 +345,114 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         assert "Studies" in content
         assert "Alpha Cohort" in content
         assert "Beta Cohort" not in content
+
+
+@pytest.mark.django_db
+class TestCourseDetailPanelsAreScopedWithinAnOrganisation:
+    """One organisation, two cohorts. A cohort_admin holding a grant on only
+    one of them must not see the other cohort's course registration, or that
+    cohort's learner, on a course-detail panel -- even though both cohorts
+    share the same organisation. An organisation_admin still sees both."""
+
+    @pytest.fixture
+    def scenario(self):
+        organisation = OrganisationFactory()
+        cohort_a = CohortFactory(organisation=organisation, name="Granted Cohort")
+        cohort_b = CohortFactory(organisation=organisation, name="Other Cohort")
+        course = CourseFactory()
+        CohortCourseRegistrationFactory(cohort=cohort_a, course=course)
+        CohortCourseRegistrationFactory(cohort=cohort_b, course=course)
+
+        learner_a = LearnerFactory(
+            user=UserFactory(first_name="InGrantedCohort", last_name="Learner"),
+            organisation=organisation,
+        )
+        learner_b = LearnerFactory(
+            user=UserFactory(first_name="InOtherCohort", last_name="Learner"),
+            organisation=organisation,
+        )
+        CohortMembershipFactory(cohort=cohort_a, learner=learner_a)
+        CohortMembershipFactory(cohort=cohort_b, learner=learner_b)
+        LearnerCourseRegistrationFactory(learner=learner_a, course=course)
+        LearnerCourseRegistrationFactory(learner=learner_b, course=course)
+
+        return SimpleNamespace(
+            organisation=organisation,
+            cohort_a=cohort_a,
+            cohort_b=cohort_b,
+            learner_a=learner_a,
+            learner_b=learner_b,
+            course=course,
+        )
+
+    @staticmethod
+    def _panel_content(
+        client: Client, organisation_slug: str, course_pk: object, panel_name: str
+    ) -> str:
+        response = client.get(
+            _interface_url(
+                organisation_slug, f"courses/{course_pk}/__panels/{panel_name}"
+            ),
+            HTTP_HX_REQUEST="true",
+            HTTP_HX_TARGET=_course_panel_region_id(
+                organisation_slug, course_pk, panel_name
+            ),
+        )
+        assert response.status_code == 200
+        return response.content.decode()
+
+    def test_cohort_admin_sees_only_the_granted_cohorts_registration(
+        self, scenario: SimpleNamespace, logged_in_client
+    ) -> None:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, scenario.cohort_a, "cohort_admin")
+        client = logged_in_client(educator)
+
+        content = self._panel_content(
+            client, scenario.organisation.slug, scenario.course.pk, "cohorts"
+        )
+
+        assert scenario.cohort_a.name in content
+        assert scenario.cohort_b.name not in content
+
+    def test_cohort_admin_sees_only_the_granted_cohorts_learner(
+        self, scenario: SimpleNamespace, logged_in_client
+    ) -> None:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, scenario.cohort_a, "cohort_admin")
+        client = logged_in_client(educator)
+
+        content = self._panel_content(
+            client, scenario.organisation.slug, scenario.course.pk, "learners"
+        )
+
+        assert scenario.learner_a.user.first_name in content
+        assert scenario.learner_b.user.first_name not in content
+
+    def test_organisation_admin_sees_both_cohorts_registrations(
+        self, scenario: SimpleNamespace, logged_in_client
+    ) -> None:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, scenario.organisation, "organisation_admin")
+        client = logged_in_client(educator)
+
+        content = self._panel_content(
+            client, scenario.organisation.slug, scenario.course.pk, "cohorts"
+        )
+
+        assert scenario.cohort_a.name in content
+        assert scenario.cohort_b.name in content
+
+    def test_organisation_admin_sees_both_learners(
+        self, scenario: SimpleNamespace, logged_in_client
+    ) -> None:
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, scenario.organisation, "organisation_admin")
+        client = logged_in_client(educator)
+
+        content = self._panel_content(
+            client, scenario.organisation.slug, scenario.course.pk, "learners"
+        )
+
+        assert scenario.learner_a.user.first_name in content
+        assert scenario.learner_b.user.first_name in content
