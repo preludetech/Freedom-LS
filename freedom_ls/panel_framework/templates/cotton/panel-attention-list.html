@@ -1,0 +1,9 @@
+<c-vars />
+
+{% comment %}
+Attention list — a <ul> of panel-attention-row items, each something that
+needs a look (a stalled learner, an overdue cohort task). Dividers between
+rows come from divide-border; each row supplies its own padding.
+{% endcomment %}
+
+<ul class="divide-y divide-border" {{ attrs }}>{{ slot }}</ul>
