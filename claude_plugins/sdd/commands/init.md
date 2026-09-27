@@ -142,7 +142,7 @@ test standard its implementer reads and its batch review checks. **Documentation
 `/sdd:document` looks here for the skills it invokes, in order, after implementation and QA.
 They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` looks here for the
 command that executes the QA plan, and writes it into the checklist; the QA command reads the other keys. **QA Login** and **QA Dev Data**: the QA command
-reads the admin login and the commands that reset development data. **Testing Skills**: the QA bug fixer loads these skills. **PR Hooks**:
+reads the admin login and the commands that reset development data. **Testing Skills**: `/sdd:implement_plan`'s implementer and the QA bug fixer load these skills. **PR Hooks**:
 `/sdd:address_pr_review` looks here for the script that fetches a pull request's review comments.
 **Rule Files**: `sdd:capture-feedback` looks here for the file each rule is written to, and the QA
 command walks the `## Visual checklist` section of each file listed.
@@ -333,6 +333,10 @@ parity and future settings.
    authoritative first. Naming this project's actual sources is the user's job; do not guess them by
    scanning the repo. With the list empty the commands still work: they fall back to the code, where
    model class names and field names are the vocabulary of last resort.
+
+   **Testing Skills** works the same way: one skill ID per bullet, most authoritative first. Naming
+   the project's testing skills is the user's job, not something this command guesses, so the
+   section starts blank.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
    `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## QA Login`, `## QA Dev Data`,
    `## Testing Skills`, `## PR Hooks`, `## Rule Files` and `## Vocabulary Sources` sections, and any key only if missing (including `Parallel batches`, `Memory capacity`, `Batch memory (MB)` and `Worker memory (MB)` under `## Worktree Scripts`), using the blank default. Preserve every existing value,

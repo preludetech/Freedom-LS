@@ -54,14 +54,15 @@ The `Pre-test rebuild` key in the same section names a script `/sdd:finish_workt
 `.claude/sdd/` config). It expects the shared launcher artifacts (`claude.sh`, the `SessionStart` hook,
 the `.gitignore` `settings.local.json` line) to exist and does not create them.
 
-### Agents (4)
+### Agents (5)
 `sdd-worker` (Sonnet) — one non-interactive unit of fan-out work (research topic / review dimension /
-scan); `sdd-mechanic` (Haiku) — mechanical chores (test runs, commits, file moves, todo ticking). Spawn
+scan); `sdd-mechanic` (Haiku) — mechanical chores (test runs, commits, file moves, todo ticking);
+`sdd-implementer` (Sonnet) — one unit of implementation work, test first, a plan batch or a fix. Spawn
 one per unit from a depth-0 SDD command. Each agent's `model:` frontmatter sets its tier. `qa-data-helper` (Opus) — creates, resets or
 deletes development-database records a QA run needs, following the project's `Data helper guide`; its
 memory lives at `.claude/agent-memory/sdd-qa-data-helper/`. `qa-bugfixer` (Sonnet) — fixes one
-QA-reported bug TDD-style (failing test, fix, targeted tier, commit), using the skills under
-`## Testing Skills` in `.claude/sdd/config.md`.
+QA-reported bug TDD-style (failing test, fix, targeted tier, commit). `sdd-implementer` and
+`qa-bugfixer` load the skills under `## Testing Skills` in `.claude/sdd/config.md`.
 
 ### Skills (4)
 `claude-code-authoring` (+4 resources: `subagents`, `model_tiering`, `fanout_recipe`, `interactive_cli`) —
