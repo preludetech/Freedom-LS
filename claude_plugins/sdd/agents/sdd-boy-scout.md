@@ -1,8 +1,8 @@
 ---
 name: sdd-boy-scout
 description: |-
-  Tidies test organisation in one batch's touched files, within a budget, and reports what it
-  tidied and what it deferred. Spawn one per batch from implement_plan at depth 0.
+  Tidies test organisation in one batch's touched files, within a budget, and flags plainly broken
+  code for the user to decide on. Spawn one per batch from implement_plan at depth 0.
   Non-interactive; never spawns subagents.
 tools: Bash, Read, Edit, Write, Glob, Grep, Skill
 model: sonnet
@@ -68,6 +68,17 @@ Stop tidying once the remaining budget is spent. A split counts as one file agai
 budget. Each violation you find past the budget goes into `## Deferred`, unfixed — you still run
 at zero budget so you can report what needs doing.
 
+## Flagging
+
+Flag plainly broken code anywhere in the touched files, production code included, not just the
+test files you tidy. Report it; never fix it. For each flagged item, give the spot as `file:line`,
+say why it is broken, and recommend one of `fix now`, `record a follow-up`, or `not a bug`. Draft a
+one-line comment for the "not a bug" answer, following `code-comments`: it says why the code is
+correct, never who judged it.
+
+Never suppress your own flag. Don't flag a spot that already has a comment explaining why the code
+is correct.
+
 ## Re-run
 
 If your brief lists existing `[batch N boy-scout]` commits, finish a half-done move/edit pair from
@@ -85,6 +96,10 @@ Write `.sdd-work/boy_scout_batch_<N>.md` in one `Write`:
 
 ## Deferred
 <one entry per item you left, each with file, rule, detail, app, or "none">
+
+## Flagged
+<one entry per item, each with file:line, why it is broken, the recommendation, and the drafted
+"not a bug" comment, or "none">
 ```
 
 **The file MUST end with this footer as its last line:**

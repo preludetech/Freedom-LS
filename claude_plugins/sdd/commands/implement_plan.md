@@ -49,6 +49,8 @@ Every commit a batch produces carries its number (later slices add more rows):
 | `[batch N boy-scout] edit <summary>` | boy-scout; the edit that goes with the move before it |
 | `[batch N boy-scout] edit split <path> into <a>, <b>` | boy-scout; a split |
 | `[batch N boy-scout] edit drop <app> test dependency on <other-app>` | boy-scout; one cross-app dependency removed |
+| `[batch N bug-fix] <summary>` | implementer, for a flagged item answered "fix it now" |
+| `[batch N flag-note] <path>` | depth 0, the "not a bug" comment |
 | `[batch N record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
 
 Matching `[batch N]` needs the closing bracket straight after the number, so no follow-on commit reads as the implementation's commit. Resume, and later the budget and the scope check, read subjects only.
@@ -142,13 +144,23 @@ Skip when no touched file is a test file (under a `tests/` directory, or named `
 
 Via `sdd:sdd-mechanic`, run `batch_scope_check.sh N <from-ref>`, with the script path resolved as in `pre_step_rebase.md` Step 3. `<from-ref>` is `FROM_REF`; on resume it is the parent of the batch's oldest `[batch N boy-scout]` commit, or `HEAD` when there is none. Exit 1 stops the run and puts the `OUT_OF_SCOPE:` paths to the user. Commits are never reverted automatically. Any other non-zero exit is `failed`.
 
+#### Flagged items (follow-on 5)
+
+Up to four per `AskUserQuestion`. Each question shows `file:line` and why the boy-scout believes it is broken, and puts its recommendation first among three answers:
+
+- "Not a bug": depth 0 writes the boy-scout's drafted comment at the spot, following `code-comments` (it says why the code is correct, never who judged it), and commits `[batch N flag-note] <path>`, staging that one path.
+- "Fix it now": one `sdd:sdd-implementer` fixes it test-first, with the skill line and the subject `[batch N bug-fix] <summary>`, before the next batch starts.
+- "Record a follow-up": handled as a deferred item, below.
+
+On a resumed run, skip a flagged item that already has a `[batch N flag-note] <path>` or `[batch N bug-fix]` commit for its file.
+
 #### Deferred items (follow-on 6)
 
 For each `Deferred` entry: if a row with status `next` in `spec_dd/1. next/roadmap.md` has a Scope covering the item's app, append a bullet to that directory's `idea.md` under `## Follow-ups from other specs`, creating the heading if needed. Otherwise write a new `spec_dd/1. next/<slug>/idea.md` with `## What`, `## Why` and `## Resources`. Never edit `roadmap.md`, because `/sdd:roadmap` picks new ideas up. On a resumed run, skip an item whose bullet or `idea.md` already exists in the working tree.
 
 #### Record (follow-on 7)
 
-Append a `## Batch N` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, any accepted edge for `/app_map`, what the boy-scout tidied, and each deferred item with where it went. Commit it via `sdd:sdd-mechanic` as `[batch N record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` and any follow-up `idea.md` files by explicit path. Then delete `.sdd-work/test_org_review_batch_<N>.md` and `.sdd-work/boy_scout_batch_<N>.md` by name.
+Append a `## Batch N` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, any accepted edge for `/app_map`, what the boy-scout tidied, each deferred item with where it went, and each flagged item with the user's answer. Commit it via `sdd:sdd-mechanic` as `[batch N record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` and any follow-up `idea.md` files by explicit path. Then delete `.sdd-work/test_org_review_batch_<N>.md` and `.sdd-work/boy_scout_batch_<N>.md` by name.
 
 **All tests must pass before moving to the next batch.**
 

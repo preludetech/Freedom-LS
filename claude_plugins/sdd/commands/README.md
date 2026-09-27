@@ -89,9 +89,17 @@ branch. `batch_scope_check.sh` then proves its commits touched only the batch's 
 violation stops the run and goes to the user. Whatever the boy-scout leaves past its budget becomes
 a deferred item: a bullet on an existing `next` cleanup spec's `idea.md`, or a new one.
 
+The boy-scout also flags plainly broken code it finds in the batch's touched files, production
+code included, without fixing it. Each flagged item goes to the user via `AskUserQuestion`, up to
+four per call, with the boy-scout's recommendation offered first among three answers: "Not a bug"
+writes the boy-scout's drafted comment at the spot and commits `[batch N flag-note]`; "Fix it now"
+sends the item to one `sdd:sdd-implementer` for a test-first fix committed as `[batch N bug-fix]`;
+"Record a follow-up" is handled the same way as a deferred item.
+
 Each batch ends with a `[batch N record]` commit that appends a `## Batch N` section to
 `boy_scout_record.md` in the spec directory, covering the review findings, what the boy-scout
-tidied and what it deferred. All of this is skipped when `## Testing Skills` is blank.
+tidied, what it deferred, and each flagged item with the user's answer. All of this is skipped when
+`## Testing Skills` is blank.
 
 ## Step 5: Code security review
 
