@@ -120,7 +120,7 @@ Start with `fixes = 0` and `scope = <batch-commit>^..HEAD`, then repeat:
 
 ### Commit-subject grammar
 
-Every commit a batch produces carries its id (later slices add more rows):
+Every commit a batch produces carries its id:
 
 | Subject | Made by |
 | --- | --- |
@@ -136,7 +136,7 @@ Every commit a batch produces carries its id (later slices add more rows):
 | `[batch <id> record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
 | `[final review-fix] <summary>` | fix agent, for a finding of the final review |
 
-Matching `[batch <id>]` needs the closing bracket straight after the id, so no follow-on commit reads as the implementation's commit, and the resume pattern above never matches one. Resume, and later the budget and the scope check, read subjects only, never SHAs, because `pre_step_rebase` rewrites every SHA on each rebase.
+Matching `[batch <id>]` needs the closing bracket straight after the id, so no follow-on commit reads as the implementation's commit, and the resume pattern above never matches one. Resume, the budget and the scope check read subjects only, never SHAs, because `pre_step_rebase` rewrites every SHA on each rebase.
 
 The boy-scout's budget is counted fresh each time from `git log`, never carried in memory:
 
@@ -151,7 +151,7 @@ budget, so it can report deferred items.
 
 ### Touched files
 
-Touched files are the paths the `[batch <id>]` commits (the implementation and its design, review and integration fixes) and its `[batch <id> review-fix]` commits add or modify, at their current paths. The test-organisation review, and later the boy-scout, work over this set:
+Touched files are the paths the `[batch <id>]` commits (the implementation and its design, review and integration fixes) and its `[batch <id> review-fix]` commits add or modify, at their current paths. The test-organisation review and the boy-scout work over this set:
 
 ```bash
 ID=<id>
@@ -170,7 +170,7 @@ This is the same rule the scope-check script uses for its own allowed set, kept 
 
 ### Follow-ons
 
-Run these in order after a batch's Batch review. All of them are skipped when `## Testing Skills` is blank. Later follow-ons go between Review fixes and Record, and Record is always last. They run at depth 0 in the feature worktree, one batch at a time in plan order, before the next batch wave forms.
+Run these in order after a batch's Batch review. All of them are skipped when `## Testing Skills` is blank. Record is always last. They run at depth 0 in the feature worktree, one batch at a time in plan order, before the next batch wave forms.
 
 On resume, a batch whose follow-ons are pending reuses `.sdd-work/test_org_review_batch_<id>.md` when it ends `status: ok`; a `[batch <id> review-fix]` commit means the mechanical fixes have already landed, so don't send them again. Reuse `.sdd-work/boy_scout_batch_<id>.md` the same way when it ends `status: ok`, and give a re-spawned boy-scout's brief the batch's existing `[batch <id> boy-scout]` commits so it finishes a half-done pair instead of repeating it. A batch with `[batch <id> record]` is done, but first delete any leftover `.sdd-work/test_org_review_batch_<id>.md` and `.sdd-work/boy_scout_batch_<id>.md` by name: an interrupt can land between the record commit and its own deletes.
 
