@@ -1,0 +1,108 @@
+{% comment %}
+Desktop table toolbar: search, a pill or chip per declared filter, "Add
+filter", "Clear all" and the current sort. Every control is a real link or
+form, so the toolbar works with JavaScript off.
+{% endcomment %}
+{% partialdef filter-choices %}
+    <div class="surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
+        {% for choice in choices %}
+            {% querystring request.GET choice.changes as qs %}
+            <a href="{{ page_url }}{{ qs }}"
+               hx-get="{{ base_url }}{{ qs }}"
+               hx-target="#{{ region_id }}"
+               hx-swap="outerHTML"
+               class="flex items-center gap-2 whitespace-nowrap px-2 py-1 hover:bg-surface-2">
+                <span class="size-4 shrink-0">
+                    {% if choice.selected %}<c-icon name="check" class="size-4" />{% endif %}
+                </span>
+                {{ choice.label }}
+            </a>
+        {% endfor %}
+    </div>
+{% endpartialdef %}
+<div class="mb-4 flex flex-wrap items-center gap-2">
+    {% if searchable %}
+        <form id="{{ query.key }}-search"
+              method="get"
+              action="{{ page_url }}"
+              hx-get="{{ base_url }}"
+              hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
+              hx-sync="this:replace"
+              hx-target="#{{ region_id }}"
+              hx-swap="outerHTML">
+            {% for name, value in hidden_inputs %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+            <input type="search"
+                   id="{{ query.key }}-q"
+                   name="{{ query.key }}-q"
+                   placeholder="Search..."
+                   value="{{ query.search }}"
+                   class="max-w-md">
+        </form>
+    {% endif %}
+
+    {% for entry in toolbar %}
+        {% if entry.shown %}
+            <details class="relative">
+                <summary class="list-none">
+                    {% if entry.values %}
+                        <c-chip variant="secondary" class="cursor-pointer">
+                            {{ entry.filter.label }}: {{ entry.labels|join:", " }}
+                            {% querystring request.GET entry.remove_changes as remove_qs %}
+                            <a href="{{ page_url }}{{ remove_qs }}"
+                               hx-get="{{ base_url }}{{ remove_qs }}"
+                               hx-target="#{{ region_id }}"
+                               hx-swap="outerHTML"
+                               aria-label="Remove {{ entry.filter.label }} filter">
+                                <c-icon name="close" class="size-3" />
+                            </a>
+                            <c-icon name="dropdown" class="size-3" />
+                        </c-chip>
+                    {% else %}
+                        <c-chip variant="secondary" class="cursor-pointer">
+                            {{ entry.filter.label }}
+                            <c-icon name="dropdown" class="size-3" />
+                        </c-chip>
+                    {% endif %}
+                </summary>
+                {% with choices=entry.choices %}
+                    {% partial filter-choices %}
+                {% endwith %}
+            </details>
+        {% endif %}
+    {% endfor %}
+
+    {% if add_filter %}
+        <details class="relative">
+            <summary class="list-none">
+                <c-chip variant="secondary" class="cursor-pointer">
+                    Add filter
+                    <c-icon name="dropdown" class="size-3" />
+                </c-chip>
+            </summary>
+            <div class="surface absolute z-10 mt-1 min-w-40 space-y-2 p-2">
+                {% for entry in add_filter %}
+                    <details>
+                        <summary class="cursor-pointer">{{ entry.filter.label }}</summary>
+                        {% with choices=entry.choices %}
+                            {% partial filter-choices %}
+                        {% endwith %}
+                    </details>
+                {% endfor %}
+            </div>
+        </details>
+    {% endif %}
+
+    {% if any_filter_set %}
+        {% querystring request.GET clear_changes as clear_qs %}
+        <a href="{{ page_url }}{{ clear_qs }}"
+           hx-get="{{ base_url }}{{ clear_qs }}"
+           hx-target="#{{ region_id }}"
+           hx-swap="outerHTML">
+            Clear all
+        </a>
+    {% endif %}
+
+    {% if sorted_by %}<span class="ml-auto text-sm text-muted">Sorted by {{ sorted_by }}</span>{% endif %}
+</div>

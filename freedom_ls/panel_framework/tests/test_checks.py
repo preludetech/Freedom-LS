@@ -7,7 +7,12 @@ from typing import cast
 
 from django.core.management import call_command
 
-from freedom_ls.panel_framework.checks import panel_errors, table_key_errors
+from freedom_ls.panel_framework.checks import (
+    filter_key_errors,
+    panel_errors,
+    table_key_errors,
+)
+from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, PanelStack
 from freedom_ls.panel_framework.views import ListViewConfig
 
@@ -211,6 +216,64 @@ def test_same_key_in_separate_trees_is_allowed() -> None:
 
     # Act
     errors = table_key_errors(FirstContainer) + table_key_errors(SecondContainer)
+
+    # Assert
+    assert errors == []
+
+
+def test_reserved_filter_key_raises_e007() -> None:
+    # Arrange
+    class ReservedFilterDataTable(StubDataTable):
+        @staticmethod
+        def get_filters() -> list[TableFilter]:
+            return [BooleanFilter("page", "Page", lookup="is_active")]
+
+    class ReservedFilterTablePanel(DataTablePanel):
+        data_table = ReservedFilterDataTable
+        table_key = "reserved_filter"
+
+    # Act
+    errors = filter_key_errors(ReservedFilterTablePanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E007"
+    assert errors[0].obj is ReservedFilterTablePanel
+
+
+def test_bad_filter_key_format_raises_e007() -> None:
+    # Arrange
+    class BadFilterDataTable(StubDataTable):
+        @staticmethod
+        def get_filters() -> list[TableFilter]:
+            return [BooleanFilter("Bad Key!", "Bad", lookup="is_active")]
+
+    class BadFilterTablePanel(DataTablePanel):
+        data_table = BadFilterDataTable
+        table_key = "bad_filter"
+
+    # Act
+    errors = filter_key_errors(BadFilterTablePanel)
+
+    # Assert
+    assert len(errors) == 1
+    assert errors[0].id == "freedom_ls_panel_framework.E007"
+    assert errors[0].obj is BadFilterTablePanel
+
+
+def test_valid_filter_key_raises_no_error() -> None:
+    # Arrange
+    class GoodFilterDataTable(StubDataTable):
+        @staticmethod
+        def get_filters() -> list[TableFilter]:
+            return [BooleanFilter("good_key_1", "Good", lookup="is_active")]
+
+    class GoodFilterTablePanel(DataTablePanel):
+        data_table = GoodFilterDataTable
+        table_key = "good_filter"
+
+    # Act
+    errors = filter_key_errors(GoodFilterTablePanel)
 
     # Assert
     assert errors == []

@@ -2,4 +2,4 @@
 The part of a table panel that a sort, search or page click replaces. The data
 table's root element carries region_id, which is the panel's region id.
 {% endcomment %}
-<c-data-table :columns="columns" :header_columns="header_columns" :rows="rows" :page_obj="page_obj" empty_message="Nothing to see" :base_url="base_url" :query="query" :hidden_inputs="hidden_inputs" :sorted_by="sorted_by" :searchable="searchable" :region_id="region_id" :page_url="page_url" :pagination="pagination" />
+<c-data-table :columns="columns" :header_columns="header_columns" :rows="rows" :page_obj="page_obj" empty_message="Nothing to see" :base_url="base_url" :query="query" :hidden_inputs="hidden_inputs" :sorted_by="sorted_by" :searchable="searchable" :region_id="region_id" :page_url="page_url" :pagination="pagination" :toolbar="toolbar" :add_filter="add_filter" :clear_changes="clear_changes" :any_filter_set="any_filter_set" />

@@ -12,12 +12,14 @@ from django.core.checks import CheckMessage, Error
 
 from freedom_ls.panel_framework.field_display import label_for_field
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel
+from freedom_ls.panel_framework.tables import DataTable
 
 # Deferred: views.py imports panels.py and tables.py, not this module, so
 # importing it here carries no cycle.
 from freedom_ls.panel_framework.views import ListViewConfig, ListViewPanel
 
 _TABLE_KEY_PATTERN = re.compile(r"^[a-z0-9_]+$")
+_RESERVED_FILTER_KEYS = {"q", "sort", "page", "export"}
 
 
 def check_panels(
@@ -38,8 +40,10 @@ def check_panels(
     for panel_class in _all_subclasses(Panel):
         errors.extend(panel_errors(panel_class))
         errors.extend(table_key_errors(panel_class))
+        errors.extend(filter_key_errors(panel_class))
     for config_class in _all_subclasses(ListViewConfig):
         errors.extend(table_key_errors(config_class))
+        errors.extend(filter_key_errors(config_class))
     return errors
 
 
@@ -181,3 +185,52 @@ def _check_no_duplicate_table_keys(panel_class: type[Panel]) -> list[CheckMessag
             obj=panel_class,
         )
     ]
+
+
+def _reachable_data_table(cls: type) -> type[DataTable] | None:
+    """The `DataTable` `cls` binds, if any: a `ListViewConfig`'s `list_view`
+    or a `DataTablePanel`'s `data_table`. `None` for every other class, and
+    for the two `DataTablePanel`s that bind theirs at request time rather
+    than declaring one."""
+    if issubclass(cls, ListViewConfig) and cls.list_view is not None:
+        return cls.list_view
+    if (
+        issubclass(cls, Panel)
+        and issubclass(cls, DataTablePanel)
+        and cls not in (DataTablePanel, ListViewPanel)
+    ):
+        return getattr(cls, "data_table", None)
+    return None
+
+
+def filter_key_errors(cls: type) -> list[CheckMessage]:
+    """Validate every filter key a `DataTable` reachable from `cls` declares.
+
+    Called on the same classes `table_key_errors` is, so a `DataTablePanel`
+    and a `ListViewConfig` sharing one `DataTable` each report the same
+    error, the way `panel_errors` repeats a fields error for two panels
+    sharing a model.
+    """
+    data_table = _reachable_data_table(cls)
+    if data_table is None:
+        return []
+    errors: list[CheckMessage] = []
+    for table_filter in data_table.get_filters():
+        if (
+            _TABLE_KEY_PATTERN.fullmatch(table_filter.key)
+            and table_filter.key not in _RESERVED_FILTER_KEYS
+        ):
+            continue
+        errors.append(
+            Error(
+                f"{cls.__name__}'s {data_table.__name__} declares a filter "
+                f"key '{table_filter.key}', which must match "
+                f"'{_TABLE_KEY_PATTERN.pattern}' and must not be one of "
+                f"{', '.join(sorted(_RESERVED_FILTER_KEYS))}.",
+                hint="Use a filter key of lowercase letters, digits and "
+                "underscores, other than q, sort, page or export.",
+                id="freedom_ls_panel_framework.E007",
+                obj=cls,
+            )
+        )
+    return errors

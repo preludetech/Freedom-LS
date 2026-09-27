@@ -316,3 +316,70 @@ def test_search_form_hidden_inputs_carry_other_state(mock_site_context: Site) ->
     assert "stub-page" not in names
     assert "b-page" in names
     assert len(names) == len(set(names))
+
+
+def test_invalid_filter_value_is_dropped(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x")
+
+    html = fetch(_panel_path(stub.pk), data={"stub-kind": "zzz"}).content.decode()
+
+    assert "row-x" in html
+    assert 'aria-label="Remove Kind filter"' not in html
+
+
+def test_filter_link_resets_page(mock_site_context: Site) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+
+    html = fetch(
+        f"stubs/{stubs[0].pk}/__tabs/pair", data={"a-page": "2"}
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table_a,) = document.cssselect("#a-table")
+    filter_links = [
+        link
+        for link in table_a.cssselect("a[href]")
+        if "a-kind=a" in link.get("href", "")
+    ]
+    assert filter_links
+    for link in filter_links:
+        assert "a-page" not in link.get("href")
+
+
+def test_filter_links_keep_other_tables_state(mock_site_context: Site) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+
+    html = fetch(
+        f"stubs/{stubs[0].pk}/__tabs/pair", data={"b-kind": "a"}
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table_a,) = document.cssselect("#a-table")
+    filter_links = [
+        link
+        for link in table_a.cssselect("a[href]")
+        if "a-kind=" in link.get("href", "")
+    ]
+    assert filter_links
+    for link in filter_links:
+        assert "b-kind=a" in link.get("href")
+
+
+def test_clear_all_keeps_search_and_sort(mock_site_context: Site) -> None:
+    stub = _make_stub(name="row-x", kind="a")
+
+    html = fetch(
+        _panel_path(stub.pk),
+        data={"stub-sort": "name", "stub-q": "row", "stub-kind": "a"},
+    ).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (clear_link,) = [
+        link
+        for link in document.cssselect("a[href]")
+        if link.text_content().strip() == "Clear all"
+    ]
+    href = clear_link.get("href")
+    assert "stub-sort=name" in href
+    assert "stub-q=row" in href
+    assert "stub-kind" not in href

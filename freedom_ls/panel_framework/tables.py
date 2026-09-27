@@ -7,6 +7,8 @@ from django.core.paginator import Page, Paginator
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest
 
+from freedom_ls.panel_framework.filters import TableFilter
+
 
 @dataclass(frozen=True)
 class TableQuery:
@@ -55,6 +57,19 @@ class TableQuery:
             f"-{column.sort_field}" if currently_ascending else column.sort_field
         )
         return {self.param("sort"): next_sort, self.param("page"): None}
+
+    def filter_changes(self, filter_key: str, values: list[str]) -> dict[str, object]:
+        """The `{% querystring %}` changes that set `filter_key` to `values`,
+        clearing it when `values` is empty. Filtering always returns to page
+        1, since the current page may not exist once the rows are narrowed."""
+        return {self.param(filter_key): values or None, self.param("page"): None}
+
+    def clear_filters_changes(self, filter_keys: list[str]) -> dict[str, object]:
+        """The `{% querystring %}` changes "Clear all" applies: every filter
+        removed and the page reset. Search and sort are left alone."""
+        changes: dict[str, object] = {self.param(key): None for key in filter_keys}
+        changes[self.param("page")] = None
+        return changes
 
 
 def page_links(page_obj: Page, query: TableQuery) -> dict[str, object]:
@@ -156,12 +171,18 @@ class DataTable:
         raise NotImplementedError
 
     @classmethod
+    def get_filters(cls) -> list[TableFilter]:
+        """Filters this table's rows may be narrowed by, in toolbar order."""
+        return []
+
+    @classmethod
     def parse_query(cls, request: HttpRequest, key: str) -> TableQuery:
         """This table's own state from the request, keyed by `key`.
 
         A sort naming a field none of this table's columns sort by is
         dropped rather than passed through to `order_by`, which would raise
-        `FieldError` on a guessed or stale query parameter.
+        `FieldError` on a guessed or stale query parameter. A filter value
+        that fails its own `validate` is dropped the same way.
         """
         page = request.GET.get(f"{key}-page", "1")
         search = request.GET.get(f"{key}-q", "").strip()
@@ -172,21 +193,33 @@ class DataTable:
         sort_field = sort[1:] if sort.startswith("-") else sort
         if sort_field not in sortable_fields:
             sort = ""
-        return TableQuery(key=key, search=search, sort=sort, page=page)
+        filters: dict[str, list[str]] = {}
+        for table_filter in cls.get_filters():
+            values = request.GET.getlist(f"{key}-{table_filter.key}")
+            validated = table_filter.validate(values, request)
+            if validated:
+                filters[table_filter.key] = validated
+        return TableQuery(key=key, search=search, sort=sort, page=page, filters=filters)
 
     @classmethod
     def filter_queryset(
         cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> QuerySet:
-        """Search then sort `queryset` from `query`. Narrowing only — pagination
-        is `get_rows`'s job, so this stays reusable wherever a table's full,
-        unpaginated result set is needed (an export, a bulk action).
+        """Search, then apply each declared filter, then sort `queryset` from
+        `query`. Narrowing only — pagination is `get_rows`'s job, so this
+        stays reusable wherever a table's full, unpaginated result set is
+        needed (an export, a bulk action).
         """
         if query.search and cls.search_fields:
             search_filter = Q()
             for search_field in cls.search_fields:
                 search_filter |= Q(**{f"{search_field}__icontains": query.search})
             queryset = queryset.filter(search_filter)
+
+        for table_filter in cls.get_filters():
+            values = query.filters.get(table_filter.key)
+            if values:
+                queryset = table_filter.apply(queryset, values)
 
         if query.sort:
             queryset = queryset.order_by(query.sort)
@@ -246,6 +279,11 @@ class DataTable:
             )
             if sorted_by:
                 announcement += f", sorted by {sorted_by}"
+
+        filters = cls.get_filters()
+        toolbar = [
+            _toolbar_entry(request, query, table_filter) for table_filter in filters
+        ]
         return {
             "columns": columns,
             "header_columns": header_columns,
@@ -260,4 +298,47 @@ class DataTable:
             "region_id": region_id,
             "pagination": page_links(page_obj, query),
             "hidden_inputs": hidden_inputs(request, query, exclude=("q", "page")),
+            "toolbar": toolbar,
+            "add_filter": [entry for entry in toolbar if not entry["shown"]],
+            "clear_changes": query.clear_filters_changes(
+                [table_filter.key for table_filter in filters]
+            ),
+            "any_filter_set": any(entry["values"] for entry in toolbar),
         }
+
+
+def _toggled(values: list[str], value: str) -> list[str]:
+    """`values` with `value` removed if present, appended if not — the
+    selection a filter choice link toggles to."""
+    if value in values:
+        return [existing for existing in values if existing != value]
+    return [*values, value]
+
+
+def _toolbar_entry(
+    request: HttpRequest, query: TableQuery, table_filter: TableFilter
+) -> dict[str, object]:
+    """One filter's toolbar rendering: its current values, their labels, and
+    the choices its disclosure lists, each carrying the changes selecting it
+    would make."""
+    values = query.filters.get(table_filter.key, [])
+    choices = table_filter.get_choices(request)
+    labels = [label for value, label in choices if value in values]
+    return {
+        "filter": table_filter,
+        "values": values,
+        "labels": labels,
+        "shown": table_filter.always_shown or bool(values),
+        "choices": [
+            {
+                "value": value,
+                "label": label,
+                "selected": value in values,
+                "changes": query.filter_changes(
+                    table_filter.key, _toggled(values, value)
+                ),
+            }
+            for value, label in choices
+        ],
+        "remove_changes": query.filter_changes(table_filter.key, []),
+    }

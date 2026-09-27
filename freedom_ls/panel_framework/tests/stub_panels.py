@@ -22,13 +22,19 @@ from typing import ClassVar, cast
 
 from django import forms
 from django.apps import apps
-from django.db.models import Model, QuerySet
+from django.db.models import Field, Model, QuerySet
 from django.http import HttpRequest, QueryDict
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.filters import (
+    BooleanFilter,
+    ChoiceFilter,
+    RelatedChoiceFilter,
+    TableFilter,
+)
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     Panel,
@@ -79,6 +85,10 @@ class RecordingCapabilityConfig(SectionConfigBase):
 
 def _stub_model() -> type[Model]:
     return apps.get_model("freedom_ls_panel_framework", "stubmodel")
+
+
+def _stub_child_model() -> type[Model]:
+    return apps.get_model("freedom_ls_panel_framework", "stubchild")
 
 
 def _build_stub_create_form(
@@ -158,11 +168,61 @@ class StubDataTable(DataTable):
             ),
         ]
 
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        kind_field = cast(Field, _stub_model()._meta.get_field("kind"))
+        kind_choices = list(kind_field.choices or [])
+        return [
+            ChoiceFilter(
+                "kind", "Kind", lookup="kind", choices=kind_choices, always_shown=True
+            ),
+            BooleanFilter("active", "Active only", lookup="is_active"),
+        ]
+
 
 class StubDataTablePanel(DataTablePanel):
     title = "Stub"
     data_table = StubDataTable
     table_key = "stub"
+
+
+class StubChildDataTable(DataTable):
+    """A table over StubChild, whose one filter narrows by its parent —
+    the RelatedChoiceFilter case, scoped to a subset of StubModel rows."""
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        return cast(
+            QuerySet,
+            _stub_child_model().objects.select_related("parent").order_by("pk"),
+        )
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Parent",
+                template="cotton/data-table-cells/text.html",
+                attr="parent",
+            ),
+        ]
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [
+            RelatedChoiceFilter(
+                "parent",
+                "Parent",
+                lookup="parent",
+                queryset=_stub_model().objects.filter(name__startswith="in-scope"),
+            ),
+        ]
+
+
+class StubChildTablePanel(DataTablePanel):
+    title = "Children"
+    data_table = StubChildDataTable
+    table_key = "children"
 
 
 class StubATablePanel(DataTablePanel):
@@ -203,6 +263,7 @@ class StubTabSet(TabSet):
         "details": StubDetailsPanel,
         "hidden": StubHiddenPanel,
         "pair": StubPairStack,
+        "children": StubChildTablePanel,
     }
 
 
