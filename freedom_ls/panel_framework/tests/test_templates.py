@@ -163,9 +163,11 @@ def test_forced_colours_rules_live_with_their_components() -> None:
     not from the built CSS, so a later slice's rule shows up here too."""
     status_badge = (COMPONENTS_DIR / "panel-status-badge.html").read_text()
     progress_bar = (COMPONENTS_DIR / "panel-progress-bar.html").read_text()
+    filter_toggle = (COMPONENTS_DIR / "panel-filter-toggle.html").read_text()
 
     assert "forced-colors:border" in status_badge
     assert "forced-colors: active" in progress_bar
+    assert "forced-colors:" in filter_toggle
     assert "panel-progress-bar" not in TAILWIND_COMPONENTS_CSS.read_text()
 
 

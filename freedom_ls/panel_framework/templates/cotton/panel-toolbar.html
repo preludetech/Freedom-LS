@@ -1,0 +1,39 @@
+<c-vars clear_all_href="" />
+
+{% comment %}
+Toolbar — the row above a list or table holding its search, filters and
+actions, plus the chips naming which filters are applied.
+
+Attributes:
+  clear_all_href  Set only when a filter is applied: renders a "Clear all"
+                  link after the applied chips (default none).
+
+Named slots: search, filters, actions (each skipped when empty or
+whitespace-only) and applied. The root is a plain <div>, not
+role="toolbar": these are ordinary form controls, not a widget that manages
+its own keyboard navigation. From md the search, filters and actions share
+one row, with the actions right-aligned; below md the search takes the
+full width, since the flex-col layout stretches its block-level children.
+
+Usage:
+  <c-panel-toolbar clear_all_href="?">
+    <c-slot name="search"><c-panel-search-field name="q" label="Search" /></c-slot>
+    <c-slot name="filters"><c-panel-filter-toggle label="Inactive" /></c-slot>
+    <c-slot name="actions"><c-button>Export</c-button></c-slot>
+    <c-slot name="applied"><c-panel-applied-filter label="Status: Inactive" /></c-slot>
+  </c-panel-toolbar>
+{% endcomment %}
+
+<div class="space-y-3" {{ attrs }}>
+    <div class="flex flex-col gap-3 md:flex-row md:items-center">
+        {{ search }}
+        {{ filters }}
+        {% if actions.strip %}<div class="md:ml-auto">{{ actions }}</div>{% endif %}
+    </div>
+    {% if applied.strip or clear_all_href %}
+        <div class="flex flex-wrap items-center gap-2">
+            {{ applied }}
+            {% if clear_all_href %}<a href="{{ clear_all_href }}" class="text-sm underline">Clear all</a>{% endif %}
+        </div>
+    {% endif %}
+</div>

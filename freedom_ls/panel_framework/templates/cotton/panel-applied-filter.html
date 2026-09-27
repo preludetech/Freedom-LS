@@ -1,0 +1,19 @@
+<c-vars label="" />
+
+{% comment %}
+Applied filter — a chip naming one active filter, with its own remove
+button, in a toolbar's applied slot.
+
+Attributes:
+  label  The filter's display text, e.g. "Status: Inactive" (required).
+         Also names the remove button's accessible name, "Remove filter:
+         <label>".
+
+{{ attrs }} lands on the remove button, so a caller can wire hx-delete to
+retract the filter.
+{% endcomment %}
+
+<span class="chip chip-muted">
+    {{ label }}
+    <button type="button" aria-label="Remove filter: {{ label }}" class="text-muted hover:text-on-surface focus:outline-none focus:ring-2 focus:ring-primary rounded-full" {{ attrs }}><span aria-hidden="true"><c-icon name="close" class="size-3" /></span></button>
+</span>
