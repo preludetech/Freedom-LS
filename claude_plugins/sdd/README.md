@@ -41,11 +41,13 @@ the generated `todo.md` lists is written fully namespaced.
 `.claude/sdd/` config). It is **not** the primary init — it detect-and-skips the shared artifacts
 (`claude.sh`, the `SessionStart` hook, the `.gitignore` `settings.local.json` line) that `/ds:init` owns.
 
-### Agents (3)
+### Agents (4)
 `sdd-worker` (Sonnet) — one non-interactive unit of fan-out work (research topic / review dimension /
 scan); `sdd-mechanic` (Haiku) — mechanical chores (test runs, commits, file moves, todo ticking);
-`sdd-implementer` (Sonnet) — one unit of implementation work, test first, a plan batch or a fix. Spawn
-one per unit from a depth-0 SDD command. Model tiering lives in each agent's `model:` frontmatter.
+`sdd-implementer` (Sonnet) — one unit of implementation work, test first, a plan batch or a fix;
+`sdd-boy-scout` (Sonnet) — tidies test organisation in one batch's touched files within a budget.
+Spawn one per unit from a depth-0 SDD command. Model tiering lives in each agent's `model:`
+frontmatter.
 
 ### Skills (3)
 `claude-code-authoring` (+4 resources: `subagents`, `model_tiering`, `fanout_recipe`, `interactive_cli`) —

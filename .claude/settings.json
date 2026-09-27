@@ -104,7 +104,8 @@
       "Bash(uv run python manage.py showmigrations:*)",
       "Bash(uv run python manage.py qa_*)",
       "Bash(claude_plugins/sdd/scripts/upstream_change_scan.sh:*)",
-      "Bash(claude_plugins/sdd/scripts/land_on_main.sh:*)"
+      "Bash(claude_plugins/sdd/scripts/land_on_main.sh:*)",
+      "Bash(claude_plugins/sdd/scripts/batch_scope_check.sh:*)"
     ],
     "deny": [
       "Bash(git commit --no-verify:*)",

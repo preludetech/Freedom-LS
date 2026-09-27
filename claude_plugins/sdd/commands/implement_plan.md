@@ -45,9 +45,24 @@ Every commit a batch produces carries its number (later slices add more rows):
 | --- | --- |
 | `[batch N] <summary>` | implementer |
 | `[batch N review-fix] <summary>` | fix agent, for a mechanical review finding |
+| `[batch N boy-scout] move <old-path> -> <new-path>` | boy-scout; exactly one file, no content change |
+| `[batch N boy-scout] edit <summary>` | boy-scout; the edit that goes with the move before it |
+| `[batch N boy-scout] edit split <path> into <a>, <b>` | boy-scout; a split |
+| `[batch N boy-scout] edit drop <app> test dependency on <other-app>` | boy-scout; one cross-app dependency removed |
 | `[batch N record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
 
 Matching `[batch N]` needs the closing bracket straight after the number, so no follow-on commit reads as the implementation's commit. Resume, and later the budget and the scope check, read subjects only.
+
+The boy-scout's budget is counted fresh each time from `git log`, never carried in memory:
+
+```bash
+LOG=$(git log --format=%s "$(git merge-base origin/main HEAD)..HEAD")
+moved=$(grep -cE '^\[batch [0-9]+ boy-scout\] (move |edit split )' <<<"$LOG" || true)   # cap 3
+dropped=$(grep -cE '^\[batch [0-9]+ boy-scout\] edit drop ' <<<"$LOG" || true)          # cap 1
+```
+
+Remaining budget is the cap minus the count, floored at 0. The boy-scout still runs at zero
+budget, so it can report deferred items.
 
 ### Touched files
 
@@ -76,8 +91,8 @@ This is the same rule the scope-check script uses for its own allowed set, kept 
 When `## Testing Skills` is not blank:
 
 - no `[batch N]` → implement it, then run the follow-ons.
-- `[batch N]` but no `[batch N record]` → run the follow-ons only. Reuse `.sdd-work/test_org_review_batch_<N>.md` when it ends `status: ok`; a `[batch N review-fix]` commit means the mechanical fixes have already landed, so don't send them again.
-- `[batch N record]` → skip, but first delete any leftover `.sdd-work/test_org_review_batch_<N>.md` by name — an interrupt can land between the record commit and its own deletes.
+- `[batch N]` but no `[batch N record]` → run the follow-ons only. Reuse `.sdd-work/test_org_review_batch_<N>.md` when it ends `status: ok`; a `[batch N review-fix]` commit means the mechanical fixes have already landed, so don't send them again. Reuse `.sdd-work/boy_scout_batch_<N>.md` the same way when it ends `status: ok`, and give a re-spawned boy-scout's brief the batch's existing `[batch N boy-scout]` commits so it finishes a half-done pair instead of repeating it.
+- `[batch N record]` → skip, but first delete any leftover `.sdd-work/test_org_review_batch_<N>.md` and `.sdd-work/boy_scout_batch_<N>.md` by name — an interrupt can land between the record commit and its own deletes.
 
 For each remaining batch, spawn **one implementation sub-agent** via the `Agent` tool with `subagent_type: "sdd:sdd-implementer"`, and pass the per-spawn `model: "sonnet"` parameter so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Its brief carries the skill line (when the list from above is not empty), the batch's plan steps verbatim, and the commit subject `[batch N] <summary>`. The TDD, full-suite and commit rules live in the `sdd:sdd-implementer` agent file, which returns a structured status (`status: ok|failed|blocked` · `reason:`).
 
@@ -119,9 +134,21 @@ One `sdd:sdd-worker`, spawned per the fan-out recipe as in `plan_from_spec.md` S
 
 If there are mechanical findings, send them all to one `sdd:sdd-implementer` with the skill line and the subject `[batch N review-fix] <summary>`. It may edit any file the fix needs, for example an app's existing `tests/conftest.py`. Put judgement findings to the user right away, up to four per `AskUserQuestion`, with the reviewer's recommendation as the first option. An answer that needs code takes the same fix path. If the answer accepts a new cross-app edge, the record says so and names `/app_map` as needing a re-run.
 
+#### Boy-scout (follow-on 3)
+
+Skip when no touched file is a test file (under a `tests/` directory, or named `test_*.py` or `conftest.py`) or production code (any other source file); markdown, `docs/` and `spec_dd/` paths count as neither. Otherwise record `FROM_REF=$(git rev-parse HEAD)` and spawn one `sdd:sdd-boy-scout` with the batch number, the touched files, the remaining budget, whether `docs/app_structure.md` exists, and — on a resumed run — the batch's existing `[batch N boy-scout]` commits. Before spawning, note `git status --porcelain`. `failed` → restore modified tracked files with `git restore --staged --worktree <paths>` and delete, by name, any untracked file that was not in the earlier listing, then retry up to twice with the prior error in the brief; its commits stay. `blocked` → as for the review.
+
+#### Scope check (follow-on 4)
+
+Via `sdd:sdd-mechanic`, run `batch_scope_check.sh N <from-ref>`, with the script path resolved as in `pre_step_rebase.md` Step 3. `<from-ref>` is `FROM_REF`; on resume it is the parent of the batch's oldest `[batch N boy-scout]` commit, or `HEAD` when there is none. Exit 1 stops the run and puts the `OUT_OF_SCOPE:` paths to the user. Commits are never reverted automatically. Any other non-zero exit is `failed`.
+
+#### Deferred items (follow-on 6)
+
+For each `Deferred` entry: if a row with status `next` in `spec_dd/1. next/roadmap.md` has a Scope covering the item's app, append a bullet to that directory's `idea.md` under `## Follow-ups from other specs`, creating the heading if needed. Otherwise write a new `spec_dd/1. next/<slug>/idea.md` with `## What`, `## Why` and `## Resources`. Never edit `roadmap.md`, because `/sdd:roadmap` picks new ideas up. On a resumed run, skip an item whose bullet or `idea.md` already exists in the working tree.
+
 #### Record (follow-on 7)
 
-Append a `## Batch N` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, and any accepted edge for `/app_map`. Commit it via `sdd:sdd-mechanic` as `[batch N record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` by explicit path. Then delete `.sdd-work/test_org_review_batch_<N>.md` by name.
+Append a `## Batch N` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, any accepted edge for `/app_map`, what the boy-scout tidied, and each deferred item with where it went. Commit it via `sdd:sdd-mechanic` as `[batch N record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` and any follow-up `idea.md` files by explicit path. Then delete `.sdd-work/test_org_review_batch_<N>.md` and `.sdd-work/boy_scout_batch_<N>.md` by name.
 
 **All tests must pass before moving to the next batch.**
 
