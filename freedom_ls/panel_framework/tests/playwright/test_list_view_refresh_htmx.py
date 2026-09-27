@@ -44,25 +44,28 @@ def test_save_and_add_another_refreshes_table(
 
     # --- First create ---
     page.get_by_role("button", name="Create Item").click()
-    # Fill the name field in the modal
-    page.get_by_label("Name").fill("Alpha")
+    # Fill the name field in the modal. Scoped to the dialog: the table's own
+    # mobile filter-and-sort sheet also has a "Name" (ascending/descending)
+    # label, and it stays in the DOM even while closed.
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Name").fill("Alpha")
     # Click "Save and add another"
     page.get_by_role("button", name="Save and add another").click()
 
     # Table should refresh — "Alpha" row must appear without full page reload.
-    # A table cell, not get_by_text: StubModel's "kind" choices are also
-    # labelled Alpha/Beta, and the table's Kind filter renders those labels
-    # too. exact=True: the row's checkbox cell is named "Select Alpha", which
-    # would otherwise match too.
-    expect(table.get_by_role("cell", name="Alpha", exact=True)).to_be_visible()
+    # The Name column specifically (its second cell, after the selection
+    # checkbox): StubModel's "kind" choices are also labelled Alpha/Beta, so
+    # a freshly-created row's default Kind cell reads "Alpha" too.
+    name_cell = table.locator("tbody tr td:nth-child(2)")
+    expect(name_cell.get_by_text("Alpha", exact=True)).to_be_visible()
 
     # --- Second create ---
-    page.get_by_label("Name").fill("Beta")
+    dialog.get_by_label("Name").fill("Beta")
     page.get_by_role("button", name="Save and add another").click()
 
     # Both rows must be present
-    expect(table.get_by_role("cell", name="Alpha", exact=True)).to_be_visible()
-    expect(table.get_by_role("cell", name="Beta", exact=True)).to_be_visible()
+    expect(name_cell.get_by_text("Alpha", exact=True)).to_be_visible()
+    expect(name_cell.get_by_text("Beta", exact=True)).to_be_visible()
 
     # Create button must not be duplicated
     expect(page.get_by_role("button", name="Create Item")).to_have_count(1)

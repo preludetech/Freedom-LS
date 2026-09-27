@@ -17,7 +17,13 @@
         clear_changes=""
         any_filter_set="False"
         bulk_actions=""
-        noun="" />
+        noun=""
+        primary_column=""
+        secondary_columns=""
+        sortable_columns=""
+        card_template=""
+        sheet_hidden_inputs=""
+        reset_changes="" />
 
 <div id="{{ region_id }}" data-table-region>
     <div tabindex="-1" data-table-anchor></div>
@@ -25,7 +31,25 @@
 
     {% if bulk_actions %}<form method="post" x-data="tableSelection">{% csrf_token %}<input type="hidden" name="mode" value="keys">{% endif %}
 
-    <c-scroll-table-labels class="overflow-x-auto {{ class }}">
+    {% if bulk_actions %}
+        {% comment %}
+        The header checkbox lives in the desktop <table>, which is hidden
+        below md, so cards need their own "select all" control. It has to be
+        a descendant of this form (not the toolbar above, which is outside
+        it) for tableSelection's event.target.closest("form") to find it.
+        {% endcomment %}
+        <div class="mb-2 md:hidden">
+            <label class="inline-flex items-center gap-2 text-sm">
+                <input type="checkbox"
+                       aria-label="Select all on this page"
+                       data-select-all
+                       x-on:change="toggleAll">
+                Select all on this page
+            </label>
+        </div>
+    {% endif %}
+
+    <div class="hidden overflow-x-auto md:block {{ class }}">
         <table>
                 <thead>
                     <tr>
@@ -92,7 +116,21 @@
                     {% endif %}
                 </tbody>
             </table>
-    </c-scroll-table-labels>
+    </div>
+
+    <ul class="divide-y divide-border md:hidden">
+        {% if rows %}
+            {% for row in rows %}
+                <c-data-table-card :row="row"
+                                    :primary_column="primary_column"
+                                    :secondary_columns="secondary_columns"
+                                    :selectable="bulk_actions"
+                                    :card_template="card_template" />
+            {% endfor %}
+        {% else %}
+            <li class="py-8 text-center text-muted">{{ empty_message }}</li>
+        {% endif %}
+    </ul>
 
     {% if bulk_actions %}
         {% include "panel_framework/partials/table_selection_bar.html" %}

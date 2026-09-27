@@ -1,7 +1,10 @@
 {% comment %}
 Desktop table toolbar: search, a pill or chip per declared filter, "Add
-filter", "Clear all" and the current sort. Every control is a real link or
-form, so the toolbar works with JavaScript off.
+filter", "Clear all" and the current sort, all in one row from md up. Below
+md that row collapses to the search box, the applied-filter chips, and
+"Filter"/"Sort" buttons that open the shared sheet in table_sheet.html.
+Every control is a real link or form, so both layouts work with JavaScript
+off.
 {% endcomment %}
 {% partialdef filter-choices %}
     <div class="surface absolute z-10 mt-1 min-w-40 space-y-1 p-2">
@@ -20,94 +23,129 @@ form, so the toolbar works with JavaScript off.
         {% endfor %}
     </div>
 {% endpartialdef %}
-<div class="mb-4 flex flex-wrap items-center gap-2">
-    {% if searchable %}
-        <form id="{{ query.key }}-search"
-              method="get"
-              action="{{ page_url }}"
-              hx-get="{{ base_url }}"
-              hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
-              hx-sync="this:replace"
-              hx-target="#{{ region_id }}"
-              hx-swap="outerHTML">
-            {% for name, value in hidden_inputs %}
-                <input type="hidden" name="{{ name }}" value="{{ value }}">
-            {% endfor %}
-            <input type="search"
-                   id="{{ query.key }}-q"
-                   name="{{ query.key }}-q"
-                   placeholder="Search..."
-                   value="{{ query.search }}"
-                   class="max-w-md">
-        </form>
-    {% endif %}
+<div class="mb-4 space-y-3">
+    <div class="flex flex-wrap items-center gap-2">
+        {% if searchable %}
+            <form id="{{ query.key }}-search"
+                  method="get"
+                  action="{{ page_url }}"
+                  hx-get="{{ base_url }}"
+                  hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
+                  hx-sync="this:replace"
+                  hx-target="#{{ region_id }}"
+                  hx-swap="outerHTML"
+                  class="w-full md:w-auto md:max-w-md">
+                {% for name, value in hidden_inputs %}
+                    <input type="hidden" name="{{ name }}" value="{{ value }}">
+                {% endfor %}
+                <input type="search"
+                       id="{{ query.key }}-q"
+                       name="{{ query.key }}-q"
+                       placeholder="Search..."
+                       value="{{ query.search }}"
+                       class="w-full md:w-auto">
+            </form>
+        {% endif %}
 
-    {% for entry in toolbar %}
-        {% if entry.shown %}
-            <details class="relative">
+        {% for entry in toolbar %}
+            {% if entry.shown %}
+                <details class="relative hidden md:block">
+                    <summary class="list-none">
+                        {% if entry.values %}
+                            <c-chip variant="secondary" class="cursor-pointer">
+                                {{ entry.filter.label }}: {{ entry.labels|join:", " }}
+                                {% querystring request.GET entry.remove_changes as remove_qs %}
+                                <a href="{{ page_url }}{{ remove_qs }}"
+                                   hx-get="{{ base_url }}{{ remove_qs }}"
+                                   hx-target="#{{ region_id }}"
+                                   hx-swap="outerHTML"
+                                   aria-label="Remove {{ entry.filter.label }} filter">
+                                    <c-icon name="close" class="size-3" />
+                                </a>
+                                <c-icon name="dropdown" class="size-3" />
+                            </c-chip>
+                        {% else %}
+                            <c-chip variant="secondary" class="cursor-pointer">
+                                {{ entry.filter.label }}
+                                <c-icon name="dropdown" class="size-3" />
+                            </c-chip>
+                        {% endif %}
+                    </summary>
+                    {% with choices=entry.choices %}
+                        {% partial filter-choices %}
+                    {% endwith %}
+                </details>
+            {% endif %}
+        {% endfor %}
+
+        {% if add_filter %}
+            <details class="relative hidden md:block">
                 <summary class="list-none">
-                    {% if entry.values %}
-                        <c-chip variant="secondary" class="cursor-pointer">
-                            {{ entry.filter.label }}: {{ entry.labels|join:", " }}
-                            {% querystring request.GET entry.remove_changes as remove_qs %}
-                            <a href="{{ page_url }}{{ remove_qs }}"
-                               hx-get="{{ base_url }}{{ remove_qs }}"
-                               hx-target="#{{ region_id }}"
-                               hx-swap="outerHTML"
-                               aria-label="Remove {{ entry.filter.label }} filter">
-                                <c-icon name="close" class="size-3" />
-                            </a>
-                            <c-icon name="dropdown" class="size-3" />
-                        </c-chip>
-                    {% else %}
-                        <c-chip variant="secondary" class="cursor-pointer">
-                            {{ entry.filter.label }}
-                            <c-icon name="dropdown" class="size-3" />
-                        </c-chip>
-                    {% endif %}
+                    <c-chip variant="secondary" class="cursor-pointer">
+                        Add filter
+                        <c-icon name="dropdown" class="size-3" />
+                    </c-chip>
                 </summary>
-                {% with choices=entry.choices %}
-                    {% partial filter-choices %}
-                {% endwith %}
+                <div class="surface absolute z-10 mt-1 min-w-40 space-y-2 p-2">
+                    {% for entry in add_filter %}
+                        <details>
+                            <summary class="cursor-pointer">{{ entry.filter.label }}</summary>
+                            {% with choices=entry.choices %}
+                                {% partial filter-choices %}
+                            {% endwith %}
+                        </details>
+                    {% endfor %}
+                </div>
             </details>
         {% endif %}
-    {% endfor %}
 
-    {% if add_filter %}
-        <details class="relative">
-            <summary class="list-none">
-                <c-chip variant="secondary" class="cursor-pointer">
-                    Add filter
-                    <c-icon name="dropdown" class="size-3" />
-                </c-chip>
-            </summary>
-            <div class="surface absolute z-10 mt-1 min-w-40 space-y-2 p-2">
-                {% for entry in add_filter %}
-                    <details>
-                        <summary class="cursor-pointer">{{ entry.filter.label }}</summary>
-                        {% with choices=entry.choices %}
-                            {% partial filter-choices %}
-                        {% endwith %}
-                    </details>
-                {% endfor %}
-            </div>
-        </details>
+        {% if any_filter_set %}
+            {% querystring request.GET clear_changes as clear_qs %}
+            <a href="{{ page_url }}{{ clear_qs }}"
+               hx-get="{{ base_url }}{{ clear_qs }}"
+               hx-target="#{{ region_id }}"
+               hx-swap="outerHTML"
+               class="hidden md:inline">
+                Clear all
+            </a>
+        {% endif %}
+
+        {% if exports %}
+            {% querystring request.GET export_changes as export_qs %}
+            <a href="{{ page_url }}{{ export_qs }}" class="hidden md:inline">Export CSV</a>
+        {% endif %}
+
+        {% if sorted_by %}<span class="ml-auto hidden text-sm text-muted md:inline">Sorted by {{ sorted_by }}</span>{% endif %}
+    </div>
+
+    {% if toolbar or sortable_columns %}
+        <div class="flex flex-wrap items-center gap-2 md:hidden"
+             x-data="sidePanel"
+             data-storage-key="{{ query.key }}-sheet">
+            {% for entry in toolbar %}
+                {% if entry.values %}
+                    <c-chip variant="secondary">
+                        {{ entry.filter.label }}: {{ entry.labels|join:", " }}
+                        {% querystring request.GET entry.remove_changes as remove_qs %}
+                        <a href="{{ page_url }}{{ remove_qs }}"
+                           hx-get="{{ base_url }}{{ remove_qs }}"
+                           hx-target="#{{ region_id }}"
+                           hx-swap="outerHTML"
+                           aria-label="Remove {{ entry.filter.label }} filter">
+                            <c-icon name="close" class="size-3" />
+                        </a>
+                    </c-chip>
+                {% endif %}
+            {% endfor %}
+
+            {% if toolbar %}
+                <button type="button" x-on:click="toggle">Filter</button>
+            {% endif %}
+            {% if sortable_columns %}
+                <button type="button" x-on:click="toggle" class="ml-auto">Sort</button>
+            {% endif %}
+
+            {% include "panel_framework/partials/table_sheet.html" %}
+        </div>
     {% endif %}
-
-    {% if any_filter_set %}
-        {% querystring request.GET clear_changes as clear_qs %}
-        <a href="{{ page_url }}{{ clear_qs }}"
-           hx-get="{{ base_url }}{{ clear_qs }}"
-           hx-target="#{{ region_id }}"
-           hx-swap="outerHTML">
-            Clear all
-        </a>
-    {% endif %}
-
-    {% if exports %}
-        {% querystring request.GET export_changes as export_qs %}
-        <a href="{{ page_url }}{{ export_qs }}">Export CSV</a>
-    {% endif %}
-
-    {% if sorted_by %}<span class="ml-auto text-sm text-muted">Sorted by {{ sorted_by }}</span>{% endif %}
 </div>

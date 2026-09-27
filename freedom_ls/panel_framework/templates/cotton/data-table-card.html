@@ -1,0 +1,37 @@
+<c-vars row="" primary_column="" secondary_columns="" selectable="False" card_template="" />
+
+{% comment %}
+One row of a table rendered as a card below md. `card_template`, when set on
+the DataTable, replaces the primary/secondary rendering below with its own
+markup for a denser layout; the selection checkbox around it is unchanged
+either way.
+{% endcomment %}
+<li class="flex items-start gap-2 border-b border-border py-3 last:border-0">
+    {% if selectable %}
+        <label class="flex size-11 shrink-0 items-center justify-center">
+            <input type="checkbox"
+                   name="keys"
+                   value="{{ row.object.pk }}"
+                   aria-label="Select {{ row.label }}"
+                   x-on:change="update">
+        </label>
+    {% endif %}
+    <div class="min-w-0 flex-1 py-1">
+        {% if card_template %}
+            {% include card_template with object=row.object %}
+        {% else %}
+            {% if primary_column %}
+                <div class="font-medium break-words">
+                    {% include primary_column.template with object=row.object column=primary_column %}
+                </div>
+            {% endif %}
+            {% if secondary_columns %}
+                <div class="flex flex-wrap gap-x-3 text-sm text-muted">
+                    {% for column in secondary_columns %}
+                        <span class="min-w-0 break-words">{% include column.template with object=row.object column=column %}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</li>

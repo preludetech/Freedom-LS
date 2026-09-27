@@ -36,7 +36,11 @@ def test_header_checkbox_tristate(
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    header_checkbox = page.get_by_label("Select all on this page")
+    # The mobile card list carries its own "select all" control with the same
+    # label, so scope to the desktop table's header checkbox specifically.
+    header_checkbox = page.locator("#stubs-table thead").get_by_label(
+        "Select all on this page"
+    )
     row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
     expect(row_checkboxes).to_have_count(3)
 

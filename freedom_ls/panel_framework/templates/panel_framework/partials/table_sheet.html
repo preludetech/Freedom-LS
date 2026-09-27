@@ -1,0 +1,115 @@
+{% comment %}
+The mobile filter & sort sheet: a plain GET form inside base's shared
+bottom-sheet dialog, reachable and submittable below md with JavaScript off
+via the <noscript> override below.
+{% endcomment %}
+<dialog id="{{ query.key }}-sheet"
+        x-ref="panelDialog"
+        data-variant="bottom-sheet"
+        class="side-panel-dialog modal-backdrop-host md:hidden"
+        aria-label="Filter and sort">
+    <div class="side-panel-body bg-surface overflow-y-auto overscroll-contain">
+        <form method="get"
+              action="{{ page_url }}"
+              hx-get="{{ base_url }}"
+              hx-target="#{{ region_id }}"
+              hx-swap="outerHTML"
+              class="flex flex-col gap-4 p-4">
+            {% for name, value in sheet_hidden_inputs %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold">Filter &amp; sort</h2>
+                {% querystring request.GET reset_changes as reset_qs %}
+                <a href="{{ page_url }}{{ reset_qs }}"
+                   hx-get="{{ base_url }}{{ reset_qs }}"
+                   hx-target="#{{ region_id }}"
+                   hx-swap="outerHTML">
+                    Reset
+                </a>
+            </div>
+
+            {% for entry in toolbar %}
+                {% if entry.filter.widget == "select" %}
+                    <label class="flex flex-col gap-1 text-sm font-medium">
+                        {{ entry.filter.label }}
+                        <select name="{{ query.key }}-{{ entry.filter.key }}"
+                                class="rounded-md border border-border px-2 py-2">
+                            <option value="">All</option>
+                            {% for choice in entry.choices %}
+                                <option value="{{ choice.value }}" {% if choice.selected %}selected{% endif %}>
+                                    {{ choice.label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                {% else %}
+                    <fieldset class="space-y-2">
+                        <legend class="text-sm font-medium">{{ entry.filter.label }}</legend>
+                        <div class="flex flex-wrap gap-2">
+                            {% for choice in entry.choices %}
+                                <label class="relative inline-flex cursor-pointer items-center gap-1 rounded-full border border-border px-3 py-1 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-on-primary">
+                                    <input type="checkbox"
+                                           name="{{ query.key }}-{{ entry.filter.key }}"
+                                           value="{{ choice.value }}"
+                                           {% if choice.selected %}checked{% endif %}
+                                           class="sr-only">
+                                    {{ choice.label }}
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                {% endif %}
+            {% endfor %}
+
+            {% if sortable_columns %}
+                <fieldset class="space-y-1">
+                    <legend class="text-sm font-medium">Sort</legend>
+                    <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-2">
+                        <input type="radio"
+                               name="{{ query.key }}-sort"
+                               value=""
+                               {% if not query.sort %}checked{% endif %}
+                               class="peer sr-only">
+                        <span class="flex-1">Default order</span>
+                        <span class="invisible peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
+                    </label>
+                    {% for column in sortable_columns %}
+                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-2">
+                            <input type="radio"
+                                   name="{{ query.key }}-sort"
+                                   value="{{ column.sort_field }}"
+                                   {% if query.sort == column.sort_field %}checked{% endif %}
+                                   class="peer sr-only">
+                            <span class="flex-1">{{ column.header }} (ascending)</span>
+                            <span class="invisible peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
+                        </label>
+                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-2">
+                            <input type="radio"
+                                   name="{{ query.key }}-sort"
+                                   value="-{{ column.sort_field }}"
+                                   {% if query.sort == "-"|add:column.sort_field %}checked{% endif %}
+                                   class="peer sr-only">
+                            <span class="flex-1">{{ column.header }} (descending)</span>
+                            <span class="invisible peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
+                        </label>
+                    {% endfor %}
+                </fieldset>
+            {% endif %}
+
+            <div class="mt-auto flex justify-end gap-2 pt-2">
+                <c-button type="button" variant="secondary" x-on:click="close">Cancel</c-button>
+                <c-button type="submit" variant="primary">Show results</c-button>
+            </div>
+        </form>
+    </div>
+</dialog>
+<noscript>
+    <style>
+        #{{ query.key }}-sheet {
+            display: block;
+            position: static;
+        }
+    </style>
+</noscript>

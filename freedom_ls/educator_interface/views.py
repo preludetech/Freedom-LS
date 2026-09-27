@@ -173,6 +173,7 @@ def _registration_columns() -> list[Column]:
             header="Registered",
             template="cotton/data-table-cells/text.html",
             attr="registered_at",
+            card="md_only",
         ),
     ]
 
@@ -193,7 +194,7 @@ class CohortDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link("Cohort Name", "name", "cohorts/{pk}"),
+            _interface_link("Cohort Name", "name", "cohorts/{pk}", card="primary"),
             Column(
                 header="Active Learners",
                 template="cotton/data-table-cells/text.html",
@@ -238,7 +239,11 @@ class LearnerDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             _interface_link(
-                "First Name", "user.first_name", "learners/{pk}", sortable=True
+                "First Name",
+                "user.first_name",
+                "learners/{pk}",
+                sortable=True,
+                card="primary",
             ),
             _interface_link(
                 "Last Name", "user.last_name", "learners/{pk}", sortable=True
@@ -248,6 +253,7 @@ class LearnerDataTable(DataTable):
                 template="cotton/data-table-cells/text.html",
                 attr="user.email",
                 # sortable=True,
+                card="md_only",
             ),
             RelationLinkColumn(
                 header="Cohorts",
@@ -335,7 +341,9 @@ class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link("Course", "course.title", "courses/{course.pk}"),
+            _interface_link(
+                "Course", "course.title", "courses/{course.pk}", card="primary"
+            ),
             *_registration_columns(),
         ]
 
@@ -517,7 +525,7 @@ class CourseDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link("Title", "title", "courses/{pk}"),
+            _interface_link("Title", "title", "courses/{pk}", card="primary"),
             Column(
                 header="Visibility",
                 template="cotton/data-table-cells/text.html",
@@ -527,6 +535,7 @@ class CourseDataTable(DataTable):
                 header="Interest",
                 template="cotton/data-table-cells/text.html",
                 attr="interest_count",
+                card="md_only",
             ),
             Column(
                 header="Active Learners",
@@ -537,6 +546,7 @@ class CourseDataTable(DataTable):
                 header="Active Cohorts",
                 template="cotton/data-table-cells/text.html",
                 attr="cohort_count",
+                card="md_only",
             ),
             RelationLinkColumn(
                 header="Cohorts",
@@ -568,7 +578,9 @@ class CourseCohortRegistrationDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link("Cohort", "cohort.name", "cohorts/{cohort.pk}"),
+            _interface_link(
+                "Cohort", "cohort.name", "cohorts/{cohort.pk}", card="primary"
+            ),
             *_registration_columns(),
         ]
 
@@ -602,7 +614,10 @@ class CourseLearnerRegistrationDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             _interface_link(
-                "First Name", "learner.user.first_name", "learners/{learner.pk}"
+                "First Name",
+                "learner.user.first_name",
+                "learners/{learner.pk}",
+                card="primary",
             ),
             _interface_link(
                 "Last Name", "learner.user.last_name", "learners/{learner.pk}"
@@ -611,6 +626,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
                 header="Email",
                 template="cotton/data-table-cells/text.html",
                 attr="learner.user.email",
+                card="md_only",
             ),
             *_registration_columns(),
         ]

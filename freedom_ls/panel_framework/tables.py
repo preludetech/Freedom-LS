@@ -184,6 +184,10 @@ class DataTable:
 
     page_size = 25
     search_fields: list[str] = []
+    #: A template that replaces the default card body (the primary/secondary
+    #: cell rendering) below md, for a denser layout than the generic card
+    #: gives. `None` keeps the default.
+    card_template: str | None = None
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -323,6 +327,24 @@ class DataTable:
         toolbar = [
             _toolbar_entry(request, query, table_filter) for table_filter in filters
         ]
+        filter_keys = [table_filter.key for table_filter in filters]
+
+        primary_column = next(
+            (column for column in columns if column.card == "primary"),
+            columns[0] if columns else None,
+        )
+        secondary_columns = [
+            column
+            for column in columns
+            if column is not primary_column and column.card != "md_only"
+        ]
+        sortable_columns = [column for column in columns if column.sortable]
+
+        # "Reset" clears every filter and the sort, but not the search text —
+        # the sheet has no search field of its own, so a search made from the
+        # desktop toolbar or the search form stays in place.
+        reset_changes = query.clear_filters_changes(filter_keys)
+        reset_changes[query.param("sort")] = None
 
         # The label is lazy: a table with no bulk action never renders it (the
         # checkbox is the only place it's read), and get_row_label defaults to
@@ -348,12 +370,18 @@ class DataTable:
             "hidden_inputs": hidden_inputs(request, query, exclude=("q", "page")),
             "toolbar": toolbar,
             "add_filter": [entry for entry in toolbar if not entry["shown"]],
-            "clear_changes": query.clear_filters_changes(
-                [table_filter.key for table_filter in filters]
-            ),
+            "clear_changes": query.clear_filters_changes(filter_keys),
             "any_filter_set": any(entry["values"] for entry in toolbar),
             "exports": bool(cls.get_export_columns()),
             "export_changes": {query.param("export"): "csv"},
+            "primary_column": primary_column,
+            "secondary_columns": secondary_columns,
+            "sortable_columns": sortable_columns,
+            "card_template": cls.card_template,
+            "sheet_hidden_inputs": hidden_inputs(
+                request, query, exclude=("page", "sort", *filter_keys)
+            ),
+            "reset_changes": reset_changes,
         }
 
 

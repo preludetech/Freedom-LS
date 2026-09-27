@@ -192,7 +192,10 @@ def test_search_text_is_url_encoded(mock_site_context: Site) -> None:
     html = fetch(_panel_path(stub.pk), data={"stub-q": "a & b + c #"}).content.decode()
 
     document = lxml.html.fromstring(html)
-    (search_input,) = document.cssselect("input[name='stub-q']")
+    # The mobile sheet also carries the search text as a hidden input, so its
+    # value round-trips through a "Show results" submit; select the visible
+    # search box specifically.
+    (search_input,) = document.cssselect("input[type='search'][name='stub-q']")
     assert search_input.get("value") == "a & b + c #"
     (sort_link,) = [
         link

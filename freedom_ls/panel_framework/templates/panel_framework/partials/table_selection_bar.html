@@ -1,9 +1,11 @@
 {% comment %}
 The selection bar: the result count and one submit button per permitted bulk
 action, hidden until a row is checked, sharing its footer row with the
-pagination — which stays visible regardless of selection.
+pagination — which stays visible regardless of selection. Fixed to the
+bottom of the viewport below md, where the bar would otherwise scroll out of
+reach below a long card list.
 {% endcomment %}
-<div class="mt-6 flex flex-wrap items-center justify-between gap-4 px-4">
+<div class="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-between gap-4 border-t border-border bg-surface px-4 py-3 md:static md:mt-6 md:border-0 md:bg-transparent md:px-4 md:py-0">
     <div aria-live="polite" x-show="hasSelection" class="flex flex-wrap items-center gap-4">
         <span class="text-sm">
             <span x-text="count"></span> selected

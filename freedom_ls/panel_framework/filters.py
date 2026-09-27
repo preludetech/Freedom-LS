@@ -7,6 +7,8 @@ that never varies per declaration, `__init__` holds what does.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
@@ -21,6 +23,9 @@ class TableFilter:
     """
 
     always_shown: bool = False
+    #: How the mobile sheet renders this filter's choices: "chips" for a
+    #: multi-select toggle group, "select" for a single-value <select>.
+    widget: Literal["chips", "select"] = "chips"
 
     def __init__(
         self, key: str, label: str, *, lookup: str, always_shown: bool = False
@@ -74,6 +79,8 @@ class RelatedChoiceFilter(TableFilter):
     so a value outside that scope is invisible to `get_choices` and
     `validate` drops it.
     """
+
+    widget: Literal["chips", "select"] = "select"
 
     def __init__(
         self,

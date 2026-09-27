@@ -22,10 +22,10 @@ document.addEventListener("alpine:init", () => {
 
     // Row selection for a table's bulk-action bar (cotton/data-table.html).
     // Lives on the wrapping <form>, so every row and header checkbox reaches
-    // it, including cards once slice 8 adds them to the same form. There is
-    // no persisted state: every region swap re-renders the form from
-    // scratch, which is how a sort, search or filter change clears the
-    // selection.
+    // it, including the mobile "select all" control and every card checkbox,
+    // which render inside the same form. There is no persisted state: every
+    // region swap re-renders the form from scratch, which is how a sort,
+    // search or filter change clears the selection.
     //
     // Both handlers find the form from the triggering event's target rather
     // than `this.$el`: a shared Alpine.data() method's `$el` is the element
@@ -38,12 +38,24 @@ document.addEventListener("alpine:init", () => {
             return this.count > 0;
         },
 
+        // Below md every row has two checkboxes — one in the desktop <table>,
+        // one on its card — with only one ever visible at a time. Counting
+        // and "select all" both need just the reachable set, or checking
+        // every visible row would never look "all checked" against the
+        // hidden half. offsetParent is null exactly for a display:none
+        // ancestor, which is how both the table and the card list hide.
+        _visibleRowBoxes(form) {
+            return Array.from(form.querySelectorAll('input[name="keys"]')).filter(
+                (box) => box.offsetParent !== null,
+            );
+        },
+
         // Recount checked rows and sync every header "select all" checkbox
         // to match: unchecked when none are selected, indeterminate when
         // some are, checked when every row on the page is.
         update(event) {
             const form = event.target.closest("form");
-            const rowBoxes = Array.from(form.querySelectorAll('input[name="keys"]'));
+            const rowBoxes = this._visibleRowBoxes(form);
             const checkedBoxes = rowBoxes.filter((box) => box.checked);
             this.count = checkedBoxes.length;
             const allChecked =
@@ -57,7 +69,7 @@ document.addEventListener("alpine:init", () => {
         toggleAll(event) {
             const form = event.target.closest("form");
             const checked = event.target.checked;
-            form.querySelectorAll('input[name="keys"]').forEach((box) => {
+            this._visibleRowBoxes(form).forEach((box) => {
                 box.checked = checked;
             });
             this.update(event);

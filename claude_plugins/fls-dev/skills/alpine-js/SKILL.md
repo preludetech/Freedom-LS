@@ -18,7 +18,6 @@ These Alpine components are already registered in the FreedomLS codebase — reu
 | `modal` | `base/.../alpine-components.js` | `cotton/modal.html` | Toggle open/close, escape key, backdrop click |
 | `message` | `base/.../alpine-components.js` | `partials/messages.html` | Auto-dismiss toasts |
 | `sidebarComponent` | `base/.../alpine-components.js` | `_base_interface.html` | Toggle open/close, localStorage, responsive |
-| `scrollTableLabels` | `base/.../alpine-components.js` | Tables | Scroll-synced table labels |
 | `debugBadge` | `base/.../alpine-components.js` | `_base.html` | Collapsible debug badge |
 | `coursePart` | `learner_interface/.../alpine-components.js` | `course_minimal_toc.html` | Expand/collapse with localStorage |
 | `equation` | `content_engine/.../alpine-components.js` | `cotton/equation.html` | Client-side KaTeX typesetting (widget-scoped) |

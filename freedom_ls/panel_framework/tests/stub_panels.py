@@ -166,6 +166,19 @@ class StubDataTable(DataTable):
                 template="cotton/data-table-cells/text.html",
                 attr="name",
                 sortable=True,
+                card="primary",
+            ),
+            Column(
+                header="Kind",
+                template="cotton/data-table-cells/text.html",
+                attr="get_kind_display",
+                card="secondary",
+            ),
+            Column(
+                header="SAT score",
+                template="cotton/data-table-cells/text.html",
+                attr="sat_score",
+                card="md_only",
             ),
         ]
 
@@ -258,15 +271,49 @@ class StubATablePanel(DataTablePanel):
     table_key = "a"
 
 
+class StubPlainDataTable(DataTable):
+    """The same rows as StubDataTable, with no filters and no sortable
+    columns — table b's role in the mobile toolbar tests, where the Filter
+    and Sort buttons must not render."""
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        return cast(QuerySet, _stub_model().objects.order_by("name"))
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="Name",
+                template="cotton/data-table-cells/text.html",
+                attr="name",
+                card="primary",
+            ),
+        ]
+
+
 class StubBTablePanel(DataTablePanel):
     title = "B"
-    data_table = StubDataTable
+    data_table = StubPlainDataTable
     table_key = "b"
 
 
 class StubPairStack(PanelStack):
     title = "Pair"
     children = {"a": StubATablePanel, "b": StubBTablePanel}
+
+
+class StubCardDataTable(StubDataTable):
+    """The same rows and columns as StubDataTable, with its default card
+    body replaced by a custom template."""
+
+    card_template = "panel_framework/test_stub_card.html"
+
+
+class StubCardTablePanel(DataTablePanel):
+    title = "Cards"
+    data_table = StubCardDataTable
+    table_key = "cards"
 
 
 class StubDetailsPanel(Panel):
@@ -291,6 +338,7 @@ class StubTabSet(TabSet):
         "hidden": StubHiddenPanel,
         "pair": StubPairStack,
         "children": StubChildTablePanel,
+        "cards": StubCardTablePanel,
     }
 
 
