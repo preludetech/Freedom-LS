@@ -35,11 +35,11 @@ agent opens with:
 
 > Before anything else, invoke the `Skill` tool for each of: <ids>, in order.
 
-Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker per the commit-subject grammar below. A batch now owns several commits, and `[batch N]` is only the implementation's; the batch is finished at `[batch N record]`, or at `[batch N]` when `## Testing Skills` is blank.
+Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker per the commit-subject grammar below. A batch owns several commits, and `[batch N]` is only the implementation's; the batch is finished at `[batch N record]`, or at `[batch N]` when `## Testing Skills` is blank.
 
 ### Commit-subject grammar
 
-Every commit a batch produces carries its number (later slices add more rows):
+Every commit a batch produces carries its number:
 
 | Subject | Made by |
 | --- | --- |
@@ -54,7 +54,7 @@ Every commit a batch produces carries its number (later slices add more rows):
 | `[batch N record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
 | `[final review-fix] <summary>` | fix agent, for a finding of the final review |
 
-Matching `[batch N]` needs the closing bracket straight after the number, so no follow-on commit reads as the implementation's commit. Resume, and later the budget and the scope check, read subjects only.
+Matching `[batch N]` needs the closing bracket straight after the number, so no follow-on commit reads as the implementation's commit. Resume, the budget and the scope check read subjects only.
 
 The boy-scout's budget is counted fresh each time from `git log`, never carried in memory:
 
@@ -69,7 +69,7 @@ budget, so it can report deferred items.
 
 ### Touched files
 
-Touched files are the paths the `[batch N]` commit and its `[batch N review-fix]` commits add or modify, at their current paths. The review, and later the boy-scout, work over this set:
+Touched files are the paths the `[batch N]` commit and its `[batch N review-fix]` commits add or modify, at their current paths. The review and the boy-scout work over this set:
 
 ```bash
 N=<batch-number>
@@ -108,7 +108,7 @@ After a batch returns, act on its status:
 
 ### Follow-ons
 
-Run these in order after `[batch N]` lands and the suite passes. All of them are skipped when `## Testing Skills` is blank. Later follow-ons go between Review fixes and Record, and Record is always last.
+Run these in order after `[batch N]` lands and the suite passes. All of them are skipped when `## Testing Skills` is blank. Record is always last.
 
 #### Review (follow-on 1)
 
