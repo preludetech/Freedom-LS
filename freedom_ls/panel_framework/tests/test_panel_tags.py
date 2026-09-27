@@ -17,6 +17,7 @@ from freedom_ls.panel_framework.templatetags.panel_tags import (
     clamp_percentage,
     heading_level,
     initials,
+    times,
     tone,
 )
 
@@ -177,3 +178,7 @@ def test_initials_derives_from_the_first_and_last_words(
     name: str, expected: str
 ) -> None:
     assert initials(name) == expected
+
+
+def test_times_yields_that_many_items() -> None:
+    assert list(times("3")) == [0, 1, 2]

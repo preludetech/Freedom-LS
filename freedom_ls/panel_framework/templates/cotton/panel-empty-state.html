@@ -1,0 +1,20 @@
+<c-vars icon="" message="" />
+
+{% comment %}
+Empty state — a centred message for a panel with nothing to show: first
+use, no results, or an error. This suits the learner interface too.
+
+Attributes:
+  icon     A semantic name, rendered decorative (default none: no icon).
+  message  One sentence, rendered as a <p>, never a heading (required).
+
+The default slot holds the one action a caller offers from here, e.g. a
+button to create the first record or retry after an error. The caller
+writes the wording for every case; this component draws none of its own.
+{% endcomment %}
+
+<div class="flex flex-col items-center gap-3 py-10 text-center" {{ attrs }}>
+    {% if icon %}<span aria-hidden="true" class="text-muted"><c-icon :name="icon" class="size-8" /></span>{% endif %}
+    <p class="text-muted">{{ message }}</p>
+    {{ slot }}
+</div>

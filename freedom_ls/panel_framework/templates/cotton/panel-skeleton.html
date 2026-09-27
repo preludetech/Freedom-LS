@@ -1,0 +1,33 @@
+<c-vars shape="text" lines="3" />
+
+{% load panel_tags %}
+
+{% comment %}
+Skeleton — a placeholder for content still loading. `aria-busy` belongs on
+the region being loaded and is the caller's; this component only draws the
+pulsing placeholder blocks, hidden from assistive tech since it carries no
+information of its own.
+
+Attributes:
+  shape  "tile" (one block, matching panel-stat-tile), "row" (an avatar
+         circle beside two bars, matching panel-attention-row), or
+         anything else including "text" (default): `lines` bars stacked.
+  lines  Number of bars for the "text" shape (default 3). Ignored by
+         "tile" and "row".
+{% endcomment %}
+
+<div aria-hidden="true" class="animate-pulse motion-reduce:animate-none" {{ attrs }}>
+    {% if shape == "tile" %}
+        <div data-skeleton-line class="rounded-lg border border-border h-24 bg-surface-2"></div>
+    {% elif shape == "row" %}
+        <div class="flex items-center gap-3">
+            <div class="size-8 rounded-full bg-surface-2"></div>
+            <div class="flex-1 space-y-2">
+                <div data-skeleton-line class="h-3 rounded bg-surface-2"></div>
+                <div data-skeleton-line class="h-3 rounded bg-surface-2"></div>
+            </div>
+        </div>
+    {% else %}
+        {% for _ in lines|times %}<div data-skeleton-line class="h-4 rounded bg-surface-2 mb-2 last:mb-0"></div>{% endfor %}
+    {% endif %}
+</div>

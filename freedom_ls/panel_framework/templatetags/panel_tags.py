@@ -62,6 +62,12 @@ def initials(name: str) -> str:
     return letters.upper()
 
 
+@register.filter
+def times(value: int | str) -> range:
+    """Turn an integer (or a numeric string) into a range for `{% for %}`."""
+    return range(int(value))
+
+
 @register.simple_tag
 def render_panel(panel: Panel) -> SafeString:
     """Render a bound panel through its own template and context.
