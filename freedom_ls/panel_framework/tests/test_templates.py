@@ -6,6 +6,7 @@ import copy
 import re
 from pathlib import Path
 
+import lxml.html
 import pytest
 import pytest_django.fixtures
 
@@ -96,7 +97,7 @@ def test_a_panel_template_extending_the_framework_template_renders_both(
 
     assert "<p data-stub-details>Extended</p>" in html
     assert "<h2>Details</h2>" in html
-    assert '<section class="surface"' in html
+    assert '<section data-panel="x"' in html
 
 
 @pytest.mark.django_db
@@ -110,6 +111,27 @@ def test_a_leaf_refetches_its_own_region_on_panel_changed(
     assert 'hx-trigger="panelChanged from:body"' in html
     assert f'hx-target="#{panel.region_id}"' in html
     assert f'id="{panel.region_id}"' in html
+
+
+@pytest.mark.django_db
+def test_a_panel_with_no_actions_renders_no_footer(mock_site_context: Site) -> None:
+    html = _render(_bind(_PlainPanel))
+
+    assert "<footer" not in html
+
+
+@pytest.mark.django_db
+def test_a_panels_heading_is_inside_the_card_not_a_sibling_of_it(
+    mock_site_context: Site,
+) -> None:
+    html = _render(_bind(_PlainPanel))
+
+    document = lxml.html.fromstring(html)
+    (section,) = document.cssselect('section[data-panel="x"]')
+    (card,) = list(section)
+    (heading,) = card.cssselect("h2")
+
+    assert heading.getparent() is not section
 
 
 @pytest.mark.django_db

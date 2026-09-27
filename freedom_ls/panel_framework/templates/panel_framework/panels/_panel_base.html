@@ -1,34 +1,28 @@
 {% load panel_tags %}
 {% comment %}
-The frame every leaf panel renders in. A panel with no region template is its
-own refresh region, so the section carries the region id itself. The hx-get
+The frame every leaf panel renders in. The <section>, not the card, carries
+the plumbing — data-panel, the region id and the hx-* attributes — because a
+panel is a refresh region and the card is just its chrome; an override or a
+region-template swap must keep the outer section stable while the card
+inside it is free to change. A panel with no region template is its own
+refresh region, so the section carries the region id itself. The hx-get
 re-fetches the region when an edit elsewhere fires panelChanged, which is how
 a saved edit shows up without a page load.
+
+panel_header is a hook for content above the body, now that the card renders
+the heading itself from title.
 {% endcomment %}
-<section class="surface"
-         data-panel="{{ name }}"
+<section data-panel="{{ name }}"
          {% if not region_template_name %}id="{{ region_id }}"{% endif %}
          hx-get="{{ base_url }}"
          hx-trigger="panelChanged from:body"
          hx-target="#{{ region_id }}"
          hx-swap="outerHTML">
-    {% block panel_header %}
-        {% if title %}
-            <header class="mb-4">
-                <h2>{{ title }}</h2>
-            </header>
-        {% endif %}
-    {% endblock panel_header %}
-    <div>
+    <c-panel-card :title="title" heading_level="2">
+        {% block panel_header %}{% endblock panel_header %}
         {% block panel_body %}{% endblock panel_body %}
-    </div>
-    {% block panel_actions %}
-        {% if actions %}
-            <div class="mt-4 pt-4 border-t border-border">
-                <c-button-group variant="right">
-                    {% for action in actions %}{% render_action action panel.ctx %}{% endfor %}
-                </c-button-group>
-            </div>
-        {% endif %}
-    {% endblock panel_actions %}
+        <c-slot name="actions">
+            {% block panel_actions %}{% for action in actions %}{% render_action action panel.ctx %}{% endfor %}{% endblock panel_actions %}
+        </c-slot>
+    </c-panel-card>
 </section>
