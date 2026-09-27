@@ -65,6 +65,32 @@ Prefix view functions/methods returning HTMX partials with `partial_` (e.g., `pa
 - **200** for successful responses
 - **422** for validation errors on HTMX requests
 
+### Navigating after a successful mutation
+
+Prefer `HX-Location`, not `HX-Redirect`, to send the browser to a new page after a POST/DELETE
+succeeds: `HX-Redirect` does a full page load, while `HX-Location` does an htmx-driven navigation
+that still swaps only the target you name:
+
+```python
+response = HttpResponse(status=204)
+response["HX-Location"] = json.dumps(
+    {"path": success_url, "target": "#main-content", "swap": "outerHTML"}
+)
+```
+
+### Domain events via `HX-Trigger`
+
+To tell other parts of the page a mutation happened — so they can refetch themselves — set
+`HX-Trigger` to a JSON object naming the event and the ids of the entities it touched:
+
+```python
+response["HX-Trigger"] = json.dumps({"widgetChanged": {"ids": [str(widget.pk)]}})
+```
+
+An element elsewhere on the page listens for the event name on `document.body` (or `document`) and
+refetches its own region. This keeps the mutating view and the listening region decoupled: neither
+needs to know about the other, only the event name.
+
 ## Template Patterns
 
 ### Always Specify `hx-target` and `hx-swap` Together

@@ -15,15 +15,15 @@ test_organisation_switcher.py.
 from __future__ import annotations
 
 import pytest
-from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
 
-from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+
+from .helpers import interface_url as _interface_url
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
@@ -35,47 +35,25 @@ _MOBILE_VIEWPORT = {"width": 375, "height": 750}
 
 
 @pytest.fixture
-def mobile_educator(db, live_server_site, mock_site_context) -> User:
-    """A fresh, email-verified staff user."""
-    user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)
-    EmailAddress.objects.get_or_create(
-        user=user,
-        email=user.email,
-        defaults={"verified": True, "primary": True},
-    )
-    return user
-
-
-@pytest.fixture
-def mobile_educator_page(page: Page, live_server, mobile_educator: User) -> Page:
-    """A Playwright Page at a phone viewport, logged in as mobile_educator."""
+def mobile_educator_page(page: Page, live_server, educator_user: User) -> Page:
+    """A Playwright Page at a phone viewport, logged in as educator_user."""
     page.set_viewport_size(_MOBILE_VIEWPORT)
-    _login_via_ui(page, live_server, str(mobile_educator.email), _LOGGED_IN_PASSWORD)
+    _login_via_ui(page, live_server, str(educator_user.email), _LOGGED_IN_PASSWORD)
     return page
-
-
-def _interface_url(live_server, organisation_slug: str, path_string: str) -> str:
-    from django.urls import reverse
-
-    path = reverse(
-        "educator_interface:interface",
-        kwargs={"organisation_slug": organisation_slug, "path_string": path_string},
-    )
-    return f"{live_server.url}{path}"
 
 
 def test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_together(
     live_server,
     mobile_educator_page: Page,
-    mobile_educator: User,
+    educator_user: User,
 ):
     page = mobile_educator_page
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
     CohortFactory(organisation=organisation_a, name="Alpha Cohort")
     CohortFactory(organisation=organisation_b, name="Beta Cohort")
-    assign_object_role(mobile_educator, organisation_a, "organisation_admin")
-    assign_object_role(mobile_educator, organisation_b, "organisation_admin")
+    assign_object_role(educator_user, organisation_a, "organisation_admin")
+    assign_object_role(educator_user, organisation_b, "organisation_admin")
 
     page.goto(_interface_url(live_server, organisation_a.slug, "cohorts"))
 
@@ -112,12 +90,12 @@ def test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_tog
 def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_reload(
     live_server,
     mobile_educator_page: Page,
-    mobile_educator: User,
+    educator_user: User,
 ):
     page = mobile_educator_page
     organisation = OrganisationFactory(name="Org A")
     CohortFactory(organisation=organisation, name="Alpha Cohort")
-    assign_object_role(mobile_educator, organisation, "organisation_admin")
+    assign_object_role(educator_user, organisation, "organisation_admin")
 
     page.goto(_interface_url(live_server, organisation.slug, "dashboard"))
     # A full document load wipes window state, so a surviving marker proves the

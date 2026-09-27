@@ -1,9 +1,9 @@
-"""Create a minimal educator + cohort so the educator interface shows a c-modal.
+"""Create a minimal educator + cohort so the educator interface shows #app-modal.
 
-Sets up ONE reachable ``c-modal`` trigger for frontend QA of the shared modal
+Sets up ONE reachable ``#app-modal`` trigger for frontend QA of the shared modal
 scrim. Specifically it creates an educator who can reach the cohort detail page
 and see the ``DeleteAction`` button, which opens the
-``panel_framework/partials/delete_confirmation.html`` modal (a ``<c-modal>``).
+``panel_framework/modal/delete_confirmation.html`` fragment into ``#app-modal``.
 
 The educator is granted the ``organisation_admin`` role on the cohort's
 organisation (so the cohort appears in the list, the detail page loads, and
@@ -80,7 +80,7 @@ def _ensure_verified_email(user: User) -> None:
 @click.command()
 @click.argument("site_name")
 def command(site_name: str) -> None:
-    """Set up ONE reachable c-modal trigger in the educator interface.
+    """Set up ONE reachable #app-modal trigger in the educator interface.
 
     SITE_NAME is the name of the site to create data on (e.g. 'DemoDev').
     """
@@ -154,10 +154,12 @@ def command(site_name: str) -> None:
     )
     click.secho(f"Cohort: {COHORT_NAME} (pk={cohort.pk})", fg="cyan")
     click.secho(
-        f"\nc-modal trigger: visit /educator/cohorts/{cohort.pk}", fg="cyan", bold=True
+        f"\n#app-modal trigger: visit /educator/cohorts/{cohort.pk}",
+        fg="cyan",
+        bold=True,
     )
     click.secho(
         "  Click the red 'Delete' button (top of the page) to open the "
-        "delete-confirmation c-modal.",
+        "delete-confirmation #app-modal.",
         fg="cyan",
     )

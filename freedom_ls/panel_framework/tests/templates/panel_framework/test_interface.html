@@ -30,6 +30,10 @@ accounts:legal_doc unconditionally too, so it is blanked for the same reason.
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
+{% block modal_host %}
+    {% include "panel_framework/partials/modal_host.html" %}
+{% endblock modal_host %}
+
 {% comment %}
 The view's own heading now renders inside main_template_name through
 panel-page-header, so the shared page_title region stays empty here — a

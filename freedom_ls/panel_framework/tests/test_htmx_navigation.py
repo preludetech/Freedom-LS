@@ -37,6 +37,13 @@ class TestFullPage:
         assert 'id="sidebar-nav"' in content
         assert "Restored Stub" in content
 
+    def test_the_modal_host_appears_exactly_once_on_the_full_page(
+        self, mock_site_context: Site
+    ) -> None:
+        content = fetch("stubs").content.decode()
+
+        assert content.count('id="app-modal"') == 1
+
 
 class TestNavigationResponse:
     def test_htmx_navigation_returns_oob_fragments(
@@ -126,6 +133,15 @@ class TestNavigationResponse:
         content = fetch("stubs", htmx=True, hx_target="main-content").content.decode()
 
         assert 'id="test-extra-oob-fragment"' not in content
+
+    def test_a_navigation_response_carries_no_modal_host(
+        self, mock_site_context: Site
+    ) -> None:
+        """The modal host sits outside #main-content, so a navigation swap of
+        #main-content never carries a second one onto the page."""
+        content = fetch("stubs", htmx=True, hx_target="main-content").content.decode()
+
+        assert 'id="app-modal"' not in content
 
     def test_htmx_navigation_threads_extra_url_kwargs_into_reversed_urls(
         self, mock_site_context: Site

@@ -11,53 +11,18 @@ educator_interface/tests/test_organisation_switcher.py.
 from __future__ import annotations
 
 import pytest
-from allauth.account.models import EmailAddress
 from playwright.sync_api import Page, expect
 
-from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
-from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
+
+from .helpers import interface_url as _interface_url
 
 # transaction=True so the live server's own DB connection sees the fixture
 # data this test's connection committed.
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
-
-
-@pytest.fixture
-def educator_user(db, live_server_site, mock_site_context) -> User:
-    """A fresh, email-verified staff user.
-
-    A staff variant of freedom_ls.tests.playwright_fixtures.logged_in_user —
-    that fixture is hard-coded to a plain learner, and this module is the
-    first to need an educator instead.
-    """
-    user: User = UserFactory(staff=True, password=_LOGGED_IN_PASSWORD)
-    EmailAddress.objects.get_or_create(
-        user=user,
-        email=user.email,
-        defaults={"verified": True, "primary": True},
-    )
-    return user
-
-
-@pytest.fixture
-def educator_logged_in_page(page: Page, live_server, educator_user: User) -> Page:
-    """A Playwright Page logged in as educator_user."""
-    _login_via_ui(page, live_server, str(educator_user.email), _LOGGED_IN_PASSWORD)
-    return page
-
-
-def _interface_url(live_server, organisation_slug: str, path_string: str) -> str:
-    from django.urls import reverse
-
-    path = reverse(
-        "educator_interface:interface",
-        kwargs={"organisation_slug": organisation_slug, "path_string": path_string},
-    )
-    return f"{live_server.url}{path}"
 
 
 @pytest.fixture
