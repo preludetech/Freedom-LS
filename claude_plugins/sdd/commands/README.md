@@ -83,6 +83,10 @@ Each batch ends with a `[batch <id> record]` commit that appends a `## Batch <id
 tidied, what it deferred, and each flagged item with the user's answer. All of this is skipped when
 `## Testing Skills` is blank.
 
+Before the final success-criteria check, one `sdd:sdd-worker` reviews the whole branch for what no
+single batch's review shows, such as the same cross-app edge reappearing across batches, and the
+final commit adds a `## Summary` section to `boy_scout_record.md` with the overall counts.
+
 The project's own pre-commit checks and Claude Code's `/security-review` cover the code diff ad hoc; no SDD step runs a security review.
 
 ### QA
