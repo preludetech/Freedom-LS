@@ -152,6 +152,8 @@ def test_tab_set_markup_is_navigation_not_an_aria_tab_widget(
     assert '<nav aria-label="Sections"' in html
     assert 'aria-current="page"' in html
     assert 'role="tab' not in html
+    assert "aria-selected" not in html
+    assert "data-tab-set" in html
 
 
 def test_forced_colours_rules_live_with_their_components() -> None:

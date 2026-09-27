@@ -1,0 +1,12 @@
+<c-vars columns="3" />
+
+{% comment %}
+Definition list — the grid every instance-details panel renders its label/value
+pairs into. `<dl>` over a `<table>` since these are label/value pairs, not
+tabular data with column headers.
+
+Attributes:
+  columns  2, 3 or 4 (default 3). Anything else falls back to 3.
+{% endcomment %}
+
+<dl class="grid grid-cols-1 gap-x-6 gap-y-4 {% if columns == "2" %}md:grid-cols-2{% elif columns == "4" %}md:grid-cols-4{% else %}md:grid-cols-3{% endif %}" {{ attrs }}>{{ slot }}</dl>

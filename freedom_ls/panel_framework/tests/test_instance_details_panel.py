@@ -78,3 +78,31 @@ def test_no_edit_action_when_the_panel_is_not_editable(mock_site_context: Site) 
     stub = _make_stub(name="Detailed")
 
     assert _bind(StubInstanceDetails, stub).get_actions() == []
+
+
+@pytest.mark.django_db
+def test_the_template_renders_one_dl_with_a_dt_dd_pair_per_field_and_no_table(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="Detailed", kind="b", is_active=True)
+    panel = _bind(StubInstanceDetails, stub)
+
+    html = render_to_string(panel.template_name, panel.get_context_data())
+
+    row_count = len(panel.get_rows())
+    assert html.count("<dl") == 1
+    assert html.count("<dt") == row_count
+    assert html.count("<dd") == row_count
+    assert "<table" not in html
+
+
+@pytest.mark.django_db
+def test_a_boolean_field_still_renders_the_boolean_icon(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="Detailed", is_active=True)
+    panel = _bind(StubInstanceDetails, stub)
+
+    html = render_to_string(panel.template_name, panel.get_context_data())
+
+    assert 'aria-label="boolean_true"' in html
