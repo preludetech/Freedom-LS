@@ -38,6 +38,8 @@ document.addEventListener("alpine:init", () => {
     Alpine.data("appModal", () => ({
         _trigger: null,
         _handlers: [],
+        _snapshot: null,
+        dirty: false,
         init() {
             this._dialog = this.$el;
             this._body = document.getElementById("app-modal-body");
@@ -72,7 +74,44 @@ document.addEventListener("alpine:init", () => {
                 this._body.innerHTML = "";
                 const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
                 if (prompt) prompt.hidden = true;
+                this._snapshot = null;
+                this.dirty = false;
                 focusTriggerOrMain(this._trigger);
+            });
+
+            // A dirty fragment is one whose form no longer matches the
+            // snapshot taken right after it swapped in, so a field edited
+            // and then changed back reads clean again.
+            trackListener(this._handlers, this._body, "input", () => this._checkDirty());
+            trackListener(this._handlers, this._body, "change", () => this._checkDirty());
+
+            // The native "cancel" event fires for both Esc and requestClose(),
+            // so this is the single place a dirty form can hold the dialog
+            // open. A second Esc pressed before any other user activation
+            // cannot be cancelled under the CloseWatcher rules browsers apply
+            // to <dialog>: the dialog closes and the typed input is lost.
+            // Nothing in this handler can prevent that.
+            trackListener(this._handlers, this._dialog, "cancel", (event) => {
+                if (!this.dirty) return;
+                event.preventDefault();
+                this._showDiscardPrompt();
+            });
+
+            // A click on the dialog element itself is a backdrop click, only
+            // meaningful when the fragment holds no form: a destructive
+            // confirmation or read-only content, never something with unsaved
+            // input.
+            trackListener(this._handlers, this._dialog, "click", (event) => {
+                if (event.target === this._dialog && !this._body.querySelector("form")) {
+                    this._dialog.close();
+                }
+            });
+
+            // htmx caches the outgoing page's DOM before pushing the new URL,
+            // so an open dialog would otherwise be part of that snapshot and
+            // reopen on Back.
+            trackListener(this._handlers, document, "htmx:beforeHistorySave", () => {
+                if (this._dialog.open) this._dialog.close();
             });
         },
         destroy() {
@@ -87,7 +126,26 @@ document.addEventListener("alpine:init", () => {
                 this._dialog.close();
             }
         },
+        // Hides the discard prompt without closing the dialog. Called from
+        // the prompt's "Keep editing" button.
+        keepEditing() {
+            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            if (prompt) prompt.hidden = true;
+            const form = this._body.querySelector("form");
+            const field = form && form.querySelector("input, select, textarea");
+            if (field) field.focus();
+        },
+        // The only caller of close() from a button: the prompt has already
+        // confirmed the loss of unsaved input, so no further guard applies.
+        discard() {
+            this._dialog.close();
+        },
         _afterBodySwap(event) {
+            // A fresh snapshot for every fragment that lands in the body,
+            // whether this is the initial open, a "save and add another"
+            // re-render or a 422: the guard always compares against what is
+            // on screen right now, not what was there before.
+            this._snapshotForm();
             if (!this._dialog.open) {
                 // The fragment is already in the DOM, so native autofocus
                 // picks the initial focus.
@@ -112,6 +170,31 @@ document.addEventListener("alpine:init", () => {
                 document.getElementById("main-content").focus();
             }
             this._trigger = null;
+        },
+        _snapshotForm() {
+            const form = this._body.querySelector("form");
+            this._snapshot = form ? new FormData(form) : null;
+            this.dirty = false;
+        },
+        _checkDirty() {
+            const form = this._body.querySelector("form");
+            this.dirty = form !== null && this._serialiseForm(new FormData(form)) !== this._serialiseForm(this._snapshot);
+        },
+        // Both FormData objects come from the same form element, so their
+        // entries() order is stable and the joined pairs are safe to compare
+        // as strings.
+        _serialiseForm(formData) {
+            if (!formData) return "";
+            return Array.from(formData.entries())
+                .map(([name, value]) => `${name}=${value}`)
+                .join("&");
+        },
+        _showDiscardPrompt() {
+            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            if (!prompt) return;
+            prompt.hidden = false;
+            const keepEditingButton = prompt.querySelector("[autofocus]");
+            if (keepEditingButton) keepEditingButton.focus();
         },
     }));
 

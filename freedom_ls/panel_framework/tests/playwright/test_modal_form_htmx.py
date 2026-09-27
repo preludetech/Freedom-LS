@@ -105,3 +105,91 @@ def test_cancel_closes_the_modal_and_returns_focus_to_the_trigger(
 
     expect(page.locator("#app-modal")).to_be_hidden()
     expect(trigger).to_be_focused()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_esc_on_a_clean_form_closes_the_modal(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+    expect(page.locator("#app-modal")).to_be_visible()
+    page.keyboard.press("Escape")
+
+    expect(page.locator("#app-modal")).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_esc_on_a_dirty_form_shows_the_discard_prompt_with_the_form_intact(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_label("Name").fill("Dirty")
+    page.keyboard.press("Escape")
+
+    expect(page.locator("#app-modal")).to_be_visible()
+    expect(page.get_by_label("Name")).to_have_value("Dirty")
+    expect(page.get_by_role("button", name="Keep editing")).to_be_focused()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_keep_editing_hides_the_prompt_and_returns_focus_to_the_form(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_label("Name").fill("Dirty")
+    page.keyboard.press("Escape")
+    page.get_by_role("button", name="Keep editing").click()
+
+    expect(page.locator("[data-modal-discard-prompt]")).to_be_hidden()
+    expect(page.get_by_label("Name")).to_have_value("Dirty")
+    expect(page.get_by_label("Name")).to_be_focused()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_discard_closes_the_dialog_and_loses_the_input(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_label("Name").fill("Dirty")
+    page.keyboard.press("Escape")
+    page.get_by_role("button", name="Discard").click()
+
+    expect(page.locator("#app-modal")).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_a_backdrop_click_does_not_close_a_form(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+    expect(page.locator("#app-modal")).to_be_visible()
+    # A click at the dialog's own padding, clear of the form and close
+    # button, lands on the dialog element itself.
+    page.locator("#app-modal").click(position={"x": 5, "y": 5})
+
+    expect(page.locator("#app-modal")).to_be_visible()

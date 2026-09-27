@@ -38,6 +38,7 @@ from .conftest import (
     make_staff_user,
 )
 from .stub_panels import RecordingCapabilityConfig
+from .stub_panels import StubReadOnlyAction
 
 # -- Shared test form ---------------------------------------------------
 
@@ -712,3 +713,27 @@ def test_a_get_of_a_delete_actions_url_returns_its_fragment(
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
     assert "hx-delete=" in content
+
+
+# -- Read-only PanelAction tests ------------------------------------------
+
+
+@pytest.mark.django_db
+def test_a_get_of_a_read_only_actions_url_returns_its_fragment(
+    mock_site_context: Site,
+) -> None:
+    """A read-only action's fragment carries the shared modal heading, no
+    form, and focuses itself since there is no field to autofocus instead."""
+    item = _make_stub(name="read-only-fetch")
+    action = StubReadOnlyAction()
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
+
+    content = response.content.decode()
+    assert 'id="app-modal-title"' in content
+    assert 'tabindex="-1"' in content
+    assert "autofocus" in content
+    assert "<form" not in content
