@@ -1,0 +1,7 @@
+{% comment %}
+A base for read-only modal fragments: a heading with no accompanying form.
+The heading takes focus itself, since there is no form field to autofocus
+instead. Subclasses fill title and content.
+{% endcomment %}
+<h2 id="app-modal-title" tabindex="-1" autofocus>{% block title %}{% endblock title %}</h2>
+<div class="max-w-prose">{% block content %}{% endblock content %}</div>
