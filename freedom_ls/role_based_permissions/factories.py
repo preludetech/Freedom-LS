@@ -32,7 +32,7 @@ class SiteRoleAssignmentFactory(SiteAwareFactory):
         model = SiteRoleAssignment
 
     user = factory.SubFactory(UserFactory)
-    role = "instructor"
+    role = "cohort_admin"
     is_active = True
     assigned_by = None
 
@@ -49,7 +49,7 @@ class ObjectRoleAssignmentFactory(SiteAwareFactory):
 
     Usage:
         course = CourseFactory()
-        assignment = ObjectRoleAssignmentFactory(target_object=course, role="instructor")
+        assignment = ObjectRoleAssignmentFactory(target_object=course, role="cohort_admin")
     """
 
     class Meta:
@@ -57,7 +57,7 @@ class ObjectRoleAssignmentFactory(SiteAwareFactory):
         exclude = ["target_object"]
 
     user = factory.SubFactory(UserFactory)
-    role = "instructor"
+    role = "cohort_admin"
     is_active = True
     assigned_by = None
 

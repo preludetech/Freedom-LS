@@ -12,9 +12,9 @@ LTI = "http://purl.imsglobal.org/vocab/lis/v2"
 
 ROLES = BASE_ROLES.extend(
     {
-        # Example: Modify existing role — Prelude TAs also get analytics
+        # Example: Modify existing role — Prelude cohort viewers also get analytics
         # (requires freedom_ls_content_engine.view_analytics permission to exist first)
-        # "ta": {
+        # "cohort_viewer": {
         #     "add_permissions": {"freedom_ls_content_engine.view_analytics"},
         # },
         # Example: New composable micro-role
@@ -30,9 +30,9 @@ ROLES = BASE_ROLES.extend(
         #     }),
         # ),
         # Example: Inheritance-based variant
-        # "ta_announcements": {
-        #     "display_name": "TA (with Announcements)",
-        #     "inherits": "ta",
+        # "cohort_viewer_announcements": {
+        #     "display_name": "Cohort Viewer (with Announcements)",
+        #     "inherits": "cohort_viewer",
         #     "add_permissions": {"freedom_ls_content_engine.send_announcements"},
         #     "lti_role": f"{LTI}/membership#Instructor#TeachingAssistant",
         # },

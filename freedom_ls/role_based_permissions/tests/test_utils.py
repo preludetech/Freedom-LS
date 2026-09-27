@@ -56,7 +56,7 @@ class TestCheckRoleNameInConfig:
     @pytest.mark.django_db
     def test_valid_role_passes(self) -> None:
         """Known role does not raise."""
-        check_role_name_in_config("instructor")
+        check_role_name_in_config("cohort_admin")
 
     @pytest.mark.django_db
     def test_unknown_role_raises_value_error(self) -> None:
@@ -73,10 +73,10 @@ class TestAssignObjectRole:
         """Assigning an object role creates the assignment and sets matching guardian perms."""
         user = UserFactory()
         cohort = CohortFactory()
-        assignment = assign_object_role(user, cohort, "instructor")
+        assignment = assign_object_role(user, cohort, "cohort_admin")
 
         assert assignment.is_active is True
-        assert assignment.role == "instructor"
+        assert assignment.role == "cohort_admin"
         assert assignment.user == user
 
         # Guardian perms matching Cohort content type should be set
@@ -90,13 +90,13 @@ class TestAssignObjectRole:
         """Only permissions matching the target's content type are synced."""
         user = UserFactory()
 
-        # Instructor has cohort-scoped permissions (view_cohort, etc.)
+        # cohort_admin has cohort-scoped permissions (view_cohort, etc.)
         # When synced against a Site object, none of those match the Site content type.
         # Create assignment to bypass scope enforcement (testing content type filtering).
         ObjectRoleAssignmentFactory(
             user=user,
             target_object=mock_site_context,
-            role="instructor",
+            role="cohort_admin",
         )
         sync_user_object_permissions(user, mock_site_context)
         perms = get_perms(user, mock_site_context)
@@ -104,7 +104,7 @@ class TestAssignObjectRole:
 
         # But on a Cohort object, view_cohort should match
         cohort = CohortFactory()
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
         cohort_perms = get_perms(user, cohort)
         assert "view_cohort" in cohort_perms
 
@@ -116,11 +116,11 @@ class TestAssignObjectRole:
 
         # Create an inactive assignment directly
         ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort, role="instructor", is_active=False
+            user=user, target_object=cohort, role="cohort_admin", is_active=False
         )
 
         # Re-assign should reactivate
-        assignment = assign_object_role(user, cohort, "instructor")
+        assignment = assign_object_role(user, cohort, "cohort_admin")
         assert assignment.is_active is True
 
         # Guardian perms should be set
@@ -150,12 +150,12 @@ class TestAssignObjectRole:
         cohort = CohortFactory()
 
         assignment = assign_object_role(
-            user, cohort, "instructor", assigned_by=original_assigner
+            user, cohort, "cohort_admin", assigned_by=original_assigner
         )
         assert assignment.assigned_by == original_assigner
 
         assignment = assign_object_role(
-            user, cohort, "instructor", assigned_by=new_assigner
+            user, cohort, "cohort_admin", assigned_by=new_assigner
         )
         assert assignment.assigned_by == new_assigner
 
@@ -168,13 +168,13 @@ class TestRemoveObjectRole:
         """Removing a role deactivates the assignment and removes guardian perms."""
         user = UserFactory()
         cohort = CohortFactory()
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
 
-        remove_object_role(user, cohort, "instructor")
+        remove_object_role(user, cohort, "cohort_admin")
 
         ct = ContentType.objects.get_for_model(cohort)
         assignment = ObjectRoleAssignment.objects.get(
-            user=user, content_type=ct, object_id=str(cohort.pk), role="instructor"
+            user=user, content_type=ct, object_id=str(cohort.pk), role="cohort_admin"
         )
         assert assignment.is_active is False
         assert get_perms(user, cohort) == []
@@ -185,12 +185,12 @@ class TestRemoveObjectRole:
         user = UserFactory()
         cohort = CohortFactory()
 
-        # instructor and ta both have view_cohort
-        assign_object_role(user, cohort, "instructor")
-        assign_object_role(user, cohort, "ta")
+        # cohort_admin and cohort_viewer both have view_cohort
+        assign_object_role(user, cohort, "cohort_admin")
+        assign_object_role(user, cohort, "cohort_viewer")
 
-        # Remove instructor — ta's view_cohort should remain
-        remove_object_role(user, cohort, "instructor")
+        # Remove cohort_admin — cohort_viewer's view_cohort should remain
+        remove_object_role(user, cohort, "cohort_admin")
 
         perms = get_perms(user, cohort)
         assert "view_cohort" in perms
@@ -201,14 +201,14 @@ class TestRemoveObjectRole:
         user = UserFactory()
         cohort = CohortFactory()
         with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
-            assign_object_role(user, cohort, "instructor")
+            assign_object_role(user, cohort, "cohort_admin")
 
         with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
-            remove_object_role(user, cohort, "instructor")
+            remove_object_role(user, cohort, "cohort_admin")
 
         ct = ContentType.objects.get_for_model(cohort)
         assignment = ObjectRoleAssignment.objects.get(
-            user=user, content_type=ct, object_id=str(cohort.pk), role="instructor"
+            user=user, content_type=ct, object_id=str(cohort.pk), role="cohort_admin"
         )
         assert assignment.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
 
@@ -224,12 +224,12 @@ class TestSyncUserObjectPermissions:
 
         # Create an active role assignment
         ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort, role="instructor", is_active=True
+            user=user, target_object=cohort, role="cohort_admin", is_active=True
         )
 
         result = sync_user_object_permissions(user, cohort)
 
-        # Only cohort-matching perms from instructor role should be added
+        # Only cohort-matching perms from cohort_admin role should be added
         assert "freedom_ls_learner_management.view_cohort" in result["added"]
         assert result["removed"] == set()
 
@@ -240,7 +240,7 @@ class TestSyncUserObjectPermissions:
         cohort = CohortFactory()
 
         ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort, role="instructor", is_active=True
+            user=user, target_object=cohort, role="cohort_admin", is_active=True
         )
 
         result = sync_user_object_permissions(user, cohort, dry_run=True)
@@ -257,7 +257,7 @@ class TestSyncUserObjectPermissions:
         cohort = CohortFactory()
 
         # Assign then remove
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
         assert len(get_perms(user, cohort)) > 0
 
         # Deactivate the assignment manually
@@ -450,19 +450,19 @@ class TestGetObjectRoles:
         """Returns set of active role names for user on object."""
         user = UserFactory()
         cohort = CohortFactory()
-        assign_object_role(user, cohort, "instructor")
-        assign_object_role(user, cohort, "ta")
+        assign_object_role(user, cohort, "cohort_admin")
+        assign_object_role(user, cohort, "cohort_viewer")
 
         roles = get_object_roles(user, cohort)
-        assert roles == {"instructor", "ta"}
+        assert roles == {"cohort_admin", "cohort_viewer"}
 
     @pytest.mark.django_db
     def test_excludes_inactive_roles(self) -> None:
         """Inactive roles are not returned."""
         user = UserFactory()
         cohort = CohortFactory()
-        assign_object_role(user, cohort, "instructor")
-        remove_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
+        remove_object_role(user, cohort, "cohort_admin")
 
         roles = get_object_roles(user, cohort)
         assert roles == set()
@@ -473,14 +473,14 @@ class TestGuardianIntegration:
 
     @pytest.mark.django_db
     def test_get_objects_for_user_returns_cohort_after_role_assignment(self) -> None:
-        """Assigning instructor role on a Cohort makes get_objects_for_user return it."""
+        """Assigning cohort_admin role on a Cohort makes get_objects_for_user return it."""
         from freedom_ls.learner_management.models import Cohort
 
         user = UserFactory()
         cohort: Cohort = CohortFactory()
         other_cohort: Cohort = CohortFactory()
 
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
 
         accessible = get_objects_for_user(
             user, "freedom_ls_learner_management.view_cohort", klass=Cohort
@@ -515,14 +515,14 @@ class TestAssignmentScopeEnforcement:
         """Cannot use assign_site_role with an object-scoped role."""
         user = UserFactory()
         with pytest.raises(ValueError, match="assignment_scope='object'"):
-            assign_site_role(user, "instructor")
+            assign_site_role(user, "cohort_admin")
 
     @pytest.mark.django_db
     def test_assign_system_role_rejects_object_scoped_role(self) -> None:
         """Cannot use assign_system_role with an object-scoped role."""
         user = UserFactory()
         with pytest.raises(ValueError, match="assignment_scope='object'"):
-            assign_system_role(user, "instructor")
+            assign_system_role(user, "cohort_admin")
 
 
 class TestConvenienceRoleQueries:
@@ -533,7 +533,7 @@ class TestConvenienceRoleQueries:
         """get_cohort_roles returns the same result as get_object_roles."""
         user = UserFactory()
         cohort = CohortFactory()
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
 
-        assert get_cohort_roles(user, cohort) == {"instructor"}
+        assert get_cohort_roles(user, cohort) == {"cohort_admin"}
         assert get_cohort_roles(user, cohort) == get_object_roles(user, cohort)

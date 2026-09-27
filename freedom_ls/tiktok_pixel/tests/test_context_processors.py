@@ -87,7 +87,7 @@ class TestTikTokPixelSnippetRendering:
     ) -> None:
         organisation = OrganisationFactory()
         educator = UserFactory(staff=True)
-        assign_object_role(educator, organisation, "organisation_staff")
+        assign_object_role(educator, organisation, "organisation_admin")
         client.force_login(educator)
         url = reverse(
             "educator_interface:interface",

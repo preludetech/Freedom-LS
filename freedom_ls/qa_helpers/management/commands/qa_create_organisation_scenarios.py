@@ -20,8 +20,8 @@ Notable behaviours:
   Academy" and asserts the monogram flips from "NO" to "NA", so the fixture
   has to start from the short name. The old row is deleted when nothing
   references it, and renamed to "Northside Old" when something does.
-* ``organisation_staff`` is an object-scoped role assigned on the Organisation
-  itself; the per-cohort legacy grant is the object-scoped ``instructor`` role
+* ``organisation_admin`` is an object-scoped role assigned on the Organisation
+  itself; the per-cohort legacy grant is the object-scoped ``cohort_admin`` role
   on a single Cohort. Both go through
   ``role_based_permissions.utils.assign_object_role``, which syncs guardian
   object permissions (``view_organisation`` / ``view_cohort`` respectively).
@@ -371,18 +371,18 @@ def _seed(site: Site) -> None:
 
     # --- Personas ------------------------------------------------------
     org_educator = _ensure_user(site, "org.educator@example.com", "Olive", "Educator")
-    assign_object_role(org_educator, rpas, "organisation_staff")
-    assign_object_role(org_educator, northside, "organisation_staff")
+    assign_object_role(org_educator, rpas, "organisation_admin")
+    assign_object_role(org_educator, northside, "organisation_admin")
 
     single_org = _ensure_user(site, "single.org@example.com", "Sam", "Singleton")
-    assign_object_role(single_org, rpas, "organisation_staff")
+    assign_object_role(single_org, rpas, "organisation_admin")
 
     # No organisation role at all: guardian view_cohort on ONE cohort, which is
-    # what the object-scoped instructor role syncs onto a Cohort.
+    # what the object-scoped cohort_admin role syncs onto a Cohort.
     legacy_educator = _ensure_user(
         site, "legacy.educator@example.com", "Lena", "Legacy"
     )
-    assign_object_role(legacy_educator, rpas_maths, "instructor")
+    assign_object_role(legacy_educator, rpas_maths, "cohort_admin")
 
     _ensure_user(site, "no.access@example.com", "Noah", "Access")
 

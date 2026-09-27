@@ -32,14 +32,14 @@ from freedom_ls.role_based_permissions.utils import (
 assign_site_role(user, "site_admin", assigned_by=admin_user)
 
 # Assign an object-level role (permissions synced to the target object)
-assign_object_role(user, cohort, "instructor", assigned_by=admin_user)
+assign_object_role(user, cohort, "cohort_admin", assigned_by=admin_user)
 
 # Assign a system-level role (no guardian sync — global scope)
 assign_system_role(user, "system_admin", assigned_by=admin_user)
 
 # Remove roles (guardian permissions updated automatically)
 remove_site_role(user, "site_admin")
-remove_object_role(user, cohort, "instructor")
+remove_object_role(user, cohort, "cohort_admin")
 remove_system_role(user, "system_admin")
 ```
 
@@ -62,7 +62,7 @@ cohorts = get_objects_for_user(user, "freedom_ls_learner_management.view_cohort"
 from freedom_ls.role_based_permissions.utils import get_object_roles
 
 # Get active roles a user has on an object
-roles = get_object_roles(user, cohort)  # e.g. {"instructor"}
+roles = get_object_roles(user, cohort)  # e.g. {"cohort_admin"}
 ```
 
 ## Built-in roles
@@ -72,8 +72,8 @@ Defined in `roles.py` as `BASE_ROLES`:
 | Role key | Display name | Description |
 |----------|-------------|-------------|
 | `site_admin` | Site Administrator | Full CRUD on cohorts |
-| `instructor` | Instructor | View cohorts |
-| `ta` | Teaching Assistant | View cohorts |
+| `cohort_admin` | Instructor | View cohorts |
+| `cohort_viewer` | Teaching Assistant | View cohorts |
 | `system_admin` | System Administrator | Placeholder (no permissions yet) |
 | `learner` | Learner | Placeholder (no permissions yet) |
 | `observer` | Observer | Placeholder (no permissions yet) |
@@ -97,7 +97,7 @@ from freedom_ls.role_based_permissions.types import Role, SCOPE_OBJECT
 
 ROLES = BASE_ROLES.extend({
     # Add permissions to an existing role
-    "ta": {
+    "cohort_viewer": {
         "add_permissions": frozenset({
             "freedom_ls_learner_management.change_cohort",
         }),
@@ -105,7 +105,7 @@ ROLES = BASE_ROLES.extend({
 
     # Create a new role inheriting from an existing one
     "lead_instructor": {
-        "inherits": "instructor",
+        "inherits": "cohort_admin",
         "display_name": "Lead Instructor",
         "add_permissions": frozenset({
             "freedom_ls_learner_management.add_cohort",

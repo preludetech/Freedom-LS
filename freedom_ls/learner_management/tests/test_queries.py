@@ -221,7 +221,7 @@ class TestOrganisationsAccessibleTo:
         organisation = OrganisationFactory()
         OrganisationFactory()  # decoy: held by nobody
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         assert list(organisations_accessible_to(user)) == [organisation]
 
@@ -232,7 +232,7 @@ class TestOrganisationsAccessibleTo:
         OrganisationFactory()  # decoy: no cohort of this one is granted
         cohort = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
 
         assert list(organisations_accessible_to(user)) == [organisation]
 
@@ -241,8 +241,8 @@ class TestOrganisationsAccessibleTo:
         zebra = OrganisationFactory(name="Zebra Academy")
         acacia = OrganisationFactory(name="Acacia College")
         user = UserFactory()
-        assign_object_role(user, zebra, "organisation_staff")
-        assign_object_role(user, acacia, "organisation_staff")
+        assign_object_role(user, zebra, "organisation_admin")
+        assign_object_role(user, acacia, "organisation_admin")
 
         assert list(organisations_accessible_to(user)) == [acacia, zebra]
 
@@ -252,8 +252,8 @@ class TestOrganisationsAccessibleTo:
         organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, organisation, "organisation_admin")
+        assign_object_role(user, cohort, "cohort_admin")
 
         accessible = organisations_accessible_to(user)
 
@@ -283,7 +283,7 @@ class TestCohortsVisibleTo:
         cohort_a = _make_cohort(organisation=organisation)
         cohort_b = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         visible = cohorts_visible_to(user, organisation)
 
@@ -294,7 +294,7 @@ class TestCohortsVisibleTo:
         granted_cohort = _make_cohort(organisation=organisation)
         _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, granted_cohort, "instructor")
+        assign_object_role(user, granted_cohort, "cohort_admin")
 
         visible = cohorts_visible_to(user, organisation)
 
@@ -326,7 +326,7 @@ class TestAllCohortsVisibleTo:
         cohort_a = _make_cohort(organisation=organisation)
         cohort_b = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         assert set(all_cohorts_visible_to(user)) == {cohort_a, cohort_b}
 
@@ -335,7 +335,7 @@ class TestAllCohortsVisibleTo:
         mine = _make_cohort(organisation=organisation)
         _make_cohort(organisation=OrganisationFactory())
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         assert list(all_cohorts_visible_to(user)) == [mine]
 
@@ -344,7 +344,7 @@ class TestAllCohortsVisibleTo:
         granted = _make_cohort(organisation=organisation)
         _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, granted, "instructor")
+        assign_object_role(user, granted, "cohort_admin")
 
         assert list(all_cohorts_visible_to(user)) == [granted]
 
@@ -354,8 +354,8 @@ class TestAllCohortsVisibleTo:
         cohort_a = _make_cohort(organisation=first)
         cohort_b = _make_cohort(organisation=second)
         user = UserFactory()
-        assign_object_role(user, first, "organisation_staff")
-        assign_object_role(user, second, "organisation_staff")
+        assign_object_role(user, first, "organisation_admin")
+        assign_object_role(user, second, "organisation_admin")
 
         assert set(all_cohorts_visible_to(user)) == {cohort_a, cohort_b}
 
@@ -363,8 +363,8 @@ class TestAllCohortsVisibleTo:
         organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, organisation, "organisation_admin")
+        assign_object_role(user, cohort, "cohort_admin")
 
         assert list(all_cohorts_visible_to(user)).count(cohort) == 1
 
@@ -387,7 +387,7 @@ class TestAllCohortsVisibleTo:
         granted = _make_cohort(organisation=organisation)
         _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, granted, "instructor")
+        assign_object_role(user, granted, "cohort_admin")
 
         assert set(all_cohorts_visible_to(user)) == set(
             cohorts_visible_to(user, organisation)
@@ -404,7 +404,7 @@ class TestCanViewCohort:
         organisation = OrganisationFactory()
         cohort = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         assert can_view_cohort(user, cohort) is True
 
@@ -414,14 +414,14 @@ class TestCanViewCohort:
         organisation = OrganisationFactory()
         foreign_cohort = _make_cohort(organisation=OrganisationFactory())
         user = UserFactory()
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         assert can_view_cohort(user, foreign_cohort) is False
 
     def test_guardian_grant_holder_may_view_the_granted_cohort(self, mock_site_context):
         cohort = _make_cohort()
         user = UserFactory()
-        assign_object_role(user, cohort, "instructor")
+        assign_object_role(user, cohort, "cohort_admin")
 
         assert can_view_cohort(user, cohort) is True
 
@@ -432,7 +432,7 @@ class TestCanViewCohort:
         granted = _make_cohort(organisation=organisation)
         sibling = _make_cohort(organisation=organisation)
         user = UserFactory()
-        assign_object_role(user, granted, "instructor")
+        assign_object_role(user, granted, "cohort_admin")
 
         assert can_view_cohort(user, sibling) is False
 
@@ -459,7 +459,7 @@ class TestLearnersVisibleTo:
         organisation = OrganisationFactory()
         learner = LearnerFactory(user=UserFactory(), organisation=organisation)
         role_holder = UserFactory()
-        assign_object_role(role_holder, organisation, "organisation_staff")
+        assign_object_role(role_holder, organisation, "organisation_admin")
 
         assert set(learners_visible_to(role_holder, organisation)) == {learner}
 
@@ -469,7 +469,7 @@ class TestLearnersVisibleTo:
         organisation = OrganisationFactory()
         LearnerFactory(user=UserFactory(), organisation=organisation, is_active=False)
         role_holder = UserFactory()
-        assign_object_role(role_holder, organisation, "organisation_staff")
+        assign_object_role(role_holder, organisation, "organisation_admin")
 
         assert list(learners_visible_to(role_holder, organisation)) == []
 
@@ -486,7 +486,7 @@ class TestLearnersVisibleTo:
         )
         CohortMembershipFactory(learner=removed_learner, cohort=cohort)
         role_holder = UserFactory()
-        assign_object_role(role_holder, organisation, "organisation_staff")
+        assign_object_role(role_holder, organisation, "organisation_admin")
 
         assert list(learners_visible_to(role_holder, organisation)) == []
 
@@ -494,7 +494,7 @@ class TestLearnersVisibleTo:
         organisation = OrganisationFactory()
         LearnerFactory(user=UserFactory(), organisation=OrganisationFactory())
         role_holder = UserFactory()
-        assign_object_role(role_holder, organisation, "organisation_staff")
+        assign_object_role(role_holder, organisation, "organisation_admin")
 
         assert list(learners_visible_to(role_holder, organisation)) == []
 
@@ -514,7 +514,7 @@ class TestLearnersVisibleTo:
         # an organisation-role holder would see this one.
         LearnerFactory(user=UserFactory(), organisation=organisation)
         educator = UserFactory()
-        assign_object_role(educator, granted_cohort, "instructor")
+        assign_object_role(educator, granted_cohort, "cohort_admin")
 
         assert set(learners_visible_to(educator, organisation)) == {granted_member}
 

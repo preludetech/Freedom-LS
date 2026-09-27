@@ -58,8 +58,8 @@ class TestInterfaceRoot:
         user = UserFactory(staff=True)
         organisation_a = OrganisationFactory(name="Alpha")
         organisation_b = OrganisationFactory(name="Beta")
-        assign_object_role(user, organisation_a, "organisation_staff")
-        assign_object_role(user, organisation_b, "organisation_staff")
+        assign_object_role(user, organisation_a, "organisation_admin")
+        assign_object_role(user, organisation_b, "organisation_admin")
         client = logged_in_client(user)
 
         response = client.get(reverse("educator_interface:root"))
@@ -73,8 +73,8 @@ class TestInterfaceRoot:
         user = UserFactory(staff=True)
         organisation_a = OrganisationFactory(name="Alpha")
         organisation_b = OrganisationFactory(name="Beta")
-        assign_object_role(user, organisation_a, "organisation_staff")
-        assign_object_role(user, organisation_b, "organisation_staff")
+        assign_object_role(user, organisation_a, "organisation_admin")
+        assign_object_role(user, organisation_b, "organisation_admin")
         client = logged_in_client(user)
         _remember(client, organisation_b.slug)
 
@@ -90,7 +90,7 @@ class TestInterfaceRoot:
         user = UserFactory(staff=True)
         accessible = OrganisationFactory(name="Accessible")
         inaccessible = OrganisationFactory(name="Inaccessible")
-        assign_object_role(user, accessible, "organisation_staff")
+        assign_object_role(user, accessible, "organisation_admin")
         client = logged_in_client(user)
         _remember(client, inaccessible.slug)
 
@@ -128,7 +128,7 @@ class TestSessionWrite:
         every educator page load; the guard must only fire on a real change."""
         organisation = OrganisationFactory()
         user = UserFactory(staff=True)
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
         request = self._request(user, organisation.slug)
         request.session[LAST_ORGANISATION_SESSION_KEY] = organisation.slug
         request.session.save()
@@ -141,7 +141,7 @@ class TestSessionWrite:
     def test_session_is_updated_when_the_organisation_changes(self):
         organisation = OrganisationFactory()
         user = UserFactory(staff=True)
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
         request = self._request(user, organisation.slug)
 
         interface(request, organisation_slug=organisation.slug, path_string="cohorts")
@@ -159,7 +159,7 @@ class TestDetailSegmentThatIsNotAUuid:
     def organisation_and_client(self, logged_in_client):
         organisation = OrganisationFactory()
         user = UserFactory(staff=True)
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
         return organisation, logged_in_client(user)
 
     @pytest.mark.parametrize("segment", ["create", "new", "__create"])

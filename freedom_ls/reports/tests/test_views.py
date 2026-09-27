@@ -323,10 +323,10 @@ class TestDownloadReportView:
         assert response.status_code == 404
 
 
-def _organisation_staff_user(organisation: object) -> object:
+def _organisation_admin_user(organisation: object) -> object:
     """Staff with an organisation role and no per-cohort guardian grant."""
     user = UserFactory(is_staff=True)
-    assign_object_role(user, organisation, "organisation_staff")
+    assign_object_role(user, organisation, "organisation_admin")
     return user
 
 
@@ -340,7 +340,7 @@ class TestGenerateReportViewOrganisationScoping:
         organisation = OrganisationFactory()
         CohortFactory(name="Alpha Cohort", organisation=organisation)
         CohortFactory(name="Bravo Cohort", organisation=organisation)
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         content = client.get(_generate_url()).content.decode()
 
@@ -353,7 +353,7 @@ class TestGenerateReportViewOrganisationScoping:
         organisation = OrganisationFactory()
         CohortFactory(name="Alpha Cohort", organisation=organisation)
         CohortFactory(name="Foreign Cohort", organisation=OrganisationFactory())
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         content = client.get(_generate_url()).content.decode()
 
@@ -365,7 +365,7 @@ class TestGenerateReportViewOrganisationScoping:
     ) -> None:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         client.post(_generate_url(), data={"cohort": str(cohort.pk)})
 
@@ -376,7 +376,7 @@ class TestGenerateReportViewOrganisationScoping:
         self, mock_site_context: object, client: object
     ) -> None:
         cohort = CohortFactory(organisation=OrganisationFactory())
-        client.force_login(_organisation_staff_user(OrganisationFactory()))
+        client.force_login(_organisation_admin_user(OrganisationFactory()))
 
         response = client.post(_generate_url(), data={"cohort": str(cohort.pk)})
 
@@ -394,7 +394,7 @@ class TestDownloadReportViewOrganisationScoping:
             status=GeneratedReport.STATUS_READY,
         )
         _save_ready_file(report)
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         response = client.get(_download_url(report.pk))
 
@@ -408,7 +408,7 @@ class TestDownloadReportViewOrganisationScoping:
             status=GeneratedReport.STATUS_READY,
         )
         _save_ready_file(report)
-        client.force_login(_organisation_staff_user(OrganisationFactory()))
+        client.force_login(_organisation_admin_user(OrganisationFactory()))
 
         response = client.get(_download_url(report.pk))
 
@@ -423,7 +423,7 @@ class TestGenerateReportViewCohortLabels:
         that may legitimately share a name."""
         organisation = OrganisationFactory(name="Northside College")
         CohortFactory(name="Year 9 Maths", organisation=organisation)
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         content = client.get(_generate_url()).content.decode()
 

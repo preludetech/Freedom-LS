@@ -62,7 +62,7 @@ class TestCrossOrganisationIsolation:
         organisation_a = OrganisationFactory(name="Org A")
         organisation_b = OrganisationFactory(name="Org B")
         educator = UserFactory(staff=True)
-        assign_object_role(educator, organisation_a, "organisation_staff")
+        assign_object_role(educator, organisation_a, "organisation_admin")
 
         # Each Learner is built explicitly so the tests can address the row
         # itself: the detail URLs resolve a Learner pk, not a User pk.
@@ -257,7 +257,7 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)
         educator = UserFactory(staff=True)
-        assign_object_role(educator, cohort, "instructor")
+        assign_object_role(educator, cohort, "cohort_admin")
         client = logged_in_client(educator)
 
         response = client.get(reverse("educator_interface:root"))
@@ -270,7 +270,7 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         granted_cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
         CohortFactory(organisation=organisation, name="Beta Cohort")
         educator = UserFactory(staff=True)
-        assign_object_role(educator, granted_cohort, "instructor")
+        assign_object_role(educator, granted_cohort, "cohort_admin")
         client = logged_in_client(educator)
 
         response = client.get(_interface_url(organisation.slug, "cohorts"))
@@ -284,7 +284,7 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         organisation = OrganisationFactory()
         granted_cohort = CohortFactory(organisation=organisation, name="Alpha Cohort")
         educator = UserFactory(staff=True)
-        assign_object_role(educator, granted_cohort, "instructor")
+        assign_object_role(educator, granted_cohort, "cohort_admin")
         client = logged_in_client(educator)
 
         response = client.get(
@@ -310,7 +310,7 @@ class TestGuardianGrantOnlyEducatorIsNotLockedOut:
         CohortMembershipFactory(cohort=granted_cohort, learner=learner)
         CohortMembershipFactory(cohort=ungranted_cohort, learner=learner)
         educator = UserFactory(staff=True)
-        assign_object_role(educator, granted_cohort, "instructor")
+        assign_object_role(educator, granted_cohort, "cohort_admin")
         client = logged_in_client(educator)
 
         response = client.get(_interface_url(organisation.slug, "learners"))

@@ -9,12 +9,13 @@ from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role
 
 ROLES = BASE_ROLES.extend(
     {
-        # DemoDev-specific TA variant: currently identical to `ta`, kept as the slot
-        # a real additional permission gets added to.
+        # DemoDev-specific cohort_viewer variant: currently identical to
+        # `cohort_viewer`, kept as the slot a real additional permission gets
+        # added to.
         "senior_ta": {
             "display_name": "Senior Teaching Assistant",
-            "inherits": "ta",
-            "description": "TA variant reserved for additional permissions.",
+            "inherits": "cohort_viewer",
+            "description": "Cohort viewer variant reserved for additional permissions.",
             "add_permissions": set(),
         },
         # Lightweight role for guest reviewers

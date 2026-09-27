@@ -77,9 +77,9 @@ class TestSiteRoleAssignment:
         """Cannot assign the same role to the same user on the same site twice."""
         user = UserFactory()
         site = Site.objects.get_current()
-        SiteRoleAssignmentFactory(user=user, role="instructor", site=site)
+        SiteRoleAssignmentFactory(user=user, role="cohort_admin", site=site)
         with pytest.raises(IntegrityError):
-            SiteRoleAssignmentFactory(user=user, role="instructor", site=site)
+            SiteRoleAssignmentFactory(user=user, role="cohort_admin", site=site)
 
     @pytest.mark.django_db
     def test_same_role_different_sites(self) -> None:
@@ -87,8 +87,8 @@ class TestSiteRoleAssignment:
         user = UserFactory()
         site1 = Site.objects.get_current()
         site2 = SiteFactory(name="Other", domain="other.example.com")
-        SiteRoleAssignmentFactory(user=user, role="instructor", site=site1)
-        a2 = SiteRoleAssignmentFactory(user=user, role="instructor", site=site2)
+        SiteRoleAssignmentFactory(user=user, role="cohort_admin", site=site1)
+        a2 = SiteRoleAssignmentFactory(user=user, role="cohort_admin", site=site2)
         assert a2.pk is not None
 
     @pytest.mark.django_db
@@ -114,10 +114,12 @@ class TestObjectRoleAssignment:
         """Cannot assign the same role on the same object to the same user twice."""
         user = UserFactory()
         cohort = CohortFactory()
-        ObjectRoleAssignmentFactory(user=user, target_object=cohort, role="instructor")
+        ObjectRoleAssignmentFactory(
+            user=user, target_object=cohort, role="cohort_admin"
+        )
         with pytest.raises(IntegrityError):
             ObjectRoleAssignmentFactory(
-                user=user, target_object=cohort, role="instructor"
+                user=user, target_object=cohort, role="cohort_admin"
             )
 
     @pytest.mark.django_db
@@ -126,9 +128,11 @@ class TestObjectRoleAssignment:
         user = UserFactory()
         cohort1 = CohortFactory()
         cohort2 = CohortFactory()
-        ObjectRoleAssignmentFactory(user=user, target_object=cohort1, role="instructor")
+        ObjectRoleAssignmentFactory(
+            user=user, target_object=cohort1, role="cohort_admin"
+        )
         a2 = ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort2, role="instructor"
+            user=user, target_object=cohort2, role="cohort_admin"
         )
         assert a2.pk is not None
 

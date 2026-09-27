@@ -17,9 +17,9 @@ class TestBaseRoles:
         """The expected role set is defined."""
         expected = {
             "site_admin",
-            "instructor",
-            "ta",
-            "organisation_staff",
+            "cohort_admin",
+            "cohort_viewer",
+            "organisation_admin",
             "system_admin",
             "learner",
             "observer",
@@ -28,20 +28,22 @@ class TestBaseRoles:
 
     def test_site_admin_display_name(self) -> None:
         """site_admin has correct display_name."""
-        assert BASE_ROLES["site_admin"].display_name == "Site Administrator"
+        assert BASE_ROLES["site_admin"].display_name == "Site admin"
 
-    def test_instructor_display_name(self) -> None:
-        """instructor has correct display_name."""
-        assert BASE_ROLES["instructor"].display_name == "Instructor"
+    def test_cohort_admin_display_name(self) -> None:
+        """cohort_admin has correct display_name."""
+        assert BASE_ROLES["cohort_admin"].display_name == "Cohort admin"
 
-    def test_ta_display_name(self) -> None:
-        """ta has correct display_name."""
-        assert BASE_ROLES["ta"].display_name == "Teaching Assistant"
+    def test_cohort_viewer_display_name(self) -> None:
+        """cohort_viewer has correct display_name."""
+        assert BASE_ROLES["cohort_viewer"].display_name == "Cohort viewer"
 
-    def test_ta_permissions_are_subset_of_instructor_permissions(self) -> None:
-        """ta inherits from instructor — permissions must be a subset."""
-        assert BASE_ROLES["ta"].permissions.issubset(
-            BASE_ROLES["instructor"].permissions
+    def test_cohort_viewer_permissions_are_subset_of_cohort_admin_permissions(
+        self,
+    ) -> None:
+        """cohort_viewer inherits from cohort_admin — permissions must be a subset."""
+        assert BASE_ROLES["cohort_viewer"].permissions.issubset(
+            BASE_ROLES["cohort_admin"].permissions
         )
 
     def test_system_admin_display_name(self) -> None:
@@ -73,20 +75,20 @@ class TestBaseRoles:
         for name, role in BASE_ROLES.items():
             assert role.lti_role is None, f"Role '{name}' has unexpected lti_role"
 
-    def test_instructor_has_view_cohort(self) -> None:
-        """instructor includes view_cohort permission."""
+    def test_cohort_admin_has_view_cohort(self) -> None:
+        """cohort_admin includes view_cohort permission."""
         assert (
             "freedom_ls_learner_management.view_cohort"
-            in BASE_ROLES["instructor"].permissions
+            in BASE_ROLES["cohort_admin"].permissions
         )
 
-    def test_ta_has_view_cohort(self) -> None:
-        """ta includes view_cohort."""
-        ta_perms = BASE_ROLES["ta"].permissions
-        assert "freedom_ls_learner_management.view_cohort" in ta_perms
+    def test_cohort_viewer_has_view_cohort(self) -> None:
+        """cohort_viewer includes view_cohort."""
+        cohort_viewer_perms = BASE_ROLES["cohort_viewer"].permissions
+        assert "freedom_ls_learner_management.view_cohort" in cohort_viewer_perms
 
-    def test_site_admin_is_superset_of_instructor(self) -> None:
-        """site_admin permissions are a superset of instructor permissions."""
-        assert BASE_ROLES["instructor"].permissions.issubset(
+    def test_site_admin_is_superset_of_cohort_admin(self) -> None:
+        """site_admin permissions are a superset of cohort_admin permissions."""
+        assert BASE_ROLES["cohort_admin"].permissions.issubset(
             BASE_ROLES["site_admin"].permissions
         )

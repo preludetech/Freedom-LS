@@ -31,7 +31,7 @@ def cohorts_page(logged_in_client) -> tuple[Client, str, Organisation]:
     """An educator logged in against one organisation, plus its cohorts URL."""
     organisation = cast(Organisation, OrganisationFactory(name="Northside Academy"))
     educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
+    assign_object_role(educator, organisation, "organisation_admin")
     url = reverse(
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},

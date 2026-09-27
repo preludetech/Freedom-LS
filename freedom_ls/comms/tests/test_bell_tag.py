@@ -67,7 +67,7 @@ class TestBellOnEverySignedInPage:
     ) -> None:
         organisation = OrganisationFactory()
         user = UserFactory(staff=True)
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
         client = logged_in_client(user)
 
         response = client.get(

@@ -259,13 +259,13 @@ class TestGeneratedReportAdminObjectLevelScoping:
         assert response.status_code == 200
 
 
-def _organisation_staff_user(organisation: object) -> object:
+def _organisation_admin_user(organisation: object) -> object:
     """Staff, model-level report permissions, an organisation role and no
     per-cohort guardian grant at all."""
     user = UserFactory(is_staff=True)
     for codename in ("view_generatedreport", "delete_generatedreport"):
         assign_perm(f"freedom_ls_reports.{codename}", user)
-    assign_object_role(user, organisation, "organisation_staff")
+    assign_object_role(user, organisation, "organisation_admin")
     return user
 
 
@@ -284,7 +284,7 @@ class TestGeneratedReportAdminOrganisationScoping:
         GeneratedReportFactory(
             cohort=CohortFactory(name="Bravo Cohort", organisation=organisation)
         )
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         response = client.get(_changelist_url())
 
@@ -304,7 +304,7 @@ class TestGeneratedReportAdminOrganisationScoping:
                 name="Foreign Cohort", organisation=OrganisationFactory()
             )
         )
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         content = client.get(_changelist_url()).content.decode()
 
@@ -316,7 +316,7 @@ class TestGeneratedReportAdminOrganisationScoping:
     ) -> None:
         organisation = OrganisationFactory()
         report = GeneratedReportFactory(cohort=CohortFactory(organisation=organisation))
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         response = client.get(_change_url(report.pk))
 
@@ -331,7 +331,7 @@ class TestGeneratedReportAdminOrganisationScoping:
                 name="Foreign Cohort", organisation=OrganisationFactory()
             )
         )
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         response = client.get(_change_url(report.pk), follow=True)
 
@@ -343,7 +343,7 @@ class TestGeneratedReportAdminOrganisationScoping:
     ) -> None:
         organisation = OrganisationFactory()
         report = GeneratedReportFactory(cohort=CohortFactory(organisation=organisation))
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         response = client.get(_delete_url(report.pk))
 
@@ -360,7 +360,7 @@ class TestGeneratedReportAdminOrganisationScoping:
         report.file.save(
             "cohort-report.pdf", ContentFile(b"%PDF-1.4 test bytes"), save=True
         )
-        client.force_login(_organisation_staff_user(organisation))
+        client.force_login(_organisation_admin_user(organisation))
 
         response = client.get(_download_url(report.pk))
 

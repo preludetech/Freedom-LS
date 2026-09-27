@@ -48,7 +48,7 @@ class TestEducatorInterfaceLink:
         self, mock_site_context
     ):
         user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
 
         rendered = _render_menu(user)
 
@@ -57,7 +57,7 @@ class TestEducatorInterfaceLink:
 
     def test_shown_to_an_educator_with_only_a_cohort_grant(self, mock_site_context):
         user = UserFactory()
-        assign_object_role(user, CohortFactory(), "instructor")
+        assign_object_role(user, CohortFactory(), "cohort_admin")
 
         assert EDUCATOR_LINK_TEXT in _render_menu(user)
 
@@ -81,7 +81,7 @@ class TestAdminPanelLink:
 
     def test_hidden_from_a_non_staff_educator(self, mock_site_context):
         user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
 
         rendered = _render_menu(user)
 

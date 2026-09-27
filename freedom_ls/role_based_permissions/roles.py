@@ -14,10 +14,10 @@ BASE_ROLES = SiteRolesConfig(
     {
         # --- Roles with currently-existing permissions ---
         "site_admin": Role(
-            display_name="Site Administrator",
+            display_name="Site admin",
             assignment_scope=SCOPE_SITE,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
-            description="Manages courses, users, and settings within a site.",
+            description="Everything, in every organisation on the site.",
             permissions=frozenset(
                 {
                     # Django built-in permissions
@@ -29,11 +29,11 @@ BASE_ROLES = SiteRolesConfig(
                 }
             ),
         ),
-        "instructor": Role(
-            display_name="Instructor",
+        "cohort_admin": Role(
+            display_name="Cohort admin",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
-            description="Full course management: content, grading, communication.",
+            description="Manages who is in a cohort and what it is registered for.",
             permissions=frozenset(
                 {
                     # Django built-in permissions
@@ -42,11 +42,11 @@ BASE_ROLES = SiteRolesConfig(
                 }
             ),
         ),
-        "ta": Role(
-            display_name="Teaching Assistant",
+        "cohort_viewer": Role(
+            display_name="Cohort viewer",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
-            description="Supports instruction with grading and roster access.",
+            description="Sees a cohort and its reports. Changes nothing.",
             permissions=frozenset(
                 {
                     # Django built-in permissions
@@ -55,11 +55,11 @@ BASE_ROLES = SiteRolesConfig(
                 }
             ),
         ),
-        "organisation_staff": Role(
-            display_name="Organisation Staff",
+        "organisation_admin": Role(
+            display_name="Organisation admin",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,
-            description="Access to every cohort and registration within an organisation.",
+            description="Everything in one organisation, including who else administers it.",
             # FUTURE: letting this role manage cohorts takes an object-aware permission
             # check in panel_framework, not extra permission strings here. Two things
             # block the string-only route: CreateInstanceAction checks add_cohort at

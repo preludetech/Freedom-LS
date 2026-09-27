@@ -65,8 +65,8 @@ def two_organisations(educator_user: User):
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
     CohortFactory(organisation=organisation_b, name="Org B Cohort")
-    assign_object_role(educator_user, organisation_a, "organisation_staff")
-    assign_object_role(educator_user, organisation_b, "organisation_staff")
+    assign_object_role(educator_user, organisation_a, "organisation_admin")
+    assign_object_role(educator_user, organisation_b, "organisation_admin")
     return organisation_a, organisation_b
 
 

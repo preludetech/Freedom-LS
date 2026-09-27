@@ -46,8 +46,8 @@ class TestCanAccessEducatorInterface:
         self, mock_site_context
     ):
         user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
 
         assert _flag_for(user) is True
 
@@ -55,13 +55,13 @@ class TestCanAccessEducatorInterface:
         self, mock_site_context
     ):
         user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
 
         assert _flag_for(user) is True
 
     def test_educator_with_only_a_cohort_grant_can_access(self, mock_site_context):
         user = UserFactory()
-        assign_object_role(user, CohortFactory(), "instructor")
+        assign_object_role(user, CohortFactory(), "cohort_admin")
 
         assert _flag_for(user) is True
 
@@ -118,7 +118,7 @@ class TestCanAccessEducatorInterfaceIsLazy:
         self, mock_site_context
     ):
         user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
         context = _context_for(user)
         template = Template("nothing here reads the flag")
 
@@ -129,7 +129,7 @@ class TestCanAccessEducatorInterfaceIsLazy:
 
     def test_a_template_that_reads_the_flag_evaluates_it(self, mock_site_context):
         user = UserFactory()
-        assign_object_role(user, OrganisationFactory(), "organisation_staff")
+        assign_object_role(user, OrganisationFactory(), "organisation_admin")
         context = _context_for(user)
         template = Template("{% if can_access_educator_interface %}yes{% endif %}")
 

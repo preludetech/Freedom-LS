@@ -148,7 +148,7 @@ class TestEveryConfiguredSurface404sForAnInaccessibleOrganisation:
         # itself is what must be denied, not access to the interface at all.
         other_organisation = OrganisationFactory()
         user = UserFactory(staff=True)
-        assign_object_role(user, other_organisation, "organisation_staff")
+        assign_object_role(user, other_organisation, "organisation_admin")
         client = logged_in_client(user)
 
         assert paths, "interface_config produced no path_strings to test"

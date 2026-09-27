@@ -567,18 +567,18 @@ def command(
     # shared with qa_create_organisation_scenarios rather than repeated here.
     _pin_current_site(site)
     with _site_context(site):
-        assign_object_role(org_staff, organisation, "organisation_staff")
-        assign_object_role(foreign_staff, foreign_organisation, "organisation_staff")
+        assign_object_role(org_staff, organisation, "organisation_admin")
+        assign_object_role(foreign_staff, foreign_organisation, "organisation_admin")
 
     click.secho(
         f"  Org staff  {org_staff.email} / {org_staff.email} "
-        f"(is_staff, organisation_staff on '{organisation.name}', "
+        f"(is_staff, organisation_admin on '{organisation.name}', "
         f"NO per-cohort grant -- must see every cohort above)",
         fg="green",
     )
     click.secho(
         f"  Other org  {foreign_staff.email} / {foreign_staff.email} "
-        f"(is_staff, organisation_staff on '{foreign_organisation.name}', "
+        f"(is_staff, organisation_admin on '{foreign_organisation.name}', "
         f"which holds none of the cohorts above -- must see nothing)",
         fg="green",
     )

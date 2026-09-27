@@ -113,7 +113,7 @@ def test_course_table_renders_visibility_and_interest_columns(
     CourseInterestFactory(course=course, user=UserFactory())
     organisation = OrganisationFactory()
     educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation, "organisation_staff")
+    assign_object_role(educator, organisation, "organisation_admin")
 
     html = (
         logged_in_client(educator)

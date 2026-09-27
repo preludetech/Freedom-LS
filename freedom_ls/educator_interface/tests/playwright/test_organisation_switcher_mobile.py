@@ -74,8 +74,8 @@ def test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_tog
     organisation_b = OrganisationFactory(name="Org B")
     CohortFactory(organisation=organisation_a, name="Alpha Cohort")
     CohortFactory(organisation=organisation_b, name="Beta Cohort")
-    assign_object_role(mobile_educator, organisation_a, "organisation_staff")
-    assign_object_role(mobile_educator, organisation_b, "organisation_staff")
+    assign_object_role(mobile_educator, organisation_a, "organisation_admin")
+    assign_object_role(mobile_educator, organisation_b, "organisation_admin")
 
     page.goto(_interface_url(live_server, organisation_a.slug, "cohorts"))
 
@@ -117,7 +117,7 @@ def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_relo
     page = mobile_educator_page
     organisation = OrganisationFactory(name="Org A")
     CohortFactory(organisation=organisation, name="Alpha Cohort")
-    assign_object_role(mobile_educator, organisation, "organisation_staff")
+    assign_object_role(mobile_educator, organisation, "organisation_admin")
 
     page.goto(_interface_url(live_server, organisation.slug, "dashboard"))
     # A full document load wipes window state, so a surviving marker proves the

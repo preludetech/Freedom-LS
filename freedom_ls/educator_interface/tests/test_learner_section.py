@@ -64,7 +64,7 @@ def educator_client(logged_in_client):
     the organisation for a role holder, a cohort for a grant-only educator."""
 
     def _make(
-        target: Organisation | Cohort, role: str = "organisation_staff"
+        target: Organisation | Cohort, role: str = "organisation_admin"
     ) -> Client:
         educator = UserFactory(staff=True)
         assign_object_role(educator, target, role)
@@ -158,7 +158,7 @@ def test_cohort_only_educator_cannot_open_a_learner_outside_their_cohort(
     granted_cohort = _make_cohort(organisation=organisation)
     outside_learner = _make_learner(organisation=organisation)
 
-    response = educator_client(granted_cohort, "instructor").get(
+    response = educator_client(granted_cohort, "cohort_admin").get(
         _learners_url(organisation.slug, f"learners/{outside_learner.pk}")
     )
 
@@ -174,7 +174,7 @@ def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
     member = _make_learner(organisation=organisation)
     CohortMembershipFactory(learner=member, cohort=granted_cohort)
 
-    response = educator_client(granted_cohort, "instructor").get(
+    response = educator_client(granted_cohort, "cohort_admin").get(
         _learners_url(organisation.slug, f"learners/{member.pk}")
     )
 
@@ -205,7 +205,7 @@ class TestLearnerDataTableQueryCost:
     ) -> int:
         organisation = OrganisationFactory()
         educator = UserFactory(staff=True)
-        assign_object_role(educator, organisation, "organisation_staff")
+        assign_object_role(educator, organisation, "organisation_admin")
         self._seed_learners(organisation, learner_count)
 
         request = site_aware_request.get("/")

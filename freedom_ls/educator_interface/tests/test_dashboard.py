@@ -21,7 +21,7 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 def educator(mock_site_context: Site) -> tuple[Organisation, User]:
     organisation: Organisation = OrganisationFactory(name="Northside Academy")
     user: User = UserFactory(staff=True)
-    assign_object_role(user, organisation, "organisation_staff")
+    assign_object_role(user, organisation, "organisation_admin")
     return organisation, user
 
 

@@ -12,7 +12,7 @@ PERSONAS (login-ready: verified+primary EmailAddress, password == email):
       the registry, so hidden by Notification.objects -> 25 visible).
   notify.other@demodev.example.com     Learner B, 2 unseen notifications; has a
       Learner profile on the default organisation but no course registrations.
-  notify.educator@demodev.example.com  organisation_staff on the default
+  notify.educator@demodev.example.com  organisation_admin on the default
       organisation (reaches /educator/), 1 unseen notification.
   notify.many@demodev.example.com      Learner C, 120 unseen notifications.
 
@@ -230,7 +230,7 @@ def _seed(site: Site) -> None:
     learner_b = _user(site, LEARNER_B, "Notify", "Other")
     educator = _user(site, EDUCATOR, "Notify", "Educator")
     learner_c = _user(site, LEARNER_C, "Notify", "Many")
-    assign_object_role(educator, organisation, "organisation_staff")
+    assign_object_role(educator, organisation, "organisation_admin")
 
     open_course = _course(site, OPEN_TITLE)
     finish_course = _course(site, FINISH_TITLE)

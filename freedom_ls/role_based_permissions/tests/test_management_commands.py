@@ -57,9 +57,9 @@ class TestSyncRolePermissionsDetectsAndFixesDrift:
         user = UserFactory()
         cohort = CohortFactory()
 
-        # Create an active role assignment for 'ta' (has view_cohort)
+        # Create an active role assignment for 'cohort_viewer' (has view_cohort)
         ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort, role="ta", is_active=True
+            user=user, target_object=cohort, role="cohort_viewer", is_active=True
         )
 
         # Manually add a guardian perm that the role shouldn't have
@@ -97,7 +97,7 @@ class TestSyncRolePermissionsDryRun:
         cohort = CohortFactory()
 
         ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort, role="ta", is_active=True
+            user=user, target_object=cohort, role="cohort_viewer", is_active=True
         )
 
         # Manually add an extra guardian perm
@@ -128,7 +128,7 @@ class TestSyncRolePermissionsOrphanedAssignment:
         ct = ContentType.objects.get_for_model(cohort)
 
         ObjectRoleAssignmentFactory(
-            user=user, target_object=cohort, role="ta", is_active=True
+            user=user, target_object=cohort, role="cohort_viewer", is_active=True
         )
 
         # Delete the cohort but leave the assignment

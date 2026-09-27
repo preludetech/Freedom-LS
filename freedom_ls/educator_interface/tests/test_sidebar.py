@@ -26,7 +26,7 @@ def sidebar(
     user = UserFactory(
         staff=True, first_name="Ada", last_name="Lovelace", email="ada@example.com"
     )
-    assign_object_role(user, organisation, "organisation_staff")
+    assign_object_role(user, organisation, "organisation_admin")
     response = logged_in_client(user).get(
         reverse(
             "educator_interface:interface",

@@ -56,14 +56,14 @@ def _switcher(response) -> str:
 
 
 def _two_organisation_educator():
-    """An educator with organisation_staff on two organisations, plus a
+    """An educator with organisation_admin on two organisations, plus a
     cohort that lives only in the first."""
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
     cohort_a = CohortFactory(organisation=organisation_a, name="Cohort A Only")
     educator = UserFactory(staff=True)
-    assign_object_role(educator, organisation_a, "organisation_staff")
-    assign_object_role(educator, organisation_b, "organisation_staff")
+    assign_object_role(educator, organisation_a, "organisation_admin")
+    assign_object_role(educator, organisation_b, "organisation_admin")
     return organisation_a, organisation_b, cohort_a, educator
 
 
@@ -209,7 +209,7 @@ class TestSwitcherRendering:
     ):
         organisation = OrganisationFactory(name="Solo Org")
         educator = UserFactory(staff=True)
-        assign_object_role(educator, organisation, "organisation_staff")
+        assign_object_role(educator, organisation, "organisation_admin")
         client = logged_in_client(educator)
 
         response = client.get(_interface_url(organisation.slug, "cohorts"))

@@ -286,15 +286,15 @@ class TestOrganisationConstraints:
 
 
 @pytest.mark.django_db
-class TestOrganisationStaffRole:
+class TestOrganisationAdminRole:
     def test_role_holder_may_view_the_organisation(self, mock_site_context: object):
-        """The organisation_staff role grants view_organisation on the object
+        """The organisation_admin role grants view_organisation on the object
         it was assigned against, and not on any other organisation."""
         organisation = OrganisationFactory()
         other = OrganisationFactory()
         user = UserFactory()
 
-        assign_object_role(user, organisation, "organisation_staff")
+        assign_object_role(user, organisation, "organisation_admin")
 
         assert user.has_perm("freedom_ls_organisations.view_organisation", organisation)
         assert not user.has_perm("freedom_ls_organisations.view_organisation", other)
