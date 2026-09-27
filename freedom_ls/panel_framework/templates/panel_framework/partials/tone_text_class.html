@@ -1,0 +1,1 @@
+{% load panel_tags %}{% with t=tone|tone %}{% if t == "success" %}text-on-success-light{% elif t == "warning" %}text-on-warning-light{% elif t == "error" %}text-on-error-light{% elif t == "info" %}text-on-info-light{% else %}text-muted{% endif %}{% endwith %}

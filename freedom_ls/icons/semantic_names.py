@@ -29,6 +29,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "more_options",
     "settings",
     "edit",
+    "add",
     # Content types
     "topic",
     "form",
@@ -45,6 +46,11 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "sort_neutral",
     "boolean_true",
     "boolean_false",
+    "search",
+    "filter",
+    # Trends
+    "trend_up",
+    "trend_down",
     # Deadlines
     "deadline",
     # Commerce

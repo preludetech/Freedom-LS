@@ -1,0 +1,12 @@
+<c-vars variant="boxed" />
+
+{% comment %}
+Stat row — lays out a set of panel-stat-tiles.
+
+Attributes:
+  variant  "boxed" (default): a grid, two columns below md and four from
+           lg, for tiles that carry their own card border. Anything else:
+           a wrapping flex row with a wider gap, for inline tiles.
+{% endcomment %}
+
+<div class="{% if variant == "inline" %}flex flex-wrap gap-x-8 gap-y-3{% else %}grid grid-cols-2 gap-4 lg:grid-cols-4{% endif %}" {{ attrs }}>{{ slot }}</div>
