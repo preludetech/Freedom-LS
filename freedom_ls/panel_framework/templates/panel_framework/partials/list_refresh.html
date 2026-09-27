@@ -1,15 +1,10 @@
-{% load panel_tags %}
 {% comment %}
 Registers body listeners that re-fetch the list's table region when a create
 action fires its created-event (HX-Trigger). Lives outside that region so it
-survives the region's outerHTML swap.
+survives the region's outerHTML swap. Carries no visible content of its own —
+the list view's actions render in its page header instead.
 {% endcomment %}
 <div x-data="listRefresh"
-     class="mb-6"
      data-refresh-events="{{ refresh_events }}"
      data-refresh-url="{{ refresh_url }}"
-     data-refresh-target="{{ refresh_target }}">
-    <c-button-group variant="right">
-        {% for action in actions %}{% render_action action ctx %}{% endfor %}
-    </c-button-group>
-</div>
+     data-refresh-target="{{ refresh_target }}"></div>

@@ -1,0 +1,38 @@
+<c-vars title="" subtitle="" heading_level="1" title_id="" />
+
+{% load panel_tags %}
+
+{% comment %}
+Page header — the view's own heading, plus an optional status badge, meta
+line, stat row and action buttons.
+
+Attributes:
+  title          Heading text (required).
+  subtitle       One line under the title, muted.
+  heading_level  1-6 (default 1). Falls back to the default on anything else.
+  title_id       id on the heading element, e.g. the "instance-title" id the
+                 panelChanged listener in alpine-components.js looks up.
+
+The heading holds the title text and nothing else, so that listener's
+textContent swap never wipes out a badge nested inside it — the badge sits
+beside it instead.
+
+Named slots: badge, meta, stats, actions. Each is skipped when empty or
+whitespace-only.
+{% endcomment %}
+
+{% with level=heading_level|heading_level:"1" %}
+<div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between" {{ attrs }}>
+    <div class="min-w-0">
+        <div class="flex flex-wrap items-center gap-3">
+            <h{{ level }}{% if title_id %} id="{{ title_id }}"{% endif %}>{{ title }}</h{{ level }}>
+            {% if badge.strip %}{{ badge }}{% endif %}
+        </div>
+        {% if subtitle %}<p class="text-muted">{{ subtitle }}</p>{% endif %}
+        {% if meta.strip %}<div class="text-sm text-muted">{{ meta }}</div>{% endif %}
+        {% if stats.strip %}<div class="md:hidden mt-3">{{ stats }}</div>{% endif %}
+    </div>
+    {% if stats.strip %}<div class="hidden md:block">{{ stats }}</div>{% endif %}
+    {% if actions.strip %}<c-button-group variant="right" class="flex-wrap">{{ actions }}</c-button-group>{% endif %}
+</div>
+{% endwith %}

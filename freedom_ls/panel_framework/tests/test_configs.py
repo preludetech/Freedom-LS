@@ -135,6 +135,26 @@ def test_a_base_view_renders_an_instance_free_table_panel(
     assert 'id="instance-title"' not in html
 
 
+def test_a_list_view_renders_exactly_one_h1_with_the_section_heading(
+    mock_site_context: Site,
+) -> None:
+    _make_stub(name="row-in-list-view")
+
+    html = fetch("stubs").content.decode()
+
+    assert html.count("<h1") == 1
+    assert "<h1>Stubs</h1>" in html
+
+
+def test_a_base_view_renders_exactly_one_h1_with_the_section_heading(
+    mock_site_context: Site,
+) -> None:
+    html = fetch("stub-base").content.decode()
+
+    assert html.count("<h1") == 1
+    assert "<h1>Stub base</h1>" in html
+
+
 def test_a_base_view_missing_a_required_request_attribute_404s(
     mock_site_context: Site,
 ) -> None:

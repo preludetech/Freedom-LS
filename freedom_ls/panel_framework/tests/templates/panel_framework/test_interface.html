@@ -30,7 +30,12 @@ accounts:legal_doc unconditionally too, so it is blanked for the same reason.
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
-{% block page_title %}{% include "partials/page_title.html" with page_title=heading %}{% endblock page_title %}
+{% comment %}
+The view's own heading now renders inside main_template_name through
+panel-page-header, so the shared page_title region stays empty here — a
+consumer that fed it `heading` would show the same text twice.
+{% endcomment %}
+{% block page_title %}{% include "partials/page_title.html" %}{% endblock page_title %}
 
 {% block content %}
     {% include main_template_name with main=main request=request only %}

@@ -26,7 +26,12 @@ feeds the OOB fragment on HTMX navigation, so both paths read identically.
 {% endcomment %}
 {% block head_title %}{% include "panel_framework/partials/document_title.html#document-title" %}{% endblock head_title %}
 
-{% block page_title %}{% include "partials/page_title.html" with page_title=heading %}{% endblock page_title %}
+{% comment %}
+The view's own heading now renders inside main_template_name through
+panel-page-header, so the shared page_title region stays empty here — passing
+`heading` to it would show the same text twice.
+{% endcomment %}
+{% block page_title %}{% include "partials/page_title.html" %}{% endblock page_title %}
 
 {% block content %}
     <c-page flush="true">

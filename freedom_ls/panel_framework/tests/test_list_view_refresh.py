@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.contrib.sites.models import Site
@@ -34,3 +36,16 @@ def test_a_region_refresh_skips_the_create_action(mock_site_context: Site) -> No
 
     assert "row-1" in html
     assert "Create Item" not in html
+
+
+def test_the_create_actions_label_moved_out_of_the_refresh_host_into_the_header(
+    mock_site_context: Site,
+) -> None:
+    html = fetch("stubs").content.decode()
+
+    refresh_host = re.search(
+        r'<div x-data="listRefresh"[^>]*>(.*?)</div>', html, re.DOTALL
+    )
+    assert refresh_host is not None
+    assert refresh_host.group(1).strip() == ""
+    assert "Create Item" in html

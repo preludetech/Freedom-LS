@@ -2,14 +2,11 @@
 {% load panel_tags %}
 
 {% block main %}
+    <c-panel-page-header title="{{ main.heading }}">
+        <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
+    </c-panel-page-header>
     {% if main.refresh_events %}
-        {% include "panel_framework/partials/list_refresh.html" with actions=main.actions ctx=main.ctx refresh_events=main.refresh_events refresh_url=main.refresh_url refresh_target=main.panel.region_id only %}
-    {% elif main.actions %}
-        <div class="mb-6">
-            <c-button-group variant="right">
-                {% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}
-            </c-button-group>
-        </div>
+        {% include "panel_framework/partials/list_refresh.html" with refresh_events=main.refresh_events refresh_url=main.refresh_url refresh_target=main.panel.region_id only %}
     {% endif %}
     {% render_panel main.panel %}
 {% endblock main %}

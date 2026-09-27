@@ -12,6 +12,7 @@ from freedom_ls.panel_framework.panels import Panel
 register = template.Library()
 
 TONES = frozenset({"success", "warning", "error", "info", "muted"})
+HEADING_LEVELS = frozenset({"1", "2", "3", "4", "5", "6"})
 
 
 @register.filter
@@ -22,6 +23,12 @@ def tone(value: str) -> str:
     back to `muted` along with anything else unrecognised.
     """
     return value if value in TONES else "muted"
+
+
+@register.filter
+def heading_level(value: str, default: str) -> str:
+    """Fall back to `default` unless `value` is a heading level 1-6."""
+    return value if str(value) in HEADING_LEVELS else default
 
 
 @register.simple_tag

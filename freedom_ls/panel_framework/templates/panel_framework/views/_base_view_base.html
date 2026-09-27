@@ -2,5 +2,6 @@
 {% load panel_tags %}
 
 {% block main %}
+    <c-panel-page-header title="{{ main.heading }}" />
     {% render_panel main.panel %}
 {% endblock main %}

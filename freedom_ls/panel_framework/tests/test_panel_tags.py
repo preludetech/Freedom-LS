@@ -11,7 +11,7 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.templatetags.panel_tags import tone
+from freedom_ls.panel_framework.templatetags.panel_tags import heading_level, tone
 
 from .conftest import _make_stub
 from .stub_panels import StubDetailsPanel
@@ -113,3 +113,15 @@ def test_tone_passes_through_a_known_tone(value: str) -> None:
 @pytest.mark.parametrize("value", ["primary", "secondary", "unknown", ""])
 def test_tone_falls_back_to_muted_for_anything_else(value: str) -> None:
     assert tone(value) == "muted"
+
+
+@pytest.mark.parametrize("value", ["1", "2", "3", "4", "5", "6"])
+def test_heading_level_passes_through_a_known_level(value: str) -> None:
+    assert heading_level(value, "1") == value
+
+
+@pytest.mark.parametrize("value", ["0", "7", "abc", ""])
+def test_heading_level_falls_back_to_the_default_for_anything_else(
+    value: str,
+) -> None:
+    assert heading_level(value, "2") == "2"
