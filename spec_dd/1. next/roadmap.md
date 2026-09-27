@@ -17,7 +17,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `phone-number-form-field`
 - `referral-attribution-over-time`
 - `retry-sent-emails`
-- `user-communication-3-messaging-policy`
 
 ## Needs work on main first
 
@@ -142,7 +141,7 @@ on in the parent and the children.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate-or-off preferences page, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
-| 3 | `user-communication-3-messaging-policy` | Who may message whom, as a swappable `MessagingPolicy`. Layered config at site, organisation, cohort or course registration, and learner, closed by default, edited in the Django admin. The educators-of-a-learner and peer queries. | none | next |
+| 3 | `user-communication-3-messaging-policy` | Who may message whom, as a swappable `MessagingPolicy`. Layered config at site, organisation, cohort or course registration, and learner, closed by default, edited in the Django admin. The educators-of-a-learner and peer queries. | none | in progress |
 | 4 | `user-communication-4-direct-messaging` | One-to-one conversations with read state. Learner inbox and thread, a composer offering only permitted recipients with a "who will see this" line, polling, one rolled-up notification per unread conversation. | `user-communication-1-notifications-core`, `user-communication-3-messaging-policy` | next |
 | 5 | `user-communication-5-educator-messaging` | An organisation-scoped inbox section in the educator interface, and a message tab in the learner quick view that opens or continues the conversation. | `user-communication-4-direct-messaging`, `educator-interface-3-panel-framework-dialogs` | next |
 | 6 | `user-communication-6-moderation` | Report a message, block a user, and a report queue where site admins hide messages. Nothing is hard deleted. | `user-communication-4-direct-messaging` | next |
