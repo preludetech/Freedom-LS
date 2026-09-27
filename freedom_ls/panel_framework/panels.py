@@ -47,6 +47,9 @@ class Panel:
     children: dict[str, type[Panel]] = {}
     #: The URL segment ("__panels" or "__tabs") that addresses a child.
     child_segment: str = ""
+    #: The capability this panel asks about, or None to show it whenever the
+    #: page itself is reachable.
+    capability: str | None = None
 
     def __init__(self, ctx: PanelContext) -> None:
         if self.model is not None and ctx.instance is None:
@@ -62,11 +65,17 @@ class Panel:
 
         Evaluated per request, before the panel renders or its URL resolves.
         A panel that returns False is left out of its container, and its own
-        URL is a 404. The default shows the panel to every request that
-        reached the page; the page's own access checks still apply. A
-        consumer narrows a panel to a role by overriding this.
+        URL is a 404. The default allows every request when `capability` is
+        None, denies one with no scope object to check, and otherwise asks
+        the section config. A consumer narrows a panel further by overriding
+        this, keeping the signature so it can still call `super()`.
         """
-        return True
+        if self.capability is None:
+            return True
+        scope = self.ctx.scope_object()
+        if scope is None:
+            return False
+        return self.ctx.config.has_capability(request, self.capability, scope)
 
     def is_shown(self) -> bool:
         """Whether this bound panel renders.

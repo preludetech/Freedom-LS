@@ -15,7 +15,12 @@ from freedom_ls.panel_framework.panels import Panel, PanelStack, TabSet
 from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import StubModel, _make_stub
-from .stub_panels import StubDataTablePanel, StubDetailsPanel, StubHiddenPanel
+from .stub_panels import (
+    RecordingCapabilityConfig,
+    StubDataTablePanel,
+    StubDetailsPanel,
+    StubHiddenPanel,
+)
 
 
 class _Stack(PanelStack):
@@ -37,6 +42,15 @@ class _ModelPanel(Panel):
 class _NarrowedTablePanel(StubDataTablePanel):
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(name__startswith="keep")
+
+
+class _GatedPanel(Panel):
+    title = "Gated"
+    capability = "freedom_ls_panel_framework.view_stubmodel"
+
+
+class _GatedTabs(TabSet):
+    children = {"open": StubDataTablePanel, "gated": _GatedPanel}
 
 
 def _ctx(path: str = "/base", instance: StubModel | None = None) -> PanelContext:
@@ -118,3 +132,58 @@ def test_a_get_queryset_override_narrows_the_rows(mock_site_context: Site) -> No
     context = _NarrowedTablePanel(_ctx()).get_context_data()
 
     assert [row.name for row in context["rows"]] == ["keep-me"]
+
+
+@pytest.mark.django_db
+def test_a_panel_whose_capability_is_denied_is_left_out_of_its_container(
+    mock_site_context: Site,
+) -> None:
+    instance = _make_stub()
+    RecordingCapabilityConfig.reset(answer=False)
+    ctx = PanelContext(
+        request=RequestFactory().get("/base"),
+        instance=instance,
+        base_url="/base",
+        name="",
+        config=RecordingCapabilityConfig,
+    )
+
+    assert [child.ctx.name for child in _GatedTabs(ctx).get_children()] == ["open"]
+
+
+@pytest.mark.django_db
+def test_a_panel_whose_capability_is_denied_404s_at_its_own_url(
+    mock_site_context: Site,
+) -> None:
+    instance = _make_stub()
+    RecordingCapabilityConfig.reset(answer=False)
+    ctx = PanelContext(
+        request=RequestFactory().get("/base"),
+        instance=instance,
+        base_url="/base",
+        name="",
+        config=RecordingCapabilityConfig,
+    )
+
+    with pytest.raises(Http404):
+        _GatedTabs(ctx).child("gated")
+
+
+@pytest.mark.django_db
+def test_a_panel_whose_capability_is_granted_renders_and_is_asked_about_the_instance(
+    mock_site_context: Site,
+) -> None:
+    instance = _make_stub()
+    RecordingCapabilityConfig.reset(answer=True)
+    ctx = PanelContext(
+        request=RequestFactory().get("/base"),
+        instance=instance,
+        base_url="/base",
+        name="",
+        config=RecordingCapabilityConfig,
+    )
+
+    gated = _GatedTabs(ctx).child("gated")
+
+    assert gated.ctx.name == "gated"
+    assert RecordingCapabilityConfig.asked == [(_GatedPanel.capability, instance)]
