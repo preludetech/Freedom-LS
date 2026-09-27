@@ -40,7 +40,7 @@ agent opens with:
 
 > Before anything else, invoke the `Skill` tool for each of: <ids>, in order.
 
-Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch <id>] <summary>`.
+Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch <id>] <summary>`. A batch owns several commits (see "Commit-subject grammar" below), and `[batch <id>]` is only the implementation's; the batch is finished at `[batch <id> record]`, or at `[batch <id>]` when `## Testing Skills` is blank.
 
 **Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only run batches whose marker commit is missing. A `design fix`, `review fix` or `integration fix` commit counts as its batch's commit. The sub-sections below say what runs on resume and how each batch wave runs.
 
@@ -72,15 +72,17 @@ Committing inside the worker keeps the work and its completion marker **atomic**
 
 **Resume reviews.** On resume, the Design check and Batch review run again for every batch whose marker commit is later than the last `review fix`, `design fix` or `integration fix` commit, or for the last batch when there is none.
 
+**Resume follow-ons.** When `## Testing Skills` is not blank, a batch with its marker commit but no `[batch <id> record]` runs its follow-ons only, in plan order, after its Design check and Batch review and before the first batch wave forms. See "Follow-ons" below for what each one reuses.
+
 **Batch waves.** `remaining` is the batches without a marker commit, in plan order. Repeat until it is empty: `ready` is every batch in `remaining` whose `Builds on:` slices all have a marker commit. A plan in which any slice lacks a `Builds on:` line, or that this step regrouped into batches, runs sequentially: `ready` = the first remaining batch. The batch wave is the first `min(len(ready), cap, capacity)` of `ready`.
 
-**A batch wave of one.** Runs in the feature worktree, with no isolation, as a single sequential batch: the brief above, then `ok` (verify the marker commit, Design check, Batch review), `failed` (reset partial uncommitted work, retry with the prior error in the brief), `blocked` (ask at depth 0, re-spawn with the answers). This paragraph owns the attempt count: a batch gets at most two retries across every batch wave it appears in (a batch that dies from memory counts against the same two retries), and one that exhausts them stops the run with `status: failed`, naming it and every batch that builds on it. The tier must pass before the next batch wave is formed. A fix batch (`design fix`, `review fix` or `integration fix`) is a batch, so it runs `targeted` the same way.
+**A batch wave of one.** Runs in the feature worktree, with no isolation, as a single sequential batch: the brief above, then `ok` (verify the marker commit, Design check, Batch review, then the Follow-ons), `failed` (reset partial uncommitted work, retry with the prior error in the brief), `blocked` (ask at depth 0, re-spawn with the answers). This paragraph owns the attempt count: a batch gets at most two retries across every batch wave it appears in (a batch that dies from memory counts against the same two retries), and one that exhausts them stops the run with `status: failed`, naming it and every batch that builds on it. The tier must pass before the next batch wave is formed. A fix batch (`design fix`, `review fix` or `integration fix`) is a batch, so it runs `targeted` the same way.
 
 **A batch wave of two or more.** Record `wave-base` = `git rev-parse HEAD`. Resolve the Setup script and Teardown script values once at depth 0 (`config.local.md` is gitignored and absent in a batch worktree). Spawn every batch of the batch wave in one message, each `subagent_type: "sdd:sdd-implementer"`, `model: "sonnet"`, `isolation: "worktree"`. The brief is the batch brief above plus: first run `<Setup script>` from the worktree root (blank: nothing); work only inside this worktree; whatever the outcome, run `<Teardown script>` the same way before returning (blank: nothing); return `status: ok|failed|blocked · reason: <short> · worktree: <abs path> · branch: <name>`. A worker that returns no status line counts as `failed` with reason `no return`.
 
 **Integration.** When every worker of the batch wave has returned or been counted as failed, for each `ok` batch in plan order, cherry-pick the commits on its branch whose subject matches the plan's anchored `[batch …]` pattern. A conflict is `git cherry-pick --abort` and the batch is marked `failed` with the conflicting files as its reason. Then, for every batch of the batch wave, resolve its worktree path and branch from its return line, or from `git worktree list` when the return lacks them; for a batch that is not `ok`, run the Teardown script inside the worktree first (`cd <path> && <script>`; the script is safe to run twice); then `git worktree remove --force --force .claude/worktrees/<name>` and `git branch -D <branch>`.
 
-**After integration.** Run the `Migrate` command under `## QA Dev Data` in `.claude/sdd/config.md` when non-blank, so the feature worktree's dev database holds the batch wave's migrations before the Design check starts a server. Then delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--range <wave-base>..HEAD`. A failure is fixed by a sub-agent as Step 3 point 3 does, committed as `[batch <id>] integration fix` with the id of the last integrated batch. Then, for each integrated batch in plan order, the Design check and the Batch review run as for a batch wave of one.
+**After integration.** Run the `Migrate` command under `## QA Dev Data` in `.claude/sdd/config.md` when non-blank, so the feature worktree's dev database holds the batch wave's migrations before the Design check starts a server. Then delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--range <wave-base>..HEAD`. A failure is fixed by a sub-agent as Step 3 point 3 does, committed as `[batch <id>] integration fix` with the id of the last integrated batch. Then, for each integrated batch in plan order, the Design check, the Batch review and the Follow-ons run as for a batch wave of one.
 
 **Retries.** Each batch of the batch wave that is not `ok` (returned `failed` or `blocked`, returned nothing, or conflicted) re-runs at once, in plan order, through the batch-wave-of-one rule above with its reason, before the next batch wave is formed. That rule counts the attempts.
 
@@ -115,6 +117,75 @@ Start with `fixes = 0` and `scope = <batch-commit>^..HEAD`, then repeat:
 3. Drop any finding whose `<path>:<line>` is not a line of the diff file. No findings left: log "batch review passed" and end the review.
 4. `fixes == 2`: the leftovers go into the Step 3 summary; end the review. The run continues.
 5. Otherwise spawn one fix batch (`subagent_type: "sdd:sdd-implementer"`, `model: "sonnet"`, the skill line first in its brief) with the findings and the two standard files' paths. It commits `[batch <id>] review fix <n>` and runs `targeted` through `run_test_tier.md` like any batch; `fixes` goes up by one and `scope` becomes `<fix-commit>^..HEAD`. Act on its status as for any batch, then go back to step 1.
+
+### Commit-subject grammar
+
+Every commit a batch produces carries its id (later slices add more rows):
+
+| Subject | Made by |
+| --- | --- |
+| `[batch <id>] <summary>` | implementer |
+| `[batch <id>] design fix <n>`, `[batch <id>] review fix <n>`, `[batch <id>] integration fix` | fix batch, for the Design check, the Batch review or an integration failure |
+| `[batch <id> review-fix] <summary>` | fix agent, for a mechanical test-organisation finding |
+| `[batch <id> record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
+
+Matching `[batch <id>]` needs the closing bracket straight after the id, so no follow-on commit reads as the implementation's commit, and the resume pattern above never matches one. Resume, and later the budget and the scope check, read subjects only, never SHAs, because `pre_step_rebase` rewrites every SHA on each rebase.
+
+### Touched files
+
+Touched files are the paths the `[batch <id>]` commits (the implementation and its design, review and integration fixes) and its `[batch <id> review-fix]` commits add or modify, at their current paths. The test-organisation review, and later the boy-scout, work over this set:
+
+```bash
+ID=<id>
+BASE=$(git merge-base origin/main HEAD)
+git log --reverse --format='%H%x09%s' "$BASE..HEAD" \
+  | while IFS=$'\t' read -r sha subject; do
+      case "$subject" in
+        "[batch $ID] "*|"[batch $ID review-fix] "*)
+          git diff-tree --no-commit-id -r -M --name-only --diff-filter=AMR "$sha" ;;
+      esac
+    done | sort -u
+# keep only paths that still exist in the working tree (their current paths)
+```
+
+This is the same rule the scope-check script uses for its own allowed set, kept separate on purpose: this one runs over `BASE..HEAD` and filters to paths that still exist, for a brief; the script takes an as-of-commit snapshot at `<from-ref>` for enforcement. If either rule changes, change both.
+
+### Follow-ons
+
+Run these in order after a batch's Batch review. All of them are skipped when `## Testing Skills` is blank. Later follow-ons go between Review fixes and Record, and Record is always last. They run at depth 0 in the feature worktree, one batch at a time in plan order, before the next batch wave forms.
+
+On resume, a batch whose follow-ons are pending reuses `.sdd-work/test_org_review_batch_<id>.md` when it ends `status: ok`; a `[batch <id> review-fix]` commit means the mechanical fixes have already landed, so don't send them again. A batch with `[batch <id> record]` is done, but first delete any leftover `.sdd-work/test_org_review_batch_<id>.md` by name: an interrupt can land between the record commit and its own deletes.
+
+#### Review (follow-on 1)
+
+One `sdd:sdd-worker`, spawned per the fan-out recipe as in `plan_from_spec.md` Step 6, writes `.sdd-work/test_org_review_batch_<id>.md`. Skip the spawn when that file exists and ends `status: ok`. Its brief:
+
+- the skill line;
+- the touched files, above;
+- read the "Dependency table" (`App | Runtime deps | Test-only deps`) in `docs/app_structure.md` directly. If that file is absent, check mirroring only;
+- mirroring: check each touched test file's placement against the mirroring rule in the loaded skills;
+- dependency direction: for each touched test, conftest or factory file, check its imports of another app, and any fixtures it pulls from a `conftest.py` under another app, against its own app's Runtime deps. A project-wide pytest plugin (`pytest_plugins`, `pytest11`) is infrastructure, not an edge;
+- write each finding in this format:
+
+  ```
+  - rule: mirroring | dependency-direction
+    kind: mechanical | judgement
+    file: <path>
+    detail: <one line>
+    recommendation: <one line, concrete enough to execute>
+  ```
+
+  under a `## Findings` heading (`(none)` when empty), then the `status:` footer, in one `Write`.
+
+`failed` → retry up to twice with the prior error in the brief. `blocked` → depth 0 supplies the `needs` from the code, or asks via `AskUserQuestion`, then re-spawns.
+
+#### Review fixes (follow-on 2)
+
+If there are mechanical findings, send them all to one `sdd:sdd-implementer` with the skill line and the subject `[batch <id> review-fix] <summary>`. It may edit any file the fix needs, for example an app's existing `tests/conftest.py`. Put judgement findings to the user right away, up to four per `AskUserQuestion`, with the reviewer's recommendation as the first option. An answer that needs code takes the same fix path. If the answer accepts a new cross-app edge, the record says so and names `/app_map` as needing a re-run.
+
+#### Record (follow-on 7)
+
+Append a `## Batch <id>` section to `<spec-dir>/boy_scout_record.md`, creating the file with a `# Boy-scout record: <spec name>` heading the first time. It lists the review findings and how each was fixed or answered, and any accepted edge for `/app_map`. Commit it via `sdd:sdd-mechanic` as `[batch <id> record] <summary>`, even when nothing else was committed. Stage `boy_scout_record.md` by explicit path. Then delete `.sdd-work/test_org_review_batch_<id>.md` by name.
 
 ### QA never runs inside a batch
 QA runs in Step 5, never inside a batch, and a plan step that says to run it is ignored.
