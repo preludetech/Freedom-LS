@@ -79,6 +79,19 @@ def test_components_css_declares_new_chip_classes() -> None:
         assert cls in css
 
 
+@pytest.mark.parametrize("role", ["success", "warning", "error", "info"])
+def test_status_chip_classes_use_the_light_token_pair(role: str) -> None:
+    """The status chips must clear 4.5:1, which the `-light` token pair does
+    and the base role tokens (used directly) do not."""
+    css = COMPONENTS_CSS.read_text()
+    rule_match = re.search(rf"\.chip-{role}\s*\{{([^}}]*)\}}", css)
+    assert rule_match is not None
+
+    rule = rule_match.group(1)
+    assert f"bg-{role}-light" in rule
+    assert f"text-on-{role}-light" in rule
+
+
 def test_components_css_declares_alert_family() -> None:
     css = COMPONENTS_CSS.read_text()
     for cls in (".alert", ".alert-success", ".alert-error", ".alert-info"):

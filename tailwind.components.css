@@ -233,19 +233,19 @@
     }
 
     .chip-warning {
-        @apply bg-warning/30 text-on-warning
+        @apply bg-warning-light text-on-warning-light
     }
 
     .chip-success {
-        @apply bg-success/15 text-success
+        @apply bg-success-light text-on-success-light
     }
 
     .chip-error {
-        @apply bg-error/15 text-error
+        @apply bg-error-light text-on-error-light
     }
 
     .chip-info {
-        @apply bg-info/15 text-info
+        @apply bg-info-light text-on-info-light
     }
 
     .chip-secondary {

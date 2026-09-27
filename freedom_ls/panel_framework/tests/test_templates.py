@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,14 @@ from .stub_panels import StubDetailsPanel, StubHiddenPanel
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 OVERRIDES_DIR = Path(__file__).resolve().parent / "template_overrides"
+COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
+
+RAW_HEX_COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b")
+RAW_TAILWIND_PALETTE_CLASS = re.compile(
+    r"(bg|text|border|ring|fill|stroke)-(slate|gray|zinc|neutral|stone|red|orange"
+    r"|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple"
+    r"|fuchsia|pink|rose)-\d"
+)
 
 
 class _PlainPanel(Panel):
@@ -121,3 +130,27 @@ def test_tab_set_markup_is_navigation_not_an_aria_tab_widget(
     assert '<nav aria-label="Sections"' in html
     assert 'aria-current="page"' in html
     assert 'role="tab' not in html
+
+
+def test_forced_colours_rules_live_with_their_components() -> None:
+    """Each component's forced-colors rule is proved from its own source,
+    not from the built CSS, so a later slice's rule shows up here too."""
+    status_badge = (COMPONENTS_DIR / "panel-status-badge.html").read_text()
+
+    assert "forced-colors:border" in status_badge
+
+
+def test_no_panel_component_uses_raw_colours() -> None:
+    """Every panel-* component sources its colour from a role token, never a
+    raw hex or a Tailwind default-palette utility, so a theme can recolour
+    the whole kit by redefining tokens alone."""
+    offenders: list[str] = []
+
+    for path in sorted(COMPONENTS_DIR.glob("panel-*.html")):
+        for line in path.read_text().splitlines():
+            if "color-mix(" in line:
+                continue
+            if RAW_HEX_COLOUR.search(line) or RAW_TAILWIND_PALETTE_CLASS.search(line):
+                offenders.append(f"{path.name}: {line.strip()}")
+
+    assert offenders == []

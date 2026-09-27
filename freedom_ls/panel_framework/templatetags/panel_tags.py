@@ -11,6 +11,18 @@ from freedom_ls.panel_framework.panels import Panel
 
 register = template.Library()
 
+TONES = frozenset({"success", "warning", "error", "info", "muted"})
+
+
+@register.filter
+def tone(value: str) -> str:
+    """Map an arbitrary tone value onto one of `c-chip`'s status variants.
+
+    `primary` and `secondary` are chip variants but not tones, so they fall
+    back to `muted` along with anything else unrecognised.
+    """
+    return value if value in TONES else "muted"
+
 
 @register.simple_tag
 def render_panel(panel: Panel) -> SafeString:

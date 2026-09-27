@@ -1,0 +1,20 @@
+<c-vars tone="muted" label="" />
+
+{% load panel_tags %}
+
+{% comment %}
+Status badge — a small coloured chip naming the state of a row or record.
+
+Attributes:
+  tone   success | warning | error | info | muted (default). `primary` and
+         `secondary` are chip variants, not statuses, and fall back to
+         muted along with any other unrecognised value (via the `tone`
+         filter).
+  label  The status text, shown as given. The badge owns no domain words:
+         callers pass sentence case ("Active", "Stalled", …).
+
+`forced-colors:border` keeps the badge legible under Windows High Contrast,
+where the tinted background is suppressed and only a border remains.
+{% endcomment %}
+
+<c-chip variant="{{ tone|tone }}" size="xs" class="forced-colors:border" :attrs="attrs">{{ label }}</c-chip>

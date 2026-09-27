@@ -11,6 +11,7 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.templatetags.panel_tags import tone
 
 from .conftest import _make_stub
 from .stub_panels import StubDetailsPanel
@@ -102,3 +103,13 @@ def test_render_action_builds_the_action_url_from_the_context(
     result = template.render(Context({"action": _LinkAction(), "ctx": ctx}))
 
     assert 'data-url="/a/b/__actions/go"' in result
+
+
+@pytest.mark.parametrize("value", ["success", "warning", "error", "info", "muted"])
+def test_tone_passes_through_a_known_tone(value: str) -> None:
+    assert tone(value) == value
+
+
+@pytest.mark.parametrize("value", ["primary", "secondary", "unknown", ""])
+def test_tone_falls_back_to_muted_for_anything_else(value: str) -> None:
+    assert tone(value) == "muted"
