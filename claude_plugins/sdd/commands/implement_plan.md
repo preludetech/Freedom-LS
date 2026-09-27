@@ -26,18 +26,22 @@ when `/sdd:next` says it already ran this turn).
 
 ## Step 2: Batch and Execute (resilient)
 
+### Testing skills
+
+Before spawning anything, read `## Testing Skills` from `.claude/sdd/config.md`, then from
+`.claude/sdd/config.local.md`, whose values win. Blank, or the file or section absent, means the
+list is empty. When it is not empty, every brief for an implementer, reviewer, boy-scout or fix
+agent opens with:
+
+> Before anything else, invoke the `Skill` tool for each of: <ids>, in order.
+
 Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch N] <summary>`.
 
 **Resume scan (before spawning):** scan `git log` for existing `[batch N]` commits and **skip completed batches**. Only spawn batches whose marker commit is missing.
 
-For each remaining batch, spawn **one implementation sub-agent** via the `Agent` tool with `subagent_type: "general-purpose"` (it needs Bash/Edit breadth that `sdd:sdd-worker` lacks), and pass the per-spawn `model: "sonnet"` parameter so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Each batch sub-agent does the following:
+For each remaining batch, spawn **one implementation sub-agent** via the `Agent` tool with `subagent_type: "sdd:sdd-implementer"`, and pass the per-spawn `model: "sonnet"` parameter so non-interactive batch work runs on a mid-tier model rather than the session model. (The user can override to `model: "opus"` per spawn — or set `CLAUDE_CODE_SUBAGENT_MODEL` — if a batch needs heavier reasoning.) Its brief carries the skill line (when the list from above is not empty), the batch's plan steps verbatim, and the commit subject `[batch N] <summary>`. The TDD, full-suite and commit rules live in the `sdd:sdd-implementer` agent file, which returns a structured status (`status: ok|failed|blocked` · `reason:`).
 
-1. Implement each step in the batch exactly as written in the plan
-2. Run any verifications the plan specifies after each step
-3. After all steps are done, run `uv run pytest` — all tests must pass
-4. **As its final step, make the `[batch N] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
-
-Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
+Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. Agents whose work is a commit make it themselves; `sdd:sdd-mechanic` makes the bookkeeping commits.
 
 After a batch returns, act on its status:
 - `ok` → verify the `[batch N]` commit exists, then move to the next batch.
@@ -55,7 +59,7 @@ After all batches are complete:
 
 1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes
 2. Check each success criterion from the plan — is it met?
-3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth), then repeat from step 1
+3. If any criterion is unmet: fix it with one `sdd:sdd-implementer` (`subagent_type: "sdd:sdd-implementer"`, per-spawn `model: "sonnet"`), whose brief carries the skill line (when the Testing Skills list is not empty) and the unmet criterion, then repeat from step 1
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
 ## When to Stop and Ask

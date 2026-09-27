@@ -28,3 +28,12 @@ Where this project's domain vocabulary is defined, most authoritative first.
 - `freedom_ls/*/models.py` — the canonical nouns; the vocabulary of last resort.
 - `docs/product/` — concept-level prose.
 - `docs/app_structure.md` — the canonical app names.
+
+## Testing Skills
+
+The skills every implementer, reviewer, boy-scout and fix agent invokes before it starts, most
+authoritative first. One skill ID per bullet. Leave the list empty to write batches without
+them and to skip the test-organisation review and the boy-scout.
+
+- ds:testing
+- fls-dev:testing
