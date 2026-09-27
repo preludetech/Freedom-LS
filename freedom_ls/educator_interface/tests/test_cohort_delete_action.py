@@ -113,10 +113,12 @@ def test_the_details_panel_renders_the_delete_trigger(
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
 
     body = client.get(_panel_url(cohort)).content.decode()
 
-    assert f'hx-delete="{_delete_url(client, cohort)}"' in body
+    assert f'hx-get="{url}"' in body
+    assert f'hx-delete="{url}"' in client.get(url).content.decode()
 
 
 @pytest.mark.django_db
@@ -135,8 +137,9 @@ def test_the_delete_dialog_says_why_the_cohort_cannot_go(
     cohort_with_granted_progress, logged_in_client
 ):
     client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort_with_granted_progress)
 
-    body = client.get(_panel_url(cohort_with_granted_progress)).content.decode()
+    body = client.get(url).content.decode()
 
     assert "cannot be deleted because it still has" in body
     assert "course progress record" in body

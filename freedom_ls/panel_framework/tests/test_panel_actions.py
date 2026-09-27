@@ -4,6 +4,7 @@ import json
 
 import pytest
 from guardian.shortcuts import assign_perm
+from pytest_mock import MockerFixture
 
 from django import forms
 from django.contrib.sites.models import Site
@@ -208,6 +209,9 @@ def test_create_action_duplicate_name_returns_422(mock_site_context: Site) -> No
 
     response = action.handle_submit(_ctx(request, None, "/items"))
     assert response.status_code == 422
+    content = response.content.decode()
+    assert "data-error-summary" in content
+    assert 'aria-invalid="true"' in content
 
 
 @pytest.mark.django_db
@@ -286,6 +290,9 @@ def test_edit_action_duplicate_name_returns_422(mock_site_context: Site) -> None
 
     response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 422
+    content = response.content.decode()
+    assert "data-error-summary" in content
+    assert 'aria-invalid="true"' in content
 
 
 @pytest.mark.django_db
@@ -327,6 +334,54 @@ def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> N
     assert response.status_code == 403
     item.refresh_from_db()
     assert item.name == "Test-edit-403"
+
+
+@pytest.mark.django_db
+def test_rendering_a_panel_with_a_form_action_never_builds_its_form(
+    mock_site_context: Site, mocker: MockerFixture
+) -> None:
+    """Rendering a panel renders the action's trigger, never its fragment:
+    building the form is deferred to a GET of the action's own URL."""
+    item = _make_stub(name="lazy-edit")
+    action = EditAction(
+        form_class=_StubModelForm, form_title="Edit Item", instance=item
+    )
+    get_form = mocker.patch.object(EditAction, "get_form")
+
+    class PanelWithEdit(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [action]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.change_stubmodel", request.user, item)
+    ctx = _ctx(request, item)
+    html = _render_panel(PanelWithEdit(ctx))
+
+    get_form.assert_not_called()
+    assert f'hx-get="{action.get_action_url(ctx)}"' in html
+    assert "<form" not in html
+
+
+@pytest.mark.django_db
+def test_a_get_of_a_form_actions_url_returns_its_fragment(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="edit-fragment-fetch")
+    action = EditAction(
+        form_class=_StubModelForm, form_title="Edit Item", instance=item
+    )
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.change_stubmodel", request.user, item)
+
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
+
+    content = response.content.decode()
+    assert 'id="app-modal-title"' in content
+    assert "hx-post=" in content
+    assert "autofocus" in content
 
 
 # -- DeleteAction tests --------------------------------------------------
@@ -478,3 +533,46 @@ def test_delete_action_handle_submit_refuses_a_protected_instance(
     assert response.status_code == 422
     assert "cannot be deleted" in response.content.decode()
     assert StubModel.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_rendering_a_panel_with_a_delete_action_never_builds_a_cascade_summary(
+    mock_site_context: Site, mocker: MockerFixture
+) -> None:
+    """Rendering a panel renders the action's trigger, never its fragment:
+    the cascade summary is deferred to a GET of the action's own URL."""
+    item = _make_stub(name="lazy-delete")
+    action = DeleteAction(success_url="/items")
+    get_cascade_summary = mocker.patch.object(DeleteAction, "get_cascade_summary")
+
+    class PanelWithDelete(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [action]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, item)
+    ctx = _ctx(request, item)
+    html = _render_panel(PanelWithDelete(ctx))
+
+    get_cascade_summary.assert_not_called()
+    assert f'hx-get="{action.get_action_url(ctx)}"' in html
+    assert "<form" not in html
+
+
+@pytest.mark.django_db
+def test_a_get_of_a_delete_actions_url_returns_its_fragment(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="delete-fragment-fetch")
+    action = DeleteAction(success_url="/items")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, item)
+
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
+
+    content = response.content.decode()
+    assert 'id="app-modal-title"' in content
+    assert "hx-delete=" in content

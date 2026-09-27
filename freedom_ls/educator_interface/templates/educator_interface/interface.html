@@ -20,6 +20,10 @@
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
 
+{% block modal_host %}
+    {% include "panel_framework/partials/modal_host.html" %}
+{% endblock modal_host %}
+
 {% comment %}
 Single-line so no whitespace leaks into the rendered <title>. The same partial
 feeds the OOB fragment on HTMX navigation, so both paths read identically.

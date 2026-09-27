@@ -118,9 +118,16 @@ def render_panel(panel: Panel) -> SafeString:
 
 @register.simple_tag
 def render_action(action: PanelAction, ctx: PanelContext) -> SafeString:
-    """Render an action for the panel or view whose context is `ctx`."""
+    """Render an action's trigger for the panel or view whose context is `ctx`.
+
+    Its fragment (the form, the confirmation) is rendered separately, only on
+    a GET of the action's own URL, so nothing here builds a form or a cascade
+    summary.
+    """
     return render_to_string(
-        action.template_name, action.get_context_data(ctx), request=ctx.request
+        action.trigger_template_name,
+        action.get_trigger_context(ctx),
+        request=ctx.request,
     )
 
 

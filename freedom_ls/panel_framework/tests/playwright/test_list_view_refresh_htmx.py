@@ -43,6 +43,9 @@ def test_save_and_add_another_refreshes_table(
 
     # --- First create ---
     page.get_by_role("button", name="Create Item").click()
+    # The fragment loads over htmx before the dialog opens, so the field
+    # isn't fillable until #app-modal has actually opened.
+    expect(page.locator("#app-modal")).to_be_visible()
     # Fill the name field in the modal
     page.get_by_label("Name").fill("Alpha")
     # Click "Save and add another"

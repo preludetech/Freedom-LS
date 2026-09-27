@@ -173,35 +173,6 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Modal component (cotton/modal.html)
-    Alpine.data("modal", () => ({
-        open: false,
-        init() {
-            const initial = this.$el.dataset.open;
-            if (initial === "True" || initial === "true") {
-                this.open = true;
-            }
-            // Close modal when a form inside receives a 204 response (successful save)
-            this.$el.addEventListener("htmx:afterRequest", (event) => {
-                if (event.detail.xhr && event.detail.xhr.status === 204) {
-                    this.open = false;
-                }
-            });
-        },
-        show() {
-            // Reset any form inside the modal when opening
-            const form = this.$el.querySelector("form");
-            if (form) form.reset();
-            this.open = true;
-        },
-        close() {
-            this.open = false;
-        },
-        onEscape() {
-            this.open = false;
-        },
-    }));
-
     // Toast component (partials/_toast.html).
     //
     // Per-severity timing:

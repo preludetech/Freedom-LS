@@ -25,6 +25,11 @@ class PanelAction:
     label: str = ""
     variant: str = "primary"
     action_name: str = ""
+    #: Rendered by {% render_action %} from get_trigger_context(ctx): cheap,
+    #: never form- or cascade-related.
+    trigger_template_name: str = "panel_framework/partials/action_button.html"
+    #: The action's fragment, rendered only by _handle_action on GET, from
+    #: get_context_data(ctx).
     template_name: str = "panel_framework/partials/action_button.html"
     #: Domain events this action's mutation fires on success. An action whose
     #: mutation touches an entity other than its own instance overrides
@@ -43,12 +48,15 @@ class PanelAction:
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_trigger_context(self, ctx: PanelContext) -> dict[str, object]:
         return {
             "label": self.label,
             "variant": self.variant,
             "action_url": self.get_action_url(ctx),
         }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return self.get_trigger_context(ctx)
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process action submission. Override in subclasses."""
@@ -56,7 +64,8 @@ class PanelAction:
 
 
 class FormPanelAction(PanelAction):
-    template_name = "panel_framework/partials/modal_form.html"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/form.html"
     form_class: Callable[..., forms.ModelForm]
     form_title: str = ""
     submit_buttons: list[dict[str, str]] = [
@@ -85,29 +94,36 @@ class FormPanelAction(PanelAction):
         """Return 422 with re-rendered form."""
         html = render_to_string(
             self.template_name,
-            {
-                "form": form,
-                "form_title": self.form_title,
-                "form_url": self._last_form_url,
-                "variant": self.variant,
-                "label": self.label,
-                "submit_buttons": self.submit_buttons,
-                "modal_open": "True",
-            },
+            self._fragment_context(form, self._last_form_url),
             request=request,
         )
         return HttpResponse(html, status=422)
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        """The trigger button and its modal, holding an unbound form."""
+    def _fragment_context(
+        self, form: forms.ModelForm, form_url: str
+    ) -> dict[str, object]:
+        """Mark the form's first visible field for autofocus and build the
+        context its fragment template renders.
+
+        Skipped when the form carries errors: a browser moves focus to a
+        freshly-inserted `autofocus` field as soon as it renders, which would
+        override the error-summary focus appModal sets for a 422 re-render.
+        """
+        fields = form.visible_fields()
+        if fields and not form.errors:
+            fields[0].field.widget.attrs["autofocus"] = True
         return {
-            "form": self.get_form(ctx.request),
+            "form": form,
             "form_title": self.form_title,
-            "form_url": self.get_action_url(ctx),
-            "variant": self.variant,
-            "label": self.label,
+            "form_url": form_url,
             "submit_buttons": self.submit_buttons,
         }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        """The modal fragment, holding an unbound form."""
+        return self._fragment_context(
+            self.get_form(ctx.request), self.get_action_url(ctx)
+        )
 
 
 class CreateInstanceAction(FormPanelAction):
@@ -134,18 +150,9 @@ class CreateInstanceAction(FormPanelAction):
 
     def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
         """Re-render the modal form with an empty/unbound form."""
-        form = self.form_class()
         return render_to_string(
             self.template_name,
-            {
-                "form": form,
-                "form_title": self.form_title,
-                "form_url": form_url,
-                "variant": self.variant,
-                "label": self.label,
-                "submit_buttons": self.submit_buttons,
-                "modal_open": "True",
-            },
+            self._fragment_context(self.form_class(), form_url),
             request=request,
         )
 
@@ -233,7 +240,8 @@ class DeleteAction(PanelAction):
     label = "Delete"
     variant = "error"
     action_name = "delete"
-    template_name = "panel_framework/partials/delete_confirmation.html"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/delete_confirmation.html"
 
     def __init__(self, success_url: str = "", success_events: tuple[str, ...] = ()):
         self.success_url = success_url
@@ -297,15 +305,12 @@ class DeleteAction(PanelAction):
         *,
         cascade_summary: list[str],
         blocked_reason: str,
-        modal_open: bool = False,
     ) -> dict[str, object]:
         return {
             "instance": instance,
             "cascade_summary": cascade_summary,
             "blocked_reason": blocked_reason,
             "delete_url": self.get_action_url(ctx),
-            "variant": self.variant,
-            "modal_open": "true" if modal_open else "false",
         }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
@@ -349,7 +354,6 @@ class DeleteAction(PanelAction):
                     instance,
                     cascade_summary=[],
                     blocked_reason=self.get_blocked_reason(instance, error),
-                    modal_open=True,
                 ),
                 request=ctx.request,
             )
