@@ -221,6 +221,11 @@ document.addEventListener("alpine:init", () => {
         _refreshHandlers: [],
         _lastUrl: null,
         _qvHandlers: [],
+        _qvMq: null,
+        _qvHistoryPushed: false,
+        _qvClosingFromPopstate: false,
+        _qvClosingForBreakpoint: false,
+        _qvSkipHistoryUnwind: false,
         init() {
             this._qvDialog = this.$el;
             this._qvBody = document.getElementById("quick-view-body");
@@ -231,7 +236,8 @@ document.addEventListener("alpine:init", () => {
                 "[data-quick-view-skeleton]",
             );
             this._errorTemplate = this._qvDialog.querySelector("[data-quick-view-error]");
-            this._isMobile = !window.matchMedia("(min-width: 768px)").matches;
+            this._qvMq = window.matchMedia("(min-width: 768px)");
+            this._isMobile = !this._qvMq.matches;
 
             // htmx only leaves modifier-key clicks alone on boosted anchors.
             // This trigger is a plain hx-get anchor, so without this it would
@@ -287,9 +293,25 @@ document.addEventListener("alpine:init", () => {
                 this._handleBodyError(event),
             );
 
+            // Single point every dismiss route (Esc, requestClose(), Back, a
+            // breakpoint flip) funnels through. A mobile open pushed one
+            // history entry so Back would dismiss the sheet rather than
+            // navigate the page; unwind it here unless Back is what closed
+            // us (its entry is already gone), a breakpoint flip is about to
+            // reopen in the other mode, or the caller asked to leave the
+            // pushed entry alone (followOpenLink is about to replace it).
             trackListener(this._qvHandlers, this._qvDialog, "close", () => {
                 this._syncExpanded();
                 focusTriggerOrMain(this._qvTrigger);
+                if (this._qvHistoryPushed && !this._qvSkipHistoryUnwind) {
+                    this._qvHistoryPushed = false;
+                    if (!this._qvClosingFromPopstate && !this._qvClosingForBreakpoint) {
+                        history.back();
+                    }
+                    this._qvClosingFromPopstate = false;
+                }
+                this._qvClosingForBreakpoint = false;
+                this._qvSkipHistoryUnwind = false;
             });
 
             // showModal() gives the mobile sheet native Esc-to-close; show()
@@ -302,33 +324,79 @@ document.addEventListener("alpine:init", () => {
                 if (document.querySelector("dialog[open]:modal")) return;
                 this._close();
             });
+
+            // Crossing the md breakpoint while open has to reopen in the
+            // other mode (modal below md, docked at and above it), which
+            // only takes effect through a fresh show()/showModal() call.
+            // The close this triggers is not a real dismissal, so it must
+            // not run the history unwind above.
+            trackListener(this._qvHandlers, this._qvMq, "change", (event) => {
+                const wasMobile = this._isMobile;
+                this._isMobile = !event.matches;
+                if (wasMobile === this._isMobile || !this._qvDialog.open) return;
+                this._qvClosingForBreakpoint = true;
+                this._qvDialog.close();
+                this._showDialog();
+                this._syncExpanded();
+            });
+
+            // showModal() pushes no history entry of its own, so Back would
+            // otherwise navigate the page instead of dismissing the sheet.
+            trackListener(this._qvHandlers, window, "popstate", () => {
+                if (this._qvDialog.open) {
+                    this._qvClosingFromPopstate = true;
+                    this._qvDialog.close();
+                }
+            });
+
+            // htmx caches the outgoing page's DOM before pushing the new
+            // URL, so an open drawer would otherwise be part of that
+            // snapshot and reopen on Back. The mobile drawer's pushed
+            // history entry is unwound by the close handler above, the same
+            // way #app-modal's is. Nothing in this app navigates over htmx
+            // from inside the quick view itself, so the race sidePanel's
+            // htmx:beforeRequest guard exists for (an in-flight push racing
+            // a history.back()) cannot happen here.
+            trackListener(this._qvHandlers, document, "htmx:beforeHistorySave", () => {
+                if (this._qvDialog.open) this._qvDialog.close();
+            });
         },
         destroy() {
             this._qvHandlers.forEach(([target, type, handler, options]) => {
                 target.removeEventListener(type, handler, options);
+            });
+            this._refreshHandlers.forEach(([eventName, handler]) => {
+                document.body.removeEventListener(eventName, handler);
             });
         },
         requestClose() {
             this._close();
         },
         retry() {
-            htmx.ajax("GET", this._lastUrl, {
-                target: "#quick-view-body",
-                swap: "innerHTML",
-            });
+            this._fetchBody(this._lastUrl);
         },
         followOpenLink(event) {
             event.preventDefault();
+            const href = this._openLink.href;
+            const isMobile = this._isMobile;
+            // The pushed history entry is about to be superseded by a real
+            // navigation either way. On mobile it is replaced outright (see
+            // below) rather than unwound first, so the close this triggers
+            // must leave it alone.
+            this._qvSkipHistoryUnwind = true;
             this._close();
-            window.location.assign(this._openLink.href);
+            if (isMobile) {
+                // assign() would leave the sheet's pushed entry sitting
+                // under the destination, so Back from there would first
+                // replay this same page before actually leaving it.
+                window.location.replace(href);
+            } else {
+                window.location.assign(href);
+            }
         },
         _open(trigger) {
             if (!this._qvDialog.open) {
-                if (this._isMobile) {
-                    this._qvDialog.showModal();
-                } else {
-                    this._qvDialog.show();
-                }
+                this._showDialog();
             }
             this._title.textContent = trigger.dataset.quickViewTitle || "";
             this._openLink.href = trigger.href;
@@ -338,6 +406,19 @@ document.addEventListener("alpine:init", () => {
             if (!this._isMobile) trigger.focus();
             this._qvTrigger = trigger;
             this._syncExpanded();
+        },
+        // Opens the dialog in whichever mode _isMobile currently names.
+        // showModal() pushes no history entry of its own, so a mobile open
+        // adds one by hand; Back then dismisses the sheet instead of
+        // navigating the page.
+        _showDialog() {
+            if (this._isMobile) {
+                this._qvDialog.showModal();
+                history.pushState({ flsQuickView: true }, "");
+                this._qvHistoryPushed = true;
+            } else {
+                this._qvDialog.show();
+            }
         },
         _startLoading(trigger, url) {
             const clone = this._skeletonTemplate.content.cloneNode(true);
@@ -374,11 +455,37 @@ document.addEventListener("alpine:init", () => {
                 trigger.setAttribute("aria-expanded", isShown ? "true" : "false");
             });
         },
-        // The events the shown content depends on. Turning them into live
-        // listeners — so a matching domain event can refetch or mark the
-        // drawer stale — is separate work; for now this only records them.
+        // The events the shown content depends on. A matching event naming
+        // the shown entity means its content may be out of date: refetch
+        // immediately while open, or mark it stale so the next open
+        // refetches instead of reusing what's already on screen.
         _registerRefreshEvents(names) {
-            this._refreshHandlers = (names || "").split(/\s+/).filter(Boolean);
+            this._refreshHandlers.forEach(([eventName, handler]) => {
+                document.body.removeEventListener(eventName, handler);
+            });
+            this._refreshHandlers = (names || "")
+                .split(/\s+/)
+                .filter(Boolean)
+                .map((eventName) => {
+                    const handler = (event) => this._handleRefreshEvent(event);
+                    document.body.addEventListener(eventName, handler);
+                    return [eventName, handler];
+                });
+        },
+        _handleRefreshEvent(event) {
+            const ids = (event.detail && event.detail.ids) || [];
+            if (!ids.includes(this._entityId)) return;
+            if (this._qvDialog.open) {
+                this._fetchBody(this._shownUrl);
+            } else {
+                this._stale = true;
+            }
+        },
+        _fetchBody(url) {
+            htmx.ajax("GET", url, {
+                target: "#quick-view-body",
+                swap: "innerHTML",
+            });
         },
         _close() {
             if (this._qvDialog.open) this._qvDialog.close();
