@@ -1,0 +1,29 @@
+<dl class="space-y-4">
+    <div>
+        <dt class="text-sm font-semibold text-muted">Name</dt>
+        <dd class="mt-1">{{ cohort.name }}</dd>
+    </div>
+    <div>
+        <dt class="text-sm font-semibold text-muted">Status</dt>
+        <dd class="mt-1">
+            {% comment %}TODO: read the status from Cohort.is_active once cohort administration adds it.{% endcomment %}
+            Active
+        </dd>
+    </div>
+    <div>
+        <dt class="text-sm font-semibold text-muted">Learners</dt>
+        <dd class="mt-1">{{ learner_count }}</dd>
+    </div>
+    <div>
+        <dt class="text-sm font-semibold text-muted">Courses</dt>
+        <dd class="mt-1">
+            <ul class="space-y-1">
+                {% for course in courses %}
+                    <li>{{ course.title }}</li>
+                {% empty %}
+                    <li>&mdash;</li>
+                {% endfor %}
+            </ul>
+        </dd>
+    </div>
+</dl>
