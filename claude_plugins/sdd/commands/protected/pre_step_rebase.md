@@ -100,8 +100,8 @@ Otherwise spawn **one** `sdd:sdd-worker` as its own solo `Agent` call. Its brief
 
 - Read `.sdd-work/rebase_upstream_scan.md`, the spec directory's own artifacts (`idea.md`,
   `1. spec.md`, `2. plan.md`, whichever exist — the scan file's commit list shows how far
-  implementation has got through any `[batch N]` commits it lists), `docs/app_structure.md` and
-  `CLAUDE.md`.
+  implementation has got. A batch is finished at its `[batch N record]` commit, or at `[batch N]`
+  when the review is off), `docs/app_structure.md` and `CLAUDE.md`.
 - Decide `direction: unchanged` or `direction: changed`. `changed` means the upstream change
   alters an app boundary in `docs/app_structure.md`, a shared base the spec builds on, a skill or
   convention the spec's plan contradicts, or a finished spec in `spec_dd/3. done/` that took a

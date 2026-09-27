@@ -77,6 +77,13 @@ If `docs/app_structure.md` doesn't exist yet, run `/app_map` first. `/app_map` i
 Run `/implement_plan` to execute the implementation plan. Each batch runs as `sdd:sdd-implementer`,
 with the skills named in `.claude/sdd/config.md`'s `## Testing Skills` loaded first.
 
+Once a batch's suite passes, one `sdd:sdd-worker` reviews the batch's touched files for test
+organisation, against the mirroring and dependency-direction rules the named skills define.
+Mechanical findings go to one `sdd:sdd-implementer`, which commits `[batch N review-fix]`;
+judgement findings go to the user via `AskUserQuestion`. Each batch ends with a `[batch N record]`
+commit that appends a `## Batch N` section to `boy_scout_record.md` in the spec directory. All of
+this is skipped when `## Testing Skills` is blank.
+
 ## Step 5: Code security review
 
 Run `/security-review` to check the code diff for security issues. Running this before QA means structural security fixes don't force QA to be re-run.

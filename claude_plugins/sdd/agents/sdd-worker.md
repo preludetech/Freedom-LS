@@ -4,7 +4,7 @@ description: |-
   A single non-interactive unit of SDD fan-out work: one research topic, one review dimension, or one
   skills/MCP scan. Spawn one per unit from a depth-0 SDD command. Writes its findings to a file path given
   in its prompt and returns a structured status. Never asks the user.
-tools: Read, Glob, Grep, WebFetch, WebSearch, Write
+tools: Read, Glob, Grep, WebFetch, WebSearch, Write, Skill
 model: sonnet
 ---
 
@@ -29,6 +29,8 @@ When your findings are web-sourced, **cite the reference URLs** in the output fi
 - **Non-interactive.** Never call `AskUserQuestion`. If you are missing required input, write what
   you can to the output file, set `status: blocked`, list what you `needs:`, and return. (See the
   `claude-code-authoring` skill for why subagents are non-interactive and fail-fast.)
+- **Skills first.** When the brief names skills to invoke, invoke them with `Skill` before anything
+  else. Other fan-out briefs never name skills, so their behaviour is unchanged.
 - **One unit only.** You cannot spawn further subagents and must not try to.
 - **Use the project's words.** For findings about *this* project, follow
   `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`. Research into *other* systems keeps their
