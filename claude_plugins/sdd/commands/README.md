@@ -101,6 +101,10 @@ Each batch ends with a `[batch N record]` commit that appends a `## Batch N` sec
 tidied, what it deferred, and each flagged item with the user's answer. All of this is skipped when
 `## Testing Skills` is blank.
 
+Before the final success-criteria check, one `sdd:sdd-worker` reviews the whole branch for what no
+single batch's review shows, such as the same cross-app edge reappearing across batches, and the
+final commit adds a `## Summary` section to `boy_scout_record.md` with the overall counts.
+
 ## Step 5: Code security review
 
 Run `/security-review` to check the code diff for security issues. Running this before QA means structural security fixes don't force QA to be re-run.

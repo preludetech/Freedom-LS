@@ -52,6 +52,7 @@ Every commit a batch produces carries its number (later slices add more rows):
 | `[batch N bug-fix] <summary>` | implementer, for a flagged item answered "fix it now" |
 | `[batch N flag-note] <path>` | depth 0, the "not a bug" comment |
 | `[batch N record] <summary>` | depth 0 via `sdd:sdd-mechanic`: `boy_scout_record.md` plus any follow-up files; always the batch's last commit |
+| `[final review-fix] <summary>` | fix agent, for a finding of the final review |
 
 Matching `[batch N]` needs the closing bracket straight after the number, so no follow-on commit reads as the implementation's commit. Resume, and later the budget and the scope check, read subjects only.
 
@@ -172,9 +173,10 @@ If there is a `3. frontend_qa.md` file, do **not** run it, and ignore any plan s
 After all batches are complete:
 
 1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes
-2. Check each success criterion from the plan — is it met?
-3. If any criterion is unmet: fix it with one `sdd:sdd-implementer` (`subagent_type: "sdd:sdd-implementer"`, per-spawn `model: "sonnet"`), whose brief carries the skill line (when the Testing Skills list is not empty) and the unmet criterion, then repeat from step 1
-4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
+2. **Final test-organisation review.** Skipped when `## Testing Skills` is blank. One `sdd:sdd-worker` writes `.sdd-work/test_org_review_final.md` in the Review follow-on's finding format. Skip the spawn when that file already exists and ends `status: ok`. The worker has no `Bash`, so depth 0 puts these in its brief: the skill line, the output of `git diff --name-only "$(git merge-base origin/main HEAD)" HEAD`, the path to `boy_scout_record.md`, and the budget counts (see "Commit-subject grammar"). It looks for what no single batch's review shows: the same new cross-app edge appearing across several batches, an edge one batch's boy-scout removed and a later batch brought back, and the total budget spent. Resume, retry and `blocked` work as in Review (follow-on 1). Handle findings as in Review fixes and Flagged items: mechanical findings go to one `sdd:sdd-implementer` with the skill line and the subject `[final review-fix] <summary>`; judgement findings go to the user via `AskUserQuestion`. Delete `.sdd-work/test_org_review_final.md` by name once every finding is handled.
+3. Check each success criterion from the plan — is it met?
+4. If any criterion is unmet: fix it with one `sdd:sdd-implementer` (`subagent_type: "sdd:sdd-implementer"`, per-spawn `model: "sonnet"`), whose brief carries the skill line (when the Testing Skills list is not empty) and the unmet criterion, then repeat from step 1
+5. Once everything passes: unless `## Testing Skills` is blank, append a `## Summary` section to `boy_scout_record.md` first, covering the final review's findings and answers, counts of review fixes, tidies, deferrals and flagged items by answer, and any edge that still needs an `/app_map` re-run. Then make the final commit via `sdd:sdd-mechanic`, staging `boy_scout_record.md` by explicit path alongside the commit's other files. Give the user the same counts and any `/app_map` edge in the conversation. The PR body is not touched.
 
 ## When to Stop and Ask
 
