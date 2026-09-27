@@ -41,7 +41,7 @@ from freedom_ls.panel_framework.panels import (
     PanelStack,
     TabSet,
 )
-from freedom_ls.panel_framework.tables import Column, DataTable
+from freedom_ls.panel_framework.tables import Column, DataTable, ExportColumn
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -177,6 +177,13 @@ class StubDataTable(DataTable):
                 "kind", "Kind", lookup="kind", choices=kind_choices, always_shown=True
             ),
             BooleanFilter("active", "Active only", lookup="is_active"),
+        ]
+
+    @staticmethod
+    def get_export_columns() -> list[ExportColumn]:
+        return [
+            ExportColumn("Name", "name"),
+            ExportColumn("Kind", lambda row: row.get_kind_display()),
         ]
 
 

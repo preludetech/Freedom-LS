@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.views import NavGroup, panel_framework_view
@@ -46,7 +46,7 @@ def call_view(
     path_string: str,
     config: list[NavGroup] | None = None,
     url_name: str = URL_NAME,
-) -> HttpResponse:
+) -> HttpResponse | StreamingHttpResponse:
     return panel_framework_view(
         config=STUB_CONFIG if config is None else config,
         request=request,
@@ -56,6 +56,8 @@ def call_view(
     )
 
 
-def fetch(path_string: str, **request_kwargs: object) -> HttpResponse:
+def fetch(
+    path_string: str, **request_kwargs: object
+) -> HttpResponse | StreamingHttpResponse:
     """Build a request for `path_string` and dispatch it through the stub config."""
     return call_view(make_request(path_string, **request_kwargs), path_string)

@@ -1,8 +1,8 @@
 """Shared pieces for admin CSV exports built on django-import-export.
 
-Three things the package leaves to the caller: neutralising spreadsheet
-formulas (its own setting only strips a leading ``=``), writing the UTF-8
-byte-order mark Excel on Windows needs to detect UTF-8, and rendering
+Two things the package leaves to the caller beyond formula-escaping and the
+UTF-8 byte-order mark (both in `freedom_ls.base.csv_safety`): a
+django-import-export ``CSV`` format that applies them, and rendering
 timestamps in a form that does not depend on the project's date-format
 settings.
 """
@@ -16,14 +16,7 @@ from import_export.resources import ModelResource
 from import_export.widgets import DateTimeWidget, DateWidget
 from tablib import Dataset
 
-FORMULA_TRIGGERS = ("=", "+", "-", "@", "\t", "\r")
-
-
-def escape_csv_formula(value: str) -> str:
-    """Stop a cell being executed as a formula when the CSV is opened."""
-    if value and value[0] in FORMULA_TRIGGERS:
-        return f"'{value}"
-    return value
+from freedom_ls.base.csv_safety import UTF8_BOM, escape_csv_formula
 
 
 def _escape_cell(cell: object) -> object:
@@ -41,7 +34,7 @@ class FormulaSafeCSV(CSV):
         for index in range(len(dataset)):
             dataset[index] = [_escape_cell(cell) for cell in dataset[index]]
         body: str = super().export_data(dataset, **kwargs)
-        return f"\ufeff{body}"
+        return f"{UTF8_BOM}{body}"
 
 
 class IsoDateTimeWidget(DateTimeWidget):

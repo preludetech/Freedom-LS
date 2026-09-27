@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
 from django.core.paginator import Page, Paginator
-from django.db.models import Q, QuerySet
+from django.db.models import Model, Q, QuerySet
 from django.http import HttpRequest
 
+from freedom_ls.base.csv_safety import escape_csv_formula
 from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.templatetags.data_table_tags import getattr_str
 
 
 @dataclass(frozen=True)
@@ -156,6 +159,25 @@ class Column:
             self.sort_field = (self.text_attr or self.attr).replace(".", "__")
 
 
+@dataclass(frozen=True)
+class ExportColumn:
+    """One column of a table's CSV export: a header and how to read its
+    value from a row. Independent of `Column` — a column may appear on
+    screen, in the export, both or neither — so an export can carry a field
+    hidden on screen (an email address) and leave out a screen-only one (a
+    row-selection checkbox, an action button)."""
+
+    header: str
+    value: str | Callable[[Model], object]
+
+    def cell(self, row: Model) -> str:
+        if isinstance(self.value, str):
+            raw = getattr_str(row, self.value)
+        else:
+            raw = self.value(row)
+        return "" if raw is None else escape_csv_formula(str(raw))
+
+
 class DataTable:
     """Abstract class used for rendering data tables"""
 
@@ -173,6 +195,17 @@ class DataTable:
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
         """Filters this table's rows may be narrowed by, in toolbar order."""
+        return []
+
+    @classmethod
+    def get_export_columns(cls) -> list[ExportColumn]:
+        """Columns this table serves through its CSV export, in export
+        order. Empty by default, which disables the export for this table.
+
+        Independent of `get_columns()`: a column may read a relation only if
+        `get_queryset` already `select_related`s or `prefetch_related`s it,
+        so the export's row iterator stays free of per-row queries.
+        """
         return []
 
     @classmethod
@@ -304,6 +337,8 @@ class DataTable:
                 [table_filter.key for table_filter in filters]
             ),
             "any_filter_set": any(entry["values"] for entry in toolbar),
+            "exports": bool(cls.get_export_columns()),
+            "export_changes": {query.param("export"): "csv"},
         }
 
 

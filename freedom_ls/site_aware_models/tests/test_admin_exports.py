@@ -7,30 +7,17 @@ import csv
 import io
 from datetime import UTC, date, datetime
 
-import pytest
 from tablib import Dataset
 
 from freedom_ls.site_aware_models.admin_exports import (
-    FORMULA_TRIGGERS,
     FormulaSafeCSV,
     IsoDateTimeWidget,
     IsoDateWidget,
-    escape_csv_formula,
 )
 
 
 def _rows(body: str) -> list[list[str]]:
     return list(csv.reader(io.StringIO(body.removeprefix("\ufeff"))))
-
-
-@pytest.mark.parametrize("trigger", FORMULA_TRIGGERS)
-def test_escape_csv_formula_prefixes_every_trigger(trigger: str) -> None:
-    assert escape_csv_formula(f"{trigger}x") == f"'{trigger}x"
-
-
-@pytest.mark.parametrize("value", ["plain", "", "1+1", "a=b"])
-def test_escape_csv_formula_leaves_other_values_alone(value: str) -> None:
-    assert escape_csv_formula(value) == value
 
 
 def test_formula_safe_csv_escapes_cells_but_not_headers() -> None:

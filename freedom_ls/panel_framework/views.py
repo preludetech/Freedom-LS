@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import csv
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from django.core.exceptions import (
@@ -8,11 +10,19 @@ from django.core.exceptions import (
     ValidationError,
 )
 from django.db.models import Model
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    StreamingHttpResponse,
+)
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.cache import patch_vary_headers
+from django.utils.text import slugify
 
+from freedom_ls.base.csv_safety import UTF8_BOM
 from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
@@ -443,7 +453,9 @@ def _is_htmx_action_request(request: HttpRequest, parts: list[str]) -> bool:
     )
 
 
-def _vary_on_htmx(response: HttpResponse) -> HttpResponse:
+def _vary_on_htmx(
+    response: HttpResponse | StreamingHttpResponse,
+) -> HttpResponse | StreamingHttpResponse:
     """One URL answers with a page, a bundle or a fragment depending on these
     headers, so a cache must key on them."""
     patch_vary_headers(
@@ -515,19 +527,69 @@ def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
     return panel.ctx.page_url
 
 
+class _Echo:
+    """A file-like object whose `write` hands back the string it was given
+    instead of buffering it, so `csv.writer` can drive a generator that
+    `StreamingHttpResponse` streams one row at a time."""
+
+    def write(self, value: str) -> str:
+        return value
+
+
+def _export_response(
+    request: HttpRequest, panel: DataTablePanel
+) -> StreamingHttpResponse:
+    """Stream `panel`'s current rows as a formula-safe CSV.
+
+    Honours the table's search, filters and sort but never its pagination:
+    an export is every matching row, not one page of them. The queryset is
+    built here, before the streaming response is returned, so it is scoped
+    to the request's site while that scope is still available -- a
+    `StreamingHttpResponse`'s body is read after the middleware that clears
+    the site thread local has already run.
+    """
+    columns = panel.data_table.get_export_columns()
+    if not columns:
+        raise Http404("This table has no CSV export")
+    if request.GET.get(f"{panel.table_key}-export") != "csv":
+        raise Http404("Unsupported export format")
+    _query, queryset = panel.narrow(request)
+
+    def rows() -> Iterator[str]:
+        echo = _Echo()
+        writer = csv.writer(echo)
+        yield UTF8_BOM
+        yield writer.writerow([column.header for column in columns])
+        for row in queryset.iterator(chunk_size=500):
+            yield writer.writerow([column.cell(row) for column in columns])
+
+    response = StreamingHttpResponse(rows(), content_type="text/csv; charset=utf-8")
+    scope_slug = slugify(panel.get_export_scope_slug(request))
+    scope_part = f"-{scope_slug}" if scope_slug else ""
+    filename = f"{panel.table_key}{scope_part}-{timezone.localdate().isoformat()}.csv"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 def _respond(
     request: HttpRequest,
     resolved: _Resolved | None,
     template_name: str,
     page_context: dict[str, object],
-) -> HttpResponse:
+) -> HttpResponse | StreamingHttpResponse:
     """Pick the response branch for a request that addresses a page or a panel.
 
     A plain GET, and a history restore, get the full page. htmx requests get
     the navigation bundle, one tab, or one panel's region, chosen by the
     target they name; an unrecognised target gets the navigation bundle, never
-    a bare fragment.
+    a bare fragment. Before any of that, a table panel's export flag gets a
+    streamed CSV instead.
     """
+    if resolved is not None and isinstance(resolved.panel, DataTablePanel):
+        table_panel = resolved.panel
+        if f"{table_panel.table_key}-export" in request.GET:
+            return _export_response(request, table_panel)
+
     is_htmx = request.headers.get("HX-Request") == "true"
     is_restore = request.headers.get("HX-History-Restore-Request") == "true"
     hx_target = request.headers.get("HX-Target", "")
@@ -662,7 +724,7 @@ def panel_framework_view(
     path_string: str,
     template_name: str,
     url_name: str,
-) -> HttpResponse:
+) -> HttpResponse | StreamingHttpResponse:
     """Generic dispatch view for panel-framework-based interfaces.
 
     Parameters:

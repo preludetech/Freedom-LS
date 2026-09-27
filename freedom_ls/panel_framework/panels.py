@@ -225,6 +225,12 @@ class DataTablePanel(Panel):
         """
         return self.data_table.get_queryset(request)
 
+    def get_export_scope_slug(self, request: HttpRequest) -> str:
+        """A URL-safe fragment naming this panel's scope in its export
+        filename, e.g. an organisation or cohort slug. Empty by default; a
+        panel scoped to one instance overrides it."""
+        return ""
+
     def narrow(self, request: HttpRequest) -> tuple[TableQuery, QuerySet]:
         """This table's own query, and its scoped rows searched and sorted
         from it. The one place a table's request parameters are parsed and

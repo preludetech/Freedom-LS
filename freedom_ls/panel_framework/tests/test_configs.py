@@ -9,7 +9,7 @@ import pytest
 from django.contrib.sites.models import Site
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import Model
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 
 from freedom_ls.panel_framework.actions import DeleteAction, PanelAction
 from freedom_ls.panel_framework.panels import Panel, PanelStack
@@ -103,7 +103,9 @@ CONFIG = [
 ]
 
 
-def _view(path_string: str, **request_kwargs: object) -> HttpResponse:
+def _view(
+    path_string: str, **request_kwargs: object
+) -> HttpResponse | StreamingHttpResponse:
     return call_view(make_request(path_string, **request_kwargs), path_string, CONFIG)
 
 
@@ -193,7 +195,7 @@ def test_a_hidden_panels_url_404s(mock_site_context: Site) -> None:
 
 def _as_a_user_permitted_to_delete(
     path_string: str, **request_kwargs: object
-) -> HttpResponse:
+) -> HttpResponse | StreamingHttpResponse:
     """The recording stub config answers has_capability True, standing in for
     a role grant _FirstStubConfig would otherwise ask about."""
     RecordingCapabilityConfig.reset(answer=True)

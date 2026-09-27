@@ -104,5 +104,10 @@ form, so the toolbar works with JavaScript off.
         </a>
     {% endif %}
 
+    {% if exports %}
+        {% querystring request.GET export_changes as export_qs %}
+        <a href="{{ page_url }}{{ export_qs }}">Export CSV</a>
+    {% endif %}
+
     {% if sorted_by %}<span class="ml-auto text-sm text-muted">Sorted by {{ sorted_by }}</span>{% endif %}
 </div>

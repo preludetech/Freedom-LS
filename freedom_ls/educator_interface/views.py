@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Page
 from django.db.models import Count, Model, Prefetch, Q, QuerySet
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
@@ -702,7 +702,7 @@ def interface_root(request: HttpRequest) -> HttpResponse:
 @login_required
 def interface(
     request: HttpRequest, organisation_slug: str, path_string: str = ""
-) -> HttpResponse:
+) -> HttpResponse | StreamingHttpResponse:
     """Resolve and authorise the organisation named in the URL, once.
 
     Selecting an organisation is an authorisation decision, not a filter:

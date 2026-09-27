@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 from django.urls import path, re_path
 
 from freedom_ls.panel_framework.reference import component_reference
@@ -17,7 +17,9 @@ def _stub_view(request: HttpRequest, path_string: str = "") -> HttpResponse:
     return HttpResponse("ok")
 
 
-def _framework_view(request: HttpRequest, path_string: str = "") -> HttpResponse:
+def _framework_view(
+    request: HttpRequest, path_string: str = ""
+) -> HttpResponse | StreamingHttpResponse:
     return panel_framework_view(
         config=STUB_CONFIG,
         request=request,
