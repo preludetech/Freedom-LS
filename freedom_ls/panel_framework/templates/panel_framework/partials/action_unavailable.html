@@ -3,11 +3,11 @@ An action whose object has left the user's scope. The copy never says
 whether the object was removed or the access was, so a 404 confirms nothing.
 data-htmx-swap-error lets the htmx:beforeSwap listener swap this 404 in.
 {% endcomment %}
-
-<c-modal title="This is no longer available" open="true" data-htmx-swap-error="true">
+<div data-htmx-swap-error="true">
+    <h2 id="app-modal-title">This is no longer available</h2>
     <p>It may have been removed, or you may no longer have access to it.</p>
 
-    <c-slot name="footer">
-        <c-button variant="secondary" @click="close">Close</c-button>
-    </c-slot>
-</c-modal>
+    <c-button-group variant="right" class="mt-4">
+        <c-button variant="secondary" x-on:click="requestClose" autofocus>Close</c-button>
+    </c-button-group>
+</div>

@@ -1,0 +1,34 @@
+{% comment %}
+The modal fragment a DeleteAction's GET returns. Context: instance,
+cascade_summary, blocked_reason, delete_url.
+{% endcomment %}
+<h2 id="app-modal-title">Delete {{ instance }}</h2>
+
+{% if blocked_reason %}
+    <div class="rounded-md border border-error/20 bg-error/10 p-3">
+        <p class="text-sm text-on-surface">{{ blocked_reason }}</p>
+    </div>
+{% elif cascade_summary %}
+    <div class="rounded-md border border-error/20 bg-error/10 p-3">
+        <p class="mb-2 text-sm font-semibold text-error">This will also delete:</p>
+        <ul class="list-inside list-disc text-sm">
+            {% for item in cascade_summary %}
+                <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<c-button-group variant="right" class="mt-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    {% if not blocked_reason %}
+        <form hx-delete="{{ delete_url }}"
+              hx-target="#app-modal-body"
+              hx-swap="innerHTML"
+              hx-disabled-elt="find button[type='submit']">
+            <c-button type="submit" variant="error" loading="true" loading_text="Deleting...">
+                Delete
+            </c-button>
+        </form>
+    {% endif %}
+</c-button-group>

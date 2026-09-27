@@ -77,7 +77,7 @@ FLS already builds each of these, and the brand decisions above are encoded in t
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |
 | A progress bar | `<c-course-progress-bar>`, tinted to the course's own accent |
-| A modal | `<c-modal>`; a native `<dialog>` gets the shared scrim from `.modal-backdrop-host` |
+| A modal | `#app-modal` (the shared native `<dialog>`) opened by `<c-modal-trigger>`; it gets its scrim from `.modal-backdrop-host` |
 
 **Headings, body text, links, lists, tables and form inputs take no classes.** The base layer already sizes and colours them: write `<h1>Title</h1>`, and the stylesheet stays the one place those styles live.
 

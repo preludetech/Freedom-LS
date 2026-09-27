@@ -31,7 +31,7 @@ class _LinkAction(PanelAction):
     """Renders through a test template that prints the action URL."""
 
     action_name = "go"
-    template_name = "panel_framework/test_action_url.html"
+    trigger_template_name = "panel_framework/test_action_url.html"
 
 
 @pytest.mark.django_db

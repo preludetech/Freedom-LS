@@ -2,12 +2,12 @@
 Context: action_label, who_to_ask
 data-htmx-swap-error lets the htmx:beforeSwap listener swap this 403 in.
 {% endcomment %}
-
-<c-modal title="You can't use “{{ action_label }}” here any more" open="true" data-htmx-swap-error="true">
+<div data-htmx-swap-error="true">
+    <h2 id="app-modal-title">You can't use “{{ action_label }}” here any more</h2>
     <p>Your role doesn't allow it.</p>
     <p>{{ who_to_ask }}</p>
 
-    <c-slot name="footer">
-        <c-button variant="secondary" @click="close">Close</c-button>
-    </c-slot>
-</c-modal>
+    <c-button-group variant="right" class="mt-4">
+        <c-button variant="secondary" x-on:click="requestClose" autofocus>Close</c-button>
+    </c-button-group>
+</div>

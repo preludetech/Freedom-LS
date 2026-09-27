@@ -1,0 +1,13 @@
+<c-vars url label variant="primary" />
+
+{% comment %}
+Opens the shared #app-modal with the fragment this url's GET returns. Nothing
+opens until the fragment arrives — the disabled button is the only loading
+state, and no URL is pushed.
+{% endcomment %}
+<c-button variant="{{ variant }}"
+          hx-get="{{ url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="this"
+          aria-haspopup="dialog">{{ label }}</c-button>
