@@ -67,7 +67,7 @@ Status: **pass**. Pages checked: `/`, `/panel-framework/components/`. No failure
   ![](screenshots/page-reverify-progress-normal.png)
   ![](screenshots/page-reverify-progress-forced.png)
 
-- **UNRESOLVED** — Duplicate search-q id leaves the applied-toolbar search field unlabelled on the reference page (reason: the fixer was blocked because the dev database on 127.0.0.1:6543 dropped when its test run started, so RED could not be confirmed; its test edits were discarded. The intended fix is `name="q-applied"` on the toolbar-applied example in `_examples.html`.)
+- **FIXED** (commit: 3f70fd7e) — Duplicate search-q id leaves the applied-toolbar search field unlabelled on the reference page. The toolbar-applied example now uses `name="q-applied"`; a new test asserts `_examples.html` renders no duplicate ids.
 
 The dev database became unreachable twice during this run, each time while a full pytest run was going. The dev server hung and had to be restarted on a new port (8438, then 8508).
 
