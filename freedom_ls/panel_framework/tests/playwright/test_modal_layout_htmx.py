@@ -1,8 +1,8 @@
 """E2E Playwright tests for #app-modal's centring at desktop and phone widths.
 
 Covers the open dialog's bounding box sitting centred in the viewport at
-both breakpoints, and the close button staying inside the dialog's top-right
-corner. Interaction behaviour lives in test_modal_form_htmx.py.
+both breakpoints, the close button staying inside the dialog's top-right
+corner, and the form's button row fitting inside the dialog at phone width. Interaction behaviour lives in test_modal_form_htmx.py.
 """
 
 from __future__ import annotations
@@ -86,3 +86,32 @@ def test_the_close_button_stays_inside_the_dialog_top_right_corner(
     assert close_box is not None
     assert dialog_box["x"] <= close_box["x"] <= dialog_box["x"] + dialog_box["width"]
     assert dialog_box["y"] <= close_box["y"] <= dialog_box["y"] + dialog_box["height"]
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_the_form_buttons_fit_inside_the_dialog_at_phone_width(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.set_viewport_size(_PHONE_VIEWPORT)
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+
+    dialog = page.locator("#app-modal")
+    expect(dialog).to_be_visible()
+    dialog_box = dialog.bounding_box()
+    assert dialog_box is not None
+    buttons = page.locator("#app-modal-body form button")
+    expect(buttons.first).to_be_visible()
+    heights: list[float] = []
+    for button in buttons.all():
+        box = button.bounding_box()
+        assert box is not None
+        assert box["x"] >= dialog_box["x"]
+        assert box["x"] + box["width"] <= dialog_box["x"] + dialog_box["width"]
+        heights.append(box["height"])
+    # A label that word-wraps makes its button a whole line taller.
+    assert max(heights) < 1.5 * min(heights)
