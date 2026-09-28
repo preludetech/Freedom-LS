@@ -11,7 +11,7 @@
 // server-rendered messages still surface on errors.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const status = event.detail.xhr.status;
-    if (status === 422) {
+    if (status === 422 || status === 403) {
         event.detail.shouldSwap = true;
         event.detail.isError = false;
         return;

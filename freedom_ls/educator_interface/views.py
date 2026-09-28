@@ -24,6 +24,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
+    active_organisation_admins,
     cohorts_visible_to,
     learners_visible_to,
     organisations_accessible_to,
@@ -92,6 +93,27 @@ class OrganisationSectionConfig(SectionConfigBase):
         cls, request: HttpRequest, capability: str, scope: Model
     ) -> bool:
         return can(request.user, capability, scope)
+
+    @classmethod
+    def get_denied_context(
+        cls, request: HttpRequest, capability: str | None, scope: Model | None
+    ) -> dict[str, str]:
+        organisation = cast(_OrganisationScopedRequest, request).organisation
+        who = f"Ask an organisation admin of {organisation.name}."
+        if can(
+            request.user,
+            "freedom_ls_learner_management.view_organisationmember",
+            organisation,
+        ):
+            names = [
+                admin.display_name for admin in active_organisation_admins(organisation)
+            ]
+            if names:
+                who = (
+                    f"Ask an organisation admin of {organisation.name}: "
+                    f"{', '.join(names)}."
+                )
+        return {"who_to_ask": who}
 
 
 # TODO

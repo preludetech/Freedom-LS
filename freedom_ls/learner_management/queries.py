@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING, NamedTuple, cast
 from django.db.models import Exists, Model, OuterRef, Q
 
 from freedom_ls.learner_management.capabilities import (
+    _active_role_assignments,
     _current_site,
     _granted_cohorts,
     _granted_organisations,
     _site_grants,
     roles_granting,
 )
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
 from freedom_ls.organisations.models import Organisation
 
 if TYPE_CHECKING:
@@ -318,3 +319,28 @@ def learners_visible_to(
     # just because they still hold a membership in a granted cohort, or still
     # belong to the organisation.
     return Learner.objects.filter(visible, is_active=True).distinct()
+
+
+def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
+    """Active organisation_admin role holders currently helping run this
+    organisation, ordered by name.
+
+    Gated on an active OrganisationMember the same way can() gates every
+    organisation- or cohort-level grant: a deactivated member must not be
+    named as someone to ask just because their role assignment is still
+    active.
+    """
+    from freedom_ls.accounts.models import User
+
+    grants = _active_role_assignments(
+        Organisation, frozenset({"organisation_admin"})
+    ).filter(object_id=str(organisation.pk))
+    members = OrganisationMember.objects.filter(
+        organisation=organisation, is_active=True
+    )
+    return (
+        User.objects.filter(is_active=True)
+        .filter(pk__in=grants.values("user_id"))
+        .filter(pk__in=members.values("user_id"))
+        .order_by("first_name", "last_name")
+    )

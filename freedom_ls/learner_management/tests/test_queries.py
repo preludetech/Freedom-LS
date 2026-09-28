@@ -32,9 +32,11 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     LearnerCourseRegistration,
+    OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
     ResolvedRegistration,
+    active_organisation_admins,
     all_cohorts_visible_to,
     can_view_cohort,
     cohorts_visible_to,
@@ -47,7 +49,11 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
-from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
+from freedom_ls.role_based_permissions.utils import (
+    assign_object_role,
+    assign_site_role,
+    remove_object_role,
+)
 
 
 def _make_cohort(*, organisation: Organisation | None = None) -> Cohort:
@@ -561,6 +567,49 @@ class TestLearnersVisibleTo:
         user = UserFactory()
 
         assert list(learners_visible_to(user, organisation)) == []
+
+
+@pytest.mark.django_db
+class TestActiveOrganisationAdmins:
+    """Who to ask when a denied action names an organisation admin: an
+    active organisation_admin whose grant and OrganisationMember are both
+    still active."""
+
+    def test_an_active_admin_with_an_active_membership_is_included(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+
+        assert list(active_organisation_admins(organisation)) == [admin]
+
+    def test_an_inactive_user_is_excluded(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+        admin.is_active = False
+        admin.save(update_fields=["is_active"])
+
+        assert list(active_organisation_admins(organisation)) == []
+
+    def test_a_removed_role_assignment_is_excluded(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+        remove_object_role(admin, organisation, "organisation_admin")
+
+        assert list(active_organisation_admins(organisation)) == []
+
+    def test_an_inactive_organisation_member_is_excluded(self, mock_site_context):
+        organisation = OrganisationFactory()
+        admin = UserFactory()
+        assign_object_role(admin, organisation, "organisation_admin")
+        OrganisationMember.objects.filter(user=admin, organisation=organisation).update(
+            is_active=False
+        )
+
+        assert list(active_organisation_admins(organisation)) == []
 
 
 @pytest.mark.django_db

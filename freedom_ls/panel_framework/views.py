@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
@@ -112,6 +116,19 @@ class SectionConfigBase:
         authorisation fails closed instead of leaking.
         """
         raise Http404
+
+    @classmethod
+    def get_denied_context(
+        cls, request: HttpRequest, capability: str | None, scope: Model | None
+    ) -> dict[str, str]:
+        """Copy for the 403 fragment shown when a visible action is denied.
+
+        `capability` and `scope` may both be `None`, because a consumer's own
+        `has_permission` can deny an action that declares no capability. A
+        section with an audience to name overrides this with something more
+        specific than the generic default.
+        """
+        return {"who_to_ask": "Ask an administrator."}
 
 
 class ListViewConfig(SectionConfigBase):
@@ -393,7 +410,17 @@ def _handle_action(request: HttpRequest, resolved: _ResolvedAction) -> HttpRespo
     ctx = resolved.ctx
 
     if not action.has_permission(ctx):
-        return HttpResponse(status=403)
+        if request.headers.get("HX-Request") != "true":
+            raise PermissionDenied
+        context = {
+            "action_label": action.label,
+            **ctx.config.get_denied_context(
+                request, action.get_capability(ctx), action.permission_object(ctx)
+            ),
+        }
+        return render(
+            request, "panel_framework/partials/action_denied.html", context, status=403
+        )
 
     if request.method in ("POST", "DELETE"):
         return action.handle_submit(ctx)

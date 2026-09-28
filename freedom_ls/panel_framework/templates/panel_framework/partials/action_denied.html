@@ -1,0 +1,10 @@
+{% comment %}Context: action_label, who_to_ask{% endcomment %}
+
+<c-modal title="You can't use “{{ action_label }}” here any more" open="true">
+    <p>Your role doesn't allow it.</p>
+    <p>{{ who_to_ask }}</p>
+
+    <c-slot name="footer">
+        <c-button variant="secondary" @click="close">Close</c-button>
+    </c-slot>
+</c-modal>

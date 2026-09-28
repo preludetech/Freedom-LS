@@ -6,6 +6,7 @@ import pytest
 
 from django import forms
 from django.contrib.sites.models import Site
+from django.core.exceptions import PermissionDenied
 from django.db.models import Model
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -312,8 +313,11 @@ def test_create_action_has_permission_reflects_the_configs_answer(
 
 
 @pytest.mark.django_db
-def test_create_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when the config denies the capability."""
+def test_create_action_permission_denied_raises_for_a_plain_request(
+    mock_site_context: Site,
+) -> None:
+    """A plain (non-htmx) denial raises PermissionDenied, so the site's own
+    403 page renders."""
     scope = _make_stub(name="create-403-scope")
     RecordingCapabilityConfig.reset(answer=False, scope=scope)
     action = StubCreateAction()
@@ -322,8 +326,32 @@ def test_create_action_permission_denied_returns_403(mock_site_context: Site) ->
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, None, "/items"))
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
+    assert not StubModel.objects.filter(name="Forbidden").exists()
+
+
+@pytest.mark.django_db
+def test_create_action_permission_denied_returns_403_fragment_for_htmx(
+    mock_site_context: Site,
+) -> None:
+    """An htmx denial answers with the action_denied fragment, at 403, with
+    the framework's default "who to ask" copy."""
+    scope = _make_stub(name="create-403-htmx-scope")
+    RecordingCapabilityConfig.reset(answer=False, scope=scope)
+    action = StubCreateAction()
+    user = make_staff_user()
+    request = RequestFactory().post("/", {"name": "Forbidden"}, HTTP_HX_REQUEST="true")
+    request.user = user
+
+    resolved = _ResolvedAction(action, _ctx(request, None, "/items"))
     response = _handle_action(request, resolved)
+
     assert response.status_code == 403
+    html = response.content.decode()
+    assert "You can't use “Create Item” here any more" in html
+    assert "Ask an administrator." in html
+    assert "Close" in html
     assert not StubModel.objects.filter(name="Forbidden").exists()
 
 
@@ -392,8 +420,11 @@ def test_edit_action_has_permission_reflects_the_configs_answer(
 
 
 @pytest.mark.django_db
-def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when the config denies the capability."""
+def test_edit_action_permission_denied_raises_for_a_plain_request(
+    mock_site_context: Site,
+) -> None:
+    """A plain (non-htmx) denial raises PermissionDenied, so the site's own
+    403 page renders."""
     RecordingCapabilityConfig.reset(answer=False)
     item = _make_stub(name="Test-edit-403")
     action = EditAction(
@@ -406,8 +437,8 @@ def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> N
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, item))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     item.refresh_from_db()
     assert item.name == "Test-edit-403"
 
@@ -500,8 +531,11 @@ def test_delete_action_has_permission_reflects_the_configs_answer(
 
 
 @pytest.mark.django_db
-def test_delete_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when the config denies the capability."""
+def test_delete_action_permission_denied_raises_for_a_plain_request(
+    mock_site_context: Site,
+) -> None:
+    """A plain (non-htmx) denial raises PermissionDenied, so the site's own
+    403 page renders."""
     RecordingCapabilityConfig.reset(answer=False)
     item = _make_stub(name="delete-403")
     action = DeleteAction(success_url="/items")
@@ -511,8 +545,8 @@ def test_delete_action_permission_denied_returns_403(mock_site_context: Site) ->
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, item))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     assert StubModel.objects.filter(pk=item.pk).exists()
 
 
