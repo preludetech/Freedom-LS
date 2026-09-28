@@ -1,8 +1,9 @@
 """E2E Playwright tests for the desktop #quick-view drawer.
 
-Covers opening, re-opening a different row, toggling the same row closed and
-back open with no second request, Esc, a modified click reaching the full
-page instead, and the error/Retry path.
+Covers opening, the title staying blank until the frame supplies it,
+re-opening a different row, toggling the same row closed and back open with
+no second request, Esc, a modified click reaching the full page instead, and
+the error/Retry path.
 """
 
 from __future__ import annotations
@@ -33,6 +34,28 @@ def test_clicking_a_row_opens_the_drawer_with_focus_on_the_link(
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
     expect(trigger).to_be_focused()
     expect(trigger).to_have_attribute("aria-expanded", "true")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_the_title_is_blank_while_loading_and_comes_from_the_frame(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    _make_stub(name="Alpha")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    held: list[Route] = []
+    page.route("**/__quick-view", lambda route: held.append(route))
+
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("#quick-view")).to_be_visible()
+    expect(page.locator("#quick-view-body")).to_have_attribute("aria-busy", "true")
+    expect(page.locator("#quick-view-title")).to_have_text("")
+
+    held[0].continue_()
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    expect(page.locator("#quick-view-title")).to_have_text("Alpha")
 
 
 @pytest.mark.playwright

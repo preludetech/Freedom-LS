@@ -3,8 +3,9 @@
 The Django test client coverage of LearnerQuickView's fields lives in
 educator_interface/tests/test_quick_views.py. What only a browser shows is
 that clicking a learner's name in the table opens the real #quick-view
-drawer, that its Open link leads to the learner's own page, and that a
-learnerChanged domain event naming the shown learner refetches it.
+drawer, that its Open link leads to the learner's own page, that the drawer
+keeps one title whichever cell opened it, and that a learnerChanged domain
+event naming the shown learner refetches it.
 """
 
 from __future__ import annotations
@@ -57,6 +58,37 @@ def test_clicking_a_learner_opens_the_drawer_and_open_leads_to_the_learner_page(
     expect(page).to_have_url(
         interface_url(live_server, organisation.slug, f"learners/{learner.pk}")
     )
+
+
+def test_the_drawer_title_is_the_learners_name_from_either_cell_and_on_reopen(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_staff")
+    LearnerFactory(
+        organisation=organisation,
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+    )
+    title = page.locator("#quick-view-title")
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    first_name = page.get_by_role("link", name="Ada", exact=True)
+    first_name.click()
+    expect(page.locator("#quick-view-body")).not_to_have_attribute("aria-busy", "true")
+    expect(title).to_have_text("Ada Lovelace")
+
+    page.keyboard.press("Escape")
+    expect(page.locator("#quick-view")).to_be_hidden()
+    first_name.click()
+    expect(page.locator("#quick-view")).to_be_visible()
+    expect(title).to_have_text("Ada Lovelace")
+
+    page.get_by_role("link", name="Lovelace", exact=True).click()
+    expect(page.locator("#quick-view")).to_be_visible()
+    expect(title).to_have_text("Ada Lovelace")
 
 
 def test_a_learner_changed_event_naming_the_shown_learner_refetches_it(

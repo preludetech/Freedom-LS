@@ -6,7 +6,7 @@
     {% url column.url_name object|getattr_str:column.url_param as resolved_url %}
 {% endif %}
 {% if column.quick_view %}
-    <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view" title="{{ object|getattr_str:column.text_attr }}">
+    <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view">
         {{ object|getattr_str:column.text_attr }}
     </c-quick-view-trigger>
 {% else %}
