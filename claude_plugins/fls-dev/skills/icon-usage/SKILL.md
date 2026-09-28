@@ -14,62 +14,7 @@ All icons use the `<c-icon />` Cotton component. Icons are referenced by **seman
 
 ## Available semantic names
 
-### Navigation
-
-"next",
-"previous",
-"home",
-"expand",
-"collapse",
-"menu_open",
-"menu_close",
-"dropdown",
-### Status
-"success",
-"error",
-"warning",
-"info",
-"in_progress",
-"complete",
-"locked",
-"not_started",
-### Actions
-"check",
-"close",
-"retry",
-"download",
-"more_options",
-"settings",
-"edit",
-"add",
-### Content types
-"topic",
-"form",
-"course_part",
-### User/system
-"user",
-"notifications",
-"achievement",
-"loading",
-### Data display
-"sort_asc",
-"sort_desc",
-"sort_neutral",
-"boolean_true",
-"boolean_false",
-"search",
-"filter",
-### Trends
-"trend_up",
-"trend_down",
-### Deadlines
-"deadline",
-### Misc
-"sentiment_good",
-"sentiment_bad",
-"unknown",
-"star",
-"notes"
+The full list lives in `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, grouped by purpose (navigation, status, actions, content types, and so on). Read it before choosing a name. If nothing fits, add a new semantic name (see [resources/configuring-icons.md](resources/configuring-icons.md)) rather than reaching for a raw icon.
 
 ## Usage
 
