@@ -2,14 +2,17 @@
 
 Covers focus management (open, 422, re-render), "Save and add another"
 staying open with a refreshed table, "Save" navigating #main-content with a
-history entry, and Cancel returning focus to the trigger.
+history entry, Cancel returning focus to the trigger, and both submit
+buttons being disabled together to prevent a double submit.
 """
 
 from __future__ import annotations
 
+import threading
+
 import pytest
 import pytest_django.live_server_helper
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Route, expect
 
 from django.contrib.sites.models import Site
 
@@ -193,3 +196,60 @@ def test_a_backdrop_click_does_not_close_a_form(
     page.locator("#app-modal").click(position={"x": 5, "y": 5})
 
     expect(page.locator("#app-modal")).to_be_visible()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_clicking_save_disables_every_submit_button_while_the_request_is_pending(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    hold_response = threading.Event()
+
+    def _hold_then_continue(route: Route) -> None:
+        hold_response.wait(timeout=5)
+        route.continue_()
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_label("Name").fill("Beta")
+    page.route("**/__actions/create_item", _hold_then_continue)
+
+    # Located by CSS, not accessible name: the clicked button's own label
+    # swaps to its loading text once the request is in flight.
+    submit_buttons = page.locator("#app-modal-body button[type='submit']")
+    save_and_add_button = submit_buttons.nth(0)
+    save_button = submit_buttons.nth(1)
+    save_button.click()
+
+    expect(save_and_add_button).to_be_disabled()
+    expect(save_button).to_be_disabled()
+
+    hold_response.set()
+    expect(page.locator("#app-modal")).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_double_clicking_save_creates_exactly_one_cohort(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    post_count = {"total": 0}
+
+    def _count_then_continue(route: Route) -> None:
+        post_count["total"] += 1
+        route.continue_()
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_label("Name").fill("Gamma")
+    page.route("**/__actions/create_item", _count_then_continue)
+
+    page.get_by_role("button", name="Save", exact=True).dblclick()
+
+    expect(page.locator("#app-modal")).to_be_hidden()
+    assert post_count["total"] == 1
+    assert StubModel.objects.filter(name="Gamma").count() == 1
