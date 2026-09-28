@@ -290,7 +290,6 @@ class CohortDetailsPanel(InstanceDetailsPanel):
                         "path_string": "cohorts",
                     },
                 ),
-                success_events=(COHORT_CHANGED,),
             ),
         ]
 

@@ -27,7 +27,6 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -88,9 +87,9 @@ def test_an_empty_cohort_is_deleted_from_its_details_panel(
 
     assert response.status_code == 204
     assert json.loads(response["HX-Location"])["path"].endswith("/cohorts")
-    assert response["HX-Trigger"] == build_hx_trigger(
-        {COHORT_CHANGED: [str(cohort_pk)]}, close_modal=True
-    )
+    # No cohortChanged: the cohort page's own panels listen for it, and would
+    # refetch the deleted cohort before the navigation replaced them.
+    assert response["HX-Trigger"] == build_hx_trigger({}, close_modal=True)
     assert "HX-Redirect" not in response
     assert not Cohort.objects.filter(pk=cohort_pk).exists()
 
