@@ -47,10 +47,17 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: appModal htmx:afterSwap listener throws a TypeError on history restore (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: deleting from a cohort page makes that cohort's panels refetch and 404 (TDD — failing test first, then fix)
+- [ ] (user) Decide how a delete's domain event should treat the panels of the page it navigates away from, then fix the delete-refetch 404s to match
+- [ ] (user + cmd) Fix QA bug: modal button row overflows at phone width and clips Cancel (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: quick-view title flips between the trigger text and the frame title (TDD — failing test first, then fix)
+- [ ] (user) Decide what the learner quick-view title should be (learner name or Learner.__str__, which the learner page h1 also uses), then make the trigger title and QuickView.get_title agree
+- [ ] (user + cmd) Fix QA bug: delete cascade summary says '1 cohort memberships' (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
