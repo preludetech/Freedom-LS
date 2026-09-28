@@ -32,7 +32,12 @@ the track and fill visible once tinted backgrounds are suppressed.
     .panel-progress-bar::-webkit-progress-bar {
         background-color: var(--color-surface-2);
     }
-    .panel-progress-bar::-webkit-progress-value,
+    /* Chromium drops an entire rule when any selector in a comma-separated
+       list uses a pseudo-element it doesn't recognise, so `::-webkit-` and
+       `::-moz-` selectors are never grouped together here. */
+    .panel-progress-bar::-webkit-progress-value {
+        background-color: var(--color-primary);
+    }
     .panel-progress-bar::-moz-progress-bar {
         background-color: var(--color-primary);
     }
@@ -44,7 +49,9 @@ the track and fill visible once tinted backgrounds are suppressed.
         .panel-progress-bar::-webkit-progress-bar {
             background-color: Field;
         }
-        .panel-progress-bar::-webkit-progress-value,
+        .panel-progress-bar::-webkit-progress-value {
+            background-color: Highlight;
+        }
         .panel-progress-bar::-moz-progress-bar {
             background-color: Highlight;
         }
