@@ -86,6 +86,14 @@ markers = [
     "weasyprint: marks tests that invoke WeasyPrint and need Pango/cairo/gdk-pixbuf/HarfBuzz",
 ]
 
+[tool.test_organisation]
+user_model_app = "freedom_ls.accounts"
+declared_edges = "test_organisation/declared_edges.toml"
+import_contracts = "test_organisation/import_contracts.toml"
+import_baseline = "test_organisation/import_baseline.txt"
+mirroring_baseline = "test_organisation/mirroring_baseline.txt"
+mirroring_exemptions = "test_organisation/mirroring_exemptions.txt"
+
 [tool.coverage.run]
 branch = true
 source = ["freedom_ls"]
