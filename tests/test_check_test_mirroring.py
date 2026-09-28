@@ -337,3 +337,104 @@ def test_check_passes_on_live_tree() -> None:
     result = run_script(SCRIPT, REPO_ROOT)
 
     assert result.returncode == 0
+
+
+def test_file_exemption_passes_its_file(tmp_path: Path) -> None:
+    files = one_app() | {
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_dashboard_ordering.py": "",
+        "test_organisation/mirroring_exemptions.txt": (
+            "pkg/alpha/tests/test_dashboard_ordering.py  # behaviour test, no single module\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 0
+
+
+def test_directory_exemption_passes_every_file_under_it(tmp_path: Path) -> None:
+    files = one_app() | {
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/cross_cutting/__init__.py": "",
+        "pkg/alpha/tests/cross_cutting/test_one.py": "",
+        "pkg/alpha/tests/cross_cutting/test_two.py": "",
+        "test_organisation/mirroring_exemptions.txt": (
+            "pkg/alpha/tests/cross_cutting/  # grouped cross-cutting tests\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 0
+
+
+def test_exemption_without_a_reason_fails_naming_the_line(tmp_path: Path) -> None:
+    files = one_app() | {
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_dashboard_ordering.py": "",
+        "test_organisation/mirroring_exemptions.txt": (
+            "pkg/alpha/tests/test_dashboard_ordering.py\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg/alpha/tests/test_dashboard_ordering.py" in result.stderr
+
+
+def test_exemption_covering_no_violation_fails_as_stale(tmp_path: Path) -> None:
+    files = one_app() | {
+        "pkg/alpha/models.py": "",
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_models.py": "",
+        "test_organisation/mirroring_exemptions.txt": (
+            "pkg/alpha/tests/test_models.py  # no longer a violation\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg/alpha/tests/test_models.py" in result.stderr
+
+
+def test_path_in_both_baseline_and_exemptions_fails(tmp_path: Path) -> None:
+    files = one_app() | {
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_dashboard_ordering.py": "",
+        "test_organisation/mirroring_baseline.txt": (
+            "# alpha\npkg/alpha/tests/test_dashboard_ordering.py\n"
+        ),
+        "test_organisation/mirroring_exemptions.txt": (
+            "pkg/alpha/tests/test_dashboard_ordering.py  # duplicated allowance\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg/alpha/tests/test_dashboard_ordering.py" in result.stderr
+
+
+def test_print_violations_omits_exempted_files(tmp_path: Path) -> None:
+    files = one_app() | {
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_dashboard_ordering.py": "",
+        "pkg/alpha/tests/foo_tests.py": "",
+        "test_organisation/mirroring_exemptions.txt": (
+            "pkg/alpha/tests/test_dashboard_ordering.py  # behaviour test, no single module\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path, "--print-violations")
+
+    assert "pkg/alpha/tests/test_dashboard_ordering.py" not in result.stdout
+    assert "pkg/alpha/tests/foo_tests.py" in result.stdout
