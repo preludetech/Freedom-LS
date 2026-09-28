@@ -159,7 +159,7 @@ for the full inventory.
 | A button | `<c-button variant="primary\|secondary\|ghost\|link\|accent\|success\|error" size="small">`, or the `.btn .btn-<variant>` classes directly |
 | A destructive action | `variant="error"` — sparingly, and only when irreversible |
 | A card or panel | `.surface`, or `<c-media-card>` for one with an image |
-| A status badge | `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">` |
+| A status badge | On educator screens, `<c-panel-status-badge tone="success\|warning\|error\|info\|muted" label="…">`; elsewhere `<c-chip variant="primary\|secondary\|success\|warning\|error\|info\|muted" size="xs">`. The `.chip-success`, `.chip-warning`, `.chip-error` and `.chip-info` tints are the `-light` pairs (`bg-success-light` / `text-on-success-light`). |
 | A callout in a page | `<c-callout level="info\|warning\|error\|success" title="…">` |
 | A callout in course content | `<c-admonition type="note\|tip\|important\|warning\|danger\|key_takeaways\|checklist">` |
 | A page wrapper | `<c-page width="wide\|narrow">` |

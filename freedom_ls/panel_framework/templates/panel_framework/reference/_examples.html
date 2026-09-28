@@ -54,18 +54,21 @@ somewhere on the page to land.
     <section class="space-y-6">
         <h2>Stat tile</h2>
 
-        <c-panel-stat-row>
-            <div id="stat-tile-boxed-delta-up">
-                <p class="text-sm text-muted">Use when a boxed figure improved since the last period.</p>
-                <c-panel-stat-tile label="Active learners" value="128" delta="Up 4 this week" direction="up" tone="success" />
-            </div>
-            <div id="stat-tile-boxed-delta-down">
-                <p class="text-sm text-muted">Use when a boxed figure worsened since the last period.</p>
-                <c-panel-stat-tile label="At risk" value="9" delta="Down 2 this week" direction="down" tone="error" />
-            </div>
-        </c-panel-stat-row>
+        <div id="stat-row-boxed">
+            <p class="text-sm text-muted">Use when the tiles carry their own card border, e.g. a dashboard's headline figures.</p>
+            <c-panel-stat-row>
+                <div id="stat-tile-boxed-delta-up">
+                    <p class="text-sm text-muted">Use when a boxed figure improved since the last period.</p>
+                    <c-panel-stat-tile label="Active learners" value="128" delta="Up 4 this week" direction="up" tone="success" />
+                </div>
+                <div id="stat-tile-boxed-delta-down">
+                    <p class="text-sm text-muted">Use when a boxed figure worsened since the last period.</p>
+                    <c-panel-stat-tile label="At risk" value="9" delta="Down 2 this week" direction="down" tone="error" />
+                </div>
+            </c-panel-stat-row>
+        </div>
 
-        <div id="stat-tile-inline">
+        <div id="stat-row-inline">
             <p class="text-sm text-muted">Use when the tiles sit inside a container that already has a border, e.g. a page header's stats slot.</p>
             <c-panel-stat-row variant="inline">
                 <c-panel-stat-tile label="Learners" value="42" variant="inline" />
@@ -219,6 +222,13 @@ somewhere on the page to land.
     <section class="space-y-6">
         <h2>Definition list</h2>
 
+        <div id="definition-row-default">
+            <p class="text-sm text-muted">Use for one label/value pair inside a definition list.</p>
+            <c-panel-definition-list columns="2">
+                <c-panel-definition-row label="Name">Thandi Mokoena</c-panel-definition-row>
+            </c-panel-definition-list>
+        </div>
+
         <div id="definition-list-2">
             <p class="text-sm text-muted">Use for a short set of fields, two to a row from md.</p>
             <c-panel-definition-list columns="2">
@@ -277,6 +287,21 @@ somewhere on the page to land.
                 <p class="text-sm text-muted">Use when the facet is available but not applied.</p>
                 <c-panel-filter-toggle label="Inactive" />
             </div>
+        </div>
+
+        <div id="search-field-visible-label">
+            <p class="text-sm text-muted">Use when the field sits somewhere the label needs to stay visible, e.g. a plain search page.</p>
+            <c-panel-search-field name="q-visible" label="Search learners" placeholder="Search by name" />
+        </div>
+
+        <div id="search-field-hidden-label">
+            <p class="text-sm text-muted">Use inside a toolbar, where the icon and placeholder already carry the field's purpose visually.</p>
+            <c-panel-search-field name="q-hidden" label="Search learners" label_hidden="true" placeholder="Search by name" />
+        </div>
+
+        <div id="applied-filter-default">
+            <p class="text-sm text-muted">Use for one active filter's chip inside a toolbar's applied slot.</p>
+            <c-panel-applied-filter label="Status: Inactive" />
         </div>
     </section>
 

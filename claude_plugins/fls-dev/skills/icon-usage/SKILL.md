@@ -41,6 +41,7 @@ All icons use the `<c-icon />` Cotton component. Icons are referenced by **seman
 "more_options",
 "settings",
 "edit",
+"add",
 ### Content types
 "topic",
 "form",
@@ -56,6 +57,11 @@ All icons use the `<c-icon />` Cotton component. Icons are referenced by **seman
 "sort_neutral",
 "boolean_true",
 "boolean_false",
+"search",
+"filter",
+### Trends
+"trend_up",
+"trend_down",
 ### Deadlines
 "deadline",
 ### Misc

@@ -104,7 +104,9 @@ This is the only series of its kind, and deliberately so. A token exists here be
 brand-level — something a theme genuinely wants to set. A value that only one component
 reads is not a token; it belongs in that component's template, where it can be changed by
 shadowing the file. `--fls-flashcard-back-*` and `--fls-card-*` used to live here and were
-removed for exactly that reason.
+removed for exactly that reason. `panel-avatar-chip.html`'s six `.panel-avatar-1`–`.panel-avatar-6`
+custom properties follow that same rule: they are a per-component token set living in the
+component's own template, not here.
 
 ## Hover tokens
 
