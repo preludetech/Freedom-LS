@@ -161,6 +161,91 @@ def test_project_rooted_under_test_named_directory_classifies_runtime_modules_as
     assert "alpha --> beta" in doc
 
 
+def user_model_fk_field() -> str:
+    return (
+        "from django.conf import settings\n"
+        "from django.db import models\n\n\n"
+        "class Thing(models.Model):\n"
+        "    owner = models.ForeignKey(\n"
+        "        settings.AUTH_USER_MODEL, on_delete=models.CASCADE\n"
+        "    )\n"
+    )
+
+
+def get_user_model_call() -> str:
+    return "from django.contrib.auth import get_user_model\n\nUser = get_user_model()\n"
+
+
+def test_auth_user_model_relation_adds_edge_to_user_model_app(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/models.py": user_model_fk_field(),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert result.returncode == 0
+    assert "alpha --> users" in doc
+
+
+def test_get_user_model_call_adds_edge_to_user_model_app(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/models.py": get_user_model_call(),
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert "alpha --> users" in doc
+
+
+def test_user_model_apps_own_get_user_model_call_adds_no_self_edge(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/users/forms.py": get_user_model_call(),
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert "users --> users" not in doc
+
+
+def test_unknown_user_model_app_fails_with_error_naming_it(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": (
+            "[tool.test_organisation]\n"
+            'user_model_app = "pkg.nonexistent"\n'
+            'declared_edges = "test_organisation/declared_edges.toml"\n'
+            'import_contracts = "test_organisation/import_contracts.toml"\n'
+            'import_baseline = "test_organisation/import_baseline.txt"\n'
+            'mirroring_baseline = "test_organisation/mirroring_baseline.txt"\n'
+            'mirroring_exemptions = "test_organisation/mirroring_exemptions.txt"\n'
+        ),
+        **base_apps(),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg.nonexistent" in result.stderr
+
+
 def test_without_test_organisation_table_string_label_fk_adds_no_edge_and_header_is_unchanged(
     tmp_path: Path,
 ) -> None:

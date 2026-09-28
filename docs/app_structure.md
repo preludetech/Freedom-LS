@@ -93,6 +93,7 @@ flowchart TB
     educator_interface --> organisations
     educator_interface --> panel_framework
     educator_interface --> site_aware_models
+    form_engine --> accounts
     form_engine --> base
     form_engine --> content_base
     form_engine --> markdown_rendering
@@ -191,7 +192,6 @@ flowchart TB
     educator_interface -.-> course_interest
     educator_interface -.-> learner_progress
     educator_interface -.-> role_based_permissions
-    form_engine -.-> accounts
     google_tag -.-> accounts
     google_tag -.-> content_engine
     google_tag -.-> learner_management
@@ -242,7 +242,7 @@ flowchart TB
 | deployment | base, content_engine, organisations, reports | — |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications |
 | educator_interface | content_engine, learner_management, organisations, panel_framework, site_aware_models | accounts, course_interest, learner_progress, role_based_permissions |
-| form_engine | base, content_base, markdown_rendering, site_aware_models | accounts |
+| form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
 | icons | base | — |
