@@ -49,6 +49,7 @@ flowchart TB
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
+    base --> learner_management
     comms --> accounts
     comms --> base
     comms --> site_aware_models
@@ -175,7 +176,6 @@ flowchart TB
     accounts -.-> referral_tracking
     base -.-> accounts
     base -.-> content_engine
-    base -.-> learner_management
     base -.-> organisations
     base -.-> role_based_permissions
     comms -.-> content_engine
@@ -231,7 +231,7 @@ flowchart TB
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
 | accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
-| base | — | accounts, content_engine, learner_management, organisations, role_based_permissions |
+| base | learner_management | accounts, content_engine, organisations, role_based_permissions |
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | accounts |

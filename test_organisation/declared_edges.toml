@@ -1,0 +1,8 @@
+# Runtime edges between apps that no import or model relation can show. Each
+# entry needs a reason, so a reader can tell why the edge exists without having
+# to go find it themselves.
+
+[[edge]]
+from = "base"
+to = "learner_management"
+reason = "TEMPLATES registers freedom_ls.learner_management.context_processors.can_access_educator_interface; base's header template reads the context variable it returns."
