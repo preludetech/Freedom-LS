@@ -44,3 +44,12 @@ model (`Course`, `Topic`, `CourseCategory`, `Form`, ...):
 - Non-content data (`CohortCourseRegistration`, `Cohort`, `CourseProgress`,
   registrations) is untouched by the loader — courses are updated in place on
   their frontmatter UUID, so FKs to them survive.
+
+## Single-dir `content_save` now fails validation (Sep 2026, educator-interface-4-panel-framework-components)
+
+`content_save "demo_content/functionality_demo_standard_markdown" DemoDev` aborts in `validate()`
+with "Categories declared in this repo: none ... add an entry declaring it in course_categories.yaml"
+because the category registry lives at `demo_content/course_categories.yaml` (the root). Load the
+whole tree instead: `content_save demo_content DemoDev` (additive; 13 courses on DemoDev, one of
+them `coming_soon`). This worktree's DB had ZERO courses on every site before that — check
+`Course._base_manager.count()` before assuming "an existing course" exists.

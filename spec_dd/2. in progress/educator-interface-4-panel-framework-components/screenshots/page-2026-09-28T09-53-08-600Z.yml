@@ -1,0 +1,97 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - link [ref=e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=e4]
+      - heading "FirstClass" [level=1] [ref=e5]
+    - navigation [ref=e6]:
+      - generic [ref=e7]:
+        - link "Login" [ref=e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=e10]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - heading "Teach the way your learners need." [level=1] [ref=e14]
+        - paragraph [ref=e15]: "Most learning platforms are digital textbooks — linear, rigid, and full of opinions about how learning should work. This is different: a learning system that flexes around your learners, not the other way around."
+        - link "Browse all courses" [ref=e17] [cursor=pointer]:
+          - /url: /courses/
+      - status [ref=e18]
+  - contentinfo [ref=e19]:
+    - generic [ref=e20]:
+      - paragraph [ref=e21]: © 2026 FirstClass
+      - navigation "Legal" [ref=e22]:
+        - link "Terms and Conditions" [ref=e23] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=e24] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=e25] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - list [ref=e27]:
+    - listitem [ref=e28]:
+      - link "Hide »" [ref=e29] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e30]:
+      - link "Toggle Theme" [ref=e31] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e34]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e35] [cursor=pointer]
+      - link "History /" [ref=e36] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e37]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e38] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=e39] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e40]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e41] [cursor=pointer]
+      - 'link "Time CPU: 134.44ms (156.15ms)" [ref=e42] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=e43]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e44] [cursor=pointer]
+      - link "Settings" [ref=e45] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e47] [cursor=pointer]
+      - link "Headers" [ref=e48] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e50] [cursor=pointer]
+      - link "Request dashboard" [ref=e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e53] [cursor=pointer]
+      - link "SQL 5 queries in 12.55ms" [ref=e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e56] [cursor=pointer]
+      - link "Static files 8 files used" [ref=e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e59] [cursor=pointer]
+      - link "Templates learner_interface/dashboard.html" [ref=e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e62] [cursor=pointer]
+      - link "Alerts" [ref=e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e65] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e68] [cursor=pointer]
+      - link "Signals 78 receivers of 15 signals" [ref=e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=e71] [cursor=pointer]
+      - link "Community" [ref=e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=e73]:
+      - checkbox "Enable for next and successive requests" [ref=e74] [cursor=pointer]
+      - generic [ref=e75]: Intercept redirects
+    - listitem [ref=e76]:
+      - checkbox "Enable for next and successive requests" [ref=e77] [cursor=pointer]
+      - generic [ref=e78]: Profiling

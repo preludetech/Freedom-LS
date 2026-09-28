@@ -1,0 +1,102 @@
+- generic [active] [ref=f8e1]:
+  - banner [ref=f8e2]:
+    - link [ref=f8e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f8e4]
+    - navigation [ref=f8e5]:
+      - generic [ref=f8e6]:
+        - generic [ref=f8e7]:
+          - button "Notifications, none new" [ref=f8e8]:
+            - img "notifications" [ref=f8e10]
+          - status:
+            - generic [ref=f8e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f8e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f8e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f8e16]:
+    - generic [ref=f8e18]:
+      - generic [ref=f8e19]:
+        - paragraph [ref=f8e20]: Sunday, September 27, 2026
+        - heading "Welcome back, demodev@email.com" [level=1] [ref=f8e21]:
+          - generic [ref=f8e22]: Welcome back,
+          - generic [ref=f8e23]: demodev@email.com
+      - status [ref=f8e24]
+      - generic [ref=f8e27]:
+        - heading "In progress" [level=2] [ref=f8e28]
+        - paragraph [ref=f8e30]: You haven't signed up for any courses yet.
+  - contentinfo [ref=f8e31]:
+    - generic [ref=f8e32]:
+      - paragraph [ref=f8e33]: © 2026 FirstClass
+      - navigation "Legal" [ref=f8e34]:
+        - link "Terms and Conditions" [ref=f8e35] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f8e36] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f8e37] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - list [ref=f8e39]:
+    - listitem [ref=f8e40]:
+      - link "Hide »" [ref=f8e41] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e42]:
+      - link "Toggle Theme" [ref=f8e43] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e47] [cursor=pointer]
+      - link "History /" [ref=f8e48] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e50] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f8e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e53] [cursor=pointer]
+      - 'link "Time CPU: 79.67ms (134.56ms)" [ref=f8e54] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f8e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e56] [cursor=pointer]
+      - link "Settings" [ref=f8e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e59] [cursor=pointer]
+      - link "Headers" [ref=f8e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e62] [cursor=pointer]
+      - link "Request dashboard" [ref=f8e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e65] [cursor=pointer]
+      - link "SQL 14 queries in 49.90ms" [ref=f8e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e68] [cursor=pointer]
+      - link "Static files 8 files used" [ref=f8e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e71] [cursor=pointer]
+      - link "Templates learner_interface/dashboard.html" [ref=f8e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e74] [cursor=pointer]
+      - link "Alerts" [ref=f8e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e77] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f8e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e79]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e80] [cursor=pointer]
+      - link "Signals 78 receivers of 15 signals" [ref=f8e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e82]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f8e83] [cursor=pointer]
+      - link "Community" [ref=f8e84] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f8e85]:
+      - checkbox "Enable for next and successive requests" [ref=f8e86] [cursor=pointer]
+      - generic [ref=f8e87]: Intercept redirects
+    - listitem [ref=f8e88]:
+      - checkbox "Enable for next and successive requests" [ref=f8e89] [cursor=pointer]
+      - generic [ref=f8e90]: Profiling

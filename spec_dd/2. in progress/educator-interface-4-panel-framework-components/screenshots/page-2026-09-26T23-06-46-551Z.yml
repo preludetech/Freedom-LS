@@ -1,0 +1,124 @@
+- generic [active] [ref=f14e1]:
+  - banner [ref=f14e2]:
+    - link [ref=f14e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f14e4]
+      - heading "FirstClass" [level=1] [ref=f14e5]
+    - navigation [ref=f14e6]:
+      - generic [ref=f14e7]:
+        - generic [ref=f14e8]:
+          - button "Notifications, none new" [ref=f14e9]:
+            - img "notifications" [ref=f14e11]
+          - status:
+            - generic [ref=f14e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f14e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f14e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f14e17]:
+    - generic [ref=f14e20]:
+      - generic [ref=f14e21]:
+        - generic [ref=f14e22]:
+          - navigation "Breadcrumb" [ref=f14e24]:
+            - list [ref=f14e25]:
+              - listitem [ref=f14e26]:
+                - generic [ref=f14e27]: Cohorts
+          - button "Open navigation panel" [ref=f14e28] [cursor=pointer]:
+            - img "table_of_contents" [ref=f14e29]
+        - heading "Cohorts" [level=1] [ref=f14e32]
+      - generic [ref=f14e34]:
+        - button "Create Cohort" [ref=f14e39] [cursor=pointer]
+        - table [ref=f14e46]:
+          - rowgroup [ref=f14e47]:
+            - row [ref=f14e48]:
+              - columnheader "Cohort Name" [ref=f14e49]
+              - columnheader "Active Learners" [ref=f14e50]
+              - columnheader "Registered Courses" [ref=f14e51]
+          - rowgroup [ref=f14e52]:
+            - row [ref=f14e53]:
+              - cell [ref=f14e54]:
+                - link "Cohort 2025.03.04" [ref=f14e55] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+              - cell "50" [ref=f14e56]
+              - cell "-" [ref=f14e57]
+            - row [ref=f14e58]:
+              - cell [ref=f14e59]:
+                - link "Cohort 2025.04.06" [ref=f14e60] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/c2467c96-6f58-48d2-9589-4afc84759a74
+              - cell "-" [ref=f14e61]
+              - cell "-" [ref=f14e62]
+  - contentinfo [ref=f14e64]:
+    - generic [ref=f14e65]:
+      - paragraph [ref=f14e66]: © 2026 FirstClass
+      - navigation "Legal" [ref=f14e67]:
+        - link "Terms and Conditions" [ref=f14e68] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f14e69] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f14e70] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - list [ref=f14e72]:
+    - listitem [ref=f14e73]:
+      - link "Hide »" [ref=f14e74] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e75]:
+      - link "Toggle Theme" [ref=f14e76] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e79]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e80] [cursor=pointer]
+      - link "History /educator/organisations/demodev/cohorts" [ref=f14e81] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e82]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e83] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f14e84] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e85]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e86] [cursor=pointer]
+      - 'link "Time CPU: 73.95ms (112.21ms)" [ref=f14e87] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f14e88]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e89] [cursor=pointer]
+      - link "Settings" [ref=f14e90] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e91]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e92] [cursor=pointer]
+      - link "Headers" [ref=f14e93] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e94]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e95] [cursor=pointer]
+      - link "Request interface" [ref=f14e96] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e97]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e98] [cursor=pointer]
+      - link "SQL 14 queries in 27.73ms" [ref=f14e99] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e100]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e101] [cursor=pointer]
+      - link "Static files 8 files used" [ref=f14e102] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e103]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e104] [cursor=pointer]
+      - link "Templates educator_interface/interface.html" [ref=f14e105] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e106]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e107] [cursor=pointer]
+      - link "Alerts" [ref=f14e108] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e109]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e110] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f14e111] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e112]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e113] [cursor=pointer]
+      - link "Signals 78 receivers of 15 signals" [ref=f14e114] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e115]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f14e116] [cursor=pointer]
+      - link "Community" [ref=f14e117] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f14e118]:
+      - checkbox "Enable for next and successive requests" [ref=f14e119] [cursor=pointer]
+      - generic [ref=f14e120]: Intercept redirects
+    - listitem [ref=f14e121]:
+      - checkbox "Enable for next and successive requests" [ref=f14e122] [cursor=pointer]
+      - generic [ref=f14e123]: Profiling
