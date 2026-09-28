@@ -431,6 +431,18 @@ def test_delete_action_cascade_summary_includes_related_objects(mock_site_contex
 
 
 @pytest.mark.django_db
+def test_delete_action_cascade_summary_uses_the_singular_for_one_row(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="single-child-parent")
+    _make_stub_child(parent=item)
+
+    summary = DeleteAction(success_url="/items").get_cascade_summary(item)
+
+    assert summary == ["1 stub child"]
+
+
+@pytest.mark.django_db
 def test_delete_action_cascade_summary_counts_fast_deleted_rows(
     mock_site_context: Site,
 ) -> None:

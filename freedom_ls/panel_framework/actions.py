@@ -267,7 +267,7 @@ class DeleteAction(PanelAction):
         for fast_delete in collector.fast_deletes:
             counts[fast_delete.model] += fast_delete.count()
         return [
-            f"{count} {model._meta.verbose_name_plural}"
+            self._count_noun(model, count)
             for model, count in counts.items()
             if count and model is not type(instance)
         ]
@@ -277,19 +277,22 @@ class DeleteAction(PanelAction):
         counts: Counter[type[Model]] = Counter(
             type(obj) for obj in error.protected_objects
         )
-        dependents: list[str] = []
-        for model in sorted(counts, key=lambda m: str(m._meta.verbose_name)):
-            count = counts[model]
-            noun = (
-                model._meta.verbose_name
-                if count == 1
-                else model._meta.verbose_name_plural
-            )
-            dependents.append(f"{count} {noun}")
+        dependents = [
+            self._count_noun(model, counts[model])
+            for model in sorted(counts, key=lambda m: str(m._meta.verbose_name))
+        ]
         return (
             f"This {instance._meta.verbose_name} cannot be deleted because it "
             f"still has {self._join(dependents)}."
         )
+
+    @staticmethod
+    def _count_noun(model: type[Model], count: int) -> str:
+        """A count and the model's name, singular for exactly one."""
+        noun = (
+            model._meta.verbose_name if count == 1 else model._meta.verbose_name_plural
+        )
+        return f"{count} {noun}"
 
     @staticmethod
     def _join(parts: list[str]) -> str:
