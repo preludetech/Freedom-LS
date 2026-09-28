@@ -148,7 +148,7 @@ Do not give these a second meaning.
 
 ## Prose vs. code
 
-`.claude/skills/brand-guidelines/SKILL.md` §Terminology holds the **copy-scoped** Use/Not table:
+`.claude/skills/brand-guidelines/voice.md` §Terminology holds the **copy-scoped** Use/Not table:
 learners not students, content not curriculum, extend not customise, builders not administrators,
 learning system not LMS, foundation not platform.
 

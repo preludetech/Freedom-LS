@@ -36,5 +36,5 @@ Override values must be valid icon names in the active icon set's Iconify JSON d
 1. **Semantic names** (`freedom_ls/icons/semantic_names.py`): Set of abstract icon names like `"success"`, `"next"`, `"home"`
 2. **Mappings** (`freedom_ls/icons/mappings.py`): Each icon set has a dict mapping semantic names to concrete icon names
 3. **Loader** (`freedom_ls/icons/loader.py`): Reads and caches Iconify JSON data from `node_modules/@iconify-json/{pkg}/icons.json`
-4. **Renderer** (`freedom_ls/icons/renderer.py`): Resolves semantic name + variant and renders inline SVG HTML
+4. **Renderer** (`freedom_ls/icons/render.py`): Resolves semantic name + variant and renders inline SVG HTML
 5. **Backend** (`freedom_ls/icons/backend.py`): Entry point that supports custom backends

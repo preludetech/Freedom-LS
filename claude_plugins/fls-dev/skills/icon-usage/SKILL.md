@@ -1,71 +1,61 @@
 ---
 name: icon-usage
-description: Use this skill when making use of any icons in any part of the frontend.
+description: Icons in FreedomLS templates via `<c-icon>` and semantic names. Use when adding or changing an icon, sizing or labelling one, toggling one with Alpine, or configuring the icon set.
 allowed-tools: Read, Grep, Glob
 ---
 
-# Icon Usage Skill
+# Icon usage
 
-## When to use
-Use this skill when adding, modifying, or working with icons in templates.
+Every icon is a `<c-icon />` Cotton component referenced by **semantic name** (`"success"`, `"next"`, `"home"`). The active icon set (Heroicons by default) resolves the semantic name to a concrete glyph, so templates stay the same when the set changes. `<c-icon>` is the only entry point: the `{% icon %}` tag is its internal implementation, and a raw Font Awesome class, hand-coded SVG or Unicode glyph bypasses the icon set entirely.
 
-## How it works
-All icons use the `<c-icon />` Cotton component. Icons are referenced by **semantic name** (e.g. `"success"`, `"next"`, `"home"`), not by icon-set-specific names. The system resolves semantic names to concrete icons from the active icon set (Heroicons by default).
+## Choosing a semantic name
 
-## Available semantic names
+The full list is `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, grouped by purpose. Read it before choosing. If nothing fits, add a semantic name: see [resources/configuring-icons.md](resources/configuring-icons.md).
 
-The full list lives in `SEMANTIC_ICON_NAMES` in `freedom_ls/icons/semantic_names.py`, grouped by purpose (navigation, status, actions, content types, and so on). Read it before choosing a name. If nothing fits, add a new semantic name (see [resources/configuring-icons.md](resources/configuring-icons.md)) rather than reaching for a raw icon.
-
-## Usage
+## Rendering
 
 ```html
 <c-icon name="next" class="size-5 text-blue-500" />
 <c-icon name="success" variant="solid" class="size-6" />
 
-{# When the icon name comes from a template variable, use :name #}
+{# Name from a template variable: use :name #}
 <c-icon :name="activity.icon" class="size-5" />
-
-{# With aria label for standalone informative icons #}
-<c-icon name="success" aria_label="Completed" />
 ```
 
-## Rules
-- Always use `<c-icon name="semantic_name" />` in templates
-- Never use `{% icon %}` or `{% load icon_tags %}` directly -- these are internal to the Cotton component
-- Never use raw Font Awesome classes (`fa-`, `fas`, `far`), hand-coded inline SVGs, or Unicode icon characters
+`class` replaces the component's default `size-5` rather than adding to it, so any `class` you pass carries its own size.
 
-## Sizing conventions
-- `size-3` -- extra compact (inside badges, deadlines)
-- `size-4` -- compact (inside lists, small UI elements)
-- `size-5` -- standard (buttons, most UI) -- **default**
-- `size-6` -- emphasis (modal close buttons)
-- `size-8` -- large (loading spinners)
-- `size-12` -- extra large (lightbox close)
-- `size-16` -- hero (success/error result pages)
+## Sizing
+
+- `size-3`: inside badges, deadlines
+- `size-4`: lists, small UI elements
+- `size-5`: buttons, most UI (the default)
+- `size-6`: emphasis, e.g. modal close buttons
+- `size-8`: loading spinners
+- `size-12`: lightbox close
+- `size-16`: hero, e.g. success/error result pages
 
 ## Accessibility
-- By default, icons render with `role="img"` and `aria-label` set to the semantic name
-- For custom labels: `<c-icon name="success" aria_label="Completed" />`
-- Icon-only buttons: use `aria-label` on the button element
 
-## Dynamic toggling with Alpine.js
-Since `<c-icon />` is server-side, use `x-show` on wrapper spans for Alpine.js toggling:
+Icons render with `role="img"` and an `aria-label` that falls back to the semantic name, which reads poorly (`"next"`). Give informative icons a real label with `aria_label="Completed"`. For an icon-only button, put `aria-label` on the button.
+
+## Toggling with Alpine.js
+
+`<c-icon>` renders server-side, so toggle `x-show` on wrapper spans:
 
 ```html
 <span x-show="expanded" x-cloak><c-icon name="expand" class="size-4" /></span>
 <span x-show="!expanded"><c-icon name="collapse" class="size-4" /></span>
 ```
 
-For directional flips, use `rotate-180` on a wrapper:
+For a directional flip, rotate a wrapper:
+
 ```html
 <span :class="sidebarOpen ? '' : 'rotate-180'">
     <c-icon name="menu_close" class="size-5" />
 </span>
 ```
 
-## Further reading
+## Changing how icons render
 
-Refer to these if you need to change rendering behavior:
-
-- **Configuring icons** (switching icon sets, overriding individual icons, adding new semantic names): see [resources/configuring-icons.md](resources/configuring-icons.md)
-- **Building a custom icon backend**: see [resources/custom-icon-backend.md](resources/custom-icon-backend.md)
+- Switching the icon set, overriding one icon, or adding a semantic name: [resources/configuring-icons.md](resources/configuring-icons.md)
+- Building a custom icon backend: [resources/custom-icon-backend.md](resources/custom-icon-backend.md)
