@@ -148,3 +148,21 @@ def test_stat_row_renders_the_slot_inside_one_root_element(variant: str) -> None
     assert html.count("Learners") == 1
     assert html.count("Cohorts") == 1
     assert html.count("<div") == 1
+
+
+def test_tile_with_an_unknown_variant_has_no_card() -> None:
+    html = render_cotton(
+        '<c-panel-stat-tile label="Learners" value="42" variant="plain" />'
+    )
+
+    dl_match = re.search(r'<dl class="([^"]*)"', html)
+
+    assert dl_match is not None
+    assert "border" not in dl_match.group(1)
+
+
+def test_row_with_an_unknown_variant_is_a_flex_row() -> None:
+    html = render_cotton('<c-panel-stat-row variant="plain">x</c-panel-stat-row>')
+
+    assert "flex flex-wrap" in html
+    assert "grid" not in html

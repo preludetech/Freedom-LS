@@ -66,3 +66,11 @@ def test_name_is_escaped() -> None:
     )
 
     assert "<script>alert(1)</script>" not in html
+
+
+def test_name_hidden_false_string_shows_the_name() -> None:
+    html = render_cotton(
+        '<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" name_hidden="False" />'
+    )
+
+    assert "Thandi Mokoena</span>" in html

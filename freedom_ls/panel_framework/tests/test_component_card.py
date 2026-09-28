@@ -82,3 +82,17 @@ def test_description_renders_under_the_heading() -> None:
     html = render_cotton('<c-panel-card title="Overview" description="A summary" />')
 
     assert "A summary" in html
+
+
+def test_landmark_without_a_title_renders_a_div() -> None:
+    html = render_cotton('<c-panel-card landmark="true">Body</c-panel-card>')
+
+    assert "<section" not in html
+    assert "aria-labelledby" not in html
+
+
+def test_landmark_false_string_renders_a_div() -> None:
+    html = render_cotton('<c-panel-card title="Overview" landmark="False" />')
+
+    assert "<section" not in html
+    assert 'id="overview-title"' not in html

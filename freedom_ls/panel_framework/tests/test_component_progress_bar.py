@@ -54,3 +54,18 @@ def test_label_is_not_visible_text_without_show_label() -> None:
     html = render_cotton('<c-panel-progress-bar percentage="50" label="Reading" />')
 
     assert ">Reading<" not in html
+
+
+def test_show_label_false_string_hides_the_visible_label() -> None:
+    html = render_cotton(
+        '<c-panel-progress-bar percentage="72" label="Course progress" show_label="False" />'
+    )
+
+    assert "Course progress</span>" not in html
+
+
+def test_empty_percentage_renders_0() -> None:
+    html = render_cotton('<c-panel-progress-bar percentage="" />')
+
+    assert 'value="0"' in html
+    assert "0%</span>" in html

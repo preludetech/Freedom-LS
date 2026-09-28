@@ -15,6 +15,7 @@ from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.templatetags.panel_tags import (
     avatar_slot,
     clamp_percentage,
+    flag,
     heading_level,
     initials,
     times,
@@ -182,3 +183,31 @@ def test_initials_derives_from_the_first_and_last_words(
 
 def test_times_yields_that_many_items() -> None:
     assert list(times("3")) == [0, 1, 2]
+
+
+@pytest.mark.parametrize("value", [None, "", "abc", "nan", float("nan")])
+def test_clamp_percentage_falls_back_to_0_for_a_non_number(
+    value: float | str | None,
+) -> None:
+    assert clamp_percentage(value) == 0
+
+
+def test_clamp_percentage_clamps_infinity_to_100() -> None:
+    assert clamp_percentage("inf") == 100
+
+
+@pytest.mark.parametrize("value", [None, "", "abc"])
+def test_times_yields_nothing_for_a_non_number(value: str | None) -> None:
+    assert list(times(value)) == []
+
+
+@pytest.mark.parametrize("value", [True, 1, "true", "True", "yes", "1"])
+def test_flag_is_true_for_an_on_value(value: bool | int | str) -> None:
+    assert flag(value) is True
+
+
+@pytest.mark.parametrize(
+    "value", [None, False, 0, "", "false", "False", " FALSE ", "0", "none", "None"]
+)
+def test_flag_is_false_for_an_off_value(value: bool | int | str | None) -> None:
+    assert flag(value) is False

@@ -156,3 +156,21 @@ def test_applied_filter_label_is_escaped() -> None:
     html = render_cotton('<c-panel-applied-filter label="<script>alert(1)</script>" />')
 
     assert "<script>alert(1)</script>" not in html
+
+
+def test_filter_toggle_pressed_false_string_is_not_pressed() -> None:
+    html = render_cotton('<c-panel-filter-toggle label="Active" pressed="False" />')
+
+    assert 'aria-pressed="false"' in html
+    assert "<svg" not in html
+
+
+def test_search_field_label_hidden_false_string_keeps_the_label_visible() -> None:
+    html = render_cotton(
+        '<c-panel-search-field name="q" label="Search learners" label_hidden="False" />'
+    )
+
+    label_match = re.search(r'<label[^>]*class="([^"]*)"', html)
+
+    assert label_match is not None
+    assert "sr-only" not in label_match.group(1)
