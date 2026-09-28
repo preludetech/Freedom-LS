@@ -293,7 +293,7 @@ These were settled with the product owner while cutting the specs. The ideas rel
 
 Nobody asked about these; they were judgement calls. Say so in the spec if one turns out wrong.
 
-- **Mirroring is literal, subpackages included.** `templatetags/foo.py` is tested in `tests/templatetags/test_foo.py`, and management commands in `tests/management/commands/`. No app does this today, so the cleanups move those tests.
+- **Mirroring is literal, subpackages included.** `templatetags/foo.py` is tested in `tests/templatetags/test_foo.py`, and management commands in `tests/management/commands/`. No app does this today, so the cleanups move those tests. The seeded mirroring baseline starts at about 227 files, mostly behaviour-named, and each cleanup spec 4-15 clears its own apps' mirroring lines as well as its import lines.
 - **The user is framework-level.** Any app's tests may use `accounts`' `UserFactory`, because every request carries a user.
 - **A model relation declared by string label is a runtime dependency** (`"content_engine.Course"`, `settings.AUTH_USER_MODEL`) on the app that owns the model, even though the import graph cannot see it.
 - **`SiteFactory` belongs in `site_aware_models`**, which every site-aware app already depends on. Spec 4 moves it.
@@ -309,7 +309,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | Unknown | Owner | Affects |
 |---|---|---|
 | How a test grants a role when its app does not depend on `role_based_permissions` at runtime: an intrinsic dependency, a runtime edge the graph misses, or a local fixture. | 1 | 5, 8, 11, 13, 15 |
-| How the rule 2 check and `docs/app_structure.md` learn the string-label relation edges and the `UserFactory` allowance. | 3 | 6, 9, 12 |
+| How the rule 2 check and `docs/app_structure.md` learn the string-label relation edges and the `UserFactory` allowance. Resolved: `generate_app_map.py` detects string-label and user-model relations directly, a hand-written `declared_edges.toml` entry covers what detection can't see, and each generated contract carries an `accounts.factories` import allowance where that app's tests use it. | 3 | 6, 9, 12 |
 | Keep the root conftest's Playwright wildcard re-export or scope it to Playwright directories; where `course_with_scored_quiz` and `sit_quiz` live. | 4 | 13, 14 |
 | Which app receives `accounts`' integration tests such as `test_deferred_login.py`. Only `qa_helpers` depends on every app it touches. | 12 | 13, 14 |
 | Where the `content_engine` demo-content and KaTeX test files go. | 10 | none |
