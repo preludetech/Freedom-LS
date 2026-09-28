@@ -49,6 +49,7 @@ htmlcov/
 .coverage
 
 .mypy_cache/
+.import_linter_cache/
 
 # Security scan artifacts
 *.sarif

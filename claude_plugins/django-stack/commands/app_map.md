@@ -19,8 +19,11 @@ The script:
 
 - Finds every directory containing an `apps.py`.
 - Walks each app's `.py` files and collects cross-app `ImportFrom` edges via `ast`.
-- Distinguishes runtime imports from test-only imports (paths under `tests/`, `test_*.py`, or `conftest.py`).
+- Distinguishes runtime imports from test-only imports (paths under `tests/`, `test_*.py`, `conftest.py`, or `factories.py`).
+- With `[tool.test_organisation]` configured in `pyproject.toml`, also detects runtime edges that no import shows: a model relation declared by a string label, the user model, and every edge listed in `declared_edges.toml`.
 - Writes the result to `docs/app_structure.md` (mermaid + dependency table + legend).
+- With the same table configured, also writes the import-linter contracts file that forbids each app's tests from importing an app outside its runtime deps.
+- `--check` writes nothing. It exits 1 and names the stale file(s) when `docs/app_structure.md` or the contracts file would change.
 - If the file already existed, prints a short diff of added/removed edges to stdout.
 
 If the script fails (e.g. no `apps.py` files found), tell the user what happened and stop.
@@ -38,6 +41,8 @@ Read the script's stdout and report:
 If any edges were **added** in this run, remind the user:
 
 > New cross-app edges appeared in the diagram. If these were intentional, commit the updated `docs/app_structure.md`. If not, the right fix is to restructure the code — not to commit the new edge.
+
+A new runtime edge also shrinks that app's forbidden list in the contracts file, so it needs the same approval as any other new edge.
 
 If any edges were **removed**, mention that a dependency was broken (usually a good sign, but worth noticing).
 

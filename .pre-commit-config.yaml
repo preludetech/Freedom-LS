@@ -60,3 +60,21 @@ repos:
         args: [--config-file=pyproject.toml]
         pass_filenames: false
         require_serial: true
+      - id: app-map-fresh
+        name: app-map-fresh
+        entry: uv run python claude_plugins/django-stack/scripts/generate_app_map.py --check
+        language: system
+        pass_filenames: false
+        require_serial: true
+      - id: lint-imports
+        name: lint-imports
+        entry: uv run lint-imports --config test_organisation/import_contracts.toml
+        language: system
+        pass_filenames: false
+        require_serial: true
+      - id: test-mirroring
+        name: test-mirroring
+        entry: uv run python claude_plugins/django-stack/scripts/check_test_mirroring.py
+        language: system
+        pass_filenames: false
+        require_serial: true

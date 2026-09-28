@@ -4,7 +4,7 @@ This file is the authoritative picture of inter-app dependencies in this project
 
 Treat it as the source of truth for what cross-app imports are allowed. Any implementation plan that introduces a new cross-app edge should be called out and approved before code is written.
 
-- **Solid arrows** — runtime imports (one app imports from another outside of tests).
+- **Solid arrows** — runtime imports (one app imports from another outside of tests), model relations by string label or to the user model, and declared edges.
 - **Dashed arrows** — test-only imports (cross-app fixtures or helpers).
 - **No arrow** — no import relationship; treat these apps as independent.
 
@@ -14,6 +14,7 @@ Regenerate this file whenever the graph changes: `/app_map`.
 flowchart TB
     accounts
     base
+    comms
     content_base
     content_engine
     course_access
@@ -48,6 +49,10 @@ flowchart TB
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
+    base --> learner_management
+    comms --> accounts
+    comms --> base
+    comms --> site_aware_models
     content_base --> markdown_rendering
     content_base --> site_aware_models
     content_engine --> base
@@ -71,6 +76,7 @@ flowchart TB
     course_interest --> course_access
     course_interest --> site_aware_models
     course_recommendations --> accounts
+    course_recommendations --> content_engine
     course_recommendations --> site_aware_models
     deployment --> base
     deployment --> content_engine
@@ -84,12 +90,11 @@ flowchart TB
     dev_tools --> learner_progress
     dev_tools --> organisations
     educator_interface --> content_engine
-    educator_interface --> form_engine
     educator_interface --> learner_management
-    educator_interface --> learner_progress
     educator_interface --> organisations
     educator_interface --> panel_framework
     educator_interface --> site_aware_models
+    form_engine --> accounts
     form_engine --> base
     form_engine --> content_base
     form_engine --> markdown_rendering
@@ -116,6 +121,7 @@ flowchart TB
     learner_management --> organisations
     learner_management --> site_aware_models
     learner_progress --> accounts
+    learner_progress --> comms
     learner_progress --> content_engine
     learner_progress --> form_engine
     learner_progress --> learner_management
@@ -127,6 +133,7 @@ flowchart TB
     organisations --> base
     organisations --> site_aware_models
     qa_helpers --> accounts
+    qa_helpers --> comms
     qa_helpers --> content_engine
     qa_helpers --> course_applications
     qa_helpers --> course_interest
@@ -169,23 +176,27 @@ flowchart TB
     accounts -.-> referral_tracking
     base -.-> accounts
     base -.-> content_engine
-    base -.-> learner_management
     base -.-> organisations
     base -.-> role_based_permissions
+    comms -.-> content_engine
+    comms -.-> learner_management
+    comms -.-> organisations
+    comms -.-> role_based_permissions
     content_base -.-> content_engine
     content_engine -.-> accounts
     course_access -.-> course_applications
     course_applications -.-> learner_progress
     course_interest -.-> learner_management
-    course_recommendations -.-> content_engine
     dev_tools -.-> course_applications
     educator_interface -.-> accounts
     educator_interface -.-> course_interest
+    educator_interface -.-> learner_progress
     educator_interface -.-> role_based_permissions
-    form_engine -.-> accounts
     google_tag -.-> accounts
     google_tag -.-> content_engine
     google_tag -.-> learner_management
+    learner_interface -.-> base
+    learner_interface -.-> comms
     learner_interface -.-> course_applications
     learner_interface -.-> role_based_permissions
     learner_management -.-> learner_progress
@@ -220,29 +231,30 @@ flowchart TB
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
 | accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
-| base | — | accounts, content_engine, learner_management, organisations, role_based_permissions |
+| base | learner_management | accounts, content_engine, organisations, role_based_permissions |
+| comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | accounts |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
 | course_applications | accounts, content_engine, course_access, form_engine, learner_management, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
-| course_recommendations | accounts, site_aware_models | content_engine |
+| course_recommendations | accounts, content_engine, site_aware_models | — |
 | deployment | base, content_engine, organisations, reports | — |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications |
-| educator_interface | content_engine, form_engine, learner_management, learner_progress, organisations, panel_framework, site_aware_models | accounts, course_interest, role_based_permissions |
-| form_engine | base, content_base, markdown_rendering, site_aware_models | accounts |
+| educator_interface | content_engine, learner_management, organisations, panel_framework, site_aware_models | accounts, course_interest, learner_progress, role_based_permissions |
+| form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
 | icons | base | — |
-| learner_interface | accounts, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | course_applications, role_based_permissions |
+| learner_interface | accounts, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | base, comms, course_applications, role_based_permissions |
 | learner_management | accounts, base, content_engine, form_engine, organisations, site_aware_models | learner_progress, role_based_permissions |
-| learner_progress | accounts, content_engine, form_engine, learner_management, site_aware_models, webhooks | organisations |
+| learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | organisations |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
 | meta_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | — | — |
-| qa_helpers | accounts, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
+| qa_helpers | accounts, comms, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
 | referral_tracking | accounts, base, site_aware_models | — |
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |
@@ -253,6 +265,6 @@ flowchart TB
 
 ## Legend
 
-- `A --> B` — `A` imports from `B` at runtime.
+- `A --> B` — `A` imports from `B` at runtime, has a model relation to `B` by string label or the user model, or declares the edge in `declared_edges.toml`.
 - `A -.-> B` — `A` imports from `B` only in test code (tests, conftest, factories).
 - Apps with no edges are self-contained.

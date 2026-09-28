@@ -23,6 +23,9 @@ jobs:
       - run: uv sync
       - run: uv run ruff check --output-format=github .
       - run: uv run ruff format --check .
+      - run: uv run python claude_plugins/django-stack/scripts/generate_app_map.py --check
+      - run: uv run lint-imports --config test_organisation/import_contracts.toml
+      - run: uv run python claude_plugins/django-stack/scripts/check_test_mirroring.py
 
   type-check:
     name: Type check
