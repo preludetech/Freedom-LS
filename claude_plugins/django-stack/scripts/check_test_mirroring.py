@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import re
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -145,6 +146,30 @@ def read_baseline(path: Path) -> list[str]:
     return [line for _, line in iter_entries(path)]
 
 
+EXEMPTION_RE = re.compile(r"^(\S+)  # (\S.*)$")
+
+
+def read_exemptions(path: Path) -> list[str]:
+    """Repo-relative paths exempted from mirroring, from `mirroring_exemptions.txt`.
+
+    A missing file means no exemptions, matching `read_baseline`'s tolerance for
+    a project that names the file in its config before the file exists.
+    """
+    if not path.exists():
+        return []
+    exemptions: list[str] = []
+    for line_no, line in iter_entries(path):
+        match = EXEMPTION_RE.match(line)
+        if not match:
+            raise ConfigError(f"{line_no}: {line} has no reason")
+        exemptions.append(match.group(1))
+    return exemptions
+
+
+def covers(exemption: str, path: str) -> bool:
+    return path.startswith(exemption) if exemption.endswith("/") else path == exemption
+
+
 def unbaselined_message(path: str, expected: str) -> str:
     return (
         f"{path} does not mirror {expected}. Fix it: {THREE_WAYS_OUT}. {MIRRORING_DOC}"
@@ -156,6 +181,22 @@ def stale_baseline_message(path: str) -> str:
         f"{path} is a mirroring_baseline.txt line that no longer matches a "
         f"violation (the file is gone, now conforms, or sits under "
         f"tests/playwright/). Fix it: {THREE_WAYS_OUT}. {MIRRORING_DOC}"
+    )
+
+
+def stale_exemption_message(exemption: str) -> str:
+    return (
+        f"{exemption} is a mirroring_exemptions.txt line that covers no "
+        f"violation (the file is gone or now conforms). Fix it: delete the "
+        f"stale line. {MIRRORING_DOC}"
+    )
+
+
+def exempted_baseline_message(path: str) -> str:
+    return (
+        f"{path} is in both mirroring_baseline.txt and mirroring_exemptions.txt. "
+        f"Fix it: delete the mirroring_baseline.txt line; the exemption already "
+        f"covers it. {MIRRORING_DOC}"
     )
 
 
@@ -182,21 +223,47 @@ def main() -> int:
 
     apps = find_apps(project_root)
     violations = find_violations(apps, project_root)
+    violation_paths = {v.path for v in violations}
+
+    try:
+        exemptions = read_exemptions(config.mirroring_exemptions)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    exempted_violations = {
+        path for path in violation_paths if any(covers(e, path) for e in exemptions)
+    }
 
     if args.print_violations:
-        print(render_baseline(apps, project_root, (v.path for v in violations)), end="")
+        remaining = (v.path for v in violations if v.path not in exempted_violations)
+        print(render_baseline(apps, project_root, remaining), end="")
         return 0
 
     baseline = read_baseline(config.mirroring_baseline)
+    baseline_set = set(baseline)
     expected_by_path = {v.path: v.expected for v in violations}
-    violation_paths = set(expected_by_path)
 
-    failures = [
-        unbaselined_message(path, expected_by_path[path])
-        for path in sorted(violation_paths - set(baseline))
-    ] + [
-        stale_baseline_message(path) for path in sorted(set(baseline) - violation_paths)
+    exempted_baseline = {
+        path for path in baseline_set if any(covers(e, path) for e in exemptions)
+    }
+    stale_exemptions = [
+        exemption
+        for exemption in exemptions
+        if not any(covers(exemption, path) for path in violation_paths)
     ]
+
+    failures = (
+        [
+            unbaselined_message(path, expected_by_path[path])
+            for path in sorted(violation_paths - exempted_violations - baseline_set)
+        ]
+        + [
+            stale_baseline_message(path)
+            for path in sorted(baseline_set - violation_paths - exempted_baseline)
+        ]
+        + [exempted_baseline_message(path) for path in sorted(exempted_baseline)]
+        + [stale_exemption_message(exemption) for exemption in sorted(stale_exemptions)]
+    )
 
     if failures:
         for message in failures:

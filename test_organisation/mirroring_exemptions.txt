@@ -1,0 +1,7 @@
+# Mirroring exemptions: a test file, or every file under a directory ending
+# "/", that is allowed not to mirror a module. Reasoned and permanent, not
+# debt to pay off like the baseline.
+#
+# One path per line, each followed by "  # <reason>" (two spaces before the
+# "#"). A line with no reason fails the check. So does an exemption that
+# covers no violation, and a path also listed in mirroring_baseline.txt.
