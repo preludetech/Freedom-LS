@@ -402,3 +402,43 @@ def test_without_test_organisation_table_string_label_fk_adds_no_edge_and_header
         "(one app imports from another outside of tests)."
     ) in doc
     assert "- `A --> B` — `A` imports from `B` at runtime." in doc
+
+
+def test_check_on_freshly_generated_tree_exits_0(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": unconfigured_pyproject(),
+        **base_apps(),
+    }
+    write_tree(tmp_path, files)
+    run_script(SCRIPT, tmp_path)
+
+    result = run_script(SCRIPT, tmp_path, "--check")
+
+    assert result.returncode == 0
+
+
+def test_check_after_new_runtime_edge_exits_1_names_doc_and_leaves_it_unchanged(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": unconfigured_pyproject(),
+        **base_apps(),
+    }
+    write_tree(tmp_path, files)
+    run_script(SCRIPT, tmp_path)
+    doc_path = tmp_path / "docs" / "app_structure.md"
+    before = doc_path.read_bytes()
+    write_tree(tmp_path, {"pkg/beta/services.py": "from pkg.users import views\n"})
+
+    result = run_script(SCRIPT, tmp_path, "--check")
+
+    assert result.returncode == 1
+    assert "docs/app_structure.md" in result.stderr
+    assert "run /ds:app_map" in result.stderr
+    assert doc_path.read_bytes() == before
+
+
+def test_check_from_repo_root_exits_0() -> None:
+    result = run_script(SCRIPT, REPO_ROOT, "--check")
+
+    assert result.returncode == 0
