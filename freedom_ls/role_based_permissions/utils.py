@@ -15,6 +15,10 @@ from django.db import transaction
 from django.db.models import Model
 from django.utils import timezone
 
+from freedom_ls.role_based_permissions.exceptions import (
+    RefusalReason,
+    RoleChangeRefused,
+)
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.types import AssignmentScope
 
@@ -299,7 +303,8 @@ def remove_site_role(
     """Remove a site-level role from a user on a site.
 
     Deactivates the SiteRoleAssignment, then resyncs guardian permissions
-    on the Site object.
+    on the Site object. Refuses to remove a user's last active site_admin
+    assignment on a site, so a site is never left without one.
 
     Args:
         site: The site to remove the role from. Defaults to the current site.
@@ -308,11 +313,27 @@ def remove_site_role(
     if site is None:
         site = Site.objects.get_current()
     check_role_name_in_config(role, site_name=site.name)
-    SiteRoleAssignment.objects.filter(
-        user=user,
-        site=site,
-        role=role,
-    ).update(is_active=False, updated_at=timezone.now())
+    with transaction.atomic():
+        if (
+            role == "site_admin"
+            and SiteRoleAssignment.objects.filter(
+                user=user, site=site, role="site_admin", is_active=True
+            ).exists()
+        ):
+            site = Site.objects.select_for_update().get(pk=site.pk)
+            other_active_admins = SiteRoleAssignment.objects.filter(
+                site=site,
+                role="site_admin",
+                is_active=True,
+                user__is_active=True,
+            ).exclude(user=user)
+            if not other_active_admins.exists():
+                raise RoleChangeRefused(RefusalReason.LAST_SITE_ADMIN)
+        SiteRoleAssignment.objects.filter(
+            user=user,
+            site=site,
+            role=role,
+        ).update(is_active=False, updated_at=timezone.now())
     sync_user_object_permissions(user, site)
     # TODO: AuditLog entry for site role removal (use removed_by)
 

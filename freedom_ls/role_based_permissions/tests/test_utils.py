@@ -13,6 +13,10 @@ from django.contrib.sites.models import Site
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.role_based_permissions.exceptions import (
+    RefusalReason,
+    RoleChangeRefused,
+)
 from freedom_ls.role_based_permissions.factories import (
     ObjectRoleAssignmentFactory,
     SiteRoleAssignmentFactory,
@@ -326,6 +330,7 @@ class TestSiteRoleFunctions:
         """remove_site_role deactivates the assignment."""
         user = UserFactory()
         assign_site_role(user, "site_admin")
+        assign_site_role(UserFactory(), "site_admin")
         remove_site_role(user, "site_admin")
 
         assert not SiteRoleAssignment.objects.filter(
@@ -340,6 +345,7 @@ class TestSiteRoleFunctions:
         user = UserFactory()
         with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
             assign_site_role(user, "site_admin")
+            assign_site_role(UserFactory(), "site_admin")
 
         with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
             remove_site_role(user, "site_admin")
@@ -369,6 +375,7 @@ class TestSiteRoleFunctions:
         """Removing one site role preserves other active site role assignments."""
         user = UserFactory()
         assign_site_role(user, "site_admin")
+        assign_site_role(UserFactory(), "site_admin")
 
         # Create a second site role assignment to test preservation
         # (only site_admin has assignment_scope="site" in the base config)
@@ -382,6 +389,69 @@ class TestSiteRoleFunctions:
         ).exists()
         assert SiteRoleAssignment.objects.filter(
             user=user, role="other_role", is_active=True
+        ).exists()
+
+    @pytest.mark.django_db
+    def test_removing_last_active_site_admin_is_refused(
+        self, mock_site_context: Site
+    ) -> None:
+        """Removing the site's only active site_admin is refused and changes nothing."""
+        user = UserFactory()
+        assign_site_role(user, "site_admin")
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            remove_site_role(user, "site_admin")
+
+        assert exc_info.value.reason == RefusalReason.LAST_SITE_ADMIN
+        assert SiteRoleAssignment.objects.filter(
+            user=user, role="site_admin", is_active=True
+        ).exists()
+
+    @pytest.mark.django_db
+    def test_removing_site_admin_ignores_an_inactive_users_assignment(
+        self, mock_site_context: Site
+    ) -> None:
+        """A second site_admin assignment held by an inactive user doesn't count."""
+        user = UserFactory()
+        inactive_admin = UserFactory(is_active=False)
+        assign_site_role(user, "site_admin")
+        assign_site_role(inactive_admin, "site_admin")
+
+        with pytest.raises(RoleChangeRefused) as exc_info:
+            remove_site_role(user, "site_admin")
+
+        assert exc_info.value.reason == RefusalReason.LAST_SITE_ADMIN
+        assert SiteRoleAssignment.objects.filter(
+            user=user, role="site_admin", is_active=True
+        ).exists()
+
+    @pytest.mark.django_db
+    def test_removing_a_site_admin_role_the_user_does_not_hold_is_unaffected(
+        self, mock_site_context: Site
+    ) -> None:
+        """Removing a role the user never held is a no-op, not a refusal."""
+        user = UserFactory()
+        assign_site_role(UserFactory(), "site_admin")
+
+        remove_site_role(user, "site_admin")
+
+        assert not SiteRoleAssignment.objects.filter(
+            user=user, role="site_admin"
+        ).exists()
+
+    @pytest.mark.django_db
+    def test_removing_a_non_site_admin_site_role_is_unaffected_by_the_guard(
+        self, mock_site_context: Site
+    ) -> None:
+        """The last-admin guard only applies to site_admin."""
+        user = UserFactory()
+        assign_site_role(user, "site_admin")
+        SiteRoleAssignmentFactory(user=user, role="cohort_admin")
+
+        remove_site_role(user, "cohort_admin")
+
+        assert not SiteRoleAssignment.objects.filter(
+            user=user, role="cohort_admin", is_active=True
         ).exists()
 
 
