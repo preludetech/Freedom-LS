@@ -20,7 +20,7 @@ form_url, submit_buttons.
       hx-disabled-elt="#app-modal-body button[type='submit']">
     {% include "partials/form.html" %}
 
-    <c-button-group variant="right" class="mt-4">
+    <c-button-group variant="right" class="mt-4 flex-wrap">
         <c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button>
         {% for btn in submit_buttons %}
             {% if btn.name %}
