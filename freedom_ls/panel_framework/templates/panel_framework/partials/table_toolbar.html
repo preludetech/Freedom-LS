@@ -30,7 +30,7 @@ off.
                   method="get"
                   action="{{ page_url }}"
                   hx-get="{{ base_url }}"
-                  hx-trigger="submit, input changed delay:300ms from:find input, search from:find input"
+                  hx-trigger="submit, input changed delay:300ms from:#{{ query.key }}-q, search from:#{{ query.key }}-q"
                   hx-sync="this:replace"
                   hx-target="#{{ region_id }}"
                   hx-swap="outerHTML"

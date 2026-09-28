@@ -164,6 +164,35 @@ def test_back_after_sort_restores_matching_table(
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
+def test_search_narrows_table_after_sort_is_active(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """Once a sort is active, the sort's hidden input renders before the
+    search box in the form. Typing into the search box must still fire the
+    debounced htmx search request and narrow the table."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("link", name="Name").click()
+    # Wait for the sort's own htmx swap to land, not just for the row count
+    # (which is already 3 before the swap, since the table only has 3 rows
+    # either way). The hidden `stubs-sort` input only exists once a sort is
+    # active — that's what pushes the search box out of first place in the
+    # form, and it's the reliable signal the new toolbar markup is in place.
+    expect(page.locator("#stubs-search input[name='stubs-sort']")).to_have_count(1)
+
+    page.locator("#stubs-q").fill("row-01")
+
+    rows = page.locator("#stubs-table tbody tr")
+    expect(rows).to_have_count(1)
+    expect(rows.first).to_contain_text("row-01")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
 def test_focus_moves_to_table_anchor_after_swap(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
