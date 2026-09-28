@@ -246,6 +246,139 @@ def test_unknown_user_model_app_fails_with_error_naming_it(tmp_path: Path) -> No
     assert "pkg.nonexistent" in result.stderr
 
 
+def declared_edges_toml(from_app: str, to_app: str, reason: str = "some reason") -> str:
+    return f'[[edge]]\nfrom = "{from_app}"\nto = "{to_app}"\nreason = "{reason}"\n'
+
+
+def test_declared_edge_appears_as_runtime_edge(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "test_organisation/declared_edges.toml": declared_edges_toml("beta", "alpha"),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert result.returncode == 0
+    assert "beta --> alpha" in doc
+
+
+def test_declared_edge_with_unknown_from_app_fails_with_error_naming_it(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "test_organisation/declared_edges.toml": declared_edges_toml(
+            "nonexistent", "alpha"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "nonexistent" in result.stderr
+
+
+def test_declared_edge_with_unknown_to_app_fails_with_error_naming_it(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "test_organisation/declared_edges.toml": declared_edges_toml(
+            "beta", "nonexistent"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "nonexistent" in result.stderr
+
+
+def test_declared_edge_with_no_reason_fails(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "test_organisation/declared_edges.toml": '[[edge]]\nfrom = "beta"\nto = "alpha"\n',
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "reason" in result.stderr
+
+
+def test_declared_edge_matching_an_existing_import_fails(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/beta/services.py": "from pkg.alpha import views\n",
+        "test_organisation/declared_edges.toml": declared_edges_toml("beta", "alpha"),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "beta" in result.stderr
+    assert "alpha" in result.stderr
+
+
+def test_declared_edge_matching_an_existing_string_label_relation_fails(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config(
+            "pkg.alpha", "AlphaConfig", label="custom_alpha_label"
+        ),
+        "pkg/beta/models.py": alpha_fk_field("custom_alpha_label"),
+        "test_organisation/declared_edges.toml": declared_edges_toml("beta", "alpha"),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+
+
+def test_declared_edge_matching_an_existing_user_model_relation_fails(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/models.py": get_user_model_call(),
+        "test_organisation/declared_edges.toml": declared_edges_toml("alpha", "users"),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+
+
 def test_without_test_organisation_table_string_label_fk_adds_no_edge_and_header_is_unchanged(
     tmp_path: Path,
 ) -> None:

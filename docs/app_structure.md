@@ -4,7 +4,7 @@ This file is the authoritative picture of inter-app dependencies in this project
 
 Treat it as the source of truth for what cross-app imports are allowed. Any implementation plan that introduces a new cross-app edge should be called out and approved before code is written.
 
-- **Solid arrows** — runtime imports (one app imports from another outside of tests).
+- **Solid arrows** — runtime imports (one app imports from another outside of tests), model relations by string label or to the user model, and declared edges.
 - **Dashed arrows** — test-only imports (cross-app fixtures or helpers).
 - **No arrow** — no import relationship; treat these apps as independent.
 
@@ -50,6 +50,7 @@ flowchart TB
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
+    base --> learner_management
     blog --> base
     blog --> content_engine
     comms --> accounts
@@ -78,6 +79,7 @@ flowchart TB
     course_interest --> course_access
     course_interest --> site_aware_models
     course_recommendations --> accounts
+    course_recommendations --> content_engine
     course_recommendations --> site_aware_models
     deployment --> base
     deployment --> content_engine
@@ -180,7 +182,6 @@ flowchart TB
     accounts -.-> referral_tracking
     base -.-> accounts
     base -.-> content_engine
-    base -.-> learner_management
     base -.-> organisations
     base -.-> role_based_permissions
     blog -.-> accounts
@@ -193,7 +194,6 @@ flowchart TB
     course_access -.-> course_applications
     course_applications -.-> learner_progress
     course_interest -.-> learner_management
-    course_recommendations -.-> content_engine
     dev_tools -.-> course_applications
     educator_interface -.-> accounts
     educator_interface -.-> course_interest
@@ -239,7 +239,7 @@ flowchart TB
 | App | Runtime deps | Test-only deps |
 | --- | --- | --- |
 | accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
-| base | — | accounts, content_engine, learner_management, organisations, role_based_permissions |
+| base | learner_management | accounts, content_engine, organisations, role_based_permissions |
 | blog | base, content_engine | accounts |
 | comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
@@ -247,7 +247,7 @@ flowchart TB
 | course_access | accounts, base, content_engine, learner_management | course_applications |
 | course_applications | accounts, content_engine, course_access, form_engine, learner_management, site_aware_models | learner_progress |
 | course_interest | accounts, content_engine, course_access, site_aware_models | learner_management |
-| course_recommendations | accounts, site_aware_models | content_engine |
+| course_recommendations | accounts, content_engine, site_aware_models | — |
 | deployment | base, content_engine, organisations, reports | — |
 | dev_tools | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations | course_applications |
 | educator_interface | content_engine, learner_management, organisations, panel_framework, site_aware_models | accounts, course_interest, learner_progress, role_based_permissions |
@@ -274,6 +274,6 @@ flowchart TB
 
 ## Legend
 
-- `A --> B` — `A` imports from `B` at runtime.
+- `A --> B` — `A` imports from `B` at runtime, has a model relation to `B` by string label or the user model, or declares the edge in `declared_edges.toml`.
 - `A -.-> B` — `A` imports from `B` only in test code (tests, conftest, factories).
 - Apps with no edges are self-contained.

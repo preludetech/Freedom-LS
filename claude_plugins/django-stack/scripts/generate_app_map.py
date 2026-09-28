@@ -258,6 +258,29 @@ def walk_model_relations(app: App, labels: dict[str, App], user_app: App) -> set
     return targets
 
 
+def load_declared_edges(path: Path, apps: list[App]) -> set[tuple[str, str]]:
+    """Read `[[edge]]` entries from `declared_edges.toml`.
+
+    A project's config can name this file before the file exists (earlier slices'
+    test trees do), so a missing file means no declared edges rather than an error.
+    """
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return set()
+    short_names = {app.short_name for app in apps}
+    edges: set[tuple[str, str]] = set()
+    for entry in data.get("edge", []):
+        src, dst, reason = entry.get("from"), entry.get("to"), entry.get("reason")
+        for name in (src, dst):
+            if name not in short_names:
+                raise ConfigError(f"declared_edges.toml: '{name}' is not a known app")
+        if not reason:
+            raise ConfigError(f"declared_edges.toml: {src} -> {dst} has no reason")
+        edges.add((src, dst))
+    return edges
+
+
 def walk_app_imports(app: App) -> list[tuple[str, Path]]:
     results: list[tuple[str, Path]] = []
     for py_file, tree in iter_app_trees(app):
@@ -295,6 +318,13 @@ def compute_edges(apps: list[App], config: TestOrganisationConfig | None) -> Edg
         for app in apps:
             for target in walk_model_relations(app, labels, user_app):
                 edges.runtime.add((app.short_name, target.short_name))
+        for src, dst in load_declared_edges(config.declared_edges, apps):
+            if (src, dst) in edges.runtime:
+                raise ConfigError(
+                    f"declared edge {src} -> {dst} is already detected; "
+                    "remove it from declared_edges.toml"
+                )
+            edges.runtime.add((src, dst))
     edges.test -= edges.runtime
     return edges
 
