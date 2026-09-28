@@ -17,7 +17,7 @@ form_url, submit_buttons.
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
-      hx-disabled-elt="find button[type='submit']">
+      hx-disabled-elt="#app-modal-body button[type='submit']">
     {% include "partials/form.html" %}
 
     <c-button-group variant="right" class="mt-4">
