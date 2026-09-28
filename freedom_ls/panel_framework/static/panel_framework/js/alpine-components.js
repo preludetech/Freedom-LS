@@ -303,16 +303,25 @@ document.addEventListener("alpine:init", () => {
             // us (its entry is already gone), a breakpoint flip is about to
             // reopen in the other mode, or the caller asked to leave the
             // pushed entry alone (followOpenLink is about to replace it).
+            // A breakpoint flip's close is not a real dismissal, so it must
+            // leave _qvHistoryPushed exactly as it found it: the entry (if
+            // any) is still sitting in history, just not the one currently
+            // open, and _showDialog() below relies on that flag staying
+            // true to avoid pushing a second one when mobile mode returns.
             trackListener(this._qvHandlers, this._qvDialog, "close", () => {
                 this._syncExpanded();
                 focusTriggerOrMain(this._qvTrigger);
-                if (this._qvHistoryPushed && !this._qvSkipHistoryUnwind) {
+                if (
+                    this._qvHistoryPushed &&
+                    !this._qvSkipHistoryUnwind &&
+                    !this._qvClosingForBreakpoint
+                ) {
                     this._qvHistoryPushed = false;
-                    if (!this._qvClosingFromPopstate && !this._qvClosingForBreakpoint) {
+                    if (!this._qvClosingFromPopstate) {
                         history.back();
                     }
-                    this._qvClosingFromPopstate = false;
                 }
+                this._qvClosingFromPopstate = false;
                 this._qvClosingForBreakpoint = false;
                 this._qvSkipHistoryUnwind = false;
             });
@@ -412,12 +421,17 @@ document.addEventListener("alpine:init", () => {
         // Opens the dialog in whichever mode _isMobile currently names.
         // showModal() pushes no history entry of its own, so a mobile open
         // adds one by hand; Back then dismisses the sheet instead of
-        // navigating the page.
+        // navigating the page. A breakpoint flip back to mobile can arrive
+        // here with an earlier push still untraversed (the close handler
+        // above left _qvHistoryPushed true for exactly that reason), so
+        // only push when the sheet does not already own one.
         _showDialog() {
             if (this._isMobile) {
                 this._qvDialog.showModal();
-                history.pushState({ flsQuickView: true }, "");
-                this._qvHistoryPushed = true;
+                if (!this._qvHistoryPushed) {
+                    history.pushState({ flsQuickView: true }, "");
+                    this._qvHistoryPushed = true;
+                }
             } else {
                 this._qvDialog.show();
             }

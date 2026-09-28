@@ -88,3 +88,40 @@ def test_crossing_the_breakpoint_while_open_keeps_the_content_with_no_new_reques
     expect(page.locator("dialog:modal")).to_have_count(0)
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
     assert quick_view_requests == []
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_crossing_the_breakpoint_twice_while_open_still_unwinds_a_single_entry(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    stub = _make_stub(name="Alpha")
+    detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
+    list_url = f"{live_server.url}/test-panel/framework/stubs/"
+    page.set_viewport_size(_MOBILE_VIEWPORT)
+    page.goto(detail_url)
+    page.goto(list_url)
+
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("dialog:modal")).to_have_count(1)
+
+    # Cross to desktop and back to mobile before closing, as in the bug
+    # report: neither resize should leave a dead history entry behind.
+    page.set_viewport_size(_DESKTOP_VIEWPORT)
+    expect(page.locator("dialog:modal")).to_have_count(0)
+    expect(page.locator("#quick-view")).to_be_visible()
+
+    page.set_viewport_size(_MOBILE_VIEWPORT)
+    expect(page.locator("dialog:modal")).to_have_count(1)
+
+    page.get_by_role("button", name="Close").click()
+    expect(page.locator("#quick-view")).to_be_hidden()
+    expect(page).to_have_url(list_url)
+
+    # The sheet owned at most one history entry and Close already unwound
+    # it, so a single further Back should leave the list page entirely.
+    page.go_back()
+
+    expect(page).to_have_url(detail_url)
