@@ -72,3 +72,9 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+      - id: test-mirroring
+        name: test-mirroring
+        entry: uv run python claude_plugins/django-stack/scripts/check_test_mirroring.py
+        language: system
+        pass_filenames: false
+        require_serial: true
