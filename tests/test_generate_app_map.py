@@ -9,6 +9,7 @@ The script's directory is hyphenated and not importable, and `mypy` skips
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 
 from tests._script_trees import run_script, write_tree
@@ -442,3 +443,232 @@ def test_check_from_repo_root_exits_0() -> None:
     result = run_script(SCRIPT, REPO_ROOT, "--check")
 
     assert result.returncode == 0
+
+
+def contract_for(tmp_path: Path, app_id: str) -> dict[str, object] | None:
+    """The `[[tool.importlinter.contracts]]` entry with the given `id`, if any."""
+    path = tmp_path / "test_organisation" / "import_contracts.toml"
+    document = tomllib.loads(path.read_text(encoding="utf-8"))
+    tool = document["tool"]
+    assert isinstance(tool, dict)
+    importlinter = tool["importlinter"]
+    assert isinstance(importlinter, dict)
+    for contract in importlinter.get("contracts", []):
+        assert isinstance(contract, dict)
+        if contract.get("id") == app_id:
+            return contract
+    return None
+
+
+def contract_list(contract: dict[str, object], key: str) -> list[str]:
+    value = contract[key]
+    assert isinstance(value, list)
+    return [str(item) for item in value]
+
+
+def alpha_with_test_modules() -> dict[str, str]:
+    return {
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/services.py": "from pkg.beta import views\n",
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_services.py": "",
+        "pkg/alpha/factories.py": "",
+        "pkg/alpha/conftest.py": "",
+        "pkg/alpha/test_root.py": "",
+    }
+
+
+def test_contract_source_modules_include_tests_package_factories_conftest_and_root_test_file(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        **alpha_with_test_modules(),
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "alpha")
+    assert contract is not None
+    assert sorted(contract_list(contract, "source_modules")) == [
+        "pkg.alpha.conftest",
+        "pkg.alpha.factories",
+        "pkg.alpha.test_root",
+        "pkg.alpha.tests",
+    ]
+
+
+def test_contract_forbidden_modules_exclude_app_and_runtime_deps_and_allow_indirect_imports_is_true(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        **alpha_with_test_modules(),
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "alpha")
+    assert contract is not None
+    assert contract_list(contract, "forbidden_modules") == ["pkg.users"]
+    assert contract["allow_indirect_imports"] is True
+
+
+def test_app_with_no_test_modules_gets_no_contract(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    assert contract_for(tmp_path, "beta") is None
+
+
+def test_app_whose_runtime_deps_cover_every_other_app_gets_no_contract(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/services.py": (
+            "from pkg.beta import views\nfrom pkg.users import views\n"
+        ),
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_services.py": "",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    assert contract_for(tmp_path, "alpha") is None
+
+
+def test_allowance_line_appears_for_test_module_importing_user_model_factories(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/users/factories.py": "",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "from pkg.users import factories\n",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    assert "pkg.beta.tests.test_models -> pkg.users.factories" in contract_list(
+        contract, "ignore_imports"
+    )
+
+
+def test_no_allowance_line_for_test_module_not_importing_user_model_factories(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/users/factories.py": "",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "from django.db import models\n",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    assert "ignore_imports" not in contract
+
+
+def test_module_import_and_symbol_import_of_user_model_factories_produce_same_allowance_line(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/users/factories.py": "class UserFactory:\n    pass\n",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_a.py": "from pkg.users import factories\n",
+        "pkg/beta/tests/test_b.py": "from pkg.users.factories import UserFactory\n",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    ignore_imports = contract_list(contract, "ignore_imports")
+    assert "pkg.beta.tests.test_a -> pkg.users.factories" in ignore_imports
+    assert "pkg.beta.tests.test_b -> pkg.users.factories" in ignore_imports
+
+
+def test_app_with_runtime_dep_on_user_model_app_gets_no_allowance_lines(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/users/factories.py": "",
+        "pkg/beta/services.py": "from pkg.users import views\n",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "from pkg.users import factories\n",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    assert "ignore_imports" not in contract
+
+
+def test_check_exits_1_and_names_contracts_file_when_only_contracts_would_change(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_models.py": "",
+    }
+    write_tree(tmp_path, files)
+    run_script(SCRIPT, tmp_path)
+    doc_path = tmp_path / "docs" / "app_structure.md"
+    doc_before = doc_path.read_bytes()
+    write_tree(tmp_path, {"pkg/alpha/test_extra.py": ""})
+
+    result = run_script(SCRIPT, tmp_path, "--check")
+
+    assert result.returncode == 1
+    assert "import_contracts.toml" in result.stderr
+    assert doc_path.read_bytes() == doc_before
+
+
+def test_without_test_organisation_table_no_contracts_file_written(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": unconfigured_pyproject(),
+        **base_apps(),
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    assert not (tmp_path / "test_organisation" / "import_contracts.toml").exists()
