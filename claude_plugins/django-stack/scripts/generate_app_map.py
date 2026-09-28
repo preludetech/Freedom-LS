@@ -8,7 +8,7 @@ imports via the stdlib `ast` module, and writes the diagram to
 summary of added and removed edges to stderr.
 
 Usage:
-    python generate_app_map.py [--apps-root PATH] [--output PATH]
+    python generate_app_map.py [--apps-root PATH] [--output PATH] [--check]
 
 Stdlib only; no third-party dependencies.
 """
@@ -458,6 +458,11 @@ def main() -> int:
         default=Path("docs/app_structure.md"),
         help="Path to write the diagram file (default: docs/app_structure.md).",
     )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Write nothing; exit 1 if the generated output would differ from what's on disk.",
+    )
     args = parser.parse_args()
 
     root: Path = args.apps_root.resolve()
@@ -502,23 +507,38 @@ def main() -> int:
         + render_table(apps, new_edges)
         + legend
     )
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(body, encoding="utf-8")
-    print(f"Wrote {output}", file=sys.stderr)
+
+    outputs: dict[Path, str] = {output: body}
 
     if old_edges is None:
         print("\nInitial generation. No prior diagram to diff against.")
+    else:
+        added, removed = diff_edges(old_edges, new_edges)
+        if not added and not removed:
+            print("\nNo changes vs the previous diagram.")
+        else:
+            print("\nChanges vs previous diagram:")
+            for line in added:
+                print(line)
+            for line in removed:
+                print(line)
+
+    if args.check:
+        stale = [
+            path
+            for path, text in outputs.items()
+            if not path.exists() or path.read_text(encoding="utf-8") != text
+        ]
+        if stale:
+            names = ", ".join(str(path) for path in stale)
+            print(f"Out of date: {names}\nrun /ds:app_map", file=sys.stderr)
+            return 1
         return 0
 
-    added, removed = diff_edges(old_edges, new_edges)
-    if not added and not removed:
-        print("\nNo changes vs the previous diagram.")
-        return 0
-    print("\nChanges vs previous diagram:")
-    for line in added:
-        print(line)
-    for line in removed:
-        print(line)
+    for path, text in outputs.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+    print(f"Wrote {output}", file=sys.stderr)
     return 0
 
 

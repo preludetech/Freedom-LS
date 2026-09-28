@@ -65,3 +65,9 @@ repos:
         args: [--config-file=pyproject.toml]
         pass_filenames: false
         require_serial: true
+      - id: app-map-fresh
+        name: app-map-fresh
+        entry: uv run python claude_plugins/django-stack/scripts/generate_app_map.py --check
+        language: system
+        pass_filenames: false
+        require_serial: true
