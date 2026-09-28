@@ -13,7 +13,22 @@ and the close button.
     #quick-view {
         position: fixed;
         inset-inline: 0;
+        inset-block-start: auto;
         inset-block-end: 0;
+        /* The UA dialog stylesheet sets a definite `height: fit-content` (not
+         * `auto`) on both the modal sheet and the non-modal drawer, which
+         * blocks the inset-based auto-stretch this rule and the desktop
+         * media query below rely on, and (together with an unset
+         * inset-block-start on `dialog:modal`) over-constrains the box so
+         * the browser ignores inset-block-end instead of honouring it.
+         * inline-size needs the same override: `dialog:modal`'s definite
+         * `width: fit-content` over-constrains inset-inline the same way.
+         * `dialog:modal` also caps max-width/max-height at
+         * calc(100% - 6px - 2em), which otherwise still clips the sheet
+         * below full width even once inline-size itself is fixed. */
+        inline-size: 100%;
+        max-inline-size: none;
+        block-size: auto;
         max-block-size: 85dvh;
         margin: 0;
         border: none;
@@ -64,7 +79,15 @@ and the close button.
         }
     }
     @media print {
-        #quick-view {
+        /* Matched on [open] too: equal specificity to the #quick-view[open]
+         * rule above, so this later declaration wins the cascade tie
+         * instead of losing to it on specificity while printing. `display`
+         * is one of the transitioned properties (allow-discrete), and a
+         * media-driven style change transitions exactly like any other, so
+         * without killing the transition here the drawer keeps computing
+         * `flex` for the transition's duration after print starts. */
+        #quick-view[open] {
+            transition: none;
             display: none;
         }
     }
@@ -79,7 +102,7 @@ and the close button.
 <dialog id="quick-view"
         x-data="quickView"
         aria-labelledby="quick-view-title"
-        class="modal-backdrop-host w-full bg-surface text-on-surface shadow-xl p-0">
+        class="modal-backdrop-host bg-surface text-on-surface shadow-xl p-0">
     <header class="sticky top-0 flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
         <h2 id="quick-view-title" class="flex-1 min-w-0 truncate font-semibold">
         </h2>
