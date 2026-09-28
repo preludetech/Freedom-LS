@@ -26,6 +26,8 @@ Test-only helper and URLconf modules that sit correctly beside their tests: `pan
 
 `form_engine/tests/test_import_independence.py`, and `content_engine`'s `test_demo_content_*.py` and `test_katex_vendor_assets.py`, are not yet grouped in a subpackage.
 
+To exempt a cross-cutting subpackage once its files are grouped: add `<app>/tests/<subpackage>/  # <reason>` to `mirroring_exemptions.txt`, then delete each of those files' lines from `mirroring_baseline.txt`. The exemption is permanent; it isn't debt to pay off later.
+
 ### Named exceptions
 
 `contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate; the module docstrings say why.
@@ -36,9 +38,11 @@ Test-only helper and URLconf modules that sit correctly beside their tests: `pan
 
 `docs/app_structure.md`'s dependency table is the source of truth. Regenerate it with the `/ds:app_map` command (`generate_app_map.py`) rather than editing it by hand.
 
-The string-reference case in FLS: `base` depends on `learner_management`, because `TEMPLATES` in `config/settings_base.py` registers `freedom_ls.learner_management.context_processors.can_access_educator_interface`, and `base`'s header template reads the context variable it produces. The dependency table cannot see this edge.
+The string-reference case in FLS: `base` depends on `learner_management`, because `TEMPLATES` in `config/settings_base.py` registers `freedom_ls.learner_management.context_processors.can_access_educator_interface`, and `base`'s header template reads the context variable it produces. This edge is declared in `test_organisation/declared_edges.toml`, with that same reason.
 
 Any app's tests may use `accounts`' `UserFactory`.
+
+FLS's baselines and exemptions live in `test_organisation/`: `declared_edges.toml`, `import_baseline.txt`, `mirroring_baseline.txt` and `mirroring_exemptions.txt`. Three pre-commit and CI hooks check them: `app-map-fresh` (`docs/app_structure.md` and the generated contracts are up to date), `lint-imports` (dependency direction), and `test-mirroring` (mirroring).
 
 ### Granting permissions in tests
 

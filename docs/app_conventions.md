@@ -96,6 +96,31 @@ declare their own primary key: `accounts.User` and
 unaffected either way. Set it anyway, on every app that defines models, rather than
 reasoning case by case about which ones need it.
 
+## Test organisation
+
+Two rules govern how tests are organised: mirroring decides where a test file lives, and
+dependency direction decides which apps it may import from. See "Test organisation and hygiene"
+in `claude_plugins/django-stack/resources/testing.md` for the rules themselves, and
+`claude_plugins/fls-dev/skills/testing/SKILL.md` for FLS's instances of them.
+
+Three pre-commit and CI hooks enforce them: `app-map-fresh` checks that `docs/app_structure.md`
+and the generated import-linter contracts are up to date, `lint-imports` checks dependency
+direction against those contracts, and `test-mirroring` checks mirroring.
+
+Each check starts from a baseline of the violations that existed when it landed, the import
+baseline for dependency direction and the mirroring baseline for mirroring, so it fails only on a
+new violation. A declared edge stands in for a runtime edge that no import or model relation shows,
+and a mirroring exemption is a test file or subpackage allowed not to mirror, permanently rather
+than as debt to pay off. All four live in `test_organisation/`: `declared_edges.toml`,
+`import_baseline.txt`, `mirroring_baseline.txt` and `mirroring_exemptions.txt`.
+
+### The cleanup contract
+
+A spec that fixes a mirroring or dependency-direction violation deletes that violation's line from
+`mirroring_baseline.txt` or `import_baseline.txt`, then reruns `/ds:app_map` so the generated
+contracts drop it too. Never add a line to either baseline, and never write one with a command:
+both files are seeded once and only ever shrink by hand.
+
 ## Generic foreign key `object_id` type
 
 A generic foreign key's `object_id` field is a `UUIDField` when the set of models it

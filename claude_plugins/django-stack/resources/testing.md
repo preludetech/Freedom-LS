@@ -30,6 +30,8 @@ A browser test gets one extra hop, `<app>/tests/playwright/test_<thing>.py`, the
 
 A helper or URLconf module that only an app's own tests use lives alongside those tests, for example `<app>/tests/root_urls.py` or `<app>/tests/builders.py`. It never lives in `conftest.py`; see "`conftest.py` vs. plain module" below.
 
+A project can enforce this rule with the `[tool.test_organisation]` table and `check_test_mirroring.py`.
+
 ### Cross-cutting tests
 
 Some test files check a property rather than one module's behaviour: an import-order invariant, migration state, settings resolution, or a content or vendored-asset regression. They have no module to mirror, and that's fine.
@@ -40,9 +42,9 @@ Group them in a clearly named test subpackage, such as `tests/demo_content/` or 
 
 An app's tests import only apps the app depends on at runtime. A test that spans several apps belongs in the lowest app that depends on every app it touches, not the app whose behaviour happens to be exercised first.
 
-The project's app dependency map is the source of truth for what an app depends on, and for where the rule is violated today: the `/ds:app_map` command generates it into `docs/app_structure.md`, with a "Runtime deps" column and a "Test-only deps" column per app.
+The project's app dependency map is the source of truth for what an app depends on, and for where the rule is violated today: the `/ds:app_map` command generates it into `docs/app_structure.md`, with a "Runtime deps" column and a "Test-only deps" column per app. A project can enforce the rule with the `[tool.test_organisation]` table and the import-linter contracts `generate_app_map.py` writes from that same table.
 
-The generator reads Python imports only, so it misses two dependencies that are just as real. A model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, is a runtime dependency on the app that owns the target, and so is a settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
+Reading Python imports alone misses two dependencies that are just as real. With `[tool.test_organisation]` configured, the generator also sees a model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, and any `get_user_model()` call: both are runtime dependencies on the app that owns the target, and count as runtime edges in the contracts. A settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend, can't be read off an import or a string label, so it is a declared edge instead: a hand-written, reasoned entry in `declared_edges.toml`. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
 
 ### Deciding an allowed exception
 
