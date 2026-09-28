@@ -13,6 +13,7 @@ from django.contrib.sites.models import Site
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.models import OrganisationMember
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.loader import clear_caches
 from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
@@ -118,6 +119,20 @@ def test_a_changed_role_config_takes_effect_after_clear_caches(
     ):
         clear_caches()
         assert can(user, capability, cohort) is True
+
+
+@pytest.mark.django_db
+def test_a_site_admin_needs_no_organisation_member_row(mock_site_context: Site) -> None:
+    """A site-level grant never routes through the OrganisationMember gate --
+    _site_grants stays ungated, so a site admin need not belong to every
+    organisation on the site to see into all of them."""
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    assign_site_role(user, "site_admin")
+
+    assert not OrganisationMember.objects.filter(user=user).exists()
+    assert can(user, VIEW_COHORT, cohort) is True
 
 
 @pytest.mark.django_db

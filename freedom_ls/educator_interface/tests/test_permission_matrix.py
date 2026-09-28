@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import NamedTuple, cast
 
 import pytest
+from guardian.shortcuts import get_perms
 
 from django.contrib.sites.models import Site
 from django.db.models import Model
@@ -33,14 +34,19 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
 from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     learners_visible_to,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
+
+#: Roles whose grants are gated on an active OrganisationMember. site_admin's
+#: grant is a SiteRoleAssignment, which _site_grants never gates.
+GATED_ROLES = ("organisation_admin", "cohort_admin", "cohort_viewer")
 
 ROLES = ("site_admin", "organisation_admin", "cohort_admin", "cohort_viewer")
 
@@ -291,6 +297,62 @@ def test_learners_visible_to_agrees_with_can_on_every_learner(
             .exists()
         )
         assert visible is can(user, VIEW_LEARNER, scope), (role, relation)
+
+
+def _gated_true_cases() -> list[tuple[str, str, str, str]]:
+    """Every (capability, role, kind, relation) case _cases() covers where
+    the role is one whose grant only counts through an active
+    OrganisationMember, and the matrix says the answer is True."""
+    return [
+        (capability, role, kind, relation)
+        for capability, role, kind, relation in _cases()
+        if role in GATED_ROLES and (kind, relation) in MATRIX[capability][role]
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("capability", "role", "kind", "relation"), _gated_true_cases()
+)
+def test_deactivating_the_organisation_member_row_withdraws_the_grant(
+    mock_site_context: Site, capability: str, role: str, kind: str, relation: str
+) -> None:
+    """The OrganisationMember gate: an organisation or cohort grant counts
+    only while the grant holder's OrganisationMember row for that
+    organisation is active. Deactivating it must withdraw exactly this
+    answer, and reactivating it must restore exactly this answer, with the
+    role assignment and guardian rows never touched."""
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+    scope = world.scopes[(kind, relation)]
+    member = OrganisationMember.objects.get(user=user)
+
+    def _assignment_snapshot() -> set[tuple[int, int, int, str, str, bool]]:
+        return {
+            (a.user_id, a.site_id, a.content_type_id, a.object_id, a.role, a.is_active)
+            for a in ObjectRoleAssignment.objects.filter(user=user)
+        }
+
+    def _guardian_snapshot() -> frozenset[str]:
+        return frozenset(get_perms(user, scope))
+
+    assert can(user, capability, scope) is True
+    before_assignments = _assignment_snapshot()
+    before_guardian = _guardian_snapshot()
+
+    member.is_active = False
+    member.save(update_fields=["is_active"])
+
+    assert can(user, capability, scope) is False
+    assert _assignment_snapshot() == before_assignments
+    assert _guardian_snapshot() == before_guardian
+
+    member.is_active = True
+    member.save(update_fields=["is_active"])
+
+    assert can(user, capability, scope) is True
+    assert _assignment_snapshot() == before_assignments
+    assert _guardian_snapshot() == before_guardian
 
 
 @pytest.mark.django_db

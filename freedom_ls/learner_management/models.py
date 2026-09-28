@@ -81,6 +81,36 @@ class Learner(SiteAwareModel):
         return f"{self.user} - {self.organisation}"
 
 
+class OrganisationMember(SiteAwareModel):
+    """A user who helps run an organisation's learners, whether or not they teach.
+
+    The counterpart of Learner, and independent of it: a user may hold both
+    an OrganisationMember and a Learner row in the same organisation. This
+    is the gate can() checks before an organisation- or cohort-level role
+    assignment counts -- deactivating a row here suspends every grant it
+    covers without touching the role assignments themselves, and
+    reactivating it restores them exactly as they were.
+    """
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    organisation = models.ForeignKey(
+        "freedom_ls_organisations.Organisation", on_delete=models.PROTECT
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "user", "organisation"],
+                name="unique_member_per_organisation",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} - {self.organisation}"
+
+
 class CohortMembership(SiteAwareModel, TimestampedModel):
     cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE)
     learner = models.ForeignKey(Learner, on_delete=models.CASCADE)

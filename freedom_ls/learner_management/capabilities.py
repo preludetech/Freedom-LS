@@ -16,7 +16,12 @@ from django.contrib.sites.models import Site
 from django.db.models import CharField, Exists, Model, OuterRef, QuerySet
 from django.db.models.functions import Cast
 
-from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortMembership,
+    Learner,
+    OrganisationMember,
+)
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.models import (
@@ -126,14 +131,35 @@ def _grant_exists(model: type[Model], user: User, roles: frozenset[str]) -> Exis
     )
 
 
+def _member_organisations(user: User) -> QuerySet:
+    """The organisations `user` holds an active OrganisationMember row in.
+
+    The gate every organisation or cohort grant is checked against: a role
+    assignment alone is not enough, because deactivating this row must
+    suspend the grants it covers without touching the assignments
+    themselves. A site-level grant never needs this -- _site_grants stays
+    ungated.
+    """
+    return OrganisationMember.objects.filter(user=user, is_active=True).values(
+        "organisation_id"
+    )
+
+
 def _granted_organisations(user: User, roles: frozenset[str]) -> QuerySet[Organisation]:
-    """Organisations `user` holds an active grant of `roles` on."""
-    return Organisation.objects.filter(_grant_exists(Organisation, user, roles))
+    """Organisations `user` holds an active grant of `roles` on, gated on an
+    active OrganisationMember for each one."""
+    return Organisation.objects.filter(
+        _grant_exists(Organisation, user, roles), pk__in=_member_organisations(user)
+    )
 
 
 def _granted_cohorts(user: User, roles: frozenset[str]) -> QuerySet[Cohort]:
-    """Cohorts `user` holds an active grant of `roles` on."""
-    return Cohort.objects.filter(_grant_exists(Cohort, user, roles))
+    """Cohorts `user` holds an active grant of `roles` on, gated on an active
+    OrganisationMember for the cohort's organisation."""
+    return Cohort.objects.filter(
+        _grant_exists(Cohort, user, roles),
+        organisation_id__in=_member_organisations(user),
+    )
 
 
 def can(user: RequestUser, capability: str, scope: Model) -> bool:

@@ -21,6 +21,7 @@ from freedom_ls.learner_management.models import (
     LearnerCohortDeadlineOverride,
     LearnerCourseRegistration,
     LearnerDeadline,
+    OrganisationMember,
 )
 from freedom_ls.learner_management.utils import ensure_learner
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -58,6 +59,17 @@ class LearnerFactory(SiteAwareFactory):
             learner.is_active = False
             learner.save(update_fields=["is_active"])
         return learner
+
+
+class OrganisationMemberFactory(SiteAwareFactory):
+    """Factory for creating OrganisationMember instances."""
+
+    class Meta:
+        model = OrganisationMember
+
+    user = factory.SubFactory(UserFactory)
+    organisation = factory.SubFactory(OrganisationFactory)
+    is_active = True
 
 
 class CohortFactory(SiteAwareFactory):

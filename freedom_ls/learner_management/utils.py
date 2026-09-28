@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.learner_management.models import Learner
+    from freedom_ls.learner_management.models import Learner, OrganisationMember
     from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
@@ -71,3 +71,33 @@ def ensure_learner(user: User, organisation: Organisation) -> Learner:
         defaults={"is_active": True},
     )
     return learner
+
+
+def ensure_organisation_member(
+    user: User, organisation: Organisation
+) -> OrganisationMember:
+    """Get or create the OrganisationMember recording that a user helps run
+    an organisation's learners.
+
+    Idempotent, but unlike ensure_learner it never reactivates an existing
+    row: a deactivated member must stay deactivated until someone explicitly
+    reactivates them, so a fresh grant on the organisation cannot silently
+    undo that decision.
+
+    _base_manager, not objects: SiteAwareManager.get_queryset() ANDs the
+    ambient thread-local site onto every lookup when a request exists, and
+    the organisation being handled here is not always the Site the current
+    request is for. Using the site-aware manager would make the lookup half
+    of get_or_create miss an existing row under a foreign ambient site,
+    attempting a second INSERT and hitting unique_member_per_organisation
+    instead of finding the row that already exists.
+    """
+    from freedom_ls.learner_management.models import OrganisationMember
+
+    member, _ = OrganisationMember._base_manager.get_or_create(
+        site=organisation.site,
+        user=user,
+        organisation=organisation,
+        defaults={"is_active": True},
+    )
+    return member
