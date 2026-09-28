@@ -1,0 +1,324 @@
+{% comment %}
+Every panel_framework component, in every documented state. Included by both
+`component_reference.html` (the real page, behind staff_member_required) and
+the test-only wrapper, so a test can render this partial on its own with no
+page chrome. Each example is `<div id="<component>-<state>">`, the stable
+anchor spec 12's visual check looks for, preceded by a one-line "Use when"
+note.
+
+`#attention-row-target` and `#attention-row-action` below are real anchors
+for the attention rows' `href`/`action_href` fragments, so a tap has
+somewhere on the page to land.
+{% endcomment %}
+
+<div class="space-y-12">
+
+    <section class="space-y-6">
+        <h2>Page header</h2>
+
+        <div id="page-header-default">
+            <p class="text-sm text-muted">Use when a view needs only its heading.</p>
+            <c-panel-page-header title="Cohort overview" />
+        </div>
+
+        <div id="page-header-with-actions">
+            <p class="text-sm text-muted">Use when the view offers up to three page-level actions.</p>
+            <c-panel-page-header title="Cohort overview">
+                <c-slot name="actions">
+                    <c-button variant="secondary">Export</c-button>
+                    <c-button href="#page-header-with-actions" variant="primary" icon_left="add">Add learner</c-button>
+                </c-slot>
+            </c-panel-page-header>
+        </div>
+
+        <div id="page-header-with-badge-meta-stats">
+            <p class="text-sm text-muted">Use when the heading needs a status, a secondary identifier and a stat row alongside it.</p>
+            <c-panel-page-header title="Foundations 2026">
+                <c-slot name="badge"><c-panel-status-badge tone="success" label="Active" /></c-slot>
+                <c-slot name="meta">cohort-2026-foundations</c-slot>
+                <c-slot name="stats">
+                    <c-panel-stat-row variant="inline">
+                        <c-panel-stat-tile label="Learners" value="42" variant="inline" />
+                        <c-panel-stat-tile label="Average progress" value="68%" variant="inline" />
+                    </c-panel-stat-row>
+                </c-slot>
+            </c-panel-page-header>
+        </div>
+
+        <div id="page-header-level-3">
+            <p class="text-sm text-muted">Use when the header sits inside content that already owns an h1 and h2.</p>
+            <c-panel-page-header title="Section heading" heading_level="3" />
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Stat tile</h2>
+
+        <c-panel-stat-row>
+            <div id="stat-tile-boxed-delta-up">
+                <p class="text-sm text-muted">Use when a boxed figure improved since the last period.</p>
+                <c-panel-stat-tile label="Active learners" value="128" delta="Up 4 this week" direction="up" tone="success" />
+            </div>
+            <div id="stat-tile-boxed-delta-down">
+                <p class="text-sm text-muted">Use when a boxed figure worsened since the last period.</p>
+                <c-panel-stat-tile label="At risk" value="9" delta="Down 2 this week" direction="down" tone="error" />
+            </div>
+        </c-panel-stat-row>
+
+        <div id="stat-tile-inline">
+            <p class="text-sm text-muted">Use when the tiles sit inside a container that already has a border, e.g. a page header's stats slot.</p>
+            <c-panel-stat-row variant="inline">
+                <c-panel-stat-tile label="Learners" value="42" variant="inline" />
+                <c-panel-stat-tile label="Cohorts" value="3" variant="inline" />
+            </c-panel-stat-row>
+        </div>
+
+        <div id="stat-tile-with-progress">
+            <p class="text-sm text-muted">Use when the counted figure is itself a percentage, e.g. an "Average progress" tile.</p>
+            <c-panel-stat-tile label="Average progress" value="68%">
+                <c-panel-progress-bar percentage="68" label="Average progress" />
+            </c-panel-stat-tile>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Status badge</h2>
+
+        <div class="flex flex-wrap gap-3">
+            <div id="status-badge-success">
+                <p class="text-sm text-muted">Use for a state in good standing.</p>
+                <c-panel-status-badge tone="success" label="Active" />
+            </div>
+            <div id="status-badge-warning">
+                <p class="text-sm text-muted">Use for a state that needs a look.</p>
+                <c-panel-status-badge tone="warning" label="Needs attention" />
+            </div>
+            <div id="status-badge-error">
+                <p class="text-sm text-muted">Use for a state that has failed or been blocked.</p>
+                <c-panel-status-badge tone="error" label="Blocked" />
+            </div>
+            <div id="status-badge-info">
+                <p class="text-sm text-muted">Use for a neutral, informational state.</p>
+                <c-panel-status-badge tone="info" label="Draft" />
+            </div>
+            <div id="status-badge-muted">
+                <p class="text-sm text-muted">Use for the default, when no tone is given, or for an unrecognised tone.</p>
+                <c-panel-status-badge tone="muted" label="Archived" />
+            </div>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Avatar chip</h2>
+
+        <div class="flex flex-wrap gap-6">
+            <div id="avatar-chip-md">
+                <p class="text-sm text-muted">Use in a list row.</p>
+                <c-panel-avatar-chip name="Thandi Mokoena" user_id="42" secondary="Learner" />
+            </div>
+            <div id="avatar-chip-lg">
+                <p class="text-sm text-muted">Use in a profile header.</p>
+                <c-panel-avatar-chip name="Thandi Mokoena" user_id="42" size="lg" secondary="thandi@example.com" />
+            </div>
+            <div id="avatar-chip-one-word">
+                <p class="text-sm text-muted">Use when the name has only one word: initials fall back to its first letter.</p>
+                <c-panel-avatar-chip name="Cher" user_id="99" />
+            </div>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Attention list</h2>
+
+        <div id="attention-list-default">
+            <p class="text-sm text-muted">Use for a list of learners who each need a nudge.</p>
+            <c-panel-attention-list>
+                {% for row in attention_rows %}
+                    <c-panel-attention-row
+                        subject="{{ row.subject }}"
+                        href="{{ row.href }}"
+                        reason="{{ row.reason }}"
+                        user_id="{{ row.user_id }}"
+                        badge_label="{{ row.badge_label }}"
+                        badge_tone="{{ row.badge_tone }}"
+                        action_label="{{ row.action_label }}"
+                        action_href="{{ row.action_href }}"
+                    />
+                {% endfor %}
+            </c-panel-attention-list>
+        </div>
+
+        <div id="attention-row-icon">
+            <p class="text-sm text-muted">Use when the row is about a cohort-level issue rather than a person, so a severity icon leads instead of an avatar.</p>
+            <c-panel-attention-list>
+                <c-panel-attention-row
+                    subject="Foundations cohort"
+                    href="#attention-row-target"
+                    reason="Completion rate dropped 12% this week"
+                    icon="warning"
+                    icon_tone="warning"
+                />
+            </c-panel-attention-list>
+        </div>
+
+        <span id="attention-row-target" class="sr-only">Attention row target</span>
+        <span id="attention-row-action" class="sr-only">Attention row action</span>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Progress bar</h2>
+
+        <div id="progress-bar-default">
+            <p class="text-sm text-muted">Use when the percentage next to the bar is enough on its own.</p>
+            <c-panel-progress-bar percentage="42" />
+        </div>
+
+        <div id="progress-bar-with-label">
+            <p class="text-sm text-muted">Use when the bar needs a visible caption, not just an accessible name.</p>
+            <c-panel-progress-bar percentage="68" label="Course progress" show_label="true" />
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Card</h2>
+
+        <div id="card-default">
+            <p class="text-sm text-muted">Use for a plain panel body.</p>
+            <c-panel-card title="Recent activity" description="Last 7 days">
+                <p>No activity yet.</p>
+            </c-panel-card>
+        </div>
+
+        <div id="card-landmark">
+            <p class="text-sm text-muted">Use when a card sits directly on the page (not inside a panel's own section), so assistive tech can jump to it.</p>
+            <c-panel-card title="Cohort summary" landmark="true">
+                <p>42 learners, 3 cohorts.</p>
+            </c-panel-card>
+        </div>
+
+        <div id="card-with-header-action">
+            <p class="text-sm text-muted">Use when the card links to a fuller view of the same data.</p>
+            <c-panel-card title="Learners">
+                <c-slot name="header_action"><a href="#card-with-header-action">View all</a></c-slot>
+                <p>9 learners shown.</p>
+            </c-panel-card>
+        </div>
+
+        <div id="card-with-actions">
+            <p class="text-sm text-muted">Use when the card body needs a confirming action.</p>
+            <c-panel-card title="Confirm removal">
+                <p>Remove Thandi Mokoena from this cohort?</p>
+                <c-slot name="actions">
+                    <c-button variant="secondary">Cancel</c-button>
+                    <c-button variant="error">Remove</c-button>
+                </c-slot>
+            </c-panel-card>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Definition list</h2>
+
+        <div id="definition-list-2">
+            <p class="text-sm text-muted">Use for a short set of fields, two to a row from md.</p>
+            <c-panel-definition-list columns="2">
+                <c-panel-definition-row label="Name">Thandi Mokoena</c-panel-definition-row>
+                <c-panel-definition-row label="Email">thandi@example.com</c-panel-definition-row>
+            </c-panel-definition-list>
+        </div>
+
+        <div id="definition-list-3">
+            <p class="text-sm text-muted">Use for the default instance-details layout, three to a row from md.</p>
+            <c-panel-definition-list columns="3">
+                <c-panel-definition-row label="Name">Thandi Mokoena</c-panel-definition-row>
+                <c-panel-definition-row label="Email">thandi@example.com</c-panel-definition-row>
+                <c-panel-definition-row label="Cohort">Foundations 2026</c-panel-definition-row>
+            </c-panel-definition-list>
+        </div>
+
+        <div id="definition-list-4">
+            <p class="text-sm text-muted">Use for a wide set of short fields, four to a row from md.</p>
+            <c-panel-definition-list columns="4">
+                <c-panel-definition-row label="Name">Thandi Mokoena</c-panel-definition-row>
+                <c-panel-definition-row label="Email">thandi@example.com</c-panel-definition-row>
+                <c-panel-definition-row label="Cohort">Foundations 2026</c-panel-definition-row>
+                <c-panel-definition-row label="Status">Active</c-panel-definition-row>
+            </c-panel-definition-list>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Toolbar</h2>
+
+        <div id="toolbar-default">
+            <p class="text-sm text-muted">Use above a list or table with no filter applied yet.</p>
+            <c-panel-toolbar>
+                <c-slot name="search"><c-panel-search-field name="q" label="Search learners" placeholder="Search by name" /></c-slot>
+                <c-slot name="filters"><c-panel-filter-toggle label="Inactive" /></c-slot>
+                <c-slot name="actions"><c-button variant="secondary">Export</c-button></c-slot>
+            </c-panel-toolbar>
+        </div>
+
+        <div id="toolbar-applied">
+            <p class="text-sm text-muted">Use once a filter is applied, so "Clear all" and the applied chip appear.</p>
+            <c-panel-toolbar clear_all_href="#toolbar-applied">
+                <c-slot name="search"><c-panel-search-field name="q" label="Search learners" label_hidden="true" placeholder="Search by name" /></c-slot>
+                <c-slot name="filters"><c-panel-filter-toggle label="Inactive" pressed="true" /></c-slot>
+                <c-slot name="applied"><c-panel-applied-filter label="Status: Inactive" /></c-slot>
+            </c-panel-toolbar>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+            <div id="filter-toggle-pressed">
+                <p class="text-sm text-muted">Use when the facet is currently applied.</p>
+                <c-panel-filter-toggle label="Inactive" pressed="true" />
+            </div>
+            <div id="filter-toggle-unpressed">
+                <p class="text-sm text-muted">Use when the facet is available but not applied.</p>
+                <c-panel-filter-toggle label="Inactive" />
+            </div>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Empty state</h2>
+
+        <div id="empty-state-default">
+            <p class="text-sm text-muted">Use when a panel has nothing to show yet.</p>
+            <c-panel-empty-state icon="add" message="No learners yet.">
+                <c-button variant="primary">Add learner</c-button>
+            </c-panel-empty-state>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Skeleton</h2>
+
+        <div class="flex flex-wrap gap-6">
+            <div id="skeleton-text">
+                <p class="text-sm text-muted">Use while a text-shaped region, e.g. a definition list, is loading.</p>
+                <c-panel-skeleton shape="text" lines="3" />
+            </div>
+            <div id="skeleton-tile">
+                <p class="text-sm text-muted">Use while a stat tile is loading.</p>
+                <c-panel-skeleton shape="tile" />
+            </div>
+            <div id="skeleton-row">
+                <p class="text-sm text-muted">Use while an attention row is loading.</p>
+                <c-panel-skeleton shape="row" />
+            </div>
+        </div>
+    </section>
+
+    <section class="space-y-6">
+        <h2>Callout</h2>
+
+        <div id="callout-info">
+            <p class="text-sm text-muted">Use for a page-level note. This is `c-callout`; the kit builds nothing new here.</p>
+            <c-callout level="info" title="Heads up">
+                <p>Callouts are an existing base component, listed here for completeness.</p>
+            </c-callout>
+        </div>
+    </section>
+
+</div>

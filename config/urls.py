@@ -78,6 +78,7 @@ if settings.DEBUG:
         path("__reload__/", include("django_browser_reload.urls")),
         # QA-TEMP: toast playground (removed once toast spec QA is complete)
         path("qa/", include("freedom_ls.qa_helpers.urls")),
+        path("panel-framework/", include("freedom_ls.panel_framework.urls")),
     ]
 
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
