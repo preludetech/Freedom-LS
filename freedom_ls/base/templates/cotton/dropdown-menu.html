@@ -36,7 +36,7 @@
          x-cloak
          x-on:click.away="close"
          x-on:scroll.window="close"
-         x-on:keydown.escape.window="onEscape"
+         x-on:keydown.escape.window.capture="onEscape"
          x-on:keydown.arrow-down.prevent="focusNextItem"
          x-on:keydown.arrow-up.prevent="focusPreviousItem"
          x-on:keydown.home.prevent="focusFirstItem"

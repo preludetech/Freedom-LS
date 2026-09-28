@@ -329,11 +329,19 @@ document.addEventListener("alpine:init", () => {
             // showModal() gives the mobile sheet native Esc-to-close; show()
             // gives the desktop drawer none, so this covers that case only,
             // and steps aside when some other dialog (e.g. #app-modal) is
-            // the one currently in the top layer.
+            // the one currently in the top layer, or when some other layer
+            // above the drawer (e.g. an open dropdown menu) already
+            // consumed this Escape via preventDefault(). That layer's own
+            // handler has to run first for this check to see it: this
+            // listener stays on the bubble phase, and a capture-phase
+            // Escape handler (dropdown-menu.html's onEscape) always
+            // finishes before any bubble-phase listener runs, whatever
+            // order the two components happened to initialise in.
             trackListener(this._qvHandlers, document, "keydown", (event) => {
                 if (event.key !== "Escape") return;
                 if (!this._qvDialog.open || this._isMobile) return;
                 if (document.querySelector("dialog[open]:modal")) return;
+                if (event.defaultPrevented) return;
                 this._close();
             });
 
