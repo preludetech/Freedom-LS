@@ -272,7 +272,7 @@ somewhere on the page to land.
         <div id="toolbar-applied">
             <p class="text-sm text-muted">Use once a filter is applied, so "Clear all" and the applied chip appear.</p>
             <c-panel-toolbar clear_all_href="#toolbar-applied">
-                <c-slot name="search"><c-panel-search-field name="q" label="Search learners" label_hidden="true" placeholder="Search by name" /></c-slot>
+                <c-slot name="search"><c-panel-search-field name="q-applied" label="Search learners" label_hidden="true" placeholder="Search by name" /></c-slot>
                 <c-slot name="filters"><c-panel-filter-toggle label="Inactive" pressed="true" /></c-slot>
                 <c-slot name="applied"><c-panel-applied-filter label="Status: Inactive" /></c-slot>
             </c-panel-toolbar>

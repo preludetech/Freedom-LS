@@ -10,7 +10,9 @@ developer actually uses.
 from __future__ import annotations
 
 import importlib
+import re
 import sys
+from collections import Counter
 from collections.abc import Iterator
 
 import pytest
@@ -64,6 +66,13 @@ class _FakeDebugToolbarModule:
 def test_examples_partial_renders_with_no_queries(django_assert_num_queries) -> None:
     with django_assert_num_queries(0):
         render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+
+
+def test_examples_partial_has_no_duplicate_ids() -> None:
+    html = render_to_string("panel_framework/reference/_examples.html", EXAMPLE_CONTEXT)
+    ids = Counter(re.findall(r'\bid="([^"]+)"', html))
+    duplicates = {element_id: count for element_id, count in ids.items() if count > 1}
+    assert duplicates == {}
 
 
 def test_anonymous_user_is_redirected_to_admin_login(client: Client) -> None:
