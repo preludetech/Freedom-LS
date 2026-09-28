@@ -79,3 +79,27 @@ def test_back_after_navigating_away_with_the_quick_view_open_restores_no_dialog(
     page.go_back()
     expect(page).to_have_url(detail_url)
     expect(page.locator("#quick-view")).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_a_history_restore_swap_raises_no_page_error(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """With historyCacheSize 0 every Back is a server-side restore, whose
+    htmx:afterSwap carries no detail.target. Whether a still-live listener
+    sees it depends on when Alpine tears the old page down, so the event is
+    dispatched directly rather than raced through a real Back."""
+    page_errors: list[str] = []
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    expect(page.locator("#app-modal")).to_be_attached()
+
+    page.evaluate(
+        "document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', "
+        "{bubbles: true, detail: {elt: document.body}}))"
+    )
+
+    assert page_errors == []
