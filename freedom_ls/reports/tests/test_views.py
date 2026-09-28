@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import urllib.parse
-from collections.abc import Callable
-from contextlib import AbstractContextManager
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager
+from types import ModuleType
+from unittest.mock import patch
 
 import pytest
 
 from django.core.files.base import ContentFile
+from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -16,6 +19,8 @@ from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.reports.factories import GeneratedReportFactory
 from freedom_ls.reports.models import GeneratedReport
+from freedom_ls.role_based_permissions.loader import clear_caches
+from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 pytestmark = pytest.mark.django_db
@@ -37,6 +42,40 @@ def _staff_user_with_cohort_view_permission(cohort: object) -> object:
     user = UserFactory(is_staff=True)
     assign_object_role(user, cohort, "cohort_viewer")
     return user
+
+
+@contextmanager
+def _role_config_granting_view_cohort_only(site_name: str) -> Iterator[None]:
+    """A role config whose cohort_viewer can see a cohort but not report on it.
+
+    Every built-in role that can see a cohort also holds
+    download_cohort_report, so proving the report check is enforced needs a
+    role config that deliberately withholds it. Built the way
+    role_based_permissions/tests/test_loader.py builds a fake config module.
+    """
+    module_path = "fake_permissions_module_for_test_download_cohort_report"
+    fake_module = ModuleType(module_path)
+    fake_module.ROLES = SiteRolesConfig(
+        {
+            "cohort_viewer": Role(
+                display_name="Cohort viewer",
+                permissions=frozenset({"freedom_ls_learner_management.view_cohort"}),
+                assignment_scope=SCOPE_OBJECT,
+            ),
+        }
+    )
+    with (
+        override_settings(FREEDOMLS_PERMISSIONS_MODULES={site_name: module_path}),
+        patch(
+            "freedom_ls.role_based_permissions.loader.import_module",
+            return_value=fake_module,
+        ),
+    ):
+        clear_caches()
+        try:
+            yield
+        finally:
+            clear_caches()
 
 
 def _save_ready_file(report: GeneratedReport) -> None:
@@ -149,6 +188,20 @@ class TestGenerateReportViewPost:
         client.post(_generate_url(), data={"cohort": str(cohort.pk)})
 
         assert GeneratedReport.objects.filter(cohort=cohort).count() == 1
+
+    def test_user_whose_role_lacks_download_cohort_report_is_refused(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        user = UserFactory(is_staff=True)
+        with _role_config_granting_view_cohort_only(mock_site_context.name):
+            assign_object_role(user, cohort, "cohort_viewer")
+            client.force_login(user)
+
+            response = client.post(_generate_url(), data={"cohort": str(cohort.pk)})
+
+        assert response.status_code == 403
+        assert GeneratedReport.objects.filter(cohort=cohort).count() == 0
 
 
 class TestDownloadReportView:
@@ -278,15 +331,16 @@ class TestDownloadReportView:
         _save_ready_file(report)
         user = _staff_user_with_cohort_view_permission(cohort)
         client.force_login(user)
-        # can_view_cohort's role-assignment check warms process-level
-        # ContentType/role-config caches the first time it runs, independent of
-        # this change -- one throwaway request settles those caches so the
-        # counted request's total reflects only this view's own queries.
+        # can()'s role-assignment check warms process-level ContentType/role-
+        # config caches the first time it runs, independent of this change --
+        # one throwaway request settles those caches so the counted request's
+        # total reflects only this view's own queries.
         client.get(_download_url(report.pk))
 
-        # One fewer than under guardian's has_perm/get_objects_for_user: role
-        # assignments resolve the same two-branch check in a single query.
-        with django_assert_num_queries(6):
+        # can() fetches the cohort's site directly (one query) and checks the
+        # organisation- and cohort-level grants as two separate queries,
+        # unlike all_cohorts_visible_to's single combined queryset.
+        with django_assert_num_queries(8):
             client.get(_download_url(report.pk))
 
     def test_ready_report_response_carries_no_store_cache_header(
@@ -322,6 +376,23 @@ class TestDownloadReportView:
         response = client.get(_download_url(report.pk))
 
         assert response.status_code == 404
+
+    def test_user_whose_role_lacks_download_cohort_report_is_refused(
+        self, mock_site_context: object, client: object
+    ) -> None:
+        cohort = CohortFactory()
+        report = GeneratedReportFactory(
+            cohort=cohort, status=GeneratedReport.STATUS_READY
+        )
+        _save_ready_file(report)
+        user = UserFactory(is_staff=True)
+        with _role_config_granting_view_cohort_only(mock_site_context.name):
+            assign_object_role(user, cohort, "cohort_viewer")
+            client.force_login(user)
+
+            response = client.get(_download_url(report.pk))
+
+        assert response.status_code == 403
 
 
 def _organisation_admin_user(organisation: object) -> object:

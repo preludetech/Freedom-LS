@@ -18,11 +18,9 @@ from django.tasks import default_task_backend
 from django.urls import reverse
 from django.utils.text import slugify
 
+from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import Cohort
-from freedom_ls.learner_management.queries import (
-    all_cohorts_visible_to,
-    can_view_cohort,
-)
+from freedom_ls.learner_management.queries import all_cohorts_visible_to
 from freedom_ls.reports.forms import GenerateReportForm
 from freedom_ls.reports.models import GeneratedReport
 from freedom_ls.reports.tasks import _generate_cohort_report_task
@@ -71,7 +69,9 @@ def generate_report_view(
         # lookup used to raise.
         raise Http404
     cohort = form.cleaned_data["cohort"]
-    if not can_view_cohort(request.user, cohort):
+    if not can(
+        request.user, "freedom_ls_learner_management.download_cohort_report", cohort
+    ):
         raise PermissionDenied
 
     changelist_url = reverse("admin:freedom_ls_reports_generatedreport_changelist")
@@ -111,7 +111,11 @@ def download_report_view(request: HttpRequest, object_id: str) -> FileResponse:
     report = get_object_or_404(
         GeneratedReport.objects.select_related("cohort__organisation"), pk=object_id
     )
-    if not can_view_cohort(request.user, report.cohort):
+    if not can(
+        request.user,
+        "freedom_ls_learner_management.download_cohort_report",
+        report.cohort,
+    ):
         raise PermissionDenied
     if report.status != GeneratedReport.STATUS_READY or not report.file:
         raise Http404
