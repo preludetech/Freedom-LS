@@ -8,6 +8,7 @@ buttons being disabled together to prevent a double submit.
 
 from __future__ import annotations
 
+import re
 import threading
 
 import pytest
@@ -17,6 +18,17 @@ from playwright.sync_api import Page, Route, expect
 from django.contrib.sites.models import Site
 
 from ..conftest import StubModel, _make_stub
+
+
+def _open_create_modal_and_wait_for_settle(page: Page) -> None:
+    """htmx focuses the fragment's [autofocus] field again when the swap
+    settles, 20ms after it lands. Typing and pressing Esc inside that window
+    would lose focus from the discard prompt to that late refocus."""
+    page.get_by_role("button", name="Create Item").click()
+    expect(page.get_by_label("Name")).to_be_visible()
+    expect(page.locator("#app-modal-body")).not_to_have_class(
+        re.compile(r"htmx-settling")
+    )
 
 
 @pytest.mark.playwright
@@ -135,7 +147,7 @@ def test_esc_on_a_dirty_form_shows_the_discard_prompt_with_the_form_intact(
 ) -> None:
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("button", name="Create Item").click()
+    _open_create_modal_and_wait_for_settle(page)
     page.get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
 
@@ -153,7 +165,7 @@ def test_keep_editing_hides_the_prompt_and_returns_focus_to_the_form(
 ) -> None:
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("button", name="Create Item").click()
+    _open_create_modal_and_wait_for_settle(page)
     page.get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
     page.get_by_role("button", name="Keep editing").click()
@@ -172,7 +184,7 @@ def test_discard_closes_the_dialog_and_loses_the_input(
 ) -> None:
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("button", name="Create Item").click()
+    _open_create_modal_and_wait_for_settle(page)
     page.get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
     page.get_by_role("button", name="Discard").click()

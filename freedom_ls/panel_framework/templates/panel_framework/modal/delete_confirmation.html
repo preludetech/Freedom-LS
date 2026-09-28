@@ -19,7 +19,7 @@ cascade_summary, blocked_reason, delete_url.
     </div>
 {% endif %}
 
-<c-button-group variant="right" class="mt-4">
+<c-button-group variant="right" class="mt-4 flex-wrap">
     <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
     {% if not blocked_reason %}
         <form hx-delete="{{ delete_url }}"
