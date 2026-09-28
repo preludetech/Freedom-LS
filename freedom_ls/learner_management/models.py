@@ -43,6 +43,7 @@ class Cohort(SiteAwareModel, TimestampedModel):
                 name="unique_cohort_name_per_organisation",
             )
         ]
+        permissions = [("download_cohort_report", "Can download cohort report")]
 
     def __str__(self):
         return self.name
@@ -76,6 +77,7 @@ class Learner(SiteAwareModel):
                 name="unique_learner_per_organisation",
             )
         ]
+        permissions = [("bulk_manage_learners", "Can bulk manage learners")]
 
     def __str__(self) -> str:
         return f"{self.user} - {self.organisation}"

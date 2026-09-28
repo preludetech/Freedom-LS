@@ -74,6 +74,7 @@ class SiteRoleAssignment(SiteAwareModel):
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["site", "role"]),
         ]
+        permissions = [("assign_site_admin", "Can grant or remove the site_admin role")]
 
     def __str__(self) -> str:
         return f"{self.user} - {self.role}"
@@ -115,6 +116,14 @@ class ObjectRoleAssignment(SiteAwareModel):
         indexes = [
             models.Index(fields=["user", "is_active"]),
             models.Index(fields=["content_type", "object_id", "role", "is_active"]),
+        ]
+        permissions = [
+            (
+                "assign_organisation_admin",
+                "Can grant or remove the organisation_admin role",
+            ),
+            ("assign_cohort_admin", "Can grant or remove the cohort_admin role"),
+            ("assign_cohort_viewer", "Can grant or remove the cohort_viewer role"),
         ]
 
     def __str__(self) -> str:

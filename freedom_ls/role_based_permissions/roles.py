@@ -27,7 +27,24 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_learner_management.add_cohort",
                     "freedom_ls_learner_management.change_cohort",
                     "freedom_ls_learner_management.delete_cohort",
-                    # FUTURE: add freedom_ls_role_based_permissions.* custom permissions as site admin features are built
+                    "freedom_ls_learner_management.add_learner",
+                    "freedom_ls_learner_management.change_learner",
+                    "freedom_ls_learner_management.add_cohortmembership",
+                    "freedom_ls_learner_management.delete_cohortmembership",
+                    "freedom_ls_learner_management.add_cohortcourseregistration",
+                    "freedom_ls_learner_management.change_cohortcourseregistration",
+                    "freedom_ls_learner_management.add_learnercourseregistration",
+                    "freedom_ls_learner_management.change_learnercourseregistration",
+                    "freedom_ls_learner_management.bulk_manage_learners",
+                    "freedom_ls_learner_management.view_organisationmember",
+                    "freedom_ls_learner_management.add_organisationmember",
+                    "freedom_ls_learner_management.change_organisationmember",
+                    "freedom_ls_learner_management.download_cohort_report",
+                    # Custom permissions
+                    "freedom_ls_role_based_permissions.assign_site_admin",
+                    "freedom_ls_role_based_permissions.assign_organisation_admin",
+                    "freedom_ls_role_based_permissions.assign_cohort_admin",
+                    "freedom_ls_role_based_permissions.assign_cohort_viewer",
                 }
             ),
         ),
@@ -41,6 +58,14 @@ BASE_ROLES = SiteRolesConfig(
                     # Django built-in permissions
                     "freedom_ls_learner_management.view_cohort",
                     "freedom_ls_learner_management.view_learner",
+                    "freedom_ls_learner_management.add_cohortmembership",
+                    "freedom_ls_learner_management.delete_cohortmembership",
+                    "freedom_ls_learner_management.add_cohortcourseregistration",
+                    "freedom_ls_learner_management.change_cohortcourseregistration",
+                    "freedom_ls_learner_management.add_learnercourseregistration",
+                    "freedom_ls_learner_management.change_learnercourseregistration",
+                    # Custom permissions
+                    "freedom_ls_learner_management.download_cohort_report",
                     # FUTURE: add course-level permissions as features are built
                 }
             ),
@@ -55,6 +80,8 @@ BASE_ROLES = SiteRolesConfig(
                     # Django built-in permissions
                     "freedom_ls_learner_management.view_cohort",
                     "freedom_ls_learner_management.view_learner",
+                    # Custom permissions
+                    "freedom_ls_learner_management.download_cohort_report",
                     # FUTURE: add grading/analytics permissions as features are built
                 }
             ),
@@ -72,6 +99,23 @@ BASE_ROLES = SiteRolesConfig(
                     "freedom_ls_learner_management.add_cohort",
                     "freedom_ls_learner_management.change_cohort",
                     "freedom_ls_learner_management.delete_cohort",
+                    "freedom_ls_learner_management.add_learner",
+                    "freedom_ls_learner_management.change_learner",
+                    "freedom_ls_learner_management.add_cohortmembership",
+                    "freedom_ls_learner_management.delete_cohortmembership",
+                    "freedom_ls_learner_management.add_cohortcourseregistration",
+                    "freedom_ls_learner_management.change_cohortcourseregistration",
+                    "freedom_ls_learner_management.add_learnercourseregistration",
+                    "freedom_ls_learner_management.change_learnercourseregistration",
+                    "freedom_ls_learner_management.bulk_manage_learners",
+                    "freedom_ls_learner_management.view_organisationmember",
+                    "freedom_ls_learner_management.add_organisationmember",
+                    "freedom_ls_learner_management.change_organisationmember",
+                    "freedom_ls_learner_management.download_cohort_report",
+                    # Custom permissions
+                    "freedom_ls_role_based_permissions.assign_organisation_admin",
+                    "freedom_ls_role_based_permissions.assign_cohort_admin",
+                    "freedom_ls_role_based_permissions.assign_cohort_viewer",
                 }
             ),
         ),

@@ -1,10 +1,9 @@
 """The permission matrix: can() answers exactly what the spec's table allows.
 
 MATRIX is a hand-written transcription of the spec's table, reviewed against
-it and never parsed from it. This slice wires only the rows it touches --
-the organisation dashboard's view row, and cohort create/edit/delete.
-Slices 6 and 7 widen MATRIX and CAPABILITY_SCOPE_KINDS to the rest of the
-table.
+it and never parsed from it. Slice 7 still has to add the reports capability
+check itself; this slice only widens MATRIX and CAPABILITY_SCOPE_KINDS to
+every row.
 
 The world: site A has organisation O1 (cohorts C1 granted and C2, learners L1
 in C1 and L2 in C2) and O2 (C3, L3). Site B has O3 (C4, L4). Grants:
@@ -56,8 +55,10 @@ OTHER_ORGANISATION = "other_organisation"
 OTHER_SITE = "other_site"
 
 #: Which relations make sense for a scope object of this kind -- an
-#: organisation has no "other cohort" position to test.
+#: organisation has no "other cohort" position to test, and a site has
+#: neither an "other cohort" nor an "other organisation" position.
 RELATIONS_FOR_KIND: dict[str, tuple[str, ...]] = {
+    "site": (OWN, OTHER_SITE),
     "organisation": (OWN, OTHER_ORGANISATION, OTHER_SITE),
     "cohort": (OWN, OTHER_COHORT, OTHER_ORGANISATION, OTHER_SITE),
     "learner": (OWN, OTHER_COHORT, OTHER_ORGANISATION, OTHER_SITE),
@@ -69,6 +70,33 @@ VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
 ADD_COHORT = "freedom_ls_learner_management.add_cohort"
 CHANGE_COHORT = "freedom_ls_learner_management.change_cohort"
 DELETE_COHORT = "freedom_ls_learner_management.delete_cohort"
+ADD_LEARNER = "freedom_ls_learner_management.add_learner"
+CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
+ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
+DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
+ADD_COHORTCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.add_cohortcourseregistration"
+)
+CHANGE_COHORTCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.change_cohortcourseregistration"
+)
+ADD_LEARNERCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.add_learnercourseregistration"
+)
+CHANGE_LEARNERCOURSEREGISTRATION = (
+    "freedom_ls_learner_management.change_learnercourseregistration"
+)
+BULK_MANAGE_LEARNERS = "freedom_ls_learner_management.bulk_manage_learners"
+ASSIGN_COHORT_ADMIN = "freedom_ls_role_based_permissions.assign_cohort_admin"
+ASSIGN_COHORT_VIEWER = "freedom_ls_role_based_permissions.assign_cohort_viewer"
+VIEW_ORGANISATIONMEMBER = "freedom_ls_learner_management.view_organisationmember"
+ADD_ORGANISATIONMEMBER = "freedom_ls_learner_management.add_organisationmember"
+CHANGE_ORGANISATIONMEMBER = "freedom_ls_learner_management.change_organisationmember"
+ASSIGN_ORGANISATION_ADMIN = (
+    "freedom_ls_role_based_permissions.assign_organisation_admin"
+)
+ASSIGN_SITE_ADMIN = "freedom_ls_role_based_permissions.assign_site_admin"
+DOWNLOAD_COHORT_REPORT = "freedom_ls_learner_management.download_cohort_report"
 
 # capability -> role -> the (scope kind, relation) pairs where can() is True.
 MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
@@ -124,6 +152,154 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
+    ADD_LEARNER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    CHANGE_LEARNER: {
+        "site_admin": {
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+            ("learner", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ADD_COHORTMEMBERSHIP: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "cohort_admin": {("cohort", OWN)},
+        "cohort_viewer": set(),
+    },
+    DELETE_COHORTMEMBERSHIP: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "cohort_admin": {("cohort", OWN)},
+        "cohort_viewer": set(),
+    },
+    ADD_COHORTCOURSEREGISTRATION: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "cohort_admin": {("cohort", OWN)},
+        "cohort_viewer": set(),
+    },
+    CHANGE_COHORTCOURSEREGISTRATION: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "cohort_admin": {("cohort", OWN)},
+        "cohort_viewer": set(),
+    },
+    ADD_LEARNERCOURSEREGISTRATION: {
+        "site_admin": {
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+            ("learner", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "cohort_admin": {("learner", OWN)},
+        "cohort_viewer": set(),
+    },
+    CHANGE_LEARNERCOURSEREGISTRATION: {
+        "site_admin": {
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+            ("learner", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "cohort_admin": {("learner", OWN)},
+        "cohort_viewer": set(),
+    },
+    BULK_MANAGE_LEARNERS: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_COHORT_ADMIN: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_COHORT_VIEWER: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {("cohort", OWN), ("cohort", OTHER_COHORT)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    VIEW_ORGANISATIONMEMBER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ADD_ORGANISATIONMEMBER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    CHANGE_ORGANISATIONMEMBER: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_ORGANISATION_ADMIN: {
+        "site_admin": {("organisation", OWN), ("organisation", OTHER_ORGANISATION)},
+        "organisation_admin": {("organisation", OWN)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    ASSIGN_SITE_ADMIN: {
+        "site_admin": {("site", OWN)},
+        "organisation_admin": set(),
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    DOWNLOAD_COHORT_REPORT: {
+        "site_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("cohort", OTHER_ORGANISATION),
+            ("organisation", OWN),
+            ("organisation", OTHER_ORGANISATION),
+        },
+        "organisation_admin": {
+            ("cohort", OWN),
+            ("cohort", OTHER_COHORT),
+            ("organisation", OWN),
+        },
+        "cohort_admin": {("cohort", OWN)},
+        "cohort_viewer": {("cohort", OWN)},
+    },
 }
 
 #: Which scope kinds each capability is asked of.
@@ -134,6 +310,23 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     ADD_COHORT: ("organisation",),
     CHANGE_COHORT: ("cohort",),
     DELETE_COHORT: ("cohort",),
+    ADD_LEARNER: ("organisation",),
+    CHANGE_LEARNER: ("learner",),
+    ADD_COHORTMEMBERSHIP: ("cohort",),
+    DELETE_COHORTMEMBERSHIP: ("cohort",),
+    ADD_COHORTCOURSEREGISTRATION: ("cohort",),
+    CHANGE_COHORTCOURSEREGISTRATION: ("cohort",),
+    ADD_LEARNERCOURSEREGISTRATION: ("learner",),
+    CHANGE_LEARNERCOURSEREGISTRATION: ("learner",),
+    BULK_MANAGE_LEARNERS: ("organisation",),
+    ASSIGN_COHORT_ADMIN: ("cohort",),
+    ASSIGN_COHORT_VIEWER: ("cohort",),
+    VIEW_ORGANISATIONMEMBER: ("organisation",),
+    ADD_ORGANISATIONMEMBER: ("organisation",),
+    CHANGE_ORGANISATIONMEMBER: ("organisation",),
+    ASSIGN_ORGANISATION_ADMIN: ("organisation",),
+    ASSIGN_SITE_ADMIN: ("site",),
+    DOWNLOAD_COHORT_REPORT: ("cohort", "organisation"),
 }
 
 
@@ -190,6 +383,8 @@ def _build_world(site_a: Site) -> World:
             "cohort_viewer": cast(User, cohort_viewer_user),
         },
         scopes={
+            ("site", OWN): cast(Model, site_a),
+            ("site", OTHER_SITE): cast(Model, site_b),
             ("organisation", OWN): cast(Model, o1),
             ("organisation", OTHER_ORGANISATION): cast(Model, o2),
             ("organisation", OTHER_SITE): cast(Model, o3),
@@ -368,3 +563,33 @@ def test_every_capability_reachable_from_the_interface_is_in_matrix(
     capabilities.discard(None)
 
     assert capabilities <= set(MATRIX)
+
+
+@pytest.mark.django_db
+def test_cohort_admin_holds_delete_cohortmembership_on_its_own_cohort(
+    mock_site_context: Site,
+) -> None:
+    world = _build_world(mock_site_context)
+    user = world.users["cohort_admin"]
+    own_cohort = world.scopes[("cohort", OWN)]
+
+    assert can(user, DELETE_COHORTMEMBERSHIP, own_cohort) is True
+
+
+@pytest.mark.django_db
+def test_cohort_admin_holds_add_cohortmembership_on_another_cohort_only_with_a_grant_there(
+    mock_site_context: Site,
+) -> None:
+    """A membership move needs delete_ on the source cohort and add_ on the
+    destination. cohort_admin already holds both on its own cohort; on a
+    cohort it holds no grant on, add_cohortmembership counts only once it is
+    granted there too -- can() never reads one cohort's grant for another."""
+    world = _build_world(mock_site_context)
+    user = world.users["cohort_admin"]
+    other_cohort = cast(Cohort, world.scopes[("cohort", OTHER_COHORT)])
+
+    assert can(user, ADD_COHORTMEMBERSHIP, other_cohort) is False
+
+    assign_object_role(user, other_cohort, "cohort_admin")
+
+    assert can(user, ADD_COHORTMEMBERSHIP, other_cohort) is True
