@@ -410,6 +410,18 @@ document.addEventListener("alpine:init", () => {
     Alpine.data("sidePanel", () => ({
         open: false,
         isMobile: false,
+        // Declared here (not just assigned in init()) so each instance owns
+        // its own property from the start. Alpine's merge-proxy `set` trap
+        // for a nested x-data scope falls back to the nearest ANCESTOR scope
+        // that already owns a same-named property when the instance's own
+        // scope does not yet have one. A page with a nested sidePanel (e.g.
+        // the sidebar wrapping a table's mobile filter/sort sheet) would
+        // otherwise have the inner instance's `this.dialog = ...` in init()
+        // silently overwrite the outer instance's `dialog`, once the outer
+        // instance (which initialises first) had already created that
+        // property on itself.
+        dialog: null,
+        grid: null,
         _storageKey: "sidebar",
         _desktopLock: false,
         _mq: null,
