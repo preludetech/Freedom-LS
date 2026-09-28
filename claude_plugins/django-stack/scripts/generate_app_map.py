@@ -264,6 +264,77 @@ def walk_model_relations(app: App, labels: dict[str, App], user_app: App) -> set
     return targets
 
 
+BASELINE_LINE_RE = re.compile(r"^([\w.]+) -> ([\w.]+)$")
+
+
+def iter_entries(path: Path) -> Iterator[tuple[int, str]]:
+    """Yield `(line number, stripped line)` for each hand-kept entry in `path`.
+
+    Blank lines and lines starting with `#` are comments, not entries, so every
+    `test_organisation/` text file can share this reader.
+    """
+    for line_no, raw in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        stripped = raw.strip()
+        if stripped and not stripped.startswith("#"):
+            yield line_no, stripped
+
+
+def read_import_baseline(path: Path) -> list[tuple[int, str, str]]:
+    """`(line number, importer, imported)` for each entry in the import baseline.
+
+    A missing file means an empty baseline, as `load_declared_edges` treats a
+    missing `declared_edges.toml`: a project's config can name the file before
+    it exists.
+    """
+    if not path.exists():
+        return []
+    entries: list[tuple[int, str, str]] = []
+    for line_no, line in iter_entries(path):
+        match = BASELINE_LINE_RE.match(line)
+        if not match:
+            raise ConfigError(f"{line_no}: {line} is not a valid baseline line")
+        entries.append((line_no, match.group(1), match.group(2)))
+    return entries
+
+
+def assign_baseline(
+    lines: list[tuple[int, str, str]],
+    sources: dict[str, list[str]],
+    forbidden: dict[str, list[str]],
+) -> dict[str, list[str]]:
+    """Group baseline lines under the app whose `source_modules` owns each importer.
+
+    Each line must still name a forbidden import for its owner; once an edge
+    becomes allowed (a new runtime dependency, or a declared edge), the line is
+    stale and has to be deleted rather than carried forward silently.
+    """
+    assigned: dict[str, list[str]] = {}
+    for line_no, importer, imported in lines:
+        owner = next(
+            (
+                app
+                for app, modules in sources.items()
+                if any(importer == m or importer.startswith(m + ".") for m in modules)
+            ),
+            None,
+        )
+        if owner is None:
+            raise ConfigError(
+                f"{line_no}: {importer} -> {imported} matches no app's source_modules"
+            )
+        owner_forbidden = forbidden.get(owner, [])
+        if not any(
+            imported == m or imported.startswith(m + ".") for m in owner_forbidden
+        ):
+            raise ConfigError(
+                f"{line_no}: {importer} -> {imported} is now allowed; delete it"
+            )
+        assigned.setdefault(owner, []).append(f"{importer} -> {imported}")
+    return assigned
+
+
 def load_declared_edges(path: Path, apps: list[App]) -> set[tuple[str, str]]:
     """Read `[[edge]]` entries from `declared_edges.toml`.
 
@@ -671,7 +742,19 @@ def main() -> int:
 
     outputs: dict[Path, str] = {output: body}
     if config is not None:
-        outputs[config.import_contracts] = render_contracts(apps, new_edges, config, {})
+        try:
+            baseline_lines = read_import_baseline(config.import_baseline)
+            sources = {app.short_name: source_modules(app) for app in apps}
+            forbidden = {
+                app.short_name: forbidden_modules(app, apps, new_edges) for app in apps
+            }
+            baseline_by_app = assign_baseline(baseline_lines, sources, forbidden)
+        except ConfigError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        outputs[config.import_contracts] = render_contracts(
+            apps, new_edges, config, baseline_by_app
+        )
 
     if old_edges is None:
         print("\nInitial generation. No prior diagram to diff against.")

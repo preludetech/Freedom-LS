@@ -66,3 +66,9 @@ repos:
         language: system
         pass_filenames: false
         require_serial: true
+      - id: lint-imports
+        name: lint-imports
+        entry: uv run lint-imports --config test_organisation/import_contracts.toml
+        language: system
+        pass_filenames: false
+        require_serial: true

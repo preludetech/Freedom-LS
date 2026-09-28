@@ -9,15 +9,30 @@ The script's directory is hyphenated and not importable, and `mypy` skips
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
-from tests._script_trees import run_script, write_tree
+from tests._script_trees import run_command, run_script, write_tree
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (
     REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "generate_app_map.py"
 )
+LINT_IMPORTS = Path(sys.executable).parent / "lint-imports"
+
+
+def run_lint_imports(project: Path) -> subprocess.CompletedProcess[str]:
+    return run_command(
+        [
+            str(LINT_IMPORTS),
+            "--config",
+            "test_organisation/import_contracts.toml",
+            "--no-cache",
+        ],
+        project,
+    )
 
 
 def configured_pyproject() -> str:
@@ -672,3 +687,266 @@ def test_without_test_organisation_table_no_contracts_file_written(
     run_script(SCRIPT, tmp_path)
 
     assert not (tmp_path / "test_organisation" / "import_contracts.toml").exists()
+
+
+def test_baseline_line_lands_in_ignore_imports_of_owning_app_under_baseline_comment(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "",
+        "test_organisation/import_baseline.txt": (
+            "pkg.beta.tests.test_models -> pkg.alpha.views\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 0
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    assert "pkg.beta.tests.test_models -> pkg.alpha.views" in contract_list(
+        contract, "ignore_imports"
+    )
+    raw = (tmp_path / "test_organisation" / "import_contracts.toml").read_text(
+        encoding="utf-8"
+    )
+    assert '    # baseline\n    "pkg.beta.tests.test_models -> pkg.alpha.views",' in raw
+
+
+def test_baseline_line_matching_no_apps_source_modules_fails_naming_it(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "test_organisation/import_baseline.txt": (
+            "pkg.ghost.tests.test_x -> pkg.beta.views\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg.ghost.tests.test_x -> pkg.beta.views" in result.stderr
+
+
+def test_baseline_line_whose_import_is_now_allowed_fails_naming_it(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/beta/services.py": "from pkg.alpha import views\n",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "",
+        "test_organisation/import_baseline.txt": (
+            "pkg.beta.tests.test_models -> pkg.alpha.views\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg.beta.tests.test_models -> pkg.alpha.views" in result.stderr
+
+
+def test_malformed_baseline_line_fails_naming_it(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "test_organisation/import_baseline.txt": "pkg.beta.tests.test_models => pkg.alpha\n",
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg.beta.tests.test_models => pkg.alpha" in result.stderr
+
+
+def test_baseline_comments_and_blank_lines_are_accepted(tmp_path: Path) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "",
+        "test_organisation/import_baseline.txt": (
+            "# a comment\n\npkg.beta.tests.test_models -> pkg.alpha.views\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    assert result.returncode == 0
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    assert "pkg.beta.tests.test_models -> pkg.alpha.views" in contract_list(
+        contract, "ignore_imports"
+    )
+
+
+def two_apps_with_baseline_violations() -> dict[str, str]:
+    """A tree with two apps whose test suites each carry a baselined violation.
+
+    `alpha`'s tests import `beta.views` (twice, from separate files) and one of
+    them also imports the user-model app's factories; `beta`'s tests import
+    `alpha.views`. Neither app depends on the other at runtime, so all three
+    imports are forbidden, and the baseline covers them.
+    """
+    return {
+        "pyproject.toml": configured_pyproject(),
+        "pkg/users/__init__.py": "",
+        "pkg/users/apps.py": app_config("pkg.users", "UsersConfig"),
+        "pkg/users/factories.py": "class UserFactory:\n    pass\n",
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/views.py": "def view() -> None:\n    pass\n",
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_x.py": (
+            "from pkg.beta import views\nfrom pkg.users import factories\n"
+        ),
+        "pkg/alpha/tests/test_z.py": "from pkg.beta import views\n",
+        "pkg/beta/__init__.py": "",
+        "pkg/beta/apps.py": app_config("pkg.beta", "BetaConfig"),
+        "pkg/beta/views.py": "def view() -> None:\n    pass\n",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_y.py": "from pkg.alpha import views\n",
+        "test_organisation/import_baseline.txt": (
+            "# alpha\n"
+            "pkg.alpha.tests.test_x -> pkg.beta.views\n"
+            "pkg.alpha.tests.test_z -> pkg.beta.views\n"
+            "\n"
+            "# beta\n"
+            "pkg.beta.tests.test_y -> pkg.alpha.views\n"
+        ),
+    }
+
+
+def test_generated_contracts_pass_lint_imports_with_baseline_and_factories_allowance(
+    tmp_path: Path,
+) -> None:
+    write_tree(tmp_path, two_apps_with_baseline_violations())
+    run_script(SCRIPT, tmp_path)
+
+    result = run_lint_imports(tmp_path)
+
+    assert result.returncode == 0
+
+
+def test_new_forbidden_import_in_clean_test_file_fails_lint_imports(
+    tmp_path: Path,
+) -> None:
+    write_tree(tmp_path, two_apps_with_baseline_violations())
+    run_script(SCRIPT, tmp_path)
+    write_tree(
+        tmp_path, {"pkg/alpha/tests/test_new.py": "from pkg.beta import views\n"}
+    )
+
+    result = run_lint_imports(tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg.alpha.tests.test_new -> pkg.beta.views" in result.stdout
+
+
+def test_deleting_baseline_line_with_live_violation_fails_check(tmp_path: Path) -> None:
+    write_tree(tmp_path, two_apps_with_baseline_violations())
+    run_script(SCRIPT, tmp_path)
+    write_tree(
+        tmp_path,
+        {
+            "test_organisation/import_baseline.txt": (
+                "# alpha\n"
+                "pkg.alpha.tests.test_x -> pkg.beta.views\n"
+                "\n"
+                "# beta\n"
+                "pkg.beta.tests.test_y -> pkg.alpha.views\n"
+            )
+        },
+    )
+
+    result = run_script(SCRIPT, tmp_path, "--check")
+
+    assert result.returncode == 1
+    assert "import_contracts.toml" in result.stderr
+
+
+def test_regenerating_after_deleting_one_baseline_line_fails_lint_imports_naming_it(
+    tmp_path: Path,
+) -> None:
+    write_tree(tmp_path, two_apps_with_baseline_violations())
+    run_script(SCRIPT, tmp_path)
+    write_tree(
+        tmp_path,
+        {
+            "test_organisation/import_baseline.txt": (
+                "# alpha\n"
+                "pkg.alpha.tests.test_x -> pkg.beta.views\n"
+                "\n"
+                "# beta\n"
+                "pkg.beta.tests.test_y -> pkg.alpha.views\n"
+            )
+        },
+    )
+    run_script(SCRIPT, tmp_path)
+
+    result = run_lint_imports(tmp_path)
+
+    assert result.returncode == 1
+    assert "pkg.alpha.tests.test_z -> pkg.beta.views" in result.stdout
+
+
+def test_removing_violating_import_but_keeping_its_baseline_line_fails_as_unmatched(
+    tmp_path: Path,
+) -> None:
+    write_tree(tmp_path, two_apps_with_baseline_violations())
+    run_script(SCRIPT, tmp_path)
+    write_tree(tmp_path, {"pkg/beta/tests/test_y.py": "x = 1\n"})
+
+    result = run_lint_imports(tmp_path)
+
+    assert result.returncode == 1
+    assert (
+        "No matches for ignored import pkg.beta.tests.test_y -> pkg.alpha.views"
+        in result.stdout
+    )
+
+
+def test_deleting_all_of_one_apps_baseline_lines_and_regenerating_fails_with_only_that_apps_violations(
+    tmp_path: Path,
+) -> None:
+    write_tree(tmp_path, two_apps_with_baseline_violations())
+    run_script(SCRIPT, tmp_path)
+    write_tree(
+        tmp_path,
+        {
+            "test_organisation/import_baseline.txt": (
+                "# beta\npkg.beta.tests.test_y -> pkg.alpha.views\n"
+            )
+        },
+    )
+    run_script(SCRIPT, tmp_path)
+
+    result = run_lint_imports(tmp_path)
+
+    assert "pkg.alpha.tests.test_x -> pkg.beta.views" in result.stdout
+    assert "pkg.alpha.tests.test_z -> pkg.beta.views" in result.stdout
+    assert "pkg.beta.tests.test_y -> pkg.alpha.views" not in result.stdout
+
+
+def test_lint_imports_passes_on_live_tree() -> None:
+    result = run_lint_imports(REPO_ROOT)
+
+    assert result.returncode == 0

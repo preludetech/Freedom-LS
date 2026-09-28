@@ -66,6 +66,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "time-machine>=3.2.0",
     "pypdf>=6.16.1",
+    "import-linter>=2.15",
 ]
 
 [tool.setuptools.packages.find]
@@ -154,6 +155,7 @@ dev = [
     "pytest-xdist>=3.8.0",
     "time-machine>=3.2.0",
     "pypdf>=6.16.1",
+    "import-linter>=2.15",
 ]
 
 
