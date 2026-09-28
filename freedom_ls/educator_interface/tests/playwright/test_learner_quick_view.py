@@ -91,6 +91,47 @@ def test_the_drawer_title_is_the_learners_name_from_either_cell_and_on_reopen(
     expect(title).to_have_text("Ada Lovelace")
 
 
+def test_escape_closes_only_the_topmost_dropdown_leaving_the_drawer_open(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+) -> None:
+    """A dropdown menu opened over the drawer is its own layer: one Esc
+    dismisses the dropdown and leaves the drawer open, a second Esc then
+    closes the drawer. Reproduces the QA bug where a single Esc closed both."""
+    page = educator_logged_in_page
+    organisation_a = OrganisationFactory(name="Org A")
+    organisation_b = OrganisationFactory(name="Org B")
+    assign_object_role(educator_user, organisation_a, "organisation_staff")
+    assign_object_role(educator_user, organisation_b, "organisation_staff")
+    LearnerFactory(
+        organisation=organisation_a,
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+    )
+
+    page.goto(interface_url(live_server, organisation_a.slug, "learners"))
+    page.get_by_role("link", name="Ada", exact=True).click()
+    expect(page.locator("#quick-view")).to_be_visible()
+
+    switcher_button = page.get_by_role("button", name="Switch organisation")
+    switcher_button.click()
+    expect(switcher_button).to_have_attribute("aria-expanded", "true")
+
+    page.keyboard.press("Escape")
+
+    expect(switcher_button).to_have_attribute("aria-expanded", "false")
+    # The drawer's close transition keeps it visually on screen for a
+    # moment after close() runs, so to_be_visible() alone would pass on a
+    # closing drawer too. The [open] boolean attribute is removed the
+    # instant close() runs, so it is the reliable signal of whether the
+    # drawer is still genuinely open.
+    expect(page.locator("#quick-view")).to_have_attribute("open", "")
+
+    page.keyboard.press("Escape")
+
+    expect(page.locator("#quick-view")).not_to_have_attribute("open", "")
+
+
 def test_a_learner_changed_event_naming_the_shown_learner_refetches_it(
     live_server,
     educator_logged_in_page: Page,
