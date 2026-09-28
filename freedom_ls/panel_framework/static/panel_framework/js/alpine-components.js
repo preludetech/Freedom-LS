@@ -401,7 +401,6 @@ document.addEventListener("alpine:init", () => {
             if (!this._qvDialog.open) {
                 this._showDialog();
             }
-            this._title.textContent = trigger.dataset.quickViewTitle || "";
             this._openLink.href = trigger.href;
             // No focus trap and no scroll lock on desktop, so returning
             // focus to the trigger is the only focus management needed
@@ -433,6 +432,9 @@ document.addEventListener("alpine:init", () => {
             }
             this._qvBody.replaceChildren(clone);
             this._qvBody.setAttribute("aria-busy", "true");
+            // The title comes only from the frame, so it stays blank until
+            // one arrives rather than showing the last entity's.
+            this._title.textContent = "";
         },
         _afterBodySwap(event) {
             this._qvBody.removeAttribute("aria-busy");

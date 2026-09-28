@@ -3,7 +3,7 @@
 {% for item in items %}
     {% with link_object=item|getattr_str:column.link_object_attr %}
         {% resolve_url_path_template link_object column.url_name column.url_path_template as resolved_url %}
-        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view" title="{{ item|getattr_str:column.link_text_attr }}">{{ item|getattr_str:column.link_text_attr }}</c-quick-view-trigger>{% if not forloop.last %}, {% endif %}
+        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view">{{ item|getattr_str:column.link_text_attr }}</c-quick-view-trigger>{% if not forloop.last %}, {% endif %}
     {% endwith %}
 {% empty %}
     -

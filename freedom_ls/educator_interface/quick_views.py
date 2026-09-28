@@ -26,6 +26,9 @@ class LearnerQuickView(QuickView):
     template_name = "educator_interface/quick_views/learner.html"
     refresh_events = (LEARNER_CHANGED,)
 
+    def get_title(self) -> str:
+        return cast(Learner, self.instance).user.display_name
+
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
         request = cast("OrganisationScopedRequest", self.request)
