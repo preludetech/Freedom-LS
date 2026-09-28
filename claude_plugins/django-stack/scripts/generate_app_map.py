@@ -19,6 +19,8 @@ import argparse
 import ast
 import re
 import sys
+import tomllib
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -41,6 +43,21 @@ SKIP_DIRS: frozenset[str] = frozenset(
 
 TEST_PATH_MARKERS: tuple[str, ...] = ("/tests/", "/test_")
 
+# Django relation fields whose first positional argument may name a related
+# model by "<app label>.<Model>" instead of importing it.
+RELATION_FIELDS: frozenset[str] = frozenset(
+    {"ForeignKey", "OneToOneField", "ManyToManyField"}
+)
+
+REQUIRED_CONFIG_KEYS: tuple[str, ...] = (
+    "user_model_app",
+    "declared_edges",
+    "import_contracts",
+    "import_baseline",
+    "mirroring_baseline",
+    "mirroring_exemptions",
+)
+
 
 @dataclass(frozen=True)
 class App:
@@ -53,6 +70,47 @@ class App:
 class Edges:
     runtime: set[tuple[str, str]] = field(default_factory=set)
     test: set[tuple[str, str]] = field(default_factory=set)
+
+
+@dataclass(frozen=True)
+class TestOrganisationConfig:
+    user_model_app: str
+    declared_edges: Path
+    import_contracts: Path
+    import_baseline: Path
+    mirroring_baseline: Path
+    mirroring_exemptions: Path
+
+
+class ConfigError(Exception):
+    """A bad `[tool.test_organisation]` table, declared edge, baseline or exemption line."""
+
+
+def load_config(project_root: Path) -> TestOrganisationConfig | None:
+    """Read `[tool.test_organisation]` from `project_root/pyproject.toml`.
+
+    Returns `None` when the file or the table is absent, so the rest of the script
+    can run in its original, table-free mode.
+    """
+    pyproject = project_root / "pyproject.toml"
+    try:
+        data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    table = data.get("tool", {}).get("test_organisation")
+    if table is None:
+        return None
+    for key in REQUIRED_CONFIG_KEYS:
+        if key not in table:
+            raise ConfigError(f"[tool.test_organisation] is missing '{key}'")
+    return TestOrganisationConfig(
+        user_model_app=table["user_model_app"],
+        declared_edges=project_root / table["declared_edges"],
+        import_contracts=project_root / table["import_contracts"],
+        import_baseline=project_root / table["import_baseline"],
+        mirroring_baseline=project_root / table["mirroring_baseline"],
+        mirroring_exemptions=project_root / table["mirroring_exemptions"],
+    )
 
 
 def find_apps(root: Path) -> list[App]:
@@ -73,14 +131,19 @@ def find_apps(root: Path) -> list[App]:
 
 
 def is_test_path(path: Path) -> bool:
-    normalised = str(path).replace("\\", "/")
+    """Classify a file by its path relative to the apps root, not its absolute path.
+
+    A path like `tmp_path`'s `test_something0/pkg/alpha/models.py` must not read as
+    test code just because the *project* happens to sit under a directory named
+    `test_something0`; only markers under the apps root count.
+    """
+    normalised = "/" + path.as_posix()
     if path.name in ("conftest.py", "factories.py"):
         return True
     return any(marker in normalised for marker in TEST_PATH_MARKERS)
 
 
-def walk_app_imports(app: App) -> list[tuple[str, Path]]:
-    results: list[tuple[str, Path]] = []
+def iter_app_trees(app: App) -> Iterator[tuple[Path, ast.Module]]:
     for py_file in app.directory.rglob("*.py"):
         if any(part in SKIP_DIRS for part in py_file.parts):
             continue
@@ -90,13 +153,108 @@ def walk_app_imports(app: App) -> list[tuple[str, Path]]:
         except (SyntaxError, UnicodeDecodeError) as exc:
             print(f"WARN: could not parse {py_file}: {exc}", file=sys.stderr)
             continue
+        yield py_file, tree
+
+
+def relative_path(app: App, file_path: Path) -> Path:
+    """`file_path`'s path relative to the apps root, rebuilt without threading the root through.
+
+    `find_apps` derives `module_path` from the app directory's path under the apps
+    root, so re-splitting it and appending the file's path within the app directory
+    gives the same result.
+    """
+    return Path(*app.module_path.split("."), file_path.relative_to(app.directory))
+
+
+def module_name(app: App, file_path: Path) -> str:
+    parts = list(relative_path(app, file_path).with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts)
+
+
+def call_name(node: ast.Call) -> str | None:
+    """The called name for both `ForeignKey(...)` and `models.ForeignKey(...)`."""
+    func = node.func
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def app_labels(apps: list[App]) -> dict[str, App]:
+    """Map each app's Django app label to its `App`, read from `apps.py`.
+
+    Falls back to the app's short name, which is what Django itself defaults an
+    `AppConfig.label` to when the class doesn't set one.
+    """
+    labels: dict[str, App] = {}
+    for app in apps:
+        label = app.short_name
+        apps_py = app.directory / "apps.py"
+        try:
+            tree = ast.parse(apps_py.read_text(encoding="utf-8"), filename=str(apps_py))
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            labels[label] = app
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            for stmt in node.body:
+                if (
+                    isinstance(stmt, ast.Assign)
+                    and any(
+                        isinstance(target, ast.Name) and target.id == "label"
+                        for target in stmt.targets
+                    )
+                    and isinstance(stmt.value, ast.Constant)
+                    and isinstance(stmt.value.value, str)
+                ):
+                    label = stmt.value.value
+        labels[label] = app
+    return labels
+
+
+def walk_model_relations(app: App, labels: dict[str, App]) -> set[App]:
+    """Apps a relation field in `app`'s non-test code names by string label.
+
+    Only `"<label>.<Model>"` first arguments count; a label with no dot names a
+    model in the same app and is skipped, and a label matching no known app (a
+    third-party app such as `sites`) is ignored.
+    """
+    targets: set[App] = set()
+    for file_path, tree in iter_app_trees(app):
+        if is_test_path(relative_path(app, file_path)):
+            continue
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Call)
+                and call_name(node) in RELATION_FIELDS
+                and node.args
+            ):
+                continue
+            first = node.args[0]
+            if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
+                continue
+            if "." not in first.value:
+                continue
+            target = labels.get(first.value.split(".", 1)[0])
+            if target is not None and target is not app:
+                targets.add(target)
+    return targets
+
+
+def walk_app_imports(app: App) -> list[tuple[str, Path]]:
+    results: list[tuple[str, Path]] = []
+    for py_file, tree in iter_app_trees(app):
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module:
                 results.append((node.module, py_file))
     return results
 
 
-def compute_edges(apps: list[App]) -> Edges:
+def compute_edges(apps: list[App], config: TestOrganisationConfig | None) -> Edges:
     by_module: dict[str, App] = {a.module_path: a for a in apps}
     module_paths_sorted = sorted(by_module.keys(), key=len, reverse=True)
     edges = Edges()
@@ -110,10 +268,15 @@ def compute_edges(apps: list[App]) -> Edges:
             if target is None or target.short_name == app.short_name:
                 continue
             edge = (app.short_name, target.short_name)
-            if is_test_path(file_path):
+            if is_test_path(relative_path(app, file_path)):
                 edges.test.add(edge)
             else:
                 edges.runtime.add(edge)
+    if config is not None:
+        labels = app_labels(apps)
+        for app in apps:
+            for target in walk_model_relations(app, labels):
+                edges.runtime.add((app.short_name, target.short_name))
     edges.test -= edges.runtime
     return edges
 
@@ -162,11 +325,34 @@ Regenerate this file whenever the graph changes: `/app_map`.
 
 """
 
+HEADER_WITH_TEST_ORGANISATION: str = """# App Structure
+
+This file is the authoritative picture of inter-app dependencies in this project. It is **generated** by running `/app_map`.
+
+Treat it as the source of truth for what cross-app imports are allowed. Any implementation plan that introduces a new cross-app edge should be called out and approved before code is written.
+
+- **Solid arrows** — runtime imports (one app imports from another outside of tests), model relations by string label or to the user model, and declared edges.
+- **Dashed arrows** — test-only imports (cross-app fixtures or helpers).
+- **No arrow** — no import relationship; treat these apps as independent.
+
+Regenerate this file whenever the graph changes: `/app_map`.
+
+"""
+
 LEGEND: str = """
 
 ## Legend
 
 - `A --> B` — `A` imports from `B` at runtime.
+- `A -.-> B` — `A` imports from `B` only in test code (tests, conftest, factories).
+- Apps with no edges are self-contained.
+"""
+
+LEGEND_WITH_TEST_ORGANISATION: str = """
+
+## Legend
+
+- `A --> B` — `A` imports from `B` at runtime, has a model relation to `B` by string label or the user model, or declares the edge in `declared_edges.toml`.
 - `A -.-> B` — `A` imports from `B` only in test code (tests, conftest, factories).
 - Apps with no edges are self-contained.
 """
@@ -227,11 +413,18 @@ def main() -> int:
     args = parser.parse_args()
 
     root: Path = args.apps_root.resolve()
+    project_root: Path = Path.cwd()
     output: Path = (
         args.output.resolve()
         if args.output.is_absolute()
-        else (Path.cwd() / args.output).resolve()
+        else (project_root / args.output).resolve()
     )
+
+    try:
+        config = load_config(project_root)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
 
     apps = find_apps(root)
     if not apps:
@@ -245,15 +438,17 @@ def main() -> int:
         file=sys.stderr,
     )
 
-    new_edges = compute_edges(apps)
+    new_edges = compute_edges(apps, config)
     old_edges = parse_existing_edges(output)
 
+    header = HEADER_WITH_TEST_ORGANISATION if config is not None else HEADER
+    legend = LEGEND_WITH_TEST_ORGANISATION if config is not None else LEGEND
     body = (
-        HEADER
+        header
         + render_mermaid(apps, new_edges)
         + "\n\n## Dependency table\n\n"
         + render_table(apps, new_edges)
-        + LEGEND
+        + legend
     )
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(body, encoding="utf-8")
