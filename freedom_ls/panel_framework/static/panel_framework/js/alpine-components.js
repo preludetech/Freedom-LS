@@ -578,9 +578,15 @@ document.addEventListener("htmx:afterSwap", (event) => {
 
 // A saved edit renames the instance it edited. Panels re-fetch themselves on
 // their own declared domain events through their own hx-trigger; the page
-// heading is outside every panel, so it is updated here.
+// heading and the breadcrumb trail's current-page crumb are both outside
+// every panel, so they are updated here. The current-instance crumb is the
+// only one under #breadcrumbs without a link (see _build_breadcrumbs), so
+// it is the sole match for aria-current="page".
 document.addEventListener("instanceTitleChanged", (event) => {
     const title = event.detail && event.detail.title;
+    if (!title) return;
     const heading = document.getElementById("instance-title");
-    if (title && heading) heading.textContent = title;
+    if (heading) heading.textContent = title;
+    const crumb = document.querySelector('#breadcrumbs [aria-current="page"]');
+    if (crumb) crumb.textContent = title;
 });

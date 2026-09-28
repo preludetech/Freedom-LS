@@ -44,3 +44,25 @@ def test_editing_a_cohorts_name_closes_the_modal_and_updates_the_title(
 
     expect(page.locator("#app-modal")).to_be_hidden()
     expect(page.locator("#instance-title")).to_have_text("New Name")
+
+
+def test_editing_a_cohorts_name_updates_the_breadcrumb_trail(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    cohort = CohortFactory(organisation=organisation, name="Old Name")
+    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_perm("freedom_ls_learner_management.change_cohort", educator_user, cohort)
+
+    page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
+
+    page.get_by_role("button", name="Edit").click()
+    page.locator("#app-modal-body").get_by_label("Name").fill("New Name")
+    page.get_by_role("button", name="Save", exact=True).click()
+
+    expect(page.locator("#app-modal")).to_be_hidden()
+    expect(page.locator("#breadcrumbs")).to_contain_text("New Name")
+    expect(page.locator("#breadcrumbs")).not_to_contain_text("Old Name")
