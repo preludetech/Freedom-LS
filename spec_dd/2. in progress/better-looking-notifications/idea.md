@@ -43,21 +43,50 @@ practice and the ranked options are in `research_design_fidelity_practices.md`.
 
 ## Part 1: carry the design through SDD
 
+### Registration takes Claude Design's handoff prompt
+
+Claude Design can copy a handoff prompt for a selection. `design sync prompt.md` next to this idea
+is the one for this design. It names four things:
+
+- the Claude Design MCP endpoint, and `/design-login` for authorisation;
+- the project link, which carries the project id and the entry file;
+- the files to focus on, which are the entry files whose artboards make up the design;
+- the files those focus files import.
+
+`/sdd:register_design` takes this prompt as its design input, pasted or as the path of a file
+that holds it. It replaces the bare link. The prompt is copied whole into the registered
+directory as `design_prompt.md` and committed, so a re-registration or a later step can see
+exactly what was handed over. `design.md`'s "Entry file" and "Made of" come from the prompt's
+lists, not from Claude's guess. A bare link still works, but then registration has to work out
+the file list itself, and says so in its summary.
+
+Guessing is how the current `design.md` went wrong. It tells readers to ignore `design-system/`
+as "the other theme", but the prompt lists `design-system/kit.css` as imported by the selection,
+and every artboard is styled by it.
+
+The prompt's import list is only the first level. `kit.css` `@import`s
+`design-system/colors_and_type.css`, which the prompt doesn't name. Registration follows local
+references in every synced file (`@import`, `<link>`, `<script src>`) and syncs those too, until
+nothing new turns up. It doesn't sync external URLs such as the unpkg React, Babel and Phosphor
+scripts. The render loads those from the network, as the spike did.
+
 ### Registration syncs the design, screenshots it and settles its scope
 
 `/sdd:register_design` does three new things after writing `design.md`. Everything it produces
 lives in the directory the design is registered on: the spec itself, or a cut effort's parent.
 That parent never moves as its children go from `1. next` to `3. done`, so paths stay valid.
 
-1. **Sync the design's source.** Registration reads every text file the design is built from
-   through `DesignSync` and writes each one, whole and unedited, into a `design_source/` directory
-   that mirrors the project's paths. The user chose this over asking them to click Export in
+1. **Sync the design's source.** Registration reads the focus files, the imported files and
+   everything they reference locally through `DesignSync`, and writes each one, whole and
+   unedited, into a `design_source/` directory that mirrors the project's paths. The rest of the
+   project is readable, but it is not this design and isn't synced. The user chose this over asking them to click Export in
    Claude Design each time. It's automatic, but DesignSync can't carry binaries (the logo came back
    cut off at the 256 KiB cap), so fonts and images are left out and renders use fallbacks. That's
    fine for FLS, which uses neither. The source is committed: implementation happens in a
    worktree, and a worktree only has what's in git. `research_claude_design_export.md` covers the
    alternatives. `research_design_render_spike.md` covers the cost of copying through the model.
-2. **Screenshot every artboard.** A subagent serves `design_source/` on a local static server,
+2. **Screenshot every artboard.** Every artboard in every focus file is screenshotted. A subagent
+   serves `design_source/` on a local static server,
    loads it in Playwright with a flat stand-in for Claude Design's pan/zoom canvas, and screenshots
    each artboard by selector into `design_screenshots/`. The spike proved this end to end in
    about 40 seconds, and the stand-in's source is in `research_design_render_spike.md`. The
@@ -100,11 +129,13 @@ get asked about, and removed elements are marked as removed rather than deleted.
 
 ## Part 2: make the notifications UI match the design
 
-Start by re-registering `spec_dd/1. next/user-communication/` with the new registration, so
-it gets `design_source/`, `design_screenshots/` and `design_scope.md`. The scope answers for
-sections 1 and 2 are already settled and seed that file (see the last paragraph below). Until
-then, `design_screenshots/` next to this idea holds the spike's renders of sections 1 and 2, and
-`design_snapshot_notifications.md` holds the matching source excerpts.
+Start by re-registering `spec_dd/1. next/user-communication/` with the new registration, passing
+it `design sync prompt.md`, so it gets `design_prompt.md`, `design_source/`,
+`design_screenshots/` and `design_scope.md`. The scope answers for sections 1 and 2 are already
+settled and seed that file (see the last paragraph below). Until then, three things next to this
+idea stand in: `design_source/` holds the files the prompt names plus
+`design-system/colors_and_type.css`, `design_screenshots/` holds the spike's renders of sections
+1 and 2, and `design_snapshot_notifications.md` holds the matching source excerpts.
 
 The scope is every surface `user-communication-1-notifications-core` built. That means the bell
 and badge, the panel (the desktop popover and the full-width sheet at 375px) and the notification

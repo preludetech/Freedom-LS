@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>User communication — notifications and direct messages</title>
+<link rel="stylesheet" href="design-system/kit.css" />
+<link rel="stylesheet" href="uc/uc.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>body{margin:0;background:#ECEEF3}#root{min-height:100vh}.dc-section-title{font-family:var(--font-heading) !important}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="uc/uc-data.jsx"></script>
+<script type="text/babel" src="uc/uc-shell.jsx"></script>
+<script type="text/babel" src="uc/uc-notify.jsx"></script>
+<script type="text/babel" src="uc/uc-msg.jsx"></script>
+<script type="text/babel" src="uc/uc-edu.jsx"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel">
+const W = 1280, H = 800, MW = 375, MH = 760;
+const D = (id, label, el, h = H, w = W) => <DCArtboard key={id} id={id} label={label} width={w} height={h}>{el}</DCArtboard>;
+const M = (id, label, el, h = MH) => D(id, label, el, h, MW);
+
+function App() {
+  return (
+    <DesignCanvas initialZoom={0.3} background="#ECEEF3">
+      <DCSection id="uc-1-bell" title="1 · Bell and unread badge" subtitle="Bell sits immediately left of the avatar in the shared header. Badge caps at 99+. Messages count here too: one notification per unread conversation.">
+        {D("hd", "Header states · desktop", <HeaderStates />, 470)}
+        {M("hdm", "Header states · 375px, long title truncates", <HeaderStates mobile />, 440)}
+        {D("pop", "Panel open · latest 8, one message item", <NotifOpen />)}
+        {M("popm", "Panel open · full-width sheet", <NotifOpen mobile />, 900)}
+      </DCSection>
+
+      <DCSection id="uc-2-centre" title="2 · Notification centre" subtitle="Reached from “See all”. Unread = bold text + filled dot + “New” label + tinted row.">
+        {D("pop", "Populated", <NCentre />, 1100)}
+        {D("read", "All read", <NCentre state="allread" />, 1140)}
+        {D("empty", "Empty", <NCentre state="empty" />, 560)}
+        {D("long", "Long list", <NCentre state="long" />, 1800)}
+        {M("popm", "Populated · 375px", <NCentre mobile />, 1200)}
+        {M("emptym", "Empty · 375px", <NCentre mobile state="empty" />, 560)}
+      </DCSection>
+
+      <DCSection id="uc-3-prefs" title="3 · Notification preferences" subtitle="Email column is sized for four options so Daily and Weekly digest drop in without relayout.">
+        {D("v1", "Now · Immediately / Off, site-disabled category", <Prefs />, 760)}
+        {D("saved", "Saved confirmation", <Prefs saved />, 760)}
+        {D("v2", "Later · four email options + quiet hours", <Prefs v2 />, 1000)}
+        {M("v1m", "Now · 375px", <Prefs mobile />, 1120)}
+        {M("v2m", "Later · 375px (email as a select)", <Prefs mobile v2 />, 1380)}
+        {D("un", "Unsubscribe landing", <Unsub />, 560)}
+        {D("undo", "Unsubscribe · after Undo", <Unsub undone />, 560)}
+        {M("unm", "Unsubscribe · 375px", <Unsub mobile />, 600)}
+      </DCSection>
+
+      <DCSection id="uc-4-email" title="4 · Notification email" subtitle="Existing themed template: logo, site name, one button. Message content is never included in the email.">
+        {D("msg", "New messages", <Email />, 640, 760)}
+        {D("comp", "Course completion", <Email kind="completion" />, 680, 760)}
+        {M("msgm", "New messages · 375px", <Email mobile />, 700)}
+        {M("compm", "Course completion · 375px", <Email mobile kind="completion" />, 760)}
+      </DCSection>
+
+      <DCSection id="uc-5-inbox" title="5 · Learner inbox" subtitle="Newest first. List and thread side by side on desktop; separate screens on mobile.">
+        {D("pop", "Populated", <LInbox />)}
+        {D("can", "Empty · can start a conversation", <LInbox state="emptyCan" />, 560)}
+        {D("no", "Empty · messaging not available", <LInbox state="emptyNo" />, 560)}
+        {D("blk", "Blocked conversation", <LInbox state="blocked" count={0} />)}
+        {M("listm", "List · 375px", <LInbox mobile />)}
+        {M("thm", "Thread · 375px, with back", <LInbox mobile view="thread" />)}
+        {M("nom", "Empty · not available · 375px", <LInbox mobile state="emptyNo" />, 560)}
+      </DCSection>
+
+      <DCSection id="uc-6-thread" title="6 · Conversation thread and composer" subtitle="“Who will see this” line is always shown above the composer. No read receipts.">
+        {D("new", "New conversation", <LInbox thread={{otherId:"grace",course:"Data Basics",mode:"new",value:"Hi Grace, could you explain how a left join differs from an inner join?",focus:true}} />)}
+        {D("long", "Long thread", <LInbox thread={{otherId:"ada",groups:UC_ADA_LONG,course:"Introduction to Python"}} />)}
+        {D("fail", "Message failed to send", <LInbox thread={{otherId:"ada",groups:UC_ADA_THREAD,course:"Introduction to Python",failed:true}} />)}
+        {D("closed", "Replying no longer allowed · configuration changed", <LInbox thread={{otherId:"ada",groups:UC_ADA_THREAD,course:"Introduction to Python",mode:"closed",closed:UC_CLOSED.config}} />)}
+        {D("hidden", "Hidden message", <LInbox thread={{otherId:"kat",groups:UC_KAT_THREAD,course:"Introduction to Python · learner in your cohort"}} />)}
+        {M("newm", "New conversation · 375px", <LInbox mobile view="thread" thread={{otherId:"grace",course:"Data Basics",mode:"new"}} />)}
+        {M("failm", "Failed · 375px", <LInbox mobile view="thread" thread={{otherId:"ada",groups:UC_ADA_THREAD,course:"Introduction to Python",failed:true}} />)}
+        {M("leftm", "Other person left the organisation · 375px", <LInbox mobile view="thread" thread={{otherId:"grace",groups:[{sep:"Yesterday"},{from:"amara",time:"14:10",texts:["What's the difference between a left and inner join?"]},{from:"grace",time:"15:02",texts:["Yes, a left join keeps every row from the first table, even where there's no match."]}],course:"Data Basics",mode:"closed",closed:UC_CLOSED.left}} />)}
+      </DCSection>
+
+      <DCSection id="uc-7-picker" title="7 · Starting a conversation" subtitle="Only people the user may message, grouped by course or cohort.">
+        {D("list", "Recipient picker", <LInbox overlay={<Picker />} />)}
+        {D("search", "Search", <LInbox overlay={<Picker state="search" />} />)}
+        {D("empty", "No one to message", <LInbox state="emptyCan" overlay={<Picker state="empty" />} />)}
+        {M("listm", "Picker · 375px full screen", <LInbox mobile overlay={<Picker mobile />} />)}
+        {M("emptym", "No one to message · 375px", <LInbox mobile overlay={<Picker mobile state="empty" />} />)}
+      </DCSection>
+
+      <DCSection id="uc-8-edu" title="8 · Educator inbox" subtitle="Sidebar “Messages” with unread count. Scoped to the organisation currently open.">
+        {D("pop", "Populated", <EInbox />)}
+        {D("empty", "Empty", <EInbox state="empty" />, 600)}
+        {D("two", "Two organisations · switcher open", <EInbox state="twoOrg" />)}
+        {M("listm", "List · 375px", <EInbox mobile />, 860)}
+        {M("thm", "Thread · 375px", <EInbox mobile view="thread" />)}
+      </DCSection>
+
+      <DCSection id="uc-9-qv" title="9 · Messages tab in the learner quick view">
+        {D("conv", "Existing conversation", <QuickView />)}
+        {D("none", "No conversation yet", <QuickView state="none" />)}
+        {D("denied", "Educator may not message this learner", <QuickView state="denied" />)}
+        {M("convm", "Existing conversation · 375px", <QuickView mobile />)}
+        {M("deniedm", "Not allowed · 375px", <QuickView mobile state="denied" />)}
+      </DCSection>
+
+      <DCSection id="uc-10-report" title="10 · Report and block" subtitle="Menu on every message from another person.">
+        {D("menu", "Message menu open", <LInbox thread={{...MARCUS_TH,menuOpen:true}} />)}
+        {D("form", "Report dialog", <LInbox thread={MARCUS_TH} overlay={<ReportDialog />} />, 860)}
+        {D("done", "Report sent", <LInbox thread={MARCUS_TH} overlay={<ReportDialog step="done" />} />)}
+        {D("block", "Block confirmation", <LInbox thread={MARCUS_TH} overlay={<BlockDialog />} />)}
+        {D("blocked", "After blocking · banner with Unblock", <LInbox state="blocked" count={0} />)}
+        {M("menum", "Menu · 375px", <LInbox mobile view="thread" thread={{...MARCUS_TH,menuOpen:true}} />)}
+        {M("formm", "Report · 375px sheet", <LInbox mobile view="thread" thread={MARCUS_TH} overlay={<ReportDialog mobile />} />, 860)}
+        {M("blockm", "Block · 375px sheet", <LInbox mobile view="thread" thread={MARCUS_TH} overlay={<BlockDialog mobile />} />)}
+      </DCSection>
+
+      <DCSection id="uc-11-queue" title="11 · Report queue (site admins)">
+        {D("open", "Open", <ReportQueue />, 1140)}
+        {D("res", "Resolved", <ReportQueue filter="resolved" />, 1160)}
+        {M("openm", "Open · 375px", <ReportQueue mobile />, 1800)}
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
