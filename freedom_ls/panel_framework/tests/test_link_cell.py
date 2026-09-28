@@ -25,7 +25,9 @@ def test_a_quick_view_column_renders_the_trigger_attributes() -> None:
     assert 'hx-get="/test-panel/framework/stubs/1/__quick-view"' in html
     assert 'aria-controls="quick-view"' in html
     assert 'aria-expanded="false"' in html
-    assert 'data-quick-view-title="Ada"' in html
+    # The drawer's title comes only from the frame it loads, so it can never
+    # disagree with what a cell happens to show.
+    assert "data-quick-view-title" not in html
     assert 'hx-sync="#quick-view-body:replace"' in html
 
 

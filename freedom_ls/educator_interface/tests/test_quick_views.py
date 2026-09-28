@@ -98,6 +98,22 @@ class TestLearnerQuickView:
         assert "Ada Lovelace" in content
         assert "ada@example.com" in content
 
+    def test_titles_the_drawer_with_the_learners_display_name(self, educator_client):
+        organisation = OrganisationFactory()
+        learner = cast(
+            Learner,
+            LearnerFactory(
+                user=UserFactory(first_name="Ada", last_name="Lovelace"),
+                organisation=organisation,
+            ),
+        )
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        assert 'data-quick-view-title="Ada Lovelace"' in response.content.decode()
+
     def test_shows_active_status_for_an_active_learner(self, educator_client):
         organisation = OrganisationFactory()
         learner = LearnerFactory(organisation=organisation, is_active=True)
