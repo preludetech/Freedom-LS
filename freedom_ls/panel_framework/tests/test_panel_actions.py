@@ -392,8 +392,10 @@ def test_a_get_of_a_form_actions_url_returns_its_fragment(
 def test_delete_action_handle_submit_deletes_and_redirects(
     mock_site_context: Site,
 ) -> None:
-    """A successful delete answers 204 with closeModal, the deleted pk in its
-    domain event and HX-Location to success_url, never HX-Redirect."""
+    """A successful delete with a success_url answers 204 with closeModal and
+    HX-Location to success_url, never HX-Redirect. It sends no domain events:
+    the page it leaves would hear them before the navigation and refetch
+    panels scoped to the row that no longer exists."""
     item = _make_stub(name="to-delete")
     item_pk = item.pk
     action = DeleteAction(success_url="/items", success_events=("itemChanged",))
@@ -404,15 +406,34 @@ def test_delete_action_handle_submit_deletes_and_redirects(
     response = action.handle_submit(_ctx(request, item))
 
     assert response.status_code == 204
-    assert response["HX-Trigger"] == build_hx_trigger(
-        {"itemChanged": [str(item_pk)]}, close_modal=True
-    )
+    assert response["HX-Trigger"] == build_hx_trigger({}, close_modal=True)
     assert json.loads(response["HX-Location"]) == {
         "path": "/items",
         "target": "#main-content",
         "swap": "outerHTML",
     }
     assert "HX-Redirect" not in response
+    assert not StubModel.objects.filter(pk=item_pk).exists()
+
+
+@pytest.mark.django_db
+def test_delete_action_without_a_success_url_sends_its_events_and_stays_put(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="to-delete-in-place")
+    item_pk = item.pk
+    action = DeleteAction(success_events=("itemChanged",))
+
+    request = RequestFactory().delete("/")
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, item))
+
+    assert response.status_code == 204
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item_pk)]}, close_modal=True
+    )
+    assert "HX-Location" not in response
     assert not StubModel.objects.filter(pk=item_pk).exists()
 
 

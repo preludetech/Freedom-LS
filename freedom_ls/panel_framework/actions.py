@@ -235,7 +235,12 @@ class EditAction(FormPanelAction):
 
 
 class DeleteAction(PanelAction):
-    """Deletes the instance of whatever it is attached to, after confirmation."""
+    """Deletes the instance of whatever it is attached to, after confirmation.
+
+    With a success_url, a delete navigates there and sends no domain events.
+    Without one it stays on the page and sends success_events, so the panels
+    still showing the deleted row can refetch themselves.
+    """
 
     label = "Delete"
     variant = "error"
@@ -362,7 +367,14 @@ class DeleteAction(PanelAction):
             )
             return HttpResponse(html, status=422)
         response = HttpResponse(status=204)
-        response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+        if not self.success_url:
+            response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+            return response
+        # htmx handles HX-Trigger before HX-Location, so domain events would
+        # reach the page being left while it is still on screen, and its
+        # panels would refetch URLs scoped to the row just deleted. The page
+        # navigated to renders fresh and needs none of them.
+        response["HX-Trigger"] = build_hx_trigger({}, close_modal=True)
         response["HX-Location"] = json.dumps(
             {"path": self.success_url, "target": "#main-content", "swap": "outerHTML"}
         )
