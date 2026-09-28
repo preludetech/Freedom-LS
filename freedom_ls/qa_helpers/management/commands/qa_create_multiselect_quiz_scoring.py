@@ -21,7 +21,7 @@ Creates, idempotently, on the requested site:
    (one above and one below the 50% pass mark, plus attempts on the
    NULL-pass-mark quiz). This gives the educator cohort-course-progress panel
    real quiz percentages to render, including the "score but no verdict" case.
-   An educator with the guardian ``view_cohort`` permission is created too.
+   An educator holding the ``cohort_viewer`` role is created too.
 
 Both forms sit at item index 1 of their own course, so neither is blocked by
 the player's sequential item unlocking. The main QA learner is deliberately
@@ -36,7 +36,6 @@ from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
-from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 
@@ -81,6 +80,11 @@ from freedom_ls.qa_helpers.management.commands.qa_create_form_question_types imp
     _build_form,
     _get_or_create_course,
 )
+from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
+    _pin_current_site,
+    _site_context,
+)
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 LEARNER_EMAIL = "demodev_quizqa@email.com"
 
@@ -409,7 +413,9 @@ def command(site_name: str) -> None:
     educator, educator_created = _get_or_create_user(
         site, EDUCATOR_EMAIL, "Quinn", "QuizQA Educator"
     )
-    assign_perm("view_cohort", educator, cohort)
+    _pin_current_site(site)
+    with _site_context(site):
+        assign_object_role(educator, cohort, "cohort_viewer")
 
     attempts: list[tuple[User, Form, FormProgress]] = []
     for email, first_name, last_name, answer_correctly in COHORT_LEARNERS:
@@ -489,7 +495,7 @@ def command(site_name: str) -> None:
     )
     click.secho(
         f"{'Created' if educator_created else 'Reused'} educator login: "
-        f"{educator.email} / {educator.email} (guardian view_cohort granted)",
+        f"{educator.email} / {educator.email} (cohort_viewer role granted)",
         fg="green",
         bold=True,
     )

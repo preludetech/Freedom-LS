@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import cast
 
 import pytest
+from guardian.shortcuts import assign_perm
 
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
@@ -45,7 +46,8 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
-from freedom_ls.role_based_permissions.utils import assign_object_role
+from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
 
 
 def _make_cohort(*, organisation: Organisation | None = None) -> Cohort:
@@ -215,7 +217,7 @@ class TestLatestRegistration:
 @pytest.mark.django_db
 class TestOrganisationsAccessibleTo:
     """An organisation is reachable via an organisation role or a per-cohort
-    guardian grant on any cohort inside it."""
+    role assignment on any cohort inside it."""
 
     def test_role_holder_sees_the_organisation(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -272,11 +274,27 @@ class TestOrganisationsAccessibleTo:
 
         assert list(organisations_accessible_to(user)) == []
 
+    def test_site_admin_sees_every_organisation_on_its_site(self, mock_site_context):
+        organisation_a = OrganisationFactory()
+        organisation_b = OrganisationFactory()
+        user = UserFactory()
+        assign_site_role(user, "site_admin", site=mock_site_context)
+
+        # get_default_organisation, not another OrganisationFactory(): every
+        # Site already carries one of its own, made by a post_save receiver,
+        # so the site admin must see it too.
+        default_organisation = get_default_organisation(mock_site_context)
+        assert set(organisations_accessible_to(user)) == {
+            organisation_a,
+            organisation_b,
+            default_organisation,
+        }
+
 
 @pytest.mark.django_db
 class TestCohortsVisibleTo:
     """All cohorts in the organisation for a role holder; only the granted
-    ones for a guardian-grant-only educator."""
+    ones for an educator holding only a per-cohort role assignment."""
 
     def test_role_holder_sees_every_cohort_in_the_organisation(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -310,6 +328,19 @@ class TestCohortsVisibleTo:
         organisation = OrganisationFactory()
         _make_cohort(organisation=organisation)
         user = UserFactory()
+
+        assert list(cohorts_visible_to(user, organisation)) == []
+
+    def test_a_raw_guardian_permission_with_no_role_assignment_grants_nothing(
+        self, mock_site_context
+    ):
+        """Visibility is answered from role assignments, never from guardian
+        rows directly -- a guardian permission assigned by hand, with no
+        matching ObjectRoleAssignment behind it, must not be enough."""
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        user = UserFactory()
+        assign_perm("freedom_ls_learner_management.view_cohort", user, cohort)
 
         assert list(cohorts_visible_to(user, organisation)) == []
 

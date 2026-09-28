@@ -23,6 +23,7 @@ from freedom_ls.role_based_permissions.models import (
     ObjectRoleAssignment,
     SiteRoleAssignment,
 )
+from freedom_ls.site_aware_models.models import _thread_locals, get_cached_site
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -38,6 +39,23 @@ def roles_granting(capability: str, site: Site) -> frozenset[str]:
     return frozenset(
         key for key, role in config.items() if capability in role.permissions
     )
+
+
+def _current_site() -> Site | None:
+    """The site of the current request, or None with no request in scope.
+
+    organisations_accessible_to and all_cohorts_visible_to have no scope
+    object of their own to take a site from. They must not call
+    Site.objects.get_current(): this project never sets SITE_ID, so that
+    raises outside tests, where mock_site_context patches it. This resolves
+    the site the same way fire_webhook_event does, and is the same
+    request-site SiteAwareManager already filters these querysets by.
+    """
+    request = getattr(_thread_locals, "request", None)
+    if request is None:
+        return None
+    site = get_cached_site(request)
+    return site if isinstance(site, Site) else None
 
 
 def _site_of(scope: Model) -> Site:

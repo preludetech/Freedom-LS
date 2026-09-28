@@ -7,7 +7,7 @@ frontend_qa_report_generation.md``) defines eleven fixtures
 spanning 0 to 40 learners and 1 to 12+ quizzes, plus the degenerate,
 no-pass-mark and blank-answer cases. This command builds all of them, plus the
 four users the permission checks need: a cohort educator, a staff user scoped
-to one cohort by a guardian grant, and two organisation-role holders -- one on
+to one cohort by a cohort_viewer role assignment, and two organisation-role holders -- one on
 the organisation the fixtures live in, one on an organisation that holds none
 of them.
 
@@ -29,7 +29,6 @@ import dataclasses
 from typing import cast
 
 import djclick as click
-from guardian.shortcuts import assign_perm
 
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -61,7 +60,7 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 EDUCATOR_EMAIL = "qa-report-educator@email.com"
 RESTRICTED_EMAIL = "qa-report-restricted@email.com"
 # Holds an organisation role on the organisation every fixture cohort lives in,
-# and no per-cohort guardian grant at all.
+# and no per-cohort role assignment at all.
 ORG_STAFF_EMAIL = "qa-report-orgstaff@email.com"
 # Holds an organisation role on an organisation with no report cohorts in it.
 FOREIGN_ORG_STAFF_EMAIL = "qa-report-otherorg@email.com"
@@ -534,10 +533,12 @@ def command(
         None,
     )
     if permitted is not None:
-        assign_perm("view_cohort", restricted, permitted)
+        _pin_current_site(site)
+        with _site_context(site):
+            assign_object_role(restricted, permitted, "cohort_viewer")
         click.secho(
             f"  Restricted {restricted.email} / {restricted.email} "
-            f"(is_staff, view_cohort on '{permitted.name}' ONLY)",
+            f"(is_staff, cohort_viewer on '{permitted.name}' ONLY)",
             fg="green",
         )
         click.secho(

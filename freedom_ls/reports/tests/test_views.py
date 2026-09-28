@@ -7,7 +7,6 @@ from collections.abc import Callable
 from contextlib import AbstractContextManager
 
 import pytest
-from guardian.shortcuts import assign_perm
 
 from django.core.files.base import ContentFile
 from django.urls import reverse
@@ -36,7 +35,7 @@ def _download_url(report_pk: object) -> str:
 
 def _staff_user_with_cohort_view_permission(cohort: object) -> object:
     user = UserFactory(is_staff=True)
-    assign_perm("freedom_ls_learner_management.view_cohort", user, cohort)
+    assign_object_role(user, cohort, "cohort_viewer")
     return user
 
 
@@ -279,13 +278,15 @@ class TestDownloadReportView:
         _save_ready_file(report)
         user = _staff_user_with_cohort_view_permission(cohort)
         client.force_login(user)
-        # can_view_cohort's guardian permission check warms process-level
-        # ContentType/permission caches the first time it runs, independent of
+        # can_view_cohort's role-assignment check warms process-level
+        # ContentType/role-config caches the first time it runs, independent of
         # this change -- one throwaway request settles those caches so the
         # counted request's total reflects only this view's own queries.
         client.get(_download_url(report.pk))
 
-        with django_assert_num_queries(7):
+        # One fewer than under guardian's has_perm/get_objects_for_user: role
+        # assignments resolve the same two-branch check in a single query.
+        with django_assert_num_queries(6):
             client.get(_download_url(report.pk))
 
     def test_ready_report_response_carries_no_store_cache_header(
@@ -324,7 +325,7 @@ class TestDownloadReportView:
 
 
 def _organisation_admin_user(organisation: object) -> object:
-    """Staff with an organisation role and no per-cohort guardian grant."""
+    """Staff with an organisation role and no per-cohort role assignment."""
     user = UserFactory(is_staff=True)
     assign_object_role(user, organisation, "organisation_admin")
     return user
@@ -332,7 +333,7 @@ def _organisation_admin_user(organisation: object) -> object:
 
 class TestGenerateReportViewOrganisationScoping:
     """The cohort dropdown and its POST re-check must honour the organisation
-    role, which guardian's view_cohort can never carry."""
+    role, which a per-cohort cohort_viewer assignment can never carry."""
 
     def test_dropdown_offers_every_cohort_in_the_organisation(
         self, mock_site_context: object, client: object

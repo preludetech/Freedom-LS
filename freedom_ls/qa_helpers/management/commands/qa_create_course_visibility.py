@@ -8,7 +8,7 @@ ACCOUNTS (both login-ready: verified+primary EmailAddress, password == email):
   2. An educator who can reach the educator course-management interface
      (gated only by @login_required) and who owns a cohort registered for the
      published course, so the educator's cohort views show data. The educator is
-     granted object-level view_cohort on that cohort.
+     granted the cohort_viewer role on that cohort.
 
 COURSES (4, each with one viewable Topic so the player resolves):
   1. published-free    visibility=published,  access_config={"access_type":"free"}
@@ -29,7 +29,6 @@ from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
-from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 
@@ -52,6 +51,11 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
+    _pin_current_site,
+    _site_context,
+)
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 LEARNER_EMAIL = "demodev_visibility_learner@email.com"
 EDUCATOR_EMAIL = "demodev_visibility_educator@email.com"
@@ -234,7 +238,9 @@ def command(site_name: str) -> None:
                 name=COHORT_NAME, site=site, organisation=get_default_organisation(site)
             ),
         )
-    assign_perm("view_cohort", educator, cohort)
+    _pin_current_site(site)
+    with _site_context(site):
+        assign_object_role(educator, cohort, "cohort_viewer")
     if not CohortCourseRegistration.objects.filter(
         cohort=cohort, course=published_free, site=site
     ).exists():

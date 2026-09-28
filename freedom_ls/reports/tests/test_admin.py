@@ -45,11 +45,11 @@ def _superuser() -> object:
 
 
 def _restricted_staff_user(cohort: object) -> object:
-    """Staff, model-level view and delete on GeneratedReport, view_cohort on one cohort."""
+    """Staff, model-level view and delete on GeneratedReport, cohort_viewer on one cohort."""
     user = UserFactory(is_staff=True)
     for codename in ("view_generatedreport", "delete_generatedreport"):
         assign_perm(f"freedom_ls_reports.{codename}", user)
-    assign_perm("freedom_ls_learner_management.view_cohort", user, cohort)
+    assign_object_role(user, cohort, "cohort_viewer")
     return user
 
 
@@ -261,7 +261,7 @@ class TestGeneratedReportAdminObjectLevelScoping:
 
 def _organisation_admin_user(organisation: object) -> object:
     """Staff, model-level report permissions, an organisation role and no
-    per-cohort guardian grant at all."""
+    per-cohort role assignment at all."""
     user = UserFactory(is_staff=True)
     for codename in ("view_generatedreport", "delete_generatedreport"):
         assign_perm(f"freedom_ls_reports.{codename}", user)
@@ -270,9 +270,10 @@ def _organisation_admin_user(organisation: object) -> object:
 
 
 class TestGeneratedReportAdminOrganisationScoping:
-    """An organisation role grants every cohort inside the organisation.
-    Guardian cannot express that implication, so the admin must go through
-    learner_management.queries rather than a bare view_cohort lookup."""
+    """An organisation role grants every cohort inside the organisation, an
+    implication a per-cohort role assignment cannot express, so the admin
+    goes through learner_management.queries rather than a bare per-cohort
+    lookup."""
 
     def test_changelist_lists_reports_for_every_cohort_in_the_organisation(
         self, mock_site_context: object, client: object
@@ -369,8 +370,8 @@ class TestGeneratedReportAdminOrganisationScoping:
     def test_a_per_cohort_grant_still_works_without_any_organisation_role(
         self, mock_site_context: object, client: object
     ) -> None:
-        """The lock-out risk: an educator holding only guardian grants must not
-        lose access now that a second path exists."""
+        """The lock-out risk: an educator holding only a per-cohort role
+        assignment must not lose access now that a second path exists."""
         permitted = CohortFactory(name="Alpha Cohort")
         GeneratedReportFactory(cohort=permitted)
         GeneratedReportFactory(cohort=CohortFactory(name="Bravo Cohort"))

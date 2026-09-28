@@ -49,7 +49,6 @@ from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
-from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 from django.utils import timezone
@@ -90,6 +89,11 @@ from freedom_ls.learner_progress.signals import recalculate_progress_percentage
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
+    _pin_current_site,
+    _site_context,
+)
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 # 40 distinct surnames: the report sorts learners by surname, so creation order
 # and alphabetical order are deliberately different.
@@ -745,7 +749,9 @@ def build_report_cohort(
 
     if educator_email:
         educator = _get_or_create_user(site, educator_email, "Quinn", "Reporter")
-        assign_perm("view_cohort", educator, cohort)
+        _pin_current_site(site)
+        with _site_context(site):
+            assign_object_role(educator, cohort, "cohort_viewer")
 
     return cohort
 
@@ -796,7 +802,7 @@ def build_report_cohort(
 @click.option(
     "--educator-email",
     default=None,
-    help="Optional educator to create and grant guardian 'view_cohort' on this cohort.",
+    help="Optional educator to create and grant the 'cohort_viewer' role on this cohort.",
 )
 @click.option(
     "--organisation-slug",

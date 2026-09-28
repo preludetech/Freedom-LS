@@ -33,6 +33,11 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.queries import (
+    cohorts_visible_to,
+    learners_visible_to,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 from freedom_ls.role_based_permissions.utils import assign_object_role, assign_site_role
@@ -245,6 +250,47 @@ def test_a_roles_permissions_equal_the_capabilities_its_matrix_column_allows(
     }
 
     assert BASE_ROLES[role].permissions == from_matrix
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ROLES)
+def test_cohorts_visible_to_agrees_with_can_on_every_cohort(
+    mock_site_context: Site, role: str
+) -> None:
+    """The queryset a list renders and the per-object check gating a row must
+    never disagree about which cohorts this role can see."""
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+
+    for (kind, relation), scope in world.scopes.items():
+        if kind != "cohort":
+            continue
+        cohort = cast(Cohort, scope)
+        visible = (
+            cohorts_visible_to(user, cohort.organisation).filter(pk=cohort.pk).exists()
+        )
+        assert visible is can(user, VIEW_COHORT, scope), (role, relation)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ROLES)
+def test_learners_visible_to_agrees_with_can_on_every_learner(
+    mock_site_context: Site, role: str
+) -> None:
+    """Same agreement, on the learner side."""
+    world = _build_world(mock_site_context)
+    user = world.users[role]
+
+    for (kind, relation), scope in world.scopes.items():
+        if kind != "learner":
+            continue
+        learner = cast(Learner, scope)
+        visible = (
+            learners_visible_to(user, learner.organisation)
+            .filter(pk=learner.pk)
+            .exists()
+        )
+        assert visible is can(user, VIEW_LEARNER, scope), (role, relation)
 
 
 @pytest.mark.django_db

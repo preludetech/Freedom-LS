@@ -5,9 +5,9 @@ scrim. Specifically it creates an educator who can reach the cohort detail page
 and see the ``DeleteAction`` button, which opens the
 ``panel_framework/partials/delete_confirmation.html`` modal (a ``<c-modal>``).
 
-The educator is granted object-level ``view_cohort`` (so the cohort appears in
-the list and the detail page loads) and ``delete_cohort`` (so the Delete action
-renders) on the created cohort. A single learner member plus a course
+The educator is granted the ``organisation_admin`` role on the cohort's
+organisation (so the cohort appears in the list, the detail page loads, and
+the Delete action renders). A single learner member plus a course
 registration give the delete-confirmation modal a cascade summary to show.
 
 Idempotent: re-running reuses existing records by email / name.
@@ -17,7 +17,6 @@ from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
-from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 
@@ -35,6 +34,11 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
 )
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
+    _pin_current_site,
+    _site_context,
+)
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 EDUCATOR_EMAIL = "qa_educator@example.com"
 LEARNER_EMAIL = "qa_modal_learner@example.com"
@@ -106,10 +110,13 @@ def command(site_name: str) -> None:
     else:
         click.secho(f"Reusing cohort '{COHORT_NAME}'", fg="yellow")
 
-    # Object-level perms: view (list + detail page) and delete (renders the modal).
-    assign_perm("view_cohort", educator, cohort)
-    assign_perm("delete_cohort", educator, cohort)
-    click.secho("Assigned view_cohort + delete_cohort on cohort", fg="green")
+    # organisation_admin, not a per-cohort role: it carries view, add, change
+    # and delete on every cohort in the organisation, which is what makes the
+    # Delete action render.
+    _pin_current_site(site)
+    with _site_context(site):
+        assign_object_role(educator, cohort.organisation, "organisation_admin")
+    click.secho("Assigned organisation_admin on the cohort's organisation", fg="green")
 
     # One learner member so the cohort is non-empty and the delete modal has a
     # cascade summary to display.

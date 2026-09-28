@@ -35,7 +35,6 @@ from typing import cast
 
 import djclick as click
 from allauth.account.models import EmailAddress
-from guardian.shortcuts import assign_perm
 
 from django.contrib.sites.models import Site
 from django.utils import timezone
@@ -85,6 +84,11 @@ from freedom_ls.learner_progress.factories import (
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.queries import course_progress_for
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.qa_helpers.management.commands.qa_create_organisation_scenarios import (
+    _pin_current_site,
+    _site_context,
+)
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 COURSE_TITLE = "QA Legacy Checkbox Score Course"
 COURSE_SLUG = "qa-legacy-score-course"
@@ -533,7 +537,9 @@ def command(site_name: str) -> None:
 
     educator = User.objects.filter(email=OPTIONAL_EDUCATOR_EMAIL, site=site).first()
     if educator is not None:
-        assign_perm("view_cohort", educator, cohort)
+        _pin_current_site(site)
+        with _site_context(site):
+            assign_object_role(educator, cohort, "cohort_viewer")
 
     stored_pct = round(stored["score"] / stored["max_score"] * 100)
     recomputed_pct = round(recomputed["score"] / recomputed["max_score"] * 100)
@@ -606,4 +612,4 @@ def command(site_name: str) -> None:
         f"{cohort.organisation.slug}/cohorts/{cohort.pk}"
     )
     if educator is not None:
-        click.echo(f"  guardian view_cohort granted to {educator.email}")
+        click.echo(f"  cohort_viewer role granted to {educator.email}")
