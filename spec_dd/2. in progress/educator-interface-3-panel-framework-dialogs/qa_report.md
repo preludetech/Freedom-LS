@@ -156,11 +156,11 @@ Manifestations: 2.3 (desktop)
 - B1: **FIXED** (commit: 8a342d0b). Panel modal (#app-modal) renders pinned to the top-left corner instead of centred.
 - B2: **FIXED** (commit: 086609f6). Quick-view drawer/sheet layout and print rules lose the cascade.
 - B3: **FIXED** (commit: 8f65d17e). Double-clicking Save submits the modal form twice.
-- B4: **UNRESOLVED**. appModal htmx:afterSwap listener throws a TypeError on history restore (reason: fix budget exhausted this run).
-- B5: **UNRESOLVED**. Deleting from the detail page makes the deleted cohort's panels refetch and 404 (reason: needs a decision on how a delete's domain event should treat the panels of the page it navigates away from).
-- B6: **UNRESOLVED**. Modal button row overflows at phone width, so Cancel is clipped (reason: fix budget exhausted this run).
-- B7: **UNRESOLVED**. Quick-view title flips between the trigger text and the frame's title (reason: needs a decision on what the learner drawer title should be: the learner's name or `Learner.__str__`, which the learner page h1 also uses).
-- B8: **UNRESOLVED**. Delete cascade summary uses the plural for a count of one, "1 cohort memberships" (reason: fix budget exhausted this run).
+- B4: **FIXED** (commit: acc70c5d). appModal htmx:afterSwap listener throws a TypeError on history restore.
+- B5: **FIXED** (commit: 4617b67d). Deleting from the detail page makes the deleted cohort's panels refetch and 404. Decision: a delete with a `success_url` sends no domain events, only `closeModal` and `HX-Location`.
+- B6: **FIXED** (commit: fcdf45ba). Modal button row overflows at phone width, so Cancel is clipped.
+- B7: **FIXED** (commit: 3e5f2e49). Quick-view title flips between the trigger text and the frame's title. Decision: the title comes only from the frame, and the learner drawer's title is `user.display_name`.
+- B8: **FIXED** (commit: 555d2641). Delete cascade summary uses the plural for a count of one, "1 cohort memberships".
 
 ### Re-verification of the fixes
 
