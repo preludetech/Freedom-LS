@@ -56,10 +56,13 @@ document.addEventListener("alpine:init", () => {
                 }
             });
 
+            // A history restore's swap carries no target in its detail.
             trackListener(this._handlers, document, "htmx:afterSwap", (event) => {
-                if (event.detail.target === this._body) {
+                const target = event.detail.target;
+                if (!target) return;
+                if (target === this._body) {
                     this._afterBodySwap(event);
-                } else if (event.detail.target.id === "main-content") {
+                } else if (target.id === "main-content") {
                     // The HX-Location swap is outerHTML, so the pre-swap
                     // target detail still names the now-detached old
                     // element: match on id rather than node identity, since
