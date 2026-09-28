@@ -216,25 +216,38 @@ def app_labels(apps: list[App]) -> dict[str, App]:
     return labels
 
 
-def walk_model_relations(app: App, labels: dict[str, App]) -> set[App]:
-    """Apps a relation field in `app`'s non-test code names by string label.
+def is_auth_user_model_attribute(node: ast.expr) -> bool:
+    """Whether `node` is `settings.AUTH_USER_MODEL` (however `settings` is imported)."""
+    return isinstance(node, ast.Attribute) and node.attr == "AUTH_USER_MODEL"
 
-    Only `"<label>.<Model>"` first arguments count; a label with no dot names a
-    model in the same app and is skipped, and a label matching no known app (a
-    third-party app such as `sites`) is ignored.
+
+def walk_model_relations(app: App, labels: dict[str, App], user_app: App) -> set[App]:
+    """Apps a relation field or `get_user_model()` call in `app`'s non-test code names.
+
+    Only `"<label>.<Model>"` first arguments count for the string-label case; a label
+    with no dot names a model in the same app and is skipped, and a label matching no
+    known app (a third-party app such as `sites`) is ignored. `settings.AUTH_USER_MODEL`
+    as that first argument, and any `get_user_model()` call, both name `user_app`.
     """
     targets: set[App] = set()
     for file_path, tree in iter_app_trees(app):
         if is_test_path(relative_path(app, file_path)):
             continue
         for node in ast.walk(tree):
-            if not (
-                isinstance(node, ast.Call)
-                and call_name(node) in RELATION_FIELDS
-                and node.args
-            ):
+            if not isinstance(node, ast.Call):
+                continue
+            name = call_name(node)
+            if name == "get_user_model":
+                if user_app is not app:
+                    targets.add(user_app)
+                continue
+            if not (name in RELATION_FIELDS and node.args):
                 continue
             first = node.args[0]
+            if is_auth_user_model_attribute(first):
+                if user_app is not app:
+                    targets.add(user_app)
+                continue
             if not (isinstance(first, ast.Constant) and isinstance(first.value, str)):
                 continue
             if "." not in first.value:
@@ -273,9 +286,14 @@ def compute_edges(apps: list[App], config: TestOrganisationConfig | None) -> Edg
             else:
                 edges.runtime.add(edge)
     if config is not None:
+        user_app = by_module.get(config.user_model_app)
+        if user_app is None:
+            raise ConfigError(
+                f"user_model_app '{config.user_model_app}' names no known app"
+            )
         labels = app_labels(apps)
         for app in apps:
-            for target in walk_model_relations(app, labels):
+            for target in walk_model_relations(app, labels, user_app):
                 edges.runtime.add((app.short_name, target.short_name))
     edges.test -= edges.runtime
     return edges
@@ -438,7 +456,11 @@ def main() -> int:
         file=sys.stderr,
     )
 
-    new_edges = compute_edges(apps, config)
+    try:
+        new_edges = compute_edges(apps, config)
+    except ConfigError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
     old_edges = parse_existing_edges(output)
 
     header = HEADER_WITH_TEST_ORGANISATION if config is not None else HEADER
