@@ -1,6 +1,6 @@
 {% comment %}
-The modal fragment a FormPanelAction's GET returns. Context: form, form_title,
-form_url, submit_buttons.
+The modal fragment a FormPanelAction's GET returns. Context: form,
+field_error_count, form_title, form_url, submit_buttons.
 {% endcomment %}
 <h2 id="app-modal-title">{{ form_title }}</h2>
 
@@ -9,7 +9,9 @@ form_url, submit_buttons.
          tabindex="-1"
          role="alert"
          class="mb-4 rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
-        <p>{{ form.errors|length }} field{{ form.errors|length|pluralize }} to fix.</p>
+        {% if field_error_count %}
+            <p>{{ field_error_count }} field{{ field_error_count|pluralize }} to fix.</p>
+        {% endif %}
         {{ form.non_field_errors }}
     </div>
 {% endif %}

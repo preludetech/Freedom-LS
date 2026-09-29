@@ -12,7 +12,9 @@ from __future__ import annotations
 import pytest
 
 from django import forms
+from django.core.exceptions import NON_FIELD_ERRORS
 
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
@@ -61,3 +63,45 @@ def test_fields_the_subclass_does_not_name_stay_excluded(mock_site_context) -> N
     form = _cleaned(_CohortFormWithoutSite, mock_site_context)
 
     assert "created_at" in form._get_validation_exclusions()
+
+
+class _CohortNameOnlyForm(ConstraintValidationFormMixin):
+    """Renders one of the constraint's fields; the others come from the view."""
+
+    constraint_fields = ("organisation", "site")
+
+    class Meta:
+        model = Cohort
+        fields = ("name",)
+
+
+def test_a_constraint_error_lands_on_its_only_rendered_field(
+    mock_site_context,
+) -> None:
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation, name="Year 10 Science")
+    form = _CohortNameOnlyForm(data={"name": "Year 10 Science"})
+    form.instance.organisation = organisation
+
+    assert form.is_valid() is False
+    assert form.errors["name"] == [
+        "Cohort with this Site, Organisation and Name already exists."
+    ]
+    assert form.non_field_errors() == []
+
+
+def test_a_constraint_error_spanning_rendered_fields_stays_form_level(
+    mock_site_context,
+) -> None:
+    """With two rendered fields there is no single field to blame."""
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation, name="Year 10 Science")
+    form = _CohortFormWithoutSite(
+        data={"organisation": organisation.pk, "name": "Year 10 Science"}
+    )
+
+    assert form.is_valid() is False
+    assert form.errors[NON_FIELD_ERRORS] == [
+        "Cohort with this Site, Organisation and Name already exists."
+    ]
+    assert "name" not in form.errors
