@@ -49,8 +49,18 @@ SKIP_DIRS: frozenset[str] = frozenset(
 
 TEST_PATH_MARKERS: tuple[str, ...] = ("/tests/", "/test_")
 
-# Django relation fields whose first positional argument may name a related
-# model by "<app label>.<Model>" instead of importing it.
+
+def in_skipped_dir(path: Path, base: Path) -> bool:
+    """Whether `path` sits in a SKIP_DIRS directory below `base`.
+
+    Directories above `base` don't count, so a checkout under a folder named
+    `build` or `venv` is still scanned.
+    """
+    return any(part in SKIP_DIRS for part in path.relative_to(base).parts)
+
+
+# Django relation fields whose first positional argument (or `to=` keyword)
+# may name a related model by "<app label>.<Model>" instead of importing it.
 RELATION_FIELDS: frozenset[str] = frozenset(
     {"ForeignKey", "OneToOneField", "ManyToManyField"}
 )
@@ -122,7 +132,7 @@ def load_config(project_root: Path) -> TestOrganisationConfig | None:
 def find_apps(root: Path) -> list[App]:
     apps: list[App] = []
     for apps_py in root.rglob("apps.py"):
-        if any(part in SKIP_DIRS for part in apps_py.parts):
+        if in_skipped_dir(apps_py, root):
             continue
         app_dir = apps_py.parent
         try:
@@ -151,7 +161,7 @@ def is_test_path(path: Path) -> bool:
 
 def iter_app_trees(app: App) -> Iterator[tuple[Path, ast.Module]]:
     for py_file in app.directory.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in py_file.parts):
+        if in_skipped_dir(py_file, app.directory):
             continue
         try:
             source = py_file.read_text(encoding="utf-8")
@@ -227,13 +237,25 @@ def is_auth_user_model_attribute(node: ast.expr) -> bool:
     return isinstance(node, ast.Attribute) and node.attr == "AUTH_USER_MODEL"
 
 
+def related_model_argument(node: ast.Call) -> ast.expr | None:
+    """A relation field's related-model argument: first positional, else `to=`."""
+    if node.args:
+        return node.args[0]
+    for keyword in node.keywords:
+        if keyword.arg == "to":
+            return keyword.value
+    return None
+
+
 def walk_model_relations(app: App, labels: dict[str, App], user_app: App) -> set[App]:
     """Apps a relation field or `get_user_model()` call in `app`'s non-test code names.
 
-    Only `"<label>.<Model>"` first arguments count for the string-label case; a label
-    with no dot names a model in the same app and is skipped, and a label matching no
-    known app (a third-party app such as `sites`) is ignored. `settings.AUTH_USER_MODEL`
-    as that first argument, and any `get_user_model()` call, both name `user_app`.
+    The related model is the first positional argument, or the `to=` keyword when
+    there is none. Only `"<label>.<Model>"` values count for the string-label case; a
+    label with no dot names a model in the same app and is skipped, and a label
+    matching no known app (a third-party app such as `sites`) is ignored.
+    `settings.AUTH_USER_MODEL` as the related model, and any `get_user_model()` call,
+    both name `user_app`.
     """
     targets: set[App] = set()
     for file_path, tree in iter_app_trees(app):
@@ -247,9 +269,11 @@ def walk_model_relations(app: App, labels: dict[str, App], user_app: App) -> set
                 if user_app is not app:
                     targets.add(user_app)
                 continue
-            if not (name in RELATION_FIELDS and node.args):
+            if name not in RELATION_FIELDS:
                 continue
-            first = node.args[0]
+            first = related_model_argument(node)
+            if first is None:
+                continue
             if is_auth_user_model_attribute(first):
                 if user_app is not app:
                     targets.add(user_app)
@@ -416,9 +440,10 @@ def all_module_names(apps: list[App]) -> set[str]:
 
 
 def test_imports(app: App, known_modules: set[str]) -> list[tuple[str, str]]:
-    """`(importer, imported)` for every `ImportFrom` in `app`'s test modules.
+    """`(importer, imported)` for every import in `app`'s test modules.
 
-    `imported` mirrors how import-linter resolves `from X import Y`: the
+    `import X.Y` imports `X.Y` when that is a known module. For `from X import Y`,
+    `imported` mirrors how import-linter resolves it: the
     submodule `X.Y` when that dotted path is itself a known module, otherwise
     `X` when `X` is. That way `from pkg.users import factories` and
     `from pkg.users.factories import UserFactory` both resolve to
@@ -430,6 +455,13 @@ def test_imports(app: App, known_modules: set[str]) -> list[tuple[str, str]]:
             continue
         importer = module_name(app, file_path)
         for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                pairs.extend(
+                    (importer, alias.name)
+                    for alias in node.names
+                    if alias.name in known_modules
+                )
+                continue
             if not (isinstance(node, ast.ImportFrom) and node.module):
                 continue
             for alias in node.names:
@@ -451,7 +483,7 @@ def source_modules(app: App) -> list[str]:
     """
     modules: set[str] = set()
     for py_file in app.directory.rglob("*.py"):
-        if any(part in SKIP_DIRS for part in py_file.parts):
+        if in_skipped_dir(py_file, app.directory):
             continue
         within = py_file.relative_to(app.directory)
         if within.parts[0] == "tests":

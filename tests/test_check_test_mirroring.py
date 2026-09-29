@@ -107,6 +107,22 @@ def test_flat_templatetag_test_fails_naming_expected_module(tmp_path: Path) -> N
     assert "pkg/alpha/x.py" in result.stderr
 
 
+def test_project_rooted_under_skipped_directory_name_still_reports_violations(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "build"
+    files = one_app() | {
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_x.py": "",
+    }
+    write_tree(project, files)
+
+    result = run_script(SCRIPT, project)
+
+    assert result.returncode == 1
+    assert "pkg/alpha/tests/test_x.py" in result.stderr
+
+
 def test_behaviour_named_test_file_fails_naming_expected_module(tmp_path: Path) -> None:
     files = one_app() | {
         "pkg/alpha/tests/__init__.py": "",

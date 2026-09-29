@@ -22,11 +22,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from generate_app_map import (
-    SKIP_DIRS,
     App,
     ConfigError,
     TestOrganisationConfig,
     find_apps,
+    in_skipped_dir,
     iter_entries,
     load_config,
 )
@@ -88,7 +88,7 @@ def find_violations(apps: list[App], project_root: Path) -> list[Violation]:
     violations: list[Violation] = []
     for app in apps:
         for path in app.directory.rglob("*.py"):
-            if any(part in SKIP_DIRS for part in path.parts):
+            if in_skipped_dir(path, app.directory):
                 continue
             if not is_collected(path.name):
                 continue

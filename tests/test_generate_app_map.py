@@ -98,6 +98,31 @@ def test_string_label_fk_to_app_label_adds_runtime_edge(tmp_path: Path) -> None:
     assert "beta --> alpha" in doc
 
 
+def test_string_label_fk_passed_as_to_keyword_adds_runtime_edge(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/beta/models.py": (
+            "from django.db import models\n\n\n"
+            "class Thing(models.Model):\n"
+            "    alpha_thing = models.ForeignKey(\n"
+            '        to="alpha.Something", on_delete=models.CASCADE\n'
+            "    )\n"
+        ),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert result.returncode == 0
+    assert "beta --> alpha" in doc
+
+
 def test_string_label_fk_with_no_dot_adds_no_edge(tmp_path: Path) -> None:
     files = {
         "pyproject.toml": configured_pyproject(),
@@ -177,6 +202,26 @@ def test_project_rooted_under_test_named_directory_classifies_runtime_modules_as
     assert "alpha --> beta" in doc
 
 
+def test_project_rooted_under_skipped_directory_name_still_finds_apps_and_edges(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "build"
+    project.mkdir()
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/services.py": "from pkg.beta import views\n",
+    }
+    write_tree(project, files)
+
+    run_script(SCRIPT, project)
+
+    doc = (project / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert "alpha --> beta" in doc
+
+
 def user_model_fk_field() -> str:
     return (
         "from django.conf import settings\n"
@@ -199,6 +244,32 @@ def test_auth_user_model_relation_adds_edge_to_user_model_app(tmp_path: Path) ->
         "pkg/alpha/__init__.py": "",
         "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
         "pkg/alpha/models.py": user_model_fk_field(),
+    }
+    write_tree(tmp_path, files)
+
+    result = run_script(SCRIPT, tmp_path)
+
+    doc = (tmp_path / "docs" / "app_structure.md").read_text(encoding="utf-8")
+    assert result.returncode == 0
+    assert "alpha --> users" in doc
+
+
+def test_auth_user_model_passed_as_to_keyword_adds_edge_to_user_model_app(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": app_config("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/models.py": (
+            "from django.conf import settings\n"
+            "from django.db import models\n\n\n"
+            "class Thing(models.Model):\n"
+            "    owner = models.ForeignKey(\n"
+            "        to=settings.AUTH_USER_MODEL, on_delete=models.CASCADE\n"
+            "    )\n"
+        ),
     }
     write_tree(tmp_path, files)
 
@@ -627,6 +698,27 @@ def test_module_import_and_symbol_import_of_user_model_factories_produce_same_al
     ignore_imports = contract_list(contract, "ignore_imports")
     assert "pkg.beta.tests.test_a -> pkg.users.factories" in ignore_imports
     assert "pkg.beta.tests.test_b -> pkg.users.factories" in ignore_imports
+
+
+def test_plain_import_of_user_model_factories_produces_allowance_line(
+    tmp_path: Path,
+) -> None:
+    files = {
+        "pyproject.toml": configured_pyproject(),
+        **base_apps(),
+        "pkg/users/factories.py": "",
+        "pkg/beta/tests/__init__.py": "",
+        "pkg/beta/tests/test_models.py": "import pkg.users.factories\n",
+    }
+    write_tree(tmp_path, files)
+
+    run_script(SCRIPT, tmp_path)
+
+    contract = contract_for(tmp_path, "beta")
+    assert contract is not None
+    assert "pkg.beta.tests.test_models -> pkg.users.factories" in contract_list(
+        contract, "ignore_imports"
+    )
 
 
 def test_app_with_runtime_dep_on_user_model_app_gets_no_allowance_lines(
