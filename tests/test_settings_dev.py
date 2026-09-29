@@ -25,3 +25,7 @@ def test_test_database_name_is_test_prefixed_db_name() -> None:
 def test_test_database_clones_from_template0() -> None:
     test_config = cast("dict[str, str]", settings.DATABASES["default"]["TEST"])
     assert test_config["TEMPLATE"] == "template0"
+
+
+def test_app_connects_as_the_non_superuser_role() -> None:
+    assert settings.DATABASES["default"]["USER"] == "fls_dev"

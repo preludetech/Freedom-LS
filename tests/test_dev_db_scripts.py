@@ -19,6 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DELETE_SCRIPT = (
     REPO_ROOT / "claude_plugins" / "fls-dev" / "scripts" / "dev_db_delete.sh"
 )
+INIT_SCRIPT = REPO_ROOT / "claude_plugins" / "fls-dev" / "scripts" / "dev_db_init.sh"
 
 GIT_ENV_OVERRIDES = {
     "GIT_CONFIG_GLOBAL": "/dev/null",
@@ -105,3 +106,83 @@ def test_failing_psql_stops_the_script_before_any_drop_runs(
     # Assert
     assert result.returncode == 1
     assert "DROP DATABASE" not in stub_tools.log_file.read_text()
+
+
+def test_init_creates_fls_dev_role_only_if_missing(
+    stub_tools: StubTools, repo_on_branch: Path
+) -> None:
+    # Arrange
+    env = stub_tools.env(**GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    log = stub_tools.log_file.read_text()
+    assert result.returncode == 0
+    assert "IF NOT EXISTS" in log
+    assert "CREATE ROLE fls_dev LOGIN PASSWORD 'password' CREATEDB" in log
+    assert "$$" in log
+
+
+def test_init_sets_idle_in_transaction_timeout_on_the_role(
+    stub_tools: StubTools, repo_on_branch: Path
+) -> None:
+    # Arrange
+    env = stub_tools.env(**GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    assert result.returncode == 0
+    assert (
+        "ALTER ROLE fls_dev SET idle_in_transaction_session_timeout = '15min'"
+        in stub_tools.log_file.read_text()
+    )
+
+
+@pytest.mark.parametrize("db_name", ["db_feature_x", "test_db_feature_x"])
+def test_init_creates_missing_databases_owned_by_fls_dev(
+    stub_tools: StubTools, repo_on_branch: Path, db_name: str
+) -> None:
+    # Arrange
+    env = stub_tools.env(**GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    assert result.returncode == 0
+    assert f"CREATE DATABASE {db_name} OWNER fls_dev" in stub_tools.log_file.read_text()
+
+
+@pytest.mark.parametrize("db_name", ["db_feature_x", "test_db_feature_x"])
+def test_init_reassigns_owner_of_existing_databases_to_fls_dev(
+    stub_tools: StubTools, repo_on_branch: Path, db_name: str
+) -> None:
+    # Arrange
+    env = stub_tools.env(STUB_PSQL_OUTPUT="1", **GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    log = stub_tools.log_file.read_text()
+    assert result.returncode == 0
+    assert f"ALTER DATABASE {db_name} OWNER TO fls_dev" in log
+    assert "CREATE DATABASE" not in log
+
+
+def test_init_never_grants_privileges_to_pguser(
+    stub_tools: StubTools, repo_on_branch: Path
+) -> None:
+    # Arrange
+    env = stub_tools.env(**GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    assert result.returncode == 0
+    assert "GRANT" not in stub_tools.log_file.read_text()

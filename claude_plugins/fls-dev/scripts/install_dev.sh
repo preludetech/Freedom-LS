@@ -8,8 +8,5 @@ git submodule update --init --recursive
 
 "$(dirname "$0")/rebuild_after_rebase.sh"
 
-# Set up per-branch database
-"$(dirname "$0")/dev_db_init.sh"
-
 # Apply migrations
 uv run manage.py migrate
