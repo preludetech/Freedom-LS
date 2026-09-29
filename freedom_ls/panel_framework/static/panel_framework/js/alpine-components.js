@@ -216,7 +216,7 @@ document.addEventListener("alpine:init", () => {
     // dialog reference — whichever component's init() ran last — until each
     // of _dialog/_body/_trigger/_handlers below got its own "qv" name.
     Alpine.data("quickView", () => ({
-        _isMobile: false,
+        _isModal: false,
         _qvTrigger: null,
         _shownUrl: null,
         _stale: false,
@@ -239,8 +239,10 @@ document.addEventListener("alpine:init", () => {
                 "[data-quick-view-skeleton]",
             );
             this._errorTemplate = this._qvDialog.querySelector("[data-quick-view-error]");
-            this._qvMq = window.matchMedia("(min-width: 768px)");
-            this._isMobile = !this._qvMq.matches;
+            // Docked beside the page only where there is room for the page
+            // and a 30rem drawer side by side; narrower, it is a modal.
+            this._qvMq = window.matchMedia("(min-width: 1280px)");
+            this._isModal = !this._qvMq.matches;
 
             // htmx only leaves modifier-key clicks alone on boosted anchors.
             // This trigger is a plain hx-get anchor, so without this it would
@@ -297,8 +299,8 @@ document.addEventListener("alpine:init", () => {
             );
 
             // Single point every dismiss route (Esc, requestClose(), Back, a
-            // breakpoint flip) funnels through. A mobile open pushed one
-            // history entry so Back would dismiss the sheet rather than
+            // breakpoint flip) funnels through. A modal open pushed one
+            // history entry so Back would dismiss the drawer rather than
             // navigate the page; unwind it here unless Back is what closed
             // us (its entry is already gone), a breakpoint flip is about to
             // reopen in the other mode, or the caller asked to leave the
@@ -307,7 +309,7 @@ document.addEventListener("alpine:init", () => {
             // leave _qvHistoryPushed exactly as it found it: the entry (if
             // any) is still sitting in history, just not the one currently
             // open, and _showDialog() below relies on that flag staying
-            // true to avoid pushing a second one when mobile mode returns.
+            // true to avoid pushing a second one when modal mode returns.
             trackListener(this._qvHandlers, this._qvDialog, "close", () => {
                 this._syncExpanded();
                 focusTriggerOrMain(this._qvTrigger);
@@ -326,8 +328,8 @@ document.addEventListener("alpine:init", () => {
                 this._qvSkipHistoryUnwind = false;
             });
 
-            // showModal() gives the mobile sheet native Esc-to-close; show()
-            // gives the desktop drawer none, so this covers that case only,
+            // showModal() gives the modal drawer native Esc-to-close; show()
+            // gives the docked drawer none, so this covers that case only,
             // and steps aside when some other dialog (e.g. #app-modal) is
             // the one currently in the top layer, or when some other layer
             // above the drawer (e.g. an open dropdown menu) already
@@ -339,21 +341,21 @@ document.addEventListener("alpine:init", () => {
             // order the two components happened to initialise in.
             trackListener(this._qvHandlers, document, "keydown", (event) => {
                 if (event.key !== "Escape") return;
-                if (!this._qvDialog.open || this._isMobile) return;
+                if (!this._qvDialog.open || this._isModal) return;
                 if (document.querySelector("dialog[open]:modal")) return;
                 if (event.defaultPrevented) return;
                 this._close();
             });
 
-            // Crossing the md breakpoint while open has to reopen in the
-            // other mode (modal below md, docked at and above it), which
+            // Crossing the 1280px breakpoint while open has to reopen in the
+            // other mode (modal below it, docked at and above it), which
             // only takes effect through a fresh show()/showModal() call.
             // The close this triggers is not a real dismissal, so it must
             // not run the history unwind above.
             trackListener(this._qvHandlers, this._qvMq, "change", (event) => {
-                const wasMobile = this._isMobile;
-                this._isMobile = !event.matches;
-                if (wasMobile === this._isMobile || !this._qvDialog.open) return;
+                const wasModal = this._isModal;
+                this._isModal = !event.matches;
+                if (wasModal === this._isModal || !this._qvDialog.open) return;
                 this._qvClosingForBreakpoint = true;
                 this._qvDialog.close();
                 this._showDialog();
@@ -361,7 +363,7 @@ document.addEventListener("alpine:init", () => {
             });
 
             // showModal() pushes no history entry of its own, so Back would
-            // otherwise navigate the page instead of dismissing the sheet.
+            // otherwise navigate the page instead of dismissing the drawer.
             trackListener(this._qvHandlers, window, "popstate", () => {
                 if (this._qvDialog.open) {
                     this._qvClosingFromPopstate = true;
@@ -371,7 +373,7 @@ document.addEventListener("alpine:init", () => {
 
             // htmx caches the outgoing page's DOM before pushing the new
             // URL, so an open drawer would otherwise be part of that
-            // snapshot and reopen on Back. The mobile drawer's pushed
+            // snapshot and reopen on Back. The modal drawer's pushed
             // history entry is unwound by the close handler above, the same
             // way #app-modal's is. Nothing in this app navigates over htmx
             // from inside the quick view itself, so the race sidePanel's
@@ -398,15 +400,15 @@ document.addEventListener("alpine:init", () => {
         followOpenLink(event) {
             event.preventDefault();
             const href = this._openLink.href;
-            const isMobile = this._isMobile;
+            const isModal = this._isModal;
             // The pushed history entry is about to be superseded by a real
-            // navigation either way. On mobile it is replaced outright (see
+            // navigation either way. In modal mode it is replaced outright (see
             // below) rather than unwound first, so the close this triggers
             // must leave it alone.
             this._qvSkipHistoryUnwind = true;
             this._close();
-            if (isMobile) {
-                // assign() would leave the sheet's pushed entry sitting
+            if (isModal) {
+                // assign() would leave the drawer's pushed entry sitting
                 // under the destination, so Back from there would first
                 // replay this same page before actually leaving it.
                 window.location.replace(href);
@@ -419,22 +421,22 @@ document.addEventListener("alpine:init", () => {
                 this._showDialog();
             }
             this._openLink.href = trigger.href;
-            // No focus trap and no scroll lock on desktop, so returning
+            // No focus trap and no scroll lock when docked, so returning
             // focus to the trigger is the only focus management needed
-            // there. The mobile modal sheet gets native focus containment.
-            if (!this._isMobile) trigger.focus();
+            // there. The modal drawer gets native focus containment.
+            if (!this._isModal) trigger.focus();
             this._qvTrigger = trigger;
             this._syncExpanded();
         },
-        // Opens the dialog in whichever mode _isMobile currently names.
-        // showModal() pushes no history entry of its own, so a mobile open
-        // adds one by hand; Back then dismisses the sheet instead of
-        // navigating the page. A breakpoint flip back to mobile can arrive
+        // Opens the dialog in whichever mode _isModal currently names.
+        // showModal() pushes no history entry of its own, so a modal open
+        // adds one by hand; Back then dismisses the drawer instead of
+        // navigating the page. A breakpoint flip back to modal can arrive
         // here with an earlier push still untraversed (the close handler
         // above left _qvHistoryPushed true for exactly that reason), so
-        // only push when the sheet does not already own one.
+        // only push when the drawer does not already own one.
         _showDialog() {
-            if (this._isMobile) {
+            if (this._isModal) {
                 this._qvDialog.showModal();
                 if (!this._qvHistoryPushed) {
                     history.pushState({ flsQuickView: true }, "");

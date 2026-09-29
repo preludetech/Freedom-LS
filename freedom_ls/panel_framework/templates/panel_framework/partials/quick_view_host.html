@@ -9,7 +9,10 @@ and the close button.
 @layer components {
     /* Logical properties throughout, so RTL flips the layout without a
      * separate rule set. Positioned fixed at every breakpoint: show() opens
-     * it non-modally on desktop, so nothing else makes it overlay the page. */
+     * it non-modally from 1280px up, so nothing else takes it out of flow.
+     * Three layouts: a bottom sheet below 768px, a modal side drawer from
+     * 768px, and a side drawer docked beside the page from 1280px, the
+     * first width with room for the page and the drawer side by side. */
     #quick-view {
         position: fixed;
         inset-inline: 0;
@@ -17,7 +20,7 @@ and the close button.
         inset-block-end: 0;
         /* The UA dialog stylesheet sets a definite `height: fit-content` (not
          * `auto`) on both the modal sheet and the non-modal drawer, which
-         * blocks the inset-based auto-stretch this rule and the desktop
+         * blocks the inset-based auto-stretch this rule and the 768px
          * media query below rely on, and (together with an unset
          * inset-block-start on `dialog:modal`) over-constrains the box so
          * the browser ignores inset-block-end instead of honouring it.
@@ -32,9 +35,10 @@ and the close button.
         max-block-size: 85dvh;
         margin: 0;
         border: none;
-        /* show()'d rather than showModal()'d on desktop (see the media query
-         * below), so it never reaches the top layer and must out-rank the
-         * sticky site header (.header's z-30) by hand to stay clickable. */
+        /* show()'d rather than showModal()'d when docked (see the 1280px
+         * media query below), so it never reaches the top layer and must
+         * out-rank the sticky site header (.header's z-30) by hand to stay
+         * clickable. */
         z-index: 40;
         opacity: 0;
         transform: translateY(100%);
@@ -73,6 +77,18 @@ and the close button.
             }
         }
     }
+    @media (min-width: 1280px) {
+        /* Docked: it starts below the site header, which stays usable, and
+         * the page content gives up the drawer's width so nothing is left
+         * underneath it. --sidebar-top is the header's height, set by
+         * sidePanel on the shell wrapper this host sits inside. */
+        #quick-view {
+            inset-block-start: var(--sidebar-top, 0px);
+        }
+        html:has(#quick-view[open]:not(:modal)) #interface-main {
+            padding-inline-end: 30rem;
+        }
+    }
     @media (prefers-reduced-motion: reduce) {
         #quick-view {
             transition: none;
@@ -91,8 +107,8 @@ and the close button.
             display: none;
         }
     }
-    /* Only true while the drawer is showModal()'d (the mobile sheet): the
-     * desktop drawer is opened with show(), which never locks the page. */
+    /* Only true while the drawer is showModal()'d (below 1280px): the
+     * docked drawer is opened with show(), which never locks the page. */
     html:has(#quick-view:modal) {
         overflow: hidden;
         scrollbar-gutter: stable;

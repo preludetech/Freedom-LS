@@ -16,9 +16,9 @@ from django.contrib.sites.models import Site
 from ..conftest import _make_stub
 
 # Narrow enough that the drawer opens as the modal sheet rather than the
-# docked desktop column (quickView docks it from 768px up).
+# docked column (quickView docks it from 1280px up).
 _MOBILE_VIEWPORT = {"width": 375, "height": 750}
-_DESKTOP_VIEWPORT = {"width": 1024, "height": 800}
+_DESKTOP_VIEWPORT = {"width": 1280, "height": 800}
 
 
 @pytest.mark.playwright
