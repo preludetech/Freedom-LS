@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 - [ ] (cmd) Re-register the design: run `/sdd:register_design "spec_dd/1. next/user-communication" "spec_dd/2. in progress/better-looking-notifications/design sync prompt.md"`, seeding `design_scope.md` with the six rows under "design_scope.md seed" in `1. spec.md`. Once it is committed, delete this spec's stand-ins: `design_source/`, `design_screenshots/`, `design_snapshot_notifications.md` and `design sync prompt.md`
 - [ ] (cmd) Run `/sdd:plan_from_spec` with suffix `2b` to write `2b. plan.md` and `3b. frontend_qa.md`
