@@ -51,10 +51,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user) Decide whether a live search swap should move focus to the table anchor (the spec's Announcement and focus rule) or keep focus in the search box so typing after the debounce is not lost, then update the spec and fix the htmx:afterSettle listener in panel_framework's alpine-components.js to match
-- [ ] (user + cmd) Fix QA bug: live search swap moves focus off the search box and drops keystrokes (TDD — failing test first, then fix)
-- [ ] (user) Decide how a table learns a sibling table's live htmx state (e.g. merge HX-Current-URL on the server, or build link and push URLs on the client), then update the spec's query-state rules
-- [ ] (user + cmd) Fix QA bug: paging one table drops a sibling table's page from the URL on the course detail page (TDD — failing test first, then fix)
+- [x] (user) Decide whether a live search swap should move focus to the table anchor (the spec's Announcement and focus rule) or keep focus in the search box so typing after the debounce is not lost, then update the spec and fix the htmx:afterSettle listener in panel_framework's alpine-components.js to match
+- [x] (user + cmd) Fix QA bug: live search swap moves focus off the search box and drops keystrokes (TDD — failing test first, then fix)
+- [x] (user) Decide how a table learns a sibling table's live htmx state (e.g. merge HX-Current-URL on the server, or build link and push URLs on the client), then update the spec's query-state rules
+- [x] (user + cmd) Fix QA bug: paging one table drops a sibling table's page from the URL on the course detail page (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
