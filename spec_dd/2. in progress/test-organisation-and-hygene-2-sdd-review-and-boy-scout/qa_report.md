@@ -52,6 +52,50 @@ Not run. There is no page to load.
 
 No bugs found in the checks that ran.
 
+## Hand run of Workflows 1–2
+
+A human ran Workflow 1 on `qa-boy-scout-throwaway` in its own worktree. That branch was cut
+straight off the feature branch, so it carried the feature's `[batch 1]`–`[batch 5]` commits, and
+the run numbered the QA plan's slices as batches 6 and 7 to avoid them. Workflow 2 was checked
+afterwards on the same branch.
+
+| Check | Result | Notes |
+|---|---|---|
+| Review finds `test_misc.py` and the `content_engine` import | PASS | Both fixed in one `[batch 6 review-fix]` commit |
+| Boy-scout leaves `pagination.py` alone and flags `page_count` | PASS | Answered "Fix it now", so a `[batch 6 bug-fix]` followed |
+| Record a follow-up (step 7) | NOT RUN | The flag got "Fix it now", so no follow-up `idea.md` was written |
+| Interrupt and resume (steps 3–4) | NOT RUN | Nothing in the commits or the record shows an interrupt |
+| Batch 2 boy-scout move is a 100% rename, followed by its edit | PASS | As batch 7 |
+| `boy_scout_record.md` with per-batch sections and a Summary | PASS | Counts match the commits |
+| Workflow 2.1: budget count prints `1` | PASS | |
+| Workflow 2.2: scope check on the real boy-scout commits | FAIL | Exit 1, `OUT_OF_SCOPE: claude_plugins/fls-dev/skills/testing/SKILL.md` |
+| Workflow 2.3: scope check with a nonsense ref | PASS | Exit 64 and the usage line |
+| `uv run pytest` | PASS | 5143 passed, 38 deselected |
+| Workflow 3 | NOT RUN | |
+
+### Findings and what became of them
+
+- **The boy-scout edited a file outside its batch.** Its edit commit updated a Mirroring line in
+  `fls-dev/skills/testing/SKILL.md` because the move had made it stale. The scope check caught it.
+  Fixed: `sdd-boy-scout.md` now says to defer a stale line in another file instead of editing it,
+  and `implement_plan.md` says the brief never permits an edit outside the touched files.
+- **Batch numbers collide with an earlier plan's commits.** Fixed in two places. The Setup above
+  now squashes the feature into one commit off `origin/main`. `implement_plan.md` Step 1 now checks
+  for batch commits older than the plan's last commit and asks the user about them.
+- **The implementer committed over a red suite and restarted shared services.** It called about
+  1000 failures pre-existing without proof, and restarted Docker and the dev database. Fixed:
+  `sdd-implementer.md` now returns `blocked` on failures its change doesn't explain, and the
+  implementer, boy-scout and mechanic agents may no longer start, stop or restart services.
+  `implement_plan.md` passes those failures to the user and never marks them known on its own.
+- **Node packages and the Tailwind build were missing.** Not a defect. The configured Setup
+  script, `install_dev.sh`, runs `npm i` and `npm run tailwind_build`. The throwaway worktree was
+  created by hand without running it. The Setup above now says to run it.
+
+### Still to run
+
+Interrupt and resume, Record a follow-up, and Workflow 3. Re-run them on a fresh throwaway branch
+built with the new Setup, after the Cleanup section has removed the old one.
+
 ## General notes
 
 - The key behaviours of this feature are still unverified by QA. That means resume after an

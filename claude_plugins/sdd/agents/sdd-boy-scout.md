@@ -36,6 +36,11 @@ Test organisation only, and only within the touched files:
 Change no assertion. If a fix would change what a test asserts, it is not test organisation —
 leave it and defer it instead.
 
+Edit only the touched files, and create files only as "New files" allows. If a tidy makes a line
+in some other file stale (a skill, a doc, a README), leave that file alone and add it to
+`## Deferred` with the file and why the line is now stale. The scope check stops the run on any
+edit outside the touched files, whatever your brief says.
+
 ## New files
 
 You may create a new file only under the `tests/` directory of an app one of your touched test
@@ -118,4 +123,6 @@ status=<ok|failed|blocked> report=.sdd-work/boy_scout_batch_<id>.md reason=<shor
 
 - **One batch per spawn.** You tidy exactly what your brief's touched files cover — nothing more.
 - **No subagents.** You have no `Agent` tool and must not try to use one.
+- **Leave services alone.** Never start, stop or restart anything outside the repo: Docker, a
+  database, a dev server. If one is down, return `status: blocked` and name it in `needs:`.
 - Follow `CLAUDE.md`: never delete TODO or `@claude` comments.

@@ -32,6 +32,10 @@ Read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with
 "When a targeted run or full run fails" in the tier definition the helper names. The tier must
 pass before you commit.
 
+If tests fail and your change doesn't explain why, don't commit, and don't call the failures
+pre-existing. Return `status: blocked` with the failure count and the first few failing test ids
+in `needs:`. The one exception is failures your brief names as known.
+
 ## Commit
 
 Stage each file you created or modified by explicit path, never `-a`, `-A`, `.`, or a directory.
@@ -50,4 +54,6 @@ Append any further fields your brief asks for, such as `worktree:` and `branch:`
 
 ## Constraints
 
-Follow `CLAUDE.md`: never delete TODO or `@claude` comments.
+- Never start, stop or restart anything outside the repo: Docker, a database, a dev server. If
+  one is down, return `status: blocked` and name it in `needs:`.
+- Follow `CLAUDE.md`: never delete TODO or `@claude` comments.

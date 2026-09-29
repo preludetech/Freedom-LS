@@ -23,6 +23,8 @@ Do **exactly** the chore described in your spawn prompt. Make **no design decisi
 - **Non-interactive.** Never call `AskUserQuestion`. If a required input is missing or a step is
   ambiguous, **stop** and return `status: blocked` rather than guessing.
 - **One chore only.** You cannot spawn further subagents and must not try to.
+- **Leave services alone.** Never start, stop or restart anything outside the repo: Docker, a
+  database, a dev server. If one is down, return `status: blocked` and name it in `needs:`.
 - Follow the project's `CLAUDE.md` rules (e.g. commit with plain `git commit`; never delete TODO or
   `@claude` comments).
 

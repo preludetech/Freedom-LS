@@ -27,7 +27,20 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
    - Steps that depend on things not covered earlier in the plan
    - Unclear success criteria
    - Missing dependencies or prerequisites
-3. Proceed to Step 2. A batch that cannot proceed returns `blocked` and is handled per the recipe.
+3. Check the branch for an earlier plan's batches. Resume reads batch subjects over the whole
+   branch, so another plan's batch commits would make this plan's batches look done. With
+   `<pattern>` the plan's anchored resume pattern from Step 2:
+
+   ```bash
+   BASE=$(git merge-base origin/main HEAD)
+   PLAN_SHA=$(git log -1 --format=%H -- "<plan-path>")
+   git log --format=%s "$BASE..${PLAN_SHA:-HEAD}" | grep -E '<pattern>'
+   ```
+
+   Any output is a batch commit older than the plan's last commit. Ask via `AskUserQuestion`
+   whether those commits come from an earlier plan (stop, and tell the user to run this plan on a
+   branch without them) or from this plan, edited after they landed (carry on).
+4. Proceed to Step 2. A batch that cannot proceed returns `blocked` and is handled per the recipe.
 
 ## Step 2: Batch and Execute (resilient)
 
@@ -76,7 +89,7 @@ Committing inside the worker keeps the work and its completion marker **atomic**
 
 **Batch waves.** `remaining` is the batches without a marker commit, in plan order. Repeat until it is empty: `ready` is every batch in `remaining` whose `Builds on:` slices all have a marker commit. A plan in which any slice lacks a `Builds on:` line, or that this step regrouped into batches, runs sequentially: `ready` = the first remaining batch. The batch wave is the first `min(len(ready), cap, capacity)` of `ready`.
 
-**A batch wave of one.** Runs in the feature worktree, with no isolation, as a single sequential batch: the brief above, then `ok` (verify the marker commit, Design check, Batch review, then the Follow-ons), `failed` (reset partial uncommitted work, retry with the prior error in the brief), `blocked` (ask at depth 0, re-spawn with the answers). This paragraph owns the attempt count: a batch gets at most two retries across every batch wave it appears in (a batch that dies from memory counts against the same two retries), and one that exhausts them stops the run with `status: failed`, naming it and every batch that builds on it. The tier must pass before the next batch wave is formed. A fix batch (`design fix`, `review fix` or `integration fix`) is a batch, so it runs `targeted` the same way.
+**A batch wave of one.** Runs in the feature worktree, with no isolation, as a single sequential batch: the brief above, then `ok` (verify the marker commit, Design check, Batch review, then the Follow-ons), `failed` (reset partial uncommitted work, retry with the prior error in the brief), `blocked` (ask at depth 0, re-spawn with the answers; when the `needs` are failing tests, show them to the user as they are, and never name them as known failures in a re-spawn brief unless the user says so). This paragraph owns the attempt count: a batch gets at most two retries across every batch wave it appears in (a batch that dies from memory counts against the same two retries), and one that exhausts them stops the run with `status: failed`, naming it and every batch that builds on it. The tier must pass before the next batch wave is formed. A fix batch (`design fix`, `review fix` or `integration fix`) is a batch, so it runs `targeted` the same way.
 
 **A batch wave of two or more.** Record `wave-base` = `git rev-parse HEAD`. Resolve the Setup script and Teardown script values once at depth 0 (`config.local.md` is gitignored and absent in a batch worktree). Spawn every batch of the batch wave in one message, each `subagent_type: "sdd:sdd-implementer"`, `model: "sonnet"`, `isolation: "worktree"`. The brief is the batch brief above plus: first run `<Setup script>` from the worktree root (blank: nothing); work only inside this worktree; whatever the outcome, run `<Teardown script>` the same way before returning (blank: nothing); return `status: ok|failed|blocked · reason: <short> · worktree: <abs path> · branch: <name>`. A worker that returns no status line counts as `failed` with reason `no return`.
 
@@ -203,7 +216,7 @@ If there are mechanical findings, send them all to one `sdd:sdd-implementer` wit
 
 #### Boy-scout (follow-on 3)
 
-Skip when no touched file is a test file (under a `tests/` directory, or named `test_*.py` or `conftest.py`) or production code (any other source file); markdown, `docs/` and `spec_dd/` paths count as neither. Otherwise record `FROM_REF=$(git rev-parse HEAD)` and spawn one `sdd:sdd-boy-scout` with the batch id, the touched files, the remaining budget, whether `docs/app_structure.md` exists, and — on a resumed run — the batch's existing `[batch <id> boy-scout]` commits. Before spawning, note `git status --porcelain`. `failed` → restore modified tracked files with `git restore --staged --worktree <paths>` and delete, by name, any untracked file that was not in the earlier listing, then retry up to twice with the prior error in the brief; its commits stay. `blocked` → as for the review.
+Skip when no touched file is a test file (under a `tests/` directory, or named `test_*.py` or `conftest.py`) or production code (any other source file); markdown, `docs/` and `spec_dd/` paths count as neither. Otherwise record `FROM_REF=$(git rev-parse HEAD)` and spawn one `sdd:sdd-boy-scout` with the batch id, the touched files, the remaining budget, whether `docs/app_structure.md` exists, and — on a resumed run — the batch's existing `[batch <id> boy-scout]` commits. The brief carries nothing else and never permits an edit outside the touched files: a line elsewhere that a tidy makes stale comes back as a deferred item. Before spawning, note `git status --porcelain`. `failed` → restore modified tracked files with `git restore --staged --worktree <paths>` and delete, by name, any untracked file that was not in the earlier listing, then retry up to twice with the prior error in the brief; its commits stay. `blocked` → as for the review.
 
 #### Scope check (follow-on 4)
 
