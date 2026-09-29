@@ -67,6 +67,13 @@ A `design.md`, beside the idea or named under its "Resources", registers a Claud
 it says. The spec names the `design.md` path under its resources, so the plan and the
 implementation read it too.
 
+When a `design.md` applies, read `design_scope.md` beside it (shape and rules: Step 5 of
+`claude_plugins/sdd/commands/register_design.md`). Two kinds of element go into the Step 2 batch:
+every row answered `open`, and every drawn element on this spec's screens that has no row. Write
+each answer into `design_scope.md`: edit the `open` row in place, append a row for a missing
+element, and put this spec's directory name under "Decided at". Scope → Out cites
+`design_scope.md` by path, so its exclusions live only there.
+
 ## What the spec is for
 
 Its readers are `/sdd:plan_from_spec` and the human approving it. It answers one question: what has
@@ -134,4 +141,4 @@ No new items to add.
 # Step 6: Commit and push
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
-steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `todo.md` beside it.
+steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `todo.md` beside it, plus `design_scope.md` when this run changed it.
