@@ -14,4 +14,6 @@ FreedomLS binds the `sdd` **Setup script** (declared in `.claude/sdd/config.md`)
 
 ## Per-branch databases
 
-Each worktree gets its own PostgreSQL database named `db_<sanitized_branch>` (e.g. `db_main`, `db_feature_auth_flow`). `settings_dev.py` derives this name automatically from the current git branch, and `install_dev.sh` creates it.
+Each worktree gets its own per-branch database named `db_<sanitized_branch>` (e.g. `db_main`, `db_feature_auth_flow`), together with its `test_db_<branch>` and `test_db_<branch>_gwN` test databases. `settings_dev.py` derives the name automatically from the current git branch, and `install_dev.sh` creates it. Both databases are owned by the `fls_dev` role, not `pguser`.
+
+`dev_db_init.sh` — run by setup and by every rebase — writes a worktree stamp on `db_<branch>`: a `COMMENT ON DATABASE` recording which repository and worktree created it. `uv run python -m dev_db.stale_dbs` reads these stamps to list this repository's per-branch databases whose worktree is gone.

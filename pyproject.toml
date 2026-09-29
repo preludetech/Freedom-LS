@@ -209,6 +209,8 @@ fixable = ["ALL"]
 "claude_plugins/fls-content/validate/validate.py" = ["T20"]
 # Product documentation build script — allow print() calls (it is a CLI tool)
 "docs/build_product_docx.py" = ["T20"]
+# dev_db CLI tools — allow print() calls (they are CLI tools)
+"dev_db/*.py" = ["T20"]
 # Conftest — allow unused imports (fixtures are imported for side effects)
 "conftest.py" = ["F401"]
 
