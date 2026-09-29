@@ -181,10 +181,10 @@ The narrow re-open pushes a new history entry while the earlier one is never unw
 
 ## Bug status
 
-- B1 — **UNRESOLVED** — Duplicate cohort name error is a form-level error, not attached to the Name field (reason: product decision. The spec doesn't say whether model-level uniqueness errors belong on the field, or how the summary should count form-level errors)
+- B1 — **FIXED** (commit: b29c7f4a) — Duplicate cohort name error is a form-level error, not attached to the Name field. Decision: a UniqueConstraint error goes on the one constraint field the form renders (ConstraintValidationFormMixin), and the error summary counts only field errors. The admin forms for webhook secrets and files now show their duplicate errors on Name and File path too
 - B2 — **FIXED** (commit: 8f7bb820) — Breadcrumb keeps the old name after an Edit renames the instance. Re-verified: renaming "QA Beta 2" to "QA Beta 3" updates the h1 and the breadcrumb without a reload
-- B3 — **UNRESOLVED** — Forbidden action URL returns a bare, empty-bodied 403 (reason: security-adjacent. It changes the permission-denied response path, and what an htmx request should get on a 403 is a decision)
-- B4 — **UNRESOLVED** — Desktop quick-view drawer overlays and hides page actions and table columns (reason: UX decision. Should the drawer overlay, push or reserve space for content, and should the non-modal drawer start at md (768) or a wider breakpoint?)
+- B3 — **FIXED** (commit: d495ac3d) — Forbidden action URL returns a bare, empty-bodied 403. Decision: `_handle_action` raises `PermissionDenied`, so the site's 403.html renders. htmx callers see no change, because htmx does not swap a 4xx response. Test plan step 2.6's URL is corrected
+- B4 — **FIXED** (commit: 1daf33e5) — Desktop quick-view drawer overlays and hides page actions and table columns. Decision: the drawer docks non-modally only from 1280px, below the site header, and `#interface-main` gives up 30rem while it is open. From 768px to 1279px it is a modal side drawer, and below 768px it stays the bottom sheet. The spec and test plan (3.x viewport, 3.13, 4.6) are updated to match
 - B5 — **FIXED** (commit: 0e952b88) — One Esc closes both an open dropdown menu and the desktop drawer. Re-verified: the first Esc closes only the switcher, the second closes the drawer; the header user menu and the switcher on their own still close on Esc
 - B6 — **FIXED** (commit: 2cc9e934) — Crossing the md breakpoint with the quick view open leaves dead history entries. Re-verified: after a double breakpoint flip and Close, one Back leaves the page; Back-to-close still works after a flip
 
