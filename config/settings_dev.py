@@ -99,7 +99,7 @@ DATABASES = {
         "PASSWORD": "password",  # pragma: allowlist secret
         "HOST": "127.0.0.1",
         "PORT": "6543",
-        "TEST": {"name": f"test_{_db_name}"},
+        "TEST": {"NAME": f"test_{_db_name}", "TEMPLATE": "template0"},
     },
 }
 
