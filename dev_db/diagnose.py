@@ -9,15 +9,26 @@ itself is unreachable, since they all depend on it.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 
-from dev_db import server
+from dev_db import server, stale_dbs
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+_REAPER_SCRIPT = (
+    _REPO_ROOT
+    / "claude_plugins"
+    / "django-stack"
+    / "scripts"
+    / "reap_playwright_mcp.sh"
+)
+_PGDATA_VOLUME = "fls_dev_db_pgdata"
 
 
 class Verdict(StrEnum):
@@ -282,12 +293,304 @@ def check_container() -> list[Finding]:
     return [Finding("container", verdict, message, next_step)]
 
 
+# Literal substrings of Postgres log lines that name a known failure. `PANIC` and
+# "No space left on device" are the only two that mean the server already lost data or
+# stopped writing; the rest are near-misses the role's connection limit and timeout guard
+# against.
+POSTGRES_SIGNATURES = (
+    "too many clients",
+    "remaining connection slots",
+    "could not resize shared memory",
+    "terminated by signal",
+    "No space left on device",
+    "PANIC",
+    "being accessed by other users",
+    "idle-in-transaction timeout",
+)
+
+_POSTGRES_FAIL_SIGNATURES = ("PANIC", "No space left on device")
+
+_POSTGRES_LOG_NEXT_STEPS: dict[str, str] = {
+    "too many clients": "Check connections below; lower -n.",
+    "remaining connection slots": "Check connections below; lower -n.",
+    "could not resize shared memory": "Raise shm_size in dev_db/docker-compose.yaml.",
+    "terminated by signal": "Check dmesg for an OOM kill; raise mem_limit.",
+    "No space left on device": "Free disk space on the Docker volume.",
+    "PANIC": "Check the container's logs; recovery may need cleanup_devdb.sh.",
+    "being accessed by other users": "Retry once the other session's query finishes.",
+    "idle-in-transaction timeout": (
+        "A session was auto-ended; check for a script holding a transaction open."
+    ),
+}
+
+# Postgres writes English weekday abbreviations into log_filename whatever the server's
+# locale, so recent_log_names indexes this tuple instead of using strftime("%a").
+_WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+
+
+def recent_log_names(today: date, days: int = 3) -> list[str]:
+    weekday = today.weekday()
+    return [
+        f"postgresql-{_WEEKDAYS[(weekday - offset) % 7]}.log" for offset in range(days)
+    ]
+
+
+def _read_postgres_log_lines(names: list[str]) -> list[str]:
+    paths = " ".join(f'"$PGDATA"/log/{name}' for name in names)
+    result = server.compose(
+        "exec", "-T", "postgres", "sh", "-c", f"cat {paths} 2>/dev/null"
+    )
+    if result.returncode == 0:
+        return result.stdout.splitlines()
+
+    # The container isn't running. Only fall back to a throwaway container on the data
+    # volume when that volume already exists -- `docker run -v <name>:...` on a name that
+    # doesn't exist yet silently creates it, which diagnose must never do.
+    volume_check = subprocess.run(  # noqa: S603
+        ["docker", "volume", "inspect", _PGDATA_VOLUME],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if volume_check.returncode != 0:
+        return []
+
+    fallback_paths = " ".join(f"/data/log/{name}" for name in names)
+    fallback = subprocess.run(  # noqa: S603
+        [  # noqa: S607
+            "docker",
+            "run",
+            "--rm",
+            "-v",
+            f"{_PGDATA_VOLUME}:/data",
+            "postgres:17",
+            "sh",
+            "-c",
+            f"cat {fallback_paths} 2>/dev/null",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return fallback.stdout.splitlines()
+
+
+def check_postgres_logs() -> list[Finding]:
+    lines = _read_postgres_log_lines(recent_log_names(datetime.now(UTC).date()))
+    hits = summarise(lines, POSTGRES_SIGNATURES)
+    if not hits:
+        return [
+            Finding(
+                "postgres_logs",
+                Verdict.OK,
+                "No known failure signatures in the recent Postgres logs.",
+            )
+        ]
+
+    findings = []
+    for signature, hit in hits.items():
+        verdict = (
+            Verdict.FAIL if signature in _POSTGRES_FAIL_SIGNATURES else Verdict.WARN
+        )
+        findings.append(
+            Finding(
+                "postgres_logs",
+                verdict,
+                f"{signature} x{hit.count}, last: {hit.last_occurrence}",
+                _POSTGRES_LOG_NEXT_STEPS[signature],
+            )
+        )
+    return findings
+
+
+def check_postgres_activity() -> list[Finding]:
+    try:
+        return _check_postgres_activity()
+    except server.ServerUnavailable as exc:
+        return [
+            Finding(
+                "postgres_activity", Verdict.FAIL, f"Could not query Postgres: {exc}"
+            )
+        ]
+
+
+def _check_postgres_activity() -> list[Finding]:
+    findings: list[Finding] = []
+
+    max_connections = int(server.psql("SHOW max_connections")[0][0])
+    activity_rows = server.psql(
+        "SELECT application_name, state, count(*) FROM pg_stat_activity "
+        "WHERE backend_type = 'client backend' GROUP BY application_name, state"
+    )
+    total_connections = sum(int(row[2]) for row in activity_rows)
+    breakdown = ", ".join(
+        f"{row[0] or '-'}/{row[1] or '-'}={row[2]}" for row in activity_rows
+    )
+    over_80_percent = total_connections > max_connections * 0.8
+    findings.append(
+        Finding(
+            "postgres_activity",
+            Verdict.WARN if over_80_percent else Verdict.OK,
+            f"{total_connections}/{max_connections} connections ({breakdown})",
+            "Lower -n, or investigate the busiest application_name."
+            if over_80_percent
+            else "",
+        )
+    )
+
+    idle_rows = server.psql(
+        "SELECT application_name FROM pg_stat_activity WHERE state = "
+        "'idle in transaction' AND now() - state_change > interval '5 minutes'"
+    )
+    findings.append(
+        Finding(
+            "postgres_activity",
+            Verdict.WARN if idle_rows else Verdict.OK,
+            f"{len(idle_rows)} session(s) idle in transaction for over 5 minutes"
+            + (
+                f": {', '.join(row[0] or '-' for row in idle_rows)}"
+                if idle_rows
+                else "."
+            ),
+            "The role's 15-minute timeout will end these; investigate if that's too slow."
+            if idle_rows
+            else "",
+        )
+    )
+
+    # The container's own /dev/shm, not a local temp path.
+    disk_result = server.compose(
+        "exec",
+        "-T",
+        "postgres",
+        "df",
+        "-h",
+        "/var/lib/postgresql/data",
+        "/dev/shm",  # noqa: S108  # nosec B108
+    )
+    findings.append(
+        Finding(
+            "postgres_activity",
+            Verdict.OK,
+            disk_result.stdout.strip() or "Could not read disk usage.",
+        )
+    )
+
+    stale_report, _sizes = stale_dbs.find_stale()
+    stale_count = len(stale_report.stale)
+    findings.append(
+        Finding(
+            "postgres_activity",
+            Verdict.WARN if stale_count else Verdict.OK,
+            f"{stale_count} stale per-branch database(s).",
+            "uv run python -m dev_db.stale_dbs --drop" if stale_count else "",
+        )
+    )
+
+    return findings
+
+
+def is_orphan(ppid: int, subreaper_pid: int | None) -> bool:
+    """A process is orphaned when its parent is PID 1 or the user's own `systemd --user`.
+
+    The same rule lives in `claude_plugins/django-stack/scripts/reap_playwright_mcp.sh`.
+    """
+    return ppid == 1 or (subreaper_pid is not None and ppid == subreaper_pid)
+
+
+def _reaper_candidate_count() -> int:
+    result = subprocess.run(  # noqa: S603
+        [str(_REAPER_SCRIPT)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    lines = [line for line in result.stdout.splitlines() if line]
+    if not lines or lines[0].startswith("No orphaned"):
+        return 0
+    return len(lines) - 1  # The first line is the "pid age rss command" header.
+
+
+def _orphaned_pytest_pids() -> list[int]:
+    result = subprocess.run(
+        ["ps", "-A", "-o", "pid=,ppid=,uid=,args="],  # noqa: S607
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+
+    rows: list[tuple[int, int, int, str]] = []
+    for line in result.stdout.splitlines():
+        parts = line.split(maxsplit=3)
+        if len(parts) < 4:
+            continue
+        pid, ppid, uid, args = parts
+        rows.append((int(pid), int(ppid), int(uid), args))
+
+    current_uid = os.getuid()
+    subreaper_pid = next(
+        (
+            pid
+            for pid, _ppid, row_uid, args in rows
+            if row_uid == current_uid and "systemd --user" in args
+        ),
+        None,
+    )
+    return [
+        pid
+        for pid, ppid, row_uid, args in rows
+        if row_uid == current_uid
+        and is_orphan(ppid, subreaper_pid)
+        and "pytest" in args
+    ]
+
+
+def check_orphaned_processes() -> list[Finding]:
+    findings: list[Finding] = []
+
+    candidate_count = _reaper_candidate_count()
+    findings.append(
+        Finding(
+            "orphaned_processes",
+            Verdict.WARN if candidate_count else Verdict.OK,
+            f"{candidate_count} orphaned Playwright MCP process(es) or browser(s).",
+            ".claude/ds/scripts/reap_playwright_mcp.sh --kill"
+            if candidate_count
+            else "",
+        )
+    )
+
+    pytest_pids = _orphaned_pytest_pids()
+    findings.append(
+        Finding(
+            "orphaned_processes",
+            Verdict.WARN if pytest_pids else Verdict.OK,
+            f"{len(pytest_pids)} orphaned pytest process(es)"
+            + (
+                f": {', '.join(str(pid) for pid in pytest_pids)}"
+                if pytest_pids
+                else "."
+            ),
+            "Check whether these runs are still needed; end them if not."
+            if pytest_pids
+            else "",
+        )
+    )
+
+    return findings
+
+
 def main() -> int:
     findings = check_engine_reachable()
     if findings[0].verdict != Verdict.FAIL:
         findings += check_engine_kind() + check_old_project() + check_container()
-        # Slice 12 appends check_postgres_logs, check_postgres_activity and
-        # check_orphaned_processes here.
+        findings += (
+            check_postgres_logs()
+            + check_postgres_activity()
+            + check_orphaned_processes()
+        )
 
     for finding in findings:
         print(format_finding(finding))

@@ -6,17 +6,20 @@ is exercised with the check functions patched at the I/O boundary.
 
 from __future__ import annotations
 
+from datetime import date
 from unittest import mock
 
 import pytest
 
 from dev_db.diagnose import (
     DESKTOP_SIGNATURES,
+    POSTGRES_SIGNATURES,
     Finding,
     Verdict,
     format_finding,
     main,
     match_signature,
+    recent_log_names,
     summarise,
 )
 
@@ -40,6 +43,74 @@ def test_match_signature_returns_none_for_unrelated_line() -> None:
     )
 
     assert matched is None
+
+
+# Sample lines shaped by the server's log_line_prefix: "%m [%p] %q%u@%d app=%a client=%h".
+POSTGRES_LOG_LINES = [
+    (
+        "too many clients",
+        "2026-09-27 10:15:23.123 UTC [1234] pguser@postgres app=psql client=172.18.0.1 "
+        "FATAL:  sorry, too many clients already",
+    ),
+    (
+        "remaining connection slots",
+        "2026-09-27 10:15:24.001 UTC [1235] fls_dev@db_feature_x app=pytest:gw0:db_feature_x "
+        "client=172.18.0.1 FATAL:  remaining connection slots are reserved for "
+        "non-replication superuser connections",
+    ),
+    (
+        "could not resize shared memory",
+        "2026-09-27 10:15:25.500 UTC [1236] fls_dev@db_feature_x app=runserver:-:db_feature_x "
+        "client=172.18.0.1 WARNING:  could not resize shared memory segment "
+        '"/PostgreSQL.abc123" to 67108864 bytes',
+    ),
+    (
+        "terminated by signal",
+        "2026-09-27 10:15:26.000 UTC [1237]  LOG:  server process (PID 1238) was terminated "
+        "by signal 9: Killed",
+    ),
+    (
+        "No space left on device",
+        "2026-09-27 10:15:27.000 UTC [1239] fls_dev@db_feature_x app=- client=172.18.0.1 "
+        'ERROR:  could not extend file "base/16384/16385": No space left on device',
+    ),
+    (
+        "PANIC",
+        "2026-09-27 10:15:28.000 UTC [1240]  PANIC:  could not locate a valid checkpoint "
+        "record",
+    ),
+    (
+        "being accessed by other users",
+        "2026-09-27 10:15:29.000 UTC [1241] pguser@postgres app=psql client=[local] "
+        'ERROR:  database "db_feature_x" is being accessed by other users',
+    ),
+    (
+        "idle-in-transaction timeout",
+        "2026-09-27 10:15:30.000 UTC [1242] fls_dev@db_feature_x app=pytest:gw1:db_feature_x "
+        "client=172.18.0.1 FATAL:  terminating connection due to idle-in-transaction timeout",
+    ),
+]
+
+
+@pytest.mark.parametrize(("signature", "line"), POSTGRES_LOG_LINES)
+def test_match_signature_classifies_a_postgres_signature(
+    signature: str, line: str
+) -> None:
+    matched = match_signature(line, POSTGRES_SIGNATURES)
+
+    assert matched == signature
+
+
+def test_recent_log_names_for_a_sunday_returns_the_last_three_days() -> None:
+    names = recent_log_names(date(2026, 10, 4))  # a Sunday
+
+    assert names == ["postgresql-Sun.log", "postgresql-Sat.log", "postgresql-Fri.log"]
+
+
+def test_recent_log_names_for_a_monday_wraps_to_sunday_and_saturday() -> None:
+    names = recent_log_names(date(2026, 10, 5))  # a Monday
+
+    assert names == ["postgresql-Mon.log", "postgresql-Sun.log", "postgresql-Sat.log"]
 
 
 def test_summarise_counts_matches_and_keeps_the_last_occurrence() -> None:
@@ -94,6 +165,18 @@ def test_main_returns_1_when_a_finding_fails() -> None:
             "dev_db.diagnose.check_container",
             return_value=[_finding("container", Verdict.OK)],
         ),
+        mock.patch(
+            "dev_db.diagnose.check_postgres_logs",
+            return_value=[_finding("postgres_logs", Verdict.OK)],
+        ),
+        mock.patch(
+            "dev_db.diagnose.check_postgres_activity",
+            return_value=[_finding("postgres_activity", Verdict.OK)],
+        ),
+        mock.patch(
+            "dev_db.diagnose.check_orphaned_processes",
+            return_value=[_finding("orphaned_processes", Verdict.OK)],
+        ),
     ):
         exit_code = main()
 
@@ -118,6 +201,18 @@ def test_main_returns_0_when_no_finding_fails() -> None:
             "dev_db.diagnose.check_container",
             return_value=[_finding("container", Verdict.OK)],
         ),
+        mock.patch(
+            "dev_db.diagnose.check_postgres_logs",
+            return_value=[_finding("postgres_logs", Verdict.OK)],
+        ),
+        mock.patch(
+            "dev_db.diagnose.check_postgres_activity",
+            return_value=[_finding("postgres_activity", Verdict.OK)],
+        ),
+        mock.patch(
+            "dev_db.diagnose.check_orphaned_processes",
+            return_value=[_finding("orphaned_processes", Verdict.OK)],
+        ),
     ):
         exit_code = main()
 
@@ -133,6 +228,9 @@ def test_main_skips_later_checks_when_engine_is_unreachable() -> None:
         mock.patch("dev_db.diagnose.check_engine_kind") as engine_kind,
         mock.patch("dev_db.diagnose.check_old_project") as old_project,
         mock.patch("dev_db.diagnose.check_container") as container,
+        mock.patch("dev_db.diagnose.check_postgres_logs") as postgres_logs,
+        mock.patch("dev_db.diagnose.check_postgres_activity") as postgres_activity,
+        mock.patch("dev_db.diagnose.check_orphaned_processes") as orphaned_processes,
     ):
         exit_code = main()
 
@@ -140,3 +238,6 @@ def test_main_skips_later_checks_when_engine_is_unreachable() -> None:
     assert engine_kind.called is False
     assert old_project.called is False
     assert container.called is False
+    assert postgres_logs.called is False
+    assert postgres_activity.called is False
+    assert orphaned_processes.called is False
