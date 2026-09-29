@@ -3,7 +3,7 @@
 SiteAwareModelAdmin excludes ``site`` from every admin form, and
 UniqueConstraint.validate() abandons a constraint whose field sits in that
 exclusion set. FileAdminForm un-excludes ``site`` so a duplicate file path
-surfaces as a form error instead of an IntegrityError.
+surfaces as an error on the File path field instead of an IntegrityError.
 """
 
 from __future__ import annotations
@@ -31,4 +31,5 @@ def test_file_admin_form_rejects_duplicate_file_path(mock_site_context):
     )
 
     assert form.is_valid() is False
-    assert NON_FIELD_ERRORS in form.errors
+    assert "file_path" in form.errors
+    assert NON_FIELD_ERRORS not in form.errors
