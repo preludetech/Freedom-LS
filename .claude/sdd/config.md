@@ -25,7 +25,7 @@ Followed by `/sdd:implement_plan` after each slice that builds a designed screen
 helper file that is read and followed, not a script. Leave it blank if this project has no such
 step.
 
-- Design check:
+- Design check: claude_plugins/fls-dev/commands/protected/design_check.md
 
 ## Vocabulary Sources
 

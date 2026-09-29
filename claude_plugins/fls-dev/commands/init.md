@@ -39,6 +39,9 @@ It has one deliberate reach outside that slice: migrating a legacy `.claude/fls/
 its contents between `.claude/fls-dev/` and `.claude/ds/scripts/`, because the pre-split dir held
 both plugins' wrappers. Step 2 does that relocation and nothing else in `.claude/ds/`.
 
+It has one more reach outside that slice: it sets sdd's `Design check` key in `.claude/sdd/config.md`
+(Step 8).
+
 `/ds:init` must have run first — Step 0 enforces it.
 
 ## Hard requirements — do not regress
@@ -53,6 +56,8 @@ both plugins' wrappers. Step 2 does that relocation and nothing else in `.claude
 - **`.claude/fls-dev/config.md` / `config.local.md`** — create when absent, otherwise extend. Add any
   option the template defines but the file lacks; preserve every existing value, comment, and
   ordering. Never overwrite or delete existing config.
+- **`.claude/sdd/config.md`** — set `Design check` only when it is blank or absent. Never overwrite a
+  value and never touch another key.
 - **`.gitignore`** — append only the `fls-dev`-owned line. Never remove or reorder, and leave the
   `ds`-owned `.claude/settings.local.json` line alone.
 - **Wrapper scripts** — install a template only when the destination does not exist. An existing
@@ -295,7 +300,19 @@ one `fls-dev` `--plugin-dir` line. It never creates the launcher, retires anothe
 or touches the sentinel. Write the launcher as **one atomic file replacement** rather than a sequence
 of in-place edits.
 
-## Step 8: Validate the setup
+## Step 8: Set the sdd `Design check` hook
+
+If `.claude/sdd/config.md` exists, ensure it has a `## Design Hooks` section. Set a blank or absent
+`Design check` under it to `<PLUGINS_ROOT>/claude_plugins/fls-dev/commands/protected/design_check.md`
+(no `./` prefix when `PLUGINS_ROOT` is `.`). Leave a non-blank value as it is.
+
+If the file does not exist, list "run `/sdd:init`, then `/fls-dev:init` again" as an outstanding
+action.
+
+Done when the key holds that path or carries a non-blank value that was already there, or the
+outstanding action is listed.
+
+## Step 9: Validate the setup
 
 1. `fls-dev` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
 2. `.claude/fls-dev/config.md` exists and contains the dev email, password, and base URL keys,
@@ -328,11 +345,13 @@ of in-place edits.
 10. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `fls-dev`,
     and every `--plugin-dir` path in it resolves to a directory that exists.
 11. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-12. Report every issue found.
+12. `Design check` in `.claude/sdd/config.md` holds a path that exists, or the Step 8 outstanding
+    action is listed.
+13. Report every issue found.
 
-## Step 9: Summary and outstanding actions
+## Step 10: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, every `CONFLICT` and `KEEP`
 from Step 2, every `KEEP-AND-HAND-OFF`, the "run `/ds:init` again" instruction if any file moved, and
-every report-only finding from **Step 1, item 5**. Point the user at `.claude/fls-dev/config.md` for the dev
+every report-only finding from **Step 1, item 5**. Name the `Design check` key and its value. Point the user at `.claude/fls-dev/config.md` for the dev
 credentials and base URL, and at `.claude/fls-dev/config.local.md` for local overrides.
