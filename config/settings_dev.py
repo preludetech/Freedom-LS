@@ -1,5 +1,6 @@
 import os
 import sys
+from pathlib import Path
 
 from freedom_ls.base.git_utils import branch_to_db_name, get_current_branch
 
@@ -91,6 +92,28 @@ EMAIL_PORT = 1025
 _branch = get_current_branch(base_dir=BASE_DIR)  # noqa: F405
 _db_name = branch_to_db_name(_branch) if _branch else "db"
 
+
+def build_application_name(
+    *, testing: bool, argv: list[str], worker: str | None, db_name: str
+) -> str:
+    if testing:
+        kind = "pytest"
+    elif len(argv) > 1 and Path(argv[0]).name == "manage.py":
+        kind = argv[1]
+    else:
+        kind = "django"
+    return f"{kind}:{worker or '-'}:{db_name}"[:63]
+
+
+# The branch-derived part goes last so truncation to Postgres's 63-character limit
+# only ever cuts that, never the kind or worker.
+_application_name = build_application_name(
+    testing=TESTING,
+    argv=sys.argv,
+    worker=os.environ.get("PYTEST_XDIST_WORKER"),
+    db_name=_db_name,
+)
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -100,6 +123,7 @@ DATABASES = {
         "HOST": "127.0.0.1",
         "PORT": "6543",
         "TEST": {"NAME": f"test_{_db_name}", "TEMPLATE": "template0"},
+        "OPTIONS": {"application_name": _application_name},
     },
 }
 
