@@ -98,3 +98,15 @@ def test_title_is_escaped() -> None:
 
     assert "<script>" not in html
     assert "&lt;script&gt;" in html
+
+
+def test_stats_slot_renders_once() -> None:
+    html = render_cotton(
+        """
+        <c-panel-page-header title="Overview">
+            <c-slot name="stats">stats-marker</c-slot>
+        </c-panel-page-header>
+        """
+    )
+
+    assert html.count("stats-marker") == 1

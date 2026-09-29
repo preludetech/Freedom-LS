@@ -14,7 +14,7 @@ Attributes:
   reason        Why it needs attention, e.g. "4 days idle" (default none).
   user_id       Given: the leading element is panel-avatar-chip, with its
                 name hidden so the row shows one visible subject, not two
-                (default none).
+                (default none). A stringified None counts as not given.
   icon          Given, with no user_id: a severity icon leads instead
                 (default none).
   icon_tone     Tone of the severity icon (default muted).
@@ -30,7 +30,7 @@ icon trails, so the DOM still holds only the one link to href.
 {% endcomment %}
 
 <li class="relative flex items-center gap-3 py-3" {{ attrs }}>
-    {% if user_id %}
+    {% if user_id|flag %}
         <c-panel-avatar-chip :name="subject" :user_id="user_id" name_hidden="true" />
     {% elif icon %}
         <span aria-hidden="true" class="shrink-0 {% include "panel_framework/partials/tone_text_class.html" with tone=icon_tone only %}"><c-icon :name="icon" class="size-5" /></span>

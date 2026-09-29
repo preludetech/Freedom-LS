@@ -73,3 +73,15 @@ def test_subject_is_escaped() -> None:
 
     assert "<script>alert(1)</script>" not in html
     assert "&lt;script&gt;" in html
+
+
+def test_a_stringified_none_user_id_falls_back_to_the_severity_icon() -> None:
+    html = render_cotton(
+        '<c-panel-attention-row subject="Cohort Alpha" href="/cohorts/1/" '
+        'user_id="None" icon="warning" />'
+    )
+
+    assert re.search(
+        r'<span aria-hidden="true"[^>]*>\s*<svg[^>]*aria-label="warning"', html
+    )
+    assert ">CA</span>" not in html

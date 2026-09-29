@@ -30,9 +30,8 @@ whitespace-only.
         </div>
         {% if subtitle %}<p class="text-muted">{{ subtitle }}</p>{% endif %}
         {% if meta.strip %}<div class="text-sm text-muted">{{ meta }}</div>{% endif %}
-        {% if stats.strip %}<div class="md:hidden mt-3">{{ stats }}</div>{% endif %}
     </div>
-    {% if stats.strip %}<div class="hidden md:block">{{ stats }}</div>{% endif %}
+    {% if stats.strip %}<div>{{ stats }}</div>{% endif %}
     {% if actions.strip %}<c-button-group variant="right" class="flex-wrap">{{ actions }}</c-button-group>{% endif %}
 </div>
 {% endwith %}
