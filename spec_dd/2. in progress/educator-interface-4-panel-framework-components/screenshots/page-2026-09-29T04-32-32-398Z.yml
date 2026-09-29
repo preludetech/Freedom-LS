@@ -1,0 +1,134 @@
+- generic [ref=f7e1]:
+  - banner [ref=f7e2]:
+    - link [ref=f7e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f7e4]
+      - heading "FirstClass" [level=1] [ref=f7e5]
+    - navigation [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - generic [ref=f7e8]:
+          - button "Notifications, none new" [ref=f7e9]:
+            - img "notifications" [ref=f7e11]
+          - status:
+            - generic [ref=f7e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f7e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f7e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f7e17]:
+    - generic [ref=f7e19]:
+      - dialog "Navigation" [ref=f7e20]:
+        - generic [ref=f7e22]:
+          - generic [ref=f7e23]: DemoDev
+          - navigation "Sections" [ref=f7e25]:
+            - heading "Teaching" [level=2] [ref=f7e26]
+            - list [ref=f7e27]:
+              - listitem [ref=f7e28]:
+                - link "home Dashboard" [active] [ref=f7e30] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+                  - img "home" [ref=f7e31]
+                  - generic [ref=f7e33]: Dashboard
+              - listitem [ref=f7e35]:
+                - link "cohort Cohorts" [ref=f7e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+                  - img "cohort" [ref=f7e38]
+                  - generic [ref=f7e40]: Cohorts
+              - listitem [ref=f7e42]:
+                - link "user Learners" [ref=f7e44] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+                  - img "user" [ref=f7e45]
+                  - generic [ref=f7e47]: Learners
+              - listitem [ref=f7e49]:
+                - link "course Courses" [ref=f7e51] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+                  - img "course" [ref=f7e52]
+                  - generic [ref=f7e54]: Courses
+          - generic [ref=f7e56]:
+            - paragraph
+            - paragraph [ref=f7e57]: demodev@email.com
+      - generic [ref=f7e58]:
+        - navigation "Breadcrumb" [ref=f7e62]:
+          - list [ref=f7e63]:
+            - listitem [ref=f7e64]:
+              - generic [ref=f7e65]: Courses
+        - generic [ref=f7e67]:
+          - heading "Courses" [level=1] [ref=f7e71]
+          - generic [ref=f7e75]:
+            - table [ref=f7e79]:
+              - rowgroup [ref=f7e80]:
+                - row [ref=f7e81]:
+                  - columnheader "Title" [ref=f7e82]
+                  - columnheader "Visibility" [ref=f7e83]
+                  - columnheader "Interest" [ref=f7e84]
+                  - columnheader "Active Learners" [ref=f7e85]
+                  - columnheader "Active Cohorts" [ref=f7e86]
+                  - columnheader "Cohorts" [ref=f7e87]
+              - rowgroup [ref=f7e88]:
+                - row [ref=f7e89]:
+                  - cell [ref=f7e90]:
+                    - link "Content Widgets - Demo Reference" [ref=f7e91] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/8bc127c1-edf1-4997-b7fc-35fdf8604f30
+                  - cell "Coming soon" [ref=f7e92]
+                  - cell "-" [ref=f7e93]
+                  - cell "-" [ref=f7e94]
+                  - cell "-" [ref=f7e95]
+                  - cell "-" [ref=f7e96]
+                - row [ref=f7e97]:
+                  - cell [ref=f7e98]:
+                    - link "Functionality Demo - Application gated course" [ref=f7e99] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/271eeb30-94db-4261-b409-19888b0ead7d
+                  - cell "Published" [ref=f7e100]
+                  - cell "-" [ref=f7e101]
+                  - cell "-" [ref=f7e102]
+                  - cell "-" [ref=f7e103]
+                  - cell "-" [ref=f7e104]
+                - row [ref=f7e105]:
+                  - cell [ref=f7e106]:
+                    - link "Functionality Demo - Course Parts" [ref=f7e107] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+                  - cell "Published" [ref=f7e108]
+                  - cell "-" [ref=f7e109]
+                  - cell "50" [ref=f7e110]
+                  - cell "1" [ref=f7e111]
+                  - cell [ref=f7e112]:
+                    - link "Cohort 2025.03.04 renamed" [ref=f7e113] [cursor=pointer]:
+                      - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+                - row [ref=f7e114]:
+                  - cell [ref=f7e115]:
+                    - 'link "Functionality Demo - Price: currency without cents" [ref=f7e116] [cursor=pointer]':
+                      - /url: /educator/organisations/demodev/courses/32da7dad-8f10-4eeb-8cf3-c4abcbe1d6c1
+                  - cell "Published" [ref=f7e117]
+                  - cell "-" [ref=f7e118]
+                  - cell "-" [ref=f7e119]
+                  - cell "-" [ref=f7e120]
+                  - cell "-" [ref=f7e121]
+                - row [ref=f7e122]:
+                  - cell [ref=f7e123]:
+                    - 'link "Functionality Demo - Price: expired sale" [ref=f7e124] [cursor=pointer]':
+                      - /url: /educator/organisations/demodev/courses/5bf97798-9176-427a-97b7-6acec9ad650f
+                  - cell "Published" [ref=f7e125]
+                  - cell "-" [ref=f7e126]
+                  - cell "-" [ref=f7e127]
+                  - cell "-" [ref=f7e128]
+                  - cell "-" [ref=f7e129]
+            - generic [ref=f7e131]:
+              - generic [ref=f7e132] [cursor=pointer]: "1"
+              - link "2" [ref=f7e133] [cursor=pointer]:
+                - /url: "?page=2"
+              - link "3" [ref=f7e134] [cursor=pointer]:
+                - /url: "?page=3"
+              - link "Next" [ref=f7e135] [cursor=pointer]:
+                - /url: "?page=2"
+              - link "Last" [ref=f7e136] [cursor=pointer]:
+                - /url: "?page=3"
+  - contentinfo [ref=f7e138]:
+    - generic [ref=f7e139]:
+      - paragraph [ref=f7e140]: © 2026 FirstClass
+      - navigation "Legal" [ref=f7e141]:
+        - link "Terms and Conditions" [ref=f7e142] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f7e143] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f7e144] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - generic "Show toolbar" [ref=f7e146]: DJDT

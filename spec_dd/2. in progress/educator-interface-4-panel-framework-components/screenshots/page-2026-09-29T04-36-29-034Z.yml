@@ -1,0 +1,48 @@
+- generic [active] [ref=f15e1]:
+  - banner [ref=f15e2]:
+    - link [ref=f15e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f15e4]
+      - heading "FirstClass" [level=1] [ref=f15e5]
+    - navigation [ref=f15e6]:
+      - generic [ref=f15e7]:
+        - link "Login" [ref=f15e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f15e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f15e10]:
+    - generic [ref=f15e11]:
+      - heading "Log in" [level=1] [ref=f15e12]
+      - generic [ref=f15e13]:
+        - paragraph [ref=f15e14]:
+          - generic [ref=f15e15]: "Email:"
+          - textbox "Email:" [ref=f15e16]:
+            - /placeholder: Email address
+        - paragraph [ref=f15e17]:
+          - generic [ref=f15e18]: "Password:"
+          - textbox "Password:" [ref=f15e19]:
+            - /placeholder: Password
+        - link "Forgot your password?" [ref=f15e21] [cursor=pointer]:
+          - /url: /accounts/password/reset/
+        - paragraph [ref=f15e22]:
+          - generic [ref=f15e23]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f15e24] [cursor=pointer]
+        - generic [ref=f15e25]:
+          - button "Log in" [ref=f15e26] [cursor=pointer]
+          - generic [ref=f15e27]:
+            - paragraph [ref=f15e28]: New here?
+            - link "Create an account" [ref=f15e29] [cursor=pointer]:
+              - /url: /accounts/signup/
+  - contentinfo [ref=f15e30]:
+    - generic [ref=f15e31]:
+      - paragraph [ref=f15e32]: © 2026 FirstClass
+      - navigation "Legal" [ref=f15e33]:
+        - link "Terms and Conditions" [ref=f15e34] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f15e35] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f15e36] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - generic "Show toolbar" [ref=f15e38]: DJDT

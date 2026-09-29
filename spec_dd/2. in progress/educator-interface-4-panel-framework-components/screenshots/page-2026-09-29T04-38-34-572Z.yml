@@ -1,0 +1,158 @@
+- generic [active] [ref=f23e1]:
+  - banner [ref=f23e2]:
+    - link [ref=f23e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f23e4]
+    - navigation [ref=f23e5]:
+      - generic [ref=f23e6]:
+        - generic [ref=f23e7]:
+          - button "Notifications, none new" [ref=f23e8]:
+            - img "notifications" [ref=f23e10]
+          - status:
+            - generic [ref=f23e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f23e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f23e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f23e16]:
+    - generic [ref=f23e19]:
+      - generic [ref=f23e21]:
+        - navigation "Breadcrumb" [ref=f23e23]:
+          - list [ref=f23e24]:
+            - listitem [ref=f23e25]:
+              - link "Cohorts" [ref=f23e26] [cursor=pointer]:
+                - /url: /educator/organisations/demodev/cohorts
+            - listitem [ref=f23e27]:
+              - generic [aria-hidden] [ref=f23e28]: /
+              - generic [ref=f23e29]: Cohort 2025.03.04 QA edit
+        - button "Open navigation panel" [ref=f23e30] [cursor=pointer]:
+          - img "table_of_contents" [ref=f23e31]
+      - generic [ref=f23e34]:
+        - heading "Cohort 2025.03.04 QA edit" [level=1] [ref=f23e38]
+        - generic [ref=f23e39]:
+          - navigation "Cohort sections" [ref=f23e40]:
+            - list [ref=f23e41]:
+              - listitem [ref=f23e42]:
+                - link "Details" [ref=f23e43] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046/__tabs/details
+          - generic [ref=f23e45]:
+            - generic [ref=f23e47]:
+              - heading "Details" [level=2] [ref=f23e50]
+              - generic [ref=f23e53]:
+                - term [ref=f23e54]: Name
+                - definition [ref=f23e55]: Cohort 2025.03.04 QA edit
+              - generic [ref=f23e57]:
+                - button "Edit" [ref=f23e60] [cursor=pointer]
+                - button "Delete" [ref=f23e63] [cursor=pointer]
+            - generic [ref=f23e65]:
+              - heading "Course Registrations" [level=2] [ref=f23e68]
+              - table [ref=f23e74]:
+                - rowgroup [ref=f23e75]:
+                  - row [ref=f23e76]:
+                    - columnheader "Course" [ref=f23e77]
+                    - columnheader "Active" [ref=f23e78]
+                    - columnheader "Registered" [ref=f23e79]
+                - rowgroup [ref=f23e80]:
+                  - row [ref=f23e81]:
+                    - cell [ref=f23e82]:
+                      - link "Functionality Demo - Course Parts" [ref=f23e83] [cursor=pointer]:
+                        - /url: /educator/organisations/demodev/courses/531adc02-f240-4c7b-87f7-956a804c1e22
+                    - cell [ref=f23e84]:
+                      - img "boolean_true" [ref=f23e85]
+                    - cell "Sept. 28, 2026, 9:57 a.m." [ref=f23e87]
+            - generic [ref=f23e89]:
+              - heading "Learners" [level=2] [ref=f23e92]
+              - generic [ref=f23e94]:
+                - searchbox "Search..." [ref=f23e97]
+                - table [ref=f23e101]:
+                  - rowgroup [ref=f23e102]:
+                    - row [ref=f23e103]:
+                      - columnheader [ref=f23e104]:
+                        - link [ref=f23e105] [cursor=pointer]:
+                          - /url: "?sort=user__first_name&order=asc"
+                          - text: First Name
+                          - img "sort_neutral" [ref=f23e106]
+                      - columnheader [ref=f23e108]:
+                        - link [ref=f23e109] [cursor=pointer]:
+                          - /url: "?sort=user__last_name&order=asc"
+                          - text: Last Name
+                          - img "sort_neutral" [ref=f23e110]
+                      - columnheader "Email" [ref=f23e112]
+                      - columnheader "Cohorts" [ref=f23e113]
+                      - columnheader "Registered Courses" [ref=f23e114]
+                  - rowgroup [ref=f23e115]:
+                    - row [ref=f23e116]:
+                      - cell [ref=f23e117]:
+                        - link "demodev_s1" [ref=f23e118] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/learners/4d472b09-6be2-434a-aa03-96da6b36bd7e
+                      - cell [ref=f23e119]:
+                        - link:
+                          - /url: /educator/organisations/demodev/learners/4d472b09-6be2-434a-aa03-96da6b36bd7e
+                      - cell "demodev_s1@email.com" [ref=f23e120]
+                      - cell [ref=f23e121]:
+                        - link "Cohort 2025.03.04 QA edit" [ref=f23e122] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+                      - cell "-" [ref=f23e123]
+                    - row [ref=f23e124]:
+                      - cell [ref=f23e125]:
+                        - link "demodev_s10" [ref=f23e126] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/learners/4161704c-e271-40e3-b1fa-4eb8a0e4b358
+                      - cell [ref=f23e127]:
+                        - link:
+                          - /url: /educator/organisations/demodev/learners/4161704c-e271-40e3-b1fa-4eb8a0e4b358
+                      - cell "demodev_s10@email.com" [ref=f23e128]
+                      - cell [ref=f23e129]:
+                        - link "Cohort 2025.03.04 QA edit" [ref=f23e130] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+                      - cell "-" [ref=f23e131]
+                    - row [ref=f23e132]:
+                      - cell [ref=f23e133]:
+                        - link "demodev_s11" [ref=f23e134] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/learners/bff54a6b-b69f-4b6f-a983-a13d74dde886
+                      - cell [ref=f23e135]:
+                        - link:
+                          - /url: /educator/organisations/demodev/learners/bff54a6b-b69f-4b6f-a983-a13d74dde886
+                      - cell "demodev_s11@email.com" [ref=f23e136]
+                      - cell [ref=f23e137]:
+                        - link "Cohort 2025.03.04 QA edit" [ref=f23e138] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+                      - cell "-" [ref=f23e139]
+                    - row [ref=f23e140]:
+                      - cell [ref=f23e141]:
+                        - link "demodev_s12" [ref=f23e142] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/learners/618c5fec-590e-4f3e-a0f0-7794e6f10724
+                      - cell [ref=f23e143]:
+                        - link:
+                          - /url: /educator/organisations/demodev/learners/618c5fec-590e-4f3e-a0f0-7794e6f10724
+                      - cell "demodev_s12@email.com" [ref=f23e144]
+                      - cell [ref=f23e145]:
+                        - link "Cohort 2025.03.04 QA edit" [ref=f23e146] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+                      - cell "-" [ref=f23e147]
+                    - row [ref=f23e148]:
+                      - cell [ref=f23e149]:
+                        - link "demodev_s13" [ref=f23e150] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/learners/948a4b96-7d6e-4c66-9a0f-6c6fd9b4b510
+                      - cell [ref=f23e151]:
+                        - link:
+                          - /url: /educator/organisations/demodev/learners/948a4b96-7d6e-4c66-9a0f-6c6fd9b4b510
+                      - cell "demodev_s13@email.com" [ref=f23e152]
+                      - cell [ref=f23e153]:
+                        - link "Cohort 2025.03.04 QA edit" [ref=f23e154] [cursor=pointer]:
+                          - /url: /educator/organisations/demodev/cohorts/9aad0982-6d83-452f-9b5f-bf07359d7046
+                      - cell "-" [ref=f23e155]
+                - generic [ref=f23e156]:
+                  - generic [ref=f23e157]: Page 1 of 10
+                  - link "Next" [ref=f23e159] [cursor=pointer]:
+                    - /url: "?page=2"
+  - contentinfo [ref=f23e161]:
+    - generic [ref=f23e162]:
+      - paragraph [ref=f23e163]: © 2026 FirstClass
+      - navigation "Legal" [ref=f23e164]:
+        - link "Terms and Conditions" [ref=f23e165] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f23e166] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f23e167] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - generic "Show toolbar" [ref=f23e169]: DJDT

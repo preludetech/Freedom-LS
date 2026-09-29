@@ -1,0 +1,69 @@
+- generic [ref=f4e1]:
+  - banner [ref=f4e2]:
+    - link [ref=f4e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f4e4]
+      - heading "FirstClass" [level=1] [ref=f4e5]
+    - navigation [ref=f4e6]:
+      - generic [ref=f4e7]:
+        - generic [ref=f4e8]:
+          - button "Notifications, none new" [ref=f4e9]:
+            - img "notifications" [ref=f4e11]
+          - status:
+            - generic [ref=f4e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f4e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f4e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f4e17]:
+    - generic [ref=f4e19]:
+      - dialog "Navigation" [ref=f4e20]:
+        - generic [ref=f4e22]:
+          - generic [ref=f4e23]: DemoDev
+          - navigation "Sections" [ref=f4e25]:
+            - heading "Teaching" [level=2] [ref=f4e26]
+            - list [ref=f4e27]:
+              - listitem [ref=f4e28]:
+                - link "home Dashboard" [active] [ref=f4e30] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/dashboard
+                  - img "home" [ref=f4e31]
+                  - generic [ref=f4e33]: Dashboard
+              - listitem [ref=f4e35]:
+                - link "cohort Cohorts" [ref=f4e37] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/cohorts
+                  - img "cohort" [ref=f4e38]
+                  - generic [ref=f4e40]: Cohorts
+              - listitem [ref=f4e42]:
+                - link "user Learners" [ref=f4e44] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/learners
+                  - img "user" [ref=f4e45]
+                  - generic [ref=f4e47]: Learners
+              - listitem [ref=f4e49]:
+                - link "course Courses" [ref=f4e51] [cursor=pointer]:
+                  - /url: /educator/organisations/demodev/courses
+                  - img "course" [ref=f4e52]
+                  - generic [ref=f4e54]: Courses
+          - generic [ref=f4e56]:
+            - paragraph
+            - paragraph [ref=f4e57]: demodev@email.com
+      - generic [ref=f4e58]:
+        - navigation "Breadcrumb" [ref=f4e62]:
+          - list [ref=f4e63]:
+            - listitem [ref=f4e64]:
+              - generic [ref=f4e65]: Dashboard
+        - generic [ref=f4e67]:
+          - heading "Dashboard" [level=1] [ref=f4e71]
+          - generic [ref=f4e73]:
+            - heading "Reporting" [level=2] [ref=f4e76]
+            - paragraph [ref=f4e78]: On-screen reporting for DemoDev arrives in a later release.
+  - contentinfo [ref=f4e80]:
+    - generic [ref=f4e81]:
+      - paragraph [ref=f4e82]: © 2026 FirstClass
+      - navigation "Legal" [ref=f4e83]:
+        - link "Terms and Conditions" [ref=f4e84] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f4e85] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f4e86] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - generic "Show toolbar" [ref=f4e88]: DJDT
