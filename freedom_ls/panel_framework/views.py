@@ -4,6 +4,7 @@ import csv
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Protocol
+from urllib.parse import urlsplit
 
 from django.core.exceptions import (
     ImproperlyConfigured,
@@ -16,6 +17,7 @@ from django.http import (
     HttpRequest,
     HttpResponse,
     HttpResponseRedirect,
+    QueryDict,
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, render
@@ -638,6 +640,32 @@ def _main_for(
     )
 
 
+def _merge_current_url_state(request: HttpRequest, panel: DataTablePanel) -> None:
+    """Replace the request's sibling-table state with the browser's live state.
+
+    A table's links are rendered once, so after a sibling table on the same
+    page changes they still carry that sibling's old parameters. htmx sends
+    the address bar as `HX-Current-URL`; when it names this panel's page,
+    every parameter outside this table's own namespace is taken from it, and
+    this table's own parameters from the request. Only the header's path and
+    query are read, never its host.
+    """
+    current = urlsplit(request.headers.get("HX-Current-URL", ""))
+    if current.path != panel.ctx.page_url:
+        return
+    prefix = f"{panel.table_key}-"
+    merged = QueryDict(mutable=True)
+    for name, values in QueryDict(current.query).lists():
+        if not name.startswith(prefix):
+            merged.setlist(name, values)
+    for name, values in request.GET.lists():
+        if name.startswith(prefix):
+            merged.setlist(name, values)
+    query_string = merged.urlencode()
+    request.GET = QueryDict(query_string)
+    request.META["QUERY_STRING"] = query_string
+
+
 def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
     """The URL a table region's response pushes into the address bar: the
     page this panel's tab owns, carrying the request's full query string."""
@@ -736,18 +764,21 @@ def _respond(
             {"panel": panel, "announcement": f"Showing {panel.title}"},
         )
     if hx_target == panel.region_id:
-        context = panel.get_context_data()
-        if isinstance(panel, DataTablePanel):
-            response = render(request, "panel_framework/table_response.html", context)
-            history_url = _history_url(panel, request)
-            if request.headers.get("HX-Trigger") == f"{panel.table_key}-search":
-                response["HX-Replace-Url"] = history_url
-            else:
-                response["HX-Push-Url"] = history_url
-        else:
-            response = render(
-                request, panel.region_template_name or panel.template_name, context
+        if not isinstance(panel, DataTablePanel):
+            return render(
+                request,
+                panel.region_template_name or panel.template_name,
+                panel.get_context_data(),
             )
+        _merge_current_url_state(request, panel)
+        response = render(
+            request, "panel_framework/table_response.html", panel.get_context_data()
+        )
+        history_url = _history_url(panel, request)
+        if request.headers.get("HX-Trigger") == f"{panel.table_key}-search":
+            response["HX-Replace-Url"] = history_url
+        else:
+            response["HX-Push-Url"] = history_url
         return response
     return render(
         request, "panel_framework/navigation_response.html", navigation_context

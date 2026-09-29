@@ -136,6 +136,71 @@ def test_region_response_sets_push_url_to_page_url(mock_site_context: Site) -> N
     )
 
 
+def _fetch_pair_region_a(
+    pk: object, data: dict[str, str], current_url: str
+) -> tuple[str, lxml.html.HtmlElement]:
+    response = fetch(
+        f"stubs/{pk}/__tabs/pair/__panels/a",
+        data=data,
+        htmx=True,
+        hx_target="a-table",
+        current_url=current_url,
+    )
+    return response["HX-Push-Url"], lxml.html.fromstring(response.content.decode())
+
+
+def _a_page_link_hrefs(document: lxml.html.HtmlElement) -> list[str]:
+    hrefs = [
+        link.get("href")
+        for link in document.cssselect("a[href]")
+        if "a-page=" in link.get("href", "")
+    ]
+    assert hrefs
+    return hrefs
+
+
+def test_region_request_takes_sibling_state_from_current_url(
+    mock_site_context: Site,
+) -> None:
+    """Table a's links were rendered before table b moved to page 2, so they
+    still say b-page=1; the browser's current URL has b's live state."""
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    pk = stubs[0].pk
+    page_url = f"http://testserver/test-panel/framework/stubs/{pk}/__tabs/pair"
+
+    push_url, document = _fetch_pair_region_a(
+        pk,
+        data={"a-page": "2", "b-page": "1"},
+        current_url=f"{page_url}?a-page=1&b-page=2&extra=1",
+    )
+
+    assert "a-page=2" in push_url
+    assert "b-page=2" in push_url
+    assert "extra=1" in push_url
+    assert "b-page=1" not in push_url
+    for href in _a_page_link_hrefs(document):
+        assert "b-page=2" in href
+        assert "extra=1" in href
+
+
+def test_region_request_ignores_current_url_for_another_page(
+    mock_site_context: Site,
+) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    pk = stubs[0].pk
+
+    push_url, document = _fetch_pair_region_a(
+        pk,
+        data={"a-page": "2", "b-page": "1"},
+        current_url=f"http://testserver/test-panel/framework/stubs/{pk}/__tabs/default?b-page=2",
+    )
+
+    assert "b-page=1" in push_url
+    assert "b-page=2" not in push_url
+    for href in _a_page_link_hrefs(document):
+        assert "b-page=2" not in href
+
+
 def test_plain_get_renders_pushed_state(mock_site_context: Site) -> None:
     stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
     pk = stubs[0].pk

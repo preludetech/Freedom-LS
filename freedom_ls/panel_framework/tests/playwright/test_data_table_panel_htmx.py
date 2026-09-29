@@ -258,3 +258,27 @@ def test_filter_sort_sheet_stays_closed_on_desktop(
     page.get_by_role("link", name="Name").click()
     expect(page).to_have_url(re.compile(r"stubs-sort=name"))
     expect(page.locator("#stubs-sheet")).not_to_have_attribute("open", re.compile(".*"))
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_paging_one_table_keeps_sibling_page_in_url(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """Table a's links were rendered before table b was paged; paging a
+    afterwards must keep b's page in the address bar and across a reload."""
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 5)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stubs[0].pk}/__tabs/pair")
+
+    page.locator("#b-table").get_by_role("link", name="2", exact=True).click()
+    expect(page).to_have_url(re.compile(r"b-page=2"))
+    page.locator("#a-table").get_by_role("link", name="2", exact=True).click()
+    expect(page).to_have_url(re.compile(r"a-page=2"))
+    expect(page).to_have_url(re.compile(r"b-page=2"))
+
+    page.reload()
+    expect(page.locator("#a-table")).to_contain_text(f"row-{PAGE_SIZE:02d}")
+    expect(page.locator("#b-table")).to_contain_text(f"row-{PAGE_SIZE:02d}")
