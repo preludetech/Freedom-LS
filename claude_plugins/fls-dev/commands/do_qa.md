@@ -295,6 +295,24 @@ After completing each test, append one record:
 {"type": "test", "test_id": "1.1", "viewport": "desktop", "status": "pass|fail|skip", "screenshot_path": "page-<timestamp>.png or null", "notes": "brief observation or failure description"}
 ```
 
+### Design comparison
+
+A test that names a design screenshot and a design checklist (a `<section>.<n>-design` test) gets a
+design check on top of its functional result. Read this run's screenshot and the design screenshot,
+then check every design checklist line as `### Design check` in
+`claude_plugins/sdd/commands/implement_plan.md` does (its step 2: elements listed region by region,
+the same qualities judged and ignored). Append one record per test and viewport:
+
+```json
+{"type": "design", "test_id": "1.2-design", "viewport": "desktop", "design_screenshot": "<repo path>", "screenshot_path": "page-<timestamp>.png", "status": "pass|fail", "misses": ["…"], "no_scope_row": ["…"]}
+```
+
+- `status` is `pass` when every checklist line is met and `fail` otherwise. Each unmet line is one
+  entry in `misses`.
+- A drawn element the build lacks passes when `design_scope.md` answers `leave out` or `later`.
+- A drawn element with no `design_scope.md` row goes in `no_scope_row`. Step 15 turns each one into
+  a todo.
+
 ### Escalation
 
 If something unrelated to the feature under test seems out of place, spawn **one `sdd:sdd-worker`**
@@ -322,7 +340,7 @@ You do NOT need to re-run every test from Step 7. Focus on:
 - Touch-target sizing — are buttons and links large enough?
 - Any test from Step 7 that involves tables, forms, or multi-column layouts
 
-Capture screenshots and append records exactly as in Step 7, with `"viewport": "mobile"`.
+Capture screenshots and append records exactly as in Step 7 (design comparison included), with `"viewport": "mobile"`.
 
 ---
 
@@ -338,7 +356,7 @@ As with mobile testing, you do NOT need to re-run every test. Focus on:
 - Sidebars and panels — are they still usable or do they crowd the main content?
 - Forms and modals — do they render at a reasonable width?
 
-Capture screenshots and append records exactly as in Step 7, with `"viewport": "tablet"`.
+Capture screenshots and append records exactly as in Step 7 (design comparison included), with `"viewport": "tablet"`.
 
 ---
 
@@ -386,8 +404,8 @@ the report can mention it, then continue:
 
 Multiple failing test records often share one underlying defect — the same broken function seen
 across desktop, mobile, and tablet, or across two related tests. Before spawning the worker, group
-every `"status": "fail"` record into **distinct bugs, where one bug = one root cause**, and append
-one record per bug:
+every `"status": "fail"` record, `test` and `design` alike (a design miss is a bug), into **distinct
+bugs, where one bug = one root cause**, and append one record per bug:
 
 ```json
 {"type": "bug", "bug_id": "B1", "title": "short descriptive title", "manifestations": [{"test_id": "1.1", "viewport": "desktop"}], "screenshots": ["page-<timestamp>.png"], "expected": "…", "actual": "…"}
@@ -417,6 +435,11 @@ say so explicitly.
 
 **Smoke gate** — the outcome from the `smoke_gate` record and which pages were loaded. If it failed
 and aborted the run, state that prominently.
+
+**`## Design check`** — one row per `design` record, with that exact heading. Columns: test id
+(`<section>.<n>-design`), viewport, this run's screenshot, the design screenshot (both images linked
+by a path relative to the report) and the result: `pass`, or the misses. With no `design` records,
+the section says "no design states tested".
 
 **Per-bug sections** — one per `bug` record, not one per failing test record. Each gives the title,
 lists every manifestation (`test_id` + viewport), embeds the relevant screenshots as
@@ -453,10 +476,11 @@ with "fix it" belongs in the green lane.
 **Green lane — permitted ONLY when ALL of these hold:**
 
 1. The failure is a clear functional defect observed in this run. It does not matter whether the
-   bug predates this branch: a bug that is also on `main` still gets fixed.
+   bug predates this branch: a bug that is also on `main` still gets fixed. A design miss meets
+   this condition when the plan's design checklist names the expected treatment.
 2. A pytest test can prove the fix. That includes a `@pytest.mark.playwright` browser test (the
    project's Playwright tests run in the ordinary `uv run pytest` suite), so a defect in JS, htmx
-   swaps, `<dialog>` or history behaviour qualifies.
+   swaps, `<dialog>` or history behaviour qualifies. A design miss's failing test is a Playwright test.
 3. No product or UX decision is required. When the spec, the test plan and the code disagree about
    the intended behaviour, choosing which one is right is a product decision, even when the code
    seems to work.
@@ -581,7 +605,7 @@ appears in the file. Do not reconstruct the wording from memory; it drifts betwe
 
 These four categories, and nothing else:
 
-1. Each **UNRESOLVED** bug, green-lane and red-lane alike:
+1. Each **UNRESOLVED** bug, design misses included, green-lane and red-lane alike:
    `add:"<section>|user + cmd|Fix QA bug: <short title> (TDD — failing test first, then fix)"`.
 2. A scenario `fls-dev:qa-data-helper` reported **impossible to set up** — not merely absent, which
    Rule 2 required you to fix during the run:
@@ -589,7 +613,9 @@ These four categories, and nothing else:
 3. A smoke-gate failure:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/fls-dev:do_qa\`"`.
 4. A product or UX decision a bug turns on:
-   `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
+   `add:"<section>|user|Decide <the question>, then <what follows from it>"`. Each `no_scope_row`
+   element in a `design` record is one:
+   `add:"<section>|user|Decide whether to build <element>, then record it in design_scope.md"`.
 
 ### What must never be added
 
