@@ -13,6 +13,9 @@
         {% element form form=form method="post" action=action_url tags="entrance,signup" %}
             {% slot body %}
                 {% csrf_token %}
+                {% for error in form.non_field_errors %}
+                    <p class="text-error text-sm">{{ error }}</p>
+                {% endfor %}
                 {% for field in form.visible_fields %}
                     {% if field.name != "accept_terms" and field.name != "accept_privacy" %}
                         {% if field.errors %}
@@ -21,6 +24,8 @@
                         <p>{{ field.label_tag }} {{ field }}</p>
                     {% endif %}
                 {% endfor %}
+                {# display:none, not off-screen: autofill fills any input that can take focus #}
+                <div hidden>{% for field in form.hidden_fields %}{{ field }}{% endfor %}</div>
 
                 {% if form.accept_terms or form.accept_privacy %}
                     <div class="space-y-2 mt-4">

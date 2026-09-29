@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import pytest
 from allauth.core.context import request_context
 
+from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.forms import SiteAwareSignupForm
 from freedom_ls.accounts.models import LegalConsent
+
+User = get_user_model()
 
 
 @pytest.fixture
@@ -216,18 +220,143 @@ def test_signup_view_renders_each_consent_checkbox_once(
     assert f'href="{privacy_url}"' in body
 
 
+# Substrings of field names that browsers and password managers autofill. A
+# honeypot whose name contains one of these gets filled for real people.
+AUTOFILL_NAME_FRAGMENTS = [
+    "name",
+    "email",
+    "mail",
+    "website",
+    "url",
+    "homepage",
+    "company",
+    "organization",
+    "organisation",
+    "phone",
+    "tel",
+    "mobile",
+    "address",
+    "street",
+    "city",
+    "zip",
+    "postal",
+    "country",
+    "user",
+    "login",
+    "password",
+]
+
+HONEYPOT_FIELD = "fax_number"
+BOT_VALUE = "i-am-a-bot"
+
+
+def _signup_data(**overrides: str) -> dict[str, str]:
+    data = {
+        "email": "honeypot@example.com",
+        "password1": "Sup3rSecretPass!",  # pragma: allowlist secret
+        "password2": "Sup3rSecretPass!",  # pragma: allowlist secret
+        "first_name": "Test",
+        "last_name": "Person",
+        "accept_terms": "on",
+        "accept_privacy": "on",
+    }
+    data.update(overrides)
+    return data
+
+
 @pytest.mark.django_db
-def test_honeypot_rejects_submission_when_filled(
+def test_honeypot_is_the_only_hidden_field(allauth_request_ctx, mock_site_context):
+    form = SiteAwareSignupForm()
+
+    assert [field.name for field in form.hidden_fields()] == [HONEYPOT_FIELD]
+
+
+@pytest.mark.django_db
+def test_honeypot_name_is_not_one_browsers_autofill(
     allauth_request_ctx, mock_site_context
 ):
-    form = SiteAwareSignupForm(
-        data={
-            "email": "test@example.com",
-            "password1": "Sup3rSecretPass!",  # pragma: allowlist secret
-            "password2": "Sup3rSecretPass!",  # pragma: allowlist secret
-            "first_name": "Test",
-            "_hp": "i-am-a-bot",
-        }
-    )
+    """Regression: `_hp` sat next to `last_name` and got filled with the surname."""
+    form = SiteAwareSignupForm()
+
+    for field in form.hidden_fields():
+        assert not field.name.startswith("_")
+        for fragment in AUTOFILL_NAME_FRAGMENTS:
+            assert fragment not in field.name.lower()
+
+
+@pytest.mark.django_db
+def test_honeypot_rejects_submission_with_form_level_error(
+    allauth_request_ctx, mock_site_context
+):
+    form = SiteAwareSignupForm(data=_signup_data(**{HONEYPOT_FIELD: BOT_VALUE}))
+
     assert form.is_valid() is False
-    assert "_hp" in form.errors
+    assert form.non_field_errors()
+    assert set(form.errors) == {"__all__"}
+
+
+@pytest.mark.django_db
+def test_honeypot_trip_logs_one_warning_without_pii(
+    allauth_request_ctx, mock_site_context, settings, caplog
+):
+    settings.TRUSTED_PROXY_IP_HEADER = None
+    allauth_request_ctx.META["REMOTE_ADDR"] = "203.0.113.7"
+    form = SiteAwareSignupForm(data=_signup_data(**{HONEYPOT_FIELD: BOT_VALUE}))
+
+    with caplog.at_level(logging.WARNING, logger="freedom_ls.accounts.forms"):
+        form.is_valid()
+
+    records = [r for r in caplog.records if r.name == "freedom_ls.accounts.forms"]
+    assert len(records) == 1
+    message = records[0].getMessage()
+    assert records[0].levelno == logging.WARNING
+    assert mock_site_context.domain in message
+    assert "203.0.113.7" in message
+    assert "honeypot@example.com" not in message
+    assert BOT_VALUE not in message
+
+
+@pytest.mark.django_db
+def test_empty_honeypot_logs_nothing(
+    allauth_request_ctx, mock_site_context, legal_repo_mock, caplog
+):
+    form = SiteAwareSignupForm(data=_signup_data())
+
+    with caplog.at_level(logging.WARNING, logger="freedom_ls.accounts.forms"):
+        form.is_valid()
+
+    assert not [r for r in caplog.records if r.name == "freedom_ls.accounts.forms"]
+
+
+@pytest.mark.django_db
+def test_signup_page_renders_honeypot_inside_hidden_wrapper(mock_site_context):
+    """Regression: an off-screen input can still take focus, so autofill filled it."""
+    body = Client().get(reverse("account_signup")).content.decode()
+
+    match = re.search(
+        rf"<div hidden>\s*(<input[^>]*name=\"{HONEYPOT_FIELD}\"[^>]*>)\s*</div>", body
+    )
+    assert match, "honeypot input is not inside a <div hidden> wrapper"
+    assert 'type="text"' in match.group(1)
+    assert "-9999px" not in match.group(1)
+    assert body.count(f'name="{HONEYPOT_FIELD}"') == 1
+
+
+@pytest.mark.django_db
+def test_filled_honeypot_rerenders_signup_page_with_message_and_no_user(
+    mock_site_context,
+):
+    response = Client().post(
+        reverse("account_signup"), _signup_data(**{HONEYPOT_FIELD: BOT_VALUE})
+    )
+
+    assert response.status_code == 200
+    assert "try typing your details in by hand" in response.content.decode()
+    assert not User.objects.filter(email="honeypot@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_signup_with_empty_honeypot_creates_user(mock_site_context):
+    Client().post(reverse("account_signup"), _signup_data(**{HONEYPOT_FIELD: ""}))
+
+    assert User.objects.filter(email="honeypot@example.com").exists()

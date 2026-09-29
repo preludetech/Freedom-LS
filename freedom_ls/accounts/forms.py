@@ -35,6 +35,19 @@ def _get_request_or_none():
         return None
 
 
+class HoneypotInput(forms.TextInput):
+    """A text input that people never see and bots fill in.
+
+    Reports itself as hidden so it lands in `form.hidden_fields`, which the
+    signup template renders inside a `hidden` wrapper. Autofill skips inputs
+    that can't take focus. Still `type="text"`: bots skip `type="hidden"`.
+    """
+
+    @property
+    def is_hidden(self) -> bool:
+        return True
+
+
 class SiteAwareSignupForm(SignupForm):
     """allauth signup form extended for FLS:
 
@@ -47,18 +60,18 @@ class SiteAwareSignupForm(SignupForm):
     first_name = forms.CharField(max_length=200, required=True)
     last_name = forms.CharField(max_length=200, required=False)
 
-    # Honeypot — should remain empty. Real users never see / type into it.
-    _hp = forms.CharField(
+    # Honeypot: bots fill it, people never see it. The name must not be one
+    # that browsers or password managers autofill, or real people get rejected.
+    fax_number = forms.CharField(
         required=False,
-        widget=forms.TextInput(
+        widget=HoneypotInput(
             attrs={
-                "style": "position:absolute; left:-9999px;",
                 "tabindex": "-1",
                 "autocomplete": "off",
                 "aria-hidden": "true",
             }
         ),
-        label="",
+        label=_("Leave this field empty"),
     )
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -123,12 +136,35 @@ class SiteAwareSignupForm(SignupForm):
                 "This form is only intended for use from the signup HTTP view."
             )
 
-    def clean__hp(self) -> str:
-        value = self.cleaned_data.get("_hp", "")
-        if value:
-            # Generic message — do not reveal which field tripped.
-            raise forms.ValidationError(_("Submission could not be processed."))
-        return str(value)
+    def clean(self) -> dict[str, object]:
+        cleaned_data: dict[str, object] = super().clean()
+        if cleaned_data.get("fax_number"):
+            self._log_honeypot_trip()
+            # Don't say which check failed, but give a person a way forward.
+            self.add_error(
+                None,
+                _(
+                    "We couldn't process this sign-up. If you used autofill or a "
+                    "password manager, please try typing your details in by hand."
+                ),
+            )
+        return cleaned_data
+
+    def _log_honeypot_trip(self) -> None:
+        """Log the site and client IP, never the submitted values."""
+        from .utils import get_client_ip
+
+        request = _get_request_or_none()
+        if request is None:
+            logger.warning("Signup honeypot tripped outside a request")
+            return
+        site_obj = get_cached_site(request)
+        domain = site_obj.domain if isinstance(site_obj, Site) else "unknown"
+        logger.warning(
+            "Signup honeypot tripped on site %s from IP %s",
+            domain,
+            get_client_ip(request),
+        )
 
     def custom_signup(self, request, user) -> None:
         """allauth hook called after the user is created.
