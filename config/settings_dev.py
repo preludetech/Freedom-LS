@@ -38,26 +38,16 @@ if not TESTING:
     INSTALLED_APPS = [
         *INSTALLED_APPS,  # noqa: F405
         "debug_toolbar",
-        "django_browser_reload",
     ]
     MIDDLEWARE = [
         "debug_toolbar.middleware.DebugToolbarMiddleware",
         *MIDDLEWARE,  # noqa: F405
     ]
 
-# django_browser_reload is excluded above during TESTING: its /__reload__/events/
-# view is an infinite StreamingHttpResponse (a server-sent-events ping loop) that
-# never returns, so the request that opens it never fires request_finished and
-# never releases its database connection. BrowserReloadMiddleware is what gets a
-# real browser to open that connection -- it injects the reconnecting
-# client-side script into every HTML response, and a Playwright test's browser
-# does that on every page it visits. Left running, that connection can outlive
-# the pytest session's own database teardown and make DROP DATABASE fail with
-# "being accessed by other users".
-
 INSTALLED_APPS = [
     *INSTALLED_APPS,
     # "django_watchfiles",
+    "django_browser_reload",
     "freedom_ls.qa_helpers",
     "freedom_ls.dev_tools",
 ]
@@ -141,11 +131,7 @@ DATABASES = {
 SESSION_COOKIE_NAME = f"sessionid_{_db_name}"
 
 
-if not TESTING:
-    MIDDLEWARE = [
-        *MIDDLEWARE,
-        "django_browser_reload.middleware.BrowserReloadMiddleware",
-    ]
+MIDDLEWARE = [*MIDDLEWARE, "django_browser_reload.middleware.BrowserReloadMiddleware"]
 
 
 #####
