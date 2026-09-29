@@ -63,3 +63,4 @@ in this file are written without a prefix, so use whichever prefix is present in
 - If an element isn't visible in the snapshot, it may be off-screen or hidden — try scrolling or checking if a modal needs to be opened
 - Use `browser_wait_for` with a `text` parameter after HTMX requests to wait for content to appear
 - Use `browser_evaluate` to run JavaScript when you need to inspect page state beyond what the snapshot provides
+- The MCP server and the browsers it launches can outlive the session that started them. `.claude/ds/scripts/reap_playwright_mcp.sh` lists any still running; `--kill` ends them.
