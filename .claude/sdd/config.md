@@ -19,6 +19,14 @@ no such step.
 - Rebase command: claude_plugins/django-stack/commands/rebase_main.md
 - Front-end check: claude_plugins/fls-dev/commands/protected/frontend_check.md
 
+## Design Hooks
+
+Followed by `/sdd:implement_plan` after each slice that builds a designed screen. The value is a
+helper file that is read and followed, not a script. Leave it blank if this project has no such
+step.
+
+- Design check:
+
 ## Vocabulary Sources
 
 Where this project's domain vocabulary is defined, most authoritative first.

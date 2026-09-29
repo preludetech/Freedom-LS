@@ -1,7 +1,7 @@
 ---
 name: implement_plan
 description: Execute the implementation plan in resilient batches.
-allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
+allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, ToolSearch, AskUserQuestion
 argument-hint: [suffix, e.g. 2b]
 ---
 
@@ -35,7 +35,7 @@ when `/sdd:next` says it already ran this turn).
 
 Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch <id>] <summary>`.
 
-**Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only spawn batches whose marker commit is missing.
+**Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only spawn batches whose marker commit is missing. A `design fix` commit counts as its batch's commit. When the last completed batch has design states and no later batch is committed, run its Design check before spawning the next batch.
 
 ```
 with suffix 2b: ^\[batch 2b\.[0-9]+\]     (only this suffix's batches)
@@ -49,6 +49,14 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 3. After all steps are done, run `uv run pytest` with the Bash tool's `run_in_background: true` and wait for the completion notification — all tests must pass. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10 minutes.
 4. **As its final step, make the `[batch <id>] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
 
+When the batch's slice has a `**Design states:**` line, the brief also passes the **design paths**, as paths and never contents:
+
+- the plan file and the heading of its Design section;
+- the design screenshot for each of the slice's design states;
+- `design_scope.md`, beside the `design.md` that applies.
+
+The brief adds: build every drawn element the plan's Design section transcribes, and leave out any drawn element whose `design_scope.md` row says `leave out` or `later`, even when the source shows it.
+
 Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
 
 After a batch returns, act on its status:
@@ -58,6 +66,21 @@ After a batch returns, act on its status:
 
 **All tests must pass before moving to the next batch.**
 
+### Design check
+
+Runs at depth 0 after a batch returns `ok` whose slice has a `**Design states:**` line. Its judgement and `AskUserQuestion` stay at depth 0. Fix batches never ask the user.
+
+Read `Design check` under `## Design Hooks` in `.claude/sdd/config.md` (`config.local.md` wins), the way `claude_plugins/sdd/commands/protected/pre_step_rebase.md` reads `## Rebase Hooks`. A blank value, or an absent file or section, skips the check: record "design check skipped: no Design check hook" for the Step 3 summary and move on.
+
+Otherwise, start with `fixes = 0` and repeat these steps until one of them ends the check:
+
+1. Read the hook file and follow it here with `<spec-dir>`, the plan path and the slice's design states. It returns one screenshot path per state and width. On `failed`, stop the run with `status: failed` and its reason.
+2. For each state, Read the app screenshot and the design screenshot. List each one's elements region by region, then diff both lists against the state's design checklist in the plan. Judge layout, order, hierarchy, relative density, states and copy. Colour, font and exact pixels belong to FLS's theme and stay out of the judgement.
+3. Every drawn element with no `design_scope.md` row goes to `AskUserQuestion` with the options `build`, `leave out` and `later: <spec>`. Append the answer as a row (shape: `register_design.md` Step 5) and carry on.
+4. Every design checklist line is met (no **design miss**): delete the hook's screenshots by name, log "design check passed", and end the check.
+5. A design miss that has already gone to two fix batches and still stands: end the run with `status: blocked`, naming the miss, the plan line it contradicts and the hook's screenshot paths. The screenshots stay as evidence. The next check of that slice overwrites them, because their names are fixed, and deletes them when it passes.
+6. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the list of misses and the design paths. It commits `[batch <id>] design fix <n>`, and `fixes` goes up by one. Act on its status as for any batch, then go back to step 1.
+
 ### DO NOT run the frontend_qa plan during implementation
 If there is a QA file, do **not** run it, and ignore any plan step that says to run it. The QA process runs separately, after the plan is complete.
 
@@ -66,7 +89,7 @@ If there is a QA file, do **not** run it, and ignore any plan step that says to 
 After all batches are complete:
 
 1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes. Brief it to run the full suite with the Bash tool's `run_in_background: true` and wait for the completion notification, not to poll it with `ps` or `pgrep` loops, not to start a second full run in this worktree while one is in flight, and not to wrap it in `timeout`. The suite can take more than 10 minutes.
-2. Check each success criterion from the plan — is it met?
+2. Check each success criterion from the plan — is it met? List each Design check as passed (with its `fixes` count) or skipped.
 3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth), then repeat from step 1
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
