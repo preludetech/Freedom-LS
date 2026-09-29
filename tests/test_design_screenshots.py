@@ -6,9 +6,11 @@ The script is `claude_plugins/sdd/scripts/design_screenshots.py`, run with the p
 
 from __future__ import annotations
 
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from types import ModuleType
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "sdd" / "scripts" / "design_screenshots.py"
@@ -72,3 +74,28 @@ def test_entry_file_missing_from_design_source_exits_1_naming_path(
     assert result.returncode == 1
     assert "design_source/Gone Page.html" in result.stderr
     assert not (spec_dir / "design_screenshots").exists()
+
+
+def load_script_module() -> ModuleType:
+    spec = importlib.util.spec_from_file_location("design_screenshots", SCRIPT)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_prepare_copy_swaps_in_flat_canvas_for_the_copy_only(tmp_path: Path) -> None:
+    # Arrange
+    module = load_script_module()
+    source = tmp_path / "design_source"
+    source.mkdir()
+    (source / "design-canvas.jsx").write_text("// the original canvas")
+    dest = tmp_path / "site"
+
+    # Act
+    module.prepare_copy(source, dest, is_canvas=True)
+
+    # Assert
+    assert (dest / "design-canvas.jsx").read_bytes() == module.STAND_IN.read_bytes()
+    assert (source / "design-canvas.jsx").read_text() == "// the original canvas"
