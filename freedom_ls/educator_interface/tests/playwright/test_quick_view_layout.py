@@ -3,8 +3,9 @@
 From 1280px up the drawer is docked beside the page rather than laid over it:
 it starts below the site header, and the page content makes room for it, so
 the list's actions and every table column stay reachable while it is open.
-The stub-harness layout tests in panel_framework cannot show this, because
-that harness renders no site header and no consumer's list actions.
+The stub-harness layout tests in panel_framework cover the push, but that
+harness renders no site header, so only a real page shows the drawer clearing
+it.
 """
 
 from __future__ import annotations
