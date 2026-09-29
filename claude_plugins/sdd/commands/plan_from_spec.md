@@ -1,14 +1,22 @@
 ---
 description: Create an implementation plan based on a spec file
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent
+argument-hint: <spec path> [suffix, e.g. 2b]
 ---
 
 You are helping to take a comprehensive development plan, based on this a spec file.
 
+# Input
+
+- `<spec path>`: the spec file.
+- `[suffix]`: optional, `2` followed by letters (e.g. `2b`). The plan file is `<suffix>. plan.md`. The QA file swaps the leading `2` for `3`: `3<letters>. frontend_qa.md`. With no suffix they are `2. plan.md` and `3. frontend_qa.md`.
+
+Below, **the plan file** and **the QA file** mean the resolved names.
+
 # Output
 
-- Create a plan document in the same directory as the spec file. Name it `2. plan.md`
-- Optionally: Create a document called `3. frontend_qa.md`
+- Create the plan file in the same directory as the spec file
+- Optionally: Create the QA file
 - Print a short summary of what you did
 
 - DO NOT mention the frontend qa in the plan file. We will run the qa process after the plan is complete.
@@ -65,7 +73,7 @@ This worker was spawned in Step 1. It is **one `sdd:sdd-worker`** that scans the
 
 # Step 5
 
-If there are changes to any frontend then create a frontend_qa.md file.
+If there are changes to any frontend then create the QA file.
 
 This should explain how to check that the feature works using a browser. It should explain where to go, how to log in, what urls to visit, what buttons to click, what you expect to see, etc.
 
@@ -88,12 +96,12 @@ IMPORTANT: We will be generating a webserver port at random. we wont be using po
 
 ## IMPORTANT
 
-- DO NOT include any manual verification in the plan.md file, ALL manual verification should be in the frontend_qa file
-- If you created a `3. frontend_qa.md` file, DO NOT mention it inside `2. plan.md`
+- DO NOT include any manual verification in the plan file, ALL manual verification should be in the QA file
+- If you created the QA file, DO NOT mention it inside the plan file
 
 # Step 6: Review the plan (fan-out)
 
-The review dimensions below become **one `sdd:sdd-worker` per dimension**, each writing `.sdd-work/plan_review_<dim>.md` (structured status). Apply resume/retry/blocked per the recipe. Then read the findings (files, not dumped contents) and edit `2. plan.md` accordingly. Dimensions:
+The review dimensions below become **one `sdd:sdd-worker` per dimension**, each writing `.sdd-work/plan_review_<dim>.md` (structured status). Apply resume/retry/blocked per the recipe. Then read the findings (files, not dumped contents) and edit the plan file accordingly. Dimensions:
 
 - All the success criteria will be met by the plan in place
 - The plan is ordered as vertical slices (see Step 3): each slice delivers working, tested behaviour end to end, the first slice is the thinnest one that runs end to end, and no step groups work by layer
@@ -103,24 +111,24 @@ The review dimensions below become **one `sdd:sdd-worker` per dimension**, each 
 - Every noun, and every identifier the plan proposes, matches the spec's vocabulary and the codebase's
 
 ### IMPORTANT
-The plan.md file MUST NOT say that the frontend_qa should be run. We will run that separately.
+The plan file MUST NOT say that the QA file should be run. We will run that separately.
 
 The plan also must not create documentation of any kind. It must just be an implementation plan. It should not include any other steps from the SDD plugin. It is only implementation.
 
 # Step 7: Clean up
 
-Delete this run's own scratch files — one `.sdd-work/<phase>_<unit-id>.md` per worker you spawned — once `2. plan.md` and any `3. frontend_qa.md` are finalised. Name each path explicitly; never remove the `.sdd-work/` directory itself (recipe step 7).
+Delete this run's own scratch files — one `.sdd-work/<phase>_<unit-id>.md` per worker you spawned — once the plan file and any QA file are finalised. Name each path explicitly; never remove the `.sdd-work/` directory itself (recipe step 7).
 
 # Step 8: Update the todo list
 
 Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
-- `tick:"Run `/plan_from_spec` to generate the implementation plan and QA plan"`
-- If you did **not** create a `3. frontend_qa.md` (because the feature has no frontend changes), also pass `add:"QA|user|No QA needed — feature has no frontend changes"`. Otherwise omit `add:`.
+- `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/plan_from_spec` to generate the implementation plan and QA plan"`.
+- If you did **not** create the QA file (because the feature has no frontend changes), also pass `add:"QA|user|No QA needed — feature has no frontend changes"`. Otherwise omit `add:`.
 
 # Step 9: Commit and push
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
-steps with `<summary>`: `write the implementation plan`. Tell it to stage `2. plan.md`, any
-`3. frontend_qa.md`, and the `todo.md` beside them.
+steps with `<summary>`: `write the implementation plan`. Tell it to stage the plan file, any
+QA file, and the `todo.md` beside them.

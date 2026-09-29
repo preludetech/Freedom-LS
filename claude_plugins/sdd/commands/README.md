@@ -58,6 +58,8 @@ Run `/plan_from_spec`. This produces:
 - an implementation plan, and
 - a QA plan.
 
+An optional suffix argument (`/plan_from_spec <spec> 2b`) selects a second plan in the same spec directory: `2b. plan.md` and `3b. frontend_qa.md` instead of `2. plan.md` and `3. frontend_qa.md`.
+
 ## Step 3.5: Plan security review
 
 Run `/plan_security_review` to review the implementation plan for insecure design choices (raw SQL, missing auth, unvalidated input, etc.) before any code is written. This is cheaper than catching the same issues in `/security-review` after implementation, because design-level security problems often require structural rework.
@@ -74,7 +76,7 @@ If `docs/app_structure.md` doesn't exist yet, run `/app_map` first. `/app_map` i
 
 ## Step 4: Implement
 
-Run `/implement_plan` to execute the implementation plan.
+Run `/implement_plan` to execute the implementation plan. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits.
 
 ## Step 5: Code security review
 
