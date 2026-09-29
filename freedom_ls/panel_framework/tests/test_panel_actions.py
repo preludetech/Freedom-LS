@@ -314,6 +314,32 @@ def test_create_action_duplicate_name_returns_422(mock_site_context: Site) -> No
     assert 'aria-invalid="true"' in content
 
 
+class _FormLevelErrorForm(_StubModelForm):
+    def clean(self) -> dict[str, object]:
+        raise forms.ValidationError("These values cannot be combined.")
+
+
+class StubFormLevelErrorCreateAction(StubCreateAction):
+    form_class = _FormLevelErrorForm
+
+
+@pytest.mark.django_db
+def test_error_summary_does_not_count_a_form_level_error_as_a_field(
+    mock_site_context: Site,
+) -> None:
+    """A non-field error is shown, but no field is claimed to need fixing."""
+    action = StubFormLevelErrorCreateAction()
+    request = RequestFactory().post("/", {"name": "Anything"})
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, None, "/items"))
+
+    assert response.status_code == 422
+    content = response.content.decode()
+    assert "These values cannot be combined." in content
+    assert "to fix" not in content
+
+
 @pytest.mark.django_db
 def test_create_action_has_permission_reflects_the_configs_answer(
     mock_site_context: Site,

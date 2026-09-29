@@ -5,7 +5,7 @@ from collections import Counter
 from collections.abc import Callable
 
 from django import forms
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
 from django.db.models import Model
 from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
@@ -135,6 +135,9 @@ class FormPanelAction(PanelAction):
             fields[0].field.widget.attrs["autofocus"] = True
         return {
             "form": form,
+            "field_error_count": sum(
+                1 for name in form.errors if name != NON_FIELD_ERRORS
+            ),
             "form_title": self.form_title,
             "form_url": form_url,
             "submit_buttons": self.submit_buttons,

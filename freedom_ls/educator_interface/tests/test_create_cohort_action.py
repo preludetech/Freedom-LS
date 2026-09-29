@@ -15,6 +15,7 @@ superuser flag can create a cohort through the interface.
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -108,6 +109,26 @@ def test_duplicate_cohort_name_in_same_organisation_is_rejected_with_a_visible_e
 
 
 @pytest.mark.django_db
+def test_duplicate_cohort_name_error_is_attached_to_the_name_field(
+    mock_site_context: Site,
+) -> None:
+    """The Name input is marked invalid and the summary counts one field."""
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation, name="Year 10 Science")
+    request = RequestFactory().post("/", {"name": "Year 10 Science"})
+    request.user = UserFactory(staff=True)
+    request.organisation = organisation
+
+    response = CreateCohortAction().handle_submit(_ctx(request))
+
+    html = response.content.decode()
+    name_input = re.search(r'<input[^>]*name="name"[^>]*>', html)
+    assert name_input is not None
+    assert 'aria-invalid="true"' in name_input.group(0)
+    assert "1 field to fix." in html
+
+
+@pytest.mark.django_db
 def test_duplicate_cohort_name_in_same_organisation_creates_no_second_row(
     mock_site_context: Site,
 ) -> None:
@@ -160,7 +181,10 @@ def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
     form = CohortForm({"name": "Year 10 Science"}, instance=cohort)
 
     assert not form.is_valid()
-    assert NON_FIELD_ERRORS in form.errors
+    assert form.errors["name"] == [
+        "Cohort with this Site, Organisation and Name already exists."
+    ]
+    assert NON_FIELD_ERRORS not in form.errors
 
 
 @pytest.mark.django_db

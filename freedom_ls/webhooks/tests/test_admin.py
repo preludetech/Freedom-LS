@@ -217,7 +217,7 @@ class TestWebhookSecretAdmin:
         assert saved.encrypted_value == "original-secret-value"
 
     def test_duplicate_name_shows_form_error(self, mock_site_context: object) -> None:
-        """Creating a secret with a duplicate name should show a form validation error, not crash."""
+        """A duplicate name is reported on the Name field, not as a crash."""
         WebhookSecretFactory(name="duplicate_key")
         form = WebhookSecretForm(
             data={
@@ -227,7 +227,8 @@ class TestWebhookSecretAdmin:
             },
         )
         assert not form.is_valid()
-        assert NON_FIELD_ERRORS in form.errors
+        assert "name" in form.errors
+        assert NON_FIELD_ERRORS not in form.errors
 
     def test_creating_secret_stores_value(self, mock_site_context: object) -> None:
         """Creating a new secret via the form stores the encrypted value."""
