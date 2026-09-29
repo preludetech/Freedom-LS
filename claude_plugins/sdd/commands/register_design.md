@@ -8,10 +8,11 @@ A design drawn in Claude Design lives in claude.ai, not in the repo. This comman
 spec directory: `design_prompt.md` (the handoff prompt), `design_source/` (the synced files) and
 `design_screenshots/` (one PNG per artboard), plus `<spec-dir>/design.md`, which every later step
 reads. That file says where the design came from, how an agent reads it, how faithfully to build to
-it, and which screens it covers. Then it points every spec that builds to the design at that file.
+it, and which screens it covers. `<spec-dir>/design_scope.md` records, per drawn element, whether
+to build it. Then the command points every spec that builds to the design at `design.md`.
 
-It runs at **depth 0**. It spawns the mechanic that runs the screenshot script and the mechanic
-that commits.
+It runs at **depth 0**, where it asks the scope questions. It spawns the mechanic that runs the
+screenshot script and the mechanic that commits.
 
 ## Step 0: Pre-step rebase
 
@@ -41,7 +42,8 @@ the design drawn with the project's own theme or another one, and did the design
 implementation (multi-select, with "neither caveat applies" as an option).
 
 If `<spec-dir>/design.md` already exists, this is a re-registration: rewrite it whole with the new
-link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`.
+link and notes, following `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md`. Step 5 reconciles
+`design_scope.md` instead of rewriting it.
 
 ## Step 2: Sync the design
 
@@ -112,6 +114,10 @@ component styling disagree. Take the design's structure and intent, not its styl
 raw colour, font or spacing value out of the design, never add a theme token to match it, and
 never build a new component where the project already has one that does the job.
 
+`design_scope.md` is the one home for scope decisions. Specs and plans cite it rather than
+restating it. A drawn element whose row says `leave out` or `later` is not built, even though the
+source shows it.
+
 <one bullet per note from Step 1, in the user's meaning>
 
 ## What it covers
@@ -137,7 +143,46 @@ The script writes to `<spec-dir>/design_screenshots/`. `screenshots/` is `do_qa`
 Done when the mechanic has reported an exit status. A non-zero exit goes in the summary with the
 script's message, and the registration still commits.
 
-## Step 5: Point the consumers at it
+## Step 5: Settle scope
+
+Record an answer for every drawn element that nothing has accounted for, in `<spec-dir>/design_scope.md`.
+
+1. **Find candidates.** List each drawn element in the synced source and the screenshots, with its
+   design section. It is a candidate when it fails at least one check: the design brief names it;
+   the owning spec's `idea.md` or `1. spec.md` names it (for a cut effort parent, the idea of the
+   child that the coverage table gives the screen); FLS has a matching URL name, view or model
+   (`Glob`, `Grep`). Skip an element that already has a row.
+2. **Ask.** Put each candidate to the user through `AskUserQuestion`, up to four per call, with
+   the options `build`, `leave out` and `later: <spec>`. Offer `later` only when the coverage
+   table names a spec for that screen.
+3. **Record.** Append one row per answered element. Create the file, with the heading
+   `# Design scope: <effort or spec name>`, when it does not exist yet:
+
+   ```markdown
+   # Design scope: <effort or spec name>
+
+   | Drawn element | Design section | Question asked | Answer | Decided at | Date | Why |
+   |---|---|---|---|---|---|---|
+   | Preferences gear (panel header) | 1 Bell and badge | Build the Preferences gear? | later: user-communication-2-notification-email | user-communication-1-notifications-core | 2026-09-27 | No preferences page exists yet |
+   ```
+
+   "Decided at" is the directory name of the spec that answered. "Why" is the user's reason in one
+   line.
+
+Rules:
+
+- One row per drawn element. A later spec that reverses a decision edits that row and never adds a
+  second one.
+- **Cut effort parent.** Settle only what applies to the whole effort. A question that belongs to
+  one child gets the answer `open: ask when <child> starts`, and no `AskUserQuestion`.
+- **Re-registration.** Existing rows stay as they are. A row whose element the design no longer
+  draws gets the answer `removed from design` and stays. Ask about new drawn elements and append
+  them. When the design is unchanged, the file stays byte-identical.
+
+Done when every candidate has a row. A candidate the user left unanswered gets `open: ask when
+<spec> starts`, and the summary names it.
+
+## Step 6: Point the consumers at it
 
 The consumers are the spec directory itself, or for a cut effort parent the children named in its
 roadmap section. For each consumer whose screens appear in the coverage table (or that cites the
@@ -155,10 +200,10 @@ mockups landing so they point at `design.md` instead. Do not touch rows, statuse
 
 Edit only those lines.
 
-## Step 6: Commit
+## Step 7: Commit
 
 Delegate to `sdd:sdd-mechanic` with the list of files this run wrote or changed, including
-`design_prompt.md`, `design_source/` and `design_screenshots/`.
+`design_prompt.md`, `design_source/`, `design_screenshots/` and `design_scope.md`.
 
 - On `main` or `master` (the normal case for specs still in `spec_dd/1. next/`): stage those
   files by path and commit them the way `claude_plugins/sdd/resources/commit_and_push.md` says,
@@ -168,5 +213,5 @@ Delegate to `sdd:sdd-mechanic` with the list of files this run wrote or changed,
   `register the Claude Design design`.
 
 Report: the `design.md` path, whether the design was read (and how many screens it covers), the
-number of synced files and screenshots, whether the file list came from a prompt or was worked out
+number of synced files and screenshots, the number of scope rows added, whether the file list came from a prompt or was worked out
 from a bare link, and every consumer file you pointed at it.
