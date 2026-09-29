@@ -7,7 +7,9 @@ prints a canned result set, so the real dev Postgres server is never touched.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -186,3 +188,38 @@ def test_init_never_grants_privileges_to_pguser(
     # Assert
     assert result.returncode == 0
     assert "GRANT" not in stub_tools.log_file.read_text()
+
+
+def test_init_stamps_the_branch_database_with_its_repo_and_worktree(
+    stub_tools: StubTools, repo_on_branch: Path
+) -> None:
+    # Arrange
+    env = stub_tools.env(**GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    assert result.returncode == 0
+    match = re.search(
+        r"COMMENT ON DATABASE db_feature_x IS '(.*)';",
+        stub_tools.log_file.read_text(),
+    )
+    assert match is not None
+    stamp = json.loads(match.group(1))
+    assert stamp["repo"] == str(repo_on_branch.resolve() / ".git")
+    assert stamp["worktree"] == str(repo_on_branch.resolve())
+
+
+def test_init_does_not_stamp_the_fallback_database_with_no_branch(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    env = stub_tools.env(**GIT_ENV_OVERRIDES)
+
+    # Act
+    result = run_script(INIT_SCRIPT, tmp_path, env)
+
+    # Assert
+    assert result.returncode == 0
+    assert "COMMENT ON DATABASE" not in stub_tools.log_file.read_text()

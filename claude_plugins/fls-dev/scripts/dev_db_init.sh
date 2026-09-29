@@ -51,4 +51,15 @@ echo "Branch: ${BRANCH:-<none>} -> DB: ${DB_NAME}"
 ensure_db "$DB_NAME"
 ensure_db "$TEST_DB_NAME"
 
+# Record which repo and worktree own this database, so stale_dbs can later
+# tell a leftover per-branch database apart from a live one, and from another
+# project's database sharing the same naming convention. The `db` fallback
+# is shared by any worktree with no branch checked out, so it is never stamped.
+if [ -n "$BRANCH" ]; then
+    REPO=$(git rev-parse --path-format=absolute --git-common-dir)
+    WORKTREE=$(git rev-parse --show-toplevel)
+    STAMP=$(printf '{"repo": "%s", "worktree": "%s"}' "$REPO" "$WORKTREE" | sed "s/'/''/g")
+    psql_cmd -c "COMMENT ON DATABASE ${DB_NAME} IS '${STAMP}';"
+fi
+
 echo "Databases ready: ${DB_NAME}, ${TEST_DB_NAME}"
