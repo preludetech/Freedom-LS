@@ -1,3 +1,5 @@
+name: fls_dev_db
+
 services:
   postgres:
     image: postgres:17
@@ -6,10 +8,63 @@ services:
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=db
     volumes:
-      - ${DB_DATA_PATH:-~/.lms_postges_dev_data}:/var/lib/postgresql/data
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
     ports:
       - "6543:5432"
+    restart: unless-stopped
+    stop_grace_period: 30s
+    mem_limit: 3g
+    shm_size: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pguser -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    # The first three settings trade durability for speed. Recovery from corruption is
+    # cleanup_devdb.sh, then setup in each worktree.
+    # Sizing is fixed for a 4 GiB engine, not per machine, because a per-machine value would
+    # make the config differ between worktrees.
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - max_connections=120
+      - -c
+      - superuser_reserved_connections=3
+      - -c
+      - shared_buffers=768MB
+      - -c
+      - work_mem=16MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - logging_collector=on
+      - -c
+      - log_directory=log
+      - -c
+      - log_filename=postgresql-%a.log
+      - -c
+      - log_truncate_on_rotation=on
+      - -c
+      - log_rotation_age=1d
+      - -c
+      - log_rotation_size=0
+      - -c
+      - log_line_prefix=%m [%p] %q%u@%d app=%a client=%h
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_temp_files=0
   mailpit:
     image: axllent/mailpit:v1.30.1
     ports:
@@ -31,3 +86,5 @@ services:
   #   ports:
   #     - "15672:15672"
   #     - "5672:5672"
+volumes:
+  pgdata: {}
