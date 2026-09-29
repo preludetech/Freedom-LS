@@ -1,6 +1,8 @@
 #!/bin/sh
-# Drops per-branch dev and test databases from the shared PostgreSQL container.
-# Terminates active connections before dropping.
+# Drops per-branch dev and test databases, and any worker test databases xdist
+# left behind, from the shared PostgreSQL container.
+# DROP DATABASE ... WITH (FORCE) terminates active connections and drops the
+# database in one statement (Postgres 13+).
 #
 # NOTE: The branch-to-db-name sanitization here mirrors
 # freedom_ls.base.git_utils.branch_to_db_name — keep them in sync.
@@ -9,6 +11,10 @@ set -e
 
 psql_cmd() {
     PGPASSWORD=password psql -h 127.0.0.1 -p 6543 -U pguser -d postgres "$@"
+}
+
+drop_db() {
+    psql_cmd -c "DROP DATABASE IF EXISTS $1 WITH (FORCE);"
 }
 
 # Detect branch and sanitize
@@ -20,12 +26,13 @@ fi
 DB_NAME="db_$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/_/g' | cut -c1-50)"
 TEST_DB_NAME="test_${DB_NAME}"
 
-# Terminate connections and drop dev database
-psql_cmd -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${DB_NAME}' AND pid <> pg_backend_pid();" 2>/dev/null || true
-psql_cmd -c "DROP DATABASE IF EXISTS ${DB_NAME};"
+# A plain assignment, so set -e stops the script if the query fails.
+WORKER_DBS=$(psql_cmd -Atc "SELECT datname FROM pg_database WHERE datname LIKE '${TEST_DB_NAME}\_gw%'")
 
-# Terminate connections and drop test database
-psql_cmd -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${TEST_DB_NAME}' AND pid <> pg_backend_pid();" 2>/dev/null || true
-psql_cmd -c "DROP DATABASE IF EXISTS ${TEST_DB_NAME};"
+drop_db "$DB_NAME"
+drop_db "$TEST_DB_NAME"
+for WORKER_DB in $WORKER_DBS; do
+    drop_db "$WORKER_DB"
+done
 
-echo "Dropped: ${DB_NAME}, ${TEST_DB_NAME}"
+echo "Dropped: ${DB_NAME}, ${TEST_DB_NAME}${WORKER_DBS:+, $WORKER_DBS}"
