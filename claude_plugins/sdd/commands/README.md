@@ -38,7 +38,7 @@ The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_for
 
 1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
 2. Optionally run `/improve_idea` to research the idea and suggest improvements.
-3. If the work has a design drawn in Claude Design, run `/sdd:register_design <dir> <handoff prompt or claude-design-url>` on the spec (or on a cut effort's parent). It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them and how faithfully to build to the design.
+3. If the work has a design drawn in Claude Design, run `/sdd:register_design <dir> <handoff prompt or claude-design-url>` on the spec (or on a cut effort's parent). It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
 
 ## Step 2: Write the spec
 
@@ -76,7 +76,7 @@ If `docs/app_structure.md` doesn't exist yet, run `/app_map` first. `/app_map` i
 
 ## Step 4: Implement
 
-Run `/implement_plan` to execute the implementation plan. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses to fix batches.
+Run `/implement_plan` to execute the implementation plan. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
 
 ## Step 5: Code security review
 

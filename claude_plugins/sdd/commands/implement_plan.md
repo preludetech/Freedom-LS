@@ -52,10 +52,9 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 When the batch's slice has a `**Design states:**` line, the brief also passes the **design paths**, as paths and never contents:
 
 - the plan file and the heading of its Design section;
-- the design screenshot for each of the slice's design states;
-- `design_scope.md`, beside the `design.md` that applies.
+- the design screenshot for each of the slice's design states.
 
-The brief adds: build every drawn element the plan's Design section transcribes, and leave out any drawn element whose `design_scope.md` row says `leave out` or `later`, even when the source shows it.
+The brief adds: the design is a visual reference, never a source of scope. Build what the plan's Design section transcribes and nothing else the design shows. Use the project's theme tokens, components and semantic icons; never add a theme, theme token, font or colour, and never add an icon that does not fit the project's icon set.
 
 Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
 
@@ -68,18 +67,17 @@ After a batch returns, act on its status:
 
 ### Design check
 
-Runs at depth 0 after a batch returns `ok` whose slice has a `**Design states:**` line. Its judgement and `AskUserQuestion` stay at depth 0. Fix batches never ask the user.
+Runs at depth 0 after a batch returns `ok` whose slice has a `**Design states:**` line. Its judgement stays at depth 0. It never asks the user whether to build something the design draws, and fix batches never ask the user anything.
 
 Read `Design check` under `## Design Hooks` in `.claude/sdd/config.md` (`config.local.md` wins), the way `claude_plugins/sdd/commands/protected/pre_step_rebase.md` reads `## Rebase Hooks`. A blank value, or an absent file or section, skips the check: record "design check skipped: no Design check hook" for the Step 3 summary and move on.
 
 Otherwise, start with `fixes = 0` and repeat these steps until one of them ends the check:
 
 1. Read the hook file and follow it here with `<spec-dir>`, the plan path and the slice's design states. It returns one screenshot path per state and width. On `failed`, stop the run with `status: failed` and its reason.
-2. For each state, Read the app screenshot and the design screenshot. List each one's elements region by region, then diff both lists against the state's design checklist in the plan. Judge layout, order, hierarchy, relative density, states and copy. Colour, font and exact pixels belong to FLS's theme and stay out of the judgement.
-3. Every drawn element with no `design_scope.md` row goes to `AskUserQuestion` with the options `build`, `leave out` and `later: <spec>`. Append the answer as a row (shape: `register_design.md` Step 5) and carry on.
-4. Every design checklist line is met (no **design miss**): delete the hook's screenshots by name, log "design check passed", and end the check.
-5. A design miss that has already gone to two fix batches and still stands: end the run with `status: blocked`, naming the miss, the plan line it contradicts and the hook's screenshot paths. The screenshots stay as evidence. The next check of that slice overwrites them, because their names are fixed, and deletes them when it passes.
-6. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the list of misses and the design paths. It commits `[batch <id>] design fix <n>`, and `fixes` goes up by one. Act on its status as for any batch, then go back to step 1.
+2. For each state, Read the app screenshot and the design screenshot. List each one's elements region by region, then diff both lists against the state's design checklist in the plan. Judge layout, order, hierarchy, relative density, states and copy. Colour, font, icons and exact pixels belong to FLS's theme and stay out of the judgement. A drawn element the checklist does not list is not a miss: its absence is correct.
+3. Every design checklist line is met (no **design miss**): delete the hook's screenshots by name, log "design check passed", and end the check.
+4. A design miss that has already gone to two fix batches and still stands: end the run with `status: blocked`, naming the miss, the plan line it contradicts and the hook's screenshot paths. The screenshots stay as evidence. The next check of that slice overwrites them, because their names are fixed, and deletes them when it passes.
+5. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the list of misses and the design paths. It commits `[batch <id>] design fix <n>`, and `fixes` goes up by one. Act on its status as for any batch, then go back to step 1.
 
 ### DO NOT run the frontend_qa plan during implementation
 If there is a QA file, do **not** run it, and ignore any plan step that says to run it. The QA process runs separately, after the plan is complete.

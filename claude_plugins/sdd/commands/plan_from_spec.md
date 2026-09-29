@@ -43,9 +43,9 @@ when `/sdd:next` says it already ran this turn).
 
 Read the spec carefully and make sure you understand what is needed. Spawn the Step 4 skills/MCP scan now, in the background; it needs only the spec.
 
-If the spec or its directory names a `design.md`, it registers a Claude Design design, and the Design section (Step 3) applies. Read `design_source/`, `design_screenshots/` and `design_scope.md` from the directory that holds the `design.md`. Load `DesignSync` (`ToolSearch` with `select:DesignSync`) only when those files are missing, and say so in the summary.
+If the spec or its directory names a `design.md`, it registers a Claude Design design, and the Design section (Step 3) applies. Read `design_source/` and `design_screenshots/` from the directory that holds the `design.md`, and treat the design the way `design.md` says: a visual reference, never a source of scope. Load `DesignSync` (`ToolSearch` with `select:DesignSync`) only when those files are missing, and say so in the summary.
 
-List the drawn elements in the design states the plan builds. Each one without a `design_scope.md` row goes into the question batch below; append the answer as a row, in the shape of `register_design.md` Step 5.
+The plan builds only what the spec asks for. A drawn element the spec does not ask for is left out without a question: never ask the user whether to build something the design draws, and never add it to the spec.
 
 If there are contradictions the code can't resolve, ask about them all at once, batched up to four per `AskUserQuestion`, and carry on with Step 2 while you wait. Fix the spec with the answers before writing the plan.
 
@@ -83,9 +83,9 @@ Required when a `design.md` applies. It holds one transcription per design state
 - which controls show in this state;
 - a **design checklist** closing the block: one checkable line per element, order rule or state rule.
 
-A drawn element that `design_scope.md` answers `leave out` or `later` is omitted, and the block cites its row (`design_scope.md` shape: `register_design.md` Step 5). Where the screenshot and the CSS disagree, transcribe the screenshot.
+Transcribe only the elements the spec builds; omit every other drawn element silently. Where the screenshot and the CSS disagree, transcribe the screenshot.
 
-**Token mapping.** A table `Design treatment | FLS token / component / icon | Lost`, with a row for every tint, tile, weight, text treatment and icon the transcriptions use. Follow the shape of the "Token mapping" section in `spec_dd/3. done/2026-09-08_17:31_better-form-start-page/research_design_source.md`. Map to existing theme tokens only.
+**Token mapping.** A table `Design treatment | FLS token / component / icon | Lost`, with a row for every tint, tile, weight, text treatment and icon the transcriptions use. Follow the shape of the "Token mapping" section in `spec_dd/3. done/2026-09-08_17:31_better-form-start-page/research_design_source.md`. Map to the project's existing theme tokens, cotton components and semantic icons only. Ignore the design's own colours, fonts and icons. Never propose a new theme, theme token, font or colour, and never propose an icon that does not fit the project's icon set. "Lost" records styling the theme cannot express, which is dropped; it is never something to add.
 
 # Step 4: Skills/MCP scan (fan-out)
 
@@ -153,4 +153,4 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `write the implementation plan`. Tell it to stage the plan file, any
-QA file, the `todo.md` beside them, and `design_scope.md` when this run changed it.
+QA file and the `todo.md` beside them.

@@ -67,12 +67,10 @@ A `design.md`, beside the idea or named under its "Resources", registers a Claud
 it says. The spec names the `design.md` path under its resources, so the plan and the
 implementation read it too.
 
-When a `design.md` applies, read `design_scope.md` beside it (shape and rules: Step 5 of
-`claude_plugins/sdd/commands/register_design.md`). Two kinds of element go into the Step 2 batch:
-every row answered `open`, and every drawn element on this spec's screens that has no row. Write
-each answer into `design_scope.md`: edit the `open` row in place, append a row for a missing
-element, and put this spec's directory name under "Decided at". Scope → Out cites
-`design_scope.md` by path, so its exclusions live only there.
+The design is a visual reference, never a source of scope. The spec's scope comes from the idea
+alone. Where the design draws a control, screen, field or state the idea does not ask for, leave it
+out of the spec and do not ask the user about it. Never put a theme, theme token, font or icon the
+design uses into the spec: the spec uses the project's own theme.
 
 ## What the spec is for
 
@@ -141,4 +139,4 @@ No new items to add.
 # Step 6: Commit and push
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
-steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `todo.md` beside it, plus `design_scope.md` when this run changed it.
+steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `todo.md` beside it.

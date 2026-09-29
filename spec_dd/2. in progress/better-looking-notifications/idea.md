@@ -92,47 +92,36 @@ That parent never moves as its children go from `1. next` to `3. done`, so paths
    about 40 seconds, and the stand-in's source is in `research_design_render_spike.md`. The
    screenshots are committed, and they are what every later comparison uses. They must not go in
    `screenshots/`, which `/fls-dev:do_qa` wipes on every run.
-3. **Ask the scope questions and save the answers.** The designer didn't know FLS, so the design
-   draws things nobody has asked for. Registration finds candidates, meaning drawn elements that
-   the design brief, the owning spec's idea and FLS's existing code don't account for. It asks the
-   user about each, for example "Build the notification Preferences gear?", with the answers
-   build, leave out, or later with a named spec. It records each answer in `design_scope.md`,
-   one row per drawn element: the element, its design section, the question, the answer, which
-   step decided it, and the date. The row shape and the rules for finding candidates are in
-   `research_design_scope_and_sync_flow.md`.
-
-`design_scope.md` is the one home for scope decisions. Specs and plans cite it rather than
-restating exclusions. A later spec that reverses a decision edits the row. It never adds a
-second one. For a cut effort, registration can only settle what applies to the whole effort.
-`/sdd:spec_from_idea` asks about anything still open for its own screens when the child spec
-starts, and adds the answers to the same file. Re-registering after the designer changes the design
-re-syncs, re-screenshots, and reconciles `design_scope.md`: existing answers stay, new elements
-get asked about, and removed elements are marked as removed rather than deleted.
+3. **Treat the design as a visual reference only.** The designer didn't know FLS's features,
+   plans or theme, so the design invents controls, screens and data, and styles them in another
+   theme. The specs and the existing functionality decide what is built; the design only shows how
+   it should look, in FLS's own theme, tokens, fonts and icons. Registration asks the user nothing
+   about what the design draws: anything no spec asks for is left out, silently. No step ever
+   proposes a new theme, theme token, font or icon to match the design.
 
 ### Every later step builds and checks against it
 
 - **The plan transcribes the design for each screen and state.** Using `design_source/` and
   `design_screenshots/`, it lists the elements, their order and hierarchy, the copy, and which
-  controls appear in which state. It leaves out whatever `design_scope.md` says to. It also gives
+  controls appear in which state. It leaves out every drawn element the spec does not build. It also gives
   a token mapping: which FLS token, component or icon expresses each drawn visual treatment, and
-  what is lost where FLS has no equivalent. No new theme tokens are added to match a design.
+  what is lost where FLS has no equivalent. Lost styling is dropped: no new theme tokens, fonts or
+  icons are added to match a design.
 - **Implementation checks against the design.** Batch briefs point at the plan's transcription,
-  the screenshots and `design_scope.md`, which is how a batch knows not to build a control it can
-  see in the source. After each slice that builds a designed screen, the depth-0 orchestrator
+  and the screenshots. A batch builds only what the transcription lists, never a control it merely
+  sees in the source. After each slice that builds a designed screen, the depth-0 orchestrator
   compares the page with the design screenshots before moving on.
 - **QA checks conformance with the design.** For every test that maps to a design state,
   `/fls-dev:do_qa` puts its own screenshot next to the matching design screenshot and checks the
   plan's per-state checklist. It does not pixel-diff, because FLS's theme deliberately differs
-  from the design's. An element the design draws but the build lacks is correct if
-  `design_scope.md` says to leave it out. Any other conformance miss, including an element with
-  no scope row, goes to a human as a todo item and is never auto-fixed.
+  from the design's. An element the design draws but the plan's checklist does not
+  list is correctly absent. An unmet checklist line is a design miss.
 
 ## Part 2: make the notifications UI match the design
 
 Start by re-registering `spec_dd/1. next/user-communication/` with the new registration, passing
 it `design sync prompt.md`, so it gets `design_prompt.md`, `design_source/`,
-`design_screenshots/` and `design_scope.md`. The scope answers for sections 1 and 2 are already
-settled and seed that file (see the last paragraph below). Until then, three things next to this
+and `design_screenshots/`. Until then, three things next to this
 idea stand in: `design_source/` holds the files the prompt names plus
 `design-system/colors_and_type.css`, `design_screenshots/` holds the spike's renders of sections
 1 and 2, and `design_snapshot_notifications.md` holds the matching source excerpts.
@@ -155,8 +144,8 @@ What the user called out, and what the design draws for each:
 - **Category icons sit in tiles.** Each row's icon sits in a small rounded tile in its category's
   colour, as the design draws it. The colour is set per notification category.
 - **Mark all as read** is a ghost button in the design's colour with a double-tick icon, in the
-  panel and on the centre. FLS's default Heroicons set has no double tick. Pick the glyph and give
-  it a semantic `c-icon` name. Never hand-draw an icon: use a semantic icon.
+  panel and on the centre. FLS's default Heroicons set has no double tick. Pick the glyph from the icon
+  sets FLS already ships and give it a flexible semantic `c-icon` name, `check_all`. Never hand-draw an icon: use a semantic icon.
 - **Everything else in the gap research gets the same treatment**: the day headings, the badge's
   separating ring, two-line clamping of long messages, the All/Unread filter looking like the
   design's segmented control (it stays a pair of filter links), and the all-read banner's icon.

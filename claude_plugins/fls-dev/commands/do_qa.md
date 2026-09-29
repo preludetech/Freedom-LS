@@ -304,14 +304,14 @@ then check every design checklist line as `### Design check` in
 the same qualities judged and ignored). Append one record per test and viewport:
 
 ```json
-{"type": "design", "test_id": "1.2-design", "viewport": "desktop", "design_screenshot": "<repo path>", "screenshot_path": "page-<timestamp>.png", "status": "pass|fail", "misses": ["…"], "no_scope_row": ["…"]}
+{"type": "design", "test_id": "1.2-design", "viewport": "desktop", "design_screenshot": "<repo path>", "screenshot_path": "page-<timestamp>.png", "status": "pass|fail", "misses": ["…"]}
 ```
 
 - `status` is `pass` when every checklist line is met and `fail` otherwise. Each unmet line is one
   entry in `misses`.
-- A drawn element the build lacks passes when `design_scope.md` answers `leave out` or `later`.
-- A drawn element with no `design_scope.md` row goes in `no_scope_row`. Step 15 turns each one into
-  a todo.
+- The design is a visual reference, never a source of scope. A drawn element the checklist does
+  not list is not a miss: the build is right to lack it. Never raise a question or todo about
+  building something the design draws. Colour, font and icons follow the project's theme.
 
 ### Escalation
 
@@ -613,9 +613,7 @@ These four categories, and nothing else:
 3. A smoke-gate failure:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/fls-dev:do_qa\`"`.
 4. A product or UX decision a bug turns on:
-   `add:"<section>|user|Decide <the question>, then <what follows from it>"`. Each `no_scope_row`
-   element in a `design` record is one:
-   `add:"<section>|user|Decide whether to build <element>, then record it in design_scope.md"`.
+   `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
 
 ### What must never be added
 
