@@ -56,7 +56,7 @@ services:
       - -c
       - log_rotation_size=0
       - -c
-      - log_line_prefix=%m [%p] %q%u@%d app=%a client=%h
+      - "log_line_prefix=%m [%p] %q%u@%d app=%a client=%h "
       - -c
       - log_connections=on
       - -c

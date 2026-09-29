@@ -14,7 +14,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+import yaml
 
+from dev_db import server
 from tests.stub_tools import StubTools, run_script, write_stub
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -223,3 +225,16 @@ def test_init_does_not_stamp_the_fallback_database_with_no_branch(
     # Assert
     assert result.returncode == 0
     assert "COMMENT ON DATABASE" not in stub_tools.log_file.read_text()
+
+
+def test_log_line_prefix_ends_with_a_space_before_the_log_level() -> None:
+    # Arrange
+    compose = yaml.safe_load(server.COMPOSE_FILE.read_text())
+    command = compose["services"]["postgres"]["command"]
+
+    # Act
+    prefix = next(item for item in command if item.startswith("log_line_prefix="))
+    value = prefix.removeprefix("log_line_prefix=")
+
+    # Assert
+    assert value.endswith(" ")

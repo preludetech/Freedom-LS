@@ -1127,6 +1127,7 @@ dev = [
     { name = "pytest-socket" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
+    { name = "pyyaml" },
     { name = "ruff" },
     { name = "time-machine" },
 ]
@@ -1219,6 +1220,7 @@ dev = [
     { name = "pytest-socket", specifier = ">=0.7.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = ">=0.14.10" },
     { name = "time-machine", specifier = ">=3.2.0" },
 ]
