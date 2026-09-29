@@ -58,11 +58,11 @@ def _interface_url(live_server, organisation_slug: str, path_string: str) -> str
 
 
 @pytest.fixture
-def organisation_with_a_lapsing_admin(educator_user: User):
+def organisation_with_a_lapsing_admin(educator_user: User) -> Organisation:
     """An organisation educator_user administers, plus a cohort they hold
     cohort_viewer on -- so the organisation stays reachable once
     organisation_admin is removed mid-test."""
-    organisation = OrganisationFactory(name="Lapsing Org")
+    organisation: Organisation = OrganisationFactory(name="Lapsing Org")
     cohort = CohortFactory(organisation=organisation)
     assign_object_role(educator_user, organisation, "organisation_admin")
     assign_object_role(educator_user, cohort, "cohort_viewer")
