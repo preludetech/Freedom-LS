@@ -32,8 +32,8 @@ Test plan: `3. frontend_qa.md` (same directory).
 
 | Test | Viewport | Status | Note |
 |---|---|---|---|
-| 1 | desktop | fail | Sections, badges, avatars, cards, toolbar, empty state and skeleton are fine. The progress bar in stat-tile-with-progress is 0px wide (bug B1). |
-| 1-tile-progress | desktop | fail | Close-up of the Average progress tile: only a stray "68%" shows, and the `<progress>` is 0px wide (B1). |
+| 1 | desktop | fixed | Sections, badges, avatars, cards, toolbar, empty state and skeleton are fine. The progress bar in stat-tile-with-progress was 0px wide (bug B1). Fixed in `10dee49e`; the bar is now 1146px wide. |
+| 1-tile-progress | desktop | fixed | Close-up of the Average progress tile before the fix: only a stray "68%" showed and the `<progress>` was 0px wide (B1). Fixed in `10dee49e`. |
 | 2 | desktop | pass | Cohorts, Learners, Courses and Dashboard each have a single main h1. Create Cohort sits on the same row as the Cohorts h1. |
 | 3 | desktop | pass | "Save and add another" refreshed the table in place via `cohortCreated`. Plain Save does an HX-Redirect by design. |
 | 4 | desktop | pass | In-place edit and cancelled delete work. Edit/Delete are in the Details card footer, not the page header. |
@@ -45,9 +45,9 @@ Test plan: `3. frontend_qa.md` (same directory).
 | 9 | desktop | pass | Chip colours were checked on the classes: pale tints with dark text. No learner page shows a Complete/In progress chip. |
 | 7.1-7.3 | mobile | pass | Cohort page at 375px: no horizontal scroll, tabs on one line, details grid stacked. |
 | 7.4-7.6 | mobile | pass | Reference page has no overflow. Attention rows are tappable through the stretched link. Header actions and stats stack under the title. |
-| 7-tile-progress | mobile | fail | Same defect (B1): `<progress>` is 0px wide at 375px. |
+| 7-tile-progress | mobile | fixed | Same defect (B1): `<progress>` was 0px wide at 375px. Fixed in `10dee49e`; rechecked at 375px: 273px wide with a 68% fill, no page overflow. |
 | 8 | tablet | pass | Cohorts h1 and Create Cohort share a row. Cohort page has 3-column details grid and one-line tabs. Reference page has no overflow. |
-| 8-tile-progress | tablet | fail | Same defect (B1): `<progress>` is 0px wide at 768px. |
+| 8-tile-progress | tablet | fixed | Same defect (B1): `<progress>` was 0px wide at 768px. Fixed in `10dee49e`; rechecked at 768px: 650px wide with a 68% fill, no page overflow. |
 
 ### Test evidence
 
@@ -89,10 +89,20 @@ Screenshots:
 
 - **FIXED** (commit: 10dee49e) — Progress bar embedded in a stat tile collapses to zero width
 
-The fix adds `items-stretch` to the stat tile's `<dl>` in `panel-stat-tile.html`, with a new Playwright test (`test_stat_tile_progress_width.py`). Re-verified in the browser at 1920px: the `<progress>` is now 1146px wide and shows a 68% fill; the page header's stat row is unchanged.
+The fix adds `items-stretch` to the stat tile's `<dl>` in `panel-stat-tile.html`, with a new Playwright test (`test_stat_tile_progress_width.py`). Re-verified in the browser at all three widths. The `<progress>` shows a 68% fill at each: 1146px wide at 1920px, 650px at 768px and 273px at 375px. Neither page overflows at 768px or 375px. The page header's stat row is unchanged.
+
+Desktop (1920px):
 
 ![](screenshots/element-2026-09-29T04-48-11-302Z.png)
 ![](screenshots/element-2026-09-29T04-48-11-950Z.png)
+
+Tablet (768px):
+
+![](screenshots/element-2026-09-29T05-07-54-554Z.png)
+
+Mobile (375px):
+
+![](screenshots/element-2026-09-29T05-07-46-458Z.png)
 
 ## General notes
 

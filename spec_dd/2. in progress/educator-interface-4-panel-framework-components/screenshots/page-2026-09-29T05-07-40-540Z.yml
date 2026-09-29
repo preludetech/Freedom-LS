@@ -1,0 +1,390 @@
+- generic [active] [ref=f32e1]:
+  - banner [ref=f32e2]:
+    - link [ref=f32e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f32e4]
+      - heading "FirstClass" [level=1] [ref=f32e5]
+    - navigation [ref=f32e6]:
+      - generic [ref=f32e7]:
+        - generic [ref=f32e8]:
+          - button "Notifications, none new" [ref=f32e9]:
+            - img "notifications" [ref=f32e11]
+          - status:
+            - generic [ref=f32e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f32e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f32e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f32e17]:
+    - generic [ref=f32e19]:
+      - generic [ref=f32e20]:
+        - heading "Page header" [level=2] [ref=f32e21]
+        - generic [ref=f32e22]:
+          - paragraph [ref=f32e23]: Use when a view needs only its heading.
+          - heading "Cohort overview" [level=1] [ref=f32e27]
+        - generic [ref=f32e28]:
+          - paragraph [ref=f32e29]: Use when the view offers up to three page-level actions.
+          - generic [ref=f32e30]:
+            - heading "Cohort overview" [level=1] [ref=f32e33]
+            - generic [ref=f32e34]:
+              - button "Export" [ref=f32e35] [cursor=pointer]
+              - link "Add learner" [ref=f32e36] [cursor=pointer]:
+                - /url: "#page-header-with-actions"
+        - generic [ref=f32e40]:
+          - paragraph [ref=f32e41]: Use when the heading needs a status, a secondary identifier and a stat row alongside it.
+          - generic [ref=f32e42]:
+            - generic [ref=f32e43]:
+              - generic [ref=f32e44]:
+                - heading "Foundations 2026" [level=1] [ref=f32e45]
+                - generic [ref=f32e46]: Active
+              - generic [ref=f32e47]: cohort-2026-foundations
+            - generic [ref=f32e49]:
+              - generic [ref=f32e50]:
+                - term [ref=f32e51]: Learners
+                - definition [ref=f32e52]: "42"
+              - generic [ref=f32e53]:
+                - term [ref=f32e54]: Average progress
+                - definition [ref=f32e55]: 68%
+        - generic [ref=f32e56]:
+          - paragraph [ref=f32e57]: Use when the header sits inside content that already owns an h1 and h2.
+          - heading "Section heading" [level=3] [ref=f32e61]
+      - generic [ref=f32e62]:
+        - heading "Stat tile" [level=2] [ref=f32e63]
+        - generic [ref=f32e64]:
+          - paragraph [ref=f32e65]: Use when the tiles carry their own card border, e.g. a dashboard's headline figures.
+          - generic [ref=f32e66]:
+            - generic [ref=f32e67]:
+              - paragraph [ref=f32e68]: Use when a boxed figure improved since the last period.
+              - generic [ref=f32e69]:
+                - term [ref=f32e70]: Active learners
+                - definition [ref=f32e71]: "128"
+                - definition [ref=f32e72]: Up 4 this week
+            - generic [ref=f32e76]:
+              - paragraph [ref=f32e77]: Use when a boxed figure worsened since the last period.
+              - generic [ref=f32e78]:
+                - term [ref=f32e79]: At risk
+                - definition [ref=f32e80]: "9"
+                - definition [ref=f32e81]: Down 2 this week
+        - generic [ref=f32e85]:
+          - paragraph [ref=f32e86]: Use when the tiles sit inside a container that already has a border, e.g. a page header's stats slot.
+          - generic [ref=f32e87]:
+            - generic [ref=f32e88]:
+              - term [ref=f32e89]: Learners
+              - definition [ref=f32e90]: "42"
+            - generic [ref=f32e91]:
+              - term [ref=f32e92]: Cohorts
+              - definition [ref=f32e93]: "3"
+        - generic [ref=f32e94]:
+          - paragraph [ref=f32e95]: Use when the counted figure is itself a percentage, e.g. an "Average progress" tile.
+          - generic [ref=f32e96]:
+            - term [ref=f32e97]: Average progress
+            - definition [ref=f32e98]: 68%
+            - definition [ref=f32e99]:
+              - generic [ref=f32e100]:
+                - progressbar "Average progress" [ref=f32e101]: 68%
+                - generic [ref=f32e102]: 68%
+      - generic [ref=f32e103]:
+        - heading "Status badge" [level=2] [ref=f32e104]
+        - generic [ref=f32e105]:
+          - generic [ref=f32e106]:
+            - paragraph [ref=f32e107]: Use for a state in good standing.
+            - generic [ref=f32e108]: Active
+          - generic [ref=f32e109]:
+            - paragraph [ref=f32e110]: Use for a state that needs a look.
+            - generic [ref=f32e111]: Needs attention
+          - generic [ref=f32e112]:
+            - paragraph [ref=f32e113]: Use for a state that has failed or been blocked.
+            - generic [ref=f32e114]: Blocked
+          - generic [ref=f32e115]:
+            - paragraph [ref=f32e116]: Use for a neutral, informational state.
+            - generic [ref=f32e117]: Draft
+          - generic [ref=f32e118]:
+            - paragraph [ref=f32e119]: Use for the default, when no tone is given, or for an unrecognised tone.
+            - generic [ref=f32e120]: Archived
+      - generic [ref=f32e121]:
+        - heading "Avatar chip" [level=2] [ref=f32e122]
+        - generic [ref=f32e123]:
+          - generic [ref=f32e124]:
+            - paragraph [ref=f32e125]: Use in a list row.
+            - generic [ref=f32e126]:
+              - generic [aria-hidden] [ref=f32e127]: TM
+              - generic [ref=f32e128]:
+                - generic [ref=f32e129]: Thandi Mokoena
+                - generic [ref=f32e130]: Learner
+          - generic [ref=f32e131]:
+            - paragraph [ref=f32e132]: Use in a profile header.
+            - generic [ref=f32e133]:
+              - generic [aria-hidden] [ref=f32e134]: TM
+              - generic [ref=f32e135]:
+                - generic [ref=f32e136]: Thandi Mokoena
+                - generic [ref=f32e137]: thandi@example.com
+          - generic [ref=f32e138]:
+            - paragraph [ref=f32e139]: "Use when the name has only one word: initials fall back to its first letter."
+            - generic [ref=f32e140]:
+              - generic [aria-hidden] [ref=f32e141]: C
+              - generic [ref=f32e142]: Cher
+      - generic [ref=f32e144]:
+        - heading "Attention list" [level=2] [ref=f32e145]
+        - generic [ref=f32e146]:
+          - paragraph [ref=f32e147]: Use for a list of learners who each need a nudge.
+          - list [ref=f32e148]:
+            - listitem [ref=f32e149]:
+              - generic [aria-hidden] [ref=f32e151]: TM
+              - generic [ref=f32e152]:
+                - link "Thandi Mokoena" [ref=f32e153] [cursor=pointer]:
+                  - /url: "#attention-row-target"
+                - paragraph [ref=f32e154]: 4 days idle
+              - generic [ref=f32e155]: Stalled
+              - link "Message Thandi Mokoena" [ref=f32e156] [cursor=pointer]:
+                - /url: "#attention-row-action"
+                - text: Message
+                - generic [ref=f32e157]: Thandi Mokoena
+            - listitem [ref=f32e158]:
+              - generic [aria-hidden] [ref=f32e160]: SN
+              - generic [ref=f32e161]:
+                - link "Sipho Nkosi" [ref=f32e162] [cursor=pointer]:
+                  - /url: "#attention-row-target"
+                - paragraph [ref=f32e163]: Last active 6 days ago
+              - link "Message Sipho Nkosi" [ref=f32e164] [cursor=pointer]:
+                - /url: "#attention-row-action"
+                - text: Message
+                - generic [ref=f32e165]: Sipho Nkosi
+        - generic [ref=f32e166]:
+          - paragraph [ref=f32e167]: Use when the row is about a cohort-level issue rather than a person, so a severity icon leads instead of an avatar.
+          - list [ref=f32e168]:
+            - listitem [ref=f32e169]:
+              - generic [ref=f32e173]:
+                - link "Foundations cohort" [ref=f32e174] [cursor=pointer]:
+                  - /url: "#attention-row-target"
+                - paragraph [ref=f32e175]: Completion rate dropped 12% this week
+        - generic [ref=f32e176]: Attention row target
+        - generic [ref=f32e177]: Attention row action
+      - generic [ref=f32e178]:
+        - heading "Progress bar" [level=2] [ref=f32e179]
+        - generic [ref=f32e180]:
+          - paragraph [ref=f32e181]: Use when the percentage next to the bar is enough on its own.
+          - generic [ref=f32e182]:
+            - progressbar "Progress" [ref=f32e183]: 42%
+            - generic [ref=f32e184]: 42%
+        - generic [ref=f32e185]:
+          - paragraph [ref=f32e186]: Use when the bar needs a visible caption, not just an accessible name.
+          - generic [ref=f32e187]:
+            - generic [ref=f32e188]: Course progress
+            - progressbar "Course progress" [ref=f32e189]: 68%
+            - generic [ref=f32e190]: 68%
+      - generic [ref=f32e191]:
+        - heading "Card" [level=2] [ref=f32e192]
+        - generic [ref=f32e193]:
+          - paragraph [ref=f32e194]: Use for a plain panel body.
+          - generic [ref=f32e195]:
+            - generic [ref=f32e197]:
+              - heading "Recent activity" [level=2] [ref=f32e198]
+              - paragraph [ref=f32e199]: Last 7 days
+            - paragraph [ref=f32e201]: No activity yet.
+        - generic [ref=f32e202]:
+          - paragraph [ref=f32e203]: Use when a card sits directly on the page (not inside a panel's own section), so assistive tech can jump to it.
+          - region [ref=f32e204]:
+            - heading "Cohort summary" [level=2] [ref=f32e207]
+            - paragraph [ref=f32e209]: 42 learners, 3 cohorts.
+        - generic [ref=f32e210]:
+          - paragraph [ref=f32e211]: Use when the card links to a fuller view of the same data.
+          - generic [ref=f32e212]:
+            - generic [ref=f32e213]:
+              - heading "Learners" [level=2] [ref=f32e215]
+              - link "View all" [ref=f32e217] [cursor=pointer]:
+                - /url: "#card-with-header-action"
+            - paragraph [ref=f32e219]: 9 learners shown.
+        - generic [ref=f32e220]:
+          - paragraph [ref=f32e221]: Use when the card body needs a confirming action.
+          - generic [ref=f32e222]:
+            - heading "Confirm removal" [level=2] [ref=f32e225]
+            - paragraph [ref=f32e227]: Remove Thandi Mokoena from this cohort?
+            - generic [ref=f32e229]:
+              - button "Cancel" [ref=f32e230] [cursor=pointer]
+              - button "Remove" [ref=f32e231] [cursor=pointer]
+      - generic [ref=f32e232]:
+        - heading "Definition list" [level=2] [ref=f32e233]
+        - generic [ref=f32e234]:
+          - paragraph [ref=f32e235]: Use for one label/value pair inside a definition list.
+          - generic [ref=f32e237]:
+            - term [ref=f32e238]: Name
+            - definition [ref=f32e239]: Thandi Mokoena
+        - generic [ref=f32e240]:
+          - paragraph [ref=f32e241]: Use for a short set of fields, two to a row from md.
+          - generic [ref=f32e242]:
+            - generic [ref=f32e243]:
+              - term [ref=f32e244]: Name
+              - definition [ref=f32e245]: Thandi Mokoena
+            - generic [ref=f32e246]:
+              - term [ref=f32e247]: Email
+              - definition [ref=f32e248]: thandi@example.com
+        - generic [ref=f32e249]:
+          - paragraph [ref=f32e250]: Use for the default instance-details layout, three to a row from md.
+          - generic [ref=f32e251]:
+            - generic [ref=f32e252]:
+              - term [ref=f32e253]: Name
+              - definition [ref=f32e254]: Thandi Mokoena
+            - generic [ref=f32e255]:
+              - term [ref=f32e256]: Email
+              - definition [ref=f32e257]: thandi@example.com
+            - generic [ref=f32e258]:
+              - term [ref=f32e259]: Cohort
+              - definition [ref=f32e260]: Foundations 2026
+        - generic [ref=f32e261]:
+          - paragraph [ref=f32e262]: Use for a wide set of short fields, four to a row from md.
+          - generic [ref=f32e263]:
+            - generic [ref=f32e264]:
+              - term [ref=f32e265]: Name
+              - definition [ref=f32e266]: Thandi Mokoena
+            - generic [ref=f32e267]:
+              - term [ref=f32e268]: Email
+              - definition [ref=f32e269]: thandi@example.com
+            - generic [ref=f32e270]:
+              - term [ref=f32e271]: Cohort
+              - definition [ref=f32e272]: Foundations 2026
+            - generic [ref=f32e273]:
+              - term [ref=f32e274]: Status
+              - definition [ref=f32e275]: Active
+      - generic [ref=f32e276]:
+        - heading "Toolbar" [level=2] [ref=f32e277]
+        - generic [ref=f32e278]:
+          - paragraph [ref=f32e279]: Use above a list or table with no filter applied yet.
+          - generic [ref=f32e281]:
+            - generic [ref=f32e282]:
+              - generic [ref=f32e283]: Search learners
+              - searchbox "Search learners" [ref=f32e285]
+            - button "Inactive" [ref=f32e286]
+            - button "Export" [ref=f32e288] [cursor=pointer]
+        - generic [ref=f32e289]:
+          - paragraph [ref=f32e290]: Use once a filter is applied, so "Clear all" and the applied chip appear.
+          - generic [ref=f32e291]:
+            - generic [ref=f32e292]:
+              - generic [ref=f32e293]:
+                - generic [ref=f32e294]: Search learners
+                - searchbox "Search learners" [ref=f32e296]
+              - button "Inactive" [pressed] [ref=f32e297]
+            - generic [ref=f32e301]:
+              - generic [ref=f32e302]:
+                - text: "Status: Inactive"
+                - 'button "Remove filter: Status: Inactive" [ref=f32e303]'
+              - link "Clear all" [ref=f32e307] [cursor=pointer]:
+                - /url: "#toolbar-applied"
+        - generic [ref=f32e308]:
+          - generic [ref=f32e309]:
+            - paragraph [ref=f32e310]: Use when the facet is currently applied.
+            - button "Inactive" [pressed] [ref=f32e311]
+          - generic [ref=f32e315]:
+            - paragraph [ref=f32e316]: Use when the facet is available but not applied.
+            - button "Inactive" [ref=f32e317]
+        - generic [ref=f32e318]:
+          - paragraph [ref=f32e319]: Use when the field sits somewhere the label needs to stay visible, e.g. a plain search page.
+          - generic [ref=f32e320]:
+            - generic [ref=f32e321]: Search learners
+            - searchbox "Search learners" [ref=f32e323]
+        - generic [ref=f32e324]:
+          - paragraph [ref=f32e325]: Use inside a toolbar, where the icon and placeholder already carry the field's purpose visually.
+          - generic [ref=f32e326]:
+            - generic [ref=f32e327]: Search learners
+            - searchbox "Search learners" [ref=f32e329]
+        - generic [ref=f32e330]:
+          - paragraph [ref=f32e331]: Use for one active filter's chip inside a toolbar's applied slot.
+          - generic [ref=f32e332]:
+            - text: "Status: Inactive"
+            - 'button "Remove filter: Status: Inactive" [ref=f32e333]'
+      - generic [ref=f32e337]:
+        - heading "Empty state" [level=2] [ref=f32e338]
+        - generic [ref=f32e339]:
+          - paragraph [ref=f32e340]: Use when a panel has nothing to show yet.
+          - generic [ref=f32e341]:
+            - paragraph [ref=f32e345]: No learners yet.
+            - button "Add learner" [ref=f32e346] [cursor=pointer]
+      - generic [ref=f32e347]:
+        - heading "Skeleton" [level=2] [ref=f32e348]
+        - generic [ref=f32e349]:
+          - paragraph [ref=f32e351]: Use while a text-shaped region, e.g. a definition list, is loading.
+          - paragraph [ref=f32e357]: Use while a stat tile is loading.
+          - paragraph [ref=f32e361]: Use while an attention row is loading.
+      - generic [ref=f32e368]:
+        - heading "Callout" [level=2] [ref=f32e369]
+        - generic [ref=f32e370]:
+          - paragraph [ref=f32e371]: "Use for a page-level note. This is `c-callout`; the kit builds nothing new here."
+          - generic [ref=f32e372]:
+            - heading [level=4] [ref=f32e373]:
+              - img "info" [ref=f32e374]
+              - text: Heads up
+            - paragraph [ref=f32e377]: Callouts are an existing base component, listed here for completeness.
+  - contentinfo [ref=f32e378]:
+    - generic [ref=f32e379]:
+      - paragraph [ref=f32e380]: © 2026 FirstClass
+      - navigation "Legal" [ref=f32e381]:
+        - link "Terms and Conditions" [ref=f32e382] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f32e383] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f32e384] [cursor=pointer]: educator-interface-4-panel-framework-components
+  - list [ref=f32e386]:
+    - listitem [ref=f32e387]:
+      - link "Hide »" [ref=f32e388] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e389]:
+      - link "Toggle Theme" [ref=f32e390] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e393]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e394] [cursor=pointer]
+      - link "History /panel-framework/components/" [ref=f32e395] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e396]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e397] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f32e398] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e399]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e400] [cursor=pointer]
+      - 'link "Time CPU: 85.69ms (151.00ms)" [ref=f32e401] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f32e402]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e403] [cursor=pointer]
+      - link "Settings" [ref=f32e404] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e405]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e406] [cursor=pointer]
+      - link "Headers" [ref=f32e407] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e408]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e409] [cursor=pointer]
+      - link "Request component_reference" [ref=f32e410] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e411]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e412] [cursor=pointer]
+      - link "SQL 6 queries in 26.03ms" [ref=f32e413] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e414]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e415] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f32e416] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e417]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e418] [cursor=pointer]
+      - link "Templates panel_framework/reference/component_reference.html" [ref=f32e419] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e420]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e421] [cursor=pointer]
+      - link "Alerts" [ref=f32e422] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e423]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e424] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f32e425] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e426]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e427] [cursor=pointer]
+      - link "Signals 78 receivers of 15 signals" [ref=f32e428] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e429]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f32e430] [cursor=pointer]
+      - link "Community" [ref=f32e431] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f32e432]:
+      - checkbox "Enable for next and successive requests" [ref=f32e433] [cursor=pointer]
+      - generic [ref=f32e434]: Intercept redirects
+    - listitem [ref=f32e435]:
+      - checkbox "Enable for next and successive requests" [ref=f32e436] [cursor=pointer]
+      - generic [ref=f32e437]: Profiling
