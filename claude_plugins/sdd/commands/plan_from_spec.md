@@ -1,6 +1,6 @@
 ---
 description: Create an implementation plan based on a spec file
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent
+allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, AskUserQuestion
 argument-hint: <spec path> [suffix, e.g. 2b]
 ---
 
@@ -43,7 +43,9 @@ when `/sdd:next` says it already ran this turn).
 
 Read the spec carefully and make sure you understand what is needed. Spawn the Step 4 skills/MCP scan now, in the background; it needs only the spec.
 
-If the spec or its directory names a `design.md`, it registers a Claude Design design. Read the design through the Claude Design integration as that file says, and have the plan name, per slice, the design screens and states it builds and the `design.md` path.
+If the spec or its directory names a `design.md`, it registers a Claude Design design, and the Design section (Step 3) applies. Read `design_source/`, `design_screenshots/` and `design_scope.md` from the directory that holds the `design.md`. Load `DesignSync` (`ToolSearch` with `select:DesignSync`) only when those files are missing, and say so in the summary.
+
+List the drawn elements in the design states the plan builds. Each one without a `design_scope.md` row goes into the question batch below; append the answer as a row, in the shape of `register_design.md` Step 5.
 
 If there are contradictions the code can't resolve, ask about them all at once, batched up to four per `AskUserQuestion`, and carry on with Step 2 while you wait. Fix the spec with the answers before writing the plan.
 
@@ -66,6 +68,24 @@ Structure the plan as a sequence of vertical slices, not horizontal layers. A sl
 - Each slice names the behaviour it delivers and the tests that prove it, so it can be implemented and committed alone with the full test suite passing.
 - Don't group work by layer ("all the models", then "all the views", then "all the templates"). A slice holds only the model, view or template changes its behaviour needs.
 - Put shared groundwork in its own step only when no single slice can own it. Keep it as small as possible and put it immediately before the first slice that uses it.
+- A slice that builds a designed screen carries the line `**Design states:** <id>, <id>`, naming the design states it builds. `implement_plan` reads this line.
+
+## The Design section
+
+Required when a `design.md` applies. It holds one transcription per design state the plan builds, then the token mapping.
+
+**Transcription.** One block per design state, headed by its id (`<section-id>/<artboard-id>`):
+
+- the design screenshot path;
+- the viewport width, which is the artboard's width;
+- how to reach the state in the running app: the URL and the data it needs;
+- the elements in order, with their hierarchy and copy;
+- which controls show in this state;
+- a **design checklist** closing the block: one checkable line per element, order rule or state rule.
+
+A drawn element that `design_scope.md` answers `leave out` or `later` is omitted, and the block cites its row (`design_scope.md` shape: `register_design.md` Step 5). Where the screenshot and the CSS disagree, transcribe the screenshot.
+
+**Token mapping.** A table `Design treatment | FLS token / component / icon | Lost`, with a row for every tint, tile, weight, text treatment and icon the transcriptions use. Follow the shape of the "Token mapping" section in `spec_dd/3. done/2026-09-08_17:31_better-form-start-page/research_design_source.md`. Map to existing theme tokens only.
 
 # Step 4: Skills/MCP scan (fan-out)
 
@@ -80,6 +100,8 @@ This should explain how to check that the feature works using a browser. It shou
 This can include multiple tests and workflows.
 
 When scoping QA, don't only walk the golden path. For each area of functionality the change touches, explicitly reason about what *else* is affected and what could reasonably break — including unintended side-effects and failure/adversarial branches (e.g. "an existing account signs up again", enumeration/permission branches, invalid input, repeat submissions) — and add QA steps that exercise those. Keep it proportionate: prompt side-effect/failure-mode thinking, don't mandate exhaustive matrices.
+
+A QA test that maps to a design state names that state's design screenshot path and copies the state's design checklist from the plan's transcription.
 
 If this plan is created then reference it in the plan file as a final step.
 
@@ -131,4 +153,4 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `write the implementation plan`. Tell it to stage the plan file, any
-QA file, and the `todo.md` beside them.
+QA file, the `todo.md` beside them, and `design_scope.md` when this run changed it.
