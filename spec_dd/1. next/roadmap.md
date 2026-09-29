@@ -216,7 +216,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 #### Shared references
 
-- The source idea, `idea.md`, and `design_brief.md` in the parent directory; the Claude Design mockups once they land beside it.
+- The source idea, `idea.md`, and `design_brief.md` in the parent directory; `design.md` beside them registers the Claude Design design drawn from the brief.
 - Shared research in the parent: `research_notification_sources_and_delivery.md` (event hooks, delivery stack, the cost of Channels), `research_messaging_relationships_and_surfaces.md` (who is an educator of a learner, where the UI goes, site scoping in background work), `research_lms_comms_landscape.md`, `research_comms_patterns.md`, `research_comms_ux_pitfalls.md`.
 - `retry-sent-emails/1. spec.md` (the transport under spec 2) and the Educator interface rebuild section above: the quick view is its spec 3, and the inbox section follows its spec 1's panel API, not today's `ListViewConfig`.
 - Done specs: `email-styling` (themed mail), `organisations`, `learners-associated-with-organisations`, `role_based_permission_system_foundations`.
