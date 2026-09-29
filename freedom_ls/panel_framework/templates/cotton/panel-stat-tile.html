@@ -24,7 +24,7 @@ The default slot renders under the value, e.g. a progress bar embedded in
 the tile.
 {% endcomment %}
 
-<dl class="flex flex-col {% if variant == "inline" %}{% else %}rounded-lg border border-border bg-surface px-4 py-3{% endif %}" {{ attrs }}>
+<dl class="flex flex-col {% if variant == "boxed" %}rounded-lg border border-border bg-surface px-4 py-3{% endif %}" {{ attrs }}>
     <dt class="order-2 text-sm text-muted">{{ label }}</dt>
     <dd class="order-1 text-2xl font-semibold tabular-nums">{{ value }}</dd>
     {% if slot.strip %}<dd class="order-3 mt-2">{{ slot }}</dd>{% endif %}

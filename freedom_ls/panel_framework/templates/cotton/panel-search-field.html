@@ -1,5 +1,7 @@
 <c-vars name="q" value="" label="" label_hidden="" placeholder="" id="" />
 
+{% load panel_tags %}
+
 {% comment %}
 Search field — a labelled, icon-led search input for a toolbar's search
 slot.
@@ -9,9 +11,11 @@ Attributes:
   value         The current search value (default none).
   label         The field's accessible label text (required, a real
                 <label>).
-  label_hidden  Falsy (default): the label renders as visible text.
-                Truthy: the label is visually hidden (sr-only) but still
-                read by assistive tech.
+  label_hidden  Off (default): the label renders as visible text. On:
+                the label is visually hidden (sr-only) but still read by
+                assistive tech. Read through the `flag` filter, so
+                "False", "false", "0", "none" and an empty string all
+                count as off.
   placeholder   Input placeholder text (default none).
   id            The input's id, and the label's for target (default
                 "search-<name>").
@@ -23,7 +27,7 @@ hx-* attributes a live-search toolbar needs.
 
 {% firstof id "search-"|add:name as input_id %}
 <div>
-    <label for="{{ input_id }}" class="{% if label_hidden %}sr-only{% else %}text-sm{% endif %}">{{ label }}</label>
+    <label for="{{ input_id }}" class="{% if label_hidden|flag %}sr-only{% else %}text-sm{% endif %}">{{ label }}</label>
     <div class="relative">
         <span aria-hidden="true" class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted"><c-icon name="search" class="size-4" /></span>
         <input type="search" id="{{ input_id }}" name="{{ name }}" value="{{ value }}" placeholder="{{ placeholder }}" class="pl-9" {{ attrs }}>

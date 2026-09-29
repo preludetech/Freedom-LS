@@ -15,10 +15,12 @@ Attributes:
                gives one letter, an empty name gives none).
   secondary    Email or role, second line, text-muted (default none).
   size         "md" (default, list rows) or "lg" (profile header).
-  name_hidden  Falsy (default). Truthy: the name and second line are not
+  name_hidden  Off (default). On: the name and second line are not
                rendered, for a caller that shows the name itself (the
                attention row's subject link, so the row keeps one visible
-               subject rather than two).
+               subject rather than two). Read through the `flag` filter,
+               so "False", "false", "0", "none" and an empty string all
+               count as off.
 
 The initials circle is aria-hidden; the name carries the accessible name.
 
@@ -42,7 +44,7 @@ this component.
 
 <div class="flex items-center gap-3" {{ attrs }}>
     <span aria-hidden="true" class="panel-avatar-{{ user_id|avatar_slot }} flex shrink-0 items-center justify-center rounded-full font-semibold text-on-surface {% if size == "lg" %}size-13 text-lg{% else %}size-8 text-xs{% endif %}">{% firstof initials name|initials %}</span>
-    {% if not name_hidden %}
+    {% if not name_hidden|flag %}
         <span class="min-w-0">
             <span class="block truncate">{{ name }}</span>
             {% if secondary %}<span class="block truncate text-sm text-muted">{{ secondary }}</span>{% endif %}

@@ -9,4 +9,4 @@ Attributes:
            a wrapping flex row with a wider gap, for inline tiles.
 {% endcomment %}
 
-<div class="{% if variant == "inline" %}flex flex-wrap gap-x-8 gap-y-3{% else %}grid grid-cols-2 gap-4 lg:grid-cols-4{% endif %}" {{ attrs }}>{{ slot }}</div>
+<div class="{% if variant == "boxed" %}grid grid-cols-2 gap-4 lg:grid-cols-4{% else %}flex flex-wrap gap-x-8 gap-y-3{% endif %}" {{ attrs }}>{{ slot }}</div>

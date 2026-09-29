@@ -23,6 +23,8 @@ uv run git commit ...
 ```
 This is because we are using pre-commit hooks
 
+Several processes often work in the same worktree at once, so commits you didn't make, and files changing under you, are normal. Every commit is intentional unless the user says otherwise. Commit your work on top of whatever is there and push the branch as it stands, commits from other processes included. History stays as it is: rewrite, drop, squash or reset a commit only when the user asks for that specific commit.
+
 ## IMPORTANT: Use skills whenever possible!
 
 Whenever you are asked to do anything, check what skills are available. Rely on skills and documentation rather than pre-training.

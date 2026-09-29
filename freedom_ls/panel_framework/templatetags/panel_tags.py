@@ -1,3 +1,4 @@
+import math
 import re
 import uuid
 import zlib
@@ -15,6 +16,7 @@ register = template.Library()
 
 TONES = frozenset({"success", "warning", "error", "info", "muted"})
 HEADING_LEVELS = frozenset({"1", "2", "3", "4", "5", "6"})
+OFF_FLAG_STRINGS = frozenset({"", "false", "0", "none"})
 
 
 @register.filter
@@ -34,9 +36,34 @@ def heading_level(value: str, default: str) -> str:
 
 
 @register.filter
-def clamp_percentage(value: int | float | str) -> int:
-    """Clamp a percentage to the 0-100 range the progress bar can render."""
-    return min(100, max(0, int(float(value))))
+def flag(value: bool | int | str | None) -> bool:
+    """Read a component's boolean attribute.
+
+    Cotton renders a quoted attribute holding template syntax to a string, so
+    `pressed="{{ filter.active }}"` arrives as "False". That string, like
+    "false", "0", "none" and "", counts as off here.
+    """
+    if isinstance(value, str):
+        return value.strip().lower() not in OFF_FLAG_STRINGS
+    return bool(value)
+
+
+@register.filter
+def clamp_percentage(value: int | float | str | None) -> int:
+    """Clamp a percentage to the 0-100 range the progress bar can render.
+
+    Anything that isn't a number (None, "", "nan") renders as 0 rather than
+    failing the page.
+    """
+    if value is None:
+        return 0
+    try:
+        number = float(value)
+    except ValueError:
+        return 0
+    if math.isnan(number):
+        return 0
+    return int(min(100.0, max(0.0, number)))
 
 
 @register.filter
@@ -63,9 +90,17 @@ def initials(name: str) -> str:
 
 
 @register.filter
-def times(value: int | str) -> range:
-    """Turn an integer (or a numeric string) into a range for `{% for %}`."""
-    return range(int(value))
+def times(value: int | str | None) -> range:
+    """Turn an integer (or a numeric string) into a range for `{% for %}`.
+
+    Anything that isn't an integer gives an empty range.
+    """
+    if value is None:
+        return range(0)
+    try:
+        return range(int(value))
+    except ValueError:
+        return range(0)
 
 
 @register.simple_tag

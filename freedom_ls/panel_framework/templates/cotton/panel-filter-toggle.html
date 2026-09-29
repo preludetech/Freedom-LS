@@ -1,14 +1,17 @@
 <c-vars label="" pressed="" />
 
+{% load panel_tags %}
+
 {% comment %}
 Filter toggle — a pressed/unpressed button for one facet filter, in a
 toolbar's filters slot.
 
 Attributes:
   label    The button's visible text (required).
-  pressed  Falsy (default): unpressed, aria-pressed="false". Truthy:
-           pressed, aria-pressed="true", with a leading decorative check
-           icon.
+  pressed  Off (default): unpressed, aria-pressed="false". On: pressed,
+           aria-pressed="true", with a leading decorative check icon.
+           Read through the `flag` filter, so "False", "false", "0",
+           "none" and an empty string all count as off.
 
 Pressed differs by more than colour, since colour alone fails a
 colour-blind or forced-colours reader: a check icon appears, and under
@@ -16,4 +19,4 @@ forced colours the pressed state switches to the Highlight/HighlightText
 system colours while the unpressed border switches to ButtonBorder.
 {% endcomment %}
 
-<button type="button" aria-pressed="{% if pressed %}true{% else %}false{% endif %}" class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-on-primary forced-colors:border-[ButtonBorder] aria-pressed:forced-colors:bg-[Highlight] aria-pressed:forced-colors:text-[HighlightText] aria-pressed:forced-color-adjust-none" {{ attrs }}>{% if pressed %}<span aria-hidden="true"><c-icon name="check" class="size-4" /></span>{% endif %}{{ label }}</button>
+<button type="button" aria-pressed="{% if pressed|flag %}true{% else %}false{% endif %}" class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1 text-sm aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-on-primary forced-colors:border-[ButtonBorder] aria-pressed:forced-colors:bg-[Highlight] aria-pressed:forced-colors:text-[HighlightText] aria-pressed:forced-color-adjust-none" {{ attrs }}>{% if pressed|flag %}<span aria-hidden="true"><c-icon name="check" class="size-4" /></span>{% endif %}{{ label }}</button>
