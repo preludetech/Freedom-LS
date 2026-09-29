@@ -34,7 +34,7 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 
 1. Implement each step in the batch exactly as written in the plan
 2. Run any verifications the plan specifies after each step
-3. After all steps are done, run `uv run pytest` — all tests must pass
+3. After all steps are done, run `uv run pytest` with the Bash tool's `run_in_background: true` and wait for the completion notification — all tests must pass. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10 minutes.
 4. **As its final step, make the `[batch N] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
 
 Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
@@ -53,7 +53,7 @@ If there is a `3. frontend_qa.md` file, do **not** run it, and ignore any plan s
 
 After all batches are complete:
 
-1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes
+1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes. Brief it to run the full suite with the Bash tool's `run_in_background: true` and wait for the completion notification, not to poll it with `ps` or `pgrep` loops, not to start a second full run in this worktree while one is in flight, and not to wrap it in `timeout`. The suite can take more than 10 minutes.
 2. Check each success criterion from the plan — is it met?
 3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth), then repeat from step 1
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`

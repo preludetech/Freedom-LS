@@ -101,6 +101,11 @@ The test **must now pass**. If it still fails, return
 uv run pytest
 ```
 
+Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion
+notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this
+worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10
+minutes.
+
 No `-x` here: the orchestrator skips re-driving the regression layer on the strength of this run, so
 it has to be a whole-suite result, not "nothing failed before the first failure".
 

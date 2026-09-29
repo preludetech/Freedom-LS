@@ -43,6 +43,7 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 - Do not open network sockets in tests; `pytest-socket` blocks outbound sockets and only allows `127.0.0.1` / `::1`. Mock at the boundary, or add `@pytest.mark.allow_hosts(["host"])` for a genuine integration test (never `["*"]`).
 - Use `time-machine` for time-shaped code (deadlines, expiry windows, scheduled jobs) — prefer `time_machine.travel(...)` over manual `datetime.now()` patching.
 - Run the full suite in parallel locally with `uv run pytest -n auto` (xdist is opt-in, not baked into `addopts`).
+- Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10 minutes.
 
 See:
 - `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags

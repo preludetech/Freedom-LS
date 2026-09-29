@@ -54,6 +54,11 @@ After making all changes, run the full test suite:
 uv run pytest -x -q
 ```
 
+Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion
+notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this
+worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10
+minutes.
+
 Fix any failures.
 
 ## Step 6: Run the pre-commit
