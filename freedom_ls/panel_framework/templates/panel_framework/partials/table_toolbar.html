@@ -40,6 +40,7 @@ off.
                 {% endfor %}
                 <input type="search"
                        id="{{ query.key }}-q"
+                       hx-preserve
                        name="{{ query.key }}-q"
                        placeholder="Search..."
                        value="{{ query.search }}"
@@ -121,7 +122,8 @@ off.
     {% if toolbar or sortable_columns %}
         <div class="flex flex-wrap items-center gap-2 md:hidden"
              x-data="sidePanel"
-             data-storage-key="{{ query.key }}-sheet">
+             data-storage-key="{{ query.key }}-sheet"
+             data-mobile-only="true">
             {% for entry in toolbar %}
                 {% if entry.values %}
                     <c-chip variant="secondary">

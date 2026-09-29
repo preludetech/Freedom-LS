@@ -424,6 +424,7 @@ document.addEventListener("alpine:init", () => {
         grid: null,
         _storageKey: "sidebar",
         _desktopLock: false,
+        _mobileOnly: false,
         _mq: null,
         _mqHandler: null,
         _popstateHandler: null,
@@ -433,10 +434,13 @@ document.addEventListener("alpine:init", () => {
         triggerEl: null,
         init() {
             this.dialog = this.$refs.panelDialog;
-            this.grid = this.$refs.panelGrid;
             this._storageKey = this.$el.dataset.storageKey || "sidebar";
             // Player TOC locks the panel open on desktop (no close control).
             this._desktopLock = this.$el.dataset.desktopLock === "true";
+            // A mobile-only panel owns no grid column. $refs also resolves an
+            // enclosing sidePanel's panelGrid, which it must leave alone.
+            this._mobileOnly = this.$el.dataset.mobileOnly === "true";
+            this.grid = this._mobileOnly ? null : this.$refs.panelGrid;
             this._mq = window.matchMedia("(min-width: 1024px)");
             this.isMobile = !this._mq.matches;
 
@@ -529,9 +533,10 @@ document.addEventListener("alpine:init", () => {
 
             // On desktop, default to the persisted state (open if never set);
             // when locked (player TOC) always open and ignore stored state.
-            // On mobile, always start collapsed.
+            // On mobile, always start collapsed. A mobile-only panel (a
+            // table's filter & sort sheet) never opens as a docked panel.
             const stored = localStorage.getItem(this._storageKey);
-            if (!this.isMobile) {
+            if (!this.isMobile && !this._mobileOnly) {
                 if (this._desktopLock) {
                     this._setDesktopOpen(true);
                 } else {
@@ -547,7 +552,7 @@ document.addEventListener("alpine:init", () => {
                 // Reset to the correct mode for the new breakpoint.
                 if (this.dialog.open) this.dialog.close();
                 this.open = false;
-                if (!this.isMobile) {
+                if (!this.isMobile && !this._mobileOnly) {
                     if (this._desktopLock) {
                         this._setDesktopOpen(true);
                     } else {

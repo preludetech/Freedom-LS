@@ -130,12 +130,41 @@ document.addEventListener("panelChanged", (event) => {
 
 // A table region swap replaces the whole region element (outerHTML), so the
 // element in event.detail.target is the one about to be removed. Look the
-// new element back up by id and focus its anchor, so a sort, search or page
+// new element back up by id and focus its anchor, so a sort, filter or page
 // click moves focus onto the table instead of leaving it on a removed link.
+// A search swap is left alone: the search input survives the swap
+// (hx-preserve) and keeps focus, so a reader who pauses can keep typing.
 document.addEventListener("htmx:afterSettle", (event) => {
     const target = event.detail.target;
     if (!target || !target.hasAttribute("data-table-region")) return;
+    const source = event.detail.requestConfig && event.detail.requestConfig.elt;
+    if (source && source.matches("form[id$='-search']")) return;
     const region = document.getElementById(target.id);
     const anchor = region && region.querySelector("[data-table-anchor]");
     if (anchor) anchor.focus();
+});
+
+// A focused search input survives its table region's swap (hx-preserve), but
+// once htmx has moved it into the new region Chromium still reports it as
+// focused while dropping its caret, so further typing goes nowhere. Refocus
+// it and put the caret back in htmx:afterSwap, which runs in the same task as
+// the swap, so no keystroke lands in between.
+let focusedSearch = null;
+document.addEventListener("htmx:beforeSwap", (event) => {
+    const active = document.activeElement;
+    focusedSearch =
+        active &&
+        active.matches("input[type='search'][hx-preserve]") &&
+        event.detail.target.contains(active)
+            ? { input: active, start: active.selectionStart, end: active.selectionEnd }
+            : null;
+});
+document.addEventListener("htmx:afterSwap", () => {
+    if (!focusedSearch) return;
+    const { input, start, end } = focusedSearch;
+    focusedSearch = null;
+    if (!input.isConnected) return;
+    input.blur();
+    input.focus();
+    input.setSelectionRange(start, end);
 });

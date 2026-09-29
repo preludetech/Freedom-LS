@@ -208,3 +208,53 @@ def test_focus_moves_to_table_anchor_after_swap(
 
     anchor = page.locator("#stubs-table [data-table-anchor]")
     expect(anchor).to_be_focused()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_search_swap_keeps_focus_and_typing_in_search_box(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """A reader who pauses mid-search and carries on typing must not lose
+    characters: the search swap leaves focus in the search box instead of
+    moving it to the table anchor."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    search = page.locator("#stubs-q")
+    search.click()
+    search.press_sequentially("row-0")
+    rows = page.locator("#stubs-table tbody tr")
+    expect(page).to_have_url(re.compile(r"stubs-q=row-0"))
+
+    page.keyboard.type("1")
+
+    expect(page.locator("#stubs-q")).to_have_value("row-01")
+    expect(page.locator("#stubs-q")).to_be_focused()
+    expect(rows).to_have_count(1)
+    expect(rows.first).to_contain_text("row-01")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_filter_sort_sheet_stays_closed_on_desktop(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """The mobile filter & sort sheet must not open as a docked panel on
+    desktop, where opening it would pull focus into a hidden dialog on every
+    table swap."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    sheet = page.locator("#stubs-sheet")
+    expect(sheet).to_have_count(1)
+    expect(sheet).not_to_have_attribute("open", re.compile(".*"))
+
+    page.get_by_role("link", name="Name").click()
+    expect(page).to_have_url(re.compile(r"stubs-sort=name"))
+    expect(page.locator("#stubs-sheet")).not_to_have_attribute("open", re.compile(".*"))
