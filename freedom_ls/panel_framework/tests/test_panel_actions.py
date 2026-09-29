@@ -8,6 +8,7 @@ from pytest_mock import MockerFixture
 
 from django import forms
 from django.contrib.sites.models import Site
+from django.core.exceptions import PermissionDenied
 from django.db.models import Model
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -258,8 +259,10 @@ def test_create_action_has_permission_checks_add_perm(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_create_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks add permission."""
+def test_create_action_permission_denied_raises_permission_denied(
+    mock_site_context: Site,
+) -> None:
+    """_handle_action raises PermissionDenied when user lacks add permission."""
     action = StubCreateAction()
     user = make_staff_user()
     # No add permission
@@ -267,8 +270,8 @@ def test_create_action_permission_denied_returns_403(mock_site_context: Site) ->
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, None, "/items"))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     assert not StubModel.objects.filter(name="Forbidden").exists()
 
 
@@ -344,8 +347,10 @@ def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_co
 
 
 @pytest.mark.django_db
-def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks change permission."""
+def test_edit_action_permission_denied_raises_permission_denied(
+    mock_site_context: Site,
+) -> None:
+    """_handle_action raises PermissionDenied when user lacks change permission."""
     item = _make_stub(name="Test-edit-403")
     action = EditAction(
         form_class=_StubModelForm,
@@ -357,8 +362,8 @@ def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> N
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, item))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     item.refresh_from_db()
     assert item.name == "Test-edit-403"
 
@@ -543,8 +548,10 @@ def test_delete_action_has_permission_checks_object_level_delete_perm(
 
 
 @pytest.mark.django_db
-def test_delete_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks delete permission."""
+def test_delete_action_permission_denied_raises_permission_denied(
+    mock_site_context: Site,
+) -> None:
+    """_handle_action raises PermissionDenied when user lacks delete permission."""
     item = _make_stub(name="delete-403")
     action = DeleteAction(success_url="/items")
 
@@ -553,8 +560,8 @@ def test_delete_action_permission_denied_returns_403(mock_site_context: Site) ->
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, item))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     assert StubModel.objects.filter(pk=item.pk).exists()
 
 

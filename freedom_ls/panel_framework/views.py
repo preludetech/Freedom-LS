@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -383,7 +387,7 @@ def _handle_action(request: HttpRequest, resolved: _ResolvedAction) -> HttpRespo
     ctx = resolved.ctx
 
     if not action.has_permission(request, ctx.instance):
-        return HttpResponse(status=403)
+        raise PermissionDenied
 
     if request.method in ("POST", "DELETE"):
         return action.handle_submit(ctx)

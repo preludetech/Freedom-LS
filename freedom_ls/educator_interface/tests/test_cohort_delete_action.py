@@ -38,6 +38,7 @@ from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture
@@ -158,3 +159,23 @@ def test_submitting_the_blocked_delete_answers_instead_of_erroring(
     assert CourseProgress.objects.filter(
         cohort_registration__cohort=cohort_with_granted_progress
     ).exists()
+
+
+@pytest.mark.django_db
+def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    """Organisation staff can open the cohort but not delete it. Pasting the
+    action URL gets the site's own 403 page, not an empty 403 body."""
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    url = _delete_url(logged_in_client(UserFactory(superuser=True)), cohort)
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort.organisation, "organisation_staff")
+    client = logged_in_client(educator)
+    assert client.get(_panel_url(cohort)).status_code == 200
+
+    response = client.get(url)
+
+    assert response.status_code == 403
+    assert "You do not have access to this page" in response.content.decode()
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
