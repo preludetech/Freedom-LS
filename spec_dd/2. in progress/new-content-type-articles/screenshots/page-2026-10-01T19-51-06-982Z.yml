@@ -1,0 +1,37 @@
+- generic [active] [ref=f5e1]:
+  - banner [ref=f5e2]:
+    - link [ref=f5e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f5e4]
+      - heading "FirstClass" [level=1] [ref=f5e5]
+    - navigation [ref=f5e6]:
+      - generic [ref=f5e7]:
+        - link "Login" [ref=f5e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f5e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f5e10]:
+    - generic [ref=f5e12]:
+      - link [ref=f5e13] [cursor=pointer]:
+        - /url: /articles/
+        - img "previous" [ref=f5e14]
+        - text: Articles
+      - heading "Unsigned update" [level=1] [ref=f5e17]
+      - time [ref=f5e20]: Aug. 20, 2026
+      - paragraph [ref=f5e22]:
+        - text: This article has no
+        - code [ref=f5e23]: author
+        - text: in its front matter. The byline shows the publication date and nothing else.
+  - contentinfo [ref=f5e24]:
+    - generic [ref=f5e25]:
+      - paragraph [ref=f5e26]: © 2026 FirstClass
+      - navigation "Legal" [ref=f5e27]:
+        - link "Terms and Conditions" [ref=f5e28] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f5e29] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f5e30] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f5e32]: DJDT

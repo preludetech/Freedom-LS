@@ -1,0 +1,205 @@
+- generic [active] [ref=f16e1]:
+  - banner [ref=f16e2]:
+    - heading "Page not found (404)" [level=1] [ref=f16e3]
+    - table [ref=f16e4]:
+      - rowgroup [ref=f16e5]:
+        - row [ref=f16e6]:
+          - rowheader "Request Method:" [ref=f16e7]
+          - cell "GET" [ref=f16e8]
+        - row [ref=f16e9]:
+          - rowheader "Request URL:" [ref=f16e10]
+          - cell "http://127.0.0.1:8393/admin/content_engine/article/" [ref=f16e11]
+        - row [ref=f16e12]:
+          - rowheader "Raised by:" [ref=f16e13]
+          - cell "django.contrib.admin.sites.catch_all_view" [ref=f16e14]
+  - main [ref=f16e15]:
+    - paragraph [ref=f16e16]:
+      - text: Using the URLconf defined in
+      - code [ref=f16e17]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f16e18]:
+      - listitem [ref=f16e19]:
+        - code [ref=f16e20]: health/
+      - listitem [ref=f16e21]:
+        - code [ref=f16e22]: admin/
+        - code [ref=f16e23]: search/ [name='search']
+      - listitem [ref=f16e24]:
+        - code [ref=f16e25]: admin/
+        - code [ref=f16e26]: "[name='index']"
+      - listitem [ref=f16e27]:
+        - code [ref=f16e28]: admin/
+        - code [ref=f16e29]: login/ [name='login']
+      - listitem [ref=f16e30]:
+        - code [ref=f16e31]: admin/
+        - code [ref=f16e32]: logout/ [name='logout']
+      - listitem [ref=f16e33]:
+        - code [ref=f16e34]: admin/
+        - code [ref=f16e35]: password_change/ [name='password_change']
+      - listitem [ref=f16e36]:
+        - code [ref=f16e37]: admin/
+        - code [ref=f16e38]: password_change/done/ [name='password_change_done']
+      - listitem [ref=f16e39]:
+        - code [ref=f16e40]: admin/
+        - code [ref=f16e41]: autocomplete/ [name='autocomplete']
+      - listitem [ref=f16e42]:
+        - code [ref=f16e43]: admin/
+        - code [ref=f16e44]: jsi18n/ [name='jsi18n']
+      - listitem [ref=f16e45]:
+        - code [ref=f16e46]: admin/
+        - code [ref=f16e47]: r/<path:content_type_id>/<path:object_id>/ [name='view_on_site']
+      - listitem [ref=f16e48]:
+        - code [ref=f16e49]: admin/
+        - code [ref=f16e50]: django_tasks_database/dbtaskresult/
+      - listitem [ref=f16e51]:
+        - code [ref=f16e52]: admin/
+        - code [ref=f16e53]: freedom_ls_content_engine/topic/
+      - listitem [ref=f16e54]:
+        - code [ref=f16e55]: admin/
+        - code [ref=f16e56]: freedom_ls_content_engine/article/
+      - listitem [ref=f16e57]:
+        - code [ref=f16e58]: admin/
+        - code [ref=f16e59]: freedom_ls_content_engine/activity/
+      - listitem [ref=f16e60]:
+        - code [ref=f16e61]: admin/
+        - code [ref=f16e62]: freedom_ls_content_engine/coursecategory/
+      - listitem [ref=f16e63]:
+        - code [ref=f16e64]: admin/
+        - code [ref=f16e65]: freedom_ls_content_engine/course/
+      - listitem [ref=f16e66]:
+        - code [ref=f16e67]: admin/
+        - code [ref=f16e68]: freedom_ls_content_engine/coursepart/
+      - listitem [ref=f16e69]:
+        - code [ref=f16e70]: admin/
+        - code [ref=f16e71]: freedom_ls_content_engine/contentcollectionitem/
+      - listitem [ref=f16e72]:
+        - code [ref=f16e73]: admin/
+        - code [ref=f16e74]: freedom_ls_content_engine/file/
+      - listitem [ref=f16e75]:
+        - code [ref=f16e76]: admin/
+        - code [ref=f16e77]: freedom_ls_form_engine/questionoption/
+      - listitem [ref=f16e78]:
+        - code [ref=f16e79]: admin/
+        - code [ref=f16e80]: freedom_ls_form_engine/formcontent/
+      - listitem [ref=f16e81]:
+        - code [ref=f16e82]: admin/
+        - code [ref=f16e83]: freedom_ls_form_engine/formquestion/
+      - listitem [ref=f16e84]:
+        - code [ref=f16e85]: admin/
+        - code [ref=f16e86]: freedom_ls_form_engine/formpage/
+      - listitem [ref=f16e87]:
+        - code [ref=f16e88]: admin/
+        - code [ref=f16e89]: freedom_ls_form_engine/form/
+      - listitem [ref=f16e90]:
+        - code [ref=f16e91]: admin/
+        - code [ref=f16e92]: freedom_ls_form_engine/formprogress/
+      - listitem [ref=f16e93]:
+        - code [ref=f16e94]: admin/
+        - code [ref=f16e95]: freedom_ls_form_engine/questionanswer/
+      - listitem [ref=f16e96]:
+        - code [ref=f16e97]: admin/
+        - code [ref=f16e98]: freedom_ls_form_engine/questionanswerfile/
+      - listitem [ref=f16e99]:
+        - code [ref=f16e100]: admin/
+        - code [ref=f16e101]: freedom_ls_accounts/sitesignuppolicy/
+      - listitem [ref=f16e102]:
+        - code [ref=f16e103]: admin/
+        - code [ref=f16e104]: freedom_ls_accounts/legalconsent/
+      - listitem [ref=f16e105]:
+        - code [ref=f16e106]: admin/
+        - code [ref=f16e107]: freedom_ls_accounts/user/
+      - listitem [ref=f16e108]:
+        - code [ref=f16e109]: admin/
+        - code [ref=f16e110]: freedom_ls_referral_tracking/signupattribution/
+      - listitem [ref=f16e111]:
+        - code [ref=f16e112]: admin/
+        - code [ref=f16e113]: freedom_ls_referral_tracking/firsttouchcount/
+      - listitem [ref=f16e114]:
+        - code [ref=f16e115]: admin/
+        - code [ref=f16e116]: freedom_ls_referral_tracking/referralcode/
+      - listitem [ref=f16e117]:
+        - code [ref=f16e118]: admin/
+        - code [ref=f16e119]: freedom_ls_referral_tracking/referralcodehit/
+      - listitem [ref=f16e120]:
+        - code [ref=f16e121]: admin/
+        - code [ref=f16e122]: freedom_ls_organisations/organisation/
+      - listitem [ref=f16e123]:
+        - code [ref=f16e124]: admin/
+        - code [ref=f16e125]: freedom_ls_learner_management/learner/
+      - listitem [ref=f16e126]:
+        - code [ref=f16e127]: admin/
+        - code [ref=f16e128]: freedom_ls_learner_management/cohort/
+      - listitem [ref=f16e129]:
+        - code [ref=f16e130]: admin/
+        - code [ref=f16e131]: freedom_ls_learner_management/learnercourseregistration/
+      - listitem [ref=f16e132]:
+        - code [ref=f16e133]: admin/
+        - code [ref=f16e134]: freedom_ls_learner_management/cohortcourseregistration/
+      - listitem [ref=f16e135]:
+        - code [ref=f16e136]: admin/
+        - code [ref=f16e137]: freedom_ls_learner_management/cohortdeadline/
+      - listitem [ref=f16e138]:
+        - code [ref=f16e139]: admin/
+        - code [ref=f16e140]: freedom_ls_learner_management/learnerdeadline/
+      - listitem [ref=f16e141]:
+        - code [ref=f16e142]: admin/
+        - code [ref=f16e143]: freedom_ls_learner_management/learnercohortdeadlineoverride/
+      - listitem [ref=f16e144]:
+        - code [ref=f16e145]: admin/
+        - code [ref=f16e146]: freedom_ls_learner_progress/topicprogress/
+      - listitem [ref=f16e147]:
+        - code [ref=f16e148]: admin/
+        - code [ref=f16e149]: freedom_ls_learner_progress/courseprogress/
+      - listitem [ref=f16e150]:
+        - code [ref=f16e151]: admin/
+        - code [ref=f16e152]: freedom_ls_learner_progress/courseformattempt/
+      - listitem [ref=f16e153]:
+        - code [ref=f16e154]: admin/
+        - code [ref=f16e155]: freedom_ls_reports/generatedreport/
+      - listitem [ref=f16e156]:
+        - code [ref=f16e157]: admin/
+        - code [ref=f16e158]: freedom_ls_course_interest/courseinterest/
+      - listitem [ref=f16e159]:
+        - code [ref=f16e160]: admin/
+        - code [ref=f16e161]: freedom_ls_course_recommendations/recommendedcourse/
+      - listitem [ref=f16e162]:
+        - code [ref=f16e163]: admin/
+        - code [ref=f16e164]: freedom_ls_webhooks/webhookendpoint/
+      - listitem [ref=f16e165]:
+        - code [ref=f16e166]: admin/
+        - code [ref=f16e167]: freedom_ls_webhooks/webhookevent/
+      - listitem [ref=f16e168]:
+        - code [ref=f16e169]: admin/
+        - code [ref=f16e170]: freedom_ls_webhooks/webhookdelivery/
+      - listitem [ref=f16e171]:
+        - code [ref=f16e172]: admin/
+        - code [ref=f16e173]: freedom_ls_webhooks/webhooksecret/
+      - listitem [ref=f16e174]:
+        - code [ref=f16e175]: admin/
+        - code [ref=f16e176]: account/emailaddress/
+      - listitem [ref=f16e177]:
+        - code [ref=f16e178]: admin/
+        - code [ref=f16e179]: axes/accessattempt/
+      - listitem [ref=f16e180]:
+        - code [ref=f16e181]: admin/
+        - code [ref=f16e182]: axes/accesslog/
+      - listitem [ref=f16e183]:
+        - code [ref=f16e184]: admin/
+        - code [ref=f16e185]: axes/accessfailurelog/
+      - listitem [ref=f16e186]:
+        - code [ref=f16e187]: admin/
+        - code [ref=f16e188]: ^(?P<app_label>django_tasks_database|freedom_ls_content_engine|freedom_ls_form_engine|freedom_ls_accounts|freedom_ls_referral_tracking|freedom_ls_organisations|freedom_ls_learner_management|freedom_ls_learner_progress|freedom_ls_reports|freedom_ls_course_interest|freedom_ls_course_recommendations|freedom_ls_webhooks|account|axes)/$ [name='app_list']
+      - listitem [ref=f16e189]:
+        - code [ref=f16e190]: admin/
+        - code [ref=f16e191]: (?P<url>.*)$
+    - paragraph [ref=f16e192]:
+      - text: The current path,
+      - code [ref=f16e193]: admin/content_engine/article/
+      - text: ", matched the last one."
+  - contentinfo [ref=f16e194]:
+    - paragraph [ref=f16e195]:
+      - text: You’re seeing this error because you have
+      - code [ref=f16e196]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f16e197]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - generic "Show toolbar" [ref=f16e199]: DJDT

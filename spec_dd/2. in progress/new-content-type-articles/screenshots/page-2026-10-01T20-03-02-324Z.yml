@@ -1,0 +1,157 @@
+- generic [active] [ref=f28e1]:
+  - banner [ref=f28e2]:
+    - link [ref=f28e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f28e4]
+    - navigation [ref=f28e5]:
+      - generic [ref=f28e6]:
+        - link "Login" [ref=f28e7] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f28e8] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f28e9]:
+    - generic [ref=f28e11]:
+      - link [ref=f28e12] [cursor=pointer]:
+        - /url: /articles/
+        - img "previous" [ref=f28e13]
+        - text: Articles
+      - heading "Getting started with articles" [level=1] [ref=f28e16]
+      - generic [ref=f28e17]:
+        - generic [ref=f28e18]: Demo Author
+        - time [ref=f28e20]: Sept. 1, 2026
+      - generic [ref=f28e21]:
+        - heading "Linking to other articles" [level=2] [ref=f28e22]
+        - paragraph [ref=f28e23]:
+          - text: An article is a page anyone can read without registering. Link to another one with
+          - code [ref=f28e24]: c-article-link
+          - text: ". With text inside, the link shows that text:"
+          - link "read the undated notes" [ref=f28e25] [cursor=pointer]:
+            - /url: /articles/undated-notes/
+          - text: ". With nothing inside, it shows the article's title:"
+          - link "Unsigned update" [ref=f28e26] [cursor=pointer]:
+            - /url: /articles/unsigned-update/
+          - text: .
+        - paragraph [ref=f28e27]: "A link to an article that is hidden shows only its text, with no link: a draft nobody can open yet."
+        - heading "Article cards" [level=2] [ref=f28e28]
+        - paragraph [ref=f28e29]: The default card is the row variant.
+        - article [ref=f28e30]:
+          - generic [ref=f28e31]:
+            - heading [level=3] [ref=f28e32]:
+              - link "Undated notes" [ref=f28e33] [cursor=pointer]:
+                - /url: /articles/undated-notes/
+            - paragraph [ref=f28e34]: An article that hides its publication date and still shows its author.
+            - paragraph [ref=f28e35]: Demo Author
+        - paragraph [ref=f28e36]: The compact variant stacks its parts and suits narrow columns.
+        - article [ref=f28e37]:
+          - generic [ref=f28e38]:
+            - heading [level=3] [ref=f28e39]:
+              - link "Unsigned update" [ref=f28e40] [cursor=pointer]:
+                - /url: /articles/unsigned-update/
+            - paragraph [ref=f28e41]: An article with no author, so its byline shows only the date.
+            - paragraph [ref=f28e42]:
+              - time [ref=f28e43]: Aug. 20, 2026
+        - paragraph [ref=f28e44]: A card for a hidden article renders nothing, so the next paragraph follows the compact card directly.
+        - heading "Course cards" [level=2] [ref=f28e45]
+        - paragraph [ref=f28e46]: A course card works anywhere markdown does, not only in a course. The row variant first.
+        - article [ref=f28e47]:
+          - generic [ref=f28e51]:
+            - generic [ref=f28e52]: Free
+            - heading [level=3] [ref=f28e53]:
+              - 'link "Functionality Demo - Price: fixed" [ref=f28e54] [cursor=pointer]':
+                - /url: /courses/functionality-demo-price-fixed/detail/
+            - paragraph [ref=f28e55]: One amount, with a tax note.
+            - paragraph [ref=f28e56]: $250.00
+        - article [ref=f28e57]:
+          - generic [ref=f28e61]:
+            - generic [ref=f28e62]: By application
+            - heading [level=3] [ref=f28e63]:
+              - link "Functionality Demo - Application gated course" [ref=f28e64] [cursor=pointer]:
+                - /url: /courses/functionality-demo-application-gated-course/detail/
+            - paragraph [ref=f28e65]: A course you have to apply for
+            - paragraph [ref=f28e66]:
+              - generic [ref=f28e67]:
+                - generic [ref=f28e68]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f28e69]: "Now:"
+                - text: ZAR999.00
+        - paragraph [ref=f28e70]: Then the compact variant.
+        - article [ref=f28e71]:
+          - generic [ref=f28e75]:
+            - generic [ref=f28e76]: Free
+            - heading [level=3] [ref=f28e78]:
+              - 'link "Functionality Demo - Price: fixed" [ref=f28e79] [cursor=pointer]':
+                - /url: /courses/functionality-demo-price-fixed/detail/
+            - paragraph [ref=f28e80]: One amount, with a tax note.
+            - paragraph [ref=f28e81]: $250.00
+        - article [ref=f28e82]:
+          - generic [ref=f28e86]:
+            - generic [ref=f28e87]: By application
+            - heading [level=3] [ref=f28e89]:
+              - link "Functionality Demo - Application gated course" [ref=f28e90] [cursor=pointer]:
+                - /url: /courses/functionality-demo-application-gated-course/detail/
+            - paragraph [ref=f28e91]: A course you have to apply for
+            - paragraph [ref=f28e92]:
+              - generic [ref=f28e93]:
+                - generic [ref=f28e94]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f28e95]: "Now:"
+                - text: ZAR999.00
+        - heading "Mixing cards in a grid" [level=2] [ref=f28e96]
+        - paragraph [ref=f28e97]:
+          - code [ref=f28e98]: c-grid
+          - text: lays out whatever you put inside it. Here it holds two article cards, two course cards and a picture.
+        - generic [ref=f28e99]:
+          - article [ref=f28e100]:
+            - generic [ref=f28e101]:
+              - heading [level=3] [ref=f28e102]:
+                - link "Undated notes" [ref=f28e103] [cursor=pointer]:
+                  - /url: /articles/undated-notes/
+              - paragraph [ref=f28e104]: An article that hides its publication date and still shows its author.
+              - paragraph [ref=f28e105]: Demo Author
+          - article [ref=f28e106]:
+            - generic [ref=f28e107]:
+              - heading [level=3] [ref=f28e108]:
+                - link "Unsigned update" [ref=f28e109] [cursor=pointer]:
+                  - /url: /articles/unsigned-update/
+              - paragraph [ref=f28e110]: An article with no author, so its byline shows only the date.
+              - paragraph [ref=f28e111]:
+                - time [ref=f28e112]: Aug. 20, 2026
+          - article [ref=f28e113]:
+            - generic [ref=f28e117]:
+              - generic [ref=f28e118]: Free
+              - heading [level=3] [ref=f28e120]:
+                - 'link "Functionality Demo - Price: fixed" [ref=f28e121] [cursor=pointer]':
+                  - /url: /courses/functionality-demo-price-fixed/detail/
+              - paragraph [ref=f28e122]: One amount, with a tax note.
+              - paragraph [ref=f28e123]: $250.00
+          - article [ref=f28e124]:
+            - generic [ref=f28e128]:
+              - generic [ref=f28e129]: By application
+              - heading [level=3] [ref=f28e131]:
+                - link "Functionality Demo - Application gated course" [ref=f28e132] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-application-gated-course/detail/
+              - paragraph [ref=f28e133]: A course you have to apply for
+              - paragraph [ref=f28e134]:
+                - generic [ref=f28e135]:
+                  - generic [ref=f28e136]: "Original price:"
+                  - text: ZAR1,499.00
+                  - generic [ref=f28e137]: "Now:"
+                  - text: ZAR999.00
+          - figure [ref=f28e139]:
+            - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f28e140]
+            - generic [ref=f28e142]:
+              - paragraph
+              - button "Expand" [ref=f28e143] [cursor=pointer]
+  - contentinfo [ref=f28e147]:
+    - generic [ref=f28e148]:
+      - paragraph [ref=f28e149]: © 2026 FirstClass
+      - navigation "Legal" [ref=f28e150]:
+        - link "Terms and Conditions" [ref=f28e151] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f28e152] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f28e153] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f28e155]: DJDT

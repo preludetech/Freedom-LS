@@ -1,0 +1,257 @@
+- generic [ref=f20e1]:
+  - banner [ref=f20e2]:
+    - link [ref=f20e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f20e4]
+      - heading "FirstClass" [level=1] [ref=f20e5]
+    - navigation [ref=f20e6]:
+      - generic [ref=f20e7]:
+        - generic [ref=f20e8]:
+          - button "Notifications, 3 new" [ref=f20e9]:
+            - img "notifications" [ref=f20e11]
+          - status:
+            - generic [ref=f20e13]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f20e14]: "3"
+        - button "Open user menu for demodev@email.com" [ref=f20e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f20e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f20e18]:
+    - generic [ref=f20e20]:
+      - dialog "Course outline" [ref=f20e21]:
+        - generic [ref=f20e24]:
+          - generic [ref=f20e25]:
+            - paragraph [ref=f20e26]: Course outline
+            - paragraph [ref=f20e27]: Content Widgets - Demo Reference
+            - generic [ref=f20e29]:
+              - progressbar "Progress for Content Widgets - Demo Reference" [ref=f20e30]: 0%
+              - generic [ref=f20e31]: 0% complete
+          - navigation "Course outline" [ref=f20e32]:
+            - list [ref=f20e33]:
+              - listitem [ref=f20e34]:
+                - generic [ref=f20e35]:
+                  - generic [ref=f20e36]: "1."
+                  - generic [ref=f20e37]:
+                    - img "topic" [ref=f20e38]
+                    - generic [ref=f20e40]: Completed
+                  - link "Annotation and Emphasis" [active] [ref=f20e42] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/1/
+              - listitem [ref=f20e43]:
+                - generic [ref=f20e44]:
+                  - generic [ref=f20e45]: "2."
+                  - generic [ref=f20e46]:
+                    - img "topic" [ref=f20e47]
+                    - generic [ref=f20e49]: In progress
+                  - generic [ref=f20e50]: Media
+              - listitem [ref=f20e51]:
+                - generic [ref=f20e52]:
+                  - generic [ref=f20e53]: "3."
+                  - generic [ref=f20e54]:
+                    - img "topic" [ref=f20e55]
+                    - generic [ref=f20e57]: Locked
+                  - generic [ref=f20e58]: Structured Content
+              - listitem [ref=f20e59]:
+                - generic [ref=f20e60]:
+                  - generic [ref=f20e61]: "4."
+                  - generic [ref=f20e62]:
+                    - img "topic" [ref=f20e63]
+                    - generic [ref=f20e65]: Locked
+                  - generic [ref=f20e66]: Interactive Widgets
+              - listitem [ref=f20e67]:
+                - generic [ref=f20e68]:
+                  - generic [ref=f20e69]: "5."
+                  - generic [ref=f20e70]:
+                    - img "topic" [ref=f20e71]
+                    - generic [ref=f20e73]: Locked
+                  - generic [ref=f20e74]: Cards
+      - generic [ref=f20e75]:
+        - generic [ref=f20e76]:
+          - navigation "Breadcrumb" [ref=f20e79]:
+            - list [ref=f20e80]:
+              - listitem [ref=f20e81]:
+                - link "Content Widgets - Demo Reference" [ref=f20e82] [cursor=pointer]:
+                  - /url: /courses/content-widgets-demo-reference/detail/
+              - listitem [ref=f20e83]:
+                - generic [aria-hidden] [ref=f20e84]: ">"
+                - generic "Media" [ref=f20e85]
+          - generic [ref=f20e86]:
+            - heading "Media" [level=1] [ref=f20e87]
+            - paragraph [ref=f20e88]: Bringing pictures and video into your content
+        - generic [ref=f20e90]:
+          - generic [ref=f20e91]:
+            - heading "YouTube video" [level=3] [ref=f20e92]
+            - paragraph [ref=f20e93]:
+              - text: Embed a YouTube video by its
+              - code [ref=f20e94]: video_id
+              - text: — the part after
+              - code [ref=f20e95]: v=
+              - text: in the watch URL. Add a
+              - code [ref=f20e96]: caption
+              - text: to describe what the video shows; it sits beneath the player.
+            - figure "A short, descriptive caption explaining what the viewer is about to watch." [ref=f20e97]:
+              - iframe [ref=f20e99]:
+                - generic [ref=f21e1]:
+                  - generic "YouTube Video Player" [ref=f21e3]
+                  - generic [ref=f21e5]:
+                    - generic:
+                      - generic:
+                        - generic [ref=f21e6] [cursor=pointer]
+                        - button "Play video" [ref=f21e10] [cursor=pointer]
+                        - button "Hide player controls" [ref=f21e14] [cursor=pointer]
+                        - generic [ref=f21e16]:
+                          - generic [ref=f21e21]:
+                            - generic [ref=f21e22]:
+                              - link "The Bar For Excellence Is Embarrassingly Low" [ref=f21e23] [cursor=pointer]:
+                                - /url: https://www.youtube.com/watch?v=01MXBvMeFCw
+                              - link "MoreMozi" [ref=f21e24] [cursor=pointer]:
+                                - /url: /channel/UCrvchO1h6lWZAuGaa1LqX9Q
+                            - generic [ref=f21e26]:
+                              - button [ref=f21e27] [cursor=pointer]:
+                                - img "thumbnail-image" [ref=f21e28]
+                              - generic [ref=f21e30]:
+                                - generic: MoreMozi
+                                - generic: 145K subscribers
+                          - generic [ref=f21e31]:
+                            - button "Share" [ref=f21e34] [cursor=pointer]
+                            - link "Watch on YouTube" [ref=f21e45] [cursor=pointer]:
+                              - /url: https://www.youtube.com/watch?v=01MXBvMeFCw
+                              - generic [ref=f21e46]: Watch on
+            - heading "Pictures" [level=3] [ref=f20e101]
+            - paragraph [ref=f20e102]:
+              - text: The picture widget renders an image with an accessible lightbox — click or focus it and press Enter to view it full-screen. The
+              - code [ref=f20e103]: src
+              - text: "is a path relative to this file. Three text attributes matter, and they do different jobs:"
+            - list [ref=f20e104]:
+              - listitem [ref=f20e105]:
+                - code [ref=f20e106]: alt
+                - text: describes the image for people who cannot see it. It is read by screen readers and never shown on screen.
+              - listitem [ref=f20e107]:
+                - code [ref=f20e108]: title
+                - text: is the visible text printed under the image in the page and as the heading in the full-screen lightbox.
+              - listitem [ref=f20e109]:
+                - code [ref=f20e110]: description
+                - text: (optional) adds a longer caption block below the title, both in the page and in the full-screen lightbox — useful for detailed annotations that do not fit in a one-line title.
+            - paragraph [ref=f20e111]:
+              - text: Do not duplicate
+              - code [ref=f20e112]: alt
+              - text: and
+              - code [ref=f20e113]: title
+              - text: . The alt text should stand in for the image; the title adds context a sighted reader still benefits from. Purely decorative images should use
+              - code [ref=f20e114]: alt=""
+              - text: so screen readers skip them.
+            - paragraph [ref=f20e115]:
+              - text: Add a
+              - code [ref=f20e116]: number
+              - text: "to prefix the title with \"Figure N\":"
+            - figure "Figure 1 A titled, numbered figure with a click-to-zoom lightbox, and a really long title Expand This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox." [ref=f20e118]:
+              - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f20e119]
+              - generic [ref=f20e120]:
+                - generic [ref=f20e121]:
+                  - paragraph [ref=f20e122]:
+                    - generic [ref=f20e123]: Figure 1
+                    - generic [ref=f20e124]: A titled, numbered figure with a click-to-zoom lightbox, and a really long title
+                  - button "Expand" [ref=f20e125] [cursor=pointer]
+                - paragraph [ref=f20e129]: This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox.
+            - heading "Annotated diagrams" [level=3] [ref=f20e130]
+            - paragraph [ref=f20e131]:
+              - text: "There is no special \"diagram\" widget. An annotated diagram is an authoring pattern: a picture whose image carries visible letter markers, followed immediately by a"
+              - code [ref=f20e132]: <dl>
+              - text: legend that says what each letter means. This matters for accessibility — colour and position alone are never the only signal, so a screen-reader user gets the same information from the legend that a sighted user gets from the picture.
+            - figure "Figure 2 how a request flows from browser to server and back Expand" [ref=f20e134]:
+              - 'img "A request flow diagram: a Browser box on the left and a Server box on the right, joined by two arrows" [ref=f20e135]'
+              - generic [ref=f20e137]:
+                - paragraph [ref=f20e138]:
+                  - generic [ref=f20e139]: Figure 2
+                  - generic [ref=f20e140]: how a request flows from browser to server and back
+                - button "Expand" [ref=f20e141] [cursor=pointer]
+            - generic [ref=f20e145]:
+              - term [ref=f20e146]: A
+              - definition [ref=f20e147]: The browser sends a request to the server.
+              - term [ref=f20e148]: B
+              - definition [ref=f20e149]: The server renders the page.
+              - term [ref=f20e150]: C
+              - definition [ref=f20e151]: The response returns to the browser.
+            - heading "Image grids" [level=3] [ref=f20e152]
+            - paragraph [ref=f20e153]:
+              - text: The image grid is a layout wrapper. It takes a
+              - code [ref=f20e154]: columns
+              - text: value — 2, 3, or 4 — and tiles its
+              - code [ref=f20e155]: c-picture
+              - text: children into that many columns, collapsing to a single column on narrow screens. Each picture keeps its own title and lightbox.
+            - paragraph [ref=f20e156]:
+              - text: "One authoring quirk to remember: always use the closed form"
+              - code [ref=f20e157]: <c-picture ...></c-picture>
+              - text: inside a grid (never the self-closing
+              - code [ref=f20e158]: />
+              - text: "), and leave a blank line between each child. A two-column grid:"
+            - generic [ref=f20e159]:
+              - figure "Landscape Expand" [ref=f20e161]:
+                - img "A blue sky over a dark horizon with a yellow sun" [ref=f20e162]
+                - generic [ref=f20e164]:
+                  - paragraph [ref=f20e165]:
+                    - generic [ref=f20e166]: Landscape
+                  - button "Expand" [ref=f20e167] [cursor=pointer]
+              - figure "Square Expand" [ref=f20e172]:
+                - img "A dark circle centred on an orange background" [ref=f20e173]
+                - generic [ref=f20e175]:
+                  - paragraph [ref=f20e176]:
+                    - generic [ref=f20e177]: Square
+                  - button "Expand" [ref=f20e178] [cursor=pointer]
+            - paragraph [ref=f20e182]: "The same three images at three columns:"
+            - generic [ref=f20e183]:
+              - figure "Landscape Expand" [ref=f20e185]:
+                - img "A blue sky over a dark horizon with a yellow sun" [ref=f20e186]
+                - generic [ref=f20e188]:
+                  - paragraph [ref=f20e189]:
+                    - generic [ref=f20e190]: Landscape
+                  - button "Expand" [ref=f20e191] [cursor=pointer]
+              - figure "Portrait Expand" [ref=f20e196]:
+                - img "A tall dark panel on a green background" [ref=f20e197]
+                - generic [ref=f20e199]:
+                  - paragraph [ref=f20e200]:
+                    - generic [ref=f20e201]: Portrait
+                  - button "Expand" [ref=f20e202] [cursor=pointer]
+              - figure "Square Expand" [ref=f20e207]:
+                - img "A dark circle centred on an orange background" [ref=f20e208]
+                - generic [ref=f20e210]:
+                  - paragraph [ref=f20e211]:
+                    - generic [ref=f20e212]: Square
+                  - button "Expand" [ref=f20e213] [cursor=pointer]
+            - heading "Stacked figures" [level=3] [ref=f20e217]
+            - paragraph [ref=f20e218]:
+              - text: If you do not want a grid, you do not need a wrapper. Consecutive
+              - code [ref=f20e219]: c-picture
+              - text: blocks simply stack, each centred with its own title — the second gallery shape, and the right choice when each image deserves its own row.
+            - figure "A stacked figure, full width and centred Expand" [ref=f20e221]:
+              - img "A tall dark panel on a green background" [ref=f20e222]
+              - generic [ref=f20e224]:
+                - paragraph [ref=f20e225]:
+                  - generic [ref=f20e226]: A stacked figure, full width and centred
+                - button "Expand" [ref=f20e227] [cursor=pointer]
+            - figure "A second stacked figure directly below the first Expand" [ref=f20e232]:
+              - img "A dark circle centred on an orange background" [ref=f20e233]
+              - generic [ref=f20e235]:
+                - paragraph [ref=f20e236]:
+                  - generic [ref=f20e237]: A second stacked figure directly below the first
+                - button "Expand" [ref=f20e238] [cursor=pointer]
+            - figure "A hobbyist flying a drone in his back garden Expand" [ref=f20e243]:
+              - img "A man stands in a back garden holding a handheld controller, looking up at a white quadcopter drone hovering above a wooden fence" [ref=f20e244]
+              - generic [ref=f20e246]:
+                - paragraph [ref=f20e247]:
+                  - generic [ref=f20e248]: A hobbyist flying a drone in his back garden
+                - button "Expand" [ref=f20e249] [cursor=pointer]
+          - generic [ref=f20e253]:
+            - link "Previous" [ref=f20e255] [cursor=pointer]:
+              - /url: /courses/content-widgets-demo-reference/1/
+            - button "Next" [ref=f20e260] [cursor=pointer]
+  - contentinfo [ref=f20e264]:
+    - generic [ref=f20e265]:
+      - paragraph [ref=f20e266]: © 2026 FirstClass
+      - navigation "Legal" [ref=f20e267]:
+        - link "Terms and Conditions" [ref=f20e268] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f20e269] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f20e270] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f20e272]: DJDT
