@@ -23,11 +23,15 @@
 
 {% block content %}
     <c-page width="narrow">
-        <h1>{{ article.title }}</h1>
-        {% if article.subtitle %}<p>{{ article.subtitle }}</p>{% endif %}
-        <c-article-byline :article="article" />
-        <c-markdown-container>
-            {{ article.rendered_content }}
-        </c-markdown-container>
+        <div class="space-y-8">
+            <hgroup class="space-y-2">
+                <h1>{{ article.title }}</h1>
+                {% if article.subtitle %}<p class="text-muted">{{ article.subtitle }}</p>{% endif %}
+                <c-article-byline :article="article" />
+            </hgroup>
+            <c-markdown-container>
+                {{ article.rendered_content }}
+            </c-markdown-container>
+        </div>
     </c-page>
 {% endblock content %}

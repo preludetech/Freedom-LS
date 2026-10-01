@@ -337,3 +337,20 @@ def test_article_body_is_wrapped_in_the_markdown_container(client, mock_site_con
     assert re.search(
         r'<div class="[^"]*space-y-4[^"]*">\s*<p>First paragraph\.</p>', body
     )
+
+
+@pytest.mark.django_db
+def test_article_header_and_body_are_spaced_apart(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(title="Spaced Title", content="Body paragraph.")
+
+    # Act
+    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+
+    # Assert
+    body = response.content.decode()
+    assert re.search(
+        r'<div class="[^"]*space-y-8[^"]*">\s*<hgroup class="[^"]*space-y-2[^"]*">'
+        r"\s*<h1>Spaced Title</h1>",
+        body,
+    )
