@@ -510,6 +510,14 @@ document.addEventListener("alpine:init", () => {
                 const wasMobile = this.isMobile;
                 this.isMobile = !e.matches;
                 if (wasMobile === this.isMobile) return;
+                // The header's own height is responsive (shorter below the
+                // `sm` breakpoint, which this app's 1024px lg cutoff always
+                // sits above), so --sidebar-top — set once from it in init()
+                // — goes stale across a resize that crosses this
+                // breakpoint without a reload. Recapture it here, by which
+                // point the header has already re-rendered at its new width.
+                const top = this.$el.getBoundingClientRect().top;
+                this.$el.style.setProperty("--sidebar-top", top + "px");
                 // Reset to the correct mode for the new breakpoint.
                 if (this.dialog.open) this.dialog.close();
                 this.open = false;
