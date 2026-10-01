@@ -68,3 +68,19 @@ def test_robots_txt_allows_the_blog_index(loaded_demo_content):
     content = Client().get("/robots.txt").content.decode()
 
     assert f"Allow: {reverse('blog:index')}" in content
+
+
+@pytest.mark.django_db
+def test_the_getting_started_article_does_not_skip_from_h1_to_h3(loaded_demo_content):
+    body = (
+        Client()
+        .get(
+            reverse(
+                "blog:article_detail", kwargs={"slug": "getting-started-with-articles"}
+            )
+        )
+        .content.decode()
+    )
+
+    assert "<h2>Linking to other articles</h2>" in body
+    assert "<h3" not in body.split("<h2", 1)[0]

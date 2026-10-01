@@ -7,13 +7,13 @@ title: Getting started with articles
 uuid: b1fe911f-a258-4620-933d-fb1fab3bc92d
 ---
 
-## Linking to other articles
+# Linking to other articles
 
 An article is a page anyone can read without registering. Link to another one with `c-article-link`. With text inside, the link shows that text: <c-article-link path="undated-notes.md">read the undated notes</c-article-link>. With nothing inside, it shows the article's title: <c-article-link path="unsigned-update.md"></c-article-link>.
 
 A link to an article that is hidden shows only its text, with no link: <c-article-link path="hidden-draft.md">a draft nobody can open yet</c-article-link>.
 
-## Article cards
+# Article cards
 
 The default card is the row variant.
 
@@ -27,7 +27,7 @@ A card for a hidden article renders nothing, so the next paragraph follows the c
 
 <c-article-card path="hidden-draft.md"></c-article-card>
 
-## Course cards
+# Course cards
 
 A course card works anywhere markdown does, not only in a course. The row variant first.
 
@@ -41,7 +41,7 @@ Then the compact variant.
 
 <c-course-card path="../functionality_demo_application_gated/course.md" variant="compact"></c-course-card>
 
-## Mixing cards in a grid
+# Mixing cards in a grid
 
 `c-grid` lays out whatever you put inside it. Here it holds two article cards, two course cards and a picture.
 
