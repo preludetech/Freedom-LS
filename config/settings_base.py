@@ -376,6 +376,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-youtube": {"video_id", "video_title", "caption"},
     "c-picture": {"src", "alt", "title", "description", "number"},
     "c-content-link": {"path"},
+    "c-article-link": {"path"},
     "c-pdf-embed": {"src", "caption", "height"},
     "c-file-download": {"src", "text"},
     "c-pull-quote": {"attribution", "cite", "source"},
