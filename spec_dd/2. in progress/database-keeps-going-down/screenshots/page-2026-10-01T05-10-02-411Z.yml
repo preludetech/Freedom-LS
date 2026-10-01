@@ -1,0 +1,186 @@
+- generic [active] [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - link [ref=f6e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f6e4]
+    - navigation [ref=f6e5]:
+      - generic [ref=f6e6]:
+        - generic [ref=f6e7]:
+          - button "Notifications, none new" [ref=f6e8]:
+            - img "notifications" [ref=f6e10]
+          - status:
+            - generic [ref=f6e12]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f6e14] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f6e15]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f6e16]:
+    - generic [ref=f6e18]:
+      - navigation "Breadcrumb" [ref=f6e19]:
+        - list [ref=f6e20]:
+          - listitem [ref=f6e21]:
+            - link "All courses" [ref=f6e22] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f6e23]:
+            - generic [aria-hidden] [ref=f6e24]: /
+            - generic [ref=f6e25]: Functionality Demo - show end with Topic
+      - generic [ref=f6e27]:
+        - generic [ref=f6e28]: Start here
+        - heading "Functionality Demo - show end with Topic" [level=1] [ref=f6e29]
+        - paragraph [ref=f6e30]: A tour of the content system
+        - generic [ref=f6e32]:
+          - generic [ref=f6e33]:
+            - img "topic" [ref=f6e34]
+            - generic [ref=f6e36]:
+              - paragraph [ref=f6e37]: Lessons
+              - paragraph [ref=f6e38]: 6 lessons
+          - generic [ref=f6e39]:
+            - img "check" [ref=f6e40]
+            - generic [ref=f6e42]:
+              - paragraph [ref=f6e43]: Enrolment
+              - paragraph [ref=f6e44]: Free · open
+      - generic [ref=f6e45]:
+        - complementary [ref=f6e46]:
+          - generic [ref=f6e47]:
+            - generic [ref=f6e48]:
+              - paragraph [ref=f6e49]: Free · open to everyone
+              - paragraph [ref=f6e50]: One click. No credit card.
+            - link "Enrol for free" [ref=f6e51] [cursor=pointer]:
+              - /url: /courses/functionality-demo-show-end-with-topic/access/
+            - generic [ref=f6e52]:
+              - heading "This course includes" [level=3] [ref=f6e53]
+              - list [ref=f6e54]:
+                - listitem [ref=f6e55]: 6 lessons
+                - listitem [ref=f6e56]: Includes assessments
+        - generic [ref=f6e57]:
+          - generic [ref=f6e58]:
+            - heading "About this course" [level=2] [ref=f6e59]
+            - paragraph [ref=f6e61]: A much longer description of the course. Lorem ipsum text here
+          - generic [ref=f6e62]:
+            - heading "Course content" [level=2] [ref=f6e63]
+            - navigation "Course outline" [ref=f6e65]:
+              - list [ref=f6e66]:
+                - listitem [ref=f6e67]:
+                  - generic [ref=f6e68]:
+                    - generic [ref=f6e69]: "1."
+                    - generic [ref=f6e70]:
+                      - img "topic" [ref=f6e71]
+                      - generic [ref=f6e73]: Locked
+                    - generic [ref=f6e74]: Content title 1
+                - listitem [ref=f6e75]:
+                  - generic [ref=f6e76]:
+                    - generic [ref=f6e77]: "2."
+                    - generic [ref=f6e78]:
+                      - img "topic" [ref=f6e79]
+                      - generic [ref=f6e81]: Locked
+                    - generic [ref=f6e82]: Callouts
+                - listitem [ref=f6e83]:
+                  - generic [ref=f6e84]:
+                    - generic [ref=f6e85]: "3."
+                    - generic [ref=f6e86]:
+                      - img "form" [ref=f6e87]
+                      - generic [ref=f6e89]: Locked
+                    - generic [ref=f6e90]: Course Feedback Survey
+                - listitem [ref=f6e91]:
+                  - generic [ref=f6e92]:
+                    - generic [ref=f6e93]: "4."
+                    - generic [ref=f6e94]:
+                      - img "topic" [ref=f6e95]
+                      - generic [ref=f6e97]: Locked
+                    - generic [ref=f6e98]: Pictures
+                - listitem [ref=f6e99]:
+                  - generic [ref=f6e100]:
+                    - generic [ref=f6e101]: "5."
+                    - generic [ref=f6e102]:
+                      - img "topic" [ref=f6e103]
+                      - generic [ref=f6e105]: Locked
+                    - generic [ref=f6e106]: YouTube Videos
+                - listitem [ref=f6e107]:
+                  - generic [ref=f6e108]:
+                    - generic [ref=f6e109]: "6."
+                    - generic [ref=f6e110]:
+                      - img "topic" [ref=f6e111]
+                      - generic [ref=f6e113]: Locked
+                    - generic [ref=f6e114]: Markdown Tables
+                - listitem [ref=f6e115]:
+                  - generic [ref=f6e116]:
+                    - generic [ref=f6e117]: "7."
+                    - generic [ref=f6e118]:
+                      - img "topic" [ref=f6e119]
+                      - generic [ref=f6e121]: Locked
+                    - generic [ref=f6e122]: Code Snippets
+  - contentinfo [ref=f6e123]:
+    - generic [ref=f6e124]:
+      - paragraph [ref=f6e125]: © 2026 FirstClass
+      - navigation "Legal" [ref=f6e126]:
+        - link "Terms and Conditions" [ref=f6e127] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f6e128] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f6e129] [cursor=pointer]: database-keeps-going-down
+  - list [ref=f6e131]:
+    - listitem [ref=f6e132]:
+      - link "Hide »" [ref=f6e133] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e134]:
+      - link "Toggle Theme" [ref=f6e135] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e138]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e139] [cursor=pointer]
+      - link "History /courses/functionality-demo-show-end-with-topic/detail/" [ref=f6e140] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e141]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e142] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f6e143] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e144]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e145] [cursor=pointer]
+      - 'link "Time CPU: 73.95ms (93.51ms)" [ref=f6e146] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f6e147]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e148] [cursor=pointer]
+      - link "Settings" [ref=f6e149] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e150]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e151] [cursor=pointer]
+      - link "Headers" [ref=f6e152] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e153]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e154] [cursor=pointer]
+      - link "Request course_detail" [ref=f6e155] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e156]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e157] [cursor=pointer]
+      - link "SQL 16 queries in 17.80ms" [ref=f6e158] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e159]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e160] [cursor=pointer]
+      - link "Static files 8 files used" [ref=f6e161] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e162]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e163] [cursor=pointer]
+      - link "Templates learner_interface/course_detail.html" [ref=f6e164] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e165]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e166] [cursor=pointer]
+      - link "Alerts" [ref=f6e167] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e168]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e169] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f6e170] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e171]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e172] [cursor=pointer]
+      - link "Signals 78 receivers of 15 signals" [ref=f6e173] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e174]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f6e175] [cursor=pointer]
+      - link "Community" [ref=f6e176] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f6e177]:
+      - checkbox "Enable for next and successive requests" [ref=f6e178] [cursor=pointer]
+      - generic [ref=f6e179]: Intercept redirects
+    - listitem [ref=f6e180]:
+      - checkbox "Enable for next and successive requests" [ref=f6e181] [cursor=pointer]
+      - generic [ref=f6e182]: Profiling

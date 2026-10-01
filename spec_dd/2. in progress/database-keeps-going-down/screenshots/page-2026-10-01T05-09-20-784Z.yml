@@ -614,7 +614,7 @@
         - /url: "#"
     - listitem [ref=f3e589]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f3e590]
-      - 'link "Time CPU: 84.15ms (100.20ms)" [ref=f3e591] [cursor=pointer]':
+      - 'link "Time CPU: 94.38ms (114.11ms)" [ref=f3e591] [cursor=pointer]':
         - /url: "#"
     - listitem [ref=f3e592]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f3e593]
@@ -630,7 +630,7 @@
         - /url: "#"
     - listitem [ref=f3e601]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f3e602]
-      - link "SQL 7 queries in 9.42ms" [ref=f3e603] [cursor=pointer]:
+      - link "SQL 7 queries in 12.34ms" [ref=f3e603] [cursor=pointer]:
         - /url: "#"
     - listitem [ref=f3e604]:
       - checkbox "Disable for next and successive requests" [checked] [ref=f3e605]
