@@ -23,13 +23,17 @@
 
 {% block content %}
     <c-page width="narrow">
-        <div class="space-y-8">
-            <hgroup class="space-y-2">
+        <div class="mx-auto max-w-3xl">
+            <a href="{% url 'blog:index' %}" class="inline-flex items-center gap-2 text-sm font-medium no-underline">
+                <c-icon name="previous" class="size-4" />
+                {{ blog_name }}
+            </a>
+            <hgroup class="mt-8 sm:mt-10">
                 <h1>{{ article.title }}</h1>
-                {% if article.subtitle %}<p class="text-muted">{{ article.subtitle }}</p>{% endif %}
-                <c-article-byline :article="article" />
+                {% if article.subtitle %}<p class="mt-4 sm:mt-5 text-lg sm:text-xl text-muted">{{ article.subtitle }}</p>{% endif %}
             </hgroup>
-            <c-markdown-container>
+            <c-article-byline :article="article" variant="header" class="mt-6 sm:mt-8" />
+            <c-markdown-container class="mt-8 sm:mt-10">
                 {{ article.rendered_content }}
             </c-markdown-container>
         </div>

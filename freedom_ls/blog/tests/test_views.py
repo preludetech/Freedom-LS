@@ -3,7 +3,7 @@ from datetime import date
 
 import pytest
 
-from django.test import Client
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory
@@ -340,17 +340,78 @@ def test_article_body_is_wrapped_in_the_markdown_container(client, mock_site_con
 
 
 @pytest.mark.django_db
-def test_article_header_and_body_are_spaced_apart(client, mock_site_context):
+def test_article_page_orders_back_link_title_subtitle_byline_then_body(
+    client, mock_site_context
+):
     # Arrange
-    article = ArticleFactory(title="Spaced Title", content="Body paragraph.")
+    article = ArticleFactory(
+        title="Ordered Title",
+        subtitle="Ordered subtitle",
+        author="Ada Lovelace",
+        published_on=date(2026, 3, 9),
+        content="Body paragraph.",
+    )
 
     # Act
-    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+    body = _get_article_page(client, article)
 
     # Assert
-    body = response.content.decode()
+    main = body[body.index("<main") :]
+    positions = [
+        main.index(f'href="{reverse("blog:index")}"'),
+        main.index("<h1>Ordered Title</h1>"),
+        main.index("Ordered subtitle"),
+        main.index("Ada Lovelace"),
+        main.index("<p>Body paragraph.</p>"),
+    ]
+    assert positions == sorted(positions)
+
+
+@pytest.mark.django_db
+def test_byline_puts_the_author_before_the_date(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(author="Ada Lovelace", published_on=date(2026, 3, 9))
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    assert body.index("Ada Lovelace") < body.index('<time datetime="2026-03-09">')
+
+
+@pytest.mark.django_db
+def test_index_heading_and_back_link_use_the_default_blog_name(
+    client, mock_site_context
+):
+    # Arrange
+    article = ArticleFactory()
+
+    # Act
+    index = client.get(reverse("blog:index")).content.decode()
+    detail = _get_article_page(client, article)
+
+    # Assert
+    assert re.search(r"<h1>\s*Articles\s*</h1>", index)
     assert re.search(
-        r'<div class="[^"]*space-y-8[^"]*">\s*<hgroup class="[^"]*space-y-2[^"]*">'
-        r"\s*<h1>Spaced Title</h1>",
-        body,
+        rf'<a href="{reverse("blog:index")}"[^>]*>.*?Articles\s*</a>', detail, re.DOTALL
+    )
+
+
+@pytest.mark.django_db
+@override_settings(BLOG_NAME="Posts")
+def test_index_heading_title_and_back_link_use_the_configured_blog_name(
+    client, mock_site_context
+):
+    # Arrange
+    article = ArticleFactory()
+
+    # Act
+    index = client.get(reverse("blog:index")).content.decode()
+    detail = _get_article_page(client, article)
+
+    # Assert
+    assert re.search(r"<h1>\s*Posts\s*</h1>", index)
+    assert _title(index).startswith("Posts")
+    assert re.search(
+        rf'<a href="{reverse("blog:index")}"[^>]*>.*?Posts\s*</a>', detail, re.DOTALL
     )

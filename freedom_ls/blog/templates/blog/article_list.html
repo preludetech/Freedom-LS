@@ -1,21 +1,30 @@
 {% extends "_base.html" %}
 
 {% block head_title %}
-    Articles — {{ site_name }}
+    {{ blog_name }} — {{ site_name }}
 {% endblock head_title %}
 
 {% block content %}
-    <c-page width="narrow">
-        <h1 class="pb-8">Articles</h1>
+    <c-page>
+        <div class="mx-auto max-w-5xl">
+            <div class="-mx-4 px-4 border-b border-border pb-8 sm:pb-12">
+                <h1>{{ blog_name }}</h1>
+            </div>
 
-        {% for article in articles %}
-            <article class="pb-8">
-                <h2><a href="{{ article.get_absolute_url }}">{{ article.title }}</a></h2>
-                <c-article-byline :article="article" />
-                {% if article.description %}<p>{{ article.description }}</p>{% endif %}
-            </article>
-        {% empty %}
-            <p>No articles yet. Write them as Markdown in your content repo, then load them with <code>content_save</code>.</p>
-        {% endfor %}
+            {% for article in articles %}
+                <article class="relative -mx-4 px-4 py-7 md:py-10 border-b border-border hover:bg-surface-2 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary flex flex-col gap-2.5 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] md:gap-14">
+                    <h2>
+                        <a href="{{ article.get_absolute_url }}"
+                           class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">{{ article.title }}</a>
+                    </h2>
+                    <div class="flex flex-col gap-2.5 md:gap-3 md:pt-1">
+                        {% if article.description %}<p class="text-muted">{{ article.description }}</p>{% endif %}
+                        <c-article-byline :article="article" />
+                    </div>
+                </article>
+            {% empty %}
+                <p class="pt-8">No articles yet. Write them as Markdown in your content repo, then load them with <code>content_save</code>.</p>
+            {% endfor %}
+        </div>
     </c-page>
 {% endblock content %}

@@ -1,8 +1,19 @@
-<c-vars article />
+<c-vars article variant="inline" class="" />
+{% comment %}
+variant="inline" is one muted line for lists and cards; variant="header" is the
+ruled row under an article page's title, author left and date right.
+{% endcomment %}
 {% if article.shows_date or article.shows_author %}
-<p class="text-sm text-muted">
-    {% if article.shows_date %}<time datetime="{{ article.published_on|date:'Y-m-d' }}">{{ article.published_on|date }}</time>{% endif %}
-    {% if article.shows_date and article.shows_author %}<span aria-hidden="true"> · </span>{% endif %}
+{% if variant == "header" %}
+<div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-y border-border py-4 sm:py-5 text-sm {{ class }}">
+    {% if article.shows_author %}<span class="font-semibold">{{ article.author }}</span>{% endif %}
+    {% if article.shows_date %}<span class="text-muted"><time datetime="{{ article.published_on|date:'Y-m-d' }}">{{ article.published_on|date }}</time></span>{% endif %}
+</div>
+{% else %}
+<p class="text-sm text-muted {{ class }}">
     {% if article.shows_author %}<span>{{ article.author }}</span>{% endif %}
+    {% if article.shows_date and article.shows_author %}<span aria-hidden="true"> · </span>{% endif %}
+    {% if article.shows_date %}<time datetime="{{ article.published_on|date:'Y-m-d' }}">{{ article.published_on|date }}</time>{% endif %}
 </p>
+{% endif %}
 {% endif %}
