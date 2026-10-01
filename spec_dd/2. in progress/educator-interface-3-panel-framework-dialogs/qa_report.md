@@ -1,250 +1,191 @@
-# Frontend QA report: panel framework dialogs, the modal and the quick view
+# Frontend QA report: educator-interface-3-panel-framework-dialogs
 
 ## 1. Methodology
 
-Testing was driven manually through the Playwright MCP (Chromium), at three viewports: desktop
-1920x1080, mobile 375x812, and tablet 768x1024. The admin `demodev@email.com` was used for the
-main run; `qa_educator@example.com` was logged in in a second browser context for the adversarial
-permission tests (test plan 2.6 and 3.15). Seed data came from
-`qa_create_educator_modal_target DemoDev` and `qa_create_educator_progress_targets DemoDev`. The
-organisation slug is `demodev`, so URLs are of the form
-`/educator/organisations/demodev/...`.
+Manual testing through Playwright MCP (Chromium) at three viewports: desktop 1920x1080, mobile
+375x812, and tablet 768x1024, with breakpoint flips to 1024px and 1400px added inside test 4.6 to
+watch the sheet/drawer transition. Signed in as the admin `demodev@email.com` for the main pass, and
+as the educator `qa_educator@example.com` in a separate browser context for the adversarial checks
+in tests 2.6, 3.15 and the mobile switcher.
+
+Seed data: a fresh dev database after the pre-step rebase (below), seeded with
+`create_demo_data --yes`, `content_save ./demo_content DemoDev`,
+`qa_create_educator_modal_target DemoDev`, `qa_create_educator_progress_targets DemoDev`, and
+`qa_create_organisations DemoDev`. The last command was added mid-run so the organisation switcher
+had more than one organisation to show for test 6.3. Organisation slug is `demodev`; all URLs below
+are under `/educator/organisations/demodev/...`.
 
 Screenshots were collected into `screenshots/` beside this report; every image referenced below
-exists in that directory. Network behaviour was checked with a Playwright response recorder
-standing in for the devtools Network tab, and blocked requests used `page.route` in place of
-devtools' "Block request URL".
+exists in that folder.
 
-Environment note: the dev Postgres and Mailpit docker containers had exited before the run and
-were restarted before testing began.
+A browser-context crash partway through section 1 forced a re-login and briefly reset the viewport
+to 1280x720 — visible in the test 1.5 screenshot — after which the viewport was set back to
+1920x1080 for the rest of the run.
+
+Pre-step rebase: the branch was rebased onto `origin/main` (one docs-only upstream commit), replaying
+29 commits with no conflicts; the lost-change check passed. One stale Playwright test,
+`test_instance_title_htmx.py`, still dispatched the removed `panelChanged` event; it was updated to
+dispatch `instanceTitleChanged` instead and committed as `bb78c816`. The full test suite then ran
+5590 passed and 1 setup error, in `freedom_ls/icons/tests/test_course_semantic_name.py`, which passes
+when run alone — treated as flaky and not pursued further. The rebase-time front-end check was folded
+into this full QA run rather than run separately, since main's change was docs-only and this run
+visits a superset of its pages at all three viewports.
 
 ## 2. Diff scoping
 
-Class: **FULL**.
-
-The change touches the shared panel framework's modal and quick-view machinery end to end:
-Alpine components for both the app-wide `base` app (`alpine-components.js`) and the
-`panel_framework` app (`panel_framework/static/panel_framework/js/alpine-components.js`), the
-modal, quick-view and panel Cotton templates (`modal.html`, `modal-trigger.html`,
-`quick-view-trigger.html`, `partials/modal_host.html`, `partials/modal_trigger.html`,
-`partials/quick_view_host.html`, `partials/modal_form.html`, `partials/delete_confirmation.html`,
-`panels/_panel_base.html`, `views/_main_base.html`, `quick_view/frame.html`, and the
-`modal/delete_confirmation.html`, `modal/form.html`, `modal/read_only.html` templates), the
-educator-interface's cohort and learner quick-view fragments and data-table cell/link templates,
-and the `interface.html` shell. 99 files changed in total. Given the breadth (shared JS behaviour
-plus every template that renders a modal, drawer or sheet), this run covers the full test plan
-rather than a diff-scoped subset.
-
-Nothing skipped: desktop, mobile and tablet all ran.
+Scoping class: **FULL**. 109 files changed in total; 28 of them are front-end paths (templates and
+the two Alpine components under `base` and `panel_framework`, covering the modal, modal trigger,
+dropdown menu, quick-view trigger/frame/host, panel bases, and the data-table/cohort-link cells used
+by the quick view) and those 28 are what triggered FULL scope. Nothing was skipped.
 
 ## 3. Smoke gate
 
-**Pass.** Pages checked: `/`, `/educator/organisations/demodev/cohorts`,
+Smoke gate: **pass**. Pages checked: `/`, `/educator/organisations/demodev/cohorts`,
 `/educator/organisations/demodev/learners`.
 
 ## 4. Results table
 
 | Test | Viewport | Status | Note |
 |---|---|---|---|
-| 1.1 | desktop | pass | Modal opens correctly: disabled button while loading, centred 512px dialog, aria-labelledby heading, caret in Name, all buttons present, backdrop dimmed, html scroll locked |
-| 1.2 | desktop | fail | See B1 — duplicate-name error is form-level, not attached to Name |
-| 1.3 | desktop | pass | Save and add another leaves a blank, focused form; list region updates with one GET, no reload |
-| 1.4 | desktop | pass | Save navigates into `#main-content` with correct HX-Trigger/HX-Location headers, no reload |
-| 1.5 | desktop | pass | Back returns to cohorts list with no dialog open |
-| 1.6 | desktop | pass | Tab to Cancel, Esc closes and refocuses Create Cohort; Space reopens |
-| 1.7 | desktop | pass | Discard-changes prompt behaves as specified: Keep editing/Discard both correct |
-| 1.8 | desktop | pass | Type-then-delete then Esc closes with no prompt (matches original state) |
-| 1.9 | desktop | pass | Backdrop click on a dirty form does nothing |
-| 1.10 | desktop | pass | Second Esc did not lose the text — see general notes, plan correction |
-| 1.11 | desktop | pass | Double-click Save produces exactly one POST and one cohort |
-| 2.1 | desktop | pass | Edit dialog opens prefilled and focused, heading names the cohort |
-| 2.2 | desktop | fail | See B2 — breadcrumb keeps old name after rename |
-| 2.3 | desktop | pass | Delete dialog behaves as specified; no cascade sentence for an empty cohort (conditional) |
-| 2.4 | desktop | pass | Confirmed delete navigates to the list, cohort gone |
-| 2.5 | desktop | pass | Blocked-delete dialog explains the course-progress record, no Delete button |
-| 2.6 | desktop | fail | See B3 — bare empty-bodied 403 on the forbidden action URL |
-| 2.7 | desktop | pass | Direct GET of the create-cohort action fragment returns a bare, chrome-free fragment |
-| 3.1 | desktop | pass | Drawer opens as specified; Space-vs-Enter is a plan wording issue, see general notes |
-| 3.2 | desktop | pass | Second learner replaces content/title; aria-expanded toggles correctly |
-| 3.3 | desktop | pass | Same-learner toggle closes/reopens from cache with zero new requests |
-| 3.4 | desktop | pass | Esc closes, focus returns to the trigger link |
-| 3.5 | desktop | pass | Ctrl-click and middle-click open a new tab without opening the drawer |
-| 3.6 | desktop | pass | Open closes the drawer and navigates to the learner page |
-| 3.7 | desktop | pass | Cohort link inside the learner drawer navigates to the cohort page |
-| 3.8 | desktop | pass | Cohort drawer shows name/status/learner count/courses; Open navigates |
-| 3.9 | desktop | pass | Cohort links inside the learner page's Cohorts panel open the cohort drawer |
-| 3.10 | desktop | pass | Sort refetches the table once, drawer stays open, aria-expanded correct after swap |
-| 3.11 | desktop | pass | Blocked request and a forced 500 both show the error state with Retry; Retry recovers |
-| 3.12 | desktop | pass | Staleness via `cohortChanged` behaves exactly as specified for shown/made-up/stale pks |
-| 3.13 | desktop | fail | See B4 — drawer overlays the Create Cohort button |
-| 3.14 | desktop | pass | Direct visit to a learner `__quick-view` URL redirects to the full learner page |
-| 3.15 | desktop | pass | Out-of-scope learner and a non-uuid `__quick-view` both 404 for `qa_educator` |
-| 3.16 | desktop | pass | Print media hides the drawer |
-| 3.17 | desktop | pass | Reduced motion makes open/close instant; normal motion keeps the 0.2s slide |
-| 3.18 | desktop | pass | RTL pins the drawer to the left edge |
-| 6.1 | desktop | pass | Sidebar is inert while the modal is open (native `showModal`), so no navigation race is possible; see general notes on the plan's wording |
-| 6.2 | desktop | pass | Sidebar navigation closes the drawer; Back leaves no drawer open |
-| 6.3 | desktop | pass | Switching organisation with a drawer open closes it and switches correctly |
-| 6.4 | desktop | fail | See B5 — one Esc closes both the org-switcher dropdown and the drawer |
-| 4.1 | mobile | pass | Sheet slides up modal, pinned bottom, dimmed, html scroll locked, pushes one history entry |
-| 4.2 | mobile | pass | Back closes the sheet, stays on the learners URL |
-| 4.3 | mobile | pass | Close unwinds the history entry; one Back then leaves the page |
-| 4.4 | mobile | pass | Backdrop tap does nothing; Esc closes |
-| 4.5 | mobile | pass | Open loads the learner page; Back returns with no sheet |
-| 4.6 | mobile | fail | See B6 — resizing across the breakpoint leaves dead history entries |
-| 4.7 | mobile | pass | Sheet and nav panel do not fight (sheet is modal, making the nav trigger inert); see general notes on nav-panel Esc behaviour |
-| 4.8 | mobile | skip | Needs iOS Safari, unavailable to Playwright Chromium |
-| 4.x-modal | mobile | pass | Create modal fits at 375px, button row wraps, 422 state readable; close X is 24x26px (below the 44px guideline); post-422 Cancel skips the discard prompt, see general notes |
-| 4.x-table | mobile | pass | Learners table scrolls inside an overflow-x wrapper with no page overflow; name links are 19px tall (pre-existing) |
-| T-nav | tablet | pass | 768px gets the mobile hamburger nav; opens as a modal dialog, Esc closes, no page overflow |
-| T-3.1 | tablet | fail | See B4 — drawer covers 62% of the viewport at 768px |
-| T-modal | tablet | pass | Create modal is centred at 512px wide at 768px |
-| T-detail | tablet | pass | Cohort detail panels fit at 768px with no horizontal overflow |
-| 5.1-5.3 | desktop | skip | No VoiceOver/NVDA available; ARIA proxies (aria-labelledby, role=alert focus) checked instead |
+| 1.1 | desktop | pass | Delayed fetch kept the dialog closed/button disabled; modal then opened centred 512x210, heading, caret in Name, dimmed non-scrolling backdrop. |
+| 1.2 | desktop | pass | Duplicate name -> one POST 422, dialog stays open, focused error summary, Name `aria-invalid` with the duplicate message. |
+| 1.3 | desktop | pass | Save and add another -> POST 200, one GET of the cohorts region, blank form, focus in Name, new cohort listed. |
+| 1.4 | desktop | pass | Save -> POST 204 with `cohortChanged`/`closeModal`/`HX-Location`, no `HX-Redirect`; dialog closes, heading/breadcrumb update, no full reload. |
+| 1.5 | desktop | pass | Back -> cohorts list, no dialog open. Screenshot at 1280x720 from the context-crash reset (see Methodology). |
+| 1.6 | desktop | pass | Tab to Cancel, Esc closes and returns focus to Create Cohort; Space reopens with focus in Name. |
+| 1.7 | desktop | pass | One char + Esc -> discard prompt, Keep editing retains text and focus; Esc + Discard closes with nothing created. |
+| 1.8 | desktop | pass | Type then delete the char, Esc -> closes with no prompt (form matches original state). |
+| 1.9 | desktop | pass | Backdrop click with text typed -> dialog stays open, text kept. |
+| 1.10 | desktop | pass | Double Esc closed the dialog and lost the text; Playwright's trusted key presses don't trigger Chrome's CloseWatcher limit (not reproducible under automation, not a bug either way). |
+| 1.11 | desktop | pass | Double-click Save -> exactly one POST, one cohort created. |
+| 2.1 | desktop | pass | Edit opens "Edit QA Alpha" with Name prefilled and focused. |
+| 2.2 | desktop | pass | Rename -> POST 204, heading/breadcrumb update without reload; three panel GETs fire (learners, courses, details), which is spec-correct, not one (see General notes). |
+| 2.3 | desktop | pass | Delete dialog headed with the cohort name, focus on Cancel; backdrop click keeps it open, Esc closes it. No cascade sentence for QA Alpha 2 (nothing to cascade); confirmed present on a cohort that does have a membership. |
+| 2.4 | desktop | pass | Confirm delete -> DELETE 204, navigates to cohorts list, cohort no longer listed, one GET, no 404s. |
+| 2.5 | desktop | pass | Blocked-delete message for a cohort with a progress record, Cancel only; backdrop click closes it (no form). |
+| 2.6 | desktop | pass | Educator sees Delete but not Edit, no edit form/cascade text in the HTML; pasted edit URL -> site 403 page. |
+| 2.7 | desktop | pass | Direct GET of the create-cohort fragment -> 200 bare fragment, no chrome; only console noise is a favicon 404. |
+| 3.1 | desktop | pass | Drawer docks right, non-modal, 480px inline-end padding, page not dimmed/still clickable; skeleton then full content; focus stays on the trigger link. Test-plan's "press Space" doesn't apply to this `<a>` trigger (see General notes). |
+| 3.2 | desktop | pass | Second learner replaces content/title; old link `aria-expanded=false`, new one `true`. |
+| 3.3 | desktop | pass | Same link closes then reopens the drawer with cached content, zero new requests. |
+| 3.4 | desktop | pass | Esc closes the drawer, focus returns to the trigger. |
+| 3.5 | desktop | pass | Ctrl-click and middle-click open a new tab; drawer stays closed. |
+| 3.6 | desktop | pass | Open closes the drawer and navigates to the learner page. |
+| 3.7 | desktop | pass | Cohort link inside the learner drawer navigates to the cohort page. |
+| 3.8 | desktop | pass | Cohort drawer shows name/status/learner count/courses; Open navigates to the cohort page. |
+| 3.9 | desktop | pass | Cohort link inside a learner page's Cohorts panel opens the cohort drawer. |
+| 3.10 | desktop | pass | Sorting with the drawer open triggers one GET, drawer stays open, shown learner's link still `aria-expanded=true`. |
+| 3.11 | desktop | pass | Blocked request and a 500 both show an error with Retry inside the open drawer; Retry reloads after unblocking. Drawer title is empty in this error state (see General notes). |
+| 3.12 | desktop | pass | `cohortChanged` with the shown pk refetches once; made-up id does nothing; stale-marking causes a fresh request on reopen; unrelated close/reopen is cached. |
+| 3.13 | desktop | pass | Drawer sits below the header with the table/Create Cohort to its left; modal opens above the drawer; Esc closes the modal only. |
+| 3.14 | desktop | pass | Direct visit to a learner `__quick-view` URL redirects to the learner page, never a bare fragment. |
+| 3.15 | desktop | pass | Educator visiting another cohort's learner `__quick-view` URL, or a non-UUID path, gets 404 both ways. |
+| 3.16 | desktop | pass | Print emulation hides the open drawer; `#interface-main` padding is retained only because the emulated print viewport stays 1920px wide (see General notes). |
+| 3.17 | desktop | pass | `prefers-reduced-motion: reduce` collapses transitions to near-instant open/close. |
+| 3.18 | desktop | pass | `dir=rtl` pins the drawer to the left edge; reset to ltr afterwards. |
+| 5.1 | desktop | skip | No screen reader available; proxy checks (accessible dialog role/name, DOM order, initial focus) pass — see General notes. |
+| 5.2 | desktop | skip | No screen reader available; proxy check (focused `role=alert` error summary) passes. |
+| 5.3 | desktop | skip | No screen reader available; proxy checks (polite live region text, dialog name) pass. |
+| 6.1 | desktop | pass | Clicking the sidebar while the modal is open isn't possible (page is inert); tested the intent via Back/Forward instead, which behaved correctly (see General notes). |
+| 6.2 | desktop | pass | Sidebar nav closes the open learner drawer; Back returns to the learners page with no drawer. |
+| 6.3 | desktop | pass | Org switcher opened beside the docked drawer; switching organisation closed the drawer and reset `#interface-main` padding to 0. |
+| 6.4 | desktop | pass | Switcher opens/closes via Esc (focus returns) and outside click; switching back to DemoDev works. |
+| 4.1 | mobile | pass | Tap opens a bottom sheet (modal, dimmed, non-scrolling backdrop) with the same content as desktop. |
+| 4.2 | mobile | pass | Back closes the sheet, stays on the learners page. |
+| 4.3 | mobile | pass | Close then one Back leaves the learners page — the sheet's history entry was unwound. |
+| 4.4 | mobile | pass | Backdrop tap does nothing; Esc closes the sheet. |
+| 4.5 | mobile | pass | Open -> learner page; Back -> learners list with no sheet; further Back -> cohorts, no dead entry. |
+| 4.6 | mobile | pass | Breakpoint flips 375 (sheet, modal) -> 1024 (right-hand drawer, still modal) -> 1400 (docked, non-modal) -> 375 (sheet again), zero new requests across flips; Close + one Back leaves the page. |
+| 4.7 | mobile | pass | Sheet and mobile nav don't fight: whichever is topmost closes on Esc without disturbing the other. |
+| 4.8 | mobile | skip | Needs iOS Safari (device or simulator), not available in this environment. |
+| M-modals | mobile | pass | Create modal at 375px is 337px wide, buttons wrap, no overflow; delete modal fits without overflow. Close button is 24x26px (see General notes). |
+| 6.4 | mobile | pass | Hamburger opens the nav panel; switcher inside opens; first Esc closes only the switcher, second closes the nav and returns focus to the hamburger. |
+| T-nav | tablet | pass | 768px gets the mobile hamburger nav, no horizontal page scroll; learners table scrolls inside its own card. |
+| T-3.1 | tablet | pass | Learner quick view is the modal right-hand drawer over a dimmed page; backdrop click doesn't close it; Back does. Same scrollbar-gutter strip as mobile (see General notes). |
+| T-3.8 | tablet | pass | Cohort quick view opens with name/status/learner count/courses; Esc closes. |
+| T-1.1 | tablet | pass | Create Cohort modal centred at 512px, buttons on one row. |
+| X-empty-link | desktop | fail | Blank-last-name learners render an empty, unnamed, focusable quick-view trigger. See bug B1. |
+| X-dup-copy | desktop | fail | Duplicate-name error exposes internal Site/Organisation field names. See bug B2. |
 
 ## 5. Bugs
 
-### B1: Duplicate cohort name error is a form-level error, not attached to the Name field
+### B1: Blank data-table link cells render an empty, unnamed, focusable quick-view link
 
-Manifestations: 1.2 (desktop), 4.x-modal (mobile).
+**Manifestations:** X-empty-link at desktop, mobile and tablet viewports.
 
-![1.2 desktop](screenshots/page-2026-09-28T14-37-04-707Z.png)
-![4.x-modal mobile](screenshots/page-2026-09-28T14-56-10-000Z.png)
+**Screenshot:**
 
-**Expected:** The Name field shows the "already exists" error (test plan 1.2), marked
-`aria-invalid` and linked to the field.
+![](screenshots/page-3-1-drawer.png)
 
-**Actual:** The unique-together error renders as an `errorlist nonfield` box below the input; the
-input itself has no `aria-invalid`/`aria-describedby`; the error summary says "1 field to fix" for
-an error that is not attached to any field.
+**Expected:** A link column whose text is blank renders no link at all — the same `-` placeholder
+other empty cells use — so there is no focusable control without an accessible name.
 
-### B2: Breadcrumb keeps the old name after an Edit renames the instance
+**Actual:** Every demo learner has a blank last name, and the Last Name cell renders an empty
+`<a aria-controls="quick-view" aria-expanded="...">` containing only whitespace. It is focusable
+(has an `href`), has no accessible name, and is visually invisible, so keyboard and screen-reader
+users land on an unnamed control that opens the quick view. This happens at every viewport. The
+underlying data-table link cell already rendered an empty `<a>` for blank text before this branch,
+but this branch is what turns that empty link into a quick-view trigger.
 
-Manifestations: 2.2 (desktop).
+### B2: Duplicate cohort name error exposes internal Site and Organisation fields
 
-**Expected:** After renaming "QA Alpha" to "QA Alpha 2" in the Edit modal, every on-page mention of
-the instance's name updates without a reload.
+**Manifestations:** X-dup-copy at desktop and mobile viewports.
 
-**Actual:** The `h1` (`#instance-title`) updates via the `instanceTitleChanged` event, but the
-breadcrumb still reads "Cohorts / QA Alpha" until a full reload.
+**Screenshot:**
 
-### B3: Forbidden action URL returns a bare, empty-bodied 403
+![](screenshots/page-m-create-error.png)
 
-Manifestations: 2.6 (desktop).
+**Expected:** An error worded in the educator's own terms, e.g. "A cohort with this name already
+exists."
 
-**Expected:** Pasting an action URL the educator lacks permission for shows a 403 page.
-
-**Actual:** `panel_framework/views.py` `_handle_action` returns `HttpResponse(status=403)` with no
-body, so the browser shows its own "HTTP ERROR 403" page rather than the site's 403 page; no form
-is exposed. Separately, the test plan's own URL for this step
-(`/__panels/details/__actions/edit`) 404s — the real path needs a `/__tabs/details` segment first
-(`/__tabs/details/__panels/details/__actions/edit`).
-
-### B4: Desktop quick-view drawer overlays and hides page actions and table columns
-
-Manifestations: 3.13 (desktop), T-3.1 (tablet).
-
-![3.13 desktop](screenshots/page-2026-09-28T14-43-51-843Z.png)
-![T-3.1 tablet](screenshots/page-2026-09-28T14-58-00-000Z.png)
-
-**Expected:** With a drawer open the page behind stays usable: "Create Cohort" can be clicked
-(test plan 3.13) and the table stays clickable (test plan 3.1).
-
-**Actual:** The 480px non-modal drawer overlays the right of the page. At 1920x1080 it covers the
-right-aligned Create Cohort button (unreachable by mouse — a Playwright click on it times out
-because the drawer intercepts pointer events) and the right part of the table. At 768px it covers
-62% of the viewport, leaving only the first-name column reachable.
-
-### B5: One Esc closes both an open dropdown menu and the desktop drawer
-
-Manifestations: 6.4 (desktop).
-
-**Expected:** Esc dismisses only the topmost layer: with the organisation-switcher dropdown open
-over a drawer, the first Esc closes the dropdown and the drawer stays open.
-
-**Actual:** A single Esc closes the dropdown and the drawer together. The drawer's document
-`keydown` handler (`panel_framework` `alpine-components.js`, around line 324) only steps aside for
-an open `:modal` dialog, not for an open dropdown-menu, whose own `onEscape` listens on `window`
-and fires after the document-level handler.
-
-### B6: Crossing the md breakpoint with the quick view open leaves dead history entries
-
-Manifestations: 4.6 (mobile).
-
-**Expected:** The mobile sheet owns at most one history entry; after closing it, one Back leaves
-the page.
-
-**Actual:** Opening the sheet at 375px, widening to 1024px (becomes the non-modal drawer),
-narrowing back to 375px (becomes the sheet again), then pressing Close: it takes three Backs to
-leave `/learners` (two dead same-URL entries). Without the resize, closing only takes one Back.
-The narrow re-open pushes a new history entry while the earlier one is never unwound.
+**Actual:** The create-cohort form shows "Cohort with this Site, Organisation and Name already
+exists." — Django's default `UniqueConstraint` message — which names internal Site and Organisation
+fields the educator never chose or sees elsewhere in this form.
 
 ## Bug status
 
-- B1 — **FIXED** (commit: b29c7f4a) — Duplicate cohort name error is a form-level error, not attached to the Name field. Decision: a UniqueConstraint error goes on the one constraint field the form renders (ConstraintValidationFormMixin), and the error summary counts only field errors. The admin forms for webhook secrets and files now show their duplicate errors on Name and File path too
-- B2 — **FIXED** (commit: 8f7bb820) — Breadcrumb keeps the old name after an Edit renames the instance. Re-verified: renaming "QA Beta 2" to "QA Beta 3" updates the h1 and the breadcrumb without a reload
-- B3 — **FIXED** (commit: d495ac3d) — Forbidden action URL returns a bare, empty-bodied 403. Decision: `_handle_action` raises `PermissionDenied`, so the site's 403.html renders. htmx callers see no change, because htmx does not swap a 4xx response. Test plan step 2.6's URL is corrected
-- B4 — **FIXED** (commit: 1daf33e5) — Desktop quick-view drawer overlays and hides page actions and table columns. Decision: the drawer docks non-modally only from 1280px, below the site header, and `#interface-main` gives up 30rem while it is open. From 768px to 1279px it is a modal side drawer, and below 768px it stays the bottom sheet. The spec and test plan (3.x viewport, 3.13, 4.6) are updated to match
-- B5 — **FIXED** (commit: 0e952b88) — One Esc closes both an open dropdown menu and the desktop drawer. Re-verified: the first Esc closes only the switcher, the second closes the drawer; the header user menu and the switcher on their own still close on Esc
-- B6 — **FIXED** (commit: 2cc9e934) — Crossing the md breakpoint with the quick view open leaves dead history entries. Re-verified: after a double breakpoint flip and Close, one Back leaves the page; Back-to-close still works after a flip
+- B1 — **FIXED** (commit: 04083f83) — Blank data-table link cells render an empty, unnamed, focusable quick-view link. `link.html` now renders the shared "-" placeholder with no link when the cell text is blank. Re-verified: the Last Name column shows "-", the learners list, cohorts list and learner page have no empty links, and the First Name quick view still opens.
 
-## General notes
+  ![](screenshots/page-b1-reverify.png)
+- B2 — **UNRESOLVED** — Duplicate cohort name error exposes internal Site and Organisation fields (reason: the error wording is a copy decision for a human, and the same Django default message reaches every UniqueConstraint form that uses ConstraintValidationFormMixin)
 
-**Test plan corrections:**
+## 6. General notes
 
-- Test plan 2.6's delete action URL is missing a path segment: it needs `/__tabs/details` before
-  `/__panels/details/__actions/edit`, or it 404s.
-- Test plan 3.1 and 1.6 say to "press Space" to activate a link, but native `<a>` elements only
-  activate on Enter, not Space; Enter was confirmed to toggle correctly in both cases.
-- Test plan 3.13 refers to "the learner drawer on the cohorts page", but the cohorts page only has
-  cohort links, so a cohort drawer was used to reproduce the step instead.
-- Test plan 1.10's documented CloseWatcher double-Esc text loss did not reproduce under
-  Playwright: the second Esc kept the discard prompt open and the typed text intact, which is the
-  safer behaviour, not a bug.
-- Test plan 6.1 cannot be carried out as written: with the create modal open (native
-  `showModal`), the sidebar is inert, so there is no way to click a sidebar link while the dialog
-  is open in the first place.
-- Test plan 1.4 asked to type "QA Beta", but "QA Beta" already existed from an earlier run (would
-  have hit the duplicate-name error), so "QA Beta 2" was used instead.
+- Test-plan wording that does not match the spec:
+  - 2.2 expects "one GET of the panel region", but spec requirement 8 says every panel on the
+    cohort detail page refreshes on `cohortChanged`; three GETs (learners, courses, details) fired,
+    and that is spec-correct, not a bug.
+  - 3.1 says "press Space to confirm it toggles", but the trigger is an `<a>` per spec requirement
+    22, and links activate on Enter, not Space; Enter toggles the drawer correctly.
+  - 6.1 asks to click the sidebar while the modal is open, which is impossible: the page behind an
+    open modal is inert, so the click never reaches the sidebar. The intent was tested instead via
+    browser Back/Forward, which behaved correctly.
+  - 1.10's CloseWatcher double-Esc limit could not be reproduced under automation: Playwright's key
+    presses carry trusted user activation, so Chrome's anti-abuse limit on the second Esc never
+    engaged. No data loss was observed either way; the plan already calls this "not a bug".
+  - 2.3's "will also delete" cascade sentence only renders when something will actually cascade;
+    it was absent for a cohort with nothing to delete and present on one that had a membership.
+- Not run: section 5 was not run with a real screen reader (VoiceOver/NVDA unavailable in this
+  environment); proxy DOM/ARIA checks were recorded instead for 5.1–5.3. Test 4.8 (iOS Safari) was
+  not run; no real device or simulator was available.
+- In browsers with classic (non-overlay) scrollbars, the quick-view drawer/sheet's
+  `scrollbar-gutter: stable` leaves a 15px undimmed strip beside the modal drawer/sheet, visible in
+  headless Chromium on desktop and tablet; phones with overlay scrollbars don't show it.
+- The drawer's title is empty while it is showing the error/Retry state (test 3.11).
+- The modal's Close button measures 24x26px — this meets WCAG 2.5.8 AA's 24x24px minimum but is
+  below the 44px touch-target guideline.
+- On the learners table, the Registered Courses column shows "-" for a learner whose own drawer
+  lists a cohort-based course registration; the column appears to count only direct registrations.
+  This predates the branch and was not filed as a bug for this run.
+- The cohort and learner detail page `<title>` reads "DemoDev — DemoDev", with no instance name in
+  it.
+- Under print emulation, the drawer's 30rem equivalent padding on `#interface-main` is retained only
+  because the emulated print viewport stays 1920px wide; on real paper (~794px) the 1280px media
+  query that applies it would not match, so no gutter is expected on an actual print.
+- Order-dependent test flakes: two full-suite runs this session each had one setup error in an
+  unrelated test that passes on its own (`icons/tests/test_course_semantic_name.py` after the
+  rebase, `content_base/tests/test_admin_filters.py::TestTagFilter::test_filtering_by_a_tag_narrows_the_changelist`
+  during the B1 fix run).
 
-**Not tested:**
-
-- Test plan 4.8 needs iOS Safari (real device or simulator), which was not available to Playwright
-  Chromium.
-- Test plan section 5 (screen reader checks) was not run — no VoiceOver or NVDA was available in
-  this environment. The ARIA proxies that could be checked without a screen reader all passed,
-  including the `aria-live` "Showing demodev_s1" region.
-
-**Pre-existing observations (not caused by this branch):**
-
-- The cohort detail and learner pages' document title reads "DemoDev — DemoDev" (no instance
-  name), even on a full page load.
-- The learner page `h1` reads "<email> - DemoDev", while the drawer titles the same learner by
-  display name.
-- An empty last name renders an empty, nameless `<a>` in the Learners table's Last Name column —
-  the previous link template did the same.
-- On mobile and tablet, one Esc with the organisation switcher open inside the mobile nav panel
-  closes the whole nav panel (native modal `cancel` behaviour); the side-panel code is unchanged
-  on this branch.
-
-**Touch targets on mobile:**
-
-- The modal close X is 24x26px.
-- The drawer's "Open" link is small.
-- Table name links are 19px tall.
-
-All are below the 44px touch-target guideline.
-
-**Other observations:**
-
-- After a 422 validation error, Cancel or Esc closes the create modal with no discard prompt,
-  because the re-rendered (error) form becomes the new clean baseline for dirty-state comparison.
-  Worth a product look, since the entered text is silently lost.
-- Saving from the create modal fires an extra list-region GET (triggered by `cohortChanged`) just
-  before the `HX-Location` navigation fires. This is harmless but redundant.
-- Editing a cohort refetches the Learners and Courses panels as well as the Details panel, because
-  all three panels listen for `cohortChanged`.
-
----
 status: ok
-reason: 6 bugs — 3 fixed, 3 unresolved; report rendered, screenshots verified
+reason: 2 bugs — 1 fixed, 1 unresolved; report rendered, screenshots verified
