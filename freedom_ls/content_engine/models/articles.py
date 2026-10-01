@@ -8,6 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.content_base.models import MarkdownContent, TitledContent
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
+from freedom_ls.content_engine.config import config
 from freedom_ls.site_aware_models.models import SiteAwareManager
 
 
@@ -58,3 +59,15 @@ class Article(TitledContent, MarkdownContent):
 
     def get_absolute_url(self) -> str:
         return reverse("blog:article_detail", kwargs={"slug": self.slug})
+
+    @property
+    def shows_date(self) -> bool:
+        return config.ARTICLE_SHOW_DATE if self.show_date is None else self.show_date
+
+    @property
+    def shows_author(self) -> bool:
+        if not self.author:
+            return False
+        return (
+            config.ARTICLE_SHOW_AUTHOR if self.show_author is None else self.show_author
+        )

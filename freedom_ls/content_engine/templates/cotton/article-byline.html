@@ -1,0 +1,8 @@
+<c-vars article />
+{% if article.shows_date or article.shows_author %}
+<p class="text-sm text-muted">
+    {% if article.shows_date %}<time datetime="{{ article.published_on|date:'Y-m-d' }}">{{ article.published_on|date }}</time>{% endif %}
+    {% if article.shows_date and article.shows_author %}<span aria-hidden="true"> · </span>{% endif %}
+    {% if article.shows_author %}<span>{{ article.author }}</span>{% endif %}
+</p>
+{% endif %}

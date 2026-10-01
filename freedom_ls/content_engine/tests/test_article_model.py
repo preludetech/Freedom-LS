@@ -2,6 +2,8 @@ from datetime import date
 
 import pytest
 
+from django.test import override_settings
+
 from freedom_ls.content_engine.factories import ArticleFactory
 from freedom_ls.content_engine.models import Article, ArticleVisibility
 from freedom_ls.tests.app_guards import app_not_installed
@@ -49,3 +51,63 @@ def test_get_absolute_url_reverses_the_article_detail_route(mock_site_context):
 
     # Assert
     assert url == reverse("blog:article_detail", kwargs={"slug": "hello-world"})
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("override", "setting", "expected"),
+    [
+        (True, False, True),
+        (False, True, False),
+        (None, True, True),
+        (None, False, False),
+    ],
+)
+def test_shows_date_prefers_override_then_site_default(
+    mock_site_context, override, setting, expected
+):
+    # Arrange
+    article = ArticleFactory(show_date=override)
+
+    # Act
+    with override_settings(ARTICLE_SHOW_DATE=setting):
+        result = article.shows_date
+
+    # Assert
+    assert result is expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("override", "setting", "expected"),
+    [
+        (True, False, True),
+        (False, True, False),
+        (None, True, True),
+        (None, False, False),
+    ],
+)
+def test_shows_author_prefers_override_then_site_default(
+    mock_site_context, override, setting, expected
+):
+    # Arrange
+    article = ArticleFactory(author="Ada Lovelace", show_author=override)
+
+    # Act
+    with override_settings(ARTICLE_SHOW_AUTHOR=setting):
+        result = article.shows_author
+
+    # Assert
+    assert result is expected
+
+
+@pytest.mark.django_db
+def test_shows_author_is_false_when_author_is_empty(mock_site_context):
+    # Arrange
+    article = ArticleFactory(author="", show_author=True)
+
+    # Act
+    result = article.shows_author
+
+    # Assert
+    assert result is False

@@ -1,4 +1,5 @@
 import re
+from datetime import date
 
 import pytest
 
@@ -70,3 +71,44 @@ def test_article_on_another_site_returns_404(client, mock_site_context):
     # Assert
     assert here.status_code == 200
     assert elsewhere.status_code == 404
+
+
+@pytest.mark.django_db
+def test_byline_shows_date_and_author_when_allowed(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(
+        title="Bylined",
+        published_on=date(2026, 3, 9),
+        author="Ada Lovelace",
+        show_date=True,
+        show_author=True,
+    )
+
+    # Act
+    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+
+    # Assert
+    body = response.content.decode()
+    assert '<time datetime="2026-03-09">' in body
+    assert "Ada Lovelace" in body
+
+
+@pytest.mark.django_db
+def test_byline_is_absent_when_date_and_author_are_hidden(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(
+        title="Unbylined",
+        published_on=date(2026, 3, 9),
+        author="Ada Lovelace",
+        show_date=False,
+        show_author=False,
+    )
+
+    # Act
+    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+
+    # Assert
+    body = response.content.decode()
+    assert "Unbylined" in body
+    assert "<time" not in body
+    assert "Ada Lovelace" not in body

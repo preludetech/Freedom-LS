@@ -6,6 +6,7 @@
     <c-page width="narrow">
         <h1>{{ article.title }}</h1>
         {% if article.subtitle %}<p>{{ article.subtitle }}</p>{% endif %}
+        <c-article-byline :article="article" />
         {{ article.rendered_content }}
     </c-page>
 {% endblock content %}
