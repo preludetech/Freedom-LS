@@ -1,0 +1,151 @@
+from typing import cast
+
+import pytest
+from playwright.sync_api import Locator, Page, expect
+
+from freedom_ls.conftest import reverse_url
+from freedom_ls.content_engine.factories import ArticleFactory
+from freedom_ls.content_engine.models import Article
+
+VIEWPORTS = pytest.mark.parametrize(
+    ("width", "height"),
+    [(375, 812), (768, 1024), (1280, 800)],
+    ids=["mobile", "tablet", "desktop"],
+)
+
+GRID_OF_ARTICLE_CARDS = """
+<c-grid>
+<c-article-card path="../articles/first.md"></c-article-card>
+<c-article-card path="../articles/second.md" variant="compact"></c-article-card>
+<c-article-card path="../articles/third.md"></c-article-card>
+</c-grid>
+"""
+
+
+@pytest.fixture
+def grid_article(mock_site_context) -> Article:
+    """An article whose content grids three article cards, plus the cards' targets."""
+    ArticleFactory(
+        title="First Card Article",
+        slug="first-card-article",
+        description="A description long enough to wrap onto several lines on a phone.",
+        file_path="articles/first.md",
+    )
+    ArticleFactory(
+        title="Second Card Article",
+        slug="second-card-article",
+        file_path="articles/second.md",
+    )
+    ArticleFactory(
+        title="Third Card Article With A Rather Long Title To Force Wrapping",
+        slug="third-card-article",
+        file_path="articles/third.md",
+    )
+    return cast(
+        "Article",
+        ArticleFactory(
+            title="Host Article",
+            slug="host-article",
+            file_path="articles/host.md",
+            content=GRID_OF_ARTICLE_CARDS,
+        ),
+    )
+
+
+def _overflows(page: Page) -> bool:
+    return cast(
+        "bool",
+        page.evaluate(
+            "document.documentElement.scrollWidth > document.documentElement.clientWidth"
+        ),
+    )
+
+
+def _card_of(link: Locator) -> Locator:
+    return link.locator("xpath=ancestor::article[1]")
+
+
+@VIEWPORTS
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_index_does_not_overflow_the_viewport(
+    live_server, live_server_site, grid_article, page: Page, width, height
+):
+    page.set_viewport_size({"width": width, "height": height})
+    page.goto(reverse_url(live_server, "blog:index"))
+
+    expect(page.get_by_role("link", name="Host Article")).to_be_visible()
+    assert _overflows(page) is False
+
+
+@VIEWPORTS
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_article_with_card_grid_does_not_overflow_the_viewport(
+    live_server, live_server_site, grid_article, page: Page, width, height
+):
+    page.set_viewport_size({"width": width, "height": height})
+    page.goto(
+        reverse_url(
+            live_server, "blog:article_detail", kwargs={"slug": grid_article.slug}
+        )
+    )
+
+    expect(page.get_by_role("link", name="First Card Article")).to_be_visible()
+    expect(page.get_by_role("link", name="Second Card Article")).to_be_visible()
+    assert _overflows(page) is False
+
+
+@VIEWPORTS
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_clicking_a_card_away_from_its_title_opens_the_article(
+    live_server, live_server_site, grid_article, page: Page, width, height
+):
+    page.set_viewport_size({"width": width, "height": height})
+    page.goto(
+        reverse_url(
+            live_server, "blog:article_detail", kwargs={"slug": grid_article.slug}
+        )
+    )
+
+    card = _card_of(page.get_by_role("link", name="First Card Article"))
+    box = card.bounding_box()
+    assert box is not None
+    card.click(position={"x": box["width"] - 6, "y": box["height"] - 6})
+
+    expect(page).to_have_url(
+        reverse_url(
+            live_server, "blog:article_detail", kwargs={"slug": "first-card-article"}
+        )
+    )
+
+
+@VIEWPORTS
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_focused_card_link_sits_inside_its_card(
+    live_server, live_server_site, grid_article, page: Page, width, height
+):
+    page.set_viewport_size({"width": width, "height": height})
+    page.goto(
+        reverse_url(
+            live_server, "blog:article_detail", kwargs={"slug": grid_article.slug}
+        )
+    )
+
+    link = page.get_by_role("link", name="Second Card Article")
+    for _ in range(40):
+        page.keyboard.press("Tab")
+        if link.evaluate("el => el === document.activeElement"):
+            break
+    expect(link).to_be_focused()
+
+    link_box = link.bounding_box()
+    card_box = _card_of(link).bounding_box()
+    assert link_box is not None
+    assert card_box is not None
+    assert link_box["x"] >= card_box["x"]
+    assert link_box["y"] >= card_box["y"]
+    assert link_box["x"] + link_box["width"] <= card_box["x"] + card_box["width"]
+    assert link_box["y"] + link_box["height"] <= card_box["y"] + card_box["height"]
