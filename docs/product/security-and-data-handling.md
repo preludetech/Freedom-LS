@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-09-27_
+_Last updated: 2026-10-01_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -11,12 +11,12 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Built:** Production trusts a TLS-terminating reverse proxy's forwarded scheme, so the HTTPS redirect and HSTS behave correctly behind it — and refuses to start at all if `SECRET_KEY` or `WEBHOOK_ENCRYPTION_SALT` is missing.
 - **Built:** Media in object storage is private by default, served via time-limited signed links rather than permanently public URLs. Error tracking is wired but inactive until an operator supplies credentials, and omits learner personal data by default.
 - **Built:** Google Analytics 4 and, optionally, Google Ads and the Meta and TikTok pixels run in the visitor's browser once configured. GA4 identifies signed-in visitors by account ID only, and the Google tag defaults to consent-denied for EEA, UK and Swiss visitors. The Meta and TikTok pixels receive nothing that identifies the visitor and do not load at all for those visitors, or for any visitor whose country is unknown. No consent banner ships. See [analytics and advertising](#analytics-and-advertising).
-- **Built:** Cohort progress reports are downloaded only through a permission-checked view, never a public media URL. Generating and downloading one both require the requesting staff user to be authorised to see that cohort; staff status alone is not enough.
+- **Built:** Cohort progress reports are downloaded only through a permission-checked view, never a public media URL. Generating and downloading one both require an educator role covering that cohort; staff status alone is not enough.
 - **Built:** A document an applicant uploads with a course application is downloaded only through a permission-checked view, never a storage URL, whether by the applicant or by a superuser in the admin. Application answers and files are visible to superusers only.
 - **Not yet built:** FLS runs no malware or content scanning on documents applicants upload; a reviewer downloads exactly what was attached, PDF contents included. See [applicant uploads](#applicant-uploads-built).
 - **Operational:** Report PDFs are written to a private storage location, separate from the buckets that hold course media and public branding. There is no fallback: an unconfigured location fails at startup, and a deploy pipeline running Django's deployment check catches a location that resolves to the wrong bucket before anything is written to it.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
-- **Defect narrowed:** cohort and user detail pages in the educator interface are now permission-checked and deny by default. What remains is the Courses section — any authenticated user on a site can still read the full course list, hidden courses included, and any course detail page. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-narrowed-defect).
+- **Defect narrowed:** cohort and user detail pages in the educator interface are now permission-checked and deny by default. What remains is the Courses section — any authenticated user on a site can still read the full course list, hidden courses included, and any course detail page, though the registration lists on it are filtered. Writes are gated and site isolation is unaffected. See [educator interface authorisation](#educator-interface-authorisation-narrowed-defect).
 - **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files or applicant-uploaded documents, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
@@ -36,13 +36,15 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 ### Educator Interface Authorisation (narrowed defect)
 
-The educator interface grants educators permission on specific cohorts, or on a whole organisation. Its Cohorts and Learners listings and their detail pages are now permission-checked and **deny by default**: a visitor without the right grant gets the same not-found response as a record that does not exist, so cohort, learner, and organisation identifiers cannot be enumerated by guessing URLs.
+Access to the educator interface is decided by [role assignments](./educator-interface.md#access-control) alone, on a whole organisation or on a single cohort. A person's roles in an organisation count only while they are an active member of it, so deactivating that membership revokes everything they hold there at once without deleting the roles. Assigning roles is guarded: nobody changes their own, no role goes to an inactive user, an organisation admin assigns only within their own organisation, and the last organisation admin or last site admin cannot be removed; no screen applies those rules yet, because roles are only assigned by a developer.
 
-**What remains unfixed.** The Courses section is unchanged. Any authenticated user on a site still sees every course on it, including ones authored as hidden, and course detail pages are still not permission-checked.
+The Cohorts and Learners listings and their detail pages are permission-checked and **deny by default**: a visitor without the right role gets the same not-found response as a record that does not exist, so cohort, learner, and organisation identifiers cannot be enumerated by guessing URLs.
+
+**What remains unfixed.** Any authenticated user on a site still sees every course on it, including ones authored as hidden, and course detail pages are still not permission-checked. Only the cohort and learner registration lists on those pages are filtered to what the viewer's role covers.
 
 Three things bound the remaining impact, and none of them excuse it:
 
-- **Reads only.** Create, rename, and delete actions do check the object-level permission, so this is not a route to modifying another educator's data.
+- **Reads only.** Create, rename, and delete actions are checked against the user's role and denied by default, so this is not a route to modifying another educator's data.
 - **Within a tenant.** Every query is still site-scoped, so the gap never crosses a site boundary. An organisation is a scoping layer inside that boundary, not a security boundary of its own — see [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 - **Authenticated only.** An anonymous visitor cannot reach any of it.
 
@@ -90,7 +92,7 @@ When object storage is configured, this is closed at the storage layer: files ar
 
 A [cohort progress report](./reports.md) holds real learner names, completion history, and individual quiz answers, and is treated accordingly.
 
-Unlike ordinary media, a report is never reachable through a storage URL. Both generating a report and downloading one require the requesting user to be authorised to see that cohort — through a per-cohort permission grant, or a staff role on the cohort's organisation, the two routes described under [educator interface access control](./educator-interface.md#access-control). Being staff is not sufficient on its own: a staff user holding neither is denied on both the generate action and the download. Unlike media, that check runs on every request, not only at the storage layer.
+Unlike ordinary media, a report is never reachable through a storage URL. Both generating a report and downloading one require the requesting user to hold an [educator role](./educator-interface.md#access-control) covering that cohort. Being staff is not sufficient on its own: a staff user without such a role is denied on both the generate action and the download. Unlike media, that check runs on every request, not only at the storage layer.
 
 Downloads are served as an attachment with caching suppressed, so a PII-bearing PDF is not left sitting in a shared proxy cache or a browser's disk cache.
 

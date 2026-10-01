@@ -1,25 +1,25 @@
 # Roadmap
 
-_Last updated: 2026-09-26_
+_Last updated: 2026-10-01_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (built but not wired into access decisions), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (decides educator-interface and report access; no screen to assign roles or manage organisation members), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
 - **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
-- **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked. Cohort and learner detail pages are now checked.
+- **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked, though the registration lists on them are now filtered. Cohort and learner detail pages are checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
 ## Educator Interface Authorisation Gap
 
 **Status: Partially fixed.**
 
-The educator interface's Cohorts and Learners listings are filtered by permission, and their detail pages are now permission-checked and deny by default: a user without access gets "not found" rather than the underlying data. What remains unfixed:
+The educator interface's Cohorts and Learners listings are filtered by role, and their detail pages are now permission-checked and deny by default: a user without access gets "not found" rather than the underlying data. What remains unfixed:
 
 - **The Courses list is still entirely unfiltered** — every course on the site, including those authored as hidden, is visible to any authenticated user.
-- **Course detail pages are still not permission-checked.**
+- **Course detail pages are still not permission-checked.** Only the cohort and learner registration lists on them are filtered to what the viewer can see.
 
-Reads only — create, rename, and delete actions have always checked object-level permission, so this remains a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
+Reads only — create, rename, and delete actions are checked against the user's role, so this remains a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
 
 The fix is a permission filter on the Courses list and a permission check on course detail pages, matching what now governs the Cohorts and Learners sections. See [educator interface](./educator-interface.md#access-control).
 
@@ -81,17 +81,13 @@ No 2FA or MFA code exists in any form — no MFA app, no one-time-password integ
 
 ## Role-Based Access Control (RBAC)
 
-**Status: Built and installed, but not the authority for access decisions.**
+**Status: Decides educator access; the tools to manage it are not built.**
 
-A role system ships and is migrated: system-level, site-level, and object-level role assignments, with role definitions for site admin, instructor, TA, system admin, learner, and observer, plus commands to synchronise and validate role permissions.
+Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#access-control). Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
 
-It is not, however, what governs access today:
-
-- Educator access to cohorts is decided by per-object permissions, not by role assignment. The role helpers *write* those object permissions, so roles act as a management layer over them rather than a parallel system — but assigning someone the instructor role does not by itself grant access to any specific cohort.
-- Many permissions in the role definitions are marked as future work with no implementation behind them.
-- Role assignments and the object permissions they produce are synchronised by running a command, not automatically.
-
-For the access model that is actually in force, see [educator interface](./educator-interface.md) and [admin interface](./admin-interface.md).
+- **No screen to assign roles.** There is no educator-interface or Django admin page for granting or removing one; a developer does it.
+- **No screen to manage organisation members**, so nobody can yet deactivate a person's membership of an organisation.
+- **No audit log** of role or membership changes.
 
 ## Per-Request Media Access Control
 

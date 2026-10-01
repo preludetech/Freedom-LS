@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-08-27_
+_Last updated: 2026-10-01_
 
 ## Summary
 
@@ -8,7 +8,7 @@ _Last updated: 2026-08-27_
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
 - The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every learner and course item.
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
-- **Access control has a narrowed known gap** — the Cohorts and Learners sections are permission-checked on both listings and detail pages, but the Courses section is not filtered at all. Reads only; writes are gated. See [Access Control](#access-control).
+- **Access is granted by role** — site admin, organisation admin, cohort admin or cohort viewer. Cohorts and Learners are permission-checked on listings and detail pages; the Courses list and course detail pages are not. See [Access Control](#access-control).
 - **Limits:** cohort membership, course registration, deadline management, and generating a cohort progress report are admin-only. There is no messaging capability.
 
 ## Panel Interface
@@ -35,17 +35,17 @@ Lists the learners of the current organisation the educator has access to — me
 
 Lists all courses with their active learner and cohort counts. Each course shows its **visibility** — published, coming soon, or hidden — so educators and admins see every course regardless of state; visibility filtering only ever applies to learners, never to educator or admin views.
 
-Unlike Cohorts and Learners, this section is not scoped to the current organisation, and it carries **no permission filter at all** — every course on the site, hidden ones included, is visible to any authenticated user. See [Access Control](#access-control).
+Unlike Cohorts and Learners, this section is not scoped to the current organisation, and the list and course detail pages carry **no permission check** — every course on the site, hidden ones included, is visible to any authenticated user. See [Access Control](#access-control).
 
 Each course also shows an **interest count**: the number of learners who have expressed interest through the coming-soon waitlist. The count is shown for every course, not only coming-soon ones, so a course that has since launched still shows the demand it attracted. Who expressed that interest, and when, is read in the Django admin rather than here — see [admin interface](./admin-interface.md).
 
-The course detail view shows the title and category, the cohorts registered for the course, and any direct non-cohort registrations. All of it is scoped to the current site.
+The course detail view shows the title and category, the cohorts registered for the course, and any direct non-cohort registrations. Both registration lists show only the cohorts and learners the educator can see.
 
 Visibility is **read-only** here and in the Django admin. It is set solely in the course's content frontmatter and takes effect on import — see [content editing workflow](./content-editing-workflow.md). The learner-facing experience of coming-soon and hidden courses is covered in [learner experience](./learner-experience.md).
 
 ## Organisation Scope
 
-The educator interface is scoped to one **organisation** at a time — a grouping layer within a site, sitting above cohorts and course registrations. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is and where the isolation boundary actually sits, and [admin interface](./admin-interface.md#organisation-management) for how organisations are created and staffed.
+The educator interface is scoped to one **organisation** at a time — a grouping layer within a site, sitting above cohorts and course registrations. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is and where the isolation boundary actually sits, and [admin interface](./admin-interface.md#organisation-management) for how organisations are created.
 
 The current organisation is part of every page's URL rather than being remembered in the session, so two browser tabs can sit on two different organisations at once, the back button behaves correctly, and any page can be linked to directly.
 
@@ -65,17 +65,26 @@ The Course Progress tab on a cohort detail page shows a paginated matrix of lear
 
 The matrix shows the selected cohort registration's progress and only that — the percentage column and the item cells always read the same registration, so the two halves cannot disagree. A cohort member who also holds their own registration for the same course did that work under the other registration and reads as 0% here; the panel carries an on-screen note saying so, and there is no way to reach the other registration's progress from this view. See [learner tracking](./learner-tracking.md) for how progress is scoped.
 
-This view is on-screen only, and shows one course at a time. For a printable, filable record covering every course the cohort is registered for, a [cohort progress report](./reports.md) can be produced from the Django admin by anyone with cohort access under either route in [access control](#access-control).
+This view is on-screen only, and shows one course at a time. For a printable, filable record covering every course the cohort is registered for, a [cohort progress report](./reports.md) can be produced from the Django admin by anyone whose role covers the cohort — see [access control](#access-control).
 
 ## Access Control
 
-An administrator grants an educator access one of two ways: permission on a specific cohort, or a staff role on a whole organisation, which covers every cohort in it including ones created later. Both are granted in the Django admin — see [admin interface](./admin-interface.md#organisation-management). The educator interface itself has no permission-management UI.
+Access to the educator interface and to cohort reports comes from **role assignments**. Permissions granted on a cohort or organisation in the Django admin have no effect here. There are four built-in roles:
 
-**What is enforced.** The Cohorts and Learners listings are scoped to the selected organisation and filtered to what the educator has been granted under either route. Cohort and learner *detail* pages carry the same check: an educator who navigates directly to one outside their access gets a "not found" response — the same response a record that does not exist would give, so identifiers cannot be probed by guessing URLs. Every *write* — creating, renaming, or deleting a cohort — checks the permission before it runs.
+- **Site admin** — everything, in every organisation on the site.
+- **Organisation admin** — everything in one organisation, including who else administers it.
+- **Cohort admin** — manages who is in a cohort and what it is registered for; cannot rename or delete it.
+- **Cohort viewer** — sees a cohort and its reports; changes nothing.
 
-**Known gap — the Courses section is not permission-checked.** The Courses list and course detail pages ignore both organisation scope and access grants: every authenticated user on the site sees every course, including courses authored as hidden, which learners cannot otherwise discover.
+These describe what each role is allowed; several of those actions have no screen in this interface yet — see [Limits](#limits). A person holding several roles gets all of them. A role on an organisation covers every cohort in it, including ones created later; a role on a cohort covers that cohort and its learners. Organisation and cohort roles count only while the person is an active member of that organisation: deactivating membership switches off their access there without deleting their roles, and reactivating restores it. Organisation admins can assign roles only within their own organisation, nobody can change their own roles, and an organisation's last admin can be removed only by a site admin.
 
-**Scope of the gap.** This is a read and disclosure defect now confined to Courses. Cohort and user data are gated, as is every write action. It is a genuine authorisation gap, not a design decision, and it is tracked in the [roadmap](./roadmap.md).
+**Not yet built.** There is no screen, in this interface or the Django admin, for assigning roles or deactivating a member; both are currently done by a developer.
+
+**What is enforced.** The Cohorts and Learners listings are scoped to the selected organisation and filtered to what the educator's roles cover. Their detail pages carry the same check: an educator who navigates directly to one outside their access gets a "not found" response, the same response a record that does not exist would give, so identifiers cannot be probed by guessing URLs. Every write is checked before it runs, and a control the educator's role does not allow is hidden rather than shown disabled.
+
+If an educator acts from a page that was open when their access was removed, a dialog says the action can no longer be used there and names who to ask: the organisation's admins by name where the educator may see the organisation's members, otherwise "an administrator". It offers close only, never retry. If the object itself has left their access, the dialog says it is no longer available.
+
+**Known gap — the Courses list and course detail pages are not permission-checked.** Every authenticated user on the site sees every course, including courses authored as hidden, which learners cannot otherwise discover. Only the registration lists on a course's detail page are filtered. This is a read and disclosure defect, not a design decision, and it is tracked in the [roadmap](./roadmap.md).
 
 **Site isolation is unaffected.** All educator interface queries remain scoped to the current site, so nothing here crosses a tenant boundary. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 

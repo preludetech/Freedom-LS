@@ -1,6 +1,6 @@
 # Multi-Tenancy and Isolation
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-10-01_
 
 ## Summary
 
@@ -49,7 +49,7 @@ Every site has at least one organisation, named after the site itself and create
 
 **People are associated with organisations as learners.** Someone can belong to an organisation as a learner before, and independently of, any cohort membership or course registration, and every cohort membership and course registration belongs to one of those associations — an enrolment with no organisation behind it cannot exist. The same person can be a learner of several organisations on one site, keeping one account and one set of profile fields; each organisation sees only its own association, which is scoping within the site rather than an isolation boundary of its own. An organisation can mark a learner removed, which withdraws their access to courses held through that organisation while leaving their enrolments and progress history intact; it is never a hard delete. See [admin interface](./admin-interface.md#learner-rosters) for how learners are added and removed.
 
-Staff can be granted a role scoped to a single organisation, which gives them access to everything in it without a separate grant per cohort. This sits alongside FLS's existing per-cohort grants rather than replacing them — see [educator interface](./educator-interface.md#access-control).
+Staff access within an organisation comes from role assignments: a role on the organisation covers everything in it, including cohorts created later, and a role on a cohort covers that cohort only. Either counts only while the person is an active member of that organisation. See [educator interface](./educator-interface.md#access-control).
 
 This is the canonical statement of what an organisation is and is not; other docs link here rather than restating it.
 

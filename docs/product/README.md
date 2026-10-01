@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-09-26_
+_Last updated: 2026-10-01_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
@@ -20,9 +20,9 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy with optional extra registration forms, hardened password and lockout policy, and an append-only legal-consent audit trail. No MFA. |
 | [Learner Experience](./learner-experience.md) | Public catalogue and course pages, personalised dashboard, self-enrolment or application, coming-soon and hidden course visibility with an express-interest waitlist, sequential unlock with resume, multi-page forms, quiz feedback, and deadlines. |
 | [Learner Tracking](./learner-tracking.md) | Per-item completion, quiz attempts and scores, course progress percentage, and a resume pointer. No time-on-task and no score export. |
-| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, learner, and course views, scoped to one organisation at a time, plus a course-progress matrix. Read and monitoring only — and with a known authorisation gap on the Courses section. |
+| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, learner, and course views, scoped to one organisation at a time, plus a course-progress matrix. Access follows four built-in roles — site admin, organisation admin, cohort admin and cohort viewer — with no screen yet for assigning them. Read and monitoring only — and with a known authorisation gap on the Courses section. |
 | [Cohort Reports](./reports.md) | A per-cohort A4 PDF covering every course the cohort is registered for: a summary table per course, a detail section per learner, at-risk flags, and a cohort-wide analysis of which quiz questions caused the most trouble. Generated on demand from the admin and downloaded through a permission-checked link. No scheduling, no email, no retention policy. |
-| [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, organisation management, per-cohort and per-organisation educator permission grants, read-only consent records, and a webhook test-send action. |
+| [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, organisation management, read-only consent records, and a webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
 | [Notifications](./notifications.md) | An in-app bell, badge and notification centre, off by default, telling a learner when someone else registers them for a course. Projects can add their own notification categories. No email delivery, no preferences, no retention policy. |
 | [Signup Attribution](./signup-attribution.md) | Where each signup came from: advert code, UTM parameters and ad-platform click identifiers frozen at first landing, a daily per-campaign tally of tracked arrivals for conversion rates, two read-only admin lists with CSV export, and the privacy questions an operator must settle before enabling it. No dashboard, no consent gate, no retention tooling. |

@@ -1,12 +1,12 @@
 # Admin Interface
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-10-01_
 
 ## Summary
 
 - The Django admin is enhanced with the Unfold UI framework, preserving all standard Django admin behaviour.
-- Administrators grant educators access to specific cohorts through per-object permissions.
-- Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge. Assigning someone a staff role on an organisation grants access to every cohort inside it, including ones added later.
+- Educator roles are not assigned in the admin. A cohort's or organisation's permissions tab governs admin access only; educator-interface and report access come from [role assignments](./educator-interface.md#access-control).
+- Organisations are created, renamed, and given a logo — optionally a second, reversed one for a dark background — entirely through the admin, with no delete and no merge.
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
@@ -28,15 +28,13 @@ Site-scoped admin pages are automatically filtered to the current site, consiste
 
 ## Cohort Permissions
 
-Each cohort's admin detail page carries a permissions tab, where an administrator grants an individual educator view access to that one cohort. The educator interface honours those grants: its cohort and learner listings, and their detail pages, show only what the educator has been given — the [known gap](./educator-interface.md#access-control) has narrowed to the Courses section, which remains unguarded. Per-cohort grants and [organisation staff roles](#organisation-management) are two independent routes to the same access, at different granularity.
+Each cohort's and organisation's admin page carries a permissions tab. It governs what a staff user can do with that object in the admin, and nothing else: it does not grant access in the educator interface or to cohort reports. Those come from [role assignments](./educator-interface.md#access-control), which have no admin page; until the role-management screen ships, roles are assigned by a developer.
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, uploads a logo, and assigns staff to it. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
 There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
-
-Assigning someone a staff role on an organisation, through the same per-object permissions tab used for cohorts, grants them access to every cohort in that organisation in the educator interface, including cohorts added later. It is the alternative to granting per-cohort permissions one at a time. See [educator interface](./educator-interface.md#organisation-scope) for how educators move between the organisations they can reach.
 
 Logo uploads accept PNG, JPEG, and WebP; SVG is rejected deliberately. A maximum file size and minimum and maximum pixel dimensions apply, and each upload is validated against its actual image bytes rather than trusted by filename — see [security and data handling](./security-and-data-handling.md).
 
@@ -64,7 +62,7 @@ Who has expressed interest in each course is read here, searchable by user and c
 
 ## Cohort Progress Reports
 
-A staff user generates a cohort's progress report from the admin: they pick a cohort from a dropdown and trigger generation with one click. The dropdown only ever offers cohorts that user is allowed to see — a per-cohort grant or an [organisation staff role](#organisation-management), the same two routes described under [cohort permissions](#cohort-permissions) — so a cohort outside both is never offered, and a request naming one anyway is refused. What the finished report contains is described in [cohort reports](./reports.md).
+A staff user generates a cohort's progress report from the admin: they pick a cohort from a dropdown and trigger generation with one click. The dropdown only ever offers cohorts that user's [roles](./educator-interface.md#access-control) cover, so any other cohort is never offered, and a request naming one anyway is refused. What the finished report contains is described in [cohort reports](./reports.md).
 
 ![](screenshots/admin_generated_reports.png)
 
