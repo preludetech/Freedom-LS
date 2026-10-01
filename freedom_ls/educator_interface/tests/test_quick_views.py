@@ -255,6 +255,37 @@ class TestLearnerQuickView:
         assert "Granted" in content
         assert "Elsewhere" not in content
 
+    def test_an_instructor_scoped_to_one_cohort_does_not_see_a_registration_elsewhere(
+        self, educator_client
+    ):
+        organisation = OrganisationFactory()
+        granted_cohort = CohortFactory(organisation=organisation, name="Granted")
+        other_cohort = CohortFactory(organisation=organisation, name="Elsewhere")
+        learner = LearnerFactory(organisation=organisation)
+        CohortMembershipFactory(learner=learner, cohort=granted_cohort)
+        CohortMembershipFactory(learner=learner, cohort=other_cohort)
+        CohortCourseRegistrationFactory(
+            cohort=granted_cohort, course=CourseFactory(title="Granted Course")
+        )
+        CohortCourseRegistrationFactory(
+            cohort=other_cohort, course=CourseFactory(title="Hidden Course")
+        )
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=CourseFactory(title="Individual Course")
+        )
+
+        response = _get_quick_view(
+            educator_client(granted_cohort, "instructor"),
+            organisation,
+            f"learners/{learner.pk}",
+        )
+
+        content = response.content.decode()
+        assert "Granted Course" in content
+        assert "Individual Course" in content
+        assert "Hidden Course" not in content
+        assert "Elsewhere" not in content
+
 
 @pytest.mark.django_db
 class TestCohortQuickView:

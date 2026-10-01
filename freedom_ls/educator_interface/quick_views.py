@@ -32,24 +32,31 @@ class LearnerQuickView(QuickView):
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
         request = cast("OrganisationScopedRequest", self.request)
+        visible_cohorts = cohorts_visible_to(request.user, request.organisation)
         memberships = (
-            CohortMembership.objects.filter(
-                learner=learner,
-                cohort__in=cohorts_visible_to(request.user, request.organisation),
-            )
+            CohortMembership.objects.filter(learner=learner, cohort__in=visible_cohorts)
             .select_related("cohort")
             .order_by("cohort__name")
         )
         last_active = CourseProgress.objects.filter(learner=learner).aggregate(
             latest=Max("last_accessed_time")
         )["latest"]
+        # A registration through a cohort the educator cannot see would name
+        # that cohort, so only individual ones and visible cohorts' are kept.
+        visible_cohort_ids = set(visible_cohorts.values_list("pk", flat=True))
+        registrations = [
+            registration
+            for registration in registrations_with_progress_for_learner(learner)
+            if registration.cohort is None
+            or registration.cohort.pk in visible_cohort_ids
+        ]
         return {
             # The template reads learner.is_active directly for the Status
             # line, showing "Active" or "Removed" -- a placeholder until
             # learner administration adds a genuine "pending" state.
             "learner": learner,
             "memberships": memberships,
-            "registrations": registrations_with_progress_for_learner(learner),
+            "registrations": registrations,
             "last_active": last_active,
         }
 
