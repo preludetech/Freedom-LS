@@ -98,6 +98,29 @@ def test_branch_databases_are_dropped_with_force(
     )
 
 
+def test_summary_line_lists_all_dropped_databases_on_one_line(
+    stub_tools: StubTools, repo_on_branch: Path
+) -> None:
+    # Arrange
+    env = stub_tools.env(
+        STUB_PSQL_OUTPUT="test_db_feature_x_gw0\ntest_db_feature_x_gw1",
+        **GIT_ENV_OVERRIDES,
+    )
+
+    # Act
+    result = run_script(DELETE_SCRIPT, repo_on_branch, env)
+
+    # Assert
+    assert result.returncode == 0
+    summary_lines = [
+        line for line in result.stdout.splitlines() if line.startswith("Dropped:")
+    ]
+    assert summary_lines == [
+        "Dropped: db_feature_x, test_db_feature_x, "
+        "test_db_feature_x_gw0, test_db_feature_x_gw1"
+    ]
+
+
 def test_failing_psql_stops_the_script_before_any_drop_runs(
     stub_tools: StubTools, repo_on_branch: Path
 ) -> None:

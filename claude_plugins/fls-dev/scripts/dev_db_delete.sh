@@ -35,4 +35,5 @@ for WORKER_DB in $WORKER_DBS; do
     drop_db "$WORKER_DB"
 done
 
-echo "Dropped: ${DB_NAME}, ${TEST_DB_NAME}${WORKER_DBS:+, $WORKER_DBS}"
+WORKER_DBS_CSV=$(echo "$WORKER_DBS" | tr '\n' ',' | sed 's/,/, /g; s/, $//')
+echo "Dropped: ${DB_NAME}, ${TEST_DB_NAME}${WORKER_DBS_CSV:+, $WORKER_DBS_CSV}"
