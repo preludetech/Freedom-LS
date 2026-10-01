@@ -244,3 +244,81 @@ def test_canonical_link_equals_the_article_url_and_no_og_image(
     assert _meta(body, "property", "og:url") == canonical.group(1)
     assert _meta(body, "name", "twitter:card") == "summary"
     assert _meta(body, "property", "og:image") is None
+
+
+@pytest.mark.django_db
+def test_index_lists_only_published_articles_newest_first(client, mock_site_context):
+    # Arrange
+    ArticleFactory(title="Oldest", published_on=date(2026, 1, 1))
+    ArticleFactory(title="Newest", published_on=date(2026, 3, 1))
+    ArticleFactory(title="Middle", published_on=date(2026, 2, 1))
+    ArticleFactory(title="Draft", visibility=ArticleVisibility.HIDDEN)
+
+    # Act
+    response = client.get(reverse("blog:index"))
+
+    # Assert
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Draft" not in body
+    assert body.index("Newest") < body.index("Middle") < body.index("Oldest")
+
+
+@pytest.mark.django_db
+def test_index_links_each_title_and_shows_the_description(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(title="Why we teach", description="A short reflection")
+
+    # Act
+    response = client.get(reverse("blog:index"))
+
+    # Assert
+    body = response.content.decode()
+    assert f'href="{article.get_absolute_url()}"' in body
+    assert "Why we teach" in body
+    assert "A short reflection" in body
+
+
+@pytest.mark.django_db
+def test_index_excludes_another_sites_articles(client, mock_site_context):
+    # Arrange
+    other_site = SiteFactory(domain="other.example.com", name="Other")
+    ArticleFactory(title="Elsewhere piece", site=other_site)
+    ArticleFactory(title="Local piece")
+
+    # Act
+    response = client.get(reverse("blog:index"))
+
+    # Assert
+    body = response.content.decode()
+    assert "Local piece" in body
+    assert "Elsewhere piece" not in body
+
+
+@pytest.mark.django_db
+def test_index_shows_an_empty_state_when_there_are_no_articles(
+    client, mock_site_context
+):
+    # Act
+    response = client.get(reverse("blog:index"))
+
+    # Assert
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "Articles" in body
+    assert "content_save" in body
+
+
+@pytest.mark.django_db
+def test_index_byline_obeys_show_date(client, mock_site_context):
+    # Arrange
+    ArticleFactory(title="Dated", published_on=date(2026, 3, 9), show_date=True)
+    ArticleFactory(title="Undated", published_on=date(2026, 4, 9), show_date=False)
+
+    # Act
+    response = client.get(reverse("blog:index"))
+
+    # Assert
+    body = response.content.decode()
+    assert '<time datetime="2026-03-09">' in body
+    assert '<time datetime="2026-04-09">' not in body

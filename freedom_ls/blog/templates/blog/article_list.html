@@ -1,0 +1,21 @@
+{% extends "_base.html" %}
+
+{% block head_title %}
+    Articles — {{ site_name }}
+{% endblock head_title %}
+
+{% block content %}
+    <c-page width="narrow">
+        <h1 class="pb-8">Articles</h1>
+
+        {% for article in articles %}
+            <article class="pb-8">
+                <h2><a href="{{ article.get_absolute_url }}">{{ article.title }}</a></h2>
+                <c-article-byline :article="article" />
+                {% if article.description %}<p>{{ article.description }}</p>{% endif %}
+            </article>
+        {% empty %}
+            <p>No articles yet. Write them as Markdown in your content repo, then load them with <code>content_save</code>.</p>
+        {% endfor %}
+    </c-page>
+{% endblock content %}

@@ -12,3 +12,8 @@ def article_detail(request: HttpRequest, slug: str) -> HttpResponse:
         "blog/article_detail.html",
         {"article": article, "meta_description": meta_description},
     )
+
+
+def article_list(request: HttpRequest) -> HttpResponse:
+    articles = Article.objects.published()
+    return render(request, "blog/article_list.html", {"articles": articles})
