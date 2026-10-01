@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-09-26_
+_Last updated: 2026-10-01_
 
 ## Summary
 
@@ -89,6 +89,7 @@ FLS is designed to be installed into an existing Django project as a git submodu
 - **App priority.** Apps listed after FLS's own can override FLS behaviour through Django's standard app-override mechanisms.
 - **Template priority.** The host project's template directories are searched first, so any FLS template can be replaced by providing a file at the same path.
 - **Content widget registration.** A downstream project can register additional content widgets by adding them to the markdown tag allowlist, making them available in that installation's authored content. See the [custom content widgets how-to](../how%20tos/custom-content-widgets.md).
+- **The public blog is optional.** An installation that does not want a public article blog can leave that app out. Article links in content then show as plain text and article cards show nothing, rather than breaking.
 
 FLS is not a black box; the host project has override capability at every layer.
 
@@ -131,6 +132,10 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `COURSE_ACCESS_CONFIG_VALIDATOR` | Validator for each course's access configuration at content-load time. |
 | `DEFAULT_CURRENCY` | Currency used when a course price omits one. See [learner experience](./learner-experience.md#course-prices). |
 | `PRICE_LOCALE` | Locale prices are formatted in; defaults from the site language. |
+| `BLOG_URL_PREFIX` | Path the public article blog is served under; defaults to `articles`. See [learner experience](./learner-experience.md#blog). |
+| `BLOG_NAME` | Name the blog's pages show for it; defaults to "Articles". See [learner experience](./learner-experience.md#blog). |
+| `ARTICLE_SHOW_DATE` | Whether article bylines show the date; on by default. An article can override it with `show_date`. |
+| `ARTICLE_SHOW_AUTHOR` | Whether article bylines show the author; on by default. An article can override it with `show_author`. |
 | `OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE` | Dev/staging preview override — every course presents as published. |
 | `OVERRIDE_COURSE_ACCESS_TO_FREE` | Dev/staging preview override — every course presents as free. |
 | `ALLOW_SIGN_UPS` | Installation-wide signup toggle; a site's own signup policy takes precedence. |

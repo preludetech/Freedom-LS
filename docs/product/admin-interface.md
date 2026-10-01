@@ -10,7 +10,7 @@ _Last updated: 2026-10-01_
 - An organisation's learners are curated in the admin and only there: an administrator associates a user with an organisation before or independently of any enrolment, and marks a learner removed. Removal is soft — it suspends that person's access to the organisation's courses without touching their memberships, registrations, or progress — and a learner cannot be deleted outright.
 - A learner's page gathers their cohorts, their course registrations and their progress through each course, with the topics and forms behind any one course a click away.
 - A course registration that has recorded progress cannot be deleted, and nor can a cohort whose registrations have. Deactivating a registration or removing a cohort member withdraws access without touching the progress.
-- Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available.
+- Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available. Articles are the one exception: they can be deleted.
 - Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - Until the review workflow ships, an applicant's application-form answers and any file they attached are read in the admin, by a superuser only. A staff user granted the same model permissions sees none of it, and files download through a permission-checked link rather than a storage URL.
@@ -84,6 +84,8 @@ The same posture covers where a signup came from: one record per signed-up user,
 ## Content Cannot Be Deleted
 
 Authored content — courses, course parts, topics, activities, files, and forms with their pages, questions, and options — cannot be deleted through the admin: not from a detail page, not as a bulk action, and not from an inline on a parent. Adding and changing remain available, and content is authored in files and loaded into the site by a command, so the admin is not where content is removed. A form added directly in the admin rather than loaded from files is given a slug automatically. See [content editing workflow](./content-editing-workflow.md).
+
+Articles are the exception: because loading never deletes one, the admin is where an article is removed. An article whose file is still in the content repository comes back on the next load, and the article's admin page says so.
 
 Underneath the admin the same protection holds for anything reaching the database another way: a form question a learner has answered, a course anyone is registered for, and the form progress record behind a course application cannot be deleted while those records exist.
 
