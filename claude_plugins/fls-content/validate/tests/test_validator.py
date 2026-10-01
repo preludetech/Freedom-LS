@@ -1104,3 +1104,83 @@ def test_price_no_currency_and_three_decimal_places_passes(tmp_path: Path) -> No
         f"A price with no currency should skip the decimal-place check.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
+
+
+def write_article(directory: Path, name: str, extra: str = "", body: str = "") -> Path:
+    """Write an ARTICLE file with the given extra frontmatter lines and body."""
+    path = directory / name
+    path.write_text(
+        "---\ncontent_type: ARTICLE\ntitle: An Article\n"
+        f"published_on: 2026-01-15\n{extra}---\n\n{body}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def make_content_tree(tmp_path: Path) -> Path:
+    """Return an empty `content` directory beside the test's repo-root config."""
+    content = tmp_path / "content"
+    content.mkdir()
+    return content
+
+
+def test_tree_with_articles_and_all_widgets_passes(tmp_path: Path) -> None:
+    """Two articles and a course using every widget validate cleanly."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "first-article.md")
+    write_article(content, "second-article.md")
+    course_dir = content / "my-course"
+    course_dir.mkdir()
+    write_valid_course(course_dir)
+    (content / "landing.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Landing\n---\n\n"
+        '<c-article-link path="first-article.md"></c-article-link>\n\n'
+        '<c-article-card path="second-article.md"></c-article-card>\n\n'
+        '<c-course-card path="my-course/course.md"></c-course-card>\n',
+        encoding="utf-8",
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode == 0, (
+        f"Articles and widgets should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_broken_course_card_path_fails_and_names_the_path(tmp_path: Path) -> None:
+    """A c-course-card pointing at no file fails and the output names the path."""
+    content = make_content_tree(tmp_path)
+    (content / "landing.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Landing\n---\n\n"
+        '<c-course-card path="missing/course.md"></c-course-card>\n',
+        encoding="utf-8",
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "missing/course.md" in result.stdout + result.stderr
+
+
+def test_duplicate_article_slugs_fail(tmp_path: Path) -> None:
+    """Two articles resolving to the same slug fail validation."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "one.md", extra="slug: shared\n")
+    write_article(content, "two.md", extra="slug: shared\n")
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "shared" in result.stdout + result.stderr
+
+
+def test_article_with_category_fails(tmp_path: Path) -> None:
+    """`category` belongs to courses, so an article carrying it is rejected."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "categorised.md", extra="category: general\n")
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "category" in result.stdout + result.stderr

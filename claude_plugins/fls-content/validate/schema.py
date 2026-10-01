@@ -38,6 +38,7 @@ Schema for yaml structures like this:
 """
 
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from datetime import date, time, timedelta
@@ -52,6 +53,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -69,6 +71,7 @@ class ContentType(StrEnum):
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
     FORM_CONTENT = "FORM_CONTENT"
+    ARTICLE = "ARTICLE"
 
 
 # The section slugs the dashboard reserves for its built-in sections. A
@@ -169,6 +172,48 @@ class Activity(
     BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
 ):
     level: int | None = Field(None, description="level 1 is easiest, 2 is harder, etc")
+
+
+class ArticleVisibility(StrEnum):
+    """Article visibility state (mirrors models.ArticleVisibility)."""
+
+    PUBLISHED = "published"
+    HIDDEN = "hidden"
+
+
+class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.ARTICLE):
+    slug: str | None = None
+    published_on: date
+    author: str | None = None
+    visibility: ArticleVisibility = ArticleVisibility.PUBLISHED
+    show_date: bool | None = None
+    show_author: bool | None = None
+
+    @field_validator("category", "image", mode="before")
+    @classmethod
+    def _course_only_field(cls, value: str | None, info: ValidationInfo) -> str | None:
+        # A before-validator only runs when the key is present, so a file that
+        # never wrote the key is untouched.
+        raise ValueError(
+            f"'{info.field_name}' is not an article field. It belongs to courses; "
+            "remove it from this article."
+        )
+
+    @model_validator(mode="after")
+    def _derive_and_check_slug(self) -> "Article":
+        if self.slug is None:
+            name_source = (
+                self.file_path.parent.name
+                if self.file_path.name == "content.md"
+                else self.file_path.stem
+            )
+            self.slug = slugify(name_source)
+        if not SLUG_PATTERN.fullmatch(self.slug):
+            raise ValueError(
+                f"Invalid article slug '{self.slug}' in {self.file_path}: "
+                "a slug may only contain letters, digits, hyphens and underscores."
+            )
+        return self
 
 
 class Child(BaseModel):
@@ -380,6 +425,17 @@ def price_errors(
         errors.setdefault("high_amount", "Must be greater than the low amount.")
 
     return errors
+
+
+def slugify(value: str) -> str:
+    """Turn text into a slug the way Django's `slugify` does.
+
+    Transcribed rather than imported so this module still imports with no
+    Django installed.
+    """
+    normalised = unicodedata.normalize("NFKC", str(value))
+    cleaned = re.sub(r"[^\w\s-]", "", normalised).strip().lower()
+    return re.sub(r"[-\s]+", "-", cleaned)
 
 
 def _require_quoted_amount(value: object) -> object:
