@@ -29,3 +29,16 @@ def getattr_str(obj, attr_name: str):
         return obj
     except (AttributeError, TypeError):
         return None
+
+
+@register.filter
+def is_blank(value: object) -> bool:
+    """
+    True when value is None, empty, or contains only whitespace once stringified.
+
+    Usage: {% if object|getattr_str:column.text_attr|is_blank %}
+    """
+    if value is None:
+        return True
+
+    return not str(value).strip()

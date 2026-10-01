@@ -48,6 +48,24 @@ def test_a_column_without_quick_view_renders_a_plain_link() -> None:
     assert "aria-controls" not in html
 
 
+def test_a_blank_text_attr_renders_the_placeholder_without_a_link() -> None:
+    row = StubModel(pk=1, name="")
+    column = {
+        "url_name": URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+        "quick_view": True,
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    assert html.strip() == "-"
+    assert "<a" not in html
+    assert "hx-get" not in html
+
+
 def test_a_column_without_quick_view_keeps_its_htmx_nav_link() -> None:
     row = StubModel(pk=1, name="Ada")
     column = {
