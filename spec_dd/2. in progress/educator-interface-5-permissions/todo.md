@@ -47,10 +47,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user) Decide whether a stale action on an object that drops out of the user's scope should answer 404 (spec) or show the 403 denial modal (test plan §7.8), and whether an in-page htmx 404 should get visible feedback instead of being dropped silently. Then update the spec or the test plan to match (see qa_report.md B1)
+- [ ] (user + cmd) Fix QA bug: stale delete on an out-of-scope cohort fails silently (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
