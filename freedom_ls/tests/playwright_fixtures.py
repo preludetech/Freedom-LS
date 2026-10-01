@@ -67,16 +67,38 @@ the moment a second test needs them — not preemptively.
 """
 
 import contextlib
+from collections.abc import Iterator
 
 import pytest
 from allauth.account.models import EmailAddress
 from playwright.sync_api import Error as PlaywrightError
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, Playwright, expect
+
+from django.db import connections
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 
 _PAGE_FIXTURE_NAMES = {"page", "logged_in_page"}
+
+
+def close_db_connections_before_playwright_stops() -> None:
+    """Close this thread's DB connections while Playwright's event loop is current.
+
+    Playwright's sync API leaves its loop marked as running on the main thread,
+    so Django stores the thread's connections in contextvar storage rather than
+    the thread-local one. Once Playwright stops and the loop is cleared, nothing
+    can see those connections to close them, and the open session makes
+    pytest-django's ``DROP DATABASE`` fail with "being accessed by other users".
+    """
+    connections.close_all()
+
+
+@pytest.fixture(scope="session")
+def playwright(playwright: Playwright) -> Iterator[Playwright]:
+    """pytest-playwright's ``playwright``, closing DB connections before it stops."""
+    yield playwright
+    close_db_connections_before_playwright_stops()
 
 
 @pytest.fixture(autouse=True)

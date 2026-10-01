@@ -51,7 +51,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user + cmd) Fix QA bug: test database teardown DROP fails with 'being accessed by other users' (TDD — failing test first, then fix). Start from qa_report.md's 'B2 fix attempt' notes: disable django_browser_reload under TESTING, and fix the Playwright/asgiref connection leak.
+- [x] (user + cmd) Fix QA bug: test database teardown DROP fails with 'being accessed by other users' (TDD — failing test first, then fix). Start from qa_report.md's 'B2 fix attempt' notes: disable django_browser_reload under TESTING, and fix the Playwright/asgiref connection leak.
 
 ## 10. Product documentation
 

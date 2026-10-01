@@ -188,7 +188,7 @@ Reproduced directly with
 ## Bug status
 
 - **FIXED** (commit: 8f3ba76b) — Postgres log_line_prefix runs straight into the log level. Re-verified: after `docker compose up -d` recreated postgres, `SHOW log_line_prefix` ends in a space and lines read `client=[local] LOG:`.
-- **UNRESOLVED** — Test database teardown DROP fails with "being accessed by other users" (reason: fix 036ef9eb failed re-verification and was reverted; a second leak remains, see below)
+- **FIXED** (commits: 63db83fe, plus the Playwright connection fix that follows it) — Test database teardown DROP fails with "being accessed by other users". Re-verified: without the Playwright fix the repro logged the error in 4 of 5 runs. With it, 4 repro runs and two full `-n auto` runs logged none and left no test DB behind.
 
 ### B2 fix attempt
 
@@ -198,6 +198,8 @@ The fixer found two sources of the lingering connection:
 2. **Playwright sync API and asgiref.** Playwright calls the private `asyncio._set_running_loop()` on each sync call and never resets it. Django's `ConnectionHandler` (built on `asgiref.local.Local`) then treats the main thread as async and stores `default` in a contextvar slot that `close_old_connections()` / `close_all()` never inspect. The fixer confirmed this with `gc.get_referrers()` and a trace into pytest-django's `live_server` / `TransactionTestCase` machinery, but found no fix it could prove, so it shipped none.
 
 Re-verification: after 036ef9eb, `uv run pytest freedom_ls/base freedom_ls/educator_interface --no-cov -q` still logged one `being accessed by other users` error in each of two runs and left `test_db_database_keeps_going_down` behind. So 036ef9eb was reverted, per the QA procedure. Source 1 is still a real, cheap improvement to reapply when source 2 is tackled.
+
+Second attempt: 63db83fe reapplies source 1. For source 2, `freedom_ls/tests/playwright_fixtures.py` overrides the session-scoped `playwright` fixture so its teardown calls `connections.close_all()` while Playwright's loop is still current. At that point Django's contextvar storage is the one in use, so the stranded connection gets closed before the loop is cleared and before pytest-django's DROP. Regression test: `tests/test_playwright_fixtures.py`.
 
 ## 6. General notes
 
