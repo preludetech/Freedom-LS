@@ -26,6 +26,8 @@
         <h1>{{ article.title }}</h1>
         {% if article.subtitle %}<p>{{ article.subtitle }}</p>{% endif %}
         <c-article-byline :article="article" />
-        {{ article.rendered_content }}
+        <c-markdown-container>
+            {{ article.rendered_content }}
+        </c-markdown-container>
     </c-page>
 {% endblock content %}

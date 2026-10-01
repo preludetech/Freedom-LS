@@ -322,3 +322,18 @@ def test_index_byline_obeys_show_date(client, mock_site_context):
     body = response.content.decode()
     assert '<time datetime="2026-03-09">' in body
     assert '<time datetime="2026-04-09">' not in body
+
+
+@pytest.mark.django_db
+def test_article_body_is_wrapped_in_the_markdown_container(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(content="First paragraph.\n\nSecond paragraph.")
+
+    # Act
+    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+
+    # Assert
+    body = response.content.decode()
+    assert re.search(
+        r'<div class="[^"]*space-y-4[^"]*">\s*<p>First paragraph\.</p>', body
+    )
