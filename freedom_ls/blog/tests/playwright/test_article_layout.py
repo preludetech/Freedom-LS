@@ -186,3 +186,46 @@ def test_clicking_expand_on_an_article_picture_opens_the_lightbox(
     page.get_by_role("button", name="Expand").click()
 
     expect(page.get_by_role("dialog", name="Cat")).to_be_visible()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_card_and_picture_in_the_same_grid_row_share_top_and_height(
+    live_server, live_server_site, mock_site_context, page: Page
+):
+    FileFactory(
+        file_path="images/cat.png",
+        original_filename="cat.png",
+        file_type="image",
+        file=factory_png(),
+    )
+    ArticleFactory(
+        title="Row Card Article",
+        slug="row-card-article",
+        file_path="articles/row.md",
+    )
+    host = ArticleFactory(
+        title="Mixed Grid Host",
+        slug="mixed-grid-host",
+        file_path="articles/mixed.md",
+        content=(
+            '<c-grid columns="2">'
+            '<c-article-card path="../articles/row.md"></c-article-card>'
+            '<c-picture src="../images/cat.png" alt="A cat" title="Cat" />'
+            "</c-grid>"
+        ),
+    )
+
+    page.set_viewport_size({"width": 768, "height": 1024})
+    page.goto(
+        reverse_url(live_server, "blog:article_detail", kwargs={"slug": host.slug})
+    )
+
+    card_box = _card_of(
+        page.get_by_role("link", name="Row Card Article")
+    ).bounding_box()
+    picture_box = page.locator("[x-data='contentLightbox']").bounding_box()
+    assert card_box is not None
+    assert picture_box is not None
+    assert picture_box["y"] == card_box["y"]
+    assert picture_box["height"] == card_box["height"]
