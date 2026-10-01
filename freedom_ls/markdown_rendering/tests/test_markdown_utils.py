@@ -615,6 +615,38 @@ This is **bold** text
         assert "99" not in result  # author value never reached the markup
         assert "content" in result
 
+    @pytest.mark.parametrize("columns", ["2", "3", "4"])
+    def test_c_grid_renders_its_children(self, mock_request, columns):
+        markdown_text = f'<c-grid columns="{columns}">tile-content</c-grid>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<c-grid" not in result
+        assert "<div" in result  # the component rendered rather than being stripped
+        assert "tile-content" in result
+
+    def test_c_grid_unknown_columns_falls_back_without_injection(self, mock_request):
+        """An out-of-whitelist columns value never injects into the class string."""
+        markdown_text = '<c-grid columns="99">content</c-grid>'
+        result = render_markdown(markdown_text, mock_request)
+
+        assert "<c-grid" not in result
+        assert "<div" in result
+        assert "99" not in result
+        assert "content" in result
+
+    def test_c_image_grid_renders_same_as_c_grid(self, mock_request):
+        """The columns value reaches c-grid, so the two render identically."""
+        grid = render_markdown(
+            '<c-grid columns="2">same-children</c-grid>', mock_request
+        )
+        image_grid = render_markdown(
+            '<c-image-grid columns="2">same-children</c-image-grid>', mock_request
+        )
+
+        assert "same-children" in grid
+        # Compared modulo whitespace: the wrapper template adds blank lines.
+        assert " ".join(image_grid.split()) == " ".join(grid.split())
+
     def test_disallowed_script_tag_is_stripped(self, mock_request):
         """Test that script tags are stripped for security."""
         markdown_text = '<script>alert("xss")</script>Content'

@@ -383,6 +383,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-file-download": {"src", "text"},
     "c-pull-quote": {"attribution", "cite", "source"},
     "c-equation": {"label"},
+    "c-grid": {"columns"},
     "c-image-grid": {"columns"},
     "c-table": {"caption"},
     "c-code-block": {"title", "language", "wrap"},
