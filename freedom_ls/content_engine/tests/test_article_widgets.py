@@ -123,6 +123,27 @@ class TestArticleLink:
         assert "<a " not in result
         assert "Target Title" not in result
 
+    def test_link_adds_no_whitespace_around_itself(self, source_topic: Topic) -> None:
+        ArticleFactory(slug="target", file_path="articles/target.md")
+
+        result = _render(
+            '(<c-article-link path="../articles/target.md">read this</c-article-link>).',
+            source_topic,
+        )
+
+        assert "(<a " in result
+        assert "read this</a>)." in result
+
+    def test_fallback_text_adds_no_whitespace_around_itself(
+        self, source_topic: Topic
+    ) -> None:
+        result = _render(
+            '(<c-article-link path="../articles/nope.md">fallback text</c-article-link>).',
+            source_topic,
+        )
+
+        assert "(fallback text)." in result
+
 
 def _card(path: str = "../articles/target.md", variant: str | None = None) -> str:
     variant_attr = f' variant="{variant}"' if variant else ""
