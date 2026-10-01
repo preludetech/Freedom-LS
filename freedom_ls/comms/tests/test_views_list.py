@@ -318,3 +318,42 @@ class TestQueryCount:
             client.get(url)
 
         assert len(large.captured_queries) == len(small.captured_queries)
+
+
+@pytest.mark.django_db
+class TestCentreIcons:
+    def test_all_read_banner_carries_the_success_icon(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        from lxml import html
+
+        user = UserFactory()
+        NotificationFactory(user=user, read_at=timezone.now())
+        client = logged_in_client(user)
+
+        response = client.get(reverse(LIST_URL_NAME))
+
+        tree = html.fromstring(response.content.decode())
+        banner = tree.cssselect("#notification-list-up-to-date")
+        assert len(banner) == 1
+        assert banner[0].cssselect('svg[aria-label="success"]')
+
+    def test_mark_all_as_read_button_carries_the_check_all_icon(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        from lxml import html
+
+        user = UserFactory()
+        NotificationFactory(user=user)
+        client = logged_in_client(user)
+
+        response = client.get(reverse(LIST_URL_NAME))
+
+        tree = html.fromstring(response.content.decode())
+        buttons = [
+            button
+            for button in tree.cssselect("button")
+            if "Mark all as read" in button.text_content()
+        ]
+        assert len(buttons) == 1
+        assert buttons[0].cssselect('svg[aria-label="check_all"]')
