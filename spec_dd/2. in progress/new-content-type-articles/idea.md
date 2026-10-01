@@ -162,3 +162,9 @@ staff preview of hidden articles, and per-article author pages.
   and what FLS already has for sitemaps and robots.
 - `research_content_editing_plugin.md`: what the `fls-content` plugin covers and every place that
   would need updating.
+
+## Resources
+
+- `spec_dd/2. in progress/new-content-type-articles/design.md`: the Claude Design design for the
+  blog index and the article page, desktop and mobile, a visual reference only. Read it as that
+  file says.

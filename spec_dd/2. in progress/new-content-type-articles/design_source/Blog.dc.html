@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/colors_and_type.css">
+<link rel="stylesheet" href="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/ui_kits/learner-platform/kit.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<script src="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/_ds_bundle.js"></script>
+<style>
+  body { background: #E9ECF3; margin: 0; }
+  a { color: var(--color-primary); text-decoration: none; }
+  a:hover { color: var(--color-primary-900); }
+</style>
+</helmet>
+
+<section id="2a" style="padding:56px 56px 0;display:flex;flex-direction:column;gap:24px;font-family:var(--font-body)">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="font-family:var(--font-mono);font-size:12px;font-weight:500;color:#fff;background:var(--color-primary);padding:4px 10px;border-radius:999px">2a</div>
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:24px;color:var(--fg-1)">Index option — no categories, no tabs, date in the byline</div>
+  </div>
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">Desktop — Index</div>
+      <div data-screen-label="2a Desktop index" style="width:1440px;background:var(--color-surface);border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(26,26,46,0.08)">
+        <div style="height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 48px;gap:40px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:28px;height:28px;border-radius:7px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-heading);font-weight:700;font-size:14px">FC</div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1)">First Class</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:28px;font-size:14px;font-weight:500;color:var(--fg-2)">
+            <span>Platform</span><span>For training partners</span><span>Courses</span><span style="color:var(--color-primary);font-weight:600;box-shadow:inset 0 -2px 0 var(--color-primary);padding:22px 0">Journal</span>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:20px">
+            <span style="font-size:14px;font-weight:500;color:var(--fg-2)">Sign in</span>
+            <x-import component-from-global-scope="FCButton" hint-size="140px,40px">Book a briefing</x-import>
+          </div>
+        </div>
+        <div style="max-width:1120px;margin:0 auto;padding:96px 48px 56px;border-bottom:1px solid var(--border-strong)">
+          <div class="fc-overline" style="margin-bottom:12px">Journal</div>
+          <div style="font-family:var(--font-heading);font-weight:700;font-size:56px;letter-spacing:-0.02em;color:var(--color-text);line-height:1.05">Notes from the briefing room.</div>
+          <div style="font-size:18px;color:var(--fg-2);margin-top:16px;max-width:60ch;line-height:1.55">Regulation updates, teaching practice, and partner stories for remote pilots, instructors, and training organizations.</div>
+        </div>
+        <div style="max-width:1120px;margin:0 auto;padding:0 48px 96px">
+          <sc-for list="{{ rows2 }}" as="r" hint-placeholder-count="8">
+            <div onClick="{{ r.open }}" style="{{ r.style }}" style-hover="background:#fff">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:28px;letter-spacing:-0.015em;color:var(--color-text);line-height:1.25;text-wrap:pretty">{{ r.title }}</div>
+              <div style="display:flex;flex-direction:column;gap:14px;padding-top:4px">
+                <div style="font-size:16px;color:var(--fg-2);line-height:1.6;text-wrap:pretty">{{ r.dek }}</div>
+                <div style="font-size:13px;color:var(--fg-3)">{{ r.byline }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--color-text);color:#fff;padding:48px;display:flex;align-items:center;gap:40px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:16px">First Class</div>
+          <div style="font-size:14px;color:var(--grey-400)">Training, elevated.</div>
+          <div style="margin-left:auto;display:flex;gap:28px;font-size:14px;color:var(--grey-300)"><span>Platform</span><span>Partners</span><span>Journal</span><span>Contact</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">Mobile — Index</div>
+      <div data-screen-label="2a Mobile index" style="width:390px;min-height:844px;background:var(--color-surface);border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(26,26,46,0.08)">
+        <div style="height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px">
+          <div style="width:26px;height:26px;border-radius:7px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-heading);font-weight:700;font-size:12px">FC</div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:15px;color:var(--fg-1)">First Class</div>
+          <div style="margin-left:auto;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><i class="ph ph-list" style="font-size:22px;color:var(--fg-1)"></i></div>
+        </div>
+        <div style="padding:48px 20px 32px;border-bottom:1px solid var(--border-strong)">
+          <div class="fc-overline" style="margin-bottom:10px">Journal</div>
+          <div style="font-family:var(--font-heading);font-weight:700;font-size:34px;letter-spacing:-0.02em;color:var(--color-text);line-height:1.1">Notes from the briefing room.</div>
+          <div style="font-size:16px;color:var(--fg-2);margin-top:12px;line-height:1.55">Regulation updates, teaching practice, and partner stories.</div>
+        </div>
+        <div style="padding:0 20px 48px">
+          <sc-for list="{{ rows2 }}" as="r" hint-placeholder-count="8">
+            <div onClick="{{ r.open }}" style="{{ r.mstyle }}">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:21px;color:var(--color-text);line-height:1.3;text-wrap:pretty">{{ r.title }}</div>
+              <div style="font-size:15px;color:var(--fg-2);line-height:1.55;text-wrap:pretty">{{ r.dek }}</div>
+              <div style="font-size:13px;color:var(--fg-3)">{{ r.byline }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--color-text);color:#fff;padding:32px 20px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:15px">First Class</div>
+          <div style="font-size:13px;color:var(--grey-400)">Training, elevated.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div style="padding:56px;display:flex;flex-direction:column;gap:40px;font-family:var(--font-body)">
+
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:32px;color:var(--fg-1);letter-spacing:-0.02em">Journal — marketing site</div>
+    <div style="font-size:15px;color:var(--fg-2);max-width:70ch">Index and article, desktop 1440 and mobile 390. Click an index row to open it in the article frames, or switch articles below.</div>
+    <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+      <sc-for list="{{ switcher }}" as="s" hint-placeholder-count="3">
+        <div onClick="{{ s.open }}" style="{{ s.style }}">{{ s.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:48px;align-items:flex-start;flex-wrap:wrap">
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">Desktop — Index</div>
+      <div data-screen-label="Desktop index" style="width:1440px;background:var(--color-surface);border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(26,26,46,0.08)">
+
+        <div style="height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 48px;gap:40px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:28px;height:28px;border-radius:7px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-heading);font-weight:700;font-size:14px">FC</div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1)">First Class</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:28px;font-size:14px;font-weight:500;color:var(--fg-2)">
+            <span>Platform</span><span>For training partners</span><span>Courses</span><span style="color:var(--color-primary);font-weight:600;box-shadow:inset 0 -2px 0 var(--color-primary);padding:22px 0">Journal</span>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:20px">
+            <span style="font-size:14px;font-weight:500;color:var(--fg-2)">Sign in</span>
+            <x-import component-from-global-scope="FCButton" hint-size="140px,40px">Book a briefing</x-import>
+          </div>
+        </div>
+
+        <div style="max-width:1120px;margin:0 auto;padding:80px 48px 32px">
+          <div class="fc-overline" style="margin-bottom:12px">Journal</div>
+          <div style="font-family:var(--font-heading);font-weight:700;font-size:48px;letter-spacing:-0.02em;color:var(--color-text);line-height:1.1">Notes from the briefing room.</div>
+          <div style="font-size:18px;color:var(--fg-2);margin-top:16px;max-width:60ch;line-height:1.55">Regulation updates, teaching practice, and partner stories for remote pilots, instructors, and training organizations.</div>
+        </div>
+
+        <div style="max-width:1120px;margin:0 auto;padding:0 48px;display:flex;gap:4px;border-bottom:1px solid var(--border)">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+            <div onClick="{{ c.pick }}" style="{{ c.style }}">{{ c.label }} <span style="font-family:var(--font-mono);font-size:11px;color:var(--fg-4)">{{ c.count }}</span></div>
+          </sc-for>
+        </div>
+
+        <div style="max-width:1120px;margin:0 auto;padding:0 48px 96px">
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+            <div onClick="{{ r.open }}" style="{{ r.style }}" style-hover="background:#fff">
+              <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3);padding-top:6px">{{ r.date }}</div>
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--color-primary);padding-top:6px">{{ r.cat }}</div>
+              <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:22px;letter-spacing:-0.01em;color:var(--color-text);line-height:1.3;text-wrap:pretty">{{ r.title }}</div>
+                <sc-if value="{{ showDeks }}" hint-placeholder-val="{{ true }}">
+                  <div style="font-size:15px;color:var(--fg-2);line-height:1.55;max-width:68ch;text-wrap:pretty">{{ r.dek }}</div>
+                </sc-if>
+                <div style="font-size:13px;color:var(--fg-3)">{{ r.author }}</div>
+              </div>
+              <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3);padding-top:6px;text-align:right">{{ r.read }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:var(--color-text);color:#fff;padding:48px;display:flex;align-items:center;gap:40px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:16px">First Class</div>
+          <div style="font-size:14px;color:var(--grey-400)">Training, elevated.</div>
+          <div style="margin-left:auto;display:flex;gap:28px;font-size:14px;color:var(--grey-300)"><span>Platform</span><span>Partners</span><span>Journal</span><span>Contact</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">Desktop — Article</div>
+      <div data-screen-label="Desktop article" style="width:1440px;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(26,26,46,0.08)">
+
+        <div style="height:64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 48px;gap:40px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:28px;height:28px;border-radius:7px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-heading);font-weight:700;font-size:14px">FC</div>
+            <div style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1)">First Class</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:28px;font-size:14px;font-weight:500;color:var(--fg-2)">
+            <span>Platform</span><span>For training partners</span><span>Courses</span><span style="color:var(--color-primary);font-weight:600;box-shadow:inset 0 -2px 0 var(--color-primary);padding:22px 0">Journal</span>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:20px">
+            <span style="font-size:14px;font-weight:500;color:var(--fg-2)">Sign in</span>
+            <x-import component-from-global-scope="FCButton" hint-size="140px,40px">Book a briefing</x-import>
+          </div>
+        </div>
+
+        <div style="max-width:720px;margin:0 auto;padding:64px 24px 0">
+          <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;color:var(--color-primary)"><i class="ph ph-arrow-left" style="font-size:16px"></i>Journal</div>
+          <div style="font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--color-primary);margin-top:40px">{{ art.cat }}</div>
+          <div style="font-family:var(--font-heading);font-weight:700;font-size:44px;letter-spacing:-0.02em;color:var(--color-text);line-height:1.15;margin-top:12px;text-wrap:pretty">{{ art.title }}</div>
+          <div style="font-size:20px;color:var(--fg-2);line-height:1.55;margin-top:20px;text-wrap:pretty">{{ art.dek }}</div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:32px;padding:20px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+            <div style="width:40px;height:40px;border-radius:999px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">{{ art.initials }}</div>
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--fg-1)">{{ art.author }}</div>
+              <div style="font-size:13px;color:var(--fg-3)">{{ art.role }}</div>
+            </div>
+            <div style="margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">{{ art.date }} · {{ art.read }}</div>
+          </div>
+        </div>
+
+        <div style="max-width:720px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-direction:column;gap:24px">
+          <sc-for list="{{ art.blocks }}" as="b" hint-placeholder-count="6">
+            <sc-if value="{{ b.isH }}" hint-placeholder-val="{{ false }}">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:26px;letter-spacing:-0.01em;color:var(--color-text);margin-top:16px">{{ b.text }}</div>
+            </sc-if>
+            <sc-if value="{{ b.isP }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:18px;line-height:1.7;color:var(--grey-700);max-width:68ch;text-wrap:pretty">{{ b.text }}</div>
+            </sc-if>
+            <sc-if value="{{ b.isQ }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:8px 0 8px 28px;border-left:2px solid var(--color-secondary);display:flex;flex-direction:column;gap:10px">
+                <div style="font-family:var(--font-heading);font-weight:500;font-size:24px;line-height:1.4;color:var(--color-text);text-wrap:pretty">“{{ b.text }}”</div>
+                <div style="font-size:14px;color:var(--fg-3)">{{ b.cite }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.isN }}" hint-placeholder-val="{{ false }}">
+              <div style="background:var(--grey-50);border:1px solid var(--border);border-radius:12px;padding:20px 24px;display:flex;gap:14px">
+                <i class="ph ph-info" style="font-size:20px;color:var(--color-primary);margin-top:2px"></i>
+                <div style="font-size:16px;line-height:1.6;color:var(--grey-700)">{{ b.text }}</div>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+
+        <div style="background:var(--color-surface);border-top:1px solid var(--border)">
+          <div onClick="{{ next.open }}" style="max-width:720px;margin:0 auto;padding:48px 24px 64px;cursor:pointer">
+            <div class="fc-overline" style="margin-bottom:12px">Next in the journal</div>
+            <div style="display:flex;align-items:center;gap:24px">
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--color-primary)">{{ next.cat }}</div>
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:24px;color:var(--color-text);margin-top:6px;line-height:1.3">{{ next.title }}</div>
+              </div>
+              <i class="ph ph-arrow-right" style="font-size:22px;color:var(--color-primary)"></i>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--color-text);color:#fff;padding:48px;display:flex;align-items:center;gap:40px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:16px">First Class</div>
+          <div style="font-size:14px;color:var(--grey-400)">Training, elevated.</div>
+          <div style="margin-left:auto;display:flex;gap:28px;font-size:14px;color:var(--grey-300)"><span>Platform</span><span>Partners</span><span>Journal</span><span>Contact</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">Mobile — Index</div>
+      <div data-screen-label="Mobile index" style="width:390px;min-height:844px;background:var(--color-surface);border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(26,26,46,0.08)">
+        <div style="height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px">
+          <div style="width:26px;height:26px;border-radius:7px;background:var(--color-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--font-heading);font-weight:700;font-size:12px">FC</div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:15px;color:var(--fg-1)">First Class</div>
+          <div style="margin-left:auto;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><i class="ph ph-list" style="font-size:22px;color:var(--fg-1)"></i></div>
+        </div>
+        <div style="padding:40px 20px 24px">
+          <div class="fc-overline" style="margin-bottom:10px">Journal</div>
+          <div style="font-family:var(--font-heading);font-weight:700;font-size:32px;letter-spacing:-0.02em;color:var(--color-text);line-height:1.15">Notes from the briefing room.</div>
+          <div style="font-size:16px;color:var(--fg-2);margin-top:12px;line-height:1.55">Regulation updates, teaching practice, and partner stories.</div>
+        </div>
+        <div style="display:flex;gap:4px;padding:0 20px;border-bottom:1px solid var(--border);overflow-x:auto">
+          <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+            <div onClick="{{ c.pick }}" style="{{ c.mstyle }}">{{ c.label }}</div>
+          </sc-for>
+        </div>
+        <div style="padding:0 20px 48px">
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+            <div onClick="{{ r.open }}" style="{{ r.mstyle }}">
+              <div style="display:flex;gap:10px;align-items:center;font-size:11px">
+                <span style="font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--color-primary)">{{ r.cat }}</span>
+                <span style="font-family:var(--font-mono);color:var(--fg-3)">{{ r.date }} · {{ r.read }}</span>
+              </div>
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:19px;color:var(--color-text);line-height:1.3;text-wrap:pretty">{{ r.title }}</div>
+              <sc-if value="{{ showDeks }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size:14px;color:var(--fg-2);line-height:1.55;text-wrap:pretty">{{ r.dek }}</div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--color-text);color:#fff;padding:32px 20px;display:flex;flex-direction:column;gap:6px">
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:15px">First Class</div>
+          <div style="font-size:13px;color:var(--grey-400)">Training, elevated.</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--fg-3)">Mobile — Article</div>
+      <div data-screen-label="Mobile article" style="width:390px;min-height:844px;background:#fff;border-radius:4px;overflow:hidden;box-shadow:0 1px 3px rgba(26,26,46,0.08)">
+        <div style="height:56px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 4px 0 4px;gap:4px">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center"><i class="ph ph-arrow-left" style="font-size:20px;color:var(--fg-1)"></i></div>
+          <div style="font-size:14px;font-weight:600;color:var(--fg-1)">Journal</div>
+          <div style="margin-left:auto;width:44px;height:44px;display:flex;align-items:center;justify-content:center"><i class="ph ph-list" style="font-size:22px;color:var(--fg-1)"></i></div>
+        </div>
+        <div style="padding:32px 20px 0">
+          <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:var(--color-primary)">{{ art.cat }}</div>
+          <div style="font-family:var(--font-heading);font-weight:700;font-size:30px;letter-spacing:-0.02em;color:var(--color-text);line-height:1.2;margin-top:10px;text-wrap:pretty">{{ art.title }}</div>
+          <div style="font-size:17px;color:var(--fg-2);line-height:1.55;margin-top:14px;text-wrap:pretty">{{ art.dek }}</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:24px;padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+            <div style="width:36px;height:36px;border-radius:999px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ art.initials }}</div>
+            <div style="min-width:0">
+              <div style="font-size:14px;font-weight:600;color:var(--fg-1)">{{ art.author }}</div>
+              <div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">{{ art.date }} · {{ art.read }}</div>
+            </div>
+          </div>
+        </div>
+        <div style="padding:28px 20px 48px;display:flex;flex-direction:column;gap:20px">
+          <sc-for list="{{ art.blocks }}" as="b" hint-placeholder-count="6">
+            <sc-if value="{{ b.isH }}" hint-placeholder-val="{{ false }}">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:21px;color:var(--color-text);margin-top:12px">{{ b.text }}</div>
+            </sc-if>
+            <sc-if value="{{ b.isP }}" hint-placeholder-val="{{ true }}">
+              <div style="font-size:17px;line-height:1.65;color:var(--grey-700);text-wrap:pretty">{{ b.text }}</div>
+            </sc-if>
+            <sc-if value="{{ b.isQ }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:4px 0 4px 18px;border-left:2px solid var(--color-secondary);display:flex;flex-direction:column;gap:8px">
+                <div style="font-family:var(--font-heading);font-weight:500;font-size:19px;line-height:1.4;color:var(--color-text)">“{{ b.text }}”</div>
+                <div style="font-size:13px;color:var(--fg-3)">{{ b.cite }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ b.isN }}" hint-placeholder-val="{{ false }}">
+              <div style="background:var(--grey-50);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;gap:12px">
+                <i class="ph ph-info" style="font-size:18px;color:var(--color-primary);margin-top:2px"></i>
+                <div style="font-size:15px;line-height:1.6;color:var(--grey-700)">{{ b.text }}</div>
+              </div>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div onClick="{{ next.open }}" style="background:var(--color-surface);border-top:1px solid var(--border);padding:28px 20px 40px;cursor:pointer;display:flex;flex-direction:column;gap:6px">
+          <div class="fc-overline">Next in the journal</div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:19px;color:var(--color-text);line-height:1.3">{{ next.title }}</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:var(--color-primary);margin-top:6px">Read article<i class="ph ph-arrow-right"></i></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showDeks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+const POSTS = [
+  { id: "a1", cat: "Regulation", date: "24 Sep 2026", read: "7 min", author: "Thandiwe Mokoena", role: "Head of Curriculum", initials: "TM",
+    title: "What the new BVLOS provisions mean for your syllabus",
+    dek: "Beyond-visual-line-of-sight approvals are moving from case-by-case waivers to defined standards. Here is how training partners can update ground school and assessment without rebuilding from scratch.",
+    blocks: [
+      ["p", "For most of the last decade, beyond-visual-line-of-sight (BVLOS) operations were approved one operator at a time. Each application carried its own risk assessment, its own conditions, and its own expectations of the remote pilot. Training followed the same pattern: organizations taught to whatever their largest client needed."],
+      ["p", "That is changing. Several civil aviation authorities have now published, or are consulting on, standard scenarios for BVLOS flight in low-risk airspace. Standard scenarios mean standard competencies — and that gives training partners something concrete to build against."],
+      ["h", "What changes for learners"],
+      ["p", "Remote pilots working toward a BVLOS endorsement will need to show competence in three areas that most current syllabi treat lightly: detect-and-avoid procedures, command-and-control link loss management, and coordination with air traffic services when operating near controlled airspace."],
+      ["n", "Requirements differ between jurisdictions. Check the current guidance from your national authority before publishing updated course material. First Class course templates flag jurisdiction-specific content so you can swap it per cohort."],
+      ["h", "What changes for instructors"],
+      ["p", "The biggest shift is in assessment. A visual-line-of-sight practical can be observed from the field. A BVLOS practical cannot, so evidence of competence comes increasingly from flight logs, simulator sessions, and scenario-based oral questioning. Instructors should expect to spend more time reviewing data and less time standing beside a learner."],
+      ["q", "We moved two of our five practical scenarios into the simulator. Learners get more repetitions on link-loss drills than we could ever schedule in the field.", "Adaeze Okonkwo, Lead instructor, Skyward Aviation Academy"],
+      ["h", "A practical update path"],
+      ["p", "You do not need to rewrite your course. Start by mapping existing modules to the new competency list, then add short, focused units where the gaps are. In our experience, most VLOS courses cover around 70% of what a BVLOS endorsement requires. The remaining 30% is where your learners will need the most support."]
+    ] },
+  { id: "a2", cat: "Teaching", date: "17 Sep 2026", read: "6 min", author: "Adaeze Okonkwo", role: "Lead instructor, Skyward Aviation Academy", initials: "AO",
+    title: "Teaching airspace classes so they stick",
+    dek: "Airspace is the module learners most often retake. Four changes to how we sequence and assess it lifted first-attempt scores across three cohorts.",
+    blocks: [
+      ["p", "Every instructor knows the moment: a learner who can recite the airspace classes perfectly freezes when you hand them a real aeronautical chart. Memorising the table is not the same as reading the sky."],
+      ["p", "Over the past year we restructured our airspace module around one principle — learners should work with charts from the first lesson, not the last."],
+      ["h", "1. Start with a chart, not a table"],
+      ["p", "We now open the module with a section of the local chart and a single question: where could you fly here today, and who would you need to talk to? Learners get it wrong, and that is the point. The classification table arrives in lesson two as the answer to a question they already care about."],
+      ["h", "2. Teach in vertical slices"],
+      ["p", "Instead of covering Class A through G in order, we teach the airspace a learner would actually climb through above a specific location. It mirrors how they will plan real operations, and it makes the boundaries between classes concrete."],
+      ["h", "3. Short, frequent checks"],
+      ["p", "We replaced one end-of-module quiz with five three-question checks spread across the lessons. Learners see where they stand early, and instructors see which concepts need revisiting before the assessment."],
+      ["q", "The quick checks told me I was mixing up controlled and restricted airspace before it cost me on the exam.", "Remote pilot learner, Cohort 14"],
+      ["h", "4. Review the wrong answers together"],
+      ["p", "After each check, we spend five minutes on the most common wrong answer. Learners explain their reasoning out loud. More often than not, the misconception is shared — and correcting it once, as a group, saves a retake later."]
+    ] },
+  { id: "a3", cat: "Partners", date: "9 Sep 2026", read: "5 min", author: "Kwame Asante", role: "Partner Success, First Class", initials: "KA",
+    title: "How Skyward Aviation Academy lifted first-attempt pass rates to 86%",
+    dek: "A regional training organization moved its theory course onto First Class and restructured how instructors follow up. Results after four cohorts.",
+    blocks: [
+      ["p", "Skyward Aviation Academy trains around 280 remote pilots a year across commercial, agricultural, and inspection operations. Before joining First Class, its theory course was delivered through a mix of classroom sessions, PDF workbooks, and a shared spreadsheet for tracking progress."],
+      ["p", "First-attempt pass rates on the theory examination sat at 68%. Instructors knew which learners were struggling, but usually only after the mock exam — too late to change the outcome."],
+      ["h", "What they changed"],
+      ["p", "The academy moved its existing material onto the platform in three weeks, keeping its own instructors, examples, and local regulatory content. The structure stayed familiar. What changed was visibility: instructors could see each learner’s progress and check results as they happened."],
+      ["p", "Lead instructor Adaeze Okonkwo introduced a weekly review. Any learner who scored below 70% on two consecutive module checks received a short message and an offer of a one-to-one session that week."],
+      ["q", "We stopped finding out who was behind at the mock exam. We found out in week two, when there was still time to help.", "Adaeze Okonkwo, Lead instructor"],
+      ["h", "Results after four cohorts"],
+      ["p", "First-attempt pass rates rose from 68% to 86%. Average time to complete the theory course fell from 9 weeks to 7. Instructors report spending roughly the same total time on follow-up, but directing it at the learners who need it."],
+      ["n", "Results reflect four cohorts between January and August 2026. Outcomes vary by course design, cohort size, and examination authority."]
+    ] },
+  { id: "a4", cat: "Learners", date: "2 Sep 2026", read: "4 min", author: "Thandiwe Mokoena", title: "Preparing for your practical flight assessment", dek: "What examiners look for, how the day runs, and the pre-flight habits that make the biggest difference." },
+  { id: "a5", cat: "Teaching", date: "26 Aug 2026", read: "5 min", author: "Adaeze Okonkwo", title: "Writing assessment feedback learners act on", dek: "Specific, forward-looking feedback gets results. A short guide with examples from real module reviews." },
+  { id: "a6", cat: "Regulation", date: "19 Aug 2026", read: "6 min", author: "Thandiwe Mokoena", title: "Night operations: what changes in the theory exam", dek: "New question areas on lighting, visual illusions, and fatigue — and how to cover them in two extra lessons." },
+  { id: "a7", cat: "Partners", date: "12 Aug 2026", read: "4 min", author: "Kwame Asante", title: "Bringing your existing course library onto First Class", dek: "What to migrate as-is, what to restructure, and a realistic timeline for a 40-hour theory course." },
+  { id: "a8", cat: "Learners", date: "5 Aug 2026", read: "3 min", author: "Lindiwe Dlamini", title: "Logging flight hours: a short guide for remote pilots", dek: "Which hours count, what to record for each flight, and how to keep a log your examiner will accept." }
+];
+const CATS = ["All", "Regulation", "Teaching", "Partners", "Learners"];
+
+class Component extends DCLogic {
+  state = { filter: "All", selected: "a1" };
+  open(id) { this.setState({ selected: id }); }
+  renderVals() {
+    const { filter, selected } = this.state;
+    const list = POSTS.filter(p => filter === "All" || p.cat === filter);
+    const full = POSTS.filter(p => p.blocks);
+    const art = full.find(p => p.id === selected) || full[0];
+    const nx = full[(full.indexOf(art) + 1) % full.length];
+    const tab = on => "cursor:pointer;font-size:14px;font-weight:" + (on ? "600" : "500") + ";padding:14px 12px;display:flex;gap:6px;align-items:baseline;white-space:nowrap;"
+      + (on ? "color:var(--color-primary);box-shadow:inset 0 -2px 0 var(--color-primary)" : "color:var(--fg-2)");
+    return {
+      showDeks: this.props.showDeks ?? true,
+      switcher: full.map((p, i) => ({
+        label: (i + 1) + ". " + p.title,
+        open: () => this.open(p.id),
+        style: "cursor:pointer;font-size:13px;padding:8px 14px;border-radius:8px;border:1px solid " + (p.id === art.id ? "var(--color-primary);background:#fff;color:var(--color-primary);font-weight:600" : "var(--border-strong);background:transparent;color:var(--fg-2)")
+      })),
+      cats: CATS.map(c => ({
+        label: c,
+        count: c === "All" ? POSTS.length : POSTS.filter(p => p.cat === c).length,
+        pick: () => this.setState({ filter: c }),
+        style: tab(c === filter),
+        mstyle: tab(c === filter) + ";padding:12px 10px;font-size:13px"
+      })),
+      rows: list.map((p, i) => ({
+        ...p,
+        author: "By " + p.author,
+        open: () => p.blocks && this.open(p.id),
+        style: "display:grid;grid-template-columns:120px 120px minmax(0,1fr) 80px;gap:24px;padding:28px 16px;margin:0 -16px;border-bottom:1px solid var(--border);border-radius:0;transition:background 200ms;cursor:" + (p.blocks ? "pointer" : "default"),
+        mstyle: "display:flex;flex-direction:column;gap:8px;padding:20px 0;border-bottom:1px solid var(--border);cursor:" + (p.blocks ? "pointer" : "default")
+      })),
+      rows2: POSTS.map(p => ({
+        title: p.title, dek: p.dek,
+        byline: p.author + " · " + p.date,
+        open: () => p.blocks && this.open(p.id),
+        style: "display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;padding:40px 16px;margin:0 -16px;border-bottom:1px solid var(--border);transition:background 200ms;cursor:" + (p.blocks ? "pointer" : "default"),
+        mstyle: "display:flex;flex-direction:column;gap:10px;padding:28px 0;border-bottom:1px solid var(--border);cursor:" + (p.blocks ? "pointer" : "default")
+      })),
+      art: { ...art, blocks: art.blocks.map(([t, text, cite]) => ({ text, cite, isP: t === "p", isH: t === "h", isQ: t === "q", isN: t === "n" })) },
+      next: { title: nx.title, cat: nx.cat, open: () => this.open(nx.id) }
+    };
+  }
+}
+</script>
+</body>
+</html>
