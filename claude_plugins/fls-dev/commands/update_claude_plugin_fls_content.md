@@ -16,7 +16,7 @@ Run the detection heuristic:
 
 ```bash
 git diff main --name-only | grep -qE \
-  '(freedom_ls/(content_base|content_engine|form_engine)/schema\.py|freedom_ls/form_engine/(enums|typed_answers)\.py|freedom_ls/content_engine/validate\.py|freedom_ls/content_engine/templates/cotton/|config/settings_base\.py|freedom_ls/content_engine/management/commands/content_(save|validate)\.py|demo_content/)'
+  '(freedom_ls/(content_base|content_engine|form_engine)/schema\.py|freedom_ls/form_engine/(enums|typed_answers)\.py|freedom_ls/content_engine/validate\.py|freedom_ls/content_engine/templates/cotton/|freedom_ls/learner_interface/templates/cotton/course-card\.html|config/settings_base\.py|freedom_ls/content_engine/management/commands/content_(save|validate)\.py|demo_content/)'
 ```
 
 - **Exit code 1 (no match):** print `No authoring-relevant changes` and go directly to Step 4 (tick). No LLM, no fan-out.

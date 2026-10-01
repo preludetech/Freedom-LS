@@ -1,0 +1,10 @@
+{% comment %}
+Title link, summary, details and price shared by both c-course-card layouts.
+Context: course, url.
+{% endcomment %}
+{% include "learner_interface/partials/card_title_link.html" with url=url title=course.title %}
+{% if course.subtitle or course.description %}<p>{{ course.subtitle|default:course.description }}</p>{% endif %}
+{% if course.difficulty or course.display_estimated_duration %}
+<p class="text-sm text-muted">{{ course.get_difficulty_display }}{% if course.difficulty and course.display_estimated_duration %} · {% endif %}{{ course.display_estimated_duration }}</p>
+{% endif %}
+{% with price=course.current_price %}{% if price %}<p class="text-sm font-semibold"><c-course-price :price="price" variant="compact" /></p>{% endif %}{% endwith %}

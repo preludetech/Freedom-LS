@@ -378,6 +378,7 @@ MARKDOWN_ALLOWED_TAGS = {
     "c-content-link": {"path"},
     "c-article-link": {"path"},
     "c-article-card": {"path", "variant"},
+    "c-course-card": {"path", "variant"},
     "c-pdf-embed": {"src", "caption", "height"},
     "c-file-download": {"src", "text"},
     "c-pull-quote": {"attribution", "cite", "source"},

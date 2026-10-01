@@ -1,0 +1,35 @@
+<c-vars path variant="row" />
+{% load course_card_tags %}
+{% comment %}
+Course card for markdown content; the whole card clicks through via the
+stretched title link. Renders nothing when the course is hidden or missing.
+Carries no status, progress or details link, so the course list's own card and
+row templates are not reused.
+{% endcomment %}
+{% with course=path|get_course_by_path:content_instance %}
+{% if course %}
+{% url 'learner_interface:course_detail' course_slug=course.slug as url %}
+{% if variant == "compact" %}
+<c-course-card-shell accent_slot_key="{{ course.accent_slot_key }}"
+                     icon="{{ course.icon }}"
+                     icon_fallback="{{ course.icon_fallback }}"
+                     title="{{ course.title }}">
+    <c-slot name="eyebrow">
+        {% with badge=course|course_access_badge %}{% if badge %}<c-chip variant="{{ badge.variant }}" size="xs">{{ badge.label }}</c-chip>{% endif %}{% endwith %}
+    </c-slot>
+    {% include "learner_interface/partials/markdown_course_card_body.html" %}
+</c-course-card-shell>
+{% else %}
+<c-course-row-shell class="h-full"
+                    accent_slot_key="{{ course.accent_slot_key }}"
+                    icon="{{ course.icon }}"
+                    icon_fallback="{{ course.icon_fallback }}"
+                    title="{{ course.title }}">
+    <c-slot name="eyebrow">
+        {% with badge=course|course_access_badge %}{% if badge %}<c-chip variant="{{ badge.variant }}" size="xs">{{ badge.label }}</c-chip>{% endif %}{% endwith %}
+    </c-slot>
+    {% include "learner_interface/partials/markdown_course_card_body.html" %}
+</c-course-row-shell>
+{% endif %}
+{% endif %}
+{% endwith %}
