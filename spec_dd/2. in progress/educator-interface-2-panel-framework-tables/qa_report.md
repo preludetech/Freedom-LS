@@ -212,7 +212,7 @@ refreshing from a fixed URL resets the cohorts list from `?cohorts-page=2` to pa
 - **FIXED** (commit: fe66b7bb) — B2: Live search stops working whenever a sort is active. The trigger now listens on `#<key>-q` instead of `find input`. Re-verified after an htmx sort, on a full load with `learners-sort`, with no sort, and on the cohort details tab.
 - **FIXED** (commit: 66aea7f6) — B3: No-JS mobile Filter & sort form is invisible. The `<noscript>` override now also sets `opacity: 1; transform: none`. Re-verified with JS off at 390px (visible and submittable) and with JS on (the sheet is unchanged).
 - **FIXED** (commit: 4b2b14cd) — B4: Live search moves focus off the search box, dropping keystrokes. Spec decision: a search swap keeps focus in the search input. The afterSettle listener skips search-triggered swaps. The input is `hx-preserve`d and refocused with its caret in `htmx:afterSwap`, because Chromium drops the caret of a moved input. The real focus thief was the table's filter & sort `sidePanel` opening its hidden sheet on desktop on every region init. It is now `data-mobile-only`, so it never docks on desktop and never touches the sidebar's grid. Covered by `test_search_swap_keeps_focus_and_typing_in_search_box` and `test_filter_sort_sheet_stays_closed_on_desktop`.
-- **FIXED** (commit: e2a663c5) — B5: Interacting with one table drops a sibling table's state from the URL. Spec decision: on an htmx table-region request whose `HX-Current-URL` path equals the panel's `page_url`, parameters outside the table's own namespace come from that URL and the table's own parameters come from the request. The rendered links and `HX-Push-Url`/`HX-Replace-Url` then carry the siblings' live state. Covered by unit tests in `test_data_table_panel.py` and `test_paging_one_table_keeps_sibling_page_in_url` (Playwright). The 7.7 list-refresh page reset is a separate issue and is not addressed here.
+- **FIXED** (commit: e2a663c5) — B5: Interacting with one table drops a sibling table's state from the URL. Spec decision: on an htmx table-region request whose `HX-Current-URL` path equals the panel's `page_url`, parameters outside the table's own namespace come from that URL and the table's own parameters come from the request. The rendered links and `HX-Push-Url`/`HX-Replace-Url` then carry the siblings' live state. Covered by unit tests in `test_data_table_panel.py` and `test_paging_one_table_keeps_sibling_page_in_url` (Playwright). The 7.7 list-refresh page reset was fixed separately in 025ba453.
 
 ## 6. General notes
 
@@ -223,7 +223,10 @@ refreshing from a fixed URL resets the cohorts list from `?cohorts-page=2` to pa
   a data difference, not a bug.
 - 7.2 was skipped: the QA cohort has only a "Details" tab, so there is nothing to click between.
 - The Cohorts list table has no sortable columns or search, so 7.7's "stays on the current sort"
-  could not be exercised; the Create Cohort refresh resets the list to page 1 (related to B5).
+  could not be exercised; the Create Cohort refresh reset the list to page 1 (related to B5).
+  **Fixed** in 025ba453: `listRefresh` now re-requests the region with the address bar's query, and
+  a table response whose URL equals `HX-Current-URL` replaces the history entry instead of pushing
+  a duplicate. Covered by `test_save_and_add_another_keeps_current_page`.
 - Neither course-detail table (Cohort Registrations, Direct Registrations) has sortable columns, so
   7.5 only covered paging.
 - The mobile "Sort" toolbar button measures ~31x24px: this meets the WCAG 2.2 AA target size
