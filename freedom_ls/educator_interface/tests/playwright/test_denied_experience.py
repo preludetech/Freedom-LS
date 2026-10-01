@@ -96,3 +96,33 @@ def test_a_grant_revoked_while_the_create_cohort_modal_is_open_denies_the_submit
     close_button.click()
 
     expect(heading).to_be_hidden()
+
+
+def test_a_cohort_leaving_scope_while_its_delete_dialog_is_open_says_so(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+    organisation_with_a_lapsing_admin: Organisation,
+):
+    organisation = organisation_with_a_lapsing_admin
+    # educator_user holds no cohort grant on this one, so it leaves their
+    # scope with organisation_admin.
+    cohort = CohortFactory(organisation=organisation, name="Leaving Scope")
+    page = educator_logged_in_page
+    page.goto(_interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
+    page.get_by_role("button", name="Delete").first.click()
+    dialog_delete = page.get_by_role("dialog").get_by_role("button", name="Delete")
+    expect(dialog_delete).to_be_visible()
+
+    remove_object_role(educator_user, organisation, "organisation_admin")
+    dialog_delete.click()
+
+    heading = page.get_by_role("heading", name="This is no longer available")
+    expect(heading).to_be_visible()
+    expect(page.get_by_text("Are you sure you want to delete")).to_be_hidden()
+    close_button = page.get_by_role("button", name="Close").last
+    expect(close_button).to_be_visible()
+
+    close_button.click()
+
+    expect(heading).to_be_hidden()

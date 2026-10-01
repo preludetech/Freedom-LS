@@ -170,3 +170,34 @@ def test_denied_context_omits_names_for_an_asker_who_may_not_view_organisationme
     context = OrganisationSectionConfig.get_denied_context(request, None, organisation)
 
     assert context["who_to_ask"] == f"Ask an organisation admin of {organisation.name}."
+
+
+@pytest.mark.django_db
+def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragment(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    other_cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    # cohort_viewer on another cohort keeps the organisation reachable, while
+    # the cohort being deleted leaves scope with organisation_admin.
+    assign_object_role(user, organisation, "organisation_admin")
+    assign_object_role(user, other_cohort, "cohort_viewer")
+    client = logged_in_client(user)
+    delete_url = _interface_url(
+        organisation.slug,
+        f"cohorts/{cohort.pk}/__tabs/details/__panels/details/__actions/delete",
+    )
+    assert client.get(delete_url, HTTP_HX_REQUEST="true").status_code == 200
+
+    remove_object_role(user, organisation, "organisation_admin")
+
+    response = client.delete(delete_url, HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+    html = response.content.decode()
+    assert "data-htmx-swap-error" in html
+    assert "This is no longer available" in html
+    assert cohort.name not in html
+    assert Cohort.objects.filter(pk=cohort.pk).exists()

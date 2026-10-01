@@ -427,6 +427,14 @@ def _handle_action(request: HttpRequest, resolved: _ResolvedAction) -> HttpRespo
     return render(request, action.template_name, action.get_context_data(ctx))
 
 
+def _is_htmx_action_request(request: HttpRequest, parts: list[str]) -> bool:
+    return (
+        request.headers.get("HX-Request") == "true"
+        and len(parts) >= 2
+        and parts[-2] == "__actions"
+    )
+
+
 def _vary_on_htmx(response: HttpResponse) -> HttpResponse:
     """One URL answers with a page, a bundle or a fragment depending on these
     headers, so a cache must key on them."""
@@ -660,7 +668,20 @@ def panel_framework_view(
         section_url = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
-        resolved = _resolve_path(parts, sections, request, section_url)
+        try:
+            resolved = _resolve_path(parts, sections, request, section_url)
+        except Http404:
+            # htmx drops a bare 404, so an action the page offered would
+            # silently do nothing once its object left the user's scope.
+            if _is_htmx_action_request(request, parts):
+                return _vary_on_htmx(
+                    render(
+                        request,
+                        "panel_framework/partials/action_unavailable.html",
+                        status=404,
+                    )
+                )
+            raise
         if resolved.action is not None:
             return _vary_on_htmx(_handle_action(request, resolved.action))
         main_template_name, main, heading = _main_for(request, resolved)

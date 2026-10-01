@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from django.db.models import Model
-from django.http import Http404, HttpRequest
+from django.http import Http404, HttpRequest, HttpResponse
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.views import (
@@ -167,3 +167,51 @@ class TestCheckAccessPrologueIsNonBypassable:
         instance = StubModel(pk=1, name="unsaved")
         with pytest.raises(Http404):
             ScopeDereferencingConfig.check_access(HttpRequest(), instance)
+
+
+@pytest.mark.django_db
+class TestOutOfScopeActionRequests:
+    """An action the page offered can 404 once its object leaves the user's
+    scope. htmx drops a bare 404, so the user would see nothing happen."""
+
+    def _dispatch(self, path_string: str, **headers: str) -> HttpResponse:
+        request = RequestFactory().delete(f"/test-panel/{path_string}", **headers)
+        request.user = make_staff_user()
+        return panel_framework_view(
+            config=[NavGroup("Stubs", [DenyByDefaultConfig])],
+            request=request,
+            path_string=path_string,
+            template_name=TEMPLATE,
+            url_name=URL_NAME,
+        )
+
+    def test_htmx_action_request_gets_the_unavailable_fragment_with_404(
+        self, mock_site_context: None
+    ) -> None:
+        stub = _make_stub(name="Gone Stub")
+
+        response = self._dispatch(
+            f"deny-stub/{stub.pk}/__actions/delete", HTTP_HX_REQUEST="true"
+        )
+
+        assert response.status_code == 404
+        html = response.content.decode()
+        assert "data-htmx-swap-error" in html
+        assert "This is no longer available" in html
+        assert "Gone Stub" not in html
+
+    def test_plain_action_request_still_raises_http404(
+        self, mock_site_context: None
+    ) -> None:
+        stub = _make_stub(name="Gone Stub")
+
+        with pytest.raises(Http404):
+            self._dispatch(f"deny-stub/{stub.pk}/__actions/delete")
+
+    def test_htmx_request_for_a_page_still_raises_http404(
+        self, mock_site_context: None
+    ) -> None:
+        stub = _make_stub(name="Gone Stub")
+
+        with pytest.raises(Http404):
+            self._dispatch(f"deny-stub/{stub.pk}", HTTP_HX_REQUEST="true")

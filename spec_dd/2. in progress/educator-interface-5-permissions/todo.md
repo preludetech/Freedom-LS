@@ -51,8 +51,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user) Decide whether a stale action on an object that drops out of the user's scope should answer 404 (spec) or show the 403 denial modal (test plan §7.8), and whether an in-page htmx 404 should get visible feedback instead of being dropped silently. Then update the spec or the test plan to match (see qa_report.md B1)
-- [ ] (user + cmd) Fix QA bug: stale delete on an out-of-scope cohort fails silently (TDD — failing test first, then fix)
+- [x] (user) Decide whether a stale action on an object that drops out of the user's scope should answer 404 (spec) or show the 403 denial modal (test plan §7.8), and whether an in-page htmx 404 should get visible feedback instead of being dropped silently. Then update the spec or the test plan to match (see qa_report.md B1)
+- [x] (user + cmd) Fix QA bug: stale delete on an out-of-scope cohort fails silently (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
@@ -70,7 +70,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved
