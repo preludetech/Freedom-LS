@@ -45,7 +45,7 @@ practice and the ranked options are in `research_design_fidelity_practices.md`.
 
 ### Registration takes Claude Design's handoff prompt
 
-Claude Design can copy a handoff prompt for a selection. `design sync prompt.md` next to this idea
+Claude Design can copy a handoff prompt for a selection. `design_prompt.md` next to this idea
 is the one for this design. It names four things:
 
 - the Claude Design MCP endpoint, and `/design-login` for authorisation;
@@ -119,12 +119,9 @@ That parent never moves as its children go from `1. next` to `3. done`, so paths
 
 ## Part 2: make the notifications UI match the design
 
-Start by re-registering `spec_dd/1. next/user-communication/` with the new registration, passing
-it `design sync prompt.md`, so it gets `design_prompt.md`, `design_source/`,
-and `design_screenshots/`. Until then, three things next to this
-idea stand in: `design_source/` holds the files the prompt names plus
-`design-system/colors_and_type.css`, `design_screenshots/` holds the spike's renders of sections
-1 and 2, and `design_snapshot_notifications.md` holds the matching source excerpts.
+Start by registering the design on this spec's own directory with the new registration, passing
+it the handoff prompt, so `design_prompt.md`, `design_source/`, `design_screenshots/` and
+`design.md` sit next to this idea. `spec_dd/1. next/user-communication/` is left as `main` has it.
 
 The scope is every surface `user-communication-1-notifications-core` built. That means the bell
 and badge, the panel (the desktop popover and the full-width sheet at 375px) and the notification
