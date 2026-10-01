@@ -125,3 +125,65 @@ def test_crossing_the_breakpoint_twice_while_open_still_unwinds_a_single_entry(
     page.go_back()
 
     expect(page).to_have_url(detail_url)
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_a_sheet_closed_with_escape_after_back_dismissed_the_docked_drawer_unwinds_its_entry(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    stub = _make_stub(name="Alpha")
+    detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
+    list_url = f"{live_server.url}/test-panel/framework/stubs/"
+    page.set_viewport_size(_DESKTOP_VIEWPORT)
+    page.goto(detail_url)
+    page.goto(list_url)
+    # A same-document entry, so Back with the docked drawer open fires
+    # popstate on this page rather than leaving it.
+    page.evaluate("history.pushState({}, '')")
+
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("#quick-view")).to_be_visible()
+    page.go_back()
+    expect(page.locator("#quick-view")).to_be_hidden()
+
+    page.set_viewport_size(_MOBILE_VIEWPORT)
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("dialog:modal")).to_have_count(1)
+    page.keyboard.press("Escape")
+    expect(page.locator("#quick-view")).to_be_hidden()
+
+    page.go_back()
+
+    expect(page).to_have_url(detail_url)
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_a_sheet_carried_across_to_desktop_unwinds_its_entry_when_closed(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    stub = _make_stub(name="Alpha")
+    detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
+    list_url = f"{live_server.url}/test-panel/framework/stubs/"
+    page.set_viewport_size(_MOBILE_VIEWPORT)
+    page.goto(detail_url)
+    page.goto(list_url)
+
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("dialog:modal")).to_have_count(1)
+    page.set_viewport_size(_DESKTOP_VIEWPORT)
+    expect(page.locator("dialog:modal")).to_have_count(0)
+    expect(page.locator("#quick-view")).to_be_visible()
+
+    page.keyboard.press("Escape")
+    expect(page.locator("#quick-view")).to_be_hidden()
+    expect(page).to_have_url(list_url)
+
+    page.go_back()
+
+    expect(page).to_have_url(detail_url)
