@@ -11,7 +11,7 @@ Attributes:
   subtitle       One line under the title, muted.
   heading_level  1-6 (default 1). Falls back to the default on anything else.
   title_id       id on the heading element, e.g. the "instance-title" id the
-                 panelChanged listener in alpine-components.js looks up.
+                 instanceTitleChanged listener in alpine-components.js looks up.
 
 The heading holds the title text and nothing else, so that listener's
 textContent swap never wipes out a badge nested inside it — the badge sits
