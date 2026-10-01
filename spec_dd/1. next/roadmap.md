@@ -339,14 +339,17 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `phone-number-form-field` | A form-engine phone number field with country code and validation. | none | next | Has a `todo.md` from an earlier start. |
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
 | `retry-sent-emails` | Persist every queued email, classify SMTP failures, retry transient ones with deferred tasks, sweep stuck rows, and give admins a resend action. | none | next | Has `1. spec.md`. The transport layer that `user-communication-2-notification-email` sends through. |
+| `article-images` | An optional article image: shown on article cards, used for `og:image` and a large Twitter card, checked by the validator. | `new-content-type-articles` | next | |
 | `user-profile-upgrades` | Redesign the user profile page and add phone number and date of birth, some possibly required at signup. | `phone-number-form-field` | next | |
 | `auto-run-tailwind-watch` | One command that starts the dev server and the Tailwind watch together, with Tailwind's errors visible. | none | in progress | |
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
 | `content_snapshots` | Immutable point-in-time snapshots of content_engine objects, so what a learner saw on the day is recorded. | none | in progress | |
 | `in-app-feedback` | Configurable feedback prompts at natural pause points, with a rating and free text. | none | in progress | Spec, plan and QA plan exist. |
+| `new-content-type-articles` | Articles: standalone public markdown pages loaded by `content_save`, a blog index and article pages, SEO, and article-link, article-card, course-card and grid widgets. | none | in progress | |
 
 ```
+new-content-type-articles ── article-images
 phone-number-form-field ──── user-profile-upgrades
 ```
 
-No edges: `file-scanning`, `form-engine-branch-logic`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (inside this table; `user-communication-2-notification-email` depends on it), and every spec in progress.
+No edges: `file-scanning`, `form-engine-branch-logic`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (inside this table; `user-communication-2-notification-email` depends on it), and every spec in progress except `new-content-type-articles`.
