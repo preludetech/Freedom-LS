@@ -1,6 +1,6 @@
 # Notifications
 
-_Last updated: 2026-09-26_
+_Last updated: 2026-10-01_
 
 ## Summary
 
@@ -22,7 +22,7 @@ FLS never notifies someone about what they just did. A learner is notified when 
 
 ## Turning It On and Extending It
 
-The bell is hidden until a project sets `NOTIFICATIONS_ENABLED`. Notifications are recorded whether or not it is set, so a site that turns the bell on later shows the history it has built up. A project adds its own notification categories through the `NOTIFICATION_CATEGORIES` setting.
+The bell is hidden until a project sets `NOTIFICATIONS_ENABLED`. Notifications are recorded whether or not it is set, so a site that turns the bell on later shows the history it has built up. A project adds its own notification categories through the `NOTIFICATION_CATEGORIES` setting. Each category can optionally be given one of a fixed set of colours for the icon tile beside its notifications; without one the tile is neutral, as it is for the category FLS ships.
 
 ## Not Built
 
