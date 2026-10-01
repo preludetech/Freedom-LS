@@ -45,6 +45,13 @@ def test_a_written_bad_slug_is_rejected_naming_the_file():
         _article("blog/bad.md", slug="bad slug!")
 
 
+def test_a_written_bad_slug_error_is_located_at_the_slug_field():
+    with pytest.raises(ValidationError) as excinfo:
+        _article("blog/bad.md", slug="bad slug!")
+
+    assert excinfo.value.errors()[0]["loc"] == ("slug",)
+
+
 def test_a_derived_empty_slug_is_rejected_naming_the_file():
     with pytest.raises(ValidationError, match=r"blog/!!!\.md"):
         _article("blog/!!!.md")

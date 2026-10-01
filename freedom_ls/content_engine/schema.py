@@ -108,6 +108,13 @@ class ArticleVisibility(StrEnum):
     HIDDEN = "hidden"
 
 
+def _invalid_slug_message(slug: str, file_path: Path | None) -> str:
+    return (
+        f"Invalid article slug '{slug}' in {file_path}: "
+        "a slug may only contain letters, digits, hyphens and underscores."
+    )
+
+
 class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.ARTICLE):
     slug: str | None = None
     published_on: date
@@ -126,6 +133,14 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
             "remove it from this article."
         )
 
+    @field_validator("slug")
+    @classmethod
+    def _check_written_slug(cls, value: str | None, info: ValidationInfo) -> str | None:
+        # Runs only for a slug the file wrote, so the error is located at "slug".
+        if value is not None and not SLUG_PATTERN.fullmatch(value):
+            raise ValueError(_invalid_slug_message(value, info.data.get("file_path")))
+        return value
+
     @model_validator(mode="after")
     def _derive_and_check_slug(self) -> "Article":
         if self.slug is None:
@@ -136,10 +151,7 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
             )
             self.slug = slugify(name_source)
         if not SLUG_PATTERN.fullmatch(self.slug):
-            raise ValueError(
-                f"Invalid article slug '{self.slug}' in {self.file_path}: "
-                "a slug may only contain letters, digits, hyphens and underscores."
-            )
+            raise ValueError(_invalid_slug_message(self.slug, self.file_path))
         return self
 
 
