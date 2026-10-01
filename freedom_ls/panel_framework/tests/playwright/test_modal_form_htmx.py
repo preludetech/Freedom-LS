@@ -203,9 +203,9 @@ def test_a_backdrop_click_does_not_close_a_form(
 
     page.get_by_role("button", name="Create Item").click()
     expect(page.locator("#app-modal")).to_be_visible()
-    # A click at the dialog's own padding, clear of the form and close
-    # button, lands on the dialog element itself.
-    page.locator("#app-modal").click(position={"x": 5, "y": 5})
+    # The viewport's corner is clear of the centred dialog, so the click
+    # lands on its ::backdrop.
+    page.mouse.click(5, 5)
 
     expect(page.locator("#app-modal")).to_be_visible()
 
