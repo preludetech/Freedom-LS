@@ -24,7 +24,12 @@ from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 
-from config.sitemaps import CourseSitemap, StaticViewSitemap
+from config.sitemaps import (
+    ArticleSitemap,
+    BlogIndexSitemap,
+    CourseSitemap,
+    StaticViewSitemap,
+)
 from config.views import robots_txt
 from freedom_ls.blog.config import config as blog_config
 
@@ -43,6 +48,9 @@ _sitemaps = {
     "static": StaticViewSitemap,
     "courses": CourseSitemap,
 }
+if apps.is_installed("freedom_ls.blog"):
+    _sitemaps["blog_index"] = BlogIndexSitemap
+    _sitemaps["articles"] = ArticleSitemap
 
 # Spliced in ahead of the learner_interface catch-all so an article slug is
 # never shadowed by it.

@@ -12,7 +12,7 @@ from django.contrib.sitemaps import Sitemap
 from django.db.models import QuerySet
 from django.urls import reverse
 
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Article, Course
 from freedom_ls.course_access.loader import get_course_access_backend
 
 
@@ -54,3 +54,23 @@ class CourseSitemap(Sitemap):
             "learner_interface:course_detail",
             kwargs={"course_slug": obj.slug},
         )
+
+
+class BlogIndexSitemap(Sitemap):
+    """Sitemap entry for the blog index."""
+
+    def items(self) -> list[str]:
+        return ["blog:index"]
+
+    def location(self, item: str) -> str:
+        return reverse(item)
+
+
+class ArticleSitemap(Sitemap):
+    """Sitemap entries for published articles of the current site."""
+
+    def items(self) -> QuerySet[Article]:
+        return Article.objects.published()
+
+    def location(self, obj: Article) -> str:
+        return obj.get_absolute_url()
