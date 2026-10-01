@@ -33,7 +33,8 @@ Run these git commands and nothing else, plus the push and `gh` calls in Step 5:
   source file in the repo
 - run `git diff` in patch mode (no `-p`, no bare `git diff`, no `git show`)
 - run tests, linters, type checkers, or `gh pr view`
-- spawn a subagent, invoke another slash command, or launch a search
+- spawn a subagent, invoke another slash command (except `/sdd:commit_quickly` in Step 7, once the
+  user says yes), or launch a search
 
 If the spec does not say something, the PR body does not claim it.
 
