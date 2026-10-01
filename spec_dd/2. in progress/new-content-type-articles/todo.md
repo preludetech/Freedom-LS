@@ -51,11 +51,11 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user) Decide whether c-image-grid should also lose the 24px picture wrapper margins (tighter rows) or whether only mixed c-grid rows should be reset, then fix the picture-alignment bug accordingly
-- [ ] (user + cmd) Fix QA bug: picture tile in a mixed c-grid sits 24px low and is shorter than its row (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: demo article getting-started-with-articles.md uses ## so headings skip from H1 to H3 (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: danger_content_delete leaves Article rows behind (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: c-article-link leaves a space before following punctuation (TDD — failing test first, then fix)
+- [x] (user) Decide whether c-image-grid should also lose the 24px picture wrapper margins (tighter rows) or whether only mixed c-grid rows should be reset, then fix the picture-alignment bug accordingly
+- [x] (user + cmd) Fix QA bug: picture tile in a mixed c-grid sits 24px low and is shorter than its row (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: demo article getting-started-with-articles.md uses ## so headings skip from H1 to H3 (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: danger_content_delete leaves Article rows behind (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: c-article-link leaves a space before following punctuation (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

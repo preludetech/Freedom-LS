@@ -117,11 +117,11 @@ Outcome: pass. Pages checked: `/` and `/articles/getting-started-with-articles/`
 ## Bug status
 
 - **FIXED** (commit: c65bfb19) — Lightbox does not open on article pages
-- **FIXED** (commit: 27e6f373) — Article body has no vertical spacing
-- **UNRESOLVED** — Mixed c-grid: picture tile sits 24px low and is shorter than its row (reason: the fix (4932495b, reverted in 5a7976eb) reset direct-child margins in c-grid, which c-image-grid also renders through, so it tightened existing course image grids by 48px per row. Fixing only mixed grids, or accepting tighter image grids too, is a product decision.)
-- **UNRESOLVED** — Demo article headings skip from H1 to H3 (reason: fix budget exhausted this run)
-- **UNRESOLVED** — Content reset (danger_content_delete) leaves articles behind (reason: fix budget exhausted this run)
-- **UNRESOLVED** — Inline article link leaves a space before following punctuation (reason: fix budget exhausted this run)
+- **FIXED** (commits: 27e6f373, bed808dd) — Article body has no vertical spacing
+- **FIXED** (commit: 8b7b8c3b) — Mixed c-grid: picture tile sits 24px low and is shorter than its row (decision: c-image-grid rows close up to the shared gap-4 too)
+- **FIXED** (commit: 02c67492) — Demo article headings skip from H1 to H3
+- **FIXED** (commit: 01f4f2d3) — Content reset (danger_content_delete) leaves articles behind
+- **FIXED** (commit: d46e7611) — Inline article link leaves a space before following punctuation
 
 ## General notes
 
