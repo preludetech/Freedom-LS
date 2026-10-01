@@ -15,7 +15,7 @@ from guardian.shortcuts import assign_perm
 from playwright.sync_api import FloatRect, Locator, Page, expect
 
 from freedom_ls.accounts.models import User
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.factories import CohortFactory, LearnerFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
@@ -69,3 +69,34 @@ def test_the_docked_drawer_leaves_the_header_actions_and_table_uncovered(
     page.get_by_role("button", name="Create Cohort").click()
 
     expect(page.locator("#app-modal")).to_be_visible()
+
+
+def test_pagination_stays_inside_the_card_beside_a_docked_drawer(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+) -> None:
+    """The learners table's data-table card narrows once the quick-view
+    drawer docks at xl. Enough learners to need the full numbered-pages
+    variant (page, ellipsis, Last) must still wrap inside the card rather
+    than run on under the drawer."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_staff")
+    LearnerFactory.create_batch(
+        51, organisation=organisation, user__first_name="Learner"
+    )
+    page.set_viewport_size({"width": 1400, "height": 900})
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    page.get_by_role("link", name="Learner", exact=True).first.click()
+
+    drawer = page.locator("#quick-view")
+    expect(drawer).to_be_visible()
+    expect(drawer).to_have_css("transform", "none")
+
+    last_link = page.get_by_role("link", name="Last", exact=True)
+    expect(last_link).to_be_visible()
+    drawer_box = _box(drawer)
+    last_box = _box(last_link)
+    assert last_box["x"] + last_box["width"] <= drawer_box["x"]

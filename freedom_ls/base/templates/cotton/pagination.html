@@ -46,7 +46,7 @@
 
     {# Desktop pagination: numbered buttons with First/Last and ellipsis #}
     <div class="hidden sm:flex items-center justify-between mt-6 px-4">
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
             {% if page_obj.has_previous %}
                 <a href="?{{ page_param_name }}=1{{ suffix }}"
                    hx-get="{{ base_url }}?{{ page_param_name }}=1{{ suffix }}"
