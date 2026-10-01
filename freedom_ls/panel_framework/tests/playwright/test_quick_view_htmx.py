@@ -180,3 +180,89 @@ def test_a_server_error_shows_retry_and_retry_loads_the_content(
     page.get_by_role("button", name="Retry").click()
 
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_clicking_back_to_a_shown_row_after_another_row_failed_loads_it_again(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    _make_stub(name="Alpha")
+    beta = _make_stub(name="Beta")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    page.route(
+        f"**/{beta.pk}/__quick-view",
+        lambda route: route.fulfill(status=500, body="boom"),
+    )
+
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    page.get_by_role("link", name="Beta").click()
+    expect(page.get_by_text("Something went wrong loading this.")).to_be_visible()
+
+    page.get_by_role("link", name="Alpha").click()
+
+    expect(page.locator("#quick-view")).to_be_visible()
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_reopening_a_row_after_closing_mid_load_of_another_shows_the_reopened_row(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    _make_stub(name="Alpha")
+    beta = _make_stub(name="Beta")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    held: list[Route] = []
+    page.route(f"**/{beta.pk}/__quick-view", lambda route: held.append(route))
+
+    page.get_by_role("link", name="Alpha").click()
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    page.get_by_role("link", name="Beta").click()
+    expect(page.locator("#quick-view-body")).to_have_attribute("aria-busy", "true")
+    page.keyboard.press("Escape")
+    expect(page.locator("#quick-view")).to_be_hidden()
+
+    page.get_by_role("link", name="Alpha").click()
+
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    expect(page.get_by_role("link", name="Alpha")).to_have_attribute(
+        "aria-expanded", "true"
+    )
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_reopening_a_row_whose_load_failed_requests_it_again(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    _make_stub(name="Alpha")
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    attempts = {"count": 0}
+
+    def _fail_once(route: Route) -> None:
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            route.fulfill(status=500, body="boom")
+        else:
+            route.continue_()
+
+    page.route("**/__quick-view", _fail_once)
+    trigger = page.get_by_role("link", name="Alpha")
+
+    trigger.click()
+    expect(page.get_by_text("Something went wrong loading this.")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(page.locator("#quick-view")).to_be_hidden()
+
+    trigger.click()
+
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
+    assert attempts["count"] == 2

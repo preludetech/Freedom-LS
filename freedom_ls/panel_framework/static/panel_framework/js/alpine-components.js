@@ -459,6 +459,10 @@ document.addEventListener("alpine:init", () => {
             // The title comes only from the frame, so it stays blank until
             // one arrives rather than showing the last entity's.
             this._title.textContent = "";
+            // The drawer now belongs to this url, loaded or not, so a click on
+            // any other trigger loads that one rather than reusing what was
+            // shown before this load started.
+            this._shownUrl = url;
         },
         _afterBodySwap(event) {
             this._qvBody.removeAttribute("aria-busy");
@@ -476,6 +480,8 @@ document.addEventListener("alpine:init", () => {
             this._qvBody.removeAttribute("aria-busy");
             this._qvBody.replaceChildren(this._errorTemplate.content.cloneNode(true));
             this._lastUrl = event.detail.pathInfo.requestPath;
+            // The error block is not worth reusing: the next open refetches.
+            this._stale = true;
         },
         _syncExpanded() {
             document.querySelectorAll('[aria-controls="quick-view"]').forEach((trigger) => {
