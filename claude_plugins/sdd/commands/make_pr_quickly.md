@@ -42,6 +42,9 @@ If the spec does not say something, the PR body does not claim it.
 Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
 when `/sdd:next` says it already ran this turn).
 
+If the rebase returns `failed` or `blocked` only because the working tree has uncommitted changes,
+skip the rebase and carry on to Step 1. Mention the skipped rebase in the Step 7 report.
+
 ## Step 1: Locate the spec
 
 ```
@@ -75,8 +78,8 @@ git diff main...HEAD --stat
 git status --short
 ```
 
-If `git status --short` prints anything, stop. Tell the user to run `/sdd:commit_quickly` first and
-do not continue.
+Uncommitted changes never stop this command. The PR covers what is committed. Note any paths
+`git status --short` prints and list them in the Step 7 report. Do not commit, stash or discard them.
 
 ## Step 4: Draft the body
 
@@ -140,4 +143,6 @@ No new items to add. If Step 1 could not find a spec directory, skip this step.
 
 ## Step 7: Report
 
-One line. The PR URL, then the outstanding SDD steps from the body.
+One line. The PR URL, then the outstanding SDD steps from the body. If Step 3 found uncommitted
+changes, add a second line listing them, saying the PR does not include them and that
+`/sdd:commit_quickly` followed by a push will add them.

@@ -6,18 +6,19 @@
  * Load this script BEFORE the Alpine CSP script.
  */
 
-// Allow HTMX to swap content on 422 responses (validation errors), on 403
-// denial fragments, on 404 fragments marked data-htmx-swap-error (an action
-// whose object has left the user's scope), and on any other 4xx/5xx response
-// that contains an OOB toast fragment so server-rendered messages still
-// surface on errors. An unmarked 404 is a full page and is never swapped in.
+// Allow HTMX to swap content on 422 responses (validation errors), on 403 and
+// 404 fragments marked data-htmx-swap-error (an action the user's role no
+// longer allows, or whose object has left the user's scope), and on any other
+// 4xx/5xx response that contains an OOB toast fragment so server-rendered
+// messages still surface on errors. An unmarked 403 or 404 is a full page and
+// is never swapped in.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const status = event.detail.xhr.status;
     const body = event.detail.xhr.responseText || "";
     if (
         status === 422 ||
-        status === 403 ||
-        (status === 404 && body.includes("data-htmx-swap-error"))
+        ((status === 403 || status === 404) &&
+            body.includes("data-htmx-swap-error"))
     ) {
         event.detail.shouldSwap = true;
         event.detail.isError = false;

@@ -1,6 +1,9 @@
-{% comment %}Context: action_label, who_to_ask{% endcomment %}
+{% comment %}
+Context: action_label, who_to_ask
+data-htmx-swap-error lets the htmx:beforeSwap listener swap this 403 in.
+{% endcomment %}
 
-<c-modal title="You can't use “{{ action_label }}” here any more" open="true">
+<c-modal title="You can't use “{{ action_label }}” here any more" open="true" data-htmx-swap-error="true">
     <p>Your role doesn't allow it.</p>
     <p>{{ who_to_ask }}</p>
 

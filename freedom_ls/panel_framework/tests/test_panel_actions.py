@@ -349,6 +349,7 @@ def test_create_action_permission_denied_returns_403_fragment_for_htmx(
 
     assert response.status_code == 403
     html = response.content.decode()
+    assert "data-htmx-swap-error" in html
     assert "You can't use “Create Item” here any more" in html
     assert "Ask an administrator." in html
     assert "Close" in html
