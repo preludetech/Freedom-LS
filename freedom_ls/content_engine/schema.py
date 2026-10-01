@@ -3,6 +3,7 @@ Schema for yaml structures like this:
 """
 
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
@@ -15,6 +16,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -43,6 +45,17 @@ RESERVED_SECTION_SLUGS = frozenset(
 # `.fullmatch()`: `.match()`/`.search()` don't anchor the end, and would let
 # something like "bad slug!" through.
 SLUG_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
+
+
+def slugify(value: str) -> str:
+    """Turn text into a slug the way Django's `slugify` does.
+
+    Transcribed rather than imported so this module still imports with no
+    Django installed.
+    """
+    normalised = unicodedata.normalize("NFKC", str(value))
+    cleaned = re.sub(r"[^\w\s-]", "", normalised).strip().lower()
+    return re.sub(r"[-\s]+", "-", cleaned)
 
 
 def _require_quoted_amount(value: object) -> object:
@@ -102,6 +115,32 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
     visibility: ArticleVisibility = ArticleVisibility.PUBLISHED
     show_date: bool | None = None
     show_author: bool | None = None
+
+    @field_validator("category", "image", mode="before")
+    @classmethod
+    def _course_only_field(cls, value: str | None, info: ValidationInfo) -> str | None:
+        # A before-validator only runs when the key is present, so a file that
+        # never wrote the key is untouched.
+        raise ValueError(
+            f"'{info.field_name}' is not an article field. It belongs to courses; "
+            "remove it from this article."
+        )
+
+    @model_validator(mode="after")
+    def _derive_and_check_slug(self) -> "Article":
+        if self.slug is None:
+            name_source = (
+                self.file_path.parent.name
+                if self.file_path.name == "content.md"
+                else self.file_path.stem
+            )
+            self.slug = slugify(name_source)
+        if not SLUG_PATTERN.fullmatch(self.slug):
+            raise ValueError(
+                f"Invalid article slug '{self.slug}' in {self.file_path}: "
+                "a slug may only contain letters, digits, hyphens and underscores."
+            )
+        return self
 
 
 class Child(BaseModel):

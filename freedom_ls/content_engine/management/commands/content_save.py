@@ -32,6 +32,7 @@ from freedom_ls.content_engine.images import (
 )
 from freedom_ls.content_engine.models import (
     Activity,
+    Article,
     ContentCollectionItem,
     Course,
     CourseCategory,
@@ -392,6 +393,25 @@ def _refuse_category_slug_collisions(item, site, relative_path):
             )
     if errors:
         raise ValueError("\n".join(errors))
+
+
+def save_article(item, site, base_path):
+    """Save an Article to the database.
+
+    `author`, `show_date` and `show_author` go in as extra fields because the
+    dump drops None values, which would otherwise leave a stale stored value
+    when a key is removed from the file.
+    """
+    return save_with_uuid(
+        Article,
+        item,
+        site,
+        base_path,
+        derive_slug=False,
+        author=item.author or "",
+        show_date=item.show_date,
+        show_author=item.show_author,
+    )
 
 
 def save_course_categories(item, site, base_path):
@@ -854,6 +874,12 @@ def save_content_to_db(path, site_name):
         activity = save_activity(item, site, path)
         content_by_path[content_key(item.file_path)] = activity
         logger.info(f"Saved Activity: {activity.title}")
+
+    # Save Articles. They are not added to content_by_path: an article is never
+    # a collection child.
+    for item in grouped.get(SchemaContentType.ARTICLE, []):
+        article = save_article(item, site, path)
+        logger.info(f"Saved Article: {article.title}")
 
     # Save Courses and CourseParts
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
