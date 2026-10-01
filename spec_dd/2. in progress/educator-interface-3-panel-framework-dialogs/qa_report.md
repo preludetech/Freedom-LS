@@ -147,7 +147,7 @@ fields the educator never chose or sees elsewhere in this form.
 - B1 — **FIXED** (commit: 04083f83) — Blank data-table link cells render an empty, unnamed, focusable quick-view link. `link.html` now renders the shared "-" placeholder with no link when the cell text is blank. Re-verified: the Last Name column shows "-", the learners list, cohorts list and learner page have no empty links, and the First Name quick view still opens.
 
   ![](screenshots/page-b1-reverify.png)
-- B2 — **UNRESOLVED** — Duplicate cohort name error exposes internal Site and Organisation fields (reason: the error wording is a copy decision for a human, and the same Django default message reaches every UniqueConstraint form that uses ConstraintValidationFormMixin)
+- B2 — **FIXED** — Duplicate cohort name error exposes internal Site and Organisation fields. `ConstraintValidationFormMixin` now rebuilds Django's default uniqueness message from the rendered fields only: an error on the one rendered field reads "Another cohort already has this name.", and a form-level one keeps Django's wording without the hidden fields (e.g. "Cohort with this Organisation and Name already exists." in the admin). Constraints with their own `violation_error_message` keep it.
 
 ## 6. General notes
 

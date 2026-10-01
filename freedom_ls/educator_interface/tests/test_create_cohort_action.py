@@ -105,7 +105,7 @@ def test_duplicate_cohort_name_in_same_organisation_is_rejected_with_a_visible_e
     response = CreateCohortAction().handle_submit(_ctx(request))
 
     assert response.status_code == 422
-    assert "already exists" in response.content.decode()
+    assert "Another cohort already has this name." in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -181,9 +181,7 @@ def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
     form = CohortForm({"name": "Year 10 Science"}, instance=cohort)
 
     assert not form.is_valid()
-    assert form.errors["name"] == [
-        "Cohort with this Site, Organisation and Name already exists."
-    ]
+    assert form.errors["name"] == ["Another cohort already has this name."]
     assert NON_FIELD_ERRORS not in form.errors
 
 

@@ -67,29 +67,29 @@ def _duplicate_cohort_course_registration():
     }
 
 
-# The expected message names the constraint's fields in the constraint's own
-# order, which is what distinguishes one constraint's error from another's.
+# The expected message names the constraint's rendered fields in the
+# constraint's own order, which is what distinguishes one constraint's error
+# from another's. The unrendered ``site`` is never named.
 DUPLICATE_CASES = [
     (
         CohortAdminForm,
         _duplicate_cohort,
-        "Cohort with this Site, Organisation and Name already exists.",
+        "Cohort with this Organisation and Name already exists.",
     ),
     (
         LearnerAdminForm,
         _duplicate_learner,
-        "Learner with this Site, User and Organisation already exists.",
+        "Learner with this User and Organisation already exists.",
     ),
     (
         LearnerCourseRegistrationAdminForm,
         _duplicate_learner_course_registration,
-        "Learner course registration with this Site, Learner and Course "
-        "already exists.",
+        "Learner course registration with this Learner and Course already exists.",
     ),
     (
         CohortCourseRegistrationAdminForm,
         _duplicate_cohort_course_registration,
-        "Cohort course registration with this Site, Course and Cohort already exists.",
+        "Cohort course registration with this Course and Cohort already exists.",
     ),
 ]
 

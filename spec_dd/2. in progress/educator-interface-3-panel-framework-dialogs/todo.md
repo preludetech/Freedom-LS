@@ -63,8 +63,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: forbidden action URL returns a bare, empty-bodied 403 instead of the site 403 page (TDD — failing test first, then fix)
 - [x] (user) Decide whether the desktop quick-view drawer should overlay, push or reserve space for the page, and at which breakpoint it becomes a docked drawer, then fix the drawer hiding Create Cohort and table columns
 - [x] (user + cmd) Fix QA bug: desktop quick-view drawer overlays and hides page actions and table columns (TDD — failing test first, then fix)
-- [ ] (user) Decide the wording of the duplicate-name error for UniqueConstraint forms (it currently reads 'Cohort with this Site, Organisation and Name already exists.'), then fix the create-cohort duplicate error to match
-- [ ] (user + cmd) Fix QA bug: duplicate cohort name error exposes internal Site and Organisation fields (TDD — failing test first, then fix)
+- [x] (user) Decide the wording of the duplicate-name error for UniqueConstraint forms (it currently reads 'Cohort with this Site, Organisation and Name already exists.'), then fix the create-cohort duplicate error to match
+- [x] (user + cmd) Fix QA bug: duplicate cohort name error exposes internal Site and Organisation fields (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
