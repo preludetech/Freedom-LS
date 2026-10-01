@@ -33,7 +33,8 @@ Run these git commands and nothing else, plus the push and `gh` calls in Step 5:
   source file in the repo
 - run `git diff` in patch mode (no `-p`, no bare `git diff`, no `git show`)
 - run tests, linters, type checkers, or `gh pr view`
-- spawn a subagent, invoke another slash command, or launch a search
+- spawn a subagent, invoke another slash command (except `/sdd:commit_quickly` in Step 7, once the
+  user says yes), or launch a search
 
 If the spec does not say something, the PR body does not claim it.
 
@@ -75,8 +76,8 @@ git diff main...HEAD --stat
 git status --short
 ```
 
-If `git status --short` prints anything, stop. Tell the user to run `/sdd:commit_quickly` first and
-do not continue.
+If `git status --short` prints anything, do not stop. Keep its output, carry on, and make the PR
+from what is already committed. Step 7 asks about the leftover files once the PR exists.
 
 ## Step 4: Draft the body
 
@@ -141,3 +142,7 @@ No new items to add. If Step 1 could not find a spec directory, skip this step.
 ## Step 7: Report
 
 One line. The PR URL, then the outstanding SDD steps from the body.
+
+If Step 3's `git status --short` printed anything, list those files and ask the user whether to
+commit and push them to the PR. On a yes, run `/sdd:commit_quickly`, then `git push`. On a no,
+leave them alone.
