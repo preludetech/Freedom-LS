@@ -127,43 +127,27 @@ parity and future settings.
 
 1. Ensure `.claude/sdd/` exists.
 2. If `.claude/sdd/config.md` does not exist, write this — the reader helpers locate the values by
-   the section and key names, so keep those exact. Surrounding prose may be adapted; the
-   `## Worktree Scripts` heading and the two key names may not:
+   the section and key names, so keep those exact. The file holds only this project's values; what each
+   key means is documented here, not in the file:
 
    ```markdown
    # SDD Plugin Configuration
 
-   The spec-driven-development (sdd) workflow is enabled for this project.
-
    ## Worktree Scripts
-
-   Paths are relative to the project root. Leave a value blank if this project has no such step.
 
    - Setup script:
    - Teardown script:
 
    ## Rebase Hooks
 
-   Followed by the pre-step rebase before every feature-branch SDD step. Each value is a command
-   or helper file that is read and followed, not a script. Leave a value blank if this project has
-   no such step.
-
    - Rebase command:
    - Front-end check:
 
    ## Design Hooks
 
-   Followed by `/sdd:implement_plan` after each slice that builds a designed screen. The value is a
-   helper file that is read and followed, not a script. Leave it blank if this project has no such
-   step.
-
    - Design check:
 
    ## Vocabulary Sources
-
-   Where this project's domain vocabulary is defined, most authoritative first — the files to check
-   before naming a domain concept in an idea, research note, spec or plan. One bullet per source,
-   with a short note on what it covers. Leave the list empty if this project has no such sources.
 
    -
    ```
@@ -186,7 +170,8 @@ parity and future settings.
 
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
-   Write the heading with an empty list. Naming this project's actual sources is the user's job — do
+   Write the heading with an empty list; each source later becomes one bullet holding a path, most
+   authoritative first. Naming this project's actual sources is the user's job — do
    not guess them by scanning the repo. With the list empty the commands still work: they fall back
    to the code, where model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks` and
