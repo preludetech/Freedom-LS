@@ -1,16 +1,23 @@
+import base64
 from typing import cast
 
 import pytest
 from playwright.sync_api import Locator, Page, expect
 
+from django.core.files.base import ContentFile
+
 from freedom_ls.conftest import reverse_url
-from freedom_ls.content_engine.factories import ArticleFactory
+from freedom_ls.content_engine.factories import ArticleFactory, FileFactory
 from freedom_ls.content_engine.models import Article
 
 VIEWPORTS = pytest.mark.parametrize(
     ("width", "height"),
     [(375, 812), (768, 1024), (1280, 800)],
     ids=["mobile", "tablet", "desktop"],
+)
+
+PNG_BYTES = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 )
 
 GRID_OF_ARTICLE_CARDS = """
@@ -50,6 +57,10 @@ def grid_article(mock_site_context) -> Article:
             content=GRID_OF_ARTICLE_CARDS,
         ),
     )
+
+
+def factory_png() -> ContentFile:
+    return ContentFile(PNG_BYTES, name="cat.png")
 
 
 def _overflows(page: Page) -> bool:
@@ -149,3 +160,29 @@ def test_focused_card_link_sits_inside_its_card(
     assert link_box["y"] >= card_box["y"]
     assert link_box["x"] + link_box["width"] <= card_box["x"] + card_box["width"]
     assert link_box["y"] + link_box["height"] <= card_box["y"] + card_box["height"]
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_clicking_expand_on_an_article_picture_opens_the_lightbox(
+    live_server, live_server_site, mock_site_context, page: Page
+):
+    FileFactory(
+        file_path="images/cat.png",
+        original_filename="cat.png",
+        file_type="image",
+        file=factory_png(),
+    )
+    article = ArticleFactory(
+        title="Picture Article",
+        slug="picture-article",
+        file_path="articles/picture.md",
+        content='<c-picture src="../images/cat.png" alt="A cat" title="Cat" />',
+    )
+
+    page.goto(
+        reverse_url(live_server, "blog:article_detail", kwargs={"slug": article.slug})
+    )
+    page.get_by_role("button", name="Expand").click()
+
+    expect(page.get_by_role("dialog", name="Cat")).to_be_visible()

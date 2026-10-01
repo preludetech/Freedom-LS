@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% load static %}
 
 {% block head_title %}{{ article.title }}{% endblock %}
 
@@ -9,6 +10,11 @@
 {% block og_title %}{{ article.title }}{% endblock %}
 
 {% block og_description %}{{ meta_description }}{% endblock %}
+
+{% block extra_alpine_components %}
+    {{ block.super }}
+    <script defer src="{% static 'content_engine/js/alpine-components.js' %}"></script>
+{% endblock extra_alpine_components %}
 
 {% block extra_head %}
     {% if article.shows_date %}<meta property="article:published_time" content="{{ article.published_on|date:'Y-m-d' }}">{% endif %}
