@@ -134,13 +134,17 @@ document.addEventListener("panelChanged", (event) => {
 // element in event.detail.target is the one about to be removed. Look the
 // new element back up by id and focus its anchor, so a sort, filter or page
 // click moves focus onto the table instead of leaving it on a removed link.
+// A swap started from outside the region, such as a list refresh after a
+// create, removed nothing the reader was on, so focus stays where it is
+// (for example in a still-open create modal).
 // A search swap is left alone: the search input survives the swap
 // (hx-preserve) and keeps focus, so a reader who pauses can keep typing.
 document.addEventListener("htmx:afterSettle", (event) => {
     const target = event.detail.target;
     if (!target || !target.hasAttribute("data-table-region")) return;
     const source = event.detail.requestConfig && event.detail.requestConfig.elt;
-    if (source && source.matches("form[id$='-search']")) return;
+    if (!source || !target.contains(source)) return;
+    if (source.matches("form[id$='-search']")) return;
     const region = document.getElementById(target.id);
     const anchor = region && region.querySelector("[data-table-anchor]");
     if (anchor) anchor.focus();

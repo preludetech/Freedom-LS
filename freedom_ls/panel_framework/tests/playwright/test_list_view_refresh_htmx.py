@@ -103,3 +103,25 @@ def test_save_and_add_another_keeps_current_page(
     expect(page.locator("#stubs-table")).to_contain_text(f"row-{page_size + 4:02d}")
     expect(page).to_have_url(re.compile(r"stubs-page=2"))
     assert page.evaluate("history.length") == history_length
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_save_and_add_another_leaves_focus_off_the_table(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """The list refresh after 'Save and add another' must not pull focus out
+    of the still-open create modal onto the table behind it."""
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_role("dialog").get_by_label("Name").fill("Alpha")
+    page.get_by_role("button", name="Save and add another").click()
+
+    table = page.locator("#stubs-table")
+    expect(
+        table.locator("tbody tr td:nth-child(2)").get_by_text("Alpha", exact=True)
+    ).to_be_visible()
+    expect(table.locator("[data-table-anchor]")).not_to_be_focused()
