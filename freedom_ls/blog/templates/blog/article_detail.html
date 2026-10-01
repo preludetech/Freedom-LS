@@ -2,6 +2,19 @@
 
 {% block head_title %}{{ article.title }}{% endblock %}
 
+{% block meta_description %}{{ meta_description }}{% endblock %}
+
+{% block og_type %}article{% endblock %}
+
+{% block og_title %}{{ article.title }}{% endblock %}
+
+{% block og_description %}{{ meta_description }}{% endblock %}
+
+{% block extra_head %}
+    {% if article.shows_date %}<meta property="article:published_time" content="{{ article.published_on|date:'Y-m-d' }}">{% endif %}
+    {% if article.shows_author %}<meta name="author" content="{{ article.author }}">{% endif %}
+{% endblock extra_head %}
+
 {% block content %}
     <c-page width="narrow">
         <h1>{{ article.title }}</h1>

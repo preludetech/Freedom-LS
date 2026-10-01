@@ -6,4 +6,9 @@ from freedom_ls.content_engine.models import Article
 
 def article_detail(request: HttpRequest, slug: str) -> HttpResponse:
     article = get_object_or_404(Article.objects.published(), slug=slug)
-    return render(request, "blog/article_detail.html", {"article": article})
+    meta_description = article.description or article.subtitle or article.title
+    return render(
+        request,
+        "blog/article_detail.html",
+        {"article": article, "meta_description": meta_description},
+    )

@@ -3,11 +3,12 @@ from datetime import date
 
 import pytest
 
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.content_engine.factories import ArticleFactory
-from freedom_ls.content_engine.models import ArticleVisibility
+from freedom_ls.content_engine.models import Article, ArticleVisibility
 
 
 def _without_csrf_token(content: bytes) -> str:
@@ -112,3 +113,134 @@ def test_byline_is_absent_when_date_and_author_are_hidden(client, mock_site_cont
     assert "Unbylined" in body
     assert "<time" not in body
     assert "Ada Lovelace" not in body
+
+
+def _get_article_page(client: Client, article: Article) -> str:
+    response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
+    assert response.status_code == 200
+    return response.content.decode()
+
+
+def _title(body: str) -> str:
+    match = re.search(r"<title>(.*?)</title>", body, re.DOTALL)
+    assert match, "no <title> tag found"
+    return match.group(1).strip()
+
+
+def _meta(body: str, attr: str, key: str) -> str | None:
+    """Content of the first ``<meta {attr}="{key}">`` tag, whichever order its attributes take."""
+    for tag in re.findall(r"<meta\b[^>]*>", body):
+        if f'{attr}="{key}"' in tag:
+            content = re.search(r'content="([^"]*)"', tag)
+            assert content, f"meta {key} has no content"
+            return content.group(1)
+    return None
+
+
+@pytest.mark.django_db
+def test_article_page_title_is_the_article_title(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(title="Why we teach")
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    assert _title(body) == "Why we teach"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("description", "subtitle", "expected"),
+    [
+        ("The description", "The subtitle", "The description"),
+        ("", "The subtitle", "The subtitle"),
+        ("", "", "The title"),
+    ],
+)
+def test_meta_description_falls_back_from_description_to_subtitle_to_title(
+    client, mock_site_context, description, subtitle, expected
+):
+    # Arrange
+    article = ArticleFactory(
+        title="The title", subtitle=subtitle, description=description
+    )
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    assert _meta(body, "name", "description") == expected
+    assert _meta(body, "property", "og:description") == expected
+
+
+@pytest.mark.django_db
+def test_article_page_carries_open_graph_tags(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(title="Why we teach", description="A reflection")
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    assert _meta(body, "property", "og:type") == "article"
+    assert _meta(body, "property", "og:title") == "Why we teach"
+    assert _meta(body, "property", "og:description") == "A reflection"
+
+
+@pytest.mark.django_db
+def test_published_time_and_author_meta_present_when_shown(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(
+        published_on=date(2026, 3, 9),
+        author="Ada Lovelace",
+        show_date=True,
+        show_author=True,
+    )
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    assert _meta(body, "property", "article:published_time") == "2026-03-09"
+    assert _meta(body, "name", "author") == "Ada Lovelace"
+
+
+@pytest.mark.django_db
+def test_published_time_and_author_meta_absent_when_hidden(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(
+        title="Quiet",
+        published_on=date(2026, 3, 9),
+        author="Ada Lovelace",
+        show_date=False,
+        show_author=False,
+    )
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    assert _meta(body, "property", "og:title") == "Quiet"
+    assert _meta(body, "property", "article:published_time") is None
+    assert _meta(body, "name", "author") is None
+
+
+@pytest.mark.django_db
+def test_canonical_link_equals_the_article_url_and_no_og_image(
+    client, mock_site_context
+):
+    # Arrange
+    article = ArticleFactory()
+    path = reverse("blog:article_detail", kwargs={"slug": article.slug})
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    canonical = re.search(r'<link rel="canonical" href="([^"]*)"', body)
+    assert canonical
+    assert canonical.group(1).endswith(path)
+    assert _meta(body, "property", "og:url") == canonical.group(1)
+    assert _meta(body, "name", "twitter:card") == "summary"
+    assert _meta(body, "property", "og:image") is None
