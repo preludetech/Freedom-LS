@@ -8,9 +8,8 @@ repos:
       - id: trailing-whitespace
         exclude: '(^|/)design_source/'
       - id: end-of-file-fixer
-        # design_source/ is vendored. article-link.html is rendered inline
-        # mid-sentence: a final newline would show as a space before the
-        # punctuation that follows the link.
+        # article-link.html is rendered inline mid-sentence: a final newline
+        # would show as a space before the punctuation that follows the link.
         exclude: '(^|/)design_source/|^freedom_ls/content_engine/templates/cotton/article-link\.html$'
       - id: check-yaml
         args: [--allow-multiple-documents]
