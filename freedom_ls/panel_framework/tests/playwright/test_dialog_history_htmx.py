@@ -83,6 +83,53 @@ def test_back_after_navigating_away_with_the_quick_view_open_restores_no_dialog(
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
+def test_reopening_a_quick_view_after_a_history_restore_refetches_it(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """A history-restore Back swaps the whole <body> (historyCacheSize is 0),
+    which tears down and recreates #quick-view's own Alpine component rather
+    than leaving it untouched the way a plain #main-content swap does. The
+    outgoing component's document-level listeners have to be gone by the time
+    that happens, or a later click on the same trigger is intercepted by the
+    stale instance instead of reaching the fresh one."""
+    stub = _make_stub(name="History Target")
+    list_url = f"{live_server.url}/test-panel/framework/stubs"
+    detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
+    page.goto(detail_url)
+
+    trigger = page.locator('a[aria-controls="quick-view"]', has_text="History Target")
+    trigger.click()
+    expect(page.locator("#quick-view")).to_be_visible()
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("History Target")
+
+    page.get_by_label("Sections").get_by_role("link", name="Stubs", exact=True).click()
+    expect(page).to_have_url(list_url)
+
+    page.go_back()
+    expect(page).to_have_url(detail_url)
+    expect(page.locator("#quick-view")).to_be_hidden()
+
+    quick_view_requests: list[str] = []
+    page.on(
+        "request",
+        lambda request: quick_view_requests.append(request.url)
+        if "__quick-view" in request.url
+        else None,
+    )
+    trigger = page.locator('a[aria-controls="quick-view"]', has_text="History Target")
+    trigger.click()
+
+    expect(page.locator("#quick-view")).to_be_visible()
+    expect(page.locator("#quick-view-title")).to_have_text("History Target")
+    expect(page.locator("[data-stub-quick-view]")).to_have_text("History Target")
+    expect(trigger).to_have_attribute("aria-expanded", "true")
+    assert len(quick_view_requests) == 1
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
 def test_a_history_restore_swap_raises_no_page_error(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
