@@ -78,7 +78,9 @@ document.addEventListener("alpine:init", () => {
 
     // List-view table auto-refresh (panel_framework/partials/list_refresh.html).
     // Re-fetches the list's table region when a create action's HX-Trigger
-    // event fires.
+    // event fires. The request carries the address bar's query, which holds
+    // every table's live state, so the list stays on the reader's page,
+    // sort, search and filters.
     Alpine.data("listRefresh", () => ({
         _handlers: [],
         init() {
@@ -89,7 +91,7 @@ document.addEventListener("alpine:init", () => {
                 .filter(Boolean);
             events.forEach((eventName) => {
                 const handler = () => {
-                    htmx.ajax("GET", url, {
+                    htmx.ajax("GET", url + window.location.search, {
                         target: "#" + target,
                         swap: "outerHTML",
                     });

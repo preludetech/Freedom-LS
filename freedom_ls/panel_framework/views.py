@@ -666,6 +666,16 @@ def _merge_current_url_state(request: HttpRequest, panel: DataTablePanel) -> Non
     request.META["QUERY_STRING"] = query_string
 
 
+def _is_current_url(request: HttpRequest, url: str) -> bool:
+    """Whether `url` is the path and query already in the address bar, as
+    htmx reports it in `HX-Current-URL`. A swap that lands there, such as a
+    list's refresh after a create, replaces the history entry rather than
+    stacking a duplicate one."""
+    current = urlsplit(request.headers.get("HX-Current-URL", ""))
+    current_url = f"{current.path}?{current.query}" if current.query else current.path
+    return current_url == url
+
+
 def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
     """The URL a table region's response pushes into the address bar: the
     page this panel's tab owns, carrying the request's full query string."""
@@ -775,7 +785,8 @@ def _respond(
             request, "panel_framework/table_response.html", panel.get_context_data()
         )
         history_url = _history_url(panel, request)
-        if request.headers.get("HX-Trigger") == f"{panel.table_key}-search":
+        is_search = request.headers.get("HX-Trigger") == f"{panel.table_key}-search"
+        if is_search or _is_current_url(request, history_url):
             response["HX-Replace-Url"] = history_url
         else:
             response["HX-Push-Url"] = history_url

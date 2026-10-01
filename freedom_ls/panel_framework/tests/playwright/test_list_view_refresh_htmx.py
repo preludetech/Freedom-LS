@@ -12,12 +12,16 @@ for anonymous users in the test environment.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 import pytest_django.live_server_helper
 from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
+from ..conftest import _make_stub
+from ..stub_panels import StubDataTable
 from .assertions import expect_no_nested_panel
 
 
@@ -70,3 +74,32 @@ def test_save_and_add_another_refreshes_table(
     # Create button must not be duplicated
     expect(page.get_by_role("button", name="Create Item")).to_have_count(1)
     expect_no_nested_panel(page, name="")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_save_and_add_another_keeps_current_page(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """A refresh after 'Save and add another' re-renders the page the reader
+    is on, keeps it in the address bar, and adds no history entry."""
+    page_size = StubDataTable.page_size
+    [_make_stub(name=f"row-{i:02d}") for i in range(page_size + 5)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    table = page.locator("#stubs-table")
+    table.get_by_role("link", name="2", exact=True).click()
+    expect(page).to_have_url(re.compile(r"stubs-page=2"))
+    history_length = page.evaluate("history.length")
+
+    page.get_by_role("button", name="Create Item").click()
+    page.get_by_role("dialog").get_by_label("Name").fill("zz-new")
+    page.get_by_role("button", name="Save and add another").click()
+
+    # Rows sort by name, so the new row lands on page 2 with the old tail.
+    expect(page.locator("#stubs-table")).to_contain_text("zz-new")
+    expect(page.locator("#stubs-table")).to_contain_text(f"row-{page_size + 4:02d}")
+    expect(page).to_have_url(re.compile(r"stubs-page=2"))
+    assert page.evaluate("history.length") == history_length
