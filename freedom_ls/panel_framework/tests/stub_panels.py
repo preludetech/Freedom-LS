@@ -25,10 +25,14 @@ from django.apps import apps
 from django.db.models import Model, QuerySet
 from django.http import HttpRequest, QueryDict
 from django.shortcuts import get_object_or_404
-from django.template.loader import render_to_string
 
-from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.actions import (
+    CreateInstanceAction,
+    DeleteAction,
+    PanelAction,
+)
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
+from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
@@ -60,33 +64,13 @@ class StubCreateAction(CreateInstanceAction):
     form_title = "Create Item"
     label = "Create Item"
     action_name = "create_item"
-    # form_class must be set but is not used directly — get_form and
-    # has_permission are overridden below to use the lazy _build_stub_create_form
-    # helper, since StubModel cannot be imported at module level (see module docstring).
-    form_class = forms.ModelForm  # placeholder; not used directly
-
-    def get_form(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> forms.ModelForm:
-        data = request.POST if request.method == "POST" else None
-        return _build_stub_create_form(data=data, instance=instance)
-
-    def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
-        """Re-render the modal form with a fresh, empty form for StubModel."""
-        form = _build_stub_create_form()
-        return render_to_string(
-            "panel_framework/partials/modal_form.html",
-            {
-                "form": form,
-                "form_title": self.form_title,
-                "form_url": form_url,
-                "variant": self.variant,
-                "label": self.label,
-                "submit_buttons": self.submit_buttons,
-                "modal_open": "True",
-            },
-            request=request,
-        )
+    success_events = ("itemChanged",)
+    # Wrapped in staticmethod so `self.form_class` returns the plain function
+    # unbound: assigned bare, Python's function descriptor would bind it to
+    # the action instance and inject self as its first positional argument.
+    # has_permission is still overridden below: the base implementation reads
+    # form_class.Meta.model, which only a ModelForm subclass has.
+    form_class = staticmethod(_build_stub_create_form)
 
     def has_permission(
         self, request: HttpRequest, instance: Model | None = None
@@ -97,10 +81,10 @@ class StubCreateAction(CreateInstanceAction):
         return True
 
     def get_success_url(self, instance: Model) -> str:
-        return f"/items/{instance.pk}"
-
-    def get_created_event_name(self) -> str:
-        return "itemCreated"
+        # A real, reachable page under this app's own test URLconf, so a
+        # browser test can follow the HX-Location this action's "Save"
+        # sends and see actual content, not a 404.
+        return f"/test-panel/framework/stubs/{instance.pk}"
 
 
 class StubDataTable(DataTable):
@@ -113,8 +97,11 @@ class StubDataTable(DataTable):
         return [
             {
                 "header": "Name",
-                "template": "cotton/data-table-cells/text.html",
-                "attr": "name",
+                "template": "cotton/data-table-cells/link.html",
+                "text_attr": "name",
+                "url_name": "panel_framework_test:framework",
+                "url_path_template": "stubs/{pk}",
+                "quick_view": True,
                 "sortable": True,
             },
         ]
@@ -123,6 +110,26 @@ class StubDataTable(DataTable):
 class StubDataTablePanel(DataTablePanel):
     title = "Stub"
     data_table = StubDataTable
+    refresh_events = ("itemChanged",)
+
+
+class StubDeleteAction(DeleteAction):
+    def has_permission(
+        self, request: HttpRequest, instance: Model | None = None
+    ) -> bool:
+        # Stub: always allow in tests, the way StubCreateAction does.
+        return True
+
+
+class StubReadOnlyAction(PanelAction):
+    """A test-only read-only modal fragment: a heading with no form, proving
+    that a PanelAction needs neither a form nor a delete confirmation to open
+    the shared modal."""
+
+    label = "View Info"
+    action_name = "view_info"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/test_read_only_fragment.html"
 
 
 class StubDetailsPanel(Panel):
@@ -130,6 +137,12 @@ class StubDetailsPanel(Panel):
 
     title = "Details"
     template_name = "panel_framework/test_stub_details.html"
+
+    def get_actions(self) -> list[PanelAction]:
+        return [
+            StubDeleteAction(success_url="/test-panel/framework/stubs"),
+            StubReadOnlyAction(),
+        ]
 
 
 class StubHiddenPanel(Panel):
@@ -152,11 +165,18 @@ class StubInstanceView(InstanceView):
     panel = StubTabSet
 
 
+class StubQuickView(QuickView):
+    template_name = "panel_framework/test_stub_quick_view.html"
+    refresh_events = ("itemChanged",)
+
+
 class StubListConfig(ListViewConfig):
     url_name = "stubs"
     menu_label = "Stubs"
     list_view = StubDataTable
     instance_view = StubInstanceView
+    refresh_events = ("itemChanged",)
+    quick_view = StubQuickView
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:

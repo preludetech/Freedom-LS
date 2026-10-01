@@ -1,0 +1,12 @@
+{% comment %}
+Wraps a QuickView consumer's own template in a root element that carries the
+data quickView (panel_framework/static/panel_framework/js/alpine-components.js)
+reads after every swap: the drawer's title, which domain events should make
+it refetch, and which instance is shown (for staleness checks).
+{% endcomment %}
+<div data-quick-view-title="{{ title }}"
+     data-refresh-events="{{ refresh_events }}"
+     data-entity-id="{{ entity_id }}">
+    {% include quick_view.template_name %}
+
+</div>

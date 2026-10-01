@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
+    from freedom_ls.learner_management.models import Cohort, Learner
 
 
 def completed_form_item_ids(attempts: Iterable[CourseFormAttempt]) -> set[UUID]:
@@ -258,3 +260,90 @@ def course_progress_by_course_for(
         ):
             by_course[record.course_id] = record
     return by_course
+
+
+@dataclass(frozen=True)
+class LearnerRegistrationProgress:
+    """One of this learner's active course registrations, with whatever
+    progress it has made so far.
+
+    ``cohort`` is None for an individual registration. The progress fields
+    are None when the registration has not yet minted a `CourseProgress`
+    record -- the learner quick view reads that as "No progress yet".
+    """
+
+    course: Course
+    cohort: Cohort | None
+    progress_percentage: int | None
+    last_accessed_time: datetime | None
+
+
+def registrations_with_progress_for_learner(
+    learner: Learner,
+) -> list[LearnerRegistrationProgress]:
+    """This learner's active course registrations, individual and through a
+    cohort, each paired with its `CourseProgress` record if one exists.
+
+    Keyed on the Learner throughout, so a person holding a second Learner row
+    in another organisation never has that row's registrations mixed in.
+    Costs three queries whatever the registration count: the two active
+    registration reads, then the progress records themselves, matched up in
+    Python rather than with a query per registration.
+    """
+    from freedom_ls.learner_management.models import (
+        CohortCourseRegistration,
+        LearnerCourseRegistration,
+    )
+
+    individual_registrations = list(
+        LearnerCourseRegistration.objects.filter(
+            learner=learner, is_active=True
+        ).select_related("course")
+    )
+    cohort_registrations = list(
+        CohortCourseRegistration.objects.filter(
+            cohort__cohortmembership__learner=learner, is_active=True
+        ).select_related("cohort", "course")
+    )
+    records = CourseProgress.objects.filter(learner=learner)
+    record_by_individual_registration = {
+        record.learner_registration_id: record
+        for record in records
+        if record.learner_registration_id is not None
+    }
+    record_by_cohort_registration = {
+        record.cohort_registration_id: record
+        for record in records
+        if record.cohort_registration_id is not None
+    }
+
+    results: list[LearnerRegistrationProgress] = []
+    for registration in individual_registrations:
+        record = record_by_individual_registration.get(registration.pk)
+        results.append(
+            LearnerRegistrationProgress(
+                course=registration.course,
+                cohort=None,
+                progress_percentage=(
+                    record.progress_percentage if record is not None else None
+                ),
+                last_accessed_time=(
+                    record.last_accessed_time if record is not None else None
+                ),
+            )
+        )
+    for registration in cohort_registrations:
+        record = record_by_cohort_registration.get(registration.pk)
+        results.append(
+            LearnerRegistrationProgress(
+                course=registration.course,
+                cohort=registration.cohort,
+                progress_percentage=(
+                    record.progress_percentage if record is not None else None
+                ),
+                last_accessed_time=(
+                    record.last_accessed_time if record is not None else None
+                ),
+            )
+        )
+    return results

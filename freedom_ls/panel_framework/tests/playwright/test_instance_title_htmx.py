@@ -1,6 +1,6 @@
-"""The instance heading still updates live after an htmx panelChanged event.
+"""The instance heading still updates live after an instanceTitleChanged event.
 
-Panels re-fetch themselves on panelChanged through their own hx-trigger; the
+Panels re-fetch themselves on their own domain events through hx-trigger; the
 page heading sits outside every panel, so alpine-components.js updates its
 textContent by id instead. This proves panel-page-header still gives the
 heading that id, once the plain <h1> is rendered through the component.
@@ -19,7 +19,7 @@ from ..conftest import _make_stub
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
-def test_panel_changed_event_updates_the_instance_heading(
+def test_instance_title_changed_event_updates_the_instance_heading(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     page: Page,
@@ -31,8 +31,8 @@ def test_panel_changed_event_updates_the_instance_heading(
     expect(heading).to_have_text("Original Name")
 
     page.evaluate(
-        "document.dispatchEvent(new CustomEvent('panelChanged', "
-        "{ detail: { instanceTitle: 'Renamed' } }))"
+        "document.dispatchEvent(new CustomEvent('instanceTitleChanged', "
+        "{ detail: { title: 'Renamed' } }))"
     )
 
     expect(heading).to_have_text("Renamed")

@@ -5,13 +5,14 @@ from collections import Counter
 from collections.abc import Callable
 
 from django import forms
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
 from django.db.models import Model
 from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 
 
 class PanelAction:
@@ -24,22 +25,38 @@ class PanelAction:
     label: str = ""
     variant: str = "primary"
     action_name: str = ""
+    #: Rendered by {% render_action %} from get_trigger_context(ctx): cheap,
+    #: never form- or cascade-related.
+    trigger_template_name: str = "panel_framework/partials/action_button.html"
+    #: The action's fragment, rendered only by _handle_action on GET, from
+    #: get_context_data(ctx).
     template_name: str = "panel_framework/partials/action_button.html"
+    #: Domain events this action's mutation fires on success. An action whose
+    #: mutation touches an entity other than its own instance overrides
+    #: get_success_events instead of relying on the default mapping.
+    success_events: tuple[str, ...] = ()
 
     def has_permission(
         self, request: HttpRequest, instance: Model | None = None
     ) -> bool:
         return True
 
+    def get_success_events(self, instance: Model | None) -> dict[str, list[str]]:
+        ids = [str(instance.pk)] if instance is not None else []
+        return {name: list(ids) for name in self.success_events}
+
     def get_action_url(self, ctx: PanelContext) -> str:
         return f"{ctx.base_url}/__actions/{self.action_name}"
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+    def get_trigger_context(self, ctx: PanelContext) -> dict[str, object]:
         return {
             "label": self.label,
             "variant": self.variant,
             "action_url": self.get_action_url(ctx),
         }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return self.get_trigger_context(ctx)
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         """Process action submission. Override in subclasses."""
@@ -47,7 +64,8 @@ class PanelAction:
 
 
 class FormPanelAction(PanelAction):
-    template_name = "panel_framework/partials/modal_form.html"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/form.html"
     form_class: Callable[..., forms.ModelForm]
     form_title: str = ""
     submit_buttons: list[dict[str, str]] = [
@@ -76,36 +94,46 @@ class FormPanelAction(PanelAction):
         """Return 422 with re-rendered form."""
         html = render_to_string(
             self.template_name,
-            {
-                "form": form,
-                "form_title": self.form_title,
-                "form_url": self._last_form_url,
-                "variant": self.variant,
-                "label": self.label,
-                "submit_buttons": self.submit_buttons,
-                "modal_open": "True",
-            },
+            self._fragment_context(form, self._last_form_url),
             request=request,
         )
         return HttpResponse(html, status=422)
 
-    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        """The trigger button and its modal, holding an unbound form."""
+    def _fragment_context(
+        self, form: forms.ModelForm, form_url: str
+    ) -> dict[str, object]:
+        """Mark the form's first visible field for autofocus and build the
+        context its fragment template renders.
+
+        Skipped when the form carries errors: a browser moves focus to a
+        freshly-inserted `autofocus` field as soon as it renders, which would
+        override the error-summary focus appModal sets for a 422 re-render.
+        """
+        fields = form.visible_fields()
+        if fields and not form.errors:
+            fields[0].field.widget.attrs["autofocus"] = True
         return {
-            "form": self.get_form(ctx.request),
+            "form": form,
+            "field_error_count": sum(
+                1 for name in form.errors if name != NON_FIELD_ERRORS
+            ),
             "form_title": self.form_title,
-            "form_url": self.get_action_url(ctx),
-            "variant": self.variant,
-            "label": self.label,
+            "form_url": form_url,
             "submit_buttons": self.submit_buttons,
         }
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        """The modal fragment, holding an unbound form."""
+        return self._fragment_context(
+            self.get_form(ctx.request), self.get_action_url(ctx)
+        )
 
 
 class CreateInstanceAction(FormPanelAction):
     """Base class for actions that create a new instance via a modal form.
 
     Subclasses must define: form_class, form_title, label, action_name.
-    Subclasses must implement: get_success_url(instance) and get_created_event_name().
+    Subclasses must implement: get_success_url(instance).
     """
 
     variant: str = "primary"
@@ -123,24 +151,11 @@ class CreateInstanceAction(FormPanelAction):
         """Return the URL to redirect to after successful creation."""
         raise NotImplementedError
 
-    def get_created_event_name(self) -> str:
-        """Return the HTMX event name to trigger on 'save and add another'."""
-        raise NotImplementedError
-
     def _render_empty_form(self, request: HttpRequest, form_url: str) -> str:
         """Re-render the modal form with an empty/unbound form."""
-        form = self.form_class()
         return render_to_string(
             self.template_name,
-            {
-                "form": form,
-                "form_title": self.form_title,
-                "form_url": form_url,
-                "variant": self.variant,
-                "label": self.label,
-                "submit_buttons": self.submit_buttons,
-                "modal_open": "True",
-            },
+            self._fragment_context(self.form_class(), form_url),
             request=request,
         )
 
@@ -157,13 +172,21 @@ class CreateInstanceAction(FormPanelAction):
 
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         instance = form.save()
+        events = self.get_success_events(instance)
         if request.POST.get("action") == "save_and_add":
             html = self._render_empty_form(request, self._last_form_url)
             response = HttpResponse(html)
-            response["HX-Trigger"] = self.get_created_event_name()
+            response["HX-Trigger"] = build_hx_trigger(events)
             return response
         response = HttpResponse(status=204)
-        response["HX-Redirect"] = self.get_success_url(instance)
+        response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+        response["HX-Location"] = json.dumps(
+            {
+                "path": self.get_success_url(instance),
+                "target": "#main-content",
+                "swap": "outerHTML",
+            }
+        )
         return response
 
 
@@ -180,10 +203,12 @@ class EditAction(FormPanelAction):
         form_class: Callable[..., forms.ModelForm],
         form_title: str,
         instance: Model,
+        success_events: tuple[str, ...] = (),
     ) -> None:
         self.form_class = form_class
         self.form_title = form_title
         self._instance = instance
+        self.success_events = success_events
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
@@ -196,8 +221,10 @@ class EditAction(FormPanelAction):
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         form.save()
         response = HttpResponse(status=204)
-        response["HX-Trigger"] = json.dumps(
-            {"panelChanged": {"instanceTitle": str(form.instance)}}
+        response["HX-Trigger"] = build_hx_trigger(
+            self.get_success_events(form.instance),
+            close_modal=True,
+            title=str(form.instance),
         )
         return response
 
@@ -211,15 +238,22 @@ class EditAction(FormPanelAction):
 
 
 class DeleteAction(PanelAction):
-    """Deletes the instance of whatever it is attached to, after confirmation."""
+    """Deletes the instance of whatever it is attached to, after confirmation.
+
+    With a success_url, a delete navigates there and sends no domain events.
+    Without one it stays on the page and sends success_events, so the panels
+    still showing the deleted row can refetch themselves.
+    """
 
     label = "Delete"
     variant = "error"
     action_name = "delete"
-    template_name = "panel_framework/partials/delete_confirmation.html"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/delete_confirmation.html"
 
-    def __init__(self, success_url: str = ""):
+    def __init__(self, success_url: str = "", success_events: tuple[str, ...] = ()):
         self.success_url = success_url
+        self.success_events = success_events
 
     def get_cascade_summary(self, instance: Model) -> list[str]:
         """Use Django's Collector to show what will be cascade-deleted.
@@ -241,7 +275,7 @@ class DeleteAction(PanelAction):
         for fast_delete in collector.fast_deletes:
             counts[fast_delete.model] += fast_delete.count()
         return [
-            f"{count} {model._meta.verbose_name_plural}"
+            self._count_noun(model, count)
             for model, count in counts.items()
             if count and model is not type(instance)
         ]
@@ -251,19 +285,22 @@ class DeleteAction(PanelAction):
         counts: Counter[type[Model]] = Counter(
             type(obj) for obj in error.protected_objects
         )
-        dependents: list[str] = []
-        for model in sorted(counts, key=lambda m: str(m._meta.verbose_name)):
-            count = counts[model]
-            noun = (
-                model._meta.verbose_name
-                if count == 1
-                else model._meta.verbose_name_plural
-            )
-            dependents.append(f"{count} {noun}")
+        dependents = [
+            self._count_noun(model, counts[model])
+            for model in sorted(counts, key=lambda m: str(m._meta.verbose_name))
+        ]
         return (
             f"This {instance._meta.verbose_name} cannot be deleted because it "
             f"still has {self._join(dependents)}."
         )
+
+    @staticmethod
+    def _count_noun(model: type[Model], count: int) -> str:
+        """A count and the model's name, singular for exactly one."""
+        noun = (
+            model._meta.verbose_name if count == 1 else model._meta.verbose_name_plural
+        )
+        return f"{count} {noun}"
 
     @staticmethod
     def _join(parts: list[str]) -> str:
@@ -279,15 +316,12 @@ class DeleteAction(PanelAction):
         *,
         cascade_summary: list[str],
         blocked_reason: str,
-        modal_open: bool = False,
     ) -> dict[str, object]:
         return {
             "instance": instance,
             "cascade_summary": cascade_summary,
             "blocked_reason": blocked_reason,
             "delete_url": self.get_action_url(ctx),
-            "variant": self.variant,
-            "modal_open": "true" if modal_open else "false",
         }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
@@ -316,6 +350,9 @@ class DeleteAction(PanelAction):
         instance = ctx.instance
         if instance is None:
             return HttpResponse(status=400)
+        # Read before delete(): Django sets the pk to None once the row is
+        # gone, and the event still needs to name what was deleted.
+        events = self.get_success_events(instance)
         try:
             instance.delete()
         except ProtectedError as error:
@@ -328,13 +365,22 @@ class DeleteAction(PanelAction):
                     instance,
                     cascade_summary=[],
                     blocked_reason=self.get_blocked_reason(instance, error),
-                    modal_open=True,
                 ),
                 request=ctx.request,
             )
             return HttpResponse(html, status=422)
         response = HttpResponse(status=204)
-        response["HX-Redirect"] = self.success_url
+        if not self.success_url:
+            response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
+            return response
+        # htmx handles HX-Trigger before HX-Location, so domain events would
+        # reach the page being left while it is still on screen, and its
+        # panels would refetch URLs scoped to the row just deleted. The page
+        # navigated to renders fresh and needs none of them.
+        response["HX-Trigger"] = build_hx_trigger({}, close_modal=True)
+        response["HX-Location"] = json.dumps(
+            {"path": self.success_url, "target": "#main-content", "swap": "outerHTML"}
+        )
         return response
 
     def has_permission(

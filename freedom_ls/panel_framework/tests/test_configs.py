@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import cast
 
 import pytest
@@ -202,6 +203,17 @@ def test_a_delete_action_from_a_panel_renders_its_trigger(
 
     html = _as_a_user_who_may_delete(stub, "first-stub").content.decode()
 
+    assert f'hx-get="{DELETE_URL}"' in html
+
+
+def test_a_delete_actions_trigger_url_returns_its_confirmation_fragment(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="alpha")
+    path_string = DELETE_URL.removeprefix("/test-panel/framework/")
+
+    html = _as_a_user_who_may_delete(stub, path_string).content.decode()
+
     assert f'hx-delete="{DELETE_URL}"' in html
 
 
@@ -214,7 +226,12 @@ def test_a_delete_action_from_a_panel_deletes_on_submit(
     response = _as_a_user_who_may_delete(stub, path_string, method="delete")
 
     assert response.status_code == 204
-    assert response["HX-Redirect"] == "/deleted"
+    assert json.loads(response["HX-Location"]) == {
+        "path": "/deleted",
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+    assert "HX-Redirect" not in response
     assert not StubModel.objects.filter(pk=stub.pk).exists()
 
 

@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.core.exceptions import (
+    ImproperlyConfigured,
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.cache import patch_vary_headers
 
-from freedom_ls.panel_framework.actions import CreateInstanceAction, PanelAction
+from freedom_ls.panel_framework.actions import PanelAction
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, TabSet
+from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
 
 
@@ -101,6 +106,11 @@ class ListViewConfig(SectionConfigBase):
     model: type[Model] | None = None
     instance_view: type[InstanceView] | None = None
     list_view: type[DataTable] | None = None
+    #: Domain events that make the list's table region re-fetch itself.
+    refresh_events: tuple[str, ...] = ()
+    #: The drawer a row's quick-view trigger opens. None means rows have no
+    #: quick view and the __quick-view route 404s.
+    quick_view: type[QuickView] | None = None
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
@@ -210,6 +220,10 @@ class _Resolved:
     instance_view: InstanceView | None = None
     parents: tuple[Panel, ...] = field(default_factory=tuple)
     action: _ResolvedAction | None = None
+    #: True when the path addresses an instance's quick-view drawer rather
+    #: than any panel or action, so panel_framework_view can branch to it
+    #: before touching the panel tree at all.
+    quick_view: bool = False
 
 
 def _find_action(actions: list[PanelAction], name: str) -> PanelAction | None:
@@ -319,6 +333,24 @@ def _resolve_path(
     if not root.is_shown():
         raise Http404("Panel not shown")
 
+    # A terminal __quick-view segment addresses the instance's drawer, not
+    # any panel or action, so it is matched before the loop below ever
+    # starts. get_instance_view has already run check_access on instance_view
+    # by this point, so the drawer route adds no authorisation of its own.
+    if (
+        parts[i:] == ["__quick-view"]
+        and instance_view is not None
+        and issubclass(section, ListViewConfig)
+    ):
+        return _Resolved(
+            section=section,
+            root=root,
+            panel=root,
+            instance=instance_view.instance,
+            instance_view=instance_view,
+            quick_view=True,
+        )
+
     current = root
     parents: list[Panel] = []
     action: _ResolvedAction | None = None
@@ -355,11 +387,47 @@ def _handle_action(request: HttpRequest, resolved: _ResolvedAction) -> HttpRespo
     ctx = resolved.ctx
 
     if not action.has_permission(request, ctx.instance):
-        return HttpResponse(status=403)
+        raise PermissionDenied
 
     if request.method in ("POST", "DELETE"):
         return action.handle_submit(ctx)
     return render(request, action.template_name, action.get_context_data(ctx))
+
+
+def _handle_quick_view(
+    request: HttpRequest,
+    section: SectionConfig,
+    instance: Model | None,
+    instance_url: str,
+) -> HttpResponse:
+    """Render the drawer frame for `instance`, or send a non-htmx request to
+    its full page.
+
+    Called only once _resolve_path has matched a terminal __quick-view
+    segment against a ListViewConfig with a bound instance, so
+    get_instance_view has already run check_access (and therefore
+    authorise_instance) on instance.
+    """
+    if not issubclass(section, ListViewConfig) or section.quick_view is None:
+        raise Http404(f"{section.__name__} has no quick view")
+    if instance is None:
+        raise ValueError("A quick-view route must resolve to a bound instance")
+    if request.headers.get("HX-Request") != "true":
+        return redirect(instance_url)
+    quick_view = section.quick_view(request, instance)
+    return render(
+        request,
+        "panel_framework/quick_view/frame.html",
+        {
+            "quick_view": quick_view,
+            "title": quick_view.get_title(),
+            # Space-separated event names: simple identifiers, so no JSON
+            # escaping is needed in the data-* attribute.
+            "refresh_events": " ".join(quick_view.refresh_events),
+            "entity_id": str(instance.pk),
+            **quick_view.get_context_data(),
+        },
+    )
 
 
 def _vary_on_htmx(response: HttpResponse) -> HttpResponse:
@@ -399,11 +467,6 @@ def _main_for(
             for action in section.get_actions(request)
             if action.has_permission(request)
         ]
-        created_events = [
-            action.get_created_event_name()
-            for action in list_actions
-            if isinstance(action, CreateInstanceAction)
-        ]
         return (
             "panel_framework/views/list_view.html",
             {
@@ -413,7 +476,7 @@ def _main_for(
                 "ctx": root.ctx,
                 # Space-separated event names: simple identifiers, so no JSON
                 # escaping is needed in the data-* attribute.
-                "refresh_events": " ".join(created_events),
+                "refresh_events": " ".join(section.refresh_events),
                 "refresh_url": root.ctx.base_url,
             },
             section.menu_label,
@@ -596,6 +659,15 @@ def panel_framework_view(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
         resolved = _resolve_path(parts, sections, request, section_url)
+        if resolved.quick_view:
+            return _vary_on_htmx(
+                _handle_quick_view(
+                    request,
+                    resolved.section,
+                    resolved.instance,
+                    resolved.root.ctx.base_url,
+                )
+            )
         if resolved.action is not None:
             return _vary_on_htmx(_handle_action(request, resolved.action))
         main_template_name, main, heading = _main_for(request, resolved)

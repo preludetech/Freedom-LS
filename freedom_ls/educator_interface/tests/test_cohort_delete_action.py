@@ -14,6 +14,7 @@ saw nothing wrong.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 import lxml.html
@@ -36,6 +37,8 @@ from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture
@@ -77,14 +80,31 @@ def test_an_empty_cohort_is_deleted_from_its_details_panel(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
+    cohort_pk = cohort.pk
     client = logged_in_client(UserFactory(superuser=True))
     url = _delete_url(client, cohort)
 
     response = client.delete(url)
 
     assert response.status_code == 204
-    assert response["HX-Redirect"].endswith("/cohorts")
-    assert not Cohort.objects.filter(pk=cohort.pk).exists()
+    assert json.loads(response["HX-Location"])["path"].endswith("/cohorts")
+    # No cohortChanged: the cohort page's own panels listen for it, and would
+    # refetch the deleted cohort before the navigation replaced them.
+    assert response["HX-Trigger"] == build_hx_trigger({}, close_modal=True)
+    assert "HX-Redirect" not in response
+    assert not Cohort.objects.filter(pk=cohort_pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_cohort_pages_panels_refresh_on_cohort_changed(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Watched Cohort")
+    client = logged_in_client(UserFactory(superuser=True))
+
+    body = client.get(_panel_url(cohort)).content.decode()
+
+    assert body.count('hx-trigger="cohortChanged from:body"') >= 3
 
 
 @pytest.mark.django_db
@@ -93,10 +113,12 @@ def test_the_details_panel_renders_the_delete_trigger(
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
 
     body = client.get(_panel_url(cohort)).content.decode()
 
-    assert f'hx-delete="{_delete_url(client, cohort)}"' in body
+    assert f'hx-get="{url}"' in body
+    assert f'hx-delete="{url}"' in client.get(url).content.decode()
 
 
 @pytest.mark.django_db
@@ -115,8 +137,9 @@ def test_the_delete_dialog_says_why_the_cohort_cannot_go(
     cohort_with_granted_progress, logged_in_client
 ):
     client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort_with_granted_progress)
 
-    body = client.get(_panel_url(cohort_with_granted_progress)).content.decode()
+    body = client.get(url).content.decode()
 
     assert "cannot be deleted because it still has" in body
     assert "course progress record" in body
@@ -136,3 +159,23 @@ def test_submitting_the_blocked_delete_answers_instead_of_erroring(
     assert CourseProgress.objects.filter(
         cohort_registration__cohort=cohort_with_granted_progress
     ).exists()
+
+
+@pytest.mark.django_db
+def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    """Organisation staff can open the cohort but not delete it. Pasting the
+    action URL gets the site's own 403 page, not an empty 403 body."""
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    url = _delete_url(logged_in_client(UserFactory(superuser=True)), cohort)
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, cohort.organisation, "organisation_staff")
+    client = logged_in_client(educator)
+    assert client.get(_panel_url(cohort)).status_code == 200
+
+    response = client.get(url)
+
+    assert response.status_code == 403
+    assert "You do not have access to this page" in response.content.decode()
+    assert Cohort.objects.filter(pk=cohort.pk).exists()

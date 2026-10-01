@@ -1,0 +1,71 @@
+"""E2E Playwright tests for where the docked quick view sits on a real page.
+
+From 1280px up the drawer is docked beside the page rather than laid over it:
+it starts below the site header, and the page content makes room for it, so
+the list's actions and every table column stay reachable while it is open.
+The stub-harness layout tests in panel_framework cover the push, but that
+harness renders no site header, so only a real page shows the drawer clearing
+it.
+"""
+
+from __future__ import annotations
+
+import pytest
+from guardian.shortcuts import assign_perm
+from playwright.sync_api import FloatRect, Locator, Page, expect
+
+from freedom_ls.accounts.models import User
+from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.role_based_permissions.utils import assign_object_role
+
+from .helpers import interface_url
+
+pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
+
+
+def _box(locator: Locator) -> FloatRect:
+    box = locator.bounding_box()
+    assert box is not None
+    return box
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [{"width": 1920, "height": 1080}, {"width": 1280, "height": 800}],
+    ids=["1920", "1280"],
+)
+def test_the_docked_drawer_leaves_the_header_actions_and_table_uncovered(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+    viewport: dict[str, int],
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    CohortFactory(organisation=organisation, name="Year 9 Maths")
+    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_perm("freedom_ls_learner_management.add_cohort", educator_user)
+    page.set_viewport_size(viewport)
+
+    page.goto(interface_url(live_server, organisation.slug, "cohorts"))
+    page.get_by_role("link", name="Year 9 Maths").click()
+
+    drawer = page.locator("#quick-view")
+    expect(drawer).to_be_visible()
+    expect(page.locator("dialog:modal")).to_have_count(0)
+    # The slide-in transform transitions over 200ms, so wait for it to settle
+    # before measuring the box, or the read races the animation.
+    expect(drawer).to_have_css("transform", "none")
+
+    drawer_box = _box(drawer)
+    header_box = _box(page.locator("header.header"))
+    create_box = _box(page.get_by_role("button", name="Create Cohort"))
+    table_box = _box(page.locator("#main-content table"))
+    assert drawer_box["y"] >= header_box["y"] + header_box["height"] - 1
+    assert create_box["x"] + create_box["width"] <= drawer_box["x"]
+    assert table_box["x"] + table_box["width"] <= drawer_box["x"]
+
+    page.get_by_role("button", name="Create Cohort").click()
+
+    expect(page.locator("#app-modal")).to_be_visible()

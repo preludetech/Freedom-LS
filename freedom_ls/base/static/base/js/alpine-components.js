@@ -132,9 +132,16 @@ document.addEventListener("alpine:init", () => {
             }
             items[(current + step + items.length) % items.length].focus();
         },
-        onEscape() {
+        // preventDefault() marks this Escape as consumed so any other
+        // layer listening for it (e.g. panel_framework's quick-view
+        // drawer) knows not to treat the same keypress as its own
+        // dismissal. Capture-phase registration (see dropdown-menu.html)
+        // runs this before any bubble-phase listener gets to inspect
+        // event.defaultPrevented.
+        onEscape(event) {
             if (!this.open) return;
             this.open = false;
+            if (event) event.preventDefault();
             if (this.$refs.menuButton) {
                 this.$refs.menuButton.focus();
             }
@@ -170,35 +177,6 @@ document.addEventListener("alpine:init", () => {
             this.$el.addEventListener("htmx:afterRequest", () => {
                 this.close();
             });
-        },
-    }));
-
-    // Modal component (cotton/modal.html)
-    Alpine.data("modal", () => ({
-        open: false,
-        init() {
-            const initial = this.$el.dataset.open;
-            if (initial === "True" || initial === "true") {
-                this.open = true;
-            }
-            // Close modal when a form inside receives a 204 response (successful save)
-            this.$el.addEventListener("htmx:afterRequest", (event) => {
-                if (event.detail.xhr && event.detail.xhr.status === 204) {
-                    this.open = false;
-                }
-            });
-        },
-        show() {
-            // Reset any form inside the modal when opening
-            const form = this.$el.querySelector("form");
-            if (form) form.reset();
-            this.open = true;
-        },
-        close() {
-            this.open = false;
-        },
-        onEscape() {
-            this.open = false;
         },
     }));
 

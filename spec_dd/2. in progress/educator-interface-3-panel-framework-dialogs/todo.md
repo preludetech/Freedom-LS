@@ -10,9 +10,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model
@@ -22,7 +22,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -47,10 +47,24 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
+- [x] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [x] (user + cmd) Fix QA bug: appModal htmx:afterSwap listener throws a TypeError on history restore (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: deleting from a cohort page makes that cohort's panels refetch and 404 (TDD — failing test first, then fix)
+- [x] (user) Decide how a delete's domain event should treat the panels of the page it navigates away from, then fix the delete-refetch 404s to match
+- [x] (user + cmd) Fix QA bug: modal button row overflows at phone width and clips Cancel (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: quick-view title flips between the trigger text and the frame title (TDD — failing test first, then fix)
+- [x] (user) Decide what the learner quick-view title should be (learner name or Learner.__str__, which the learner page h1 also uses), then make the trigger title and QuickView.get_title agree
+- [x] (user + cmd) Fix QA bug: delete cascade summary says '1 cohort memberships' (TDD — failing test first, then fix)
+- [x] (user) Decide whether a duplicate-name (model uniqueness) error should attach to the Name field and how the error summary counts form-level errors, then fix the create-cohort duplicate error to match
+- [x] (user + cmd) Fix QA bug: duplicate cohort name error is a form-level error, not attached to the Name field (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: forbidden action URL returns a bare, empty-bodied 403 instead of the site 403 page (TDD — failing test first, then fix)
+- [x] (user) Decide whether the desktop quick-view drawer should overlay, push or reserve space for the page, and at which breakpoint it becomes a docked drawer, then fix the drawer hiding Create Cohort and table columns
+- [x] (user + cmd) Fix QA bug: desktop quick-view drawer overlays and hides page actions and table columns (TDD — failing test first, then fix)
+- [ ] (user) Decide the wording of the duplicate-name error for UniqueConstraint forms (it currently reads 'Cohort with this Site, Organisation and Name already exists.'), then fix the create-cohort duplicate error to match
+- [ ] (user + cmd) Fix QA bug: duplicate cohort name error exposes internal Site and Organisation fields (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
@@ -68,7 +82,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 13. Pull request
 
-- [ ] (user) Open a pull request
+- [x] (user) Open a pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
 - [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
 - [ ] (user) Merge the PR once approved

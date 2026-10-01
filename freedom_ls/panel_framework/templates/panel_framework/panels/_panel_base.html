@@ -6,18 +6,21 @@ panel is a refresh region and the card is just its chrome; an override or a
 region-template swap must keep the outer section stable while the card
 inside it is free to change. A panel with no region template is its own
 refresh region, so the section carries the region id itself. The hx-get
-re-fetches the region when an edit elsewhere fires panelChanged, which is how
-a saved edit shows up without a page load.
+re-fetches the region when one of the panel's declared refresh_events fires
+on body, which is how a saved edit shows up without a page load. A panel
+that declares none never refreshes itself in place.
 
 panel_header is a hook for content above the body, now that the card renders
 the heading itself from title.
 {% endcomment %}
 <section data-panel="{{ name }}"
          {% if not region_template_name %}id="{{ region_id }}"{% endif %}
+         {% if refresh_events %}
          hx-get="{{ base_url }}"
-         hx-trigger="panelChanged from:body"
+         hx-trigger="{% for event in refresh_events %}{{ event }} from:body{% if not forloop.last %}, {% endif %}{% endfor %}"
          hx-target="#{{ region_id }}"
-         hx-swap="outerHTML">
+         hx-swap="outerHTML"
+         {% endif %}>
     <c-panel-card :title="title" heading_level="2">
         {% block panel_header %}{% endblock panel_header %}
         {% block panel_body %}{% endblock panel_body %}

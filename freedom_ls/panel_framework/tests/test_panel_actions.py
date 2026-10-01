@@ -4,9 +4,11 @@ import json
 
 import pytest
 from guardian.shortcuts import assign_perm
+from pytest_mock import MockerFixture
 
 from django import forms
 from django.contrib.sites.models import Site
+from django.core.exceptions import PermissionDenied
 from django.db.models import Model
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -19,6 +21,7 @@ from freedom_ls.panel_framework.actions import (
     PanelAction,
 )
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.panel_framework.panels import Panel
 from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
 
@@ -30,6 +33,7 @@ from .conftest import (
     _make_stub_protected_child,
     make_staff_user,
 )
+from .stub_panels import StubReadOnlyAction
 
 # -- Shared test form ---------------------------------------------------
 
@@ -58,12 +62,10 @@ class StubCreateAction(CreateInstanceAction):
     form_title = "Create Item"
     label = "Create Item"
     action_name = "create_item"
+    success_events = ("itemChanged",)
 
     def get_success_url(self, instance: Model) -> str:
         return f"/items/{instance.pk}"
-
-    def get_created_event_name(self) -> str:
-        return "itemCreated"
 
 
 def _ctx(
@@ -156,31 +158,45 @@ def test_panel_action_has_permission_returns_true_by_default(mock_site_context):
 def test_create_action_form_valid_creates_instance_and_redirects(
     mock_site_context: Site,
 ) -> None:
-    """Successful form submission creates instance and returns 204 + HX-Redirect."""
+    """ "Save" creates the instance and answers 204 with HX-Location, never
+    HX-Redirect."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "New Item"})
     request.user = make_staff_user()
     assign_perm("freedom_ls_panel_framework.add_stubmodel", request.user)
 
     response = action.handle_submit(_ctx(request, None, "/items"))
+
     assert response.status_code == 204
     item = StubModel.objects.get(name="New Item")
-    assert f"/items/{item.pk}" in response["HX-Redirect"]
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item.pk)]}, close_modal=True
+    )
+    assert json.loads(response["HX-Location"]) == {
+        "path": f"/items/{item.pk}",
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+    assert "HX-Redirect" not in response
 
 
 @pytest.mark.django_db
 def test_create_action_save_and_add_another_returns_empty_form_and_trigger(
     mock_site_context: Site,
 ) -> None:
-    """'Save and add another' returns re-rendered empty form + HX-Trigger event."""
+    """'Save and add another' returns 200 with the blank form and the domain
+    event, and never closes the modal."""
     action = StubCreateAction()
     request = RequestFactory().post("/", {"name": "Item A", "action": "save_and_add"})
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, None, "/items"))
+
     assert response.status_code == 200
-    assert StubModel.objects.filter(name="Item A").exists()
-    assert response["HX-Trigger"] == "itemCreated"
+    item = StubModel.objects.get(name="Item A")
+    assert response["HX-Trigger"] == build_hx_trigger({"itemChanged": [str(item.pk)]})
+    assert "HX-Location" not in response
+    assert "HX-Redirect" not in response
     content = response.content.decode()
     assert "Create Item" in content
 
@@ -195,6 +211,35 @@ def test_create_action_duplicate_name_returns_422(mock_site_context: Site) -> No
 
     response = action.handle_submit(_ctx(request, None, "/items"))
     assert response.status_code == 422
+    content = response.content.decode()
+    assert "data-error-summary" in content
+    assert 'aria-invalid="true"' in content
+
+
+class _FormLevelErrorForm(_StubModelForm):
+    def clean(self) -> dict[str, object]:
+        raise forms.ValidationError("These values cannot be combined.")
+
+
+class StubFormLevelErrorCreateAction(StubCreateAction):
+    form_class = _FormLevelErrorForm
+
+
+@pytest.mark.django_db
+def test_error_summary_does_not_count_a_form_level_error_as_a_field(
+    mock_site_context: Site,
+) -> None:
+    """A non-field error is shown, but no field is claimed to need fixing."""
+    action = StubFormLevelErrorCreateAction()
+    request = RequestFactory().post("/", {"name": "Anything"})
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, None, "/items"))
+
+    assert response.status_code == 422
+    content = response.content.decode()
+    assert "These values cannot be combined." in content
+    assert "to fix" not in content
 
 
 @pytest.mark.django_db
@@ -214,8 +259,10 @@ def test_create_action_has_permission_checks_add_perm(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_create_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks add permission."""
+def test_create_action_permission_denied_raises_permission_denied(
+    mock_site_context: Site,
+) -> None:
+    """_handle_action raises PermissionDenied when user lacks add permission."""
     action = StubCreateAction()
     user = make_staff_user()
     # No add permission
@@ -223,8 +270,8 @@ def test_create_action_permission_denied_returns_403(mock_site_context: Site) ->
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, None, "/items"))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     assert not StubModel.objects.filter(name="Forbidden").exists()
 
 
@@ -235,23 +282,27 @@ def test_create_action_permission_denied_returns_403(mock_site_context: Site) ->
 def test_edit_action_form_valid_saves_and_returns_trigger(
     mock_site_context: Site,
 ) -> None:
-    """Successful edit returns 204 + HX-Trigger with panelChanged."""
+    """A successful edit answers 204 with closeModal, its declared domain
+    events and the new instance title, never HX-Redirect."""
     item = _make_stub(name="Old Name")
     action = EditAction(
         form_class=_StubModelForm,
         form_title="Edit Item",
         instance=item,
+        success_events=("itemChanged",),
     )
     request = RequestFactory().post("/", {"name": "New Name"})
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, item))
+
     assert response.status_code == 204
     item.refresh_from_db()
     assert item.name == "New Name"
-    trigger = json.loads(response["HX-Trigger"])
-    assert "panelChanged" in trigger
-    assert trigger["panelChanged"]["instanceTitle"] == "New Name"
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item.pk)]}, close_modal=True, title="New Name"
+    )
+    assert "HX-Redirect" not in response
 
 
 @pytest.mark.django_db
@@ -269,6 +320,9 @@ def test_edit_action_duplicate_name_returns_422(mock_site_context: Site) -> None
 
     response = action.handle_submit(_ctx(request, item))
     assert response.status_code == 422
+    content = response.content.decode()
+    assert "data-error-summary" in content
+    assert 'aria-invalid="true"' in content
 
 
 @pytest.mark.django_db
@@ -293,8 +347,10 @@ def test_edit_action_has_permission_checks_object_level_change_perm(mock_site_co
 
 
 @pytest.mark.django_db
-def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks change permission."""
+def test_edit_action_permission_denied_raises_permission_denied(
+    mock_site_context: Site,
+) -> None:
+    """_handle_action raises PermissionDenied when user lacks change permission."""
     item = _make_stub(name="Test-edit-403")
     action = EditAction(
         form_class=_StubModelForm,
@@ -306,10 +362,58 @@ def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> N
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, item))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     item.refresh_from_db()
     assert item.name == "Test-edit-403"
+
+
+@pytest.mark.django_db
+def test_rendering_a_panel_with_a_form_action_never_builds_its_form(
+    mock_site_context: Site, mocker: MockerFixture
+) -> None:
+    """Rendering a panel renders the action's trigger, never its fragment:
+    building the form is deferred to a GET of the action's own URL."""
+    item = _make_stub(name="lazy-edit")
+    action = EditAction(
+        form_class=_StubModelForm, form_title="Edit Item", instance=item
+    )
+    get_form = mocker.patch.object(EditAction, "get_form")
+
+    class PanelWithEdit(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [action]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.change_stubmodel", request.user, item)
+    ctx = _ctx(request, item)
+    html = _render_panel(PanelWithEdit(ctx))
+
+    get_form.assert_not_called()
+    assert f'hx-get="{action.get_action_url(ctx)}"' in html
+    assert "<form" not in html
+
+
+@pytest.mark.django_db
+def test_a_get_of_a_form_actions_url_returns_its_fragment(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="edit-fragment-fetch")
+    action = EditAction(
+        form_class=_StubModelForm, form_title="Edit Item", instance=item
+    )
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.change_stubmodel", request.user, item)
+
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
+
+    content = response.content.decode()
+    assert 'id="app-modal-title"' in content
+    assert "hx-post=" in content
+    assert "autofocus" in content
 
 
 # -- DeleteAction tests --------------------------------------------------
@@ -319,17 +423,48 @@ def test_edit_action_permission_denied_returns_403(mock_site_context: Site) -> N
 def test_delete_action_handle_submit_deletes_and_redirects(
     mock_site_context: Site,
 ) -> None:
-    """Successful deletion deletes instance and returns 204 + HX-Redirect."""
+    """A successful delete with a success_url answers 204 with closeModal and
+    HX-Location to success_url, never HX-Redirect. It sends no domain events:
+    the page it leaves would hear them before the navigation and refetch
+    panels scoped to the row that no longer exists."""
     item = _make_stub(name="to-delete")
     item_pk = item.pk
-    action = DeleteAction(success_url="/items")
+    action = DeleteAction(success_url="/items", success_events=("itemChanged",))
 
     request = RequestFactory().delete("/")
     request.user = make_staff_user()
 
     response = action.handle_submit(_ctx(request, item))
+
     assert response.status_code == 204
-    assert response["HX-Redirect"] == "/items"
+    assert response["HX-Trigger"] == build_hx_trigger({}, close_modal=True)
+    assert json.loads(response["HX-Location"]) == {
+        "path": "/items",
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+    assert "HX-Redirect" not in response
+    assert not StubModel.objects.filter(pk=item_pk).exists()
+
+
+@pytest.mark.django_db
+def test_delete_action_without_a_success_url_sends_its_events_and_stays_put(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="to-delete-in-place")
+    item_pk = item.pk
+    action = DeleteAction(success_events=("itemChanged",))
+
+    request = RequestFactory().delete("/")
+    request.user = make_staff_user()
+
+    response = action.handle_submit(_ctx(request, item))
+
+    assert response.status_code == 204
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item_pk)]}, close_modal=True
+    )
+    assert "HX-Location" not in response
     assert not StubModel.objects.filter(pk=item_pk).exists()
 
 
@@ -345,6 +480,18 @@ def test_delete_action_cascade_summary_includes_related_objects(mock_site_contex
     assert len(summary) > 0
     summary_text = " ".join(summary).lower()
     assert "stub child" in summary_text
+
+
+@pytest.mark.django_db
+def test_delete_action_cascade_summary_uses_the_singular_for_one_row(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="single-child-parent")
+    _make_stub_child(parent=item)
+
+    summary = DeleteAction(success_url="/items").get_cascade_summary(item)
+
+    assert summary == ["1 stub child"]
 
 
 @pytest.mark.django_db
@@ -401,8 +548,10 @@ def test_delete_action_has_permission_checks_object_level_delete_perm(
 
 
 @pytest.mark.django_db
-def test_delete_action_permission_denied_returns_403(mock_site_context: Site) -> None:
-    """_handle_action returns 403 when user lacks delete permission."""
+def test_delete_action_permission_denied_raises_permission_denied(
+    mock_site_context: Site,
+) -> None:
+    """_handle_action raises PermissionDenied when user lacks delete permission."""
     item = _make_stub(name="delete-403")
     action = DeleteAction(success_url="/items")
 
@@ -411,8 +560,8 @@ def test_delete_action_permission_denied_returns_403(mock_site_context: Site) ->
     request.user = user
 
     resolved = _ResolvedAction(action, _ctx(request, item))
-    response = _handle_action(request, resolved)
-    assert response.status_code == 403
+    with pytest.raises(PermissionDenied):
+        _handle_action(request, resolved)
     assert StubModel.objects.filter(pk=item.pk).exists()
 
 
@@ -451,3 +600,70 @@ def test_delete_action_handle_submit_refuses_a_protected_instance(
     assert response.status_code == 422
     assert "cannot be deleted" in response.content.decode()
     assert StubModel.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_rendering_a_panel_with_a_delete_action_never_builds_a_cascade_summary(
+    mock_site_context: Site, mocker: MockerFixture
+) -> None:
+    """Rendering a panel renders the action's trigger, never its fragment:
+    the cascade summary is deferred to a GET of the action's own URL."""
+    item = _make_stub(name="lazy-delete")
+    action = DeleteAction(success_url="/items")
+    get_cascade_summary = mocker.patch.object(DeleteAction, "get_cascade_summary")
+
+    class PanelWithDelete(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [action]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, item)
+    ctx = _ctx(request, item)
+    html = _render_panel(PanelWithDelete(ctx))
+
+    get_cascade_summary.assert_not_called()
+    assert f'hx-get="{action.get_action_url(ctx)}"' in html
+    assert "<form" not in html
+
+
+@pytest.mark.django_db
+def test_a_get_of_a_delete_actions_url_returns_its_fragment(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="delete-fragment-fetch")
+    action = DeleteAction(success_url="/items")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, item)
+
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
+
+    content = response.content.decode()
+    assert 'id="app-modal-title"' in content
+    assert "hx-delete=" in content
+
+
+# -- Read-only PanelAction tests ------------------------------------------
+
+
+@pytest.mark.django_db
+def test_a_get_of_a_read_only_actions_url_returns_its_fragment(
+    mock_site_context: Site,
+) -> None:
+    """A read-only action's fragment carries the shared modal heading, no
+    form, and focuses itself since there is no field to autofocus instead."""
+    item = _make_stub(name="read-only-fetch")
+    action = StubReadOnlyAction()
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    resolved = _ResolvedAction(action, _ctx(request, item))
+    response = _handle_action(request, resolved)
+
+    content = response.content.decode()
+    assert 'id="app-modal-title"' in content
+    assert 'tabindex="-1"' in content
+    assert "autofocus" in content
+    assert "<form" not in content

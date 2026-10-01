@@ -1,0 +1,47 @@
+{% comment %}
+The modal fragment a FormPanelAction's GET returns. Context: form,
+field_error_count, form_title, form_url, submit_buttons.
+{% endcomment %}
+<h2 id="app-modal-title">{{ form_title }}</h2>
+
+{% if form.errors %}
+    <div data-error-summary
+         tabindex="-1"
+         role="alert"
+         class="mb-4 rounded-md border border-error/20 bg-error/10 p-3 text-sm text-error">
+        {% if field_error_count %}
+            <p>{{ field_error_count }} field{{ field_error_count|pluralize }} to fix.</p>
+        {% endif %}
+        {{ form.non_field_errors }}
+    </div>
+{% endif %}
+
+<form hx-post="{{ form_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    {% include "partials/form.html" %}
+
+    <c-button-group variant="right" class="mt-4 flex-wrap">
+        <c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button>
+        {% for btn in submit_buttons %}
+            {% if btn.name %}
+                <c-button type="submit"
+                          variant="{{ btn.variant }}"
+                          loading="true"
+                          loading_text="{{ btn.loading_text|default:'Saving...' }}"
+                          name="{{ btn.name }}"
+                          value="{{ btn.value }}">
+                    {{ btn.label }}
+                </c-button>
+            {% else %}
+                <c-button type="submit"
+                          variant="{{ btn.variant }}"
+                          loading="true"
+                          loading_text="{{ btn.loading_text|default:'Saving...' }}">
+                    {{ btn.label }}
+                </c-button>
+            {% endif %}
+        {% endfor %}
+    </c-button-group>
+</form>

@@ -1,0 +1,163 @@
+{% comment %}
+The one shared drawer every row's quick-view trigger loads into. Behaviour
+lives in Alpine.data("quickView")
+(panel_framework/static/panel_framework/js/alpine-components.js). A consumer
+supplies only the body content: this host owns the heading, the Open link
+and the close button.
+{% endcomment %}
+<style>
+@layer components {
+    /* Logical properties throughout, so RTL flips the layout without a
+     * separate rule set. Positioned fixed at every breakpoint: show() opens
+     * it non-modally from 1280px up, so nothing else takes it out of flow.
+     * Three layouts: a bottom sheet below 768px, a modal side drawer from
+     * 768px, and a side drawer docked beside the page from 1280px, the
+     * first width with room for the page and the drawer side by side. */
+    #quick-view {
+        position: fixed;
+        inset-inline: 0;
+        inset-block-start: auto;
+        inset-block-end: 0;
+        /* The UA dialog stylesheet sets a definite `height: fit-content` (not
+         * `auto`) on both the modal sheet and the non-modal drawer, which
+         * blocks the inset-based auto-stretch this rule and the 768px
+         * media query below rely on, and (together with an unset
+         * inset-block-start on `dialog:modal`) over-constrains the box so
+         * the browser ignores inset-block-end instead of honouring it.
+         * inline-size needs the same override: `dialog:modal`'s definite
+         * `width: fit-content` over-constrains inset-inline the same way.
+         * `dialog:modal` also caps max-width/max-height at
+         * calc(100% - 6px - 2em), which otherwise still clips the sheet
+         * below full width even once inline-size itself is fixed. */
+        inline-size: 100%;
+        max-inline-size: none;
+        block-size: auto;
+        max-block-size: 85dvh;
+        margin: 0;
+        border: none;
+        /* show()'d rather than showModal()'d when docked (see the 1280px
+         * media query below), so it never reaches the top layer and must
+         * out-rank the sticky site header (.header's z-30) by hand to stay
+         * clickable. */
+        z-index: 40;
+        opacity: 0;
+        transform: translateY(100%);
+        transition:
+            transform 200ms ease,
+            opacity 200ms ease,
+            overlay 200ms ease allow-discrete,
+            display 200ms ease allow-discrete;
+    }
+    /* Gated on [open] so the UA's dialog:not([open]) { display: none } still
+     * wins for a closed drawer. */
+    #quick-view[open] {
+        display: flex;
+        flex-direction: column;
+        opacity: 1;
+        transform: none;
+    }
+    @starting-style {
+        #quick-view[open] {
+            opacity: 0;
+            transform: translateY(100%);
+        }
+    }
+    @media (min-width: 768px) {
+        #quick-view {
+            inset-block: 0;
+            inset-inline-start: auto;
+            inline-size: 30rem;
+            max-inline-size: 100%;
+            max-block-size: none;
+            transform: translateX(100%);
+        }
+        @starting-style {
+            #quick-view[open] {
+                transform: translateX(100%);
+            }
+        }
+    }
+    @media (min-width: 1280px) {
+        /* Docked: it starts below the site header, which stays usable, and
+         * the page content gives up the drawer's width so nothing is left
+         * underneath it. --sidebar-top is the header's height, set by
+         * sidePanel on the shell wrapper this host sits inside. */
+        #quick-view {
+            inset-block-start: var(--sidebar-top, 0px);
+        }
+        html:has(#quick-view[open]:not(:modal)) #interface-main {
+            padding-inline-end: 30rem;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        #quick-view {
+            transition: none;
+        }
+    }
+    @media print {
+        /* Matched on [open] too: equal specificity to the #quick-view[open]
+         * rule above, so this later declaration wins the cascade tie
+         * instead of losing to it on specificity while printing. `display`
+         * is one of the transitioned properties (allow-discrete), and a
+         * media-driven style change transitions exactly like any other, so
+         * without killing the transition here the drawer keeps computing
+         * `flex` for the transition's duration after print starts. */
+        #quick-view[open] {
+            transition: none;
+            display: none;
+        }
+    }
+    /* Only true while the drawer is showModal()'d (below 1280px): the
+     * docked drawer is opened with show(), which never locks the page. */
+    html:has(#quick-view:modal) {
+        overflow: hidden;
+        scrollbar-gutter: stable;
+    }
+}
+</style>
+<dialog id="quick-view"
+        x-data="quickView"
+        aria-labelledby="quick-view-title"
+        class="modal-backdrop-host bg-surface text-on-surface shadow-xl p-0">
+    <header class="sticky top-0 flex items-center gap-3 border-b border-border bg-surface px-4 py-3">
+        <h2 id="quick-view-title" class="flex-1 min-w-0 truncate font-semibold">
+        </h2>
+        <a id="quick-view-open"
+           href="#"
+           x-on:click="followOpenLink"
+           class="text-sm text-primary hover:underline">Open</a>
+        <button type="button"
+                x-on:click="requestClose"
+                aria-label="Close"
+                class="text-muted hover:text-on-surface">
+            <c-icon name="close" class="size-6" />
+        </button>
+    </header>
+    <div id="quick-view-body" class="flex-1 overflow-y-auto px-4 py-4">
+    </div>
+    <template data-quick-view-skeleton>
+        <div class="space-y-3" aria-hidden="true">
+            <div class="h-4 w-2/3 animate-pulse rounded bg-surface-2">
+            </div>
+            <div class="h-4 w-1/2 animate-pulse rounded bg-surface-2">
+            </div>
+            <div class="h-4 w-5/6 animate-pulse rounded bg-surface-2">
+            </div>
+        </div>
+    </template>
+    <template data-quick-view-error>
+        <div>
+            <p>
+                Something went wrong loading this.
+            </p>
+            <c-button variant="secondary" icon_left="retry" x-on:click="retry" class="mt-3">
+                Retry
+            </c-button>
+        </div>
+    </template>
+</dialog>
+<div id="quick-view-status"
+     class="sr-only"
+     aria-live="polite"
+     aria-atomic="true">
+</div>
