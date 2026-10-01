@@ -41,7 +41,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Spot-check the changes
 - [x] (cmd) Register the design on this spec: run `/sdd:register_design` with the handoff prompt. It writes `design_prompt.md`, `design_source/`, `design_screenshots/` and `design.md` beside this spec
 - [x] (cmd) Run `/sdd:plan_from_spec` with suffix `2b` to write `2b. plan.md` and `3b. frontend_qa.md`
-- [ ] (cmd) Run `/sdd:implement_plan` with suffix `2b` to execute `2b. plan.md`
+- [x] (cmd) Run `/sdd:implement_plan` with suffix `2b` to execute `2b. plan.md`
 
 ## 8. Code security review
 
