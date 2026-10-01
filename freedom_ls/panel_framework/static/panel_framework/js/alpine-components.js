@@ -273,6 +273,18 @@ document.addEventListener("alpine:init", () => {
             );
 
             trackListener(this._qvHandlers, document, "htmx:confirm", (event) => {
+                // A history restore (Back, with historyCacheSize 0) replaces
+                // the whole <body>, recreating this component on a fresh
+                // dialog rather than leaving the old one in place the way a
+                // plain #main-content swap does. Alpine's own teardown of the
+                // outgoing instance can lag behind a click on the newly
+                // restored trigger, so this stale instance — still carrying
+                // the _shownUrl of whatever it last showed — would otherwise
+                // intercept the event and call showModal() on its own
+                // detached dialog instead of leaving it to the fresh
+                // instance. Bailing out here once the dialog is no longer in
+                // the document makes that race harmless.
+                if (!this._qvDialog.isConnected) return;
                 const trigger = event.detail.elt;
                 if (!trigger || !trigger.matches('[aria-controls="quick-view"]')) return;
                 const url = event.detail.path;
