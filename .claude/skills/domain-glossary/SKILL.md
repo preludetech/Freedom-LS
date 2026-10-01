@@ -18,7 +18,7 @@ right and this file needs fixing.
 
 ---
 
-## Content — `freedom_ls/content_engine/models/` (a package: `courses.py`, `topics.py`, `files.py`)
+## Content — `freedom_ls/content_engine/models/` (a package: `courses.py`, `topics.py`, `articles.py`, `files.py`)
 
 | Term | Defined at | Means |
 | --- | --- | --- |
@@ -30,6 +30,9 @@ right and this file needs fixing.
 | `ContentCollectionItem` | `courses.py:278` | **The through model.** One row links a `collection` to a `child`, with an `order` and optional `overrides`. |
 | **collection** | `ContentCollectionItem.collection` | The `Course` or `CoursePart` a child sits in. A generic FK. |
 | **child** | `ContentCollectionItem.child` | The `Topic`, `Form` or `CoursePart` sitting in a collection. A generic FK. |
+| `Article` | `articles.py` | A standalone markdown content item (`ContentType.ARTICLE`) that belongs to no course and can be read publicly. Its `ArticleVisibility` is modelled on `CourseVisibility`, with only `published` and `hidden`. |
+| **blog** | `freedom_ls/blog` | The public index that lists a site's published articles. |
+| **byline** | article page | The line under an article's title that shows its `published_on` date and its `author`, each only when shown. |
 | `File` | `files.py:30` | An uploaded file attached to content. |
 
 ### `ContentCollectionItem` — read this before naming anything nearby

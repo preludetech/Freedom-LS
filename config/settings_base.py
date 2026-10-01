@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     "freedom_ls.deployment",
     "freedom_ls.google_tag",
     "freedom_ls.meta_pixel",
+    "freedom_ls.blog",
     "freedom_ls.tiktok_pixel",
     "freedom_ls.mail",
     "freedom_ls.health",

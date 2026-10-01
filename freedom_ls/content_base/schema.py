@@ -10,6 +10,7 @@ class ContentType(StrEnum):
 
     TOPIC = "TOPIC"
     ACTIVITY = "ACTIVITY"
+    ARTICLE = "ARTICLE"
     FORM = "FORM"
     COURSE = "COURSE"
     COURSE_PART = "COURSE_PART"

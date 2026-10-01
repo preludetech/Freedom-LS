@@ -1,5 +1,7 @@
 """Factories for content_engine models."""
 
+from datetime import date
+
 import factory
 
 from django.contrib.contenttypes.models import ContentType as DjangoContentType
@@ -7,6 +9,8 @@ from django.utils.text import slugify
 
 from freedom_ls.content_engine.models import (
     Activity,
+    Article,
+    ArticleVisibility,
     ContentCollectionItem,
     Course,
     CourseCategory,
@@ -26,6 +30,19 @@ class TopicFactory(SiteAwareFactory):
     title = factory.Sequence(lambda n: f"Topic {n}")
     slug = factory.LazyAttribute(lambda obj: slugify(obj.title))
     file_path = ""
+
+
+class ArticleFactory(SiteAwareFactory):
+    """Factory for Article model."""
+
+    class Meta:
+        model = Article
+
+    title = factory.Sequence(lambda n: f"Article {n}")
+    slug = factory.LazyAttribute(lambda obj: slugify(obj.title))
+    file_path = ""
+    published_on = factory.LazyFunction(date.today)
+    visibility = ArticleVisibility.PUBLISHED
 
 
 class ActivityFactory(SiteAwareFactory):

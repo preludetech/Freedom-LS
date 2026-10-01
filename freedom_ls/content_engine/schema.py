@@ -88,6 +88,22 @@ class Activity(
     level: int | None = Field(None, description="level 1 is easiest, 2 is harder, etc")
 
 
+class ArticleVisibility(StrEnum):
+    """Article visibility state (mirrors models.ArticleVisibility)."""
+
+    PUBLISHED = "published"
+    HIDDEN = "hidden"
+
+
+class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.ARTICLE):
+    slug: str | None = None
+    published_on: date
+    author: str | None = None
+    visibility: ArticleVisibility = ArticleVisibility.PUBLISHED
+    show_date: bool | None = None
+    show_author: bool | None = None
+
+
 class Child(BaseModel):
     """A child content reference with optional overrides."""
 
