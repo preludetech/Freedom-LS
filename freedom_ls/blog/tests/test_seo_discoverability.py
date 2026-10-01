@@ -47,3 +47,22 @@ def test_robots_txt_allows_blog_index_alongside_courses(mock_site_context):
     # Assert
     assert f"Allow: {reverse('blog:index')}" in content
     assert "Allow: /courses/" in content
+
+
+@pytest.mark.django_db
+def test_changed_prefix_moves_index_sitemap_and_robots_together(
+    mock_site_context, blog_url_prefix
+):
+    # Arrange
+    blog_url_prefix("news")
+    article = ArticleFactory(slug="moved-one")
+
+    # Act
+    body = Client().get(reverse("sitemap")).content.decode()
+    robots = Client().get("/robots.txt").content.decode()
+
+    # Assert
+    assert reverse("blog:index").startswith("/news/")
+    assert "/news/moved-one/</loc>" in body
+    assert article.get_absolute_url().startswith("/news/")
+    assert "Allow: /news/" in robots
