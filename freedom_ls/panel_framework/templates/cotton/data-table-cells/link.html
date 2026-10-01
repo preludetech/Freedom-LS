@@ -1,17 +1,23 @@
 {% load data_table_tags panel_tags %}
-{% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
-{% if column.quick_view %}
-    <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view">
-        {{ object|getattr_str:column.text_attr }}
-    </c-quick-view-trigger>
+{% with cell_text=object|getattr_str:column.text_attr %}
+{% if cell_text|is_blank %}
+    -
 {% else %}
-    <a href="{{ resolved_url }}"
-       {% if column.htmx_nav %}
-           hx-get="{{ resolved_url }}"
-           hx-target="#main-content"
-           hx-push-url="true"
-           hx-swap="outerHTML"
-       {% endif %}>
-        {{ object|getattr_str:column.text_attr }}
-    </a>
+    {% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
+    {% if column.quick_view %}
+        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view">
+            {{ cell_text }}
+        </c-quick-view-trigger>
+    {% else %}
+        <a href="{{ resolved_url }}"
+           {% if column.htmx_nav %}
+               hx-get="{{ resolved_url }}"
+               hx-target="#main-content"
+               hx-push-url="true"
+               hx-swap="outerHTML"
+           {% endif %}>
+            {{ cell_text }}
+        </a>
+    {% endif %}
 {% endif %}
+{% endwith %}
