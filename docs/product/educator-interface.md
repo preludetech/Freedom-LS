@@ -5,6 +5,7 @@ _Last updated: 2026-10-01_
 ## Summary
 
 - Educators use a single-page HTMX panel with three sections: Cohorts, Learners, and Courses.
+- A learner or cohort can be previewed in a read-only quick-view drawer without leaving the list.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
 - The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every learner and course item.
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
@@ -16,6 +17,12 @@ _Last updated: 2026-10-01_
 ![Educator panel](screenshots/educator_panel.png)
 
 The educator interface is a single-page application, scoped to one organisation at a time — see [Organisation Scope](#organisation-scope). Navigation within it is HTMX-driven: selecting a section or item updates the main panel, sidebar, and breadcrumb without a full page reload.
+
+**Quick view.** Clicking a learner's or cohort's name opens a read-only summary in a drawer beside the list, with a link through to the full page. On a wide screen the drawer docks beside the page, and on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active in a course. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view.
+
+![Learner quick view open beside the Learners list](screenshots/educator_learner_quick_view.png)
+
+Creating or deleting a cohort happens in a dialog over the current page rather than on a separate page.
 
 ### Cohorts
 
