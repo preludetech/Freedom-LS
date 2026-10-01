@@ -7,12 +7,21 @@ NOTIFICATION_CATEGORIES before the app registry exists.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from django.utils.translation import gettext_lazy as _
 
 if TYPE_CHECKING:
     from django_stubs_ext import StrPromise
+
+
+class NotificationColour(StrEnum):
+    PRIMARY = "primary"
+    SUCCESS = "success"
+    WARNING = "warning"
+    INFO = "info"
+    ERROR = "error"
 
 
 @dataclass(frozen=True)
@@ -22,6 +31,7 @@ class NotificationCategory:
     icon: str
     message: StrPromise
     url_builder: str | None
+    colour: NotificationColour | None = None
 
 
 FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [

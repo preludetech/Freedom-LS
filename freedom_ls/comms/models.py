@@ -17,7 +17,10 @@ if TYPE_CHECKING:
     from django_stubs_ext import StrPromise
 
     from freedom_ls.accounts.models import User
-    from freedom_ls.base.notification_categories import NotificationCategory
+    from freedom_ls.base.notification_categories import (
+        NotificationCategory,
+        NotificationColour,
+    )
 
 
 def get_notification_category(key: str) -> NotificationCategory:
@@ -126,6 +129,10 @@ class Notification(SiteAwareModel):
     @property
     def icon(self) -> str:
         return get_notification_category(self.category).icon
+
+    @property
+    def colour(self) -> NotificationColour | None:
+        return get_notification_category(self.category).colour
 
     @property
     def url(self) -> str | None:

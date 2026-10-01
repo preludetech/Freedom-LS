@@ -1,7 +1,15 @@
 {% load comms_tags %}
 <li class="relative flex items-start gap-3 px-4 py-4 sm:items-center
            {% if not notification.read_at %}bg-primary/5 hover:bg-primary/10{% else %}hover:bg-surface-2{% endif %}">
-    <c-icon :name="notification.icon" class="mt-0.5 size-5 shrink-0 text-muted sm:mt-0" />
+    <span class="grid size-9 shrink-0 place-items-center rounded-md
+                 {% if notification.colour == "primary" %}bg-primary/10 text-primary
+                 {% elif notification.colour == "success" %}bg-success-light text-on-success-light
+                 {% elif notification.colour == "warning" %}bg-warning-light text-on-warning-light
+                 {% elif notification.colour == "info" %}bg-info-light text-on-info-light
+                 {% elif notification.colour == "error" %}bg-error-light text-on-error-light
+                 {% else %}bg-surface-2 text-muted{% endif %}">
+        <c-icon :name="notification.icon" class="size-5" />
+    </span>
     <div class="min-w-0 flex-1">
         <p class="text-on-surface {% if not notification.read_at %}font-semibold{% endif %}
                   {% if not show_actions %}line-clamp-2{% endif %}">

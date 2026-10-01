@@ -8,11 +8,27 @@ import pytest
 from lxml import html
 
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.base.notification_categories import (
+    NotificationCategory,
+    NotificationColour,
+)
 from freedom_ls.comms.factories import NotificationFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import CourseFactory
+
+
+def _coloured_category(colour: NotificationColour | None) -> NotificationCategory:
+    return NotificationCategory(
+        key="test.coloured",
+        label=_("Coloured"),
+        icon="course",
+        message=_("You've been registered for %(course_title)s"),
+        url_builder=None,
+        colour=colour,
+    )
 
 
 @pytest.mark.django_db
@@ -57,6 +73,21 @@ class TestNotificationRendering:
 
         assert notification.label == "Course registration"
         assert notification.icon == "course"
+
+    def test_colour_comes_from_the_category(self, mock_site_context, settings) -> None:
+        settings.NOTIFICATION_CATEGORIES = [
+            _coloured_category(NotificationColour.SUCCESS)
+        ]
+        notification = NotificationFactory(category="test.coloured")
+
+        assert notification.colour == NotificationColour.SUCCESS
+
+    def test_a_category_with_no_colour_gives_a_notification_with_no_colour(
+        self, mock_site_context
+    ) -> None:
+        notification = NotificationFactory(category="course.registered")
+
+        assert notification.colour is None
 
 
 @pytest.mark.django_db
@@ -113,3 +144,32 @@ class TestRowMarkup:
 
         assert row.cssselect("a") == []
         assert row.cssselect("p span")
+
+    @pytest.mark.parametrize(
+        ("colour", "tile_classes"),
+        [
+            (NotificationColour.PRIMARY, {"bg-primary/10", "text-primary"}),
+            (NotificationColour.SUCCESS, {"bg-success-light", "text-on-success-light"}),
+            (NotificationColour.WARNING, {"bg-warning-light", "text-on-warning-light"}),
+            (NotificationColour.INFO, {"bg-info-light", "text-on-info-light"}),
+            (NotificationColour.ERROR, {"bg-error-light", "text-on-error-light"}),
+            (None, {"bg-surface-2", "text-muted"}),
+        ],
+    )
+    def test_the_icon_tile_carries_the_categorys_colour_classes(
+        self,
+        mock_site_context,
+        logged_in_client,
+        settings,
+        colour,
+        tile_classes,
+    ) -> None:
+        settings.NOTIFICATION_CATEGORIES = [_coloured_category(colour)]
+        user = UserFactory()
+        NotificationFactory(user=user, category="test.coloured")
+
+        row = self._row(logged_in_client, user)
+
+        tile = row.cssselect("span.size-9")[0]
+        assert tile_classes <= set(tile.get("class").split())
+        assert tile.cssselect("svg") != []
