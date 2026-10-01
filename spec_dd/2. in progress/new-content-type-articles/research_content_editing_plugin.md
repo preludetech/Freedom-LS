@@ -1,0 +1,85 @@
+# Research: content editing plugin and authoring workflow (for "articles")
+
+All paths relative to `/home/sheena/workspace/lms/freedom-ls-worktrees/main`. Findings are from reading the files; nothing was run (no Bash available).
+
+## 1. What `fls-content` does today
+
+Plugin root: `claude_plugins/fls-content/` (`.claude-plugin/plugin.json` v1.0.0). It targets authors in a separate content repo with no FLS source.
+
+### Commands (`commands/`)
+- `/fls-content:init` (`commands/init.md`): writes `.fls-content.yaml` at the content-repo root if absent (declares `admonition_types` and `access_types`), creates `.venv/` with `pydantic pyyaml python-frontmatter babel`, adds `.venv/` to `.gitignore`. Non-destructive.
+- `/fls-content:format-content <path>` (`commands/format-content.md`): depth-0 orchestrator, fans out one `fls-content:content-formatter` agent per eligible file, collates into `_conversion_review.md` (proposals/flags/warnings). Converts messy markdown into valid FLS structure in place.
+- `/fls-content:validate-content <path>` (`commands/validate-content.md`): ensures venv, runs bundled `validate/validate.py`, translates errors to plain language, auto-fixes obvious frontmatter/typo problems, re-validates, ends with a "structural pre-flight only" note.
+- There is NO "write a new item" / "create a course/topic" command. Authoring from scratch is done only via reference skills; the only generative flow is conversion of existing messy markdown.
+
+### Agent
+- `agents/content-formatter.md`: one file in, structured `status/items` out. Has a file-type -> skills table (`content.md`/flat `.md` = TOPIC/ACTIVITY; `course.md`; `part.yaml`; `form.md`; `NN. slug.yaml`). Any new content type (article) needs a row here or the agent has no instructions for it.
+
+### Skills (all hand-written markdown, `allowed-tools: Read, Grep, Glob`)
+- `skills/content-types/SKILL.md` + `resources/{file-layout,topic-files,form-files,course-files}.md`: "nine content types" table, base fields, `extra="forbid"` warning, heading rule (title is rendered as H1; body `#` shifts to H2 via `mdx_headdown`), course access/price/categories docs.
+- `skills/widget-reference/SKILL.md` + 15 `resources/c-*.md` files: widget table, "authorised attribute sets (complete allowlist)", admonition-type note, HTML-escaping rule, authoring quirks. States the allowlist is closed.
+- `skills/conventions/SKILL.md`: `NN.` numbering, role files (`course.md`, `content.md`, `form.md`, `part.yaml`), scanner skip rules, UUID rules (omit; `content_save` writes back), quoted price amounts, escaping.
+- `skills/markdown-conversion/SKILL.md` + `resources/conversion-patterns.md`: conservative auto/propose/leave-alone tiers.
+- `README.md`: only lists the three commands (no skills overview, no content-type list).
+
+### Validation
+- `validate/validate.py` + `validate/schema.py`: a bundled, Django-free copy of the host schema/validator. Invoked by the command via `.venv/bin/python "${CLAUDE_PLUGIN_ROOT}/validate/validate.py" <path>` (the file's own docstring shows the `uv run --no-project --with ...` form). Exits 0 pass, 1 validation fail, 2 unexpected, 3 no content files found.
+- Tests: `validate/tests/test_validator.py` (subprocess-based, uses sample trees; wired in `pyproject.toml` / `.pre-commit-config.yaml` per grep).
+- Schema models are discovered through `BaseBaseContentModel.__init_subclass__(content_type=...)` into `SCHEMAS`, selected by the `content_type` frontmatter key. A new article model registers the same way plus a new `ContentType` enum member.
+- No generated references: skill docs and the bundled schema are copied/written by hand (see section 2).
+
+### Sync with code: hand-written, patched copy, agent-driven
+- Command `claude_plugins/fls-dev/commands/update_claude_plugin_fls_content.md` (`/update_claude_plugin_fls_content`) runs at end of SDD runs. Step 1 is a zero-token grep of `git diff main --name-only` against: `freedom_ls/(content_base|content_engine|form_engine)/schema.py`, `form_engine/(enums|typed_answers).py`, `content_engine/validate.py`, `freedom_ls/content_engine/templates/cotton/`, `config/settings_base.py`, `content_engine/management/commands/content_(save|validate).py`, `demo_content/`. A match spawns one worker to draft edits to skills and to re-copy the validator; no match is a no-op.
+- The bundled validator is re-copied and "Patches applied" headers in `validate/schema.py` (4 patches: icon stub, access_config offline rule, form bounds mirror, price rules) and `validate/validate.py` (4 patches) must be re-applied. `schema.py` bundles FOUR sources (content_base, content_engine, form_engine schema, typed_answers mirror) plus a fifth, `content_engine/prices.py`, bundled by patch 4. A new article schema will be a sixth-or-so thing to copy if it lives in a new module; if in `content_engine/schema.py` it is covered by the existing detection regex.
+- Detection regex gap to note: it covers `freedom_ls/{content_base,content_engine,form_engine}/schema.py` only. A schema in a new app/module (e.g. `freedom_ls/articles/schema.py`) or `content_engine/prices.py` itself would NOT trigger the sync (prices.py already is not in the regex even though it is bundled). Cotton path covered only for `freedom_ls/content_engine/templates/cotton/`; widgets placed in another app's `templates/cotton/` would not trigger it.
+- Settings also need syncing: `MARKDOWN_ALLOWED_TAGS` in `config/settings_base.py:374-390` is duplicated by hand in `claude_plugins/fls-dev/resources/markdown_content.md` (lines 63-81) and in the widget-reference skill's attribute list. (Drift already visible: fls-dev doc's allowlist omits `c-card`, which is in settings and the plugin.)
+- Product doc `docs/product/content-editing-workflow.md` also hand-lists the content types ("Nine content types"), widgets table and the plugin description; it is a further place to update.
+
+## 2. What would change/be added for an article type and the new widgets (inventory, not a plan)
+
+Files that currently hard-code the nine types / widget lists and would need touching:
+- `skills/content-types/SKILL.md`: "nine types" heading and table, "Key non-obvious facts", base-fields table. Likely a new `resources/article-files.md` (frontmatter fields, file/dir layout, example) linked from the SKILL. Also stale number elsewhere: `agents/content-formatter.md` says "the eight content types" already (drift).
+- `skills/content-types/resources/file-layout.md` and `skills/conventions/SKILL.md`: layout is all course-centred (course.md root, `NN.` numbering for children). Articles are not children of a course and likely not ordered; the role-file table, numbering rules and `_`/`.` skip rules would need an article section (where article files live, whether `NN.` prefixes apply, how a role file like `article.md` or flat `slug.md` is identified).
+- `skills/widget-reference/SKILL.md`: widget table, attribute allowlist block, resource index; plus new `resources/c-<article-link>.md`, `resources/c-<course-card...>.md` files (one file per widget is the pattern). Attribute lists must equal `MARKDOWN_ALLOWED_TAGS` exactly. Existing `c-content-link.md` documents only Topic/Form targets via `path`; an article-link widget must be clearly distinguished from it (or `c-content-link` extended).
+- `agents/content-formatter.md`: skills table row for article files; content-type count.
+- `commands/validate-content.md`, `format-content.md`: generic, probably unchanged; format-content eligibility rules are generic scanner rules.
+- `README.md`: could gain a skills/types overview and a "write an article" command if added (no such command exists for any type today).
+- `validate/schema.py`: new `ContentType.ARTICLE` member and model; `validate/validate.py` only if cross-reference checks are added. `validate/tests/test_validator.py`: new sample tree/tests (the file has per-feature tests e.g. price, categories, access types).
+- `.fls-content.yaml` / `init.md`: only if article-specific deployment vocabulary is introduced (e.g. article categories/tags allowlist). Admonition/access types are the existing precedent for deployment-owned vocabularies injected by `validate.py` (`_load_allowed_access_types`).
+- `claude_plugins/fls-dev/commands/update_claude_plugin_fls_content.md`: detection regex (see gap above) and the Step 2 list of "changed things to look for".
+- `claude_plugins/fls-dev/resources/markdown_content.md`: "Models with Markdown Content" list, component list, allowlist block.
+- `docs/product/content-editing-workflow.md`: content-type table, widget table, plugin description.
+- Host side that the plugin mirrors: `freedom_ls/content_base/schema.py` (registry), `freedom_ls/content_engine/schema.py`, `management/commands/content_save.py` (per-type `save_*` functions and ordered `grouped.get(SchemaContentType.X)` passes at ~lines 842-882; a new type needs its own pass), `config/settings_base.py` allowlist, `freedom_ls/content_engine/templates/cotton/*.html`.
+
+## 3. `demo_content/` organisation and plugin relationship
+
+- `demo_content/README.md` is two sentences ("fake content ... demonstrate what is currently possible").
+- Top level: `course_categories.yaml` (repo-wide, declared once) plus course dirs named `functionality_demo_*`: `content_widgets`, `standard_markdown`, `course_parts`, `end_with_quiz`, `end_with_topic`, `application_gated`, and seven `price_*` courses (fixed, from, range, sale_ending, sale_expired, on_request, zero_decimal). Convention: one tiny course per feature variant, titles like "Functionality Demo - Price: fixed".
+- `functionality_demo_content_widgets/` has topic dirs `1. annotation-and-emphasis` ... `5. cards` (each `content.md`) demonstrating widgets; `5. cards/content.md` shows every `c-card` variant. `c-content-link` is demoed in `end_with_quiz` and `end_with_topic` topics (note: some use paths like `01-what-is-git-for.md` that do not obviously match the directory layout; they render as red spans if unresolved).
+- Plugin coupling: `demo_content/` is in the sync detection regex; skills cite demo files as worked examples (`course-files.md` points at `demo_content/functionality_demo_price_*/course.md` and `demo_content/course_categories.yaml`). The offline validator can be pointed at it. `freedom_ls/content_engine/tests/test_demo_content_form_link.py` also reads demo content.
+- Would demo articles be expected: yes by the established convention (every feature has `functionality_demo_*` content, and the sync regex treats `demo_content/` changes as authoring-relevant). Course card widgets also need demo courses to point at; the existing price demo courses (fixed/range/sale/on_request/zero-decimal/expired) already give a ready variety for cards showing price, and `functionality_demo_application_gated` for another attribute. There is no existing article/blog directory convention; articles are not inside a course dir and would need a place in demo_content (and the validator's `course_categories.yaml`-style "outside every course directory" rule is a precedent for repo-level singletons).
+
+## 4. How validation is invoked, and cross-reference support
+
+- Host: `uv run python manage.py content_validate <path>` (`freedom_ls/content_engine/management/commands/content_validate.py` is a 3-line wrapper calling `content_engine.validate.validate`); `content_save <path> <site_name>` runs validation first then upserts in one transaction.
+- Offline: via `/fls-content:validate-content` (venv from `/fls-content:init`). Authors never run Python themselves (the command does it).
+- Validation passes: (1) per-file schema parse (frontmatter or each `---` YAML doc; collects all errors), (2) one cross-file pass, `validate_category_references` (`freedom_ls/content_engine/validate.py` ~line 359; same in the bundled copy at `validate/validate.py:420`): checks COURSE_CATEGORIES declared once, not inside a course dir, and every course's `categories`/`dashboard_category` resolves. This is the existing precedent for cross-reference validation and is the only one.
+- NOT validated by either validator: `c-content-link path=...`, widget tags/attributes inside markdown bodies, `children:` paths, `application_form` paths, image `src`. Widget content is not parsed at all by validate; an unknown `c-*` tag or attribute is silently stripped by nh3 at render (documented in widget-reference). `children:` and `application_form` unresolved paths fail at `content_save` time (`content_save.py` ~lines 936-971, `resolve_author_path` at line 433), which `validate-content` states explicitly it does not cover ("cross-reference resolution ... does not perform").
+- `c-content-link` mechanics (`freedom_ls/content_engine/templates/cotton/content-link.html`, `templatetags/content_tags.py:147 get_content_by_path`): resolves `path` relative to the containing `content_instance` via `calculate_path_from_root`, looks up `Topic` then `Form` by `file_path`; a miss renders `<span class="text-error">`. It links to `content_obj.preview_url`, and the template has TODOs ("non-preview link", whitespace issue). It only knows Topic and Form, not Course or any article model. A path is a runtime DB lookup, so a broken article->article link is visible only at render time unless a new cross-file check is added.
+- So the bundled validator CAN do cross-file checks (the architecture exists: `all_parsed` list of models after the per-file pass), but today it only parses frontmatter and never inspects markdown bodies. Article->article and article->course link checking would be a new body-scanning pass (parse `<c-...>` tags out of `content`) plus identifier resolution (path vs uuid vs slug is undecided in the idea). Courses have no stable author-facing slug today: they are identified by file path (`course.md`) and `uuid`, and `uuid` is written by `content_save` and must never be hand-created (conventions skill), so a course card widget cannot use a `uuid` attribute that an author can write before first save without breaking that rule. The same applies to articles.
+- A cross-collection limitation: validate may be pointed at a single file or a subtree, so cross-file passes only see what is under the target path (the category check has the same property).
+
+## 5. Author-experience pain points visible in the docs (to avoid repeating)
+
+- Silent failure modes: unknown `c-*` tags/attributes stripped without error; unknown admonition type silently falls back; unresolved `c-content-link` renders a red span (only noticed visually); validate does not parse bodies. New widgets inherit this unless the validator gains widget checks. The allowlist is closed, so a missing `MARKDOWN_ALLOWED_TAGS` entry makes a new widget invisible with no error.
+- Widget quirks that need blank lines / closed tags (`c-image-grid`, `c-flashcard` slots, bare `open`); any multi-line card widget with slots will repeat this.
+- UUID workflow: authors cannot reference content by uuid before `content_save` has written it; this is the main obstacle for stable cross-links, as above.
+- `content_save` is the authority for cross-references but the plugin offers no author command for it (plugin only validates structurally); authors in a content repo without FLS source cannot run it. The validate-content note says so but nothing closes the gap.
+- Drift between hand-copied docs: nine vs eight types (`agents/content-formatter.md`), `c-card` missing from `fls-dev/resources/markdown_content.md` allowlist, `c-content-link.md` says target is "Topic or Form", detect regex omitting `prices.py`. The article work touches all the same lists, so each is a place to go stale.
+- Heading/title rule (title rendered as H1, don't repeat it in the body, `#` becomes H2) is documented for TOPIC; blog posts commonly start with an H1 title, so the article doc must state its own rule explicitly (and the formatter's "title lifting" behaviour in `conversion-patterns.md` should be checked against it).
+- Numbering/ordering conventions (`NN.` prefixes, `children:` ordering) are all course-oriented; a blog needs date/ordering semantics that are not defined anywhere (no date field exists in `BaseContentModel`; base fields are title, subtitle, description, category, image, tags, meta, uuid).
+- Plugin has no "create new X" scaffolding command; new articles will be written from reference docs alone unless a command/template is added.
+- `README.md` of the plugin is minimal and lists commands only; skills are discoverable only by description trigger words (frontmatter `description:` strings list trigger terms like "topic, form, quiz"; an article skill/section needs "article", "blog post" trigger words or it will not be loaded).
+- Course price display note: price is display-only, `tax_note` is shown "on the course page's sign-up panel only - never on cards or list rows" (`course-files.md`); the course-card widget should be consistent with this existing statement, and course visibility (`hidden`, `coming_soon`) and `categories` are other attributes cards could surface (idea says "price and other attributes").
+
+status: ok
