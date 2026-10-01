@@ -38,7 +38,7 @@ The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_for
 
 1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
 2. Optionally run `/improve_idea` to research the idea and suggest improvements.
-3. If the work has a design drawn in Claude Design, run `/sdd:register_design <dir> <handoff prompt or claude-design-url>` on the spec (or on a cut effort's parent). It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
+3. If the work has a design drawn in Claude Design, run `/sdd:register_design [dir] <handoff prompt or claude-design-url>`. On a feature branch it registers the design on that branch's own spec directory and commits it to that branch; on `main` it takes the spec (or a cut effort's parent) you name. It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
 
 ## Step 2: Write the spec
 

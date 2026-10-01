@@ -155,3 +155,9 @@ and button (no preferences page exists yet), the "about" line on centre rows, "S
 notifications" (the centre keeps its pagination), `role="dialog"`/`aria-haspopup="dialog"` (the
 panel is a disclosure and doesn't trap focus), and the message item. The behaviour of the built
 surfaces doesn't change.
+
+## Resources
+
+- `spec_dd/2. in progress/better-looking-notifications/design.md`: the Claude Design design for the bell
+  and badge, the notification panel and the notification centre, a visual reference only. Read it as
+  that file says.

@@ -24,8 +24,9 @@ Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `regis
 file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
 adds the effort, its dependency graph and its shared decisions to the roadmap.
 
-`/sdd:register_design <dir> <claude-design-url>` records a design drawn in Claude Design on a spec or a
-cut effort's parent: it writes `<dir>/design.md` (the link, how to read it through the Claude Design
+`/sdd:register_design [dir] <handoff prompt or claude-design-url>` records a design drawn in Claude
+Design on the spec the current branch is working on (on `main`, on the spec or cut effort's parent you
+name), and commits it to the current branch only: it writes `<dir>/design.md` (the link, how to read it through the Claude Design
 integration rather than the web, how faithfully to build to it, which spec owns each screen) and points
 the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `design.md` they are pointed at.
 

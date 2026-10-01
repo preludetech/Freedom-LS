@@ -1,7 +1,7 @@
 ---
 description: Register a Claude Design design on a spec directory (or a cut effort's parent) so every later SDD step reads and builds to it
 allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Agent, Skill, ToolSearch
-argument-hint: <spec-dir> <handoff prompt, prompt file, or claude-design-url> [notes on how to treat the design]
+argument-hint: [spec-dir] <handoff prompt, prompt file, or claude-design-url> [notes on how to treat the design]
 ---
 
 A design drawn in Claude Design lives in claude.ai, not in the repo. This command copies one into a
@@ -19,6 +19,11 @@ asks the user nothing about what the design draws: anything no spec asks for is 
 It runs at **depth 0**. It spawns the mechanic that runs the screenshot script and the mechanic
 that commits.
 
+The design belongs to the work in progress. Every file this command writes goes into the spec
+directory this branch is working on, inside the current worktree, and is committed to the current
+branch. Never write into another worktree, never switch branches, and never commit to a branch
+other than the current one, even when another worktree holds a spec the design also serves.
+
 ## Step 0: Pre-step rebase
 
 Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
@@ -26,8 +31,15 @@ when `/sdd:next` says it already ran this turn).
 
 ## Step 1: Resolve the inputs
 
-- **`<spec-dir>`**: a directory under `spec_dd/`. It is either one spec, or the parent of a cut
-  effort (its section in `spec_dd/1. next/roadmap.md` opens with `Parent: \`<dir-name>\``).
+- **`<spec-dir>`**: a directory under `spec_dd/` in the current worktree. Resolve it in this order:
+  1. **On a feature branch**, it is the spec directory the branch is working on: the directory under
+     `spec_dd/2. in progress/` that matches the branch name, found the way
+     `claude_plugins/sdd/commands/next.md` Step 1 finds it. The user may omit it. If the user names a
+     different directory, stop and say the design is registered on this branch's spec, not
+     elsewhere. If no directory matches the branch, stop and say so.
+  2. **On `main` or `master`**, the user names it. It is either one spec, or the parent of a cut
+     effort (its section in `spec_dd/1. next/roadmap.md` opens with `Parent: \`<dir-name>\``). If the
+     user names none, stop and ask for it.
 - **The design input**: a **handoff prompt** (the prompt Claude Design copies for a selection),
   pasted or given as a file path. Read the file when the argument is an existing path. From the
   prompt take the project id and entry file from its `https://claude.ai/design/p/<project-id>?file=<file>`
@@ -167,14 +179,15 @@ Edit only those lines. Never add to a consumer anything the design draws: its sc
 ## Step 6: Commit
 
 Delegate to `sdd:sdd-mechanic` with the list of files this run wrote or changed, including
-`design_prompt.md`, `design_source/` and `design_screenshots/`.
+`design_prompt.md`, `design_source/` and `design_screenshots/`. The commit goes on the current
+branch, in the current worktree:
 
-- On `main` or `master` (the normal case for specs still in `spec_dd/1. next/`): stage those
-  files by path and commit them the way `claude_plugins/sdd/resources/commit_and_push.md` says,
-  subject `<spec-dir name>: register the Claude Design design`. Do not push. This is spec bookkeeping, the
-  same exception `/sdd:roadmap` uses.
-- On any other branch: follow `claude_plugins/sdd/resources/commit_and_push.md` with `<summary>`:
+- On a feature branch: follow `claude_plugins/sdd/resources/commit_and_push.md` with `<summary>`:
   `register the Claude Design design`.
+- On `main` or `master` (only when the user ran the command there): stage those files by path and
+  commit them the way `claude_plugins/sdd/resources/commit_and_push.md` says, subject
+  `<spec-dir name>: register the Claude Design design`. Do not push. This is spec bookkeeping, the
+  same exception `/sdd:roadmap` uses.
 
 Report: the `design.md` path, whether the design was read (and how many screens it covers), the
 number of synced files and screenshots, whether the file list came from a prompt or was worked out
