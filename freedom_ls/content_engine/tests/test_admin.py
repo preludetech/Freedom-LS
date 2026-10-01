@@ -13,6 +13,7 @@ from django.urls import reverse
 
 from freedom_ls.content_engine.admin import (
     ActivityAdmin,
+    ArticleAdmin,
     ContentCollectionItemAdmin,
     CourseAdmin,
     CourseCategoryAdmin,
@@ -21,6 +22,7 @@ from freedom_ls.content_engine.admin import (
     TopicAdmin,
 )
 from freedom_ls.content_engine.factories import (
+    ArticleFactory,
     ContentCollectionItemFactory,
     CourseCategoryFactory,
     CourseFactory,
@@ -28,6 +30,7 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import (
     Activity,
+    Article,
     ContentCollectionItem,
     Course,
     CourseCategory,
@@ -246,3 +249,55 @@ def test_a_blank_currency_is_saved_as_the_default_currency(staff_client) -> None
 
     course.refresh_from_db()
     assert course.price_currency == "ZAR"
+
+
+# ---------------------------------------------------------------------------
+# Article admin
+# ---------------------------------------------------------------------------
+
+
+def test_article_admin_permits_deletion() -> None:
+    assert ArticleAdmin(Article, admin.site).has_delete_permission(request=None) is True
+
+
+@pytest.mark.parametrize("field", ["slug", "visibility"])
+def test_article_admin_keeps_repo_owned_fields_read_only(field: str) -> None:
+    assert field in ArticleAdmin(Article, admin.site).readonly_fields
+
+
+@pytest.mark.django_db
+def test_the_article_change_page_offers_the_delete_link(staff_client) -> None:
+    article = ArticleFactory()
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_content_engine_article_change", args=[article.pk])
+    )
+
+    delete_url = reverse(
+        "admin:freedom_ls_content_engine_article_delete", args=[article.pk]
+    )
+    assert response.status_code == 200
+    assert delete_url in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_posting_the_article_delete_url_removes_the_article(staff_client) -> None:
+    article = ArticleFactory()
+
+    staff_client.post(
+        reverse("admin:freedom_ls_content_engine_article_delete", args=[article.pk]),
+        {"post": "yes"},
+    )
+
+    assert not Article.objects.filter(pk=article.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_article_changelist_lists_the_article(staff_client) -> None:
+    ArticleFactory(title="Why we teach in public")
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_content_engine_article_changelist")
+    )
+
+    assert "Why we teach in public" in response.content.decode()

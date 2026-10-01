@@ -8,6 +8,7 @@ from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 from .forms import FileAdminForm
 from .models import (
     Activity,
+    Article,
     ContentCollectionItem,
     Course,
     CourseCategory,
@@ -43,6 +44,45 @@ class TopicAdmin(SiteAwareModelAdmin):
         self, request: HttpRequest, obj: Topic | None = None
     ) -> bool:
         return False
+
+
+@admin.register(Article)
+class ArticleAdmin(SiteAwareModelAdmin):
+    list_display = ["title", "slug", "published_on", "visibility"]
+    list_filter = ("visibility", ContentTagListFilter)
+    search_fields = ("title", "subtitle", "description")
+    readonly_fields = ("slug", "visibility")
+    fieldsets = (
+        (
+            None,
+            {
+                "description": (
+                    "Deleting an article whose file is still in the content repo "
+                    "brings it back the next time you run content_save. The uuid "
+                    "in the file recreates it. Remove the file as well to delete "
+                    "it for good."
+                ),
+                "fields": (
+                    "title",
+                    "subtitle",
+                    "description",
+                    "slug",
+                    "published_on",
+                    "author",
+                    "visibility",
+                    "show_date",
+                    "show_author",
+                    "content",
+                ),
+            },
+        ),
+        ("Metadata", {"fields": ("meta", "tags"), "classes": ("collapse",)}),
+    )
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: Article | None = None
+    ) -> bool:
+        return True
 
 
 @admin.register(Activity)
