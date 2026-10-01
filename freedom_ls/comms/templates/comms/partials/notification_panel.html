@@ -31,6 +31,7 @@
     <div class="flex shrink-0 items-center justify-between gap-2 border-t border-border px-4 py-3">
         <c-button variant="ghost"
                   size="small"
+                  icon_left="check_all"
                   disabled="{% if not unread_count %}disabled{% endif %}"
                   hx-post="{% url 'comms:notification_mark_all_read' %}"
                   hx-target="#notification-panel"

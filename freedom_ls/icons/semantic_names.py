@@ -23,6 +23,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "not_started",
     # Actions
     "check",
+    "check_all",
     "close",
     "retry",
     "download",

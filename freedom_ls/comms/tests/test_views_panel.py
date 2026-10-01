@@ -166,3 +166,26 @@ class TestQueryCount:
             client.get(url)
 
         assert len(large.captured_queries) == len(small.captured_queries)
+
+
+@pytest.mark.django_db
+class TestPanelMarkAllReadIcon:
+    def test_mark_all_as_read_button_carries_the_check_all_icon(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        from lxml import html
+
+        user = UserFactory()
+        NotificationFactory(user=user)
+        client = logged_in_client(user)
+
+        response = client.get(reverse(PANEL_URL_NAME))
+
+        tree = html.fromstring(response.content.decode())
+        buttons = [
+            button
+            for button in tree.cssselect("button")
+            if "Mark all as read" in button.text_content()
+        ]
+        assert len(buttons) == 1
+        assert buttons[0].cssselect('svg[aria-label="check_all"]')
