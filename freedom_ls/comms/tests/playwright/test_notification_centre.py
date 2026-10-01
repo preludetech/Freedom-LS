@@ -58,6 +58,7 @@ def test_marking_a_row_read_then_unread_toggles_its_unread_marker(
     expect(row.get_by_text("Unread", exact=True)).to_be_visible()
 
     row.get_by_role("button", name="Mark read").click()
+    expect(page).to_have_url(_centre_url(live_server))
     expect(
         page.locator("li", has_text="Toggle Course").get_by_text("Unread", exact=True)
     ).to_have_count(0)
@@ -68,6 +69,23 @@ def test_marking_a_row_read_then_unread_toggles_its_unread_marker(
     expect(
         page.locator("li", has_text="Toggle Course").get_by_text("Unread", exact=True)
     ).to_be_visible()
+
+
+def test_clicking_a_row_outside_the_message_text_opens_its_target(
+    live_server, logged_in_page: Page, logged_in_user: User, mock_site_context
+) -> None:
+    notification = NotificationFactory(
+        user=logged_in_user, target__title="Clickable Course"
+    )
+
+    page = logged_in_page
+    page.goto(_centre_url(live_server))
+
+    page.get_by_role("listitem").filter(has_text="Clickable Course").click(
+        position={"x": 12, "y": 12}
+    )
+
+    expect(page).to_have_url(re.compile(re.escape(live_server.url + notification.url)))
 
 
 def test_mark_all_as_read_clears_every_unread_marker(
