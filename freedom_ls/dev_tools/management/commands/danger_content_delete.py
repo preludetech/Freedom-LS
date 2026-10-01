@@ -5,6 +5,7 @@ from django.db import transaction
 
 from freedom_ls.content_engine.models import (
     Activity,
+    Article,
     ContentCollectionItem,
     Course,
     File,
@@ -40,6 +41,7 @@ def command(yes: bool) -> None:
         ("Topics", Topic),
         ("Activities", Activity),
         ("Courses", Course),
+        ("Articles", Article),
         ("Collection Items", ContentCollectionItem),
         ("Forms", Form),
         ("Form Pages", FormPage),
