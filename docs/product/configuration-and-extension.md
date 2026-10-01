@@ -88,7 +88,7 @@ FLS is designed to be installed into an existing Django project as a git submodu
 
 - **App priority.** Apps listed after FLS's own can override FLS behaviour through Django's standard app-override mechanisms.
 - **Template priority.** The host project's template directories are searched first, so any FLS template can be replaced by providing a file at the same path.
-- **Content widget registration.** A downstream project can register additional content widgets by adding them to the markdown tag allowlist, making them available in that installation's authored content.
+- **Content widget registration.** A downstream project can register additional content widgets by adding them to the markdown tag allowlist, making them available in that installation's authored content. See the [custom content widgets how-to](../how%20tos/custom-content-widgets.md).
 
 FLS is not a black box; the host project has override capability at every layer.
 
