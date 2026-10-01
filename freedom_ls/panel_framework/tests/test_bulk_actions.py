@@ -180,6 +180,38 @@ def test_redirect_keeps_table_state(mock_site_context: Site) -> None:
     assert htmx_response["HX-Redirect"] == expected_location
 
 
+@pytest.mark.parametrize("htmx", [True, False])
+def test_confirm_form_carries_table_state(mock_site_context: Site, htmx: bool) -> None:
+    """The confirm POST must carry the table's query on to the redirect, so
+    confirming doesn't reset the page, sort and filters."""
+    stub = _make_stub(name="row-x")
+    path = _action_path(stub.pk)
+    query = "?stub-page=1&stub-sort=-name"
+    headers = {"HTTP_HX_REQUEST": "true"} if htmx else {}
+    request = RequestFactory().post(
+        f"/test-panel/framework/{path}{query}",
+        {"mode": "keys", "keys": [str(stub.pk)]},
+        **headers,
+    )
+    request.user = make_staff_user()
+
+    response = call_view(request, path)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (form,) = [
+        form
+        for form in document.cssselect("form")
+        if form.cssselect("input[name='confirmed']")
+    ]
+    expected_action = f"/test-panel/framework/{path}{query}"
+    assert form.get("action") == expected_action
+    assert form.get("hx-post") == expected_action
+    if not htmx:
+        (cancel,) = [a for a in document.cssselect("a") if a.text_content() == "Cancel"]
+        expected_cancel = f"/test-panel/framework/{_panel_path(stub.pk)}{query}"
+        assert cancel.get("href") == expected_cancel
+
+
 def test_plain_post_renders_full_page_confirmation(mock_site_context: Site) -> None:
     stub = _make_stub(name="row-x")
 

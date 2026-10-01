@@ -1,7 +1,8 @@
 {% if not error %}
+    {% querystring request.GET as qs %}
     <form method="post"
-          action="{{ action_url }}"
-          hx-post="{{ action_url }}"
+          action="{{ action_url }}{{ qs }}"
+          hx-post="{{ action_url }}{{ qs }}"
           hx-target="closest div[x-data]"
           hx-swap="outerHTML"
           hx-disabled-elt="find button[type='submit']">

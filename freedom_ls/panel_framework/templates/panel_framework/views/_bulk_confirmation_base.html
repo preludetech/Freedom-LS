@@ -4,5 +4,6 @@
     <h1>{{ main.action.label }}</h1>
     {% include "panel_framework/partials/bulk_confirmation_message.html" with error=main.error count=main.count noun=main.noun only %}
     {% include "panel_framework/partials/bulk_confirmation_form.html" with error=main.error action_url=main.action_url selection=main.selection action=main.action %}
-    <a href="{{ main.page_url }}">Cancel</a>
+    {% querystring request.GET as qs %}
+    <a href="{{ main.page_url }}{{ qs }}">Cancel</a>
 {% endblock main %}
