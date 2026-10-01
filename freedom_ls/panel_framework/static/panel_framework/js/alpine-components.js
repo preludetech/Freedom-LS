@@ -103,14 +103,22 @@ document.addEventListener("alpine:init", () => {
                 this._showDiscardPrompt();
             });
 
-            // A click on the dialog element itself is a backdrop click, only
-            // meaningful when the fragment holds no form: a destructive
-            // confirmation or read-only content, never something with unsaved
-            // input.
+            // A click on the ::backdrop targets the dialog element itself, but
+            // so does one on the dialog's own padding: only a click outside
+            // the dialog's box is a backdrop click. It is only meaningful when
+            // the fragment holds no form: a destructive confirmation or
+            // read-only content, never something with unsaved input.
             trackListener(this._handlers, this._dialog, "click", (event) => {
-                if (event.target === this._dialog && !this._body.querySelector("form")) {
-                    this._dialog.close();
+                if (event.target !== this._dialog || this._body.querySelector("form")) {
+                    return;
                 }
+                const box = this._dialog.getBoundingClientRect();
+                const inside =
+                    event.clientX >= box.left &&
+                    event.clientX <= box.right &&
+                    event.clientY >= box.top &&
+                    event.clientY <= box.bottom;
+                if (!inside) this._dialog.close();
             });
 
             // htmx caches the outgoing page's DOM before pushing the new URL,
