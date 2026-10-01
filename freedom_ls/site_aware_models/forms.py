@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 from django import forms
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.db import router
-from django.db.models import BaseConstraint, UniqueConstraint
+from django.db.models import BaseConstraint, Field, Model, UniqueConstraint
+from django.utils.translation import gettext_lazy as _
 
 if TYPE_CHECKING:
     # django-stubs does not declare ModelForm's private validation hook, so the
@@ -58,6 +59,13 @@ class ConstraintValidationFormMixin(_ModelFormBase):
     and the input is marked invalid. With two or more rendered there is no
     single field to blame, and the error stays form-level.
 
+    Django's default uniqueness message names every field the constraint
+    spans, hidden ones included ("Cohort with this Site, Organisation and Name
+    already exists."). The message is rebuilt from the rendered fields alone:
+    a field error reads "Another cohort already has this name.", a form-level
+    one keeps Django's wording without the hidden fields. A constraint with
+    its own ``violation_error_message`` keeps that message.
+
     The base is ``ModelForm`` rather than ``object`` so the ``super()`` call
     resolves; subclass it directly, or list it first among a concrete form's
     bases.
@@ -80,12 +88,56 @@ class ConstraintValidationFormMixin(_ModelFormBase):
                     )
                 except ValidationError as error:
                     self._update_errors(
-                        ValidationError({self._error_key(constraint): error})
+                        ValidationError(
+                            {
+                                self._error_key(constraint): self._reworded(
+                                    model_class, constraint, error
+                                )
+                            }
+                        )
                     )
+
+    def _rendered_fields(self, constraint: UniqueConstraint) -> list[str]:
+        return [name for name in constraint.fields if name in self.fields]
 
     def _error_key(self, constraint: BaseConstraint) -> str:
         """The one rendered field a unique constraint spans, else form-level."""
         if not isinstance(constraint, UniqueConstraint):
             return NON_FIELD_ERRORS
-        rendered = [name for name in constraint.fields if name in self.fields]
+        rendered = self._rendered_fields(constraint)
         return rendered[0] if len(rendered) == 1 else NON_FIELD_ERRORS
+
+    def _reworded(
+        self,
+        model_class: type[Model],
+        constraint: BaseConstraint,
+        error: ValidationError,
+    ) -> ValidationError:
+        """Django's default uniqueness message, naming only rendered fields."""
+        if (
+            not isinstance(constraint, UniqueConstraint)
+            or not constraint.fields
+            or constraint.violation_error_message
+            != constraint.default_violation_error_message
+        ):
+            return error
+        rendered = self._rendered_fields(constraint)
+        if not rendered:
+            return error
+        if len(rendered) == 1:
+            opts = model_class._meta
+            field = opts.get_field(rendered[0])
+            if not isinstance(field, Field):
+                return error
+            return ValidationError(
+                _("Another %(model_name)s already has this %(field_label)s."),
+                code="unique",
+                params={
+                    "model_name": opts.verbose_name,
+                    "field_label": field.verbose_name,
+                },
+            )
+        message: ValidationError = self.instance.unique_error_message(
+            model_class, tuple(rendered)
+        )
+        return message

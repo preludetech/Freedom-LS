@@ -84,9 +84,7 @@ def test_a_constraint_error_lands_on_its_only_rendered_field(
     form.instance.organisation = organisation
 
     assert form.is_valid() is False
-    assert form.errors["name"] == [
-        "Cohort with this Site, Organisation and Name already exists."
-    ]
+    assert form.errors["name"] == ["Another cohort already has this name."]
     assert form.non_field_errors() == []
 
 
@@ -102,6 +100,6 @@ def test_a_constraint_error_spanning_rendered_fields_stays_form_level(
 
     assert form.is_valid() is False
     assert form.errors[NON_FIELD_ERRORS] == [
-        "Cohort with this Site, Organisation and Name already exists."
+        "Cohort with this Organisation and Name already exists."
     ]
     assert "name" not in form.errors
