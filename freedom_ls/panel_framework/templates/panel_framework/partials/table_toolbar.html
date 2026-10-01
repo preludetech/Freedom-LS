@@ -113,7 +113,7 @@ off.
 
         {% if exports %}
             {% querystring request.GET export_changes as export_qs %}
-            <a href="{{ page_url }}{{ export_qs }}" class="hidden md:inline">Export CSV</a>
+            <a href="{{ base_url }}{{ export_qs }}" class="hidden md:inline">Export CSV</a>
         {% endif %}
 
         {% if sorted_by %}<span class="ml-auto hidden text-sm text-muted md:inline">Sorted by {{ sorted_by }}</span>{% endif %}

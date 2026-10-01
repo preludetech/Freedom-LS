@@ -6,10 +6,11 @@ from __future__ import annotations
 import csv
 import io
 
+import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
-from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django.http import Http404, HttpResponse, QueryDict, StreamingHttpResponse
 from django.utils import timezone
 
 from freedom_ls.site_aware_models.models import _thread_locals
@@ -109,3 +110,21 @@ def test_export_stays_scoped_when_site_thread_local_cleared(
     _header, *body = _rows(response)
     names = [row[0] for row in body]
     assert names == sorted(stub.name for stub in stubs)
+
+
+def test_export_link_of_a_stacked_table_serves_its_csv(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-x", kind="a")
+    html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
+    document = lxml.html.fromstring(html)
+    (link,) = [
+        a for a in document.cssselect("#a-table a") if a.text_content() == "Export CSV"
+    ]
+    href = link.get("href").removeprefix("/test-panel/framework/")
+    path_string, _, query = href.partition("?")
+
+    response = fetch(path_string, data=dict(QueryDict(query).items()))
+
+    header, *_body = _rows(response)
+    assert header == ["Name", "Kind"]
