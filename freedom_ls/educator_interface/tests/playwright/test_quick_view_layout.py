@@ -100,3 +100,32 @@ def test_pagination_stays_inside_the_card_beside_a_docked_drawer(
     drawer_box = _box(drawer)
     last_box = _box(last_link)
     assert last_box["x"] + last_box["width"] <= drawer_box["x"]
+
+
+def test_docked_drawer_clears_the_header_after_widening_from_mobile(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+) -> None:
+    """The docked drawer's top offset is read from a CSS var captured once,
+    on load, from the site header's rendered height. Opening the page at a
+    mobile viewport (a shorter header) and then widening to desktop — with
+    no reload in between — must not leave the drawer pinned to that stale,
+    shorter height once it docks."""
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_staff")
+    LearnerFactory(organisation=organisation, user__first_name="Learner")
+    page.set_viewport_size({"width": 375, "height": 812})
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+    page.set_viewport_size({"width": 1400, "height": 900})
+    page.get_by_role("link", name="Learner", exact=True).first.click()
+
+    drawer = page.locator("#quick-view")
+    expect(drawer).to_be_visible()
+    expect(drawer).to_have_css("transform", "none")
+
+    drawer_box = _box(drawer)
+    header_box = _box(page.locator("header.header"))
+    assert drawer_box["y"] >= header_box["y"] + header_box["height"] - 1
