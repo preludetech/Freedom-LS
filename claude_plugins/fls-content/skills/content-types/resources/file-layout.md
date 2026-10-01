@@ -68,6 +68,14 @@ demo_content/
 Its frontmatter and validation rules: see
 [`course-files.md`](course-files.md#course_categories-course_categoriesyaml).
 
+## Articles
+
+An `ARTICLE` is a standalone file, not a course child. Name it after its slug (`my-article.md`);
+no `NN.` prefix. A `slug/content.md` directory is also read, with the slug taken from the
+directory name. Child auto-discovery skips ARTICLE files, so an article may sit in a course
+directory without becoming a topic of that course. See
+[`article-files.md`](article-files.md).
+
 ## Numbering rules
 
 - Two-digit zero-padded prefix for directories (topic, part, and form directories): `01.`, `02.` … `09.`, `10.`
@@ -112,6 +120,9 @@ the "Files excluded from scanning" list above: auto-discovery does not
 separately special-case `README.md`, `CLAUDE.md`, or a trailing `~` — only the
 `_`/`.`-prefix rule applies to auto-discovered children. Prefix a draft
 file/directory with `_` to keep it out of an auto-discovered `children:` list.
+
+Auto-discovery also skips ARTICLE and COURSE_CATEGORIES files, wherever they sit: neither is
+ever a collection child.
 
 ## Image path resolution
 

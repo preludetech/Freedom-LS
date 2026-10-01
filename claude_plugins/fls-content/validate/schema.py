@@ -64,6 +64,7 @@ class ContentType(StrEnum):
 
     TOPIC = "TOPIC"
     ACTIVITY = "ACTIVITY"
+    ARTICLE = "ARTICLE"
     FORM = "FORM"
     COURSE = "COURSE"
     COURSE_PART = "COURSE_PART"
@@ -71,7 +72,6 @@ class ContentType(StrEnum):
     FORM_PAGE = "FORM_PAGE"
     FORM_QUESTION = "FORM_QUESTION"
     FORM_CONTENT = "FORM_CONTENT"
-    ARTICLE = "ARTICLE"
 
 
 # The section slugs the dashboard reserves for its built-in sections. A
@@ -136,12 +136,18 @@ class BaseBaseContentModel(BaseModel):
     meta: dict[str, Any] | None = Field(
         None, description="Optional metadata as key-value pairs"
     )
-    tags: list[str] | None = Field(None, description="Optional list of tags")
+    tags: list[str] = Field(default_factory=list, description="Optional list of tags")
     content_type: ContentType = Field(..., description="Type of content")
     file_path: Path = Field(..., description="Path to the content file")
     uuid: str | None = Field(None, description="Optional unique identifier")
 
     _registry: ClassVar[dict[ContentType, type["BaseBaseContentModel"]]] = {}
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _null_tags_mean_no_tags(cls, value: list[str] | None) -> list[str]:
+        """A bare `tags:` key in front matter parses as None, not a list."""
+        return [] if value is None else value
 
     def __init_subclass__(cls, content_type: ContentType | None = None, **kwargs):
         super().__init_subclass__(**kwargs)
