@@ -153,15 +153,6 @@ and any `.claude/settings.json` change from Step 5.
    commits are already on the branch and pushed, so re-running this command later picks up here:
    Steps 3 to 6 find nothing left to do.
 
-5. **exit 0** → delete the branch's backup ref if the rebase left one:
-
-   ```bash
-   git show-ref --verify --quiet refs/heads/rebase-backup/<branch>
-   ```
-
-   If that succeeds, `git branch -D rebase-backup/<branch>`. It is deleted here rather than earlier
-   because the retry in item 3 recreates it.
-
 # Step 8: Verify and report
 
 ```
