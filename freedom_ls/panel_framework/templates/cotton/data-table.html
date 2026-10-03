@@ -134,7 +134,6 @@
 
     {% if bulk_actions %}
         {% include "panel_framework/partials/table_selection_bar.html" %}
-        <div id="{{ query.key }}-bulk-modal"></div>
     </form>
     {% else %}
         <c-pagination :page_obj="page_obj"

@@ -74,7 +74,11 @@ CONFIG = [
 
 
 def _view(path_string: str, **request_kwargs: object) -> HttpResponse:
-    return call_view(make_request(path_string, **request_kwargs), path_string, CONFIG)
+    response = call_view(
+        make_request(path_string, **request_kwargs), path_string, CONFIG
+    )
+    assert isinstance(response, HttpResponse)
+    return response
 
 
 def test_an_htmx_get_of_quick_view_returns_the_frame_with_the_consumers_fields(

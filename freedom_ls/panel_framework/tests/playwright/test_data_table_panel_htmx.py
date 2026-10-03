@@ -137,7 +137,7 @@ def test_nested_table_pushes_page_url(
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/pair")
 
-    page.locator("#a-table").get_by_role("link", name="2").first.click()
+    page.locator("#a-table").get_by_role("link", name="2", exact=True).first.click()
 
     expect(page).to_have_url(re.compile(r"__tabs/pair\?a-page=2$"))
     expect(page).not_to_have_url(re.compile(r"__panels"))
@@ -158,7 +158,7 @@ def test_back_after_sort_restores_matching_table(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     page.get_by_role("link", name="Name").click()
-    page.get_by_role("link", name="2").first.click()
+    page.get_by_role("link", name="2", exact=True).first.click()
     expect(page).to_have_url(re.compile(r"stubs-page=2"))
 
     page.go_back()

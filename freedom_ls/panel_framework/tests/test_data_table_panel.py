@@ -206,7 +206,8 @@ def test_region_response_replaces_history_when_url_is_unchanged(
     mock_site_context: Site,
 ) -> None:
     """A refresh that lands on the URL already in the address bar must not
-    stack a duplicate history entry."""
+    stack a duplicate history entry, nor touch history at all: any history
+    update closes an open modal or quick view."""
     stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
     pk = stubs[0].pk
     page_url = f"/test-panel/framework/stubs/{pk}/__tabs/pair"
@@ -219,7 +220,25 @@ def test_region_response_replaces_history_when_url_is_unchanged(
         current_url=f"http://testserver{page_url}?a-page=2",
     )
 
-    assert response["HX-Replace-Url"] == f"{page_url}?a-page=2"
+    assert response["HX-Replace-Url"] == "false"
+    assert "HX-Push-Url" not in response
+
+
+def test_region_response_treats_a_trailing_slash_as_the_same_url(
+    mock_site_context: Site,
+) -> None:
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    pk = stubs[0].pk
+    page_url = f"/test-panel/framework/stubs/{pk}/__tabs/pair"
+
+    response = fetch(
+        f"stubs/{pk}/__tabs/pair/__panels/a",
+        htmx=True,
+        hx_target="a-table",
+        current_url=f"http://testserver{page_url}/",
+    )
+
+    assert response["HX-Replace-Url"] == "false"
     assert "HX-Push-Url" not in response
 
 

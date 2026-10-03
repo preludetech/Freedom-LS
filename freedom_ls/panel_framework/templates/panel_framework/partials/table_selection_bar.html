@@ -17,7 +17,7 @@ reach below a long card list.
                       variant="secondary"
                       formaction="{{ entry.url }}{{ qs }}"
                       hx-post="{{ entry.url }}{{ qs }}"
-                      hx-target="#{{ query.key }}-bulk-modal"
+                      hx-target="#app-modal-body"
                       hx-swap="innerHTML">
                 {{ entry.action.label }}
             </c-button>

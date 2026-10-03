@@ -78,7 +78,7 @@ def test_pagination_stays_inside_the_card_beside_a_docked_drawer(
 ) -> None:
     """The learners table's data-table card narrows once the quick-view
     drawer docks at xl. Enough learners to need the full numbered-pages
-    variant (page, ellipsis, Last) must still wrap inside the card rather
+    variant (pages, ellipsis, Next) must still wrap inside the card rather
     than run on under the drawer."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
@@ -95,11 +95,11 @@ def test_pagination_stays_inside_the_card_beside_a_docked_drawer(
     expect(drawer).to_be_visible()
     expect(drawer).to_have_css("transform", "none")
 
-    last_link = page.get_by_role("link", name="Last", exact=True)
-    expect(last_link).to_be_visible()
+    next_link = page.get_by_role("link", name="Next", exact=True)
+    expect(next_link).to_be_visible()
     drawer_box = _box(drawer)
-    last_box = _box(last_link)
-    assert last_box["x"] + last_box["width"] <= drawer_box["x"]
+    next_box = _box(next_link)
+    assert next_box["x"] + next_box["width"] <= drawer_box["x"]
 
 
 def test_docked_drawer_clears_the_header_after_widening_from_mobile(

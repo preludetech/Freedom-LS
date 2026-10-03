@@ -1,11 +1,12 @@
 {% comment %}
-Context: action, action_url, selection, count, noun, error, modal_open.
+The modal fragment a bulk action's htmx POST returns, loaded into the shared
+#app-modal. Context: action, action_url, selection, count, noun, error.
 {% endcomment %}
-<c-modal title="{{ action.label }}" open="{{ modal_open|default:'false' }}">
-    {% include "panel_framework/partials/bulk_confirmation_message.html" %}
+<h2 id="app-modal-title">{{ action.label }}</h2>
 
-    <c-slot name="footer">
-        <c-button variant="secondary" @click="close">Cancel</c-button>
-        {% include "panel_framework/partials/bulk_confirmation_form.html" %}
-    </c-slot>
-</c-modal>
+{% include "panel_framework/partials/bulk_confirmation_message.html" %}
+
+<c-button-group variant="right" class="mt-4 flex-wrap">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    {% include "panel_framework/partials/bulk_confirmation_form.html" %}
+</c-button-group>

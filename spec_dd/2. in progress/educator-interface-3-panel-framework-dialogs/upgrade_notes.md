@@ -6,7 +6,11 @@ changed_template_paths:
   - freedom_ls/panel_framework/templates/panel_framework/partials/modal_form.html  # deleted, replaced by panel_framework/modal/form.html
   - freedom_ls/panel_framework/templates/panel_framework/partials/delete_confirmation.html  # deleted, replaced by panel_framework/modal/delete_confirmation.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/_link_to_cohort.html  # deleted
-  - freedom_ls/base/templates/cotton/data-table-cells/link.html
+  - freedom_ls/panel_framework/templates/cotton/data-table-cells/link.html
+  - freedom_ls/panel_framework/templates/cotton/data-table.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/bulk_confirmation.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/bulk_confirmation_form.html
+  - freedom_ls/panel_framework/templates/panel_framework/partials/table_selection_bar.html
   - freedom_ls/base/templates/cotton/dropdown-menu.html
   - freedom_ls/content_engine/templates/cotton/picture.html
   - freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_links.html
@@ -47,7 +51,13 @@ of them stops taking effect:
 
 The new fragments are swapped into `#app-modal-body` and carry no `modal_open` flag. Each opens with
 `<h2 id="app-modal-title">`, and its close and cancel buttons call `requestClose`. Read the new
-templates before porting an override. The `.modal-backdrop` class in `tailwind.components.css`
+templates before porting an override.
+
+A bulk action's confirmation (`BulkAction.confirm_template_name`, default
+`panel_framework/partials/bulk_confirmation.html`) is one of these fragments too. The selection
+bar's action buttons and the confirm form now target `#app-modal-body`, and the per-table
+`#<table key>-bulk-modal` container is gone. A custom `confirm_template_name` that wrapped its
+content in `<c-modal>` must drop the wrapper and follow the same shape. The `.modal-backdrop` class in `tailwind.components.css`
 stays defined but nothing uses it any more.
 
 **Host templates must include the dialog hosts.** A project template that extends

@@ -25,7 +25,7 @@ def _open_create_modal_and_wait_for_settle(page: Page) -> None:
     settles, 20ms after it lands. Typing and pressing Esc inside that window
     would lose focus from the discard prompt to that late refocus."""
     page.get_by_role("button", name="Create Item").click()
-    expect(page.get_by_label("Name")).to_be_visible()
+    expect(page.locator("#app-modal").get_by_label("Name")).to_be_visible()
     expect(page.locator("#app-modal-body")).not_to_have_class(
         re.compile(r"htmx-settling")
     )
@@ -42,7 +42,7 @@ def test_opening_the_create_modal_focuses_the_name_field(
 
     page.get_by_role("button", name="Create Item").click()
 
-    expect(page.get_by_label("Name")).to_be_focused()
+    expect(page.locator("#app-modal").get_by_label("Name")).to_be_focused()
 
 
 @pytest.mark.playwright
@@ -56,7 +56,7 @@ def test_a_duplicate_name_moves_focus_to_the_error_summary(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     page.get_by_role("button", name="Create Item").click()
-    page.get_by_label("Name").fill("Existing")
+    page.locator("#app-modal").get_by_label("Name").fill("Existing")
     page.get_by_role("button", name="Save", exact=True).click()
 
     expect(page.locator("[data-error-summary]")).to_be_focused()
@@ -72,13 +72,14 @@ def test_save_and_add_another_leaves_a_blank_form_and_shows_the_row(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     page.get_by_role("button", name="Create Item").click()
-    page.get_by_label("Name").fill("Alpha")
+    page.locator("#app-modal").get_by_label("Name").fill("Alpha")
     page.get_by_role("button", name="Save and add another").click()
 
     expect(page.locator("#app-modal")).to_be_visible()
-    expect(page.get_by_label("Name")).to_have_value("")
-    table = page.locator("[data-panel=''] [id^='panel-']")
-    expect(table.get_by_text("Alpha")).to_be_visible()
+    expect(page.locator("#app-modal").get_by_label("Name")).to_have_value("")
+    expect(
+        page.locator("#stubs-table tbody").get_by_role("link", name="Alpha")
+    ).to_be_visible()
 
 
 @pytest.mark.playwright
@@ -92,7 +93,7 @@ def test_save_closes_the_modal_and_navigates_with_a_history_entry(
     page.goto(list_url)
 
     page.get_by_role("button", name="Create Item").click()
-    page.get_by_label("Name").fill("Charlie")
+    page.locator("#app-modal").get_by_label("Name").fill("Charlie")
     page.get_by_role("button", name="Save", exact=True).click()
 
     expect(page.locator("#app-modal")).to_be_hidden()
@@ -148,11 +149,11 @@ def test_esc_on_a_dirty_form_shows_the_discard_prompt_with_the_form_intact(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     _open_create_modal_and_wait_for_settle(page)
-    page.get_by_label("Name").fill("Dirty")
+    page.locator("#app-modal").get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
 
     expect(page.locator("#app-modal")).to_be_visible()
-    expect(page.get_by_label("Name")).to_have_value("Dirty")
+    expect(page.locator("#app-modal").get_by_label("Name")).to_have_value("Dirty")
     expect(page.get_by_role("button", name="Keep editing")).to_be_focused()
 
 
@@ -166,13 +167,13 @@ def test_keep_editing_hides_the_prompt_and_returns_focus_to_the_form(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     _open_create_modal_and_wait_for_settle(page)
-    page.get_by_label("Name").fill("Dirty")
+    page.locator("#app-modal").get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
     page.get_by_role("button", name="Keep editing").click()
 
     expect(page.locator("[data-modal-discard-prompt]")).to_be_hidden()
-    expect(page.get_by_label("Name")).to_have_value("Dirty")
-    expect(page.get_by_label("Name")).to_be_focused()
+    expect(page.locator("#app-modal").get_by_label("Name")).to_have_value("Dirty")
+    expect(page.locator("#app-modal").get_by_label("Name")).to_be_focused()
 
 
 @pytest.mark.playwright
@@ -185,7 +186,7 @@ def test_discard_closes_the_dialog_and_loses_the_input(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     _open_create_modal_and_wait_for_settle(page)
-    page.get_by_label("Name").fill("Dirty")
+    page.locator("#app-modal").get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
     page.get_by_role("button", name="Discard").click()
 
@@ -225,7 +226,7 @@ def test_clicking_save_disables_every_submit_button_while_the_request_is_pending
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("button", name="Create Item").click()
-    page.get_by_label("Name").fill("Beta")
+    page.locator("#app-modal").get_by_label("Name").fill("Beta")
     page.route("**/__actions/create_item", _hold_then_continue)
 
     # Located by CSS, not accessible name: the clicked button's own label
@@ -257,7 +258,7 @@ def test_double_clicking_save_creates_exactly_one_cohort(
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("button", name="Create Item").click()
-    page.get_by_label("Name").fill("Gamma")
+    page.locator("#app-modal").get_by_label("Name").fill("Gamma")
     page.route("**/__actions/create_item", _count_then_continue)
 
     page.get_by_role("button", name="Save", exact=True).dblclick()

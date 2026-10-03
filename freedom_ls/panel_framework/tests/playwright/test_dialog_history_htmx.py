@@ -68,9 +68,12 @@ def test_back_after_navigating_away_with_the_quick_view_open_restores_no_dialog(
     page.goto(detail_url)
 
     # The sidebar's own expanded instance entry also reads "History Target"
-    # on this page, so the quick-view trigger is scoped by its attribute
+    # on this page, and so does the table's mobile card list, so the
+    # quick-view trigger is scoped to the desktop table by its attribute
     # rather than by role name alone.
-    page.locator('a[aria-controls="quick-view"]', has_text="History Target").click()
+    page.locator(
+        'table a[aria-controls="quick-view"]', has_text="History Target"
+    ).click()
     expect(page.locator("#quick-view")).to_be_visible()
 
     page.get_by_label("Sections").get_by_role("link", name="Stubs", exact=True).click()
@@ -99,7 +102,9 @@ def test_reopening_a_quick_view_after_a_history_restore_refetches_it(
     detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
     page.goto(detail_url)
 
-    trigger = page.locator('a[aria-controls="quick-view"]', has_text="History Target")
+    trigger = page.locator(
+        'table a[aria-controls="quick-view"]', has_text="History Target"
+    )
     trigger.click()
     expect(page.locator("#quick-view")).to_be_visible()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("History Target")
@@ -114,11 +119,15 @@ def test_reopening_a_quick_view_after_a_history_restore_refetches_it(
     quick_view_requests: list[str] = []
     page.on(
         "request",
-        lambda request: quick_view_requests.append(request.url)
-        if "__quick-view" in request.url
-        else None,
+        lambda request: (
+            quick_view_requests.append(request.url)
+            if "__quick-view" in request.url
+            else None
+        ),
     )
-    trigger = page.locator('a[aria-controls="quick-view"]', has_text="History Target")
+    trigger = page.locator(
+        'table a[aria-controls="quick-view"]', has_text="History Target"
+    )
     trigger.click()
 
     expect(page.locator("#quick-view")).to_be_visible()

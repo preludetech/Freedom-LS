@@ -536,6 +536,7 @@ def test_a_get_of_a_form_actions_url_returns_its_fragment(
     resolved = _ResolvedAction(action, _ctx(request, item))
     response = _handle_action(request, resolved)
 
+    assert isinstance(response, HttpResponse)
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
     assert "hx-post=" in content
@@ -767,6 +768,7 @@ def test_a_get_of_a_delete_actions_url_returns_its_fragment(
     resolved = _ResolvedAction(action, _ctx(request, item))
     response = _handle_action(request, resolved)
 
+    assert isinstance(response, HttpResponse)
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
     assert "hx-delete=" in content
@@ -789,6 +791,7 @@ def test_a_get_of_a_read_only_actions_url_returns_its_fragment(
     resolved = _ResolvedAction(action, _ctx(request, item))
     response = _handle_action(request, resolved)
 
+    assert isinstance(response, HttpResponse)
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
     assert 'tabindex="-1"' in content

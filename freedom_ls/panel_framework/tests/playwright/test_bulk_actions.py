@@ -108,3 +108,41 @@ def test_stub_bulk_action_js_off(
     assert active_by_name["row-00"] is False
     assert active_by_name["row-01"] is False
     assert active_by_name["row-02"] is True
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_stub_bulk_action_confirms_in_the_shared_modal(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """With JavaScript on, the confirmation opens in #app-modal, Cancel
+    closes it without acting, and confirming runs the action."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    row_checkboxes = page.locator("#stubs-table tbody input[name='keys']")
+    row_checkboxes.nth(0).check()
+    row_checkboxes.nth(1).check()
+    page.get_by_role("button", name="Mark processed").click()
+
+    modal = page.locator("#app-modal")
+    expect(modal).to_be_visible()
+    expect(modal.get_by_text("This will affect 2 stub models.")).to_be_visible()
+
+    modal.get_by_role("button", name="Cancel").click()
+    expect(modal).to_be_hidden()
+    assert not StubModel.objects.filter(is_active=False).exists()
+
+    page.get_by_role("button", name="Mark processed").click()
+    expect(modal).to_be_visible()
+    modal.get_by_role("button", name="Mark processed").click()
+
+    expect(page).to_have_url(f"{live_server.url}/test-panel/framework/stubs")
+    expect(modal).to_be_hidden()
+    active_by_name = dict(StubModel.objects.values_list("name", "is_active"))
+    assert active_by_name["row-00"] is False
+    assert active_by_name["row-01"] is False
+    assert active_by_name["row-02"] is True

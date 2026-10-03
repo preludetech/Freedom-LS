@@ -525,7 +525,6 @@ def _handle_bulk_action(
                     "count": count,
                     "noun": noun,
                     "error": error,
-                    "modal_open": True,
                 },
                 request=request,
             )
@@ -727,12 +726,15 @@ def _merge_current_url_state(request: HttpRequest, panel: DataTablePanel) -> Non
 
 def _is_current_url(request: HttpRequest, url: str) -> bool:
     """Whether `url` is the path and query already in the address bar, as
-    htmx reports it in `HX-Current-URL`. A swap that lands there, such as a
-    list's refresh after a create, replaces the history entry rather than
-    stacking a duplicate one."""
+    htmx reports it in `HX-Current-URL`, ignoring a trailing slash on the
+    path. A swap that lands there, such as a list's refresh after a create,
+    leaves history alone rather than stacking a duplicate entry."""
     current = urlsplit(request.headers.get("HX-Current-URL", ""))
-    current_url = f"{current.path}?{current.query}" if current.query else current.path
-    return current_url == url
+    target = urlsplit(url)
+    return (current.path.rstrip("/"), current.query) == (
+        target.path.rstrip("/"),
+        target.query,
+    )
 
 
 def _history_url(panel: DataTablePanel, request: HttpRequest) -> str:
@@ -845,7 +847,11 @@ def _respond(
         )
         history_url = _history_url(panel, request)
         is_search = request.headers.get("HX-Trigger") == f"{panel.table_key}-search"
-        if is_search or _is_current_url(request, history_url):
+        if _is_current_url(request, history_url):
+            # "false" skips htmx's history update, and with it the
+            # beforeHistorySave that closes an open modal or quick view.
+            response["HX-Replace-Url"] = "false"
+        elif is_search:
             response["HX-Replace-Url"] = history_url
         else:
             response["HX-Push-Url"] = history_url

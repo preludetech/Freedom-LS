@@ -95,9 +95,11 @@ def test_clicking_the_same_row_closes_and_reopens_the_drawer_with_no_second_requ
     quick_view_requests: list[str] = []
     page.on(
         "request",
-        lambda request: quick_view_requests.append(request.url)
-        if "__quick-view" in request.url
-        else None,
+        lambda request: (
+            quick_view_requests.append(request.url)
+            if "__quick-view" in request.url
+            else None
+        ),
     )
     trigger = page.get_by_role("link", name="Alpha")
 

@@ -3,8 +3,8 @@
     <form method="post"
           action="{{ action_url }}{{ qs }}"
           hx-post="{{ action_url }}{{ qs }}"
-          hx-target="closest div[x-data]"
-          hx-swap="outerHTML"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
           hx-disabled-elt="find button[type='submit']">
         {% csrf_token %}
         <input type="hidden" name="mode" value="keys">
