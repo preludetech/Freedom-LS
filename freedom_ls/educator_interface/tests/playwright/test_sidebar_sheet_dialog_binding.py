@@ -59,7 +59,7 @@ def test_nav_button_opens_navigation_not_the_tables_filter_sheet(
 ) -> None:
     page = mobile_educator_page
     organisation = OrganisationFactory()
-    assign_object_role(mobile_educator, organisation, "organisation_staff")
+    assign_object_role(mobile_educator, organisation, "organisation_admin")
     LearnerFactory(user=UserFactory(), organisation=organisation)
 
     path = reverse(

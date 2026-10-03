@@ -14,7 +14,11 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.bulk_actions import Selection, resolve_selection
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.views import _handle_action, _ResolvedAction
+from freedom_ls.panel_framework.views import (
+    SectionConfigBase,
+    _handle_action,
+    _ResolvedAction,
+)
 
 from .conftest import StubModel, _make_stub, make_staff_user
 from .stub_panels import StubBulkAction, StubDataTablePanel
@@ -46,7 +50,13 @@ def test_keys_outside_scope_are_dropped(mock_site_context: Site) -> None:
     outside = _make_stub(name="drop-me")
     request = RequestFactory().post("/stubs")
     panel = _NarrowedTablePanel(
-        PanelContext(request=request, instance=None, base_url="/stubs", name="")
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+        )
     )
 
     queryset = resolve_selection(
@@ -60,7 +70,13 @@ def test_malformed_keys_are_dropped(mock_site_context: Site) -> None:
     kept = _make_stub(name="keep-me")
     request = RequestFactory().post("/stubs")
     panel = StubDataTablePanel(
-        PanelContext(request=request, instance=None, base_url="/stubs", name="")
+        PanelContext(
+            request=request,
+            instance=None,
+            base_url="/stubs",
+            name="",
+            config=SectionConfigBase,
+        )
     )
 
     queryset = resolve_selection(
@@ -125,6 +141,7 @@ def test_over_max_rows_is_rejected_with_422(mock_site_context: Site) -> None:
             instance=None,
             base_url="/stubs",
             name="",
+            config=SectionConfigBase,
             page_url="/stubs",
         )
     )

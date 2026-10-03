@@ -53,7 +53,7 @@ def test_learners_list_has_no_horizontal_scroll_on_phone(
     mobile_educator: User,
 ) -> None:
     organisation = OrganisationFactory()
-    assign_object_role(mobile_educator, organisation, "organisation_staff")
+    assign_object_role(mobile_educator, organisation, "organisation_admin")
     LearnerFactory(
         user=UserFactory(
             first_name=_LONG_NAME,

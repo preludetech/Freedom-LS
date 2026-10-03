@@ -16,6 +16,7 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import DataTablePanel
+from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import _make_stub
 from .stub_panels import StubDataTable, StubDataTablePanel
@@ -314,6 +315,7 @@ def _bind_table_panel(panel_class: type[DataTablePanel]) -> DataTablePanel:
             instance=None,
             base_url="/p",
             name="",
+            config=SectionConfigBase,
             page_url="/p",
         )
     )

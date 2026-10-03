@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from django.db.models import Model
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.views import (
@@ -174,7 +174,9 @@ class TestOutOfScopeActionRequests:
     """An action the page offered can 404 once its object leaves the user's
     scope. htmx drops a bare 404, so the user would see nothing happen."""
 
-    def _dispatch(self, path_string: str, **headers: str) -> HttpResponse:
+    def _dispatch(
+        self, path_string: str, **headers: str
+    ) -> HttpResponse | StreamingHttpResponse:
         request = RequestFactory().delete(f"/test-panel/{path_string}", **headers)
         request.user = make_staff_user()
         return panel_framework_view(
@@ -194,6 +196,7 @@ class TestOutOfScopeActionRequests:
             f"deny-stub/{stub.pk}/__actions/delete", HTTP_HX_REQUEST="true"
         )
 
+        assert isinstance(response, HttpResponse)
         assert response.status_code == 404
         html = response.content.decode()
         assert "data-htmx-swap-error" in html
