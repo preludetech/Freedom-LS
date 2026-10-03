@@ -217,10 +217,10 @@ def test_a_delete_action_from_a_panel_renders_its_trigger(
 def test_a_delete_actions_trigger_url_returns_its_confirmation_fragment(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub(name="alpha")
+    _make_stub(name="alpha")
     path_string = DELETE_URL.removeprefix("/test-panel/framework/")
 
-    html = _as_a_user_who_may_delete(stub, path_string).content.decode()
+    html = _as_a_user_permitted_to_delete(path_string).content.decode()
 
     assert f'hx-delete="{DELETE_URL}"' in html
 

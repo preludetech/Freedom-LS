@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 
 import pytest
-from guardian.shortcuts import assign_perm
 from pytest_mock import MockerFixture
 
 from django import forms
@@ -37,8 +36,7 @@ from .conftest import (
     _make_stub_protected_child,
     make_staff_user,
 )
-from .stub_panels import RecordingCapabilityConfig
-from .stub_panels import StubReadOnlyAction
+from .stub_panels import RecordingCapabilityConfig, StubReadOnlyAction
 
 # -- Shared test form ---------------------------------------------------
 
@@ -514,7 +512,7 @@ def test_rendering_a_panel_with_a_form_action_never_builds_its_form(
 
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.change_stubmodel", request.user, item)
+    RecordingCapabilityConfig.reset(answer=True)
     ctx = _ctx(request, item)
     html = _render_panel(PanelWithEdit(ctx))
 
@@ -533,7 +531,7 @@ def test_a_get_of_a_form_actions_url_returns_its_fragment(
     )
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.change_stubmodel", request.user, item)
+    RecordingCapabilityConfig.reset(answer=True)
 
     resolved = _ResolvedAction(action, _ctx(request, item))
     response = _handle_action(request, resolved)
@@ -747,7 +745,7 @@ def test_rendering_a_panel_with_a_delete_action_never_builds_a_cascade_summary(
 
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, item)
+    RecordingCapabilityConfig.reset(answer=True)
     ctx = _ctx(request, item)
     html = _render_panel(PanelWithDelete(ctx))
 
@@ -764,7 +762,7 @@ def test_a_get_of_a_delete_actions_url_returns_its_fragment(
     action = DeleteAction(success_url="/items")
     request = RequestFactory().get("/")
     request.user = make_staff_user()
-    assign_perm("freedom_ls_panel_framework.delete_stubmodel", request.user, item)
+    RecordingCapabilityConfig.reset(answer=True)
 
     resolved = _ResolvedAction(action, _ctx(request, item))
     response = _handle_action(request, resolved)

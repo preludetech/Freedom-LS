@@ -34,7 +34,7 @@ def test_deleting_a_cohort_from_its_page_makes_no_failing_requests(
     organisation = OrganisationFactory(name="Org A")
     cohort = CohortFactory(organisation=organisation, name="Doomed Cohort")
     cohort_pk = cohort.pk
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     assign_perm("freedom_ls_learner_management.delete_cohort", educator_user, cohort)
     failed: list[str] = []
 

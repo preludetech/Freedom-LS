@@ -36,7 +36,7 @@ def test_clicking_a_learner_opens_the_drawer_and_open_leads_to_the_learner_page(
 ) -> None:
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     cohort = CohortFactory(organisation=organisation, name="Year 9 Maths")
     learner = LearnerFactory(
         organisation=organisation,
@@ -67,7 +67,7 @@ def test_the_drawer_title_is_the_learners_name_from_either_cell_and_on_reopen(
 ) -> None:
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     LearnerFactory(
         organisation=organisation,
         user=UserFactory(first_name="Ada", last_name="Lovelace"),
@@ -102,8 +102,8 @@ def test_escape_closes_only_the_topmost_dropdown_leaving_the_drawer_open(
     page = educator_logged_in_page
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")
-    assign_object_role(educator_user, organisation_a, "organisation_staff")
-    assign_object_role(educator_user, organisation_b, "organisation_staff")
+    assign_object_role(educator_user, organisation_a, "organisation_admin")
+    assign_object_role(educator_user, organisation_b, "organisation_admin")
     LearnerFactory(
         organisation=organisation_a,
         user=UserFactory(first_name="Ada", last_name="Lovelace"),
@@ -139,7 +139,7 @@ def test_a_learner_changed_event_naming_the_shown_learner_refetches_it(
 ) -> None:
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     learner = LearnerFactory(
         organisation=organisation,
         user=UserFactory(

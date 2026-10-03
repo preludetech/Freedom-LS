@@ -305,9 +305,7 @@ class StubCardTablePanel(DataTablePanel):
 
 
 class StubDeleteAction(DeleteAction):
-    def has_permission(
-        self, request: HttpRequest, instance: Model | None = None
-    ) -> bool:
+    def has_permission(self, ctx: PanelContext) -> bool:
         # Stub: always allow in tests, the way StubCreateAction does.
         return True
 

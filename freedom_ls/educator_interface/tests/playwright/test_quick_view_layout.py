@@ -44,7 +44,7 @@ def test_the_docked_drawer_leaves_the_header_actions_and_table_uncovered(
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     CohortFactory(organisation=organisation, name="Year 9 Maths")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     assign_perm("freedom_ls_learner_management.add_cohort", educator_user)
     page.set_viewport_size(viewport)
 
@@ -82,7 +82,7 @@ def test_pagination_stays_inside_the_card_beside_a_docked_drawer(
     than run on under the drawer."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     LearnerFactory.create_batch(
         51, organisation=organisation, user__first_name="Learner"
     )
@@ -114,7 +114,7 @@ def test_docked_drawer_clears_the_header_after_widening_from_mobile(
     shorter height once it docks."""
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     LearnerFactory(organisation=organisation, user__first_name="Learner")
     page.set_viewport_size({"width": 375, "height": 812})
 
