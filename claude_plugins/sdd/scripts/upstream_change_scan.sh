@@ -227,7 +227,9 @@ else
         diff_output=$(git diff "$OLD_BASE" "$NEW_BASE" -- "$path")
         line_count=$(printf '%s\n' "$diff_output" | wc -l)
         if ((line_count > TRUNCATE_AT)); then
-            printf '%s\n' "$diff_output" | head -n "$TRUNCATE_AT"
+            # head closes the pipe early; without the || true, pipefail turns
+            # printf's SIGPIPE into exit 141 and set -e aborts the scan here.
+            printf '%s\n' "$diff_output" | head -n "$TRUNCATE_AT" || true
             echo "... diff truncated at ${TRUNCATE_AT} lines ..."
         else
             printf '%s\n' "$diff_output"
