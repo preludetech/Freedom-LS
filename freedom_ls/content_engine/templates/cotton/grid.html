@@ -1,0 +1,26 @@
+<c-vars columns="3" />
+
+{% comment %}
+Grid — a LAYOUT WRAPPER for any children: pictures, article cards, course cards.
+Phones get one column; 2/3/4 apply from sm/lg.
+
+`columns` maps through a FIXED whitelist (2/3/4); any other value falls back
+to the default 3-column layout. Author input never becomes raw CSS.
+
+The slot is emitted with {{ slot }} (NOT {% markdown slot %}): nested
+components are compiled and rendered at the outer level, so their interactive
+markup survives. Re-running them through {% markdown %} would re-sanitise and
+strip it.
+
+The [&>*]:my-0! rule drops the outer margin of c-picture's wrapper div so it
+shares its row's top edge; the [&_figure]:… rules neutralise c-picture's
+max-w-xl/mx-auto/my-6 so figures tile instead of stacking centred.
+{% endcomment %}
+
+{% if columns == "2" %}
+    <div class="my-6 grid grid-cols-1 sm:grid-cols-2 gap-4 [&>*]:my-0! [&_figure]:my-0! [&_figure]:mx-0! [&_figure]:max-w-none!">{{ slot }}</div>
+{% elif columns == "4" %}
+    <div class="my-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 [&>*]:my-0! [&_figure]:my-0! [&_figure]:mx-0! [&_figure]:max-w-none!">{{ slot }}</div>
+{% else %}{# default = 3, also the fallback for any unknown value #}
+    <div class="my-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 [&>*]:my-0! [&_figure]:my-0! [&_figure]:mx-0! [&_figure]:max-w-none!">{{ slot }}</div>
+{% endif %}

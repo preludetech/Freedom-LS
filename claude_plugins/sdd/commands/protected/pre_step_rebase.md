@@ -46,7 +46,7 @@ Once it returns:
 
 - `rebased: no` → `status: ok · reason: up to date`. Stop.
 - `failed` or `blocked` → return that status and its reason as this helper's own. The caller stops.
-- otherwise, keep `old-base` and `backup` from its return contract for the steps below.
+- otherwise, keep `old-base` and `old-tip` from its return contract for the steps below.
 
 ## Step 2: Front-end check
 

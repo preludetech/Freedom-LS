@@ -17,14 +17,21 @@ Including another URLconf
 
 import os
 
+from django.apps import apps
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.sitemaps.views import sitemap
 from django.urls import include, path
 
-from config.sitemaps import CourseSitemap, StaticViewSitemap
+from config.sitemaps import (
+    ArticleSitemap,
+    BlogIndexSitemap,
+    CourseSitemap,
+    StaticViewSitemap,
+)
 from config.views import robots_txt
+from freedom_ls.blog.config import config as blog_config
 
 # from ninja import NinjaAPI
 
@@ -41,6 +48,17 @@ _sitemaps = {
     "static": StaticViewSitemap,
     "courses": CourseSitemap,
 }
+if apps.is_installed("freedom_ls.blog"):
+    _sitemaps["blog_index"] = BlogIndexSitemap
+    _sitemaps["articles"] = ArticleSitemap
+
+# Spliced in ahead of the learner_interface catch-all so an article slug is
+# never shadowed by it.
+_blog_urlpatterns = (
+    [path(f"{blog_config.BLOG_URL_PREFIX}/", include("freedom_ls.blog.urls"))]
+    if apps.is_installed("freedom_ls.blog")
+    else []
+)
 
 urlpatterns = [
     path("health/", include("freedom_ls.health.urls")),
@@ -62,6 +80,7 @@ urlpatterns = [
     path("", include("freedom_ls.deployment.urls")),
     path("accounts/", include("allauth.urls")),
     path("accounts/", include("freedom_ls.accounts.urls")),
+    *_blog_urlpatterns,
     path("", include("freedom_ls.learner_interface.urls")),
     path("notifications/", include("freedom_ls.comms.urls")),
     path("applications/", include("freedom_ls.course_applications.urls")),

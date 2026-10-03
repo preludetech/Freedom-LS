@@ -63,6 +63,8 @@ These files are identified by **name alone** — they are never numbered:
 
 (An ACTIVITY uses `content.md` too — same as a TOPIC. There is no `activity.md`.)
 
+An ARTICLE has no role file: it is identified by `content_type: ARTICLE` and named after its slug (`my-article.md`, or `my-article/content.md`), with no `NN.` prefix. Child auto-discovery never adopts it as a course child.
+
 `part.yaml` has **no closing `---`** — the file ends after the last field:
 
 ```yaml

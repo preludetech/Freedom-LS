@@ -1,16 +1,16 @@
 # Content Editing Workflow
 
-_Last updated: 2026-09-19_
+_Last updated: 2026-10-01_
 
 ## Summary
 
-- All course content is authored as plain Markdown and YAML under version control; git provides the full history — timestamps, diffs, and rollback.
+- All course content, and the articles of a site's public blog, is authored as plain Markdown and YAML under version control; git provides the full history — timestamps, diffs, and rollback.
 - Content is loaded into the database by the `content_save` command, which validates first and then idempotently upserts each item by UUID. Re-running it is safe.
 - Markdown renders through a four-stage pipeline: Markdown → sanitiser → content-widget compilation → template render.
 - Course images are re-encoded to WebP at ingest, so authors can commit camera and screenshot output as-is; filenames and `c-picture` references keep working unchanged.
 - A site's course categories are declared once per content repo, and each course names the categories it belongs to in its own frontmatter. See [learner experience](./learner-experience.md) for what the dashboard does with them.
 - Legal documents are versioned alongside content, and the exact version a user accepted is recorded on their consent record.
-- There is **no browser-based content editor**. All authoring happens in files, and content cannot be deleted from the admin either.
+- There is **no browser-based content editor**. All authoring happens in files, and content cannot be deleted from the admin either, with one exception: articles.
 
 ## Authoring Model
 
@@ -18,7 +18,7 @@ Content lives as files on disk — Markdown for text-heavy items, YAML for struc
 
 **UUIDs in frontmatter.** On the first run of `content_save`, a UUID is written back into each file's frontmatter. That UUID is the stable identifier for the item and survives edits, renames, and re-saves.
 
-**No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail. Content records cannot be deleted from the admin either — see [admin interface](./admin-interface.md#content-cannot-be-deleted).
+**No GUI editor.** There is no admin-side or browser-based authoring interface. This is by design: the file system is the source of truth and git is the audit trail. Content records cannot be deleted from the admin either, except articles — see [admin interface](./admin-interface.md#content-cannot-be-deleted).
 
 **AI authoring.** Authors may use AI tools to draft or revise Markdown. This is a workflow affordance only — there is no AI integration in the application code.
 
@@ -28,7 +28,7 @@ Because draft content is never loaded, it cannot be previewed in the running app
 
 ## Content Types
 
-Nine content types are available:
+Ten content types are available:
 
 | Type | Description |
 |---|---|
@@ -36,6 +36,7 @@ Nine content types are available:
 | `COURSE` | Top-level course container; metadata and a list of items |
 | `COURSE_PART` | Optional chapter/section grouping within a course |
 | `TOPIC` | A page of Markdown content |
+| `ARTICLE` | A standalone public Markdown page that belongs to no course |
 | `ACTIVITY` | A structured activity item |
 | `FORM` | A multi-page form or quiz |
 | `FORM_PAGE` | A single page within a form |
@@ -43,6 +44,10 @@ Nine content types are available:
 | `FORM_CONTENT` | A non-question content block within a form page |
 
 Categories are declared in a single `course_categories.yaml` at the content repository root, one entry per category in the order they should appear; a second declaration anywhere in the repo is rejected at validation time, so a site has exactly one ordered list. Each entry gets a UUID written back into the file on its first load, like every other content type.
+
+An article can sit anywhere in the content repository, inside or outside a course folder. It is either published or `hidden`, and its public URL comes from a `slug` that defaults to its file name. It can name an `author`, and `show_date` and `show_author` override the site-wide defaults for its byline. Articles carry no images or category, and there is no scheduled publishing. See [learner experience](./learner-experience.md#blog) for the public blog pages.
+
+Loading never deletes an article. An administrator can delete one in the admin, but while its file remains in the repository it comes back on the next load, so removing an article for good means deleting the file as well.
 
 ## Course Frontmatter Options
 
@@ -94,7 +99,9 @@ Validation parses every YAML and Markdown file against strict schemas before any
 
 `content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped.
 
-A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content is deleted.
+Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too.
+
+A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content other than articles is deleted.
 
 ## Markdown Rendering Pipeline
 
@@ -122,10 +129,16 @@ These widgets are available inside Markdown content:
 | `c-file-download` | Downloadable file link |
 | `c-pull-quote` | Pull quote with optional attribution |
 | `c-equation` | Rendered equation block |
-| `c-image-grid` | Multi-column image grid |
+| `c-image-grid` | Multi-column image grid; a `c-grid` specialised for images |
+| `c-grid` | Column layout (2, 3 or 4 columns; one on phones) for any widgets, such as cards or pictures |
+| `c-article-link` | Inline link to a published article, by file path; shows the article's title unless link text is given, and falls back to plain text if the article is hidden or missing |
+| `c-article-card` | Card for a published article, by file path, in a row or `compact` variant; renders nothing if the article is hidden or missing |
+| `c-course-card` | Card for a course, by file path, showing its access badge and price, in a row or `compact` variant; renders nothing if the course is hidden or missing |
 | `c-table` | Accessible table wrapper |
 | `c-code-block` | Syntax-highlighted code block |
 | `c-slot` | Fills a named slot inside a widget that declares one (`name`) — this is how `c-flashcard`'s front and back are supplied |
+
+![](screenshots/article_content_widgets.png)
 
 `c-table` only renders its scrolling, styled wrapper when it sits directly in a topic or activity body. Nested inside `c-accordion`, a `c-flashcard` slot, or `c-admonition`, it falls back to a plain, unstyled table — use a plain markdown table there instead.
 

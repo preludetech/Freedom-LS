@@ -1,0 +1,48 @@
+- generic [active] [ref=f13e1]:
+  - banner [ref=f13e2]:
+    - link [ref=f13e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f13e4]
+      - heading "FirstClass" [level=1] [ref=f13e5]
+    - navigation [ref=f13e6]:
+      - generic [ref=f13e7]:
+        - link "Login" [ref=f13e8] [cursor=pointer]:
+          - /url: /accounts/login/?next=%2Fcourses%2Fcontent-widgets-demo-reference%2F
+        - link "Sign up" [ref=f13e9] [cursor=pointer]:
+          - /url: /accounts/signup/?next=%2Fcourses%2Fcontent-widgets-demo-reference%2F
+  - generic:
+    - status
+    - alert
+  - main [ref=f13e10]:
+    - generic [ref=f13e11]:
+      - heading "Log in" [level=1] [ref=f13e12]
+      - generic [ref=f13e13]:
+        - paragraph [ref=f13e14]:
+          - generic [ref=f13e15]: "Email:"
+          - textbox "Email:" [ref=f13e16]:
+            - /placeholder: Email address
+        - paragraph [ref=f13e17]:
+          - generic [ref=f13e18]: "Password:"
+          - textbox "Password:" [ref=f13e19]:
+            - /placeholder: Password
+        - link "Forgot your password?" [ref=f13e21] [cursor=pointer]:
+          - /url: /accounts/password/reset/
+        - paragraph [ref=f13e22]:
+          - generic [ref=f13e23]: "Remember Me:"
+          - checkbox "Remember Me:" [ref=f13e24] [cursor=pointer]
+        - generic [ref=f13e25]:
+          - button "Log in" [ref=f13e26] [cursor=pointer]
+          - generic [ref=f13e27]:
+            - paragraph [ref=f13e28]: New here?
+            - link "Create an account" [ref=f13e29] [cursor=pointer]:
+              - /url: /accounts/signup/?next=%2Fcourses%2Fcontent-widgets-demo-reference%2F
+  - contentinfo [ref=f13e30]:
+    - generic [ref=f13e31]:
+      - paragraph [ref=f13e32]: © 2026 FirstClass
+      - navigation "Legal" [ref=f13e33]:
+        - link "Terms and Conditions" [ref=f13e34] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f13e35] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f13e36] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f13e38]: DJDT

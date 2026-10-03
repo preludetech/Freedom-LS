@@ -14,6 +14,8 @@ Regenerate this file whenever the graph changes: `/app_map`.
 flowchart TB
     accounts
     base
+    blog
+    comms
     content_base
     content_engine
     course_access
@@ -48,6 +50,11 @@ flowchart TB
     accounts --> markdown_rendering
     accounts --> site_aware_models
     accounts --> webhooks
+    blog --> base
+    blog --> content_engine
+    comms --> accounts
+    comms --> base
+    comms --> site_aware_models
     content_base --> markdown_rendering
     content_base --> site_aware_models
     content_engine --> base
@@ -96,6 +103,7 @@ flowchart TB
     health --> base
     icons --> base
     learner_interface --> accounts
+    learner_interface --> content_base
     learner_interface --> content_engine
     learner_interface --> course_access
     learner_interface --> course_interest
@@ -112,8 +120,10 @@ flowchart TB
     learner_management --> content_engine
     learner_management --> form_engine
     learner_management --> organisations
+    learner_management --> role_based_permissions
     learner_management --> site_aware_models
     learner_progress --> accounts
+    learner_progress --> comms
     learner_progress --> content_engine
     learner_progress --> form_engine
     learner_progress --> learner_management
@@ -126,6 +136,7 @@ flowchart TB
     organisations --> site_aware_models
     panel_framework --> base
     qa_helpers --> accounts
+    qa_helpers --> comms
     qa_helpers --> content_engine
     qa_helpers --> course_applications
     qa_helpers --> course_interest
@@ -171,6 +182,11 @@ flowchart TB
     base -.-> learner_management
     base -.-> organisations
     base -.-> role_based_permissions
+    blog -.-> accounts
+    comms -.-> content_engine
+    comms -.-> learner_management
+    comms -.-> organisations
+    comms -.-> role_based_permissions
     content_base -.-> content_engine
     content_engine -.-> accounts
     course_access -.-> course_applications
@@ -187,10 +203,11 @@ flowchart TB
     google_tag -.-> content_engine
     google_tag -.-> learner_management
     learner_interface -.-> base
+    learner_interface -.-> comms
     learner_interface -.-> course_applications
+    learner_interface -.-> markdown_rendering
     learner_interface -.-> role_based_permissions
     learner_management -.-> learner_progress
-    learner_management -.-> role_based_permissions
     learner_progress -.-> organisations
     mail -.-> deployment
     markdown_rendering -.-> content_engine
@@ -223,6 +240,8 @@ flowchart TB
 | --- | --- | --- |
 | accounts | base, mail, markdown_rendering, site_aware_models, webhooks | content_engine, course_applications, course_interest, icons, learner_management, organisations, referral_tracking |
 | base | — | accounts, content_engine, learner_management, organisations, role_based_permissions |
+| blog | base, content_engine | accounts |
+| comms | accounts, base, site_aware_models | content_engine, learner_management, organisations, role_based_permissions |
 | content_base | markdown_rendering, site_aware_models | content_engine |
 | content_engine | base, content_base, form_engine, icons, markdown_rendering, site_aware_models | accounts |
 | course_access | accounts, base, content_engine, learner_management | course_applications |
@@ -236,15 +255,15 @@ flowchart TB
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
 | icons | base | — |
-| learner_interface | accounts, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | base, course_applications, role_based_permissions |
-| learner_management | accounts, base, content_engine, form_engine, organisations, site_aware_models | learner_progress, role_based_permissions |
-| learner_progress | accounts, content_engine, form_engine, learner_management, site_aware_models, webhooks | organisations |
+| learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | base, comms, course_applications, markdown_rendering, role_based_permissions |
+| learner_management | accounts, base, content_engine, form_engine, organisations, role_based_permissions, site_aware_models | learner_progress |
+| learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | organisations |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
 | meta_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | base | site_aware_models |
-| qa_helpers | accounts, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
+| qa_helpers | accounts, comms, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
 | referral_tracking | accounts, base, site_aware_models | — |
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |

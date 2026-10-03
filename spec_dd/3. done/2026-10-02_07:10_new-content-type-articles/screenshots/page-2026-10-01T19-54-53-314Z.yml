@@ -1,0 +1,110 @@
+- generic [active] [ref=f15e1]:
+  - banner [ref=f15e2]:
+    - link [ref=f15e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f15e4]
+      - heading "FirstClass" [level=1] [ref=f15e5]
+    - navigation [ref=f15e6]:
+      - generic [ref=f15e7]:
+        - generic [ref=f15e8]:
+          - button "Notifications, 2 new" [ref=f15e9]:
+            - img "notifications" [ref=f15e11]
+          - status:
+            - generic [ref=f15e13]: Notifications, 2 new
+            - generic [aria-hidden] [ref=f15e14]: "2"
+        - button "Open user menu for demodev@email.com" [ref=f15e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f15e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f15e18]:
+    - generic [ref=f15e20]:
+      - navigation "Breadcrumb" [ref=f15e21]:
+        - list [ref=f15e22]:
+          - listitem [ref=f15e23]:
+            - link "All courses" [ref=f15e24] [cursor=pointer]:
+              - /url: /courses/
+          - listitem [ref=f15e25]:
+            - generic [aria-hidden] [ref=f15e26]: /
+            - generic [ref=f15e27]: Content Widgets - Demo Reference
+      - generic [ref=f15e29]:
+        - heading "Content Widgets - Demo Reference" [level=1] [ref=f15e30]
+        - paragraph [ref=f15e31]: A working reference for content authors
+        - generic [ref=f15e33]:
+          - generic [ref=f15e34]:
+            - img "topic" [ref=f15e35]
+            - generic [ref=f15e37]:
+              - paragraph [ref=f15e38]: Lessons
+              - paragraph [ref=f15e39]: 5 lessons
+          - generic [ref=f15e40]:
+            - img "check" [ref=f15e41]
+            - generic [ref=f15e43]:
+              - paragraph [ref=f15e44]: Enrolment
+              - paragraph [ref=f15e45]: Coming soon
+      - generic [ref=f15e46]:
+        - complementary [ref=f15e47]:
+          - generic [ref=f15e48]:
+            - generic [ref=f15e49]:
+              - paragraph [ref=f15e50]: Coming soon
+              - paragraph [ref=f15e51]: Register your interest and we'll let you know when the course is ready.
+            - button "I'm interested" [ref=f15e54] [cursor=pointer]
+            - generic [ref=f15e55]:
+              - heading "This course includes" [level=3] [ref=f15e56]
+              - list [ref=f15e57]:
+                - listitem [ref=f15e58]: 5 lessons
+        - generic [ref=f15e59]:
+          - generic [ref=f15e60]:
+            - heading "About this course" [level=2] [ref=f15e61]
+            - generic [ref=f15e62]:
+              - paragraph [ref=f15e63]: "This course is two things at once: living documentation and a set of QA fixtures."
+              - paragraph [ref=f15e64]: Every widget the content system ships with appears here, with every option exercised at least once. If you are authoring content, read it as a reference — each topic explains what a widget is for, then shows the exact markdown that produces it. If you are testing a rendering change, load this course and check that nothing breaks.
+              - paragraph [ref=f15e65]: "Three topics, grouped by what the widgets do: annotation and emphasis, media, and structured content."
+          - generic [ref=f15e66]:
+            - heading "Course content" [level=2] [ref=f15e67]
+            - navigation "Course outline" [ref=f15e69]:
+              - list [ref=f15e70]:
+                - listitem [ref=f15e71]:
+                  - generic [ref=f15e72]:
+                    - generic [ref=f15e73]: "1."
+                    - generic [ref=f15e74]:
+                      - img "topic" [ref=f15e75]
+                      - generic [ref=f15e77]: Locked
+                    - generic [ref=f15e78]: Annotation and Emphasis
+                - listitem [ref=f15e79]:
+                  - generic [ref=f15e80]:
+                    - generic [ref=f15e81]: "2."
+                    - generic [ref=f15e82]:
+                      - img "topic" [ref=f15e83]
+                      - generic [ref=f15e85]: Locked
+                    - generic [ref=f15e86]: Media
+                - listitem [ref=f15e87]:
+                  - generic [ref=f15e88]:
+                    - generic [ref=f15e89]: "3."
+                    - generic [ref=f15e90]:
+                      - img "topic" [ref=f15e91]
+                      - generic [ref=f15e93]: Locked
+                    - generic [ref=f15e94]: Structured Content
+                - listitem [ref=f15e95]:
+                  - generic [ref=f15e96]:
+                    - generic [ref=f15e97]: "4."
+                    - generic [ref=f15e98]:
+                      - img "topic" [ref=f15e99]
+                      - generic [ref=f15e101]: Locked
+                    - generic [ref=f15e102]: Interactive Widgets
+                - listitem [ref=f15e103]:
+                  - generic [ref=f15e104]:
+                    - generic [ref=f15e105]: "5."
+                    - generic [ref=f15e106]:
+                      - img "topic" [ref=f15e107]
+                      - generic [ref=f15e109]: Locked
+                    - generic [ref=f15e110]: Cards
+  - contentinfo [ref=f15e111]:
+    - generic [ref=f15e112]:
+      - paragraph [ref=f15e113]: © 2026 FirstClass
+      - navigation "Legal" [ref=f15e114]:
+        - link "Terms and Conditions" [ref=f15e115] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f15e116] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f15e117] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f15e119]: DJDT

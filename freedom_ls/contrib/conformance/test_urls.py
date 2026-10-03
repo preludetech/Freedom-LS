@@ -83,6 +83,8 @@ FLS_NAMESPACE_PROBES: list[_Probe] = [
         True,
         {"doc_type": "terms"},
     ),
+    _Probe("freedom_ls.blog", "blog:index", False),
+    _Probe("freedom_ls.blog", "blog:article_detail", True, {"slug": "x"}),
 ]
 
 REFERENCE_URL_NAMES: list[str] = ["sitemap", "robots_txt"]

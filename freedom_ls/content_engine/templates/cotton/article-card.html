@@ -1,0 +1,23 @@
+<c-vars path variant="row" />
+{% load content_tags %}
+{% comment %}
+Card for a published article; the whole card clicks through via the stretched
+title link. Renders nothing when the article is hidden, missing or the blog
+app is not installed.
+{% endcomment %}
+{% with article=path|get_published_article_by_path:content_instance %}
+{% if article %}{% url 'blog:article_detail' slug=article.slug as url %}{% endif %}
+{% if url %}
+<article class="surface relative overflow-hidden h-full focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary flex flex-col {% if variant != 'compact' %}sm:flex-row{% endif %}">
+    {% if variant != "compact" %}<div class="hidden sm:block shrink-0 self-stretch w-2 bg-primary" aria-hidden="true"></div>{% endif %}
+    <div class="min-w-0 p-4 flex flex-col gap-2">
+        <h3>
+            <a href="{{ url }}"
+               class="text-inherit no-underline before:absolute before:inset-0 before:content-[''] focus:outline-none">{{ article.title }}</a>
+        </h3>
+        {% if article.description %}<p>{{ article.description }}</p>{% endif %}
+        <c-article-byline :article="article" />
+    </div>
+</article>
+{% endif %}
+{% endwith %}

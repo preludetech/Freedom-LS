@@ -7,6 +7,7 @@ The path can either be a file or a directory. if it is a directory then recurse 
 """
 
 import logging
+import os.path
 import re
 from pathlib import Path
 
@@ -475,6 +476,106 @@ def validate_category_references(all_parsed: list) -> list[str]:
     return errors
 
 
+_WIDGET_TAG_PATTERN = re.compile(
+    r'<c-(article-link|article-card|course-card)\b[^>]*?\bpath="([^"]*)"'
+)
+
+_ARTICLE_WIDGETS = {"article-link", "article-card"}
+
+
+def _widget_reference_error(
+    file_path: Path,
+    content_type: ContentType,
+    widget: str,
+    path: str,
+    problem: str,
+    fix: str,
+) -> str:
+    """Build the error block for a widget whose `path` doesn't resolve.
+
+    Same header/field/problem/given-value/fix layout as
+    `_category_reference_error`, without its declared-list section.
+    """
+    lines = [
+        f"\n❌ Broken widget reference in {file_path}",
+        f"Content type: {content_type}",
+        "",
+        f"  • Field: c-{widget} path",
+        f"    Problem: {problem}",
+        f"    Given value: {path!r}",
+        "",
+        f"    {fix}",
+    ]
+    return "\n".join(lines)
+
+
+def validate_widget_references(all_parsed: list) -> list[str]:
+    """Check every widget `path` in a body against the parsed content files.
+
+    Paths resolve relative to the file holding the widget. Also reports two
+    article files that resolve to the same slug, since both would claim one URL.
+    """
+    errors: list[str] = []
+    by_path = {os.path.normpath(item.file_path): item for item in all_parsed}
+
+    for item in all_parsed:
+        body = getattr(item, "content", None)
+        if not body:
+            continue
+        for widget, path in _WIDGET_TAG_PATTERN.findall(body):
+            target = by_path.get(os.path.normpath(item.file_path.parent / path))
+            if target is None:
+                errors.append(
+                    _widget_reference_error(
+                        item.file_path,
+                        item.content_type,
+                        widget,
+                        path,
+                        problem="no content file at this path",
+                        fix="Fix the path. It is relative to this file and must end in the target's file name.",
+                    )
+                )
+            elif (
+                widget in _ARTICLE_WIDGETS
+                and target.content_type != ContentType.ARTICLE
+            ):
+                errors.append(
+                    _widget_reference_error(
+                        item.file_path,
+                        item.content_type,
+                        widget,
+                        path,
+                        problem=f"this file is a {target.content_type}, not an ARTICLE",
+                        fix="Point the widget at an ARTICLE file.",
+                    )
+                )
+            elif widget == "course-card" and target.content_type != ContentType.COURSE:
+                errors.append(
+                    _widget_reference_error(
+                        item.file_path,
+                        item.content_type,
+                        widget,
+                        path,
+                        problem=f"this file is a {target.content_type}, not a COURSE",
+                        fix="Point the widget at a COURSE file.",
+                    )
+                )
+
+    files_by_slug: dict[str, list[Path]] = {}
+    for item in all_parsed:
+        if item.content_type == ContentType.ARTICLE:
+            files_by_slug.setdefault(item.slug, []).append(item.file_path)
+    for slug, files in sorted(files_by_slug.items()):
+        if len(files) > 1:
+            errors.append(
+                f"\n❌ Duplicate article slug '{slug}': "
+                f"{', '.join(str(f) for f in files)}. "
+                "Give one of them a different slug."
+            )
+
+    return errors
+
+
 def validate(path):
     """
     Validate all content files in a directory or a single file.
@@ -529,6 +630,8 @@ def validate(path):
     # 4. cross-file pass: resolve every course's category references now
     # that every file's parsed items are available
     for message in validate_category_references(all_parsed):
+        failed_files.append((path, message))
+    for message in validate_widget_references(all_parsed):
         failed_files.append((path, message))
 
     # Report all failures at the end

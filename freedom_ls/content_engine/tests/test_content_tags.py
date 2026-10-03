@@ -14,11 +14,14 @@ import pytest
 from django.test import override_settings
 from django.utils.safestring import SafeString
 
-from freedom_ls.content_engine.factories import TopicFactory
+from freedom_ls.accounts.factories import SiteFactory
+from freedom_ls.content_engine.factories import ArticleFactory, TopicFactory
+from freedom_ls.content_engine.models import ArticleVisibility
 from freedom_ls.content_engine.templatetags.content_tags import (
     admonition_config,
     admonition_icon,
     get_content_by_path,
+    get_published_article_by_path,
 )
 from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
@@ -305,3 +308,45 @@ class TestGetContentByPath:
         expected = Form.objects.filter(file_path="3. quiz/form.md").first()
 
         assert get_content_by_path("../3. quiz/form.md", source) == expected
+
+
+# ---------------------------------------------------------------------------
+# get_published_article_by_path
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestGetPublishedArticleByPath:
+    """get_published_article_by_path resolves a path to a published Article on the content's site."""
+
+    def test_published_target_is_returned(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        target = ArticleFactory(file_path="articles/target.md")
+
+        assert get_published_article_by_path("../articles/target.md", source) == target
+
+    def test_hidden_target_returns_none(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        ArticleFactory(
+            file_path="articles/target.md", visibility=ArticleVisibility.HIDDEN
+        )
+
+        assert get_published_article_by_path("../articles/target.md", source) is None
+
+    def test_missing_target_returns_none(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+
+        assert get_published_article_by_path("../articles/nope.md", source) is None
+
+    @pytest.mark.parametrize("empty", ["", "   ", None])
+    def test_empty_path_returns_none(self, mock_site_context, empty) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+
+        assert get_published_article_by_path(empty, source) is None
+
+    def test_same_path_on_another_site_returns_none(self, mock_site_context) -> None:
+        source = TopicFactory(file_path="2. topic/content.md")
+        other_site = SiteFactory()
+        ArticleFactory(file_path="articles/target.md", site=other_site)
+
+        assert get_published_article_by_path("../articles/target.md", source) is None

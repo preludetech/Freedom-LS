@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from urllib.parse import urlparse
 
@@ -5,8 +7,10 @@ from django import template
 from django.utils.html import escape
 from django.utils.safestring import SafeString
 
+from freedom_ls.content_base.models import BaseContent
 from freedom_ls.content_engine.config import config
-from freedom_ls.content_engine.models import File, Topic
+from freedom_ls.content_engine.models import Article, File, Topic
+from freedom_ls.content_engine.models.articles import ArticleQuerySet
 from freedom_ls.form_engine.models import Form
 from freedom_ls.icons.render import render_icon
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
@@ -172,3 +176,27 @@ def get_content_by_path(file_path, content_instance):
         return Form.objects.filter(file_path=final_path).first()
 
     return None
+
+
+@register.filter
+def get_published_article_by_path(
+    file_path: str | None, content_instance: BaseContent
+) -> Article | None:
+    """Look up a published Article by its file_path, relative to *content_instance*.
+
+    Usage: ``{{ "../other.md"|get_published_article_by_path:content_instance }}``
+    """
+    file_path = (file_path or "").strip()
+    if not file_path:
+        return None
+
+    final_path = content_instance.calculate_path_from_root(file_path)
+
+    # Filter on the content's own site, not the thread-local one: body markdown
+    # is also rendered where no request has pinned a site.
+    return (
+        ArticleQuerySet(model=Article)
+        .filter(site_id=content_instance.site_id, file_path=final_path)
+        .published()
+        .first()
+    )

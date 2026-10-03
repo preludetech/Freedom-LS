@@ -38,6 +38,7 @@ Schema for yaml structures like this:
 """
 
 import re
+import unicodedata
 from collections import Counter, defaultdict
 from collections.abc import Callable
 from datetime import date, time, timedelta
@@ -52,6 +53,7 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -62,6 +64,7 @@ class ContentType(StrEnum):
 
     TOPIC = "TOPIC"
     ACTIVITY = "ACTIVITY"
+    ARTICLE = "ARTICLE"
     FORM = "FORM"
     COURSE = "COURSE"
     COURSE_PART = "COURSE_PART"
@@ -133,12 +136,18 @@ class BaseBaseContentModel(BaseModel):
     meta: dict[str, Any] | None = Field(
         None, description="Optional metadata as key-value pairs"
     )
-    tags: list[str] | None = Field(None, description="Optional list of tags")
+    tags: list[str] = Field(default_factory=list, description="Optional list of tags")
     content_type: ContentType = Field(..., description="Type of content")
     file_path: Path = Field(..., description="Path to the content file")
     uuid: str | None = Field(None, description="Optional unique identifier")
 
     _registry: ClassVar[dict[ContentType, type["BaseBaseContentModel"]]] = {}
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _null_tags_mean_no_tags(cls, value: list[str] | None) -> list[str]:
+        """A bare `tags:` key in front matter parses as None, not a list."""
+        return [] if value is None else value
 
     def __init_subclass__(cls, content_type: ContentType | None = None, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -169,6 +178,60 @@ class Activity(
     BaseContentModel, MarkdownContentModel, content_type=ContentType.ACTIVITY
 ):
     level: int | None = Field(None, description="level 1 is easiest, 2 is harder, etc")
+
+
+class ArticleVisibility(StrEnum):
+    """Article visibility state (mirrors models.ArticleVisibility)."""
+
+    PUBLISHED = "published"
+    HIDDEN = "hidden"
+
+
+def _invalid_slug_message(slug: str, file_path: Path | None) -> str:
+    return (
+        f"Invalid article slug '{slug}' in {file_path}: "
+        "a slug may only contain letters, digits, hyphens and underscores."
+    )
+
+
+class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.ARTICLE):
+    slug: str | None = None
+    published_on: date
+    author: str | None = None
+    visibility: ArticleVisibility = ArticleVisibility.PUBLISHED
+    show_date: bool | None = None
+    show_author: bool | None = None
+
+    @field_validator("category", "image", mode="before")
+    @classmethod
+    def _course_only_field(cls, value: str | None, info: ValidationInfo) -> str | None:
+        # A before-validator only runs when the key is present, so a file that
+        # never wrote the key is untouched.
+        raise ValueError(
+            f"'{info.field_name}' is not an article field. It belongs to courses; "
+            "remove it from this article."
+        )
+
+    @field_validator("slug")
+    @classmethod
+    def _check_written_slug(cls, value: str | None, info: ValidationInfo) -> str | None:
+        # Runs only for a slug the file wrote, so the error is located at "slug".
+        if value is not None and not SLUG_PATTERN.fullmatch(value):
+            raise ValueError(_invalid_slug_message(value, info.data.get("file_path")))
+        return value
+
+    @model_validator(mode="after")
+    def _derive_and_check_slug(self) -> "Article":
+        if self.slug is None:
+            name_source = (
+                self.file_path.parent.name
+                if self.file_path.name == "content.md"
+                else self.file_path.stem
+            )
+            self.slug = slugify(name_source)
+        if not SLUG_PATTERN.fullmatch(self.slug):
+            raise ValueError(_invalid_slug_message(self.slug, self.file_path))
+        return self
 
 
 class Child(BaseModel):
@@ -380,6 +443,17 @@ def price_errors(
         errors.setdefault("high_amount", "Must be greater than the low amount.")
 
     return errors
+
+
+def slugify(value: str) -> str:
+    """Turn text into a slug the way Django's `slugify` does.
+
+    Transcribed rather than imported so this module still imports with no
+    Django installed.
+    """
+    normalised = unicodedata.normalize("NFKC", str(value))
+    cleaned = re.sub(r"[^\w\s-]", "", normalised).strip().lower()
+    return re.sub(r"[-\s]+", "-", cleaned)
 
 
 def _require_quoted_amount(value: object) -> object:

@@ -42,30 +42,51 @@ site's articles.
   content type has it.
 - Title and headings follow the topic rule. The title renders as the H1, and a `#` in the body
   shifts down to H2.
+- **Where articles live in the content repo.** In any directory outside the course directories.
+  `content_type: ARTICLE` is what identifies a file as an article, so there's no placement rule and
+  no validation of where the file sits. Articles are standalone and never part of a course.
+- **`content_save` never deletes an article.** An article removed from disk stays in the database
+  until someone deletes it in the admin.
 
 ## Public pages
 
+- **URLs.** The index is at `/articles/` and an article at `/articles/<slug>/`. The `articles`
+  prefix comes from a setting, so an installing project can change it (to `/blog/`, say).
 - **Blog index.** Every published article, newest first, with title, date (if shown) and
   `description`. No pagination.
 - **Article page.** Server-rendered and readable logged out. It has no learner UI, and no progress
   or registration state.
 - **SEO.** Per-article `<title>`, meta description, `rel="canonical"`, Open Graph and Twitter card
-  tags, sitemap entries, and a `robots.txt` allow for the blog path. All of them are per site. The
+  tags, sitemap entries, and a `robots.txt` allow for the article path prefix. All of them are per site. The
   `_base.html` head-metadata blocks described in `docs/how tos/landing-pages.md` and the sitemap in
   `config/sitemaps.py` already exist to build on. Today `robots.txt` allows only `/courses/`.
+- **`og:image` uses the site default.** Articles have no image field in this spec, so the article
+  page leaves the `og_image` block in `_base.html` alone and gets whatever the site's base template
+  supplies. Out of the box that block is empty, so no `og:image` tag is emitted unless the
+  installing project fills it in. Article images come in a later spec.
 
 ## Widgets
 
-Both widgets identify their target by a **path relative to the file that uses them**. That's how
+Every widget identifies its target by a **path relative to the file that uses them**. That's how
 `c-content-link` and `c-picture` already work. A path stays stable when a title changes, and the
 validator can resolve it.
 
-### Link to another article
+### Links to other articles
 
-An inline link to another article, which renders the target's title or the author's own text. It's
-a new widget, not a reuse of `c-content-link`, which is broken today. `Topic.preview_url` reverses a
-URL that doesn't exist, and `Form` has no `preview_url`. Repairing `c-content-link` is out of scope.
-A link to a hidden article renders as plain text rather than a link the public would hit as a 404.
+Two variants, both new widgets rather than a reuse of `c-content-link`, which is broken today.
+`Topic.preview_url` reverses a URL that doesn't exist, and `Form` has no `preview_url`. Repairing
+`c-content-link` is out of scope.
+
+- **Inline link.** Sits in running text and renders the target's title or the author's own text. A
+  link to a hidden article renders as plain text rather than a link the public would hit as a 404.
+- **Article card.** A block that gives the reader more to go on before they click: the target's
+  title, its `description`, and the date and author when the target's byline settings show them.
+  It comes in the same two variants as the course card: a long horizontal card and a compact card
+  for grids. Like the course card, it has one stretched title link, and a card pointing at a hidden
+  article isn't shown.
+
+The existing `c-card` widget (a static content panel) already takes the name "card", so the new
+widgets need distinct names, such as `c-article-card` and `c-course-card`.
 
 ### Course cards
 
@@ -85,45 +106,50 @@ progress and no registration state.
   because the course's own call to action depends on its access type.
 - **A card pointing at a hidden course isn't shown**, because the public would get a 404.
   `coming_soon` courses show and link to their detail page.
-- Grid cards need a non-paginated grid to sit in. The only existing grid lives inside the paginated
-  dashboard partial.
 
-Widgets render with `request=None`, so neither widget can depend on the request or the user. That
+### Grid
+
+A general layout widget that tiles whatever sits inside it: course cards, article cards, pictures
+or any mix. Today `c-image-grid` does this for `c-picture` only, with a fixed `columns` whitelist
+(2, 3, 4) that collapses to one column on phones. The grid generalises it. `c-image-grid` is already
+used in `demo_content` and installing projects' content, so it keeps working, either as an alias of
+the grid or by delegating to it.
+
+### Card headings and layout on small screens
+
+- **Card title heading level is H3.** The article title is the H1 and body headings start at H2,
+  so a card sitting in a body section is one level below it. The existing `c-card` widget already
+  renders its title as an `h3`. All new cards follow it.
+- **Every card is fully responsive.** Cards must read well at phone width, following the patterns
+  already in the app. The grid drops to one column on phones, as `c-image-grid` and the dashboard
+  grid do. The horizontal card follows `course-row-shell`, which stays a row on narrow screens with a
+  narrow accent strip and a text column that shrinks (`min-w-0`). The spec confirms that layout
+  holds up at the QA phone viewport, and collapses the horizontal card to the vertical one if it
+  doesn't.
+
+Widgets render with `request=None`, so no widget can depend on the request or the user. That
 suits cards that show no per-user state. `MARKDOWN_ALLOWED_TAGS` is a closed allowlist in each
 installing project, and nh3 silently strips any tag that isn't listed. That means the new tags need
 upgrade notes, or installers will see nothing.
 
 ## Validation and the content editing plugin
 
-- The validator resolves the paths in the new widgets and reports a broken article link or course
-  card. Today nothing inspects markdown bodies, so this is a new body-scanning pass that runs after
-  everything has been parsed (`validate_category_references` is the precedent). The host validator
-  and the bundled offline copy in `claude_plugins/fls-content/validate/` both get it.
-- The `fls-content` plugin documents the article content type and both widgets. That covers the
+- The validator resolves the paths in the new widgets and reports a broken article link, article
+  card or course card. Today nothing inspects markdown bodies, so this is a new body-scanning pass
+  that runs after everything has been parsed (`validate_category_references` is the precedent). The
+  host validator and the bundled offline copy in `claude_plugins/fls-content/validate/` both get it.
+- The `fls-content` plugin documents the article content type and the new widgets. That covers the
   content-types and widget-reference skills, the content-formatter agent's file-type table, the
   bundled schema, and the trigger words "article" and "blog post". `docs/product/content-editing-workflow.md`
   and `fls-dev`'s `markdown_content.md` list the same types and widgets and get updated alongside.
   `research_content_editing_plugin.md` lists every hand-maintained copy that would otherwise drift.
-- `demo_content/` gains demo articles that exercise both widgets against the existing
-  `functionality_demo_price_*` and `functionality_demo_application_gated` courses.
-
-## Open for the spec
-
-- Whether `content_save` removes articles that were deleted from disk. Nobody has checked how it
-  handles deletions for other types.
-- Where articles sit in a content repo (they belong to no course, and the `NN.` numbering
-  conventions are course-shaped).
-- `og:image`: there's no article image field, so the spec has to choose between a site default and
-  an optional image field.
-- How an author lays out a group of grid cards, with a wrapping grid widget or one widget that takes
-  several paths.
-- The heading level of a card title inside an article.
-- Whether the horizontal card collapses to the vertical layout on narrow screens.
-- URL path for the blog (for example `/blog/` and `/blog/<slug>/`).
+- `demo_content/` gains demo articles that exercise the new widgets: article links and cards
+  between the demo articles, course cards against the existing `functionality_demo_price_*` and
+  `functionality_demo_application_gated` courses, and a grid of mixed cards.
 
 ## Later specs
 
-Tags and tag pages, an RSS/Atom feed, JSON-LD `Article` data, slug redirects, related articles, a
+Article images (`spec_dd/1. next/article-images/`), tags and tag pages, an RSS/Atom feed, JSON-LD `Article` data, slug redirects, related articles, a
 staff preview of hidden articles, and per-article author pages.
 
 ## Research
@@ -136,3 +162,9 @@ staff preview of hidden articles, and per-article author pages.
   and what FLS already has for sitemaps and robots.
 - `research_content_editing_plugin.md`: what the `fls-content` plugin covers and every place that
   would need updating.
+
+## Resources
+
+- `spec_dd/2. in progress/new-content-type-articles/design.md`: the Claude Design design for the
+  blog index and the article page, desktop and mobile, a visual reference only. Read it as that
+  file says.

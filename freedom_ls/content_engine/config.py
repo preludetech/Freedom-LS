@@ -10,6 +10,8 @@ class ContentEngineConfig(AppSettings):
     CONTENT_MEDIA_STORAGE_ALIAS: str
     DEFAULT_CURRENCY: str | None
     PRICE_LOCALE: str | None
+    ARTICLE_SHOW_DATE: bool
+    ARTICLE_SHOW_AUTHOR: bool
 
     declared_settings = {
         "COURSE_ACCESS_CONFIG_VALIDATOR": Setting(default=None),
@@ -22,6 +24,8 @@ class ContentEngineConfig(AppSettings):
         "CONTENT_MEDIA_STORAGE_ALIAS": Setting(default="course_media"),
         "DEFAULT_CURRENCY": Setting(default=None),
         "PRICE_LOCALE": Setting(default=None),
+        "ARTICLE_SHOW_DATE": Setting(default=True),
+        "ARTICLE_SHOW_AUTHOR": Setting(default=True),
     }
 
 

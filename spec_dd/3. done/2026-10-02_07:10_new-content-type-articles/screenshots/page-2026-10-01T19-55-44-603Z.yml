@@ -1,0 +1,619 @@
+- generic [active] [ref=f17e1]:
+  - generic [ref=f17e2]:
+    - navigation [ref=f17e5]:
+      - generic [ref=f17e7]:
+        - link "settings" [ref=f17e8] [cursor=pointer]:
+          - /url: /admin/
+        - link "Django administration" [ref=f17e13] [cursor=pointer]:
+          - /url: /admin/
+      - region "scrollable content" [ref=f17e17]:
+        - generic [ref=f17e18]:
+          - list [ref=f17e20]:
+            - listitem [ref=f17e21]:
+              - heading [level=2] [ref=f17e22]:
+                - link "Accounts" [ref=f17e23] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_accounts/
+              - list [ref=f17e24]:
+                - listitem [ref=f17e25]:
+                  - link "Legal consents" [ref=f17e26] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/legalconsent/
+                - listitem [ref=f17e27]:
+                  - link "Site signup policys" [ref=f17e28] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/sitesignuppolicy/
+                - listitem [ref=f17e29]:
+                  - link "Users" [ref=f17e30] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/user/
+          - list [ref=f17e32]:
+            - listitem [ref=f17e33]:
+              - heading [level=2] [ref=f17e34]:
+                - link "Accounts" [ref=f17e35] [cursor=pointer]:
+                  - /url: /admin/account/
+              - list [ref=f17e36]:
+                - listitem [ref=f17e37]:
+                  - link "Email addresses" [ref=f17e38] [cursor=pointer]:
+                    - /url: /admin/account/emailaddress/
+          - list [ref=f17e40]:
+            - listitem [ref=f17e41]:
+              - heading [level=2] [ref=f17e42]:
+                - link "Axes" [ref=f17e43] [cursor=pointer]:
+                  - /url: /admin/axes/
+              - list [ref=f17e44]:
+                - listitem [ref=f17e45]:
+                  - link "Access attempts" [ref=f17e46] [cursor=pointer]:
+                    - /url: /admin/axes/accessattempt/
+                - listitem [ref=f17e47]:
+                  - link "Access failures" [ref=f17e48] [cursor=pointer]:
+                    - /url: /admin/axes/accessfailurelog/
+                - listitem [ref=f17e49]:
+                  - link "Access logs" [ref=f17e50] [cursor=pointer]:
+                    - /url: /admin/axes/accesslog/
+          - list [ref=f17e52]:
+            - listitem [ref=f17e53]:
+              - heading [level=2] [ref=f17e54]:
+                - link "Content engine" [ref=f17e55] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_content_engine/
+              - list [ref=f17e56]:
+                - listitem [ref=f17e57]:
+                  - link "Activities" [ref=f17e58] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/activity/
+                - listitem [ref=f17e59]:
+                  - link "Articles" [ref=f17e60] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/article/
+                - listitem [ref=f17e61]:
+                  - link "Content collection items" [ref=f17e62] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/contentcollectionitem/
+                - listitem [ref=f17e63]:
+                  - link "Course categorys" [ref=f17e64] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursecategory/
+                - listitem [ref=f17e65]:
+                  - link "Course parts" [ref=f17e66] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursepart/
+                - listitem [ref=f17e67]:
+                  - link "Courses" [ref=f17e68] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/course/
+                - listitem [ref=f17e69]:
+                  - link "Files" [ref=f17e70] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/file/
+                - listitem [ref=f17e71]:
+                  - link "Topics" [ref=f17e72] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/topic/
+          - list [ref=f17e74]:
+            - listitem [ref=f17e75]:
+              - heading [level=2] [ref=f17e76]:
+                - link "Course interest" [ref=f17e77] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_interest/
+              - list [ref=f17e78]:
+                - listitem [ref=f17e79]:
+                  - link "Course interests" [ref=f17e80] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_interest/courseinterest/
+          - list [ref=f17e82]:
+            - listitem [ref=f17e83]:
+              - heading [level=2] [ref=f17e84]:
+                - link "Course recommendations" [ref=f17e85] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_recommendations/
+              - list [ref=f17e86]:
+                - listitem [ref=f17e87]:
+                  - link "Recommended courses" [ref=f17e88] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_recommendations/recommendedcourse/
+          - list [ref=f17e90]:
+            - listitem [ref=f17e91]:
+              - heading [level=2] [ref=f17e92]:
+                - link "Form engine" [ref=f17e93] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_form_engine/
+              - list [ref=f17e94]:
+                - listitem [ref=f17e95]:
+                  - link "Form contents" [ref=f17e96] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formcontent/
+                - listitem [ref=f17e97]:
+                  - link "Form pages" [ref=f17e98] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formpage/
+                - listitem [ref=f17e99]:
+                  - link "Form progress records" [ref=f17e100] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formprogress/
+                - listitem [ref=f17e101]:
+                  - link "Form questions" [ref=f17e102] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formquestion/
+                - listitem [ref=f17e103]:
+                  - link "Forms" [ref=f17e104] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/form/
+                - listitem [ref=f17e105]:
+                  - link "Question answer files" [ref=f17e106] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswerfile/
+                - listitem [ref=f17e107]:
+                  - link "Question answers" [ref=f17e108] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswer/
+                - listitem [ref=f17e109]:
+                  - link "Question options" [ref=f17e110] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionoption/
+          - list [ref=f17e112]:
+            - listitem [ref=f17e113]:
+              - heading [level=2] [ref=f17e114]:
+                - link "Learner management" [ref=f17e115] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_management/
+              - list [ref=f17e116]:
+                - listitem [ref=f17e117]:
+                  - link "Cohort course registrations" [ref=f17e118] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortcourseregistration/
+                - listitem [ref=f17e119]:
+                  - link "Cohort deadlines" [ref=f17e120] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortdeadline/
+                - listitem [ref=f17e121]:
+                  - link "Cohorts" [ref=f17e122] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohort/
+                - listitem [ref=f17e123]:
+                  - link "Learner cohort deadline overrides" [ref=f17e124] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercohortdeadlineoverride/
+                - listitem [ref=f17e125]:
+                  - link "Learner course registrations" [ref=f17e126] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercourseregistration/
+                - listitem [ref=f17e127]:
+                  - link "Learner deadlines" [ref=f17e128] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnerdeadline/
+                - listitem [ref=f17e129]:
+                  - link "Learners" [ref=f17e130] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learner/
+          - list [ref=f17e132]:
+            - listitem [ref=f17e133]:
+              - heading [level=2] [ref=f17e134]:
+                - link "Learner progress" [ref=f17e135] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_progress/
+              - list [ref=f17e136]:
+                - listitem [ref=f17e137]:
+                  - link "Course form attempts" [ref=f17e138] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseformattempt/
+                - listitem [ref=f17e139]:
+                  - link "Course progress records" [ref=f17e140] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/
+                - listitem [ref=f17e141]:
+                  - link "Topic progress records" [ref=f17e142] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/topicprogress/
+          - list [ref=f17e144]:
+            - listitem [ref=f17e145]:
+              - heading [level=2] [ref=f17e146]:
+                - link "Organisations" [ref=f17e147] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_organisations/
+              - list [ref=f17e148]:
+                - listitem [ref=f17e149]:
+                  - link "Organisations" [ref=f17e150] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_organisations/organisation/
+          - list [ref=f17e152]:
+            - listitem [ref=f17e153]:
+              - heading [level=2] [ref=f17e154]:
+                - link "Referral tracking" [ref=f17e155] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_referral_tracking/
+              - list [ref=f17e156]:
+                - listitem [ref=f17e157]:
+                  - link "First touch counts" [ref=f17e158] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/firsttouchcount/
+                - listitem [ref=f17e159]:
+                  - link "Referral code hits" [ref=f17e160] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcodehit/
+                - listitem [ref=f17e161]:
+                  - link "Referral codes" [ref=f17e162] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcode/
+                - listitem [ref=f17e163]:
+                  - link "Signup attributions" [ref=f17e164] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/signupattribution/
+          - list [ref=f17e166]:
+            - listitem [ref=f17e167]:
+              - heading [level=2] [ref=f17e168]:
+                - link "Reports" [ref=f17e169] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_reports/
+              - list [ref=f17e170]:
+                - listitem [ref=f17e171]:
+                  - link "Generated reports" [ref=f17e172] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_reports/generatedreport/
+          - list [ref=f17e174]:
+            - listitem [ref=f17e175]:
+              - heading [level=2] [ref=f17e176]:
+                - link "Tasks Database Backend" [ref=f17e177] [cursor=pointer]:
+                  - /url: /admin/django_tasks_database/
+              - list [ref=f17e178]:
+                - listitem [ref=f17e179]:
+                  - link "Task Results" [ref=f17e180] [cursor=pointer]:
+                    - /url: /admin/django_tasks_database/dbtaskresult/
+          - list [ref=f17e182]:
+            - listitem [ref=f17e183]:
+              - heading [level=2] [ref=f17e184]:
+                - link "Webhooks" [ref=f17e185] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_webhooks/
+              - list [ref=f17e186]:
+                - listitem [ref=f17e187]:
+                  - link "Webhook deliveries" [ref=f17e188] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookdelivery/
+                - listitem [ref=f17e189]:
+                  - link "Webhook endpoints" [ref=f17e190] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookendpoint/
+                - listitem [ref=f17e191]:
+                  - link "Webhook events" [ref=f17e192] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookevent/
+                - listitem [ref=f17e193]:
+                  - link "Webhook secrets" [ref=f17e194] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhooksecret/
+      - generic [ref=f17e196] [cursor=pointer]:
+        - generic [ref=f17e197]: D
+        - generic [ref=f17e198]:
+          - generic [ref=f17e199]: demodev@email.com
+          - generic [ref=f17e200]: demodev@email.com
+        - generic [ref=f17e201]: unfold_more
+    - generic [ref=f17e202]:
+      - generic [ref=f17e207]:
+        - generic [ref=f17e208] [cursor=pointer]: dock_to_right
+        - heading "Site administration" [level=1] [ref=f17e211]
+      - generic [ref=f17e215]:
+        - generic [ref=f17e216]:
+          - table [ref=f17e219]:
+            - caption [ref=f17e220]:
+              - link "Accounts" [ref=f17e221] [cursor=pointer]:
+                - /url: /admin/freedom_ls_accounts/
+            - rowgroup [ref=f17e222]:
+              - row [ref=f17e223]:
+                - rowheader [ref=f17e224]:
+                  - link "Legal consents" [ref=f17e225] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/legalconsent/
+                - cell [ref=f17e226]
+              - row [ref=f17e227]:
+                - rowheader [ref=f17e228]:
+                  - link "Site signup policys" [ref=f17e229] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/sitesignuppolicy/
+                - cell [ref=f17e230]:
+                  - link "add" [ref=f17e232] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/sitesignuppolicy/add/
+              - row [ref=f17e234]:
+                - rowheader [ref=f17e235]:
+                  - link "Users" [ref=f17e236] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/user/
+                - cell [ref=f17e237]:
+                  - link "add" [ref=f17e239] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/user/add/
+          - table [ref=f17e243]:
+            - caption [ref=f17e244]:
+              - link "Accounts" [ref=f17e245] [cursor=pointer]:
+                - /url: /admin/account/
+            - rowgroup [ref=f17e246]:
+              - row [ref=f17e247]:
+                - rowheader [ref=f17e248]:
+                  - link "Email addresses" [ref=f17e249] [cursor=pointer]:
+                    - /url: /admin/account/emailaddress/
+                - cell [ref=f17e250]:
+                  - link "add" [ref=f17e252] [cursor=pointer]:
+                    - /url: /admin/account/emailaddress/add/
+          - table [ref=f17e256]:
+            - caption [ref=f17e257]:
+              - link "Axes" [ref=f17e258] [cursor=pointer]:
+                - /url: /admin/axes/
+            - rowgroup [ref=f17e259]:
+              - row [ref=f17e260]:
+                - rowheader [ref=f17e261]:
+                  - link "Access attempts" [ref=f17e262] [cursor=pointer]:
+                    - /url: /admin/axes/accessattempt/
+                - cell [ref=f17e263]
+              - row [ref=f17e264]:
+                - rowheader [ref=f17e265]:
+                  - link "Access failures" [ref=f17e266] [cursor=pointer]:
+                    - /url: /admin/axes/accessfailurelog/
+                - cell [ref=f17e267]
+              - row [ref=f17e268]:
+                - rowheader [ref=f17e269]:
+                  - link "Access logs" [ref=f17e270] [cursor=pointer]:
+                    - /url: /admin/axes/accesslog/
+                - cell [ref=f17e271]
+          - table [ref=f17e274]:
+            - caption [ref=f17e275]:
+              - link "Content engine" [ref=f17e276] [cursor=pointer]:
+                - /url: /admin/freedom_ls_content_engine/
+            - rowgroup [ref=f17e277]:
+              - row [ref=f17e278]:
+                - rowheader [ref=f17e279]:
+                  - link "Activities" [ref=f17e280] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/activity/
+                - cell [ref=f17e281]:
+                  - link "add" [ref=f17e283] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/activity/add/
+              - row [ref=f17e285]:
+                - rowheader [ref=f17e286]:
+                  - link "Articles" [ref=f17e287] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/article/
+                - cell [ref=f17e288]:
+                  - link "add" [ref=f17e290] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/article/add/
+              - row [ref=f17e292]:
+                - rowheader [ref=f17e293]:
+                  - link "Content collection items" [ref=f17e294] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/contentcollectionitem/
+                - cell [ref=f17e295]:
+                  - link "add" [ref=f17e297] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/contentcollectionitem/add/
+              - row [ref=f17e299]:
+                - rowheader [ref=f17e300]:
+                  - link "Course categorys" [ref=f17e301] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursecategory/
+                - cell [ref=f17e302]
+              - row [ref=f17e303]:
+                - rowheader [ref=f17e304]:
+                  - link "Course parts" [ref=f17e305] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursepart/
+                - cell [ref=f17e306]:
+                  - link "add" [ref=f17e308] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursepart/add/
+              - row [ref=f17e310]:
+                - rowheader [ref=f17e311]:
+                  - link "Courses" [ref=f17e312] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/course/
+                - cell [ref=f17e313]:
+                  - link "add" [ref=f17e315] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/course/add/
+              - row [ref=f17e317]:
+                - rowheader [ref=f17e318]:
+                  - link "Files" [ref=f17e319] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/file/
+                - cell [ref=f17e320]:
+                  - link "add" [ref=f17e322] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/file/add/
+              - row [ref=f17e324]:
+                - rowheader [ref=f17e325]:
+                  - link "Topics" [ref=f17e326] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/topic/
+                - cell [ref=f17e327]:
+                  - link "add" [ref=f17e329] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/topic/add/
+          - table [ref=f17e333]:
+            - caption [ref=f17e334]:
+              - link "Course interest" [ref=f17e335] [cursor=pointer]:
+                - /url: /admin/freedom_ls_course_interest/
+            - rowgroup [ref=f17e336]:
+              - row [ref=f17e337]:
+                - rowheader [ref=f17e338]:
+                  - link "Course interests" [ref=f17e339] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_interest/courseinterest/
+                - cell [ref=f17e340]:
+                  - link "add" [ref=f17e342] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_interest/courseinterest/add/
+          - table [ref=f17e346]:
+            - caption [ref=f17e347]:
+              - link "Course recommendations" [ref=f17e348] [cursor=pointer]:
+                - /url: /admin/freedom_ls_course_recommendations/
+            - rowgroup [ref=f17e349]:
+              - row [ref=f17e350]:
+                - rowheader [ref=f17e351]:
+                  - link "Recommended courses" [ref=f17e352] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_recommendations/recommendedcourse/
+                - cell [ref=f17e353]:
+                  - link "add" [ref=f17e355] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_recommendations/recommendedcourse/add/
+          - table [ref=f17e359]:
+            - caption [ref=f17e360]:
+              - link "Form engine" [ref=f17e361] [cursor=pointer]:
+                - /url: /admin/freedom_ls_form_engine/
+            - rowgroup [ref=f17e362]:
+              - row [ref=f17e363]:
+                - rowheader [ref=f17e364]:
+                  - link "Form contents" [ref=f17e365] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formcontent/
+                - cell [ref=f17e366]:
+                  - link "add" [ref=f17e368] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formcontent/add/
+              - row [ref=f17e370]:
+                - rowheader [ref=f17e371]:
+                  - link "Form pages" [ref=f17e372] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formpage/
+                - cell [ref=f17e373]:
+                  - link "add" [ref=f17e375] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formpage/add/
+              - row [ref=f17e377]:
+                - rowheader [ref=f17e378]:
+                  - link "Form progress records" [ref=f17e379] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formprogress/
+                - cell [ref=f17e380]:
+                  - link "add" [ref=f17e382] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formprogress/add/
+              - row [ref=f17e384]:
+                - rowheader [ref=f17e385]:
+                  - link "Form questions" [ref=f17e386] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formquestion/
+                - cell [ref=f17e387]:
+                  - link "add" [ref=f17e389] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formquestion/add/
+              - row [ref=f17e391]:
+                - rowheader [ref=f17e392]:
+                  - link "Forms" [ref=f17e393] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/form/
+                - cell [ref=f17e394]:
+                  - link "add" [ref=f17e396] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/form/add/
+              - row [ref=f17e398]:
+                - rowheader [ref=f17e399]:
+                  - link "Question answer files" [ref=f17e400] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswerfile/
+                - cell [ref=f17e401]
+              - row [ref=f17e402]:
+                - rowheader [ref=f17e403]:
+                  - link "Question answers" [ref=f17e404] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswer/
+                - cell [ref=f17e405]:
+                  - link "add" [ref=f17e407] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswer/add/
+              - row [ref=f17e409]:
+                - rowheader [ref=f17e410]:
+                  - link "Question options" [ref=f17e411] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionoption/
+                - cell [ref=f17e412]:
+                  - link "add" [ref=f17e414] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionoption/add/
+          - table [ref=f17e418]:
+            - caption [ref=f17e419]:
+              - link "Learner management" [ref=f17e420] [cursor=pointer]:
+                - /url: /admin/freedom_ls_learner_management/
+            - rowgroup [ref=f17e421]:
+              - row [ref=f17e422]:
+                - rowheader [ref=f17e423]:
+                  - link "Cohort course registrations" [ref=f17e424] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortcourseregistration/
+                - cell [ref=f17e425]:
+                  - link "add" [ref=f17e427] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortcourseregistration/add/
+              - row [ref=f17e429]:
+                - rowheader [ref=f17e430]:
+                  - link "Cohort deadlines" [ref=f17e431] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortdeadline/
+                - cell [ref=f17e432]:
+                  - link "add" [ref=f17e434] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortdeadline/add/
+              - row [ref=f17e436]:
+                - rowheader [ref=f17e437]:
+                  - link "Cohorts" [ref=f17e438] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohort/
+                - cell [ref=f17e439]:
+                  - link "add" [ref=f17e441] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohort/add/
+              - row [ref=f17e443]:
+                - rowheader [ref=f17e444]:
+                  - link "Learner cohort deadline overrides" [ref=f17e445] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercohortdeadlineoverride/
+                - cell [ref=f17e446]:
+                  - link "add" [ref=f17e448] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercohortdeadlineoverride/add/
+              - row [ref=f17e450]:
+                - rowheader [ref=f17e451]:
+                  - link "Learner course registrations" [ref=f17e452] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercourseregistration/
+                - cell [ref=f17e453]:
+                  - link "add" [ref=f17e455] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercourseregistration/add/
+              - row [ref=f17e457]:
+                - rowheader [ref=f17e458]:
+                  - link "Learner deadlines" [ref=f17e459] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnerdeadline/
+                - cell [ref=f17e460]:
+                  - link "add" [ref=f17e462] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnerdeadline/add/
+              - row [ref=f17e464]:
+                - rowheader [ref=f17e465]:
+                  - link "Learners" [ref=f17e466] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learner/
+                - cell [ref=f17e467]:
+                  - link "add" [ref=f17e469] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learner/add/
+          - table [ref=f17e473]:
+            - caption [ref=f17e474]:
+              - link "Learner progress" [ref=f17e475] [cursor=pointer]:
+                - /url: /admin/freedom_ls_learner_progress/
+            - rowgroup [ref=f17e476]:
+              - row [ref=f17e477]:
+                - rowheader [ref=f17e478]:
+                  - link "Course form attempts" [ref=f17e479] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseformattempt/
+                - cell [ref=f17e480]:
+                  - link "add" [ref=f17e482] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseformattempt/add/
+              - row [ref=f17e484]:
+                - rowheader [ref=f17e485]:
+                  - link "Course progress records" [ref=f17e486] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/
+                - cell [ref=f17e487]:
+                  - link "add" [ref=f17e489] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/add/
+              - row [ref=f17e491]:
+                - rowheader [ref=f17e492]:
+                  - link "Topic progress records" [ref=f17e493] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/topicprogress/
+                - cell [ref=f17e494]:
+                  - link "add" [ref=f17e496] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/topicprogress/add/
+          - table [ref=f17e500]:
+            - caption [ref=f17e501]:
+              - link "Organisations" [ref=f17e502] [cursor=pointer]:
+                - /url: /admin/freedom_ls_organisations/
+            - rowgroup [ref=f17e503]:
+              - row [ref=f17e504]:
+                - rowheader [ref=f17e505]:
+                  - link "Organisations" [ref=f17e506] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_organisations/organisation/
+                - cell [ref=f17e507]:
+                  - link "add" [ref=f17e509] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_organisations/organisation/add/
+          - table [ref=f17e513]:
+            - caption [ref=f17e514]:
+              - link "Referral tracking" [ref=f17e515] [cursor=pointer]:
+                - /url: /admin/freedom_ls_referral_tracking/
+            - rowgroup [ref=f17e516]:
+              - row [ref=f17e517]:
+                - rowheader [ref=f17e518]:
+                  - link "First touch counts" [ref=f17e519] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/firsttouchcount/
+                - cell [ref=f17e520]
+              - row [ref=f17e521]:
+                - rowheader [ref=f17e522]:
+                  - link "Referral code hits" [ref=f17e523] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcodehit/
+                - cell [ref=f17e524]
+              - row [ref=f17e525]:
+                - rowheader [ref=f17e526]:
+                  - link "Referral codes" [ref=f17e527] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcode/
+                - cell [ref=f17e528]:
+                  - link "add" [ref=f17e530] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcode/add/
+              - row [ref=f17e532]:
+                - rowheader [ref=f17e533]:
+                  - link "Signup attributions" [ref=f17e534] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/signupattribution/
+                - cell [ref=f17e535]
+          - table [ref=f17e538]:
+            - caption [ref=f17e539]:
+              - link "Reports" [ref=f17e540] [cursor=pointer]:
+                - /url: /admin/freedom_ls_reports/
+            - rowgroup [ref=f17e541]:
+              - row [ref=f17e542]:
+                - rowheader [ref=f17e543]:
+                  - link "Generated reports" [ref=f17e544] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_reports/generatedreport/
+                - cell [ref=f17e545]
+          - table [ref=f17e548]:
+            - caption [ref=f17e549]:
+              - link "Tasks Database Backend" [ref=f17e550] [cursor=pointer]:
+                - /url: /admin/django_tasks_database/
+            - rowgroup [ref=f17e551]:
+              - row [ref=f17e552]:
+                - rowheader [ref=f17e553]:
+                  - link "Task Results" [ref=f17e554] [cursor=pointer]:
+                    - /url: /admin/django_tasks_database/dbtaskresult/
+                - cell [ref=f17e555]
+          - table [ref=f17e558]:
+            - caption [ref=f17e559]:
+              - link "Webhooks" [ref=f17e560] [cursor=pointer]:
+                - /url: /admin/freedom_ls_webhooks/
+            - rowgroup [ref=f17e561]:
+              - row [ref=f17e562]:
+                - rowheader [ref=f17e563]:
+                  - link "Webhook deliveries" [ref=f17e564] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookdelivery/
+                - cell [ref=f17e565]
+              - row [ref=f17e566]:
+                - rowheader [ref=f17e567]:
+                  - link "Webhook endpoints" [ref=f17e568] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookendpoint/
+                - cell [ref=f17e569]:
+                  - link "add" [ref=f17e571] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookendpoint/add/
+              - row [ref=f17e573]:
+                - rowheader [ref=f17e574]:
+                  - link "Webhook events" [ref=f17e575] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookevent/
+                - cell [ref=f17e576]
+              - row [ref=f17e577]:
+                - rowheader [ref=f17e578]:
+                  - link "Webhook secrets" [ref=f17e579] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhooksecret/
+                - cell [ref=f17e580]:
+                  - link "add" [ref=f17e582] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhooksecret/add/
+        - generic [ref=f17e585]:
+          - heading "Recent actions" [level=2] [ref=f17e586]
+          - list [ref=f17e587]:
+            - listitem [ref=f17e588]:
+              - generic [ref=f17e589]: Unsigned update
+              - generic [ref=f17e590]:
+                - generic [ref=f17e591]: Article
+                - generic [ref=f17e592]: Oct. 1, 2026, 2:43 p.m.
+  - generic "Show toolbar" [ref=f17e594]: DJDT

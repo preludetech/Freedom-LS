@@ -1,0 +1,330 @@
+- generic [active] [ref=f33e1]:
+  - banner [ref=f33e2]:
+    - link [ref=f33e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f33e4]
+    - navigation [ref=f33e5]:
+      - generic [ref=f33e6]:
+        - generic [ref=f33e7]:
+          - button "Notifications, 3 new" [ref=f33e8]:
+            - img "notifications" [ref=f33e10]
+          - status:
+            - generic [ref=f33e12]: Notifications, 3 new
+            - generic [aria-hidden] [ref=f33e13]: "3"
+        - button "Open user menu for demodev@email.com" [ref=f33e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f33e16]: DE
+  - generic:
+    - status:
+      - generic [ref=f33e17]:
+        - img "success" [ref=f33e19]
+        - paragraph [ref=f33e22]: Successfully signed in as demodev@email.com.
+        - button "Dismiss notification" [ref=f33e23]:
+          - img "close" [ref=f33e24]
+    - alert
+  - main [ref=f33e26]:
+    - generic [ref=f33e29]:
+      - generic [ref=f33e30]:
+        - generic [ref=f33e31]:
+          - navigation "Breadcrumb" [ref=f33e33]:
+            - list [ref=f33e34]:
+              - listitem [ref=f33e35]:
+                - link "Content Widgets - Demo Reference" [ref=f33e36] [cursor=pointer]:
+                  - /url: /courses/content-widgets-demo-reference/detail/
+              - listitem [ref=f33e37]:
+                - generic [aria-hidden] [ref=f33e38]: ">"
+                - generic "Media" [ref=f33e39]
+          - button "Open course outline" [ref=f33e40] [cursor=pointer]:
+            - img "table_of_contents" [ref=f33e41]
+        - generic [ref=f33e44]:
+          - progressbar "Progress for Content Widgets - Demo Reference" [ref=f33e45]: 0%
+          - generic [ref=f33e46]: 0%
+        - generic [ref=f33e47]:
+          - heading "Media" [level=1] [ref=f33e48]
+          - paragraph [ref=f33e49]: Bringing pictures and video into your content
+      - generic [ref=f33e51]:
+        - generic [ref=f33e52]:
+          - heading "YouTube video" [level=3] [ref=f33e53]
+          - paragraph [ref=f33e54]:
+            - text: Embed a YouTube video by its
+            - code [ref=f33e55]: video_id
+            - text: — the part after
+            - code [ref=f33e56]: v=
+            - text: in the watch URL. Add a
+            - code [ref=f33e57]: caption
+            - text: to describe what the video shows; it sits beneath the player.
+          - figure "A short, descriptive caption explaining what the viewer is about to watch." [ref=f33e58]:
+            - iframe [ref=f33e60]:
+              - generic [ref=f34e1]:
+                - generic "YouTube Video Player" [ref=f34e3]
+                - generic [ref=f34e5]:
+                  - generic:
+                    - generic:
+                      - generic [ref=f34e6] [cursor=pointer]
+                      - button "Play video" [ref=f34e10] [cursor=pointer]
+                      - button "Hide player controls" [ref=f34e14] [cursor=pointer]
+                      - generic [ref=f34e16]:
+                        - generic [ref=f34e21]:
+                          - generic [ref=f34e22]:
+                            - link "The Bar For Excellence Is Embarrassingly Low" [ref=f34e23] [cursor=pointer]:
+                              - /url: https://www.youtube.com/watch?v=01MXBvMeFCw
+                            - link "MoreMozi" [ref=f34e24] [cursor=pointer]:
+                              - /url: /channel/UCrvchO1h6lWZAuGaa1LqX9Q
+                          - generic [ref=f34e26]:
+                            - button [ref=f34e27] [cursor=pointer]:
+                              - img "thumbnail-image" [ref=f34e28]
+                            - generic [ref=f34e30]:
+                              - generic: MoreMozi
+                              - generic: 145K subscribers
+                        - generic [ref=f34e31]:
+                          - button "Share" [ref=f34e34] [cursor=pointer]
+                          - link "Watch on YouTube" [ref=f34e45] [cursor=pointer]:
+                            - /url: https://www.youtube.com/watch?v=01MXBvMeFCw
+                            - generic [ref=f34e46]: Watch on
+          - heading "Pictures" [level=3] [ref=f33e62]
+          - paragraph [ref=f33e63]:
+            - text: The picture widget renders an image with an accessible lightbox — click or focus it and press Enter to view it full-screen. The
+            - code [ref=f33e64]: src
+            - text: "is a path relative to this file. Three text attributes matter, and they do different jobs:"
+          - list [ref=f33e65]:
+            - listitem [ref=f33e66]:
+              - code [ref=f33e67]: alt
+              - text: describes the image for people who cannot see it. It is read by screen readers and never shown on screen.
+            - listitem [ref=f33e68]:
+              - code [ref=f33e69]: title
+              - text: is the visible text printed under the image in the page and as the heading in the full-screen lightbox.
+            - listitem [ref=f33e70]:
+              - code [ref=f33e71]: description
+              - text: (optional) adds a longer caption block below the title, both in the page and in the full-screen lightbox — useful for detailed annotations that do not fit in a one-line title.
+          - paragraph [ref=f33e72]:
+            - text: Do not duplicate
+            - code [ref=f33e73]: alt
+            - text: and
+            - code [ref=f33e74]: title
+            - text: . The alt text should stand in for the image; the title adds context a sighted reader still benefits from. Purely decorative images should use
+            - code [ref=f33e75]: alt=""
+            - text: so screen readers skip them.
+          - paragraph [ref=f33e76]:
+            - text: Add a
+            - code [ref=f33e77]: number
+            - text: "to prefix the title with \"Figure N\":"
+          - figure "Figure 1 A titled, numbered figure with a click-to-zoom lightbox, and a really long title Expand This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox." [ref=f33e79]:
+            - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f33e80]
+            - generic [ref=f33e81]:
+              - generic [ref=f33e82]:
+                - paragraph [ref=f33e83]:
+                  - generic [ref=f33e84]: Figure 1
+                  - generic [ref=f33e85]: A titled, numbered figure with a click-to-zoom lightbox, and a really long title
+                - button "Expand" [ref=f33e86] [cursor=pointer]
+              - paragraph [ref=f33e90]: This longer description sits below the title in the page, and appears again beneath the title in the full-screen lightbox.
+          - heading "Annotated diagrams" [level=3] [ref=f33e91]
+          - paragraph [ref=f33e92]:
+            - text: "There is no special \"diagram\" widget. An annotated diagram is an authoring pattern: a picture whose image carries visible letter markers, followed immediately by a"
+            - code [ref=f33e93]: <dl>
+            - text: legend that says what each letter means. This matters for accessibility — colour and position alone are never the only signal, so a screen-reader user gets the same information from the legend that a sighted user gets from the picture.
+          - figure "Figure 2 how a request flows from browser to server and back Expand" [ref=f33e95]:
+            - 'img "A request flow diagram: a Browser box on the left and a Server box on the right, joined by two arrows" [ref=f33e96]'
+            - generic [ref=f33e98]:
+              - paragraph [ref=f33e99]:
+                - generic [ref=f33e100]: Figure 2
+                - generic [ref=f33e101]: how a request flows from browser to server and back
+              - button "Expand" [ref=f33e102] [cursor=pointer]
+          - generic [ref=f33e106]:
+            - term [ref=f33e107]: A
+            - definition [ref=f33e108]: The browser sends a request to the server.
+            - term [ref=f33e109]: B
+            - definition [ref=f33e110]: The server renders the page.
+            - term [ref=f33e111]: C
+            - definition [ref=f33e112]: The response returns to the browser.
+          - heading "Image grids" [level=3] [ref=f33e113]
+          - paragraph [ref=f33e114]:
+            - text: The image grid is a layout wrapper. It takes a
+            - code [ref=f33e115]: columns
+            - text: value — 2, 3, or 4 — and tiles its
+            - code [ref=f33e116]: c-picture
+            - text: children into that many columns, collapsing to a single column on narrow screens. Each picture keeps its own title and lightbox.
+          - paragraph [ref=f33e117]:
+            - text: "One authoring quirk to remember: always use the closed form"
+            - code [ref=f33e118]: <c-picture ...></c-picture>
+            - text: inside a grid (never the self-closing
+            - code [ref=f33e119]: />
+            - text: "), and leave a blank line between each child. A two-column grid:"
+          - generic [ref=f33e120]:
+            - figure "Landscape Expand" [ref=f33e122]:
+              - img "A blue sky over a dark horizon with a yellow sun" [ref=f33e123]
+              - generic [ref=f33e125]:
+                - paragraph [ref=f33e126]:
+                  - generic [ref=f33e127]: Landscape
+                - button "Expand" [ref=f33e128] [cursor=pointer]
+            - figure "Square Expand" [ref=f33e133]:
+              - img "A dark circle centred on an orange background" [ref=f33e134]
+              - generic [ref=f33e136]:
+                - paragraph [ref=f33e137]:
+                  - generic [ref=f33e138]: Square
+                - button "Expand" [ref=f33e139] [cursor=pointer]
+          - paragraph [ref=f33e143]: "The same three images at three columns:"
+          - generic [ref=f33e144]:
+            - figure "Landscape Expand" [ref=f33e146]:
+              - img "A blue sky over a dark horizon with a yellow sun" [ref=f33e147]
+              - generic [ref=f33e149]:
+                - paragraph [ref=f33e150]:
+                  - generic [ref=f33e151]: Landscape
+                - button "Expand" [ref=f33e152] [cursor=pointer]
+            - figure "Portrait Expand" [ref=f33e157]:
+              - img "A tall dark panel on a green background" [ref=f33e158]
+              - generic [ref=f33e160]:
+                - paragraph [ref=f33e161]:
+                  - generic [ref=f33e162]: Portrait
+                - button "Expand" [ref=f33e163] [cursor=pointer]
+            - figure "Square Expand" [ref=f33e168]:
+              - img "A dark circle centred on an orange background" [ref=f33e169]
+              - generic [ref=f33e171]:
+                - paragraph [ref=f33e172]:
+                  - generic [ref=f33e173]: Square
+                - button "Expand" [ref=f33e174] [cursor=pointer]
+          - heading "Stacked figures" [level=3] [ref=f33e178]
+          - paragraph [ref=f33e179]:
+            - text: If you do not want a grid, you do not need a wrapper. Consecutive
+            - code [ref=f33e180]: c-picture
+            - text: blocks simply stack, each centred with its own title — the second gallery shape, and the right choice when each image deserves its own row.
+          - figure "A stacked figure, full width and centred Expand" [ref=f33e182]:
+            - img "A tall dark panel on a green background" [ref=f33e183]
+            - generic [ref=f33e185]:
+              - paragraph [ref=f33e186]:
+                - generic [ref=f33e187]: A stacked figure, full width and centred
+              - button "Expand" [ref=f33e188] [cursor=pointer]
+          - figure "A second stacked figure directly below the first Expand" [ref=f33e193]:
+            - img "A dark circle centred on an orange background" [ref=f33e194]
+            - generic [ref=f33e196]:
+              - paragraph [ref=f33e197]:
+                - generic [ref=f33e198]: A second stacked figure directly below the first
+              - button "Expand" [ref=f33e199] [cursor=pointer]
+          - figure "A hobbyist flying a drone in his back garden Expand" [ref=f33e204]:
+            - img "A man stands in a back garden holding a handheld controller, looking up at a white quadcopter drone hovering above a wooden fence" [ref=f33e205]
+            - generic [ref=f33e207]:
+              - paragraph [ref=f33e208]:
+                - generic [ref=f33e209]: A hobbyist flying a drone in his back garden
+              - button "Expand" [ref=f33e210] [cursor=pointer]
+          - heading "Article cards" [level=2] [ref=f33e214]
+          - paragraph [ref=f33e215]: The default card is the row variant.
+          - article [ref=f33e216]:
+            - generic [ref=f33e217]:
+              - heading [level=3] [ref=f33e218]:
+                - link "Undated notes" [ref=f33e219] [cursor=pointer]:
+                  - /url: /articles/undated-notes/
+              - paragraph [ref=f33e220]: An article that hides its publication date and still shows its author.
+              - paragraph [ref=f33e221]: Demo Author
+          - paragraph [ref=f33e222]: The compact variant stacks its parts and suits narrow columns.
+          - article [ref=f33e223]:
+            - generic [ref=f33e224]:
+              - heading [level=3] [ref=f33e225]:
+                - link "Unsigned update" [ref=f33e226] [cursor=pointer]:
+                  - /url: /articles/unsigned-update/
+              - paragraph [ref=f33e227]: An article with no author, so its byline shows only the date.
+              - paragraph [ref=f33e228]:
+                - time [ref=f33e229]: Aug. 20, 2026
+          - paragraph [ref=f33e230]: A card for a hidden article renders nothing, so the next paragraph follows the compact card directly.
+          - heading "Course cards" [level=2] [ref=f33e231]
+          - paragraph [ref=f33e232]: A course card works anywhere markdown does, not only in a course. The row variant first.
+          - article [ref=f33e233]:
+            - generic [ref=f33e237]:
+              - generic [ref=f33e238]: Free
+              - heading [level=3] [ref=f33e239]:
+                - 'link "Functionality Demo - Price: fixed" [ref=f33e240] [cursor=pointer]':
+                  - /url: /courses/functionality-demo-price-fixed/detail/
+              - paragraph [ref=f33e241]: One amount, with a tax note.
+              - paragraph [ref=f33e242]: $250.00
+          - article [ref=f33e243]:
+            - generic [ref=f33e247]:
+              - generic [ref=f33e248]: By application
+              - heading [level=3] [ref=f33e249]:
+                - link "Functionality Demo - Application gated course" [ref=f33e250] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-application-gated-course/detail/
+              - paragraph [ref=f33e251]: A course you have to apply for
+              - paragraph [ref=f33e252]:
+                - generic [ref=f33e253]:
+                  - generic [ref=f33e254]: "Original price:"
+                  - text: ZAR1,499.00
+                  - generic [ref=f33e255]: "Now:"
+                  - text: ZAR999.00
+          - paragraph [ref=f33e256]: Then the compact variant.
+          - article [ref=f33e257]:
+            - generic [ref=f33e261]:
+              - generic [ref=f33e262]: Free
+              - heading [level=3] [ref=f33e264]:
+                - 'link "Functionality Demo - Price: fixed" [ref=f33e265] [cursor=pointer]':
+                  - /url: /courses/functionality-demo-price-fixed/detail/
+              - paragraph [ref=f33e266]: One amount, with a tax note.
+              - paragraph [ref=f33e267]: $250.00
+          - article [ref=f33e268]:
+            - generic [ref=f33e272]:
+              - generic [ref=f33e273]: By application
+              - heading [level=3] [ref=f33e275]:
+                - link "Functionality Demo - Application gated course" [ref=f33e276] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-application-gated-course/detail/
+              - paragraph [ref=f33e277]: A course you have to apply for
+              - paragraph [ref=f33e278]:
+                - generic [ref=f33e279]:
+                  - generic [ref=f33e280]: "Original price:"
+                  - text: ZAR1,499.00
+                  - generic [ref=f33e281]: "Now:"
+                  - text: ZAR999.00
+          - heading "Mixing cards in a grid" [level=2] [ref=f33e282]
+          - paragraph [ref=f33e283]:
+            - code [ref=f33e284]: c-grid
+            - text: lays out whatever you put inside it. Here it holds two article cards, two course cards and a picture.
+          - generic [ref=f33e285]:
+            - article [ref=f33e286]:
+              - generic [ref=f33e287]:
+                - heading [level=3] [ref=f33e288]:
+                  - link "Undated notes" [ref=f33e289] [cursor=pointer]:
+                    - /url: /articles/undated-notes/
+                - paragraph [ref=f33e290]: An article that hides its publication date and still shows its author.
+                - paragraph [ref=f33e291]: Demo Author
+            - article [ref=f33e292]:
+              - generic [ref=f33e293]:
+                - heading [level=3] [ref=f33e294]:
+                  - link "Unsigned update" [ref=f33e295] [cursor=pointer]:
+                    - /url: /articles/unsigned-update/
+                - paragraph [ref=f33e296]: An article with no author, so its byline shows only the date.
+                - paragraph [ref=f33e297]:
+                  - time [ref=f33e298]: Aug. 20, 2026
+            - article [ref=f33e299]:
+              - generic [ref=f33e303]:
+                - generic [ref=f33e304]: Free
+                - heading [level=3] [ref=f33e306]:
+                  - 'link "Functionality Demo - Price: fixed" [ref=f33e307] [cursor=pointer]':
+                    - /url: /courses/functionality-demo-price-fixed/detail/
+                - paragraph [ref=f33e308]: One amount, with a tax note.
+                - paragraph [ref=f33e309]: $250.00
+            - article [ref=f33e310]:
+              - generic [ref=f33e314]:
+                - generic [ref=f33e315]: By application
+                - heading [level=3] [ref=f33e317]:
+                  - link "Functionality Demo - Application gated course" [ref=f33e318] [cursor=pointer]:
+                    - /url: /courses/functionality-demo-application-gated-course/detail/
+                - paragraph [ref=f33e319]: A course you have to apply for
+                - paragraph [ref=f33e320]:
+                  - generic [ref=f33e321]:
+                    - generic [ref=f33e322]: "Original price:"
+                    - text: ZAR1,499.00
+                    - generic [ref=f33e323]: "Now:"
+                    - text: ZAR999.00
+            - figure [ref=f33e325]:
+              - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f33e326]
+              - generic [ref=f33e328]:
+                - paragraph
+                - button "Expand" [ref=f33e329] [cursor=pointer]
+        - generic [ref=f33e333]:
+          - link "Previous" [ref=f33e335] [cursor=pointer]:
+            - /url: /courses/content-widgets-demo-reference/1/
+          - button "Next" [ref=f33e340] [cursor=pointer]
+  - contentinfo [ref=f33e344]:
+    - generic [ref=f33e345]:
+      - paragraph [ref=f33e346]: © 2026 FirstClass
+      - navigation "Legal" [ref=f33e347]:
+        - link "Terms and Conditions" [ref=f33e348] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f33e349] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f33e350] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f33e352]: DJDT

@@ -1,3 +1,4 @@
+from .articles import Article, ArticleVisibility
 from .courses import (
     ContentCollectionItem,
     Course,
@@ -12,6 +13,8 @@ from .topics import Activity, Topic
 
 __all__ = [
     "Activity",
+    "Article",
+    "ArticleVisibility",
     "ContentCollectionItem",
     "Course",
     "CourseCategory",

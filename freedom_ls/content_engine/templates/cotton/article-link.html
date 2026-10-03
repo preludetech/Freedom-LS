@@ -1,0 +1,8 @@
+<c-vars path />{% load content_tags %}{% comment %}
+Links to a published article. Falls back to the plain slot text when the
+article is hidden, missing or the blog app is not installed.
+
+The tags are chained with no whitespace between them, and the file has no
+final newline: this renders inline in a sentence, so any newline would show as
+a space before the punctuation that follows.
+{% endcomment %}{% with article=path|get_published_article_by_path:content_instance %}{% if article %}{% url 'blog:article_detail' slug=article.slug as url %}{% endif %}{% if url %}<a href="{{ url }}">{% if slot.strip %}{{ slot }}{% else %}{{ article.title }}{% endif %}</a>{% elif slot.strip %}{{ slot }}{% endif %}{% endwith %}

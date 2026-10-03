@@ -1,0 +1,37 @@
+- generic [active] [ref=f7e1]:
+  - banner [ref=f7e2]:
+    - link [ref=f7e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f7e4]
+      - heading "FirstClass" [level=1] [ref=f7e5]
+    - navigation [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - link "Login" [ref=f7e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f7e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f7e10]:
+    - generic [ref=f7e12]:
+      - link [ref=f7e13] [cursor=pointer]:
+        - /url: /articles/
+        - img "previous" [ref=f7e14]
+        - text: Articles
+      - heading "Undated notes" [level=1] [ref=f7e17]
+      - generic [ref=f7e18]: Demo Author
+      - paragraph [ref=f7e21]:
+        - text: Some writing stays useful whatever the day. This article sets
+        - code [ref=f7e22]: "show_date: false"
+        - text: ", so the byline shows the author and leaves the date out."
+  - contentinfo [ref=f7e23]:
+    - generic [ref=f7e24]:
+      - paragraph [ref=f7e25]: © 2026 FirstClass
+      - navigation "Legal" [ref=f7e26]:
+        - link "Terms and Conditions" [ref=f7e27] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f7e28] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f7e29] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f7e31]: DJDT

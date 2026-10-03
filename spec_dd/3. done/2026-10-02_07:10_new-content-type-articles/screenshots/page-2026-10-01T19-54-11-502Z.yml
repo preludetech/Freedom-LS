@@ -1,0 +1,62 @@
+- generic [active] [ref=f12e1]:
+  - banner [ref=f12e2]:
+    - heading "Page not found (404)" [level=1] [ref=f12e3]
+    - generic [ref=f12e4]: No Article matches the given query.
+    - table [ref=f12e5]:
+      - rowgroup [ref=f12e6]:
+        - row [ref=f12e7]:
+          - rowheader "Request Method:" [ref=f12e8]
+          - cell "GET" [ref=f12e9]
+        - row [ref=f12e10]:
+          - rowheader "Request URL:" [ref=f12e11]
+          - cell "http://127.0.0.1:8393/articles/hidden-draft/" [ref=f12e12]
+        - row [ref=f12e13]:
+          - rowheader "Raised by:" [ref=f12e14]
+          - cell "freedom_ls.blog.views.article_detail" [ref=f12e15]
+  - main [ref=f12e16]:
+    - paragraph [ref=f12e17]:
+      - text: Using the URLconf defined in
+      - code [ref=f12e18]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f12e19]:
+      - listitem [ref=f12e20]:
+        - code [ref=f12e21]: health/
+      - listitem [ref=f12e22]:
+        - code [ref=f12e23]: admin/
+      - listitem [ref=f12e24]:
+        - code [ref=f12e25]: robots.txt [name='robots_txt']
+      - listitem [ref=f12e26]:
+        - code [ref=f12e27]: sitemap.xml [name='sitemap']
+      - listitem [ref=f12e28]:
+        - code
+        - code [ref=f12e29]: "^[gG][oO]/(?P<code>[A-Za-z0-9-]{1,64})$ [name='follow_go']"
+      - listitem [ref=f12e30]:
+        - code
+        - code [ref=f12e31]: "^[dD]/(?P<code>[A-Za-z0-9-]{1,64})$ [name='follow_d']"
+      - listitem [ref=f12e32]:
+        - code [ref=f12e33]: educator/
+      - listitem [ref=f12e34]:
+        - code
+        - code [ref=f12e35]: sentry-debug/ [name='trigger_error']
+      - listitem [ref=f12e36]:
+        - code [ref=f12e37]: accounts/
+      - listitem [ref=f12e38]:
+        - code [ref=f12e39]: accounts/
+      - listitem [ref=f12e40]:
+        - code [ref=f12e41]: articles/
+        - code [ref=f12e42]: "[name='index']"
+      - listitem [ref=f12e43]:
+        - code [ref=f12e44]: articles/
+        - code [ref=f12e45]: <slug:slug>/ [name='article_detail']
+    - paragraph [ref=f12e46]:
+      - text: The current path,
+      - code [ref=f12e47]: articles/hidden-draft/
+      - text: ", matched the last one."
+  - contentinfo [ref=f12e48]:
+    - paragraph [ref=f12e49]:
+      - text: You’re seeing this error because you have
+      - code [ref=f12e50]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f12e51]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - generic "Show toolbar" [ref=f12e53]: DJDT

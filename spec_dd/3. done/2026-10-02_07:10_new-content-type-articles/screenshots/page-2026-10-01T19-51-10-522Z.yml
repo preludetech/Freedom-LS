@@ -1,0 +1,52 @@
+- generic [active] [ref=f6e1]:
+  - banner [ref=f6e2]:
+    - link [ref=f6e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f6e4]
+      - heading "FirstClass" [level=1] [ref=f6e5]
+    - navigation [ref=f6e6]:
+      - generic [ref=f6e7]:
+        - link "Login" [ref=f6e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f6e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f6e10]:
+    - generic [ref=f6e12]:
+      - heading "Articles" [level=1] [ref=f6e14]
+      - article [ref=f6e15]:
+        - heading [level=2] [ref=f6e16]:
+          - link "Getting started with articles" [ref=f6e17] [cursor=pointer]:
+            - /url: /articles/getting-started-with-articles/
+        - generic [ref=f6e18]:
+          - paragraph [ref=f6e19]: How articles link to each other, to courses and to pictures.
+          - paragraph [ref=f6e20]:
+            - text: Demo Author ·
+            - time [ref=f6e21]: Sept. 1, 2026
+      - article [ref=f6e22]:
+        - heading [level=2] [ref=f6e23]:
+          - link "Unsigned update" [ref=f6e24] [cursor=pointer]:
+            - /url: /articles/unsigned-update/
+        - generic [ref=f6e25]:
+          - paragraph [ref=f6e26]: An article with no author, so its byline shows only the date.
+          - paragraph [ref=f6e27]:
+            - time [ref=f6e28]: Aug. 20, 2026
+      - article [ref=f6e29]:
+        - heading [level=2] [ref=f6e30]:
+          - link "Undated notes" [ref=f6e31] [cursor=pointer]:
+            - /url: /articles/undated-notes/
+        - generic [ref=f6e32]:
+          - paragraph [ref=f6e33]: An article that hides its publication date and still shows its author.
+          - paragraph [ref=f6e34]: Demo Author
+  - contentinfo [ref=f6e35]:
+    - generic [ref=f6e36]:
+      - paragraph [ref=f6e37]: © 2026 FirstClass
+      - navigation "Legal" [ref=f6e38]:
+        - link "Terms and Conditions" [ref=f6e39] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f6e40] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f6e41] [cursor=pointer]: new-content-type-articles
+  - generic "Show toolbar" [ref=f6e43]: DJDT

@@ -10,9 +10,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model
@@ -22,7 +22,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -37,7 +37,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -47,14 +47,19 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [x] (user) Decide whether c-image-grid should also lose the 24px picture wrapper margins (tighter rows) or whether only mixed c-grid rows should be reset, then fix the picture-alignment bug accordingly
+- [x] (user + cmd) Fix QA bug: picture tile in a mixed c-grid sits 24px low and is shorter than its row (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: demo article getting-started-with-articles.md uses ## so headings skip from H1 to H3 (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: danger_content_delete leaves Article rows behind (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: c-article-link leaves a space before following punctuation (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
-- [ ] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
+- [x] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
 
 ## 11. Upgrade notes
@@ -64,7 +69,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 12. Author plugin sync
 
-- [ ] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
+- [x] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
 
 ## 13. Pull request
 
@@ -75,5 +80,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 14. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it

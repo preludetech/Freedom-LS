@@ -6,6 +6,7 @@ All sample content trees are built under pytest's tmp_path — no committed fixt
 """
 
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -1104,3 +1105,125 @@ def test_price_no_currency_and_three_decimal_places_passes(tmp_path: Path) -> No
         f"A price with no currency should skip the decimal-place check.\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
+
+
+def write_article(directory: Path, name: str, extra: str = "", body: str = "") -> Path:
+    """Write an ARTICLE file with the given extra frontmatter lines and body."""
+    path = directory / name
+    path.write_text(
+        "---\ncontent_type: ARTICLE\ntitle: An Article\n"
+        f"published_on: 2026-01-15\n{extra}---\n\n{body}\n",
+        encoding="utf-8",
+    )
+    return path
+
+
+def make_content_tree(tmp_path: Path) -> Path:
+    """Return an empty `content` directory beside the test's repo-root config."""
+    content = tmp_path / "content"
+    content.mkdir()
+    return content
+
+
+def test_tree_with_articles_and_all_widgets_passes(tmp_path: Path) -> None:
+    """Two articles and a course using every widget validate cleanly."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "first-article.md")
+    write_article(content, "second-article.md")
+    course_dir = content / "my-course"
+    course_dir.mkdir()
+    write_valid_course(course_dir)
+    (content / "landing.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Landing\n---\n\n"
+        '<c-article-link path="first-article.md"></c-article-link>\n\n'
+        '<c-article-card path="second-article.md"></c-article-card>\n\n'
+        '<c-course-card path="my-course/course.md"></c-course-card>\n',
+        encoding="utf-8",
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode == 0, (
+        f"Articles and widgets should validate.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_broken_course_card_path_fails_and_names_the_path(tmp_path: Path) -> None:
+    """A c-course-card pointing at no file fails and the output names the path."""
+    content = make_content_tree(tmp_path)
+    (content / "landing.md").write_text(
+        "---\ncontent_type: TOPIC\ntitle: Landing\n---\n\n"
+        '<c-course-card path="missing/course.md"></c-course-card>\n',
+        encoding="utf-8",
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "missing/course.md" in result.stdout + result.stderr
+
+
+def test_duplicate_article_slugs_fail(tmp_path: Path) -> None:
+    """Two articles resolving to the same slug fail validation."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "one.md", extra="slug: shared\n")
+    write_article(content, "two.md", extra="slug: shared\n")
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "shared" in result.stdout + result.stderr
+
+
+def test_article_with_category_fails(tmp_path: Path) -> None:
+    """`category` belongs to courses, so an article carrying it is rejected."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "categorised.md", extra="category: general\n")
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "category" in result.stdout + result.stderr
+
+
+DEMO_CONTENT = Path(__file__).resolve().parents[4] / "demo_content"
+
+
+def _copy_demo_content(tmp_path: Path) -> Path:
+    """Copy the shipped demo tree beside a config naming the shipped access types."""
+    write_repo_config(tmp_path, ["free", "application_gated"])
+    content = tmp_path / "demo_content"
+    shutil.copytree(DEMO_CONTENT, content)
+    return content
+
+
+@pytest.mark.fls_internal
+def test_the_shipped_demo_content_passes(tmp_path: Path) -> None:
+    content = _copy_demo_content(tmp_path)
+
+    result = run_validator(content, repo_root=tmp_path)
+
+    assert result.returncode == 0, (
+        f"The demo tree should validate.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+@pytest.mark.fls_internal
+def test_a_broken_course_card_path_in_the_demo_content_fails(tmp_path: Path) -> None:
+    content = _copy_demo_content(tmp_path)
+    article = (
+        content / "functionality_demo_articles" / "getting-started-with-articles.md"
+    )
+    article.write_text(
+        article.read_text(encoding="utf-8").replace(
+            "../functionality_demo_price_fixed/course.md",
+            "../no_such_demo/course.md",
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_validator(content, repo_root=tmp_path)
+
+    assert result.returncode != 0
+    assert "no_such_demo/course.md" in result.stdout + result.stderr

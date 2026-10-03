@@ -32,6 +32,7 @@ from freedom_ls.content_engine.images import (
 )
 from freedom_ls.content_engine.models import (
     Activity,
+    Article,
     ContentCollectionItem,
     Course,
     CourseCategory,
@@ -392,6 +393,42 @@ def _refuse_category_slug_collisions(item, site, relative_path):
             )
     if errors:
         raise ValueError("\n".join(errors))
+
+
+def _refuse_article_slug_collisions(item, site, relative_path):
+    """Refuse an article whose slug already belongs to a different row on this site.
+
+    The slug is the public URL, so it is never suffixed to make room.
+    """
+    owner = Article._base_manager.filter(site=site, slug=item.slug).first()
+    if owner is not None and str(owner.id) != item.uuid:
+        raise ValueError(
+            f"\n❌ Article slug '{item.slug}' in {relative_path} already belongs "
+            f"to another Article on site '{site.name}' (uuid {owner.id}). To edit "
+            f"that article, give this file `uuid: {owner.id}`; to add a new one, "
+            "choose a different slug."
+        )
+
+
+def save_article(item, site, base_path):
+    """Save an Article to the database.
+
+    `author`, `show_date` and `show_author` go in as extra fields because the
+    dump drops None values, which would otherwise leave a stale stored value
+    when a key is removed from the file.
+    """
+    relative_path = item.file_path.relative_to(base_path)
+    _refuse_article_slug_collisions(item, site, relative_path)
+    return save_with_uuid(
+        Article,
+        item,
+        site,
+        base_path,
+        derive_slug=False,
+        author=item.author or "",
+        show_date=item.show_date,
+        show_author=item.show_author,
+    )
 
 
 def save_course_categories(item, site, base_path):
@@ -855,6 +892,12 @@ def save_content_to_db(path, site_name):
         content_by_path[content_key(item.file_path)] = activity
         logger.info(f"Saved Activity: {activity.title}")
 
+    # Save Articles. They are not added to content_by_path: an article is never
+    # a collection child.
+    for item in grouped.get(SchemaContentType.ARTICLE, []):
+        article = save_article(item, site, path)
+        logger.info(f"Saved Article: {article.title}")
+
     # Save Courses and CourseParts
     collections_data = []  # Store (collection_obj, schema_item) for later children processing
     for item in grouped.get(SchemaContentType.COURSE, []):
@@ -988,12 +1031,12 @@ def save_content_to_db(path, site_name):
                         # A loose course_categories.yaml living in a course
                         # directory belongs at the repo root (validate.py
                         # rejects it there) -- it is never auto-adopted as a
-                        # child, whatever it is named.
+                        # child, whatever it is named. An article is loaded in
+                        # its own pass and is never a collection child.
                         parsed = parse_single_file(item)
-                        if (
-                            parsed
-                            and parsed[0].content_type
-                            == SchemaContentType.COURSE_CATEGORIES
+                        if parsed and parsed[0].content_type in (
+                            SchemaContentType.COURSE_CATEGORIES,
+                            SchemaContentType.ARTICLE,
                         ):
                             continue
                         children_list.append((content_key(item), None))
@@ -1013,7 +1056,10 @@ def save_content_to_db(path, site_name):
                         if not parsed:
                             continue
                         content_type = parsed[0].content_type
-                        if content_type == SchemaContentType.COURSE_CATEGORIES:
+                        if content_type in (
+                            SchemaContentType.COURSE_CATEGORIES,
+                            SchemaContentType.ARTICLE,
+                        ):
                             continue
                         if content_type in (
                             SchemaContentType.FORM,

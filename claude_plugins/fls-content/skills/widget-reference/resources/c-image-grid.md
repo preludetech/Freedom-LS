@@ -2,7 +2,7 @@
 
 All `c-*` tags must stay within their registered attribute sets. Any attribute outside the set is **silently stripped** by the nh3 sanitiser.
 
-Layout wrapper for multiple `c-picture` children. Tiles into columns.
+Layout wrapper for multiple `c-picture` children. Tiles into columns. Kept for existing content; new content uses [`c-grid`](c-grid.md), which takes any children and has the same `columns` attribute.
 
 **Allowed attributes:** `columns`
 

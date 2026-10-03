@@ -8,7 +8,8 @@ from django.core.management import call_command
 from django.db import transaction
 from django.db.models import ProtectedError
 
-from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.content_engine.factories import ArticleFactory
+from freedom_ls.content_engine.models import Article, Course, Topic
 from freedom_ls.form_engine.factories import QuestionAnswerFactory
 from freedom_ls.form_engine.models import FormQuestion, QuestionAnswer
 from freedom_ls.learner_progress.factories import TopicProgressFactory
@@ -46,3 +47,11 @@ def test_danger_content_delete_succeeds_with_question_answers_present(
 
     assert FormQuestion.objects.count() == 0
     assert QuestionAnswer.objects.count() == 0
+
+
+def test_danger_content_delete_removes_articles(mock_site_context):
+    ArticleFactory()
+
+    call_command("danger_content_delete", "--yes")
+
+    assert Article.objects.count() == 0

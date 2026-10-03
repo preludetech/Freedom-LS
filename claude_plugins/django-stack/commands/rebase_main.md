@@ -66,7 +66,7 @@ origin/main" and stop with:
 status: ok · rebased: no
 ```
 
-## Step 4: Record the starting point and back it up
+## Step 4: Record the starting point
 
 ```
 OLD_BASE=$(git merge-base origin/main HEAD)
@@ -88,15 +88,11 @@ has a merge of this branch in progress; finish or abort it there first`. Rewriti
 would orphan that merge: its MERGE_HEAD would point at a commit no branch holds, and whoever
 started it would be left with a conflicted tree and nothing to finish it against.
 
-Otherwise, back up the branch's current tip before rewriting it:
+Otherwise, record the branch's current tip before rewriting it:
 
 ```
-BACKUP=rebase-backup/<branch>
-git branch -f $BACKUP HEAD
+OLD_TIP=$(git rev-parse HEAD)
 ```
-
-This is one ref per branch, moved to the current tip on every rebase, so it always holds exactly
-what the branch looked like right before its most recent rebase.
 
 ## Step 5: Rebase
 
@@ -135,14 +131,14 @@ A few rules on top of that loop:
 ## Step 7: Lost-change check
 
 ```
-.claude/ds/scripts/rebase_lost_change_check.sh $OLD_BASE $BACKUP
+.claude/ds/scripts/rebase_lost_change_check.sh $OLD_BASE $OLD_TIP
 ```
 
 Read the exit code:
 
 - `0` → lost-change check: pass. Continue to Step 8.
-- `1` → for each path under `LOST:`, restore the branch's own change from the backup:
-  `git diff $OLD_BASE $BACKUP -- <file>` is the hunk to re-apply. Commit it as
+- `1` → for each path under `LOST:`, restore the branch's own change from the old tip:
+  `git diff $OLD_BASE $OLD_TIP -- <file>` is the hunk to re-apply. Commit it as
   `uv run git commit -m "<branch>: restore <what> lost in rebase"`, then re-run the script.
 - `2` → read the range-diff printed for each path under `REVIEW:`. A benign difference is
   context drift; a `-`/`+` pair inside a commit that never meant to touch that code is a
@@ -152,12 +148,12 @@ Read the exit code:
 
   Two kinds of `REVIEW:` path need their own handling:
 
-  - A path that is absent from `git diff --name-only --no-renames $OLD_BASE $BACKUP` belongs to a file the
+  - A path that is absent from `git diff --name-only --no-renames $OLD_BASE $OLD_TIP` belongs to a file the
     branch never changed, so it must match `origin/main`. Any difference means conflict resolution
     undid main's change. Restore it with `git checkout origin/main -- <file>`, then
     commit as `uv run git commit -m "<branch>: restore main's <what> reverted in rebase"`.
   - A migration renumbered in Step 6 appears as both its old and its new path. Compare them with
-    `git diff $BACKUP:<old path> HEAD:<new path>`. The only allowed differences are the number
+    `git diff $OLD_TIP:<old path> HEAD:<new path>`. The only allowed differences are the number
     and `dependencies`.
 
 Then run:
@@ -224,7 +220,6 @@ Report:
 - how many commits were replayed
 - any conflicts that were resolved, and how
 - any test failures that were fixed
-- the backup ref's name
 - the lost-change check's result
 
 ## Step 12: Push
@@ -246,7 +241,7 @@ retry with plain `--force`.
 A caller that reads and follows this file inline gets the result from this line:
 
 ```
-status: ok|failed|blocked · rebased: yes|no · old-base: <sha> · backup: <ref> ·
+status: ok|failed|blocked · rebased: yes|no · old-base: <sha> · old-tip: <sha> ·
 replayed: <n> · conflicts: <n> · lost-change check: pass|fixed · tests: pass ·
 pushed: yes|no · reason: <short>
 ```
