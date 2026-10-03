@@ -18,13 +18,14 @@ This is a **Claude Design** design, drawn in claude.ai. No design brief was writ
   - `_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/colors_and_type.css`: the design's own colour and type tokens.
   - `_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/_ds_bundle.js`: the design system's React primitives (button, chip, progress bar, field) and a learner-platform demo kit. No educator screen uses them.
 - Registered: 2026-10-03
-- Screenshots: `design_screenshots/` holds only the index page, at 1280 and 375 wide. The screenshot script renders just the entry file and looks for `data-artboard`, but these screens are spread over the six screen files and marked with `data-screen-label`. Read each screen from its file in `design_source/`.
 
 ## How to read it
 
-Read `design_source/` (the synced source) and `design_screenshots/` (one PNG per artboard, named
-`<section-id>__<artboard-id>.png`) from the repo first. Where a screenshot and the source
-disagree, the screenshot shows what the designer saw. Use `DesignSync` only to re-register: load it
+Read `design_source/` (the synced source) and `design_screenshots/` (one PNG per screen: a canvas
+artboard is `<section-id>__<artboard-id>.png`, a screen of a `.dc.html` page is
+`<page>__<screen>.png`, and a page that draws no screen is captured whole as `<page>__<width>.png`)
+from the repo first. Where a screenshot and the source disagree, the screenshot shows what the
+designer saw. Use `DesignSync` only to re-register: load it
 with `ToolSearch` (`select:DesignSync`), never open the link with `WebFetch`, a browser or
 Playwright, and if it asks for authorisation, ask the user to run `/design-login`.
 
