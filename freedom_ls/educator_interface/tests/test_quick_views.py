@@ -48,7 +48,7 @@ def educator_client(logged_in_client):
     the organisation for a role holder, a cohort for a grant-only educator."""
 
     def _make(
-        target: Organisation | Cohort, role: str = "organisation_staff"
+        target: Organisation | Cohort, role: str = "organisation_admin"
     ) -> Client:
         educator = UserFactory(staff=True)
         assign_object_role(educator, target, role)
@@ -246,7 +246,7 @@ class TestLearnerQuickView:
         CohortMembershipFactory(learner=learner, cohort=other_cohort)
 
         response = _get_quick_view(
-            educator_client(granted_cohort, "instructor"),
+            educator_client(granted_cohort, "cohort_admin"),
             organisation,
             f"learners/{learner.pk}",
         )
@@ -275,7 +275,7 @@ class TestLearnerQuickView:
         )
 
         response = _get_quick_view(
-            educator_client(granted_cohort, "instructor"),
+            educator_client(granted_cohort, "cohort_admin"),
             organisation,
             f"learners/{learner.pk}",
         )

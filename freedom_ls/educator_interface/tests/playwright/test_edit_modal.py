@@ -32,7 +32,7 @@ def test_editing_a_cohorts_name_closes_the_modal_and_updates_the_title(
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     cohort = CohortFactory(organisation=organisation, name="Old Name")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     assign_perm("freedom_ls_learner_management.change_cohort", educator_user, cohort)
 
     page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
@@ -54,7 +54,7 @@ def test_editing_a_cohorts_name_updates_the_breadcrumb_trail(
     page = educator_logged_in_page
     organisation = OrganisationFactory(name="Org A")
     cohort = CohortFactory(organisation=organisation, name="Old Name")
-    assign_object_role(educator_user, organisation, "organisation_staff")
+    assign_object_role(educator_user, organisation, "organisation_admin")
     assign_perm("freedom_ls_learner_management.change_cohort", educator_user, cohort)
 
     page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))

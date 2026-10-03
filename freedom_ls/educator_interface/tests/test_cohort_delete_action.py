@@ -165,12 +165,12 @@ def test_submitting_the_blocked_delete_answers_instead_of_erroring(
 def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
 ) -> None:
-    """Organisation staff can open the cohort but not delete it. Pasting the
+    """A cohort viewer can open the cohort but not delete it. Pasting the
     action URL gets the site's own 403 page, not an empty 403 body."""
     cohort = CohortFactory(organisation=OrganisationFactory())
     url = _delete_url(logged_in_client(UserFactory(superuser=True)), cohort)
     educator = UserFactory(staff=True)
-    assign_object_role(educator, cohort.organisation, "organisation_staff")
+    assign_object_role(educator, cohort, "cohort_viewer")
     client = logged_in_client(educator)
     assert client.get(_panel_url(cohort)).status_code == 200
 
