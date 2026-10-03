@@ -33,8 +33,8 @@ from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.panel_framework.events import build_hx_trigger
+from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 def _ctx(request: HttpRequest) -> PanelContext:
