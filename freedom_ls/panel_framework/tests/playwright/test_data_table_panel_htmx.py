@@ -229,6 +229,10 @@ def test_search_swap_keeps_focus_and_typing_in_search_box(
     search.press_sequentially("row-0")
     rows = page.locator("#stubs-table tbody tr")
     expect(page).to_have_url(re.compile(r"stubs-q=row-0"))
+    # The URL updates on htmx:afterSwap, but the swapped-in form's search
+    # trigger is only attached when htmx settles (~20ms later); a keystroke
+    # in between fires no request. Wait for settle so the next one does.
+    expect(page.locator(".htmx-added")).to_have_count(0)
 
     page.keyboard.type("1")
 
