@@ -5,7 +5,7 @@ allowed-tools: Read, Glob, Grep, Bash, Agent, ToolSearch, mcp__plugin_ds_playwri
 
 This is a helper command, followed inline by the design check in `claude_plugins/sdd/commands/implement_plan.md`. It runs at **depth 0**, inline, on the caller's model and tool grants, so its `Agent` spawn is legal.
 
-Inputs from the caller: `<spec-dir>`, `<plan-path>` and the design state ids. A design state id is a `<section-id>__<artboard-id>__<width>` triple from the plan's design transcription.
+Inputs from the caller: `<spec-dir>`, `<plan-path>` and the design state ids. A design state id is the state's id from the plan's design transcription with `/` as `__`, then `__<width>`: `<section-id>__<artboard-id>__<width>` for a canvas artboard, `<page>__<screen>__<width>` for a `.dc.html` screen.
 
 Rules 1, 3 and 4 of `claude_plugins/fls-dev/commands/do_qa.md` apply throughout this file: the Playwright MCP server to use, the batching rules that keep a `Bash` call and a Playwright call out of the same turn and keep every `Agent` spawn solo, and passing paths rather than payloads between steps. Read them there rather than here.
 

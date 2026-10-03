@@ -6,7 +6,7 @@ argument-hint: [spec-dir] <handoff prompt, prompt file, or claude-design-url> [n
 
 A design drawn in Claude Design lives in claude.ai, not in the repo. This command copies one into a
 spec directory: `design_prompt.md` (the handoff prompt), `design_source/` (the synced files) and
-`design_screenshots/` (one PNG per artboard), plus `<spec-dir>/design.md`, which every later step
+`design_screenshots/` (one PNG per screen), plus `<spec-dir>/design.md`, which every later step
 reads. That file says where the design came from, how an agent reads it, how to treat it, and which
 screens it covers. Then the command points every spec that builds to the design at `design.md`.
 
@@ -105,9 +105,11 @@ This is a **Claude Design** design, drawn in claude.ai from `<brief file, if any
 
 ## How to read it
 
-Read `design_source/` (the synced source) and `design_screenshots/` (one PNG per artboard, named
-`<section-id>__<artboard-id>.png`) from the repo first. Where a screenshot and the source
-disagree, the screenshot shows what the designer saw. Use `DesignSync` only to re-register: load it
+Read `design_source/` (the synced source) and `design_screenshots/` (one PNG per screen: a canvas
+artboard is `<section-id>__<artboard-id>.png`, a screen of a `.dc.html` page is
+`<page>__<screen>.png`, and a page that draws no screen is captured whole as `<page>__<width>.png`)
+from the repo first. Where a screenshot and the source disagree, the screenshot shows what the
+designer saw. Use `DesignSync` only to re-register: load it
 with `ToolSearch` (`select:DesignSync`), never open the link with `WebFetch`, a browser or
 Playwright, and if it asks for authorisation, ask the user to run `/design-login`.
 
@@ -153,10 +155,15 @@ Resolve `<script>` through `PLUGINS_ROOT` exactly as `claude_plugins/sdd/command
 Step 3 resolves `upstream_change_scan.sh`. The path is `<PLUGINS_ROOT>/claude_plugins/sdd/scripts/design_screenshots.sh`,
 written without a `./` prefix when `PLUGINS_ROOT` is `.`.
 
-The script writes to `<spec-dir>/design_screenshots/`. `screenshots/` is `do_qa`'s and gets wiped.
+The script renders every page at the top level of `design_source/` and writes one PNG per screen
+to `<spec-dir>/design_screenshots/`: a canvas project's artboards, or the fixed frames a `.dc.html`
+page draws, and a page that draws neither (an index, a component) captured whole. Its stderr says,
+per page, which of the three it found. `screenshots/` is `do_qa`'s and gets wiped.
 
 Done when the mechanic has reported an exit status. A non-zero exit goes in the summary with the
-script's message, and the registration still commits.
+script's message, and the registration still commits. So does a page the script reports as
+`captured whole` when Step 2 found screens in it: those screens have no PNG, and the summary says
+which.
 
 ## Step 5: Point the consumers at it
 

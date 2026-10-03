@@ -74,10 +74,10 @@ Structure the plan as a sequence of vertical slices, not horizontal layers. A sl
 
 Required when a `design.md` applies. It holds one transcription per design state the plan builds, then the token mapping.
 
-**Transcription.** One block per design state, headed by its id (`<section-id>/<artboard-id>`):
+**Transcription.** One block per design state, headed by its id: the screenshot's name without `.png` and with `__` as `/` (`<section-id>/<artboard-id>` for a canvas artboard, `<page>/<screen>` for a `.dc.html` screen):
 
 - the design screenshot path;
-- the viewport width, which is the artboard's width;
+- the viewport width, which is the screenshot's width;
 - how to reach the state in the running app: the URL and the data it needs;
 - the elements in order, with their hierarchy and copy;
 - which controls show in this state;
