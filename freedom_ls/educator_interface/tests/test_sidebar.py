@@ -87,3 +87,17 @@ def test_user_block_follows_the_nav_inside_the_sidebar_dialog(
 
     assert user_block.getparent() is nav.getparent()
     assert nav in user_block.itersiblings(preceding=True)
+
+
+@pytest.mark.django_db
+def test_navigation_dialog_has_a_close_button_before_the_organisation_switcher(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+    dialog = nav.xpath("ancestor::dialog[@aria-label='Navigation']")[0]
+
+    (close_button,) = dialog.xpath(".//button[@aria-label='Close navigation']")
+    (switcher,) = dialog.cssselect("#organisation-switcher")
+
+    document_order = list(dialog.iter())
+    assert document_order.index(close_button) < document_order.index(switcher)

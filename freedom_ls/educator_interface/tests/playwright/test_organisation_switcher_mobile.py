@@ -117,3 +117,24 @@ def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_relo
     expect(page).to_have_url(
         _interface_url(live_server, organisation.slug, "dashboard")
     )
+
+
+def test_close_button_dismisses_the_mobile_sheet_and_returns_focus_to_the_toggle(
+    live_server,
+    mobile_educator_page: Page,
+    educator_user: User,
+):
+    page = mobile_educator_page
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+
+    page.goto(_interface_url(live_server, organisation.slug, "dashboard"))
+    sheet = page.locator("dialog[aria-label='Navigation']")
+    toggle = page.get_by_role("button", name="Open navigation panel")
+    toggle.click()
+    expect(sheet).to_be_visible()
+
+    sheet.get_by_role("button", name="Close navigation").click()
+
+    expect(sheet).to_be_hidden()
+    expect(toggle).to_be_focused()

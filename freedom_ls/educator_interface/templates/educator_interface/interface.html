@@ -7,7 +7,17 @@
 
 {% block sidebar_storage_key %}sidebar-educator{% endblock sidebar_storage_key %}
 
+{% block panel_toggle_icon %}<c-icon name="menu_open" class="size-5" />{% endblock panel_toggle_icon %}
+
 {% block sidebar_content %}
+    <div class="flex justify-end lg:hidden">
+        <button type="button"
+                x-on:click="close"
+                class="p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                aria-label="Close navigation">
+            <c-icon name="close" class="size-5" />
+        </button>
+    </div>
     {% include "educator_interface/partials/organisation_switcher.html" %}
     {% include "panel_framework/partials/sidebar_nav.html" with menu_groups=menu_groups request=request only %}
     <div id="sidebar-user" class="mt-auto border-t border-border pt-4 min-w-0">
