@@ -45,3 +45,8 @@ The design includes a few things that we don't need:
 - reading time
 - avatars for authors
 - a highlighted main article on the index page
+- filtering on the index page
+
+On the index page, make sure all article cards are the same size.
+
+update the necessary cotton components so that if we link to an article from inside content it looks consistent and good.
