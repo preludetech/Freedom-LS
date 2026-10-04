@@ -5,6 +5,8 @@ from __future__ import annotations
 import gc
 from typing import cast
 
+import pytest
+
 from django.core.management import call_command
 
 from freedom_ls.panel_framework.checks import (
@@ -279,6 +281,7 @@ def test_valid_filter_key_raises_no_error() -> None:
     assert errors == []
 
 
+@pytest.mark.django_db
 def test_call_command_check_passes_on_the_real_config() -> None:
     # The fixture panels above are defined inside test functions so they are
     # never module-level Panel subclasses, but a class lingers in

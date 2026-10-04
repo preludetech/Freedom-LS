@@ -74,14 +74,13 @@ The FLS worked example is `panel_framework/tests/conftest.py`, quoted near-verba
 @pytest.fixture(autouse=True, scope="session")
 def _panel_test_tables(django_db_setup, django_db_blocker):
     """Create stub tables once per test session."""
-    with django_db_blocker.unblock():
+    ...
+    with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        editor.create_model(StubModel)
         ...
-        with connection.schema_editor() as editor:
-            editor.create_model(StubModel)
-            ...
-        yield
-        with connection.schema_editor() as editor:
-            ...
+    yield
+    with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        ...
 
 
 @pytest.fixture(autouse=True)

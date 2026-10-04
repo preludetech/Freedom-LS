@@ -27,6 +27,8 @@ from django.urls import NoReverseMatch, clear_url_caches, reverse
 from ..reference import EXAMPLE_CONTEXT
 from .conftest import make_staff_user
 
+pytestmark = pytest.mark.django_db
+
 # One id prefix per component family the reference page documents, matching
 # the section headings in _examples.html. `attention-list` and
 # `attention-row` are separate names: both `panel-attention-list` and

@@ -149,13 +149,16 @@ from .stub_models import StubModel
 @pytest.fixture(autouse=True, scope="session")
 def _stub_tables(django_db_setup: None, django_db_blocker: DjangoDbBlocker) -> Iterator[None]:
     """Create the stub table once per session; the model has no migration."""
-    with django_db_blocker.unblock():
-        with connection.schema_editor() as editor:
-            editor.create_model(StubModel)
-        yield
-        with connection.schema_editor() as editor:
-            editor.delete_model(StubModel)
+    with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        editor.create_model(StubModel)
+    yield
+    with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        editor.delete_model(StubModel)
 ```
+
+Unblock only around the schema work. A `yield` inside `django_db_blocker.unblock()` leaves the
+database unblocked for every later test in the run, so a test without the `django_db` marker
+writes outside any transaction and its rows leak into unrelated tests until the next flush.
 
 ### Fixture scope and idempotent reset
 

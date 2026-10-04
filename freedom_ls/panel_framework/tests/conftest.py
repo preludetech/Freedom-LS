@@ -96,32 +96,37 @@ _counter = itertools.count(1)
 
 @pytest.fixture(autouse=True, scope="session")
 def _panel_test_tables(django_db_setup, django_db_blocker):
-    """Create stub tables once per test session."""
-    with django_db_blocker.unblock():
-        # Register models in the app registry so Django's Collector can find them
-        app_models = apps.all_models.get("freedom_ls_panel_framework", {})
-        app_models["stubmodel"] = StubModel
-        app_models["stubchild"] = StubChild
-        app_models["stubgrandchild"] = StubGrandchild
-        app_models["stubprotectedchild"] = StubProtectedChild
+    """Create stub tables once per test session.
 
-        with connection.schema_editor() as editor:
-            editor.create_model(StubModel)
-            editor.create_model(StubChild)
-            editor.create_model(StubGrandchild)
-            editor.create_model(StubProtectedChild)
+    The unblock covers only the schema work on either side of the yield. Holding
+    it open across the yield would leave the database unblocked for every later
+    test in the run, so an unmarked test could write rows outside a transaction
+    and leak them into unrelated tests.
+    """
+    # Register models in the app registry so Django's Collector can find them
+    app_models = apps.all_models.get("freedom_ls_panel_framework", {})
+    app_models["stubmodel"] = StubModel
+    app_models["stubchild"] = StubChild
+    app_models["stubgrandchild"] = StubGrandchild
+    app_models["stubprotectedchild"] = StubProtectedChild
 
-        yield
+    with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        editor.create_model(StubModel)
+        editor.create_model(StubChild)
+        editor.create_model(StubGrandchild)
+        editor.create_model(StubProtectedChild)
 
-        with connection.schema_editor() as editor:
-            editor.delete_model(StubProtectedChild)
-            editor.delete_model(StubGrandchild)
-            editor.delete_model(StubChild)
-            editor.delete_model(StubModel)
-        app_models.pop("stubprotectedchild", None)
-        app_models.pop("stubgrandchild", None)
-        app_models.pop("stubmodel", None)
-        app_models.pop("stubchild", None)
+    yield
+
+    with django_db_blocker.unblock(), connection.schema_editor() as editor:
+        editor.delete_model(StubProtectedChild)
+        editor.delete_model(StubGrandchild)
+        editor.delete_model(StubChild)
+        editor.delete_model(StubModel)
+    app_models.pop("stubprotectedchild", None)
+    app_models.pop("stubgrandchild", None)
+    app_models.pop("stubmodel", None)
+    app_models.pop("stubchild", None)
 
 
 @pytest.fixture(autouse=True)
