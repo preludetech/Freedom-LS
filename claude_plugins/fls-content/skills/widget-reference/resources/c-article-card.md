@@ -1,6 +1,6 @@
 # `c-article-card`
 
-Clickable card for a published ARTICLE. Shows the title, the description (if the article has one) and its byline (date and author, subject to the article's `show_date` / `show_author`). Renders nothing when the article is hidden, missing, or the blog app is not installed.
+Clickable card for a published ARTICLE. Shows the article's `image` as a thumbnail (if it has one), the title, the description (if the article has one) and its byline (date and author, subject to the article's `show_date` / `show_author`). Renders nothing when the article is hidden, missing, or the blog app is not installed.
 
 **Allowed attributes:** `path`, `variant`
 

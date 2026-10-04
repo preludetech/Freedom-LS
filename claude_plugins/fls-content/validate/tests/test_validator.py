@@ -1207,6 +1207,7 @@ def test_article_with_category_fails(tmp_path: Path) -> None:
 def test_article_with_image_and_alt_passes(tmp_path: Path) -> None:
     """An article may carry an image when it also says what the image shows."""
     content = make_content_tree(tmp_path)
+    (content / "pic.png").write_bytes(b"png")
     write_article(content, "pictured.md", extra="image: pic.png\nimage_alt: A chart\n")
 
     result = run_validator(content)
@@ -1217,6 +1218,7 @@ def test_article_with_image_and_alt_passes(tmp_path: Path) -> None:
 def test_article_with_image_and_empty_alt_passes(tmp_path: Path) -> None:
     """An empty `image_alt` marks the image as decorative and is accepted."""
     content = make_content_tree(tmp_path)
+    (content / "pic.png").write_bytes(b"png")
     write_article(content, "pictured.md", extra='image: pic.png\nimage_alt: ""\n')
 
     result = run_validator(content)
@@ -1233,6 +1235,33 @@ def test_article_image_without_alt_fails(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "image_alt" in result.stdout + result.stderr
+
+
+def test_article_image_missing_file_fails(tmp_path: Path) -> None:
+    """An article image path that matches no file in the tree is rejected."""
+    content = make_content_tree(tmp_path)
+    write_article(
+        content, "pictured.md", extra="image: missing.png\nimage_alt: A chart\n"
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "no file at this path" in result.stdout + result.stderr
+
+
+def test_article_image_not_an_image_file_fails(tmp_path: Path) -> None:
+    """An article image path without an image extension is rejected."""
+    content = make_content_tree(tmp_path)
+    (content / "notes.txt").write_text("not an image")
+    write_article(
+        content, "pictured.md", extra="image: notes.txt\nimage_alt: A chart\n"
+    )
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "this file is not an image" in result.stdout + result.stderr
 
 
 DEMO_CONTENT = Path(__file__).resolve().parents[4] / "demo_content"

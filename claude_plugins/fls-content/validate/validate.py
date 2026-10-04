@@ -40,6 +40,8 @@ from schema import (  # Patch 1: same-directory import (was `from .schema import
 
 logger = logging.getLogger(__name__)
 
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp"}
+
 # Patch 4: the repo config file declaring deployment-specific authoring vocabulary.
 _CONFIG_FILENAME = ".fls-content.yaml"
 
@@ -389,7 +391,7 @@ def _category_reference_error(
     fix: str,
     list_label: str = "Categories declared in this repo",
 ) -> str:
-    """Build the course-side category error block shown in the spec.
+    """Build the course-side category error block.
 
     Shared by the four checks in `validate_category_references` that report a
     course's `categories`/`dashboard_category` against the declared set:
@@ -544,24 +546,25 @@ _WIDGET_TAG_PATTERN = re.compile(
 _ARTICLE_WIDGETS = {"article-link", "article-card"}
 
 
-def _widget_reference_error(
+def _reference_error(
     file_path: Path,
     content_type: ContentType,
-    widget: str,
+    field: str,
     path: str,
     problem: str,
     fix: str,
+    header: str = "Broken widget reference",
 ) -> str:
-    """Build the error block for a widget whose `path` doesn't resolve.
+    """Build the error block for a path that does not resolve.
 
     Same header/field/problem/given-value/fix layout as
     `_category_reference_error`, without its declared-list section.
     """
     lines = [
-        f"\n❌ Broken widget reference in {file_path}",
+        f"\n❌ {header} in {file_path}",
         f"Content type: {content_type}",
         "",
-        f"  • Field: c-{widget} path",
+        f"  • Field: {field}",
         f"    Problem: {problem}",
         f"    Given value: {path!r}",
         "",
@@ -584,13 +587,14 @@ def validate_widget_references(all_parsed: list) -> list[str]:
         if not body:
             continue
         for widget, path in _WIDGET_TAG_PATTERN.findall(body):
+            field = f"c-{widget} path"
             target = by_path.get(os.path.normpath(item.file_path.parent / path))
             if target is None:
                 errors.append(
-                    _widget_reference_error(
+                    _reference_error(
                         item.file_path,
                         item.content_type,
-                        widget,
+                        field,
                         path,
                         problem="no content file at this path",
                         fix="Fix the path. It is relative to this file and must end in the target's file name.",
@@ -601,10 +605,10 @@ def validate_widget_references(all_parsed: list) -> list[str]:
                 and target.content_type != ContentType.ARTICLE
             ):
                 errors.append(
-                    _widget_reference_error(
+                    _reference_error(
                         item.file_path,
                         item.content_type,
-                        widget,
+                        field,
                         path,
                         problem=f"this file is a {target.content_type}, not an ARTICLE",
                         fix="Point the widget at an ARTICLE file.",
@@ -612,10 +616,10 @@ def validate_widget_references(all_parsed: list) -> list[str]:
                 )
             elif widget == "course-card" and target.content_type != ContentType.COURSE:
                 errors.append(
-                    _widget_reference_error(
+                    _reference_error(
                         item.file_path,
                         item.content_type,
-                        widget,
+                        field,
                         path,
                         problem=f"this file is a {target.content_type}, not a COURSE",
                         fix="Point the widget at a COURSE file.",
@@ -634,6 +638,41 @@ def validate_widget_references(all_parsed: list) -> list[str]:
                 "Give one of them a different slug."
             )
 
+    return errors
+
+
+def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> list[str]:
+    """Check every article's `image` against the files the loader would save.
+
+    The path is relative to the article file. Files under `_` and `.` directories
+    are never loaded, so an image there is reported rather than found on disk.
+    A path without an image extension is reported too: the loader would not save
+    it as an image, so the article would show none.
+    """
+    errors: list[str] = []
+    saved = {os.path.normpath(path) for path in all_file_paths}
+    for item in all_parsed:
+        if item.content_type != ContentType.ARTICLE or not item.image:
+            continue
+        if Path(item.image).suffix.lower() not in IMAGE_EXTENSIONS:
+            problem = "this file is not an image"
+            fix = "Point it at an image file (.jpg, .png, .webp, ...)."
+        elif os.path.normpath(item.file_path.parent / item.image) not in saved:
+            problem = "no file at this path"
+            fix = "Fix the path. It is relative to this article's file."
+        else:
+            continue
+        errors.append(
+            _reference_error(
+                item.file_path,
+                item.content_type,
+                field="image",
+                path=item.image,
+                problem=problem,
+                fix=fix,
+                header="Broken image reference",
+            )
+        )
     return errors
 
 
@@ -698,6 +737,11 @@ def validate(path):
         failed_files.append((path, message))
     for message in validate_widget_references(all_parsed):
         failed_files.append((path, message))
+
+    # A single-file run has no sibling files to resolve an image against.
+    if path.is_dir():
+        for message in validate_article_images(all_parsed, all_file_paths):
+            failed_files.append((path, message))
 
     # Report all failures at the end
     if failed_files:
