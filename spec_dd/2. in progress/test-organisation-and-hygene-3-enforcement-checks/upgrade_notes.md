@@ -33,5 +33,6 @@ A downstream project that uses the `django-stack` plugin's
 old header, legend and edge rules unless it adds a `[tool.test_organisation]` table to its own
 `pyproject.toml`. The new `--check` option writes nothing and exits 1 when a file the script
 would write is out of date.
+
 Opting in to the enforcement checks is optional. `claude_plugins/django-stack/resources/testing.md`
 and `docs/app_conventions.md` describe how.
