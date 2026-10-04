@@ -2,6 +2,8 @@
 author: Demo Author
 content_type: ARTICLE
 description: How articles link to each other, to courses and to pictures.
+image: ../functionality_demo_content_widgets/images/backyard-drone-flight.jpg
+image_alt: A man in a backyard smiles as he steers a drone hovering above the fence.
 published_on: 2026-09-01
 title: Getting started with articles
 uuid: b1fe911f-a258-4620-933d-fb1fab3bc92d
