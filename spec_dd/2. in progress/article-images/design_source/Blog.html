@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Blog</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script src="image-slot.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:"Noto Sans",sans-serif;color:#1d2330;background:#fff;line-height:1.65}
+a{color:#2c65ad}a:hover{color:#1f4d87}
+.top{border-bottom:1px solid #e5e7eb;padding:14px 24px;display:flex;align-items:center;gap:24px;font-size:13px;color:#5b6270}
+.top .brand{font-weight:700;color:#1d2330;text-decoration:none;font-size:14px}
+.top nav{display:flex;gap:20px}.top nav a{color:#5b6270;text-decoration:none}.top nav a:hover{color:#1d2330}.top nav a.on{color:#1d2330;font-weight:600}
+.wrap{max-width:1120px;margin:0 auto;padding:48px 32px 96px}
+.img{display:block;width:100%;background:repeating-linear-gradient(135deg,#f6f7f9 0 10px,#eef0f3 10px 20px);color:#6b7280;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.byline{font-size:13px;color:#5b6270;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.byline b{font-weight:600;color:#1d2330}
+.byline i{font-style:normal;color:#b0b4bc}
+/* index */
+.ih{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;margin:0 0 32px}
+.ih h1{margin:0;font-size:34px;line-height:1.2}
+.ih p{margin:6px 0 0;color:#5b6270;font-size:15px}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.filters button{font:inherit;font-size:13px;padding:5px 12px;border:1px solid #d9dde4;background:#fff;border-radius:999px;color:#4a5160;cursor:pointer}
+.filters button:hover{border-color:#2c65ad;color:#2c65ad}
+.filters button.on{background:#1d2330;border-color:#1d2330;color:#fff}
+.feat{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:32px;align-items:center;text-decoration:none;color:inherit;padding-bottom:40px;margin-bottom:40px;border-bottom:1px solid #e5e7eb}
+.feat .img{aspect-ratio:16/10;border-radius:6px;overflow:hidden}
+.feat h2{font-size:28px;line-height:1.25;margin:8px 0 12px;text-wrap:balance}
+.feat p{margin:0 0 16px;font-size:16px;color:#4a5160;text-wrap:pretty}
+.tag{font-size:12px;font-weight:600;color:#2c65ad}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:40px 28px}
+.card{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:inherit}
+.card .img{aspect-ratio:16/10;border-radius:6px;overflow:hidden;margin-bottom:8px}
+.card h3{margin:0;font-size:18px;line-height:1.35;text-wrap:balance}
+.card p{margin:0 0 4px;font-size:14.5px;color:#4a5160;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.feat:hover h2,.card:hover h3{color:#2c65ad}
+@media(max-width:760px){.feat{grid-template-columns:1fr;gap:20px}.wrap{padding:32px 20px 72px}}
+/* article */
+.back{display:inline-flex;gap:6px;font-size:13px;text-decoration:none;margin-bottom:28px}
+.art-head{max-width:720px;margin:0 auto}
+.art-head h1{margin:8px 0 14px;font-size:38px;line-height:1.18;text-wrap:balance}
+.art-head .desc{font-size:19px;line-height:1.55;color:#4a5160;margin:0 0 24px;text-wrap:pretty}
+.art-head .byline{padding:14px 0;border-top:1px solid #e5e7eb;margin-bottom:32px}
+.av{width:32px;height:32px;border-radius:50%;background:#eef3fa;color:#2c65ad;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;margin-right:4px}
+.hero{max-width:960px;margin:0 auto 40px}
+.hero .img{aspect-ratio:2/1;border-radius:6px;overflow:hidden}
+.hero figcaption{font-size:12.5px;color:#5b6270;margin-top:8px}
+.body{max-width:680px;margin:0 auto}
+.body p{margin:0 0 20px;font-size:17px;text-wrap:pretty}
+.body h2{font-size:22px;line-height:1.3;margin:40px 0 12px}
+.share{max-width:680px;margin:48px auto 0;padding-top:20px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:13px;color:#5b6270}
+.share button{font:inherit;font-size:13px;background:none;border:1px solid #d9dde4;border-radius:5px;padding:5px 12px;cursor:pointer;color:#1d2330}
+.share button:hover{border-color:#2c65ad;color:#2c65ad}
+.more{border-top:1px solid #e5e7eb;margin-top:72px;padding-top:40px}
+.more h2{font-size:20px;margin:0 0 24px}
+@media(max-width:760px){.art-head h1{font-size:30px}.art-head .desc{font-size:17px}}
+</style></head>
+<body>
+<header class="top"><a class="brand" href="#/">Flight Academy</a><nav><a href="#">Courses</a><a class="on" href="#/">Blog</a><a href="#">Help</a></nav></header>
+<main class="wrap" id="app"></main>
+<script>
+const POSTS=[
+{slug:'density-altitude',tag:'Performance',title:'Density altitude on hot summer days',author:'Sarah Okafor',date:'2026-09-28',read:6,desc:'Why the same runway that felt generous in April can feel short in August, and how to check your numbers before you commit to a takeoff.',body:['Density altitude is pressure altitude corrected for non-standard temperature. On a hot day the air is less dense, so the wing produces less lift, the propeller produces less thrust, and a normally aspirated engine produces less power.','The effect is easy to underestimate. A field at 2,000 ft on a 35°C day can have a density altitude above 4,500 ft. Takeoff roll can increase by half or more compared with a standard day.','## Checking your numbers','Use the performance charts in your aircraft\'s POH with the actual temperature and pressure altitude, then add a margin. Many instructors recommend adding 50% to the chart figure for an aircraft that is not new and a pilot who is not current.','If the numbers are close, wait. Early morning temperatures are often 10 to 15 degrees cooler, and that can be the difference between a comfortable departure and a marginal one.']},
+{slug:'checkride-prep',tag:'Study tips',title:'What examiners actually look for on a checkride',author:'Daniel Reyes',date:'2026-09-19',read:8,desc:'Three designated examiners describe the habits that separate a confident pass from a nervous one.',body:['Examiners are not trying to catch you out. Most say they want to see that you can make safe decisions when things do not go to plan.','The most common reason for a discontinued test is not a flying error but poor planning: a weight and balance that was not checked, or a weather briefing that missed a forecast change.','## Talk through your decisions','Saying what you are doing and why gives the examiner insight into your judgement. If you make a mistake, recognising and correcting it counts for more than flying a perfect maneuver.']},
+{slug:'crosswind-landings',tag:'Technique',title:'Crosswind landings without the drama',author:'Priya Nandakumar',date:'2026-09-08',read:7,desc:'A step-by-step look at the wing-low method, with the common errors that lead to side loads on touchdown.',body:['The wing-low, or sideslip, method keeps the aircraft\'s longitudinal axis aligned with the runway centreline throughout the flare and touchdown.','Lower the upwind wing to stop drift, and use opposite rudder to keep the nose straight. As the aircraft slows, more control input is needed, not less.','## Common errors','Relaxing the aileron input after touchdown is the most frequent mistake. Keep flying the aircraft until it is stopped, and progressively increase aileron into wind as speed decreases.']},
+{slug:'logbook',tag:'Regulations',title:'Keeping a logbook an auditor will love',author:'Mark Lindqvist',date:'2026-08-30',read:4,desc:'Simple habits for recording flight time accurately, and what to do when you find a mistake in an old entry.',body:['Your logbook is a legal record. Entries should be made promptly, in ink or a recognised electronic format, and should match the aircraft\'s technical log.','If you find an error, do not erase or overwrite it. Strike it through with a single line, initial it, and make a corrected entry on the next available line.']},
+{slug:'night-currency',tag:'Regulations',title:'Night currency, explained',author:'Sarah Okafor',date:'2026-08-21',read:5,desc:'The rules for carrying passengers at night, and why being legal is not the same as being proficient.',body:['To carry passengers at night you need three takeoffs and three full-stop landings at night in the preceding 90 days, in the same category and class.','Currency is a legal minimum. If your last night flight was months ago, consider a session with an instructor before taking passengers, even if you are technically current.']},
+{slug:'spaced-repetition',tag:'Study tips',title:'Using spaced repetition for ground school',author:'Daniel Reyes',date:'2026-08-12',read:6,desc:'How short, regular review sessions help you retain regulations and systems knowledge for the long term.',body:['Spaced repetition schedules reviews at increasing intervals, just before you are likely to forget. It works especially well for facts such as airspace dimensions, V-speeds and regulations.','Ten minutes a day is more effective than two hours once a week. The course quizzes are designed to be revisited, so return to earlier modules as you progress.']},
+{slug:'stabilised-approach',tag:'Technique',title:'The stabilised approach as a decision tool',author:'Priya Nandakumar',date:'2026-08-02',read:6,desc:'Setting clear gates for speed, configuration and descent rate makes the go-around decision simpler.',body:['A stabilised approach has the aircraft on the correct path, at the correct speed, in the landing configuration, with a normal descent rate, by a defined point.','If any criterion is not met at the gate, the decision is made in advance: go around. Removing the judgement call under pressure is what makes the method effective.']}
+];
+const fmt=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+const ini=n=>n.split(' ').map(w=>w[0]).join('');
+const img=(p,label)=>`<image-slot class="img" id="blog-${p.slug}" placeholder="${label}"></image-slot>`;
+const byline=p=>`<span class="byline"><b>${p.author}</b><i>·</i><time datetime="${p.date}">${fmt(p.date)}</time><i>·</i><span>${p.read} min read</span></span>`;
+let filter='All';
+function card(p){return `<a class="card" href="#/post/${p.slug}">${img(p,'Thumbnail image')}<span class="tag">${p.tag}</span><h3>${p.title}</h3><p>${p.desc}</p>${byline(p)}</a>`}
+function index(){
+const tags=['All',...new Set(POSTS.map(p=>p.tag))];
+const list=POSTS.filter(p=>filter==='All'||p.tag===filter);
+const [f,...rest]=list;
+app.innerHTML=`<div class="ih"><div><h1>Blog</h1><p>Practical articles from our instructors.</p></div><div class="filters">${tags.map(t=>`<button class="${t===filter?'on':''}" data-t="${t}">${t}</button>`).join('')}</div></div>
+${f?`<a class="feat" href="#/post/${f.slug}">${img(f,'Thumbnail image')}<div><span class="tag">${f.tag}</span><h2>${f.title}</h2><p>${f.desc}</p>${byline(f)}</div></a>`:''}
+<div class="grid">${rest.map(card).join('')}</div>`;
+app.querySelectorAll('.filters button').forEach(b=>b.onclick=()=>{filter=b.dataset.t;index()});
+document.title='Blog';
+}
+function article(slug){
+const p=POSTS.find(x=>x.slug===slug);if(!p)return index();
+const more=POSTS.filter(x=>x!==p&&x.tag===p.tag).concat(POSTS.filter(x=>x!==p&&x.tag!==p.tag)).slice(0,3);
+app.innerHTML=`<article><div class="art-head"><a class="back" href="#/">← All articles</a><br><span class="tag">${p.tag}</span><h1>${p.title}</h1><p class="desc">${p.desc}</p>
+<div class="byline"><span class="av">${ini(p.author)}</span><b>${p.author}</b><i>·</i><time datetime="${p.date}">${fmt(p.date)}</time><i>·</i><span>${p.read} min read</span></div></div>
+<figure class="hero" style="margin:0 auto 40px">${img(p,'Header image')}</figure>
+<div class="body">${p.body.map(s=>s.startsWith('## ')?`<h2>${s.slice(3)}</h2>`:`<p>${s}</p>`).join('')}</div>
+<div class="share"><span>Filed under <a href="#/" data-t="${p.tag}">${p.tag}</a></span><button id="copy">Copy link</button></div></article>
+<section class="more"><h2>More articles</h2><div class="grid">${more.map(card).join('')}</div></section>`;
+app.querySelector('[data-t]').onclick=e=>{filter=p.tag};
+const c=document.getElementById('copy');c.onclick=()=>{navigator.clipboard?.writeText(location.href);c.textContent='Link copied'};
+document.title=p.title;
+}
+function route(){const m=location.hash.match(/^#\/post\/(.+)/);m?article(m[1]):index();window.scrollTo(0,0)}
+addEventListener('hashchange',route);route();
+</script>
+</body></html>

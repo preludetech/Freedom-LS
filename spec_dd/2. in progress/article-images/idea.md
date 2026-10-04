@@ -32,4 +32,17 @@ image.
 
 `new-content-type-articles`, which adds the `Article` model, the article cards and the article page.
 
+## Resources
+
+- `spec_dd/2. in progress/article-images/design.md`: the Claude Design design for the article card
+  thumbnail, the featured article image on the blog index and the article page header image, a
+  visual reference only. Read it as that file says.
+
 ## Notes on the design
+
+The design includes a few things that we don't need:
+
+- article categories/tags
+- reading time
+- avatars for authors
+- a highlighted main article on the index page
