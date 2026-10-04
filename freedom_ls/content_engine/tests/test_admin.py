@@ -281,6 +281,26 @@ def test_the_article_change_page_offers_the_delete_link(staff_client) -> None:
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("image", "images/cover.png"), ("image_alt", "A cover")],
+)
+def test_the_article_change_page_shows_the_image_fields(
+    staff_client, field: str, value: str
+) -> None:
+    article = ArticleFactory(image="images/cover.png", image_alt="A cover")
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_content_engine_article_change", args=[article.pk])
+    )
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert f'name="{field}"' in content
+    assert f'value="{value}"' in content
+
+
+@pytest.mark.django_db
 def test_posting_the_article_delete_url_removes_the_article(staff_client) -> None:
     article = ArticleFactory()
 

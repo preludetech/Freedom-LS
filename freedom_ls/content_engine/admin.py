@@ -72,6 +72,8 @@ class ArticleAdmin(SiteAwareModelAdmin):
                     "visibility",
                     "show_date",
                     "show_author",
+                    "image",
+                    "image_alt",
                     "content",
                 ),
             },

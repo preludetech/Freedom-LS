@@ -83,7 +83,7 @@ Manifestations: 6.1 (desktop).
 ## Bug status
 
 - **UNRESOLVED**: B1, Article card focus ring is hidden under the thumbnail. Reason: the fixer's Playwright test passed before any fix, so it reported the bug as not reproducible and committed nothing. QA re-checked on the live server at 1280x800 after Tab focus. Pixels at the card's left edge are the ring colour (43,108,176) beside the text area but image colours along every thumbnail row, so the ring is not drawn over the image. Screenshot: `screenshots/element-2026-10-04T17-36-53-168Z.png`. The run allows one fix attempt per bug.
-- **UNRESOLVED**: B2, Article admin form does not show image or image_alt. Reason: the fixer was blocked before writing a test or fix. It popped an unrelated stash into the worktree, and that has since been cleaned up. The fix is small: add `image` and `image_alt` to `ArticleAdmin.fieldsets` and add an admin change-page test. The run allows one fix attempt per bug.
+- **FIXED**: B2, Article admin form does not show image or image_alt. `image` and `image_alt` are now in `ArticleAdmin.fieldsets`, covered by `test_the_article_change_page_shows_the_image_fields`.
 
 ![](screenshots/element-2026-10-04T17-36-53-168Z.png)
 
