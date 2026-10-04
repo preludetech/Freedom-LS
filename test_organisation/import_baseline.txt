@@ -53,25 +53,38 @@ freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.
 freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.course_applications.models
 
 # educator_interface
+freedom_ls.educator_interface.tests.playwright.test_denied_experience -> freedom_ls.accounts.models
+freedom_ls.educator_interface.tests.playwright.test_denied_experience -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.playwright.test_learners_mobile -> freedom_ls.accounts.models
+freedom_ls.educator_interface.tests.playwright.test_learners_mobile -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.playwright.test_organisation_switcher -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.playwright.test_organisation_switcher -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.playwright.test_organisation_switcher_mobile -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.playwright.test_organisation_switcher_mobile -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.playwright.test_sidebar_sheet_dialog_binding -> freedom_ls.accounts.models
+freedom_ls.educator_interface.tests.playwright.test_sidebar_sheet_dialog_binding -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.learner_progress.models
 freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.learner_progress.utils
+freedom_ls.educator_interface.tests.test_cohort_details_pagination -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.test_config_authorisation -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.course_interest.factories
 freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.test_create_cohort_action -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_dashboard -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.test_dashboard -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.test_denied_experience -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_document_title -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_interface_urls -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.test_interface_urls -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_learner_section -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_organisation_isolation -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_organisation_switcher -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.accounts.models
+freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.role_based_permissions.models
+freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.role_based_permissions.roles
+freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_sidebar -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.test_sidebar -> freedom_ls.role_based_permissions.utils
 
@@ -82,6 +95,7 @@ freedom_ls.google_tag.tests.test_context_processors -> freedom_ls.learner_manage
 
 # learner_interface
 freedom_ls.learner_interface.tests.test_course_access_integration -> freedom_ls.course_applications.factories
+freedom_ls.learner_interface.tests.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils
 freedom_ls.learner_interface.tests.test_course_completion_notifications -> freedom_ls.comms.models
 freedom_ls.learner_interface.tests.test_course_player_shell -> freedom_ls.base.theming
 freedom_ls.learner_interface.tests.test_resume_and_redirect -> freedom_ls.role_based_permissions.loader
@@ -115,12 +129,18 @@ freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.role_based_per
 # organisations
 freedom_ls.organisations.tests.test_models -> freedom_ls.role_based_permissions.utils
 
+# panel_framework
+freedom_ls.panel_framework.tests.test_export -> freedom_ls.site_aware_models.models
+
 # reports
 freedom_ls.reports.tests.test_admin -> freedom_ls.role_based_permissions.utils
+freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.loader
+freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.types
 freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.utils
 
 # role_based_permissions
 freedom_ls.role_based_permissions.tests.test_management_commands -> freedom_ls.learner_management.factories
+freedom_ls.role_based_permissions.tests.test_migrations -> freedom_ls.learner_management.factories
 freedom_ls.role_based_permissions.tests.test_models -> freedom_ls.learner_management.factories
 freedom_ls.role_based_permissions.tests.test_utils -> freedom_ls.learner_management.factories
 freedom_ls.role_based_permissions.tests.test_utils -> freedom_ls.learner_management.models

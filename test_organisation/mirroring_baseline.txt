@@ -40,11 +40,16 @@ freedom_ls/base/tests/test_head_metadata.py
 freedom_ls/base/tests/test_header_bar_user_menu.py
 freedom_ls/base/tests/test_htmx_messages_middleware.py
 freedom_ls/base/tests/test_messages_partial.py
+freedom_ls/base/tests/test_modal_component.py
 freedom_ls/base/tests/test_pagination_component.py
 freedom_ls/base/tests/test_premailer_templatetag.py
 freedom_ls/base/tests/test_settings_theme_wiring.py
 freedom_ls/base/tests/test_tailwind_components_headings.py
 freedom_ls/base/tests/test_theme_tokens.py
+
+# blog
+freedom_ls/blog/tests/test_demo_articles.py
+freedom_ls/blog/tests/test_seo_discoverability.py
 
 # comms
 freedom_ls/comms/tests/test_bell_tag.py
@@ -59,7 +64,11 @@ freedom_ls/comms/tests/test_views_panel.py
 freedom_ls/content_base/tests/test_schema_registry.py
 
 # content_engine
+freedom_ls/content_engine/tests/test_article_model.py
+freedom_ls/content_engine/tests/test_article_schema.py
+freedom_ls/content_engine/tests/test_article_widgets.py
 freedom_ls/content_engine/tests/test_calculate_path_from_root.py
+freedom_ls/content_engine/tests/test_content_save_articles.py
 freedom_ls/content_engine/tests/test_content_save_course.py
 freedom_ls/content_engine/tests/test_content_save_course_categories.py
 freedom_ls/content_engine/tests/test_content_save_course_price.py
@@ -77,6 +86,7 @@ freedom_ls/content_engine/tests/test_course_price_schema.py
 freedom_ls/content_engine/tests/test_course_viewable_items.py
 freedom_ls/content_engine/tests/test_course_visibility.py
 freedom_ls/content_engine/tests/test_demo_content_application_form.py
+freedom_ls/content_engine/tests/test_demo_content_articles.py
 freedom_ls/content_engine/tests/test_demo_content_form_link.py
 freedom_ls/content_engine/tests/test_demo_content_picture_titles.py
 freedom_ls/content_engine/tests/test_demo_content_prices.py
@@ -89,6 +99,7 @@ freedom_ls/content_engine/tests/test_optimise_image.py
 freedom_ls/content_engine/tests/test_tags.py
 freedom_ls/content_engine/tests/test_toc_in_development.py
 freedom_ls/content_engine/tests/test_validate_course_categories.py
+freedom_ls/content_engine/tests/test_validate_widget_references.py
 
 # course_access
 freedom_ls/course_access/tests/test_access_override.py
@@ -115,15 +126,18 @@ freedom_ls/dev_tools/tests/test_danger_content_delete.py
 
 # educator_interface
 freedom_ls/educator_interface/tests/test_cohort_delete_action.py
+freedom_ls/educator_interface/tests/test_cohort_details_pagination.py
 freedom_ls/educator_interface/tests/test_config_authorisation.py
 freedom_ls/educator_interface/tests/test_course_visibility_and_interest.py
 freedom_ls/educator_interface/tests/test_create_cohort_action.py
 freedom_ls/educator_interface/tests/test_dashboard.py
+freedom_ls/educator_interface/tests/test_denied_experience.py
 freedom_ls/educator_interface/tests/test_document_title.py
 freedom_ls/educator_interface/tests/test_interface_urls.py
 freedom_ls/educator_interface/tests/test_learner_section.py
 freedom_ls/educator_interface/tests/test_organisation_isolation.py
 freedom_ls/educator_interface/tests/test_organisation_switcher.py
+freedom_ls/educator_interface/tests/test_permission_matrix.py
 freedom_ls/educator_interface/tests/test_sidebar.py
 freedom_ls/educator_interface/tests/test_system_checks.py
 
@@ -166,6 +180,7 @@ freedom_ls/learner_interface/tests/test_all_courses_rows.py
 freedom_ls/learner_interface/tests/test_all_courses_view.py
 freedom_ls/learner_interface/tests/test_anonymous_home_page.py
 freedom_ls/learner_interface/tests/test_course_access_integration.py
+freedom_ls/learner_interface/tests/test_course_card_tags.py
 freedom_ls/learner_interface/tests/test_course_cards.py
 freedom_ls/learner_interface/tests/test_course_completion_notifications.py
 freedom_ls/learner_interface/tests/test_course_completion_webhook_events.py
@@ -189,6 +204,7 @@ freedom_ls/learner_interface/tests/test_dashboard_pagination.py
 freedom_ls/learner_interface/tests/test_dashboard_section_slugs.py
 freedom_ls/learner_interface/tests/test_dashboard_view.py
 freedom_ls/learner_interface/tests/test_deadline_integration.py
+freedom_ls/learner_interface/tests/test_demo_content_course_card.py
 freedom_ls/learner_interface/tests/test_form_complete_results.py
 freedom_ls/learner_interface/tests/test_form_page_navigation.py
 freedom_ls/learner_interface/tests/test_form_runner_views.py
@@ -217,6 +233,7 @@ freedom_ls/learner_management/tests/test_deadline_utils_bulk.py
 freedom_ls/learner_management/tests/test_deletion_semantics.py
 freedom_ls/learner_management/tests/test_enrolment_models.py
 freedom_ls/learner_management/tests/test_ensure_learner.py
+freedom_ls/learner_management/tests/test_ensure_organisation_member.py
 freedom_ls/learner_management/tests/test_learner.py
 freedom_ls/learner_management/tests/test_learner_admin.py
 freedom_ls/learner_management/tests/test_learner_cohort_deadline_override.py
@@ -254,11 +271,13 @@ freedom_ls/panel_framework/tests/test_component_toolbar.py
 freedom_ls/panel_framework/tests/test_configs.py
 freedom_ls/panel_framework/tests/test_data_table_panel.py
 freedom_ls/panel_framework/tests/test_document_title.py
+freedom_ls/panel_framework/tests/test_export.py
 freedom_ls/panel_framework/tests/test_htmx_navigation.py
 freedom_ls/panel_framework/tests/test_instance_details_panel.py
 freedom_ls/panel_framework/tests/test_instance_dropdown.py
 freedom_ls/panel_framework/tests/test_list_view_refresh.py
 freedom_ls/panel_framework/tests/test_menu_items.py
+freedom_ls/panel_framework/tests/test_mobile_cards.py
 freedom_ls/panel_framework/tests/test_panel_actions.py
 freedom_ls/panel_framework/tests/test_panel_tags.py
 freedom_ls/panel_framework/tests/test_tab_panels.py

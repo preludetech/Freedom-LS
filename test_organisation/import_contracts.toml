@@ -201,25 +201,38 @@ ignore_imports = [
     "freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.accounts.factories",
     "freedom_ls.educator_interface.tests.test_sidebar -> freedom_ls.accounts.factories",
     # baseline
+    "freedom_ls.educator_interface.tests.playwright.test_denied_experience -> freedom_ls.accounts.models",
+    "freedom_ls.educator_interface.tests.playwright.test_denied_experience -> freedom_ls.role_based_permissions.utils",
+    "freedom_ls.educator_interface.tests.playwright.test_learners_mobile -> freedom_ls.accounts.models",
+    "freedom_ls.educator_interface.tests.playwright.test_learners_mobile -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.playwright.test_organisation_switcher -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.playwright.test_organisation_switcher -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.playwright.test_organisation_switcher_mobile -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.playwright.test_organisation_switcher_mobile -> freedom_ls.role_based_permissions.utils",
+    "freedom_ls.educator_interface.tests.playwright.test_sidebar_sheet_dialog_binding -> freedom_ls.accounts.models",
+    "freedom_ls.educator_interface.tests.playwright.test_sidebar_sheet_dialog_binding -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.learner_progress.models",
     "freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.learner_progress.utils",
+    "freedom_ls.educator_interface.tests.test_cohort_details_pagination -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.test_config_authorisation -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.course_interest.factories",
     "freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.role_based_permissions.utils",
+    "freedom_ls.educator_interface.tests.test_create_cohort_action -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_dashboard -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.test_dashboard -> freedom_ls.role_based_permissions.utils",
+    "freedom_ls.educator_interface.tests.test_denied_experience -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_document_title -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_interface_urls -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.test_interface_urls -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_learner_section -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_organisation_isolation -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_organisation_switcher -> freedom_ls.role_based_permissions.utils",
+    "freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.accounts.models",
+    "freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.role_based_permissions.models",
+    "freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.role_based_permissions.roles",
+    "freedom_ls.educator_interface.tests.test_permission_matrix -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_sidebar -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.test_sidebar -> freedom_ls.role_based_permissions.utils",
 ]
@@ -274,6 +287,7 @@ forbidden_modules = ["freedom_ls.base", "freedom_ls.blog", "freedom_ls.comms", "
 ignore_imports = [
     # baseline
     "freedom_ls.learner_interface.tests.test_course_access_integration -> freedom_ls.course_applications.factories",
+    "freedom_ls.learner_interface.tests.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils",
     "freedom_ls.learner_interface.tests.test_course_completion_notifications -> freedom_ls.comms.models",
     "freedom_ls.learner_interface.tests.test_course_player_shell -> freedom_ls.base.theming",
     "freedom_ls.learner_interface.tests.test_resume_and_redirect -> freedom_ls.role_based_permissions.loader",
@@ -375,6 +389,10 @@ type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["freedom_ls.panel_framework.tests"]
 forbidden_modules = ["freedom_ls.accounts", "freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_base", "freedom_ls.content_engine", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.educator_interface", "freedom_ls.form_engine", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.icons", "freedom_ls.learner_interface", "freedom_ls.learner_management", "freedom_ls.learner_progress", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.meta_pixel", "freedom_ls.organisations", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.site_aware_models", "freedom_ls.tiktok_pixel", "freedom_ls.webhooks", "freedom_ls.xapi_learning_record_store"]
+ignore_imports = [
+    # baseline
+    "freedom_ls.panel_framework.tests.test_export -> freedom_ls.site_aware_models.models",
+]
 
 [[tool.importlinter.contracts]]
 id = "qa_helpers"
@@ -402,6 +420,8 @@ forbidden_modules = ["freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_
 ignore_imports = [
     # baseline
     "freedom_ls.reports.tests.test_admin -> freedom_ls.role_based_permissions.utils",
+    "freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.loader",
+    "freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.types",
     "freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.utils",
 ]
 
@@ -415,6 +435,7 @@ forbidden_modules = ["freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_
 ignore_imports = [
     # baseline
     "freedom_ls.role_based_permissions.tests.test_management_commands -> freedom_ls.learner_management.factories",
+    "freedom_ls.role_based_permissions.tests.test_migrations -> freedom_ls.learner_management.factories",
     "freedom_ls.role_based_permissions.tests.test_models -> freedom_ls.learner_management.factories",
     "freedom_ls.role_based_permissions.tests.test_utils -> freedom_ls.learner_management.factories",
     "freedom_ls.role_based_permissions.tests.test_utils -> freedom_ls.learner_management.models",
