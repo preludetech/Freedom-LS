@@ -69,13 +69,13 @@ Source content may already contain `c-*` widgets — hand-written, pasted, or pr
 
 | Widget state | Action |
 |---|---|
-| Already correct (valid name, correct attributes, correct form) | Leave untouched |
-| Attribute outside the allowlist | Remove the disallowed attribute (sanitiser would strip it silently) |
+| Already correct (valid built-in or declared custom widget, correct attributes, correct form) | Leave untouched |
+| Attribute outside the allowlist (for a declared custom widget, the allowlist is its declared attribute set) | Remove the disallowed attribute (sanitiser would strip it silently) |
 | `c-image-grid` child in self-closing form `<c-picture .../>` | Rewrite to closed form `<c-picture ...></c-picture>` |
 | Missing blank lines before/after children in `c-image-grid` or `c-flashcard` slots | Insert blank lines |
 | `c-accordion open` with a value | Normalise to bare `open` attribute |
 | Unescaped `<`, `>`, `&`, `"` in `c-code-block` or `c-equation` body | Escape to `&lt;`, `&gt;`, `&amp;`, `&quot;` |
-| Unknown `c-*` name (not in the allowlist) | Flag in `_conversion_review.md` — never emit as-is |
+| Unknown `c-*` name (neither built-in nor a valid declared custom widget; the declared set comes from `resources/custom-widgets.md` in the `fls-content:widget-reference` skill) | Flag in `_conversion_review.md` — never emit as-is |
 | `c-admonition type` not in the active set | Flag in `_conversion_review.md` — never emit a silently-wrong `default`-rendering value |
 
 **Only widget syntax, attributes, and structure change — never the prose inside a widget.** Normalising an existing widget is a structural transform.

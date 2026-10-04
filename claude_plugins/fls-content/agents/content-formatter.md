@@ -36,7 +36,8 @@ Use the `Skill` tool to load each one **before doing any work**. What each gives
   heading-handling, existing-widget, idempotency, and frontmatter-safety rules (in its
   `conversion-patterns.md` resource). **Follow those tables directly — they are the single
   source of truth. This agent does not restate them.**
-- `widget-reference` — the widget allowlist, attribute sets, quirks, HTML-escaping rule.
+- `widget-reference` — the built-in widgets plus the repo's declared custom widgets, their
+  attribute sets, quirks, HTML-escaping rule.
 
 ## Step 2 — Read the project config
 
@@ -44,6 +45,11 @@ Use the `Skill` tool to load each one **before doing any work**. What each gives
 `./.fls-content.yaml` directly and use its `admonition_types` list as the **complete,
 authoritative** valid admonition type set for this project. Do **not** search elsewhere for
 it — the path is fixed.
+
+When Step 1 loaded `widget-reference`, follow the read step in its
+`resources/custom-widgets.md` before you format anything; you are done when every declaration
+is classified. A missing `.fls-content/widgets/` means no custom widgets: formatting continues
+with the built-ins, and it never makes you return `blocked`.
 
 If `./.fls-content.yaml` is missing or unreadable/malformed, return `status: blocked` with
 `needs: [".fls-content.yaml at repo root — author must run /fls-content:init"]`. (The
@@ -95,7 +101,11 @@ items:
 - `proposal` — proposed-but-not-applied semantic conversion (blockquote → admonition, etc.)
 - `flag` — something the converter could not safely resolve: missing alt text, unknown widget
   name, out-of-set admonition type, skipped heading level, remote image URL needing download,
-  link target outside the converted set
-- `warning` — possible prose discrepancy (content may have been lost or added)
+  link target outside the converted set, invalid custom widget declaration
+- `warning` — possible prose discrepancy (content may have been lost or added), or a custom
+  widget declaration warning
+
+Report declaration problems as `resources/custom-widgets.md` says, and only when this file
+uses the tag.
 
 If there are no items, return `status: ok`, `items: []`.

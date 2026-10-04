@@ -82,5 +82,9 @@ unknown tags.
 
 ## Where problems are reported
 
+In `/fls-content:format-content`, the `content-formatter` agent reports a declaration problem
+only when the file it is formatting uses that tag. An invalid declaration is a `flag` item and a
+warning is a `warning` item. Both name the declaration path and the reason.
+
 Outside `/fls-content:format-content`, tell the author directly, naming the declaration path and
 the reason.
