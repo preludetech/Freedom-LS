@@ -34,7 +34,9 @@ Only screens that exist today:
 - The desktop left navigation: the sidebar, nav groups and items, the organisation switcher and the
   user block.
 - The learners table: toolbar, search, table card, header row, cells and pagination. The other data
-  tables change too, because they share these templates.
+  tables change too, because they share these templates. The table card is a flush card: the panel
+  card drops its body padding so the toolbar, table rows and pagination own their own spacing and
+  the rows run edge to edge.
 - Learner detail: the page header and the existing Details and Cohorts cards.
 - Cohort detail: the page header and its existing cards.
 - The create cohort dialog, on desktop and mobile.
@@ -69,6 +71,21 @@ compared against the design.
 - **Only existing tokens, components and icons.** When the theme cannot express a treatment, drop
   it. The "Drop list" in `research_theme_token_mapping.md` names them. When a design icon has no
   semantic name, the control goes text-only and we add no icon name for it.
+- **What the restyle adds to the markup.** The organisation switcher gets a small-caps
+  "Organisation" label above it and a tooltip carrying the full name. On desktop the user block is
+  pinned to the bottom of the sidebar above a top border; in the navigation bottom sheet it simply
+  comes last. The navigation bottom sheet gains a close control, "Close navigation", at its top
+  right. In the shared content header the navigation toggle moves to the left of the breadcrumbs
+  and each interface picks its icon; the course player's toggle moves with it and keeps its own
+  label and icon. A data table with nothing for its toolbar row to show renders no toolbar row.
+  Desktop pagination shows "Page X of Y" at the left, as mobile pagination already does. Each
+  learners card list row ends with a decorative chevron. The mobile Filter and Sort controls become
+  small outlined buttons with their icon; their text stays. Any tab set with one tab renders no tab
+  strip. The create cohort dialog gets a Cancel button before the submit button in a footer row,
+  keeps its header and close control in view while the body scrolls, and every other use of the
+  same modal component changes with it. Card titles are smaller than the page title on every panel
+  card, the page header gets a bottom hairline, and the definition grid is one column on phones,
+  two from `sm` and three from `md`. No other copy changes.
 
 ## Constraints
 
