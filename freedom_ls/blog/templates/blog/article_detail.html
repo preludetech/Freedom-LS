@@ -11,6 +11,14 @@
 
 {% block og_description %}{{ meta_description }}{% endblock %}
 
+{% block og_image %}
+    {% if og_image_url %}
+        <meta property="og:image" content="{{ og_image_url }}" />
+        {% if article.image_alt %}<meta property="og:image:alt" content="{{ article.image_alt }}" />{% endif %}
+    {% endif %}
+{% endblock og_image %}
+{% block twitter_card %}{% if og_image_url %}summary_large_image{% else %}{{ block.super }}{% endif %}{% endblock twitter_card %}
+
 {% block extra_alpine_components %}
     {{ block.super }}
     <script defer src="{% static 'content_engine/js/alpine-components.js' %}"></script>

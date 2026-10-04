@@ -169,3 +169,30 @@ def test_deleting_the_file_and_reloading_leaves_the_row(
         "launch",
         "keep",
     }
+
+
+@pytest.mark.django_db
+def test_image_and_alt_text_are_stored_then_cleared_when_removed(
+    site, mock_site_context, tmp_path
+):
+    file_path = _write_article(
+        tmp_path,
+        "writing/launch.md",
+        "content_type: ARTICLE\ntitle: Launch\npublished_on: 2026-03-04\n"
+        "image: photo.png\nimage_alt: A grey square\n",
+    )
+    save_content_to_db(tmp_path, site.name)
+    article = Article.objects.get(site=site)
+    assert (article.image, article.image_alt) == ("photo.png", "A grey square")
+    uuid = _front_matter(file_path)["uuid"]
+    _write_article(
+        tmp_path,
+        "writing/launch.md",
+        f"content_type: ARTICLE\nuuid: {uuid}\ntitle: Launch\n"
+        "published_on: 2026-03-04\n",
+    )
+
+    save_content_to_db(tmp_path, site.name)
+
+    article = Article.objects.get(site=site)
+    assert (article.image, article.image_alt) == ("", "")

@@ -415,3 +415,33 @@ def test_index_heading_title_and_back_link_use_the_configured_blog_name(
     assert re.search(
         rf'<a href="{reverse("blog:index")}"[^>]*>.*?Posts\s*</a>', detail, re.DOTALL
     )
+
+
+@pytest.mark.django_db
+def test_article_with_an_image_emits_an_absolute_og_image_and_large_twitter_card(
+    client, article_with_image
+):
+    # Act
+    body = _get_article_page(client, article_with_image)
+
+    # Assert
+    og_image = _meta(body, "property", "og:image")
+    assert og_image
+    assert og_image.startswith("http://testserver/")
+    assert og_image.endswith(article_with_image.image_file.file.url)
+    assert _meta(body, "property", "og:image:alt") == "A grey square"
+    assert _meta(body, "name", "twitter:card") == "summary_large_image"
+
+
+@pytest.mark.django_db
+def test_decorative_image_emits_og_image_without_alt(client, article_with_image):
+    # Arrange
+    article_with_image.image_alt = ""
+    article_with_image.save()
+
+    # Act
+    body = _get_article_page(client, article_with_image)
+
+    # Assert
+    assert _meta(body, "property", "og:image")
+    assert _meta(body, "property", "og:image:alt") is None

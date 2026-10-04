@@ -2,9 +2,10 @@ from datetime import date
 
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import override_settings
 
-from freedom_ls.content_engine.factories import ArticleFactory
+from freedom_ls.content_engine.factories import ArticleFactory, FileFactory
 from freedom_ls.content_engine.models import Article, ArticleVisibility
 from freedom_ls.tests.app_guards import app_not_installed
 
@@ -111,3 +112,43 @@ def test_shows_author_is_false_when_author_is_empty(mock_site_context):
 
     # Assert
     assert result is False
+
+
+@pytest.mark.django_db
+def test_image_file_is_none_without_an_image(mock_site_context):
+    assert ArticleFactory(file_path="articles/a.md").image_file is None
+
+
+@pytest.mark.django_db
+def test_image_file_is_none_when_the_path_matches_no_file(mock_site_context):
+    article = ArticleFactory(file_path="articles/a.md", image="missing.png")
+
+    assert article.image_file is None
+
+
+@pytest.mark.django_db
+def test_image_file_is_the_file_at_the_root_relative_path(mock_site_context):
+    file = FileFactory(file_path="articles/photo.png")
+    FileFactory(file_path="articles/other.png")
+    article = ArticleFactory(file_path="articles/a.md", image="photo.png")
+
+    assert article.image_file == file
+
+
+@pytest.mark.django_db
+def test_image_file_lookup_honours_parent_segments(mock_site_context):
+    file = FileFactory(file_path="images/photo.png")
+    article = ArticleFactory(file_path="articles/a.md", image="../images/photo.png")
+
+    assert article.image_file == file
+
+
+@pytest.mark.django_db
+def test_image_file_ignores_a_file_belonging_to_another_site(mock_site_context):
+    FileFactory(
+        file_path="articles/photo.png",
+        site=Site.objects.create(name="other", domain="other.example.com"),
+    )
+    article = ArticleFactory(file_path="articles/a.md", image="photo.png")
+
+    assert article.image_file is None

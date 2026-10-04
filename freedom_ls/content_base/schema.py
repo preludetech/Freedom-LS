@@ -53,7 +53,9 @@ class BaseContentModel(BaseBaseContentModel):
     category: str | None = Field(
         None, description="Optional category for this activity"
     )
-    image: str | None = Field(None, description="Optional category for this activity")
+    image: str | None = Field(
+        None, description="Path to the image, relative to this file"
+    )
 
 
 class MarkdownContentModel(BaseModel):

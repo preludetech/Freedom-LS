@@ -413,7 +413,7 @@ def _refuse_article_slug_collisions(item, site, relative_path):
 def save_article(item, site, base_path):
     """Save an Article to the database.
 
-    `author`, `show_date` and `show_author` go in as extra fields because the
+    `author`, `show_date`, `show_author`, `image` and `image_alt` go in as extra fields because the
     dump drops None values, which would otherwise leave a stale stored value
     when a key is removed from the file.
     """
@@ -426,6 +426,8 @@ def save_article(item, site, base_path):
         base_path,
         derive_slug=False,
         author=item.author or "",
+        image=item.image or "",
+        image_alt=item.image_alt or "",
         show_date=item.show_date,
         show_author=item.show_author,
     )

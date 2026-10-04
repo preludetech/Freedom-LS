@@ -122,8 +122,11 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
     visibility: ArticleVisibility = ArticleVisibility.PUBLISHED
     show_date: bool | None = None
     show_author: bool | None = None
+    image_alt: str | None = Field(
+        None, description="Alt text for the image; empty when it is decorative"
+    )
 
-    @field_validator("category", "image", mode="before")
+    @field_validator("category", mode="before")
     @classmethod
     def _course_only_field(cls, value: str | None, info: ValidationInfo) -> str | None:
         # A before-validator only runs when the key is present, so a file that
@@ -140,6 +143,17 @@ class Article(BaseContentModel, MarkdownContentModel, content_type=ContentType.A
         if value is not None and not SLUG_PATTERN.fullmatch(value):
             raise ValueError(_invalid_slug_message(value, info.data.get("file_path")))
         return value
+
+    @model_validator(mode="after")
+    def _image_needs_alt(self) -> "Article":
+        # An image without alt text is invisible to a screen reader. An explicit
+        # empty string is the author saying the image is decorative.
+        if self.image and self.image_alt is None:
+            raise ValueError(
+                f"Article {self.file_path} has an image but no image_alt. "
+                'Describe the image, or write image_alt: "" if it is decorative.'
+            )
+        return self
 
     @model_validator(mode="after")
     def _derive_and_check_slug(self) -> "Article":

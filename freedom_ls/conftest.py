@@ -1,5 +1,6 @@
 """Shared pytest fixtures for all tests."""
 
+import base64
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -19,6 +20,10 @@ from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
 from freedom_ls.tests.storages import (
     PathlessFileSystemStorage,
     bind_pathless_logo_storage,
+)
+
+_ONE_PIXEL_PNG = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
 )
 
 if TYPE_CHECKING:
@@ -207,6 +212,24 @@ def course_with_topic(mock_site_context):
         return course
 
     return _make
+
+
+@pytest.fixture
+def article_with_image(mock_site_context):
+    """A published article whose `image` resolves to a one-pixel PNG File."""
+    from django.core.files.base import ContentFile
+
+    from freedom_ls.content_engine.factories import ArticleFactory, FileFactory
+
+    FileFactory(
+        file_path="articles/photo.png",
+        file=ContentFile(_ONE_PIXEL_PNG, "photo.png"),
+    )
+    return ArticleFactory(
+        file_path="articles/with-image.md",
+        image="photo.png",
+        image_alt="A grey square",
+    )
 
 
 @pytest.fixture

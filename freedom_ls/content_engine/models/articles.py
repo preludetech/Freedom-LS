@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cached_property
 from typing import cast
 
 from django.db import models
@@ -9,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from freedom_ls.content_base.models import MarkdownContent, TitledContent
 from freedom_ls.content_base.schema import ContentType as SchemaContentTypes
 from freedom_ls.content_engine.config import config
+from freedom_ls.content_engine.models.files import File
 from freedom_ls.site_aware_models.models import SiteAwareManager
 
 
@@ -46,6 +48,12 @@ class Article(TitledContent, MarkdownContent):
     )
     show_date = models.BooleanField(null=True)
     show_author = models.BooleanField(null=True)
+    image = models.CharField(
+        max_length=500,
+        blank=True,
+        help_text=_("Image path, relative to the article file"),
+    )
+    image_alt = models.CharField(max_length=500, blank=True)
 
     objects = ArticleManager()
 
@@ -56,6 +64,19 @@ class Article(TitledContent, MarkdownContent):
                 fields=["site", "slug"], name="unique_article_slug_per_site"
             )
         ]
+
+    @cached_property
+    def image_file(self) -> File | None:
+        """The File behind `image`, or None when there is no image or it does not resolve.
+
+        Same resolution as `get_file_by_path`, pinned to this article's own site
+        because cards render inside body markdown where no request names a site.
+        """
+        if not self.image:
+            return None
+        return File.objects.filter(
+            site_id=self.site_id, file_path=self.calculate_path_from_root(self.image)
+        ).first()
 
     def get_absolute_url(self) -> str:
         return reverse("blog:article_detail", kwargs={"slug": self.slug})

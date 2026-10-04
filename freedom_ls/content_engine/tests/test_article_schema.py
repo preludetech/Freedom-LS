@@ -73,10 +73,34 @@ def test_coming_soon_visibility_is_rejected_naming_the_allowed_values():
         _article("blog/soon.md", visibility="coming_soon")
 
 
-@pytest.mark.parametrize("field", ["category", "image"])
-def test_course_only_fields_are_rejected_with_the_article_message(field: str):
-    with pytest.raises(ValidationError, match=f"'{field}' is not an article field"):
-        _article("blog/x.md", **{field: "something"})
+def test_category_is_rejected_with_the_article_message():
+    with pytest.raises(ValidationError, match="'category' is not an article field"):
+        _article("blog/x.md", category="something")
+
+
+def test_image_with_alt_text_is_accepted():
+    article = _article("blog/x.md", image="photo.png", image_alt="A grey square")
+
+    assert (article.image, article.image_alt) == ("photo.png", "A grey square")
+
+
+def test_image_without_alt_text_is_rejected_naming_the_file():
+    with pytest.raises(
+        ValidationError, match=r"blog/x\.md has an image but no image_alt"
+    ):
+        _article("blog/x.md", image="photo.png")
+
+
+def test_empty_alt_text_marks_the_image_decorative_and_is_accepted():
+    article = _article("blog/x.md", image="photo.png", image_alt="")
+
+    assert article.image_alt == ""
+
+
+def test_empty_image_needs_no_alt_text():
+    article = _article("blog/x.md", image="")
+
+    assert not article.image
 
 
 @pytest.mark.parametrize(
