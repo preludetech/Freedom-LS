@@ -43,6 +43,7 @@ from freedom_ls.content_engine.models import (
 from freedom_ls.content_engine.prices import KIND_FIELDS
 from freedom_ls.content_engine.schema import Course as CourseSchema
 from freedom_ls.content_engine.validate import (
+    IMAGE_EXTENSIONS,
     get_all_files,
     parse_single_file,
     split_yaml_documents,
@@ -666,12 +667,11 @@ def get_file_type_from_extension(file_path):
     """Determine file type based on file extension."""
     extension = file_path.suffix.lower()
 
-    image_extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp"}
     document_extensions = {".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt"}
     video_extensions = {".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv"}
     audio_extensions = {".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac"}
 
-    if extension in image_extensions:
+    if extension in IMAGE_EXTENSIONS:
         return File.FileType.IMAGE
     elif extension in document_extensions:
         return File.FileType.DOCUMENT

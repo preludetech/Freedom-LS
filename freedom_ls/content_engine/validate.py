@@ -19,6 +19,8 @@ from freedom_ls.content_base.schema import SCHEMAS, ContentType
 
 logger = logging.getLogger(__name__)
 
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".svg", ".webp"}
+
 
 def get_all_files(path):
     """
@@ -583,24 +585,33 @@ def validate_article_images(all_parsed: list, all_file_paths: list[Path]) -> lis
 
     The path is relative to the article file. Files under `_` and `.` directories
     are never loaded, so an image there is reported rather than found on disk.
+    A path without an image extension is reported too: the loader would not save
+    it as an image, so the article would show none.
     """
     errors: list[str] = []
     saved = {os.path.normpath(path) for path in all_file_paths}
     for item in all_parsed:
         if item.content_type != ContentType.ARTICLE or not item.image:
             continue
-        if os.path.normpath(item.file_path.parent / item.image) not in saved:
-            errors.append(
-                _reference_error(
-                    item.file_path,
-                    item.content_type,
-                    field="image",
-                    path=item.image,
-                    problem="no file at this path",
-                    fix="Fix the path. It is relative to this article's file.",
-                    header="Broken image reference",
-                )
+        if Path(item.image).suffix.lower() not in IMAGE_EXTENSIONS:
+            problem = "this file is not an image"
+            fix = "Point it at an image file (.jpg, .png, .webp, ...)."
+        elif os.path.normpath(item.file_path.parent / item.image) not in saved:
+            problem = "no file at this path"
+            fix = "Fix the path. It is relative to this article's file."
+        else:
+            continue
+        errors.append(
+            _reference_error(
+                item.file_path,
+                item.content_type,
+                field="image",
+                path=item.image,
+                problem=problem,
+                fix=fix,
+                header="Broken image reference",
             )
+        )
     return errors
 
 

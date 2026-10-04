@@ -68,6 +68,29 @@ def test_article_image_under_an_underscore_directory_fails(tmp_path: Path):
     assert "_drafts/cover.png" in str(exc_info.value)
 
 
+def test_article_image_that_is_not_an_image_fails(tmp_path: Path):
+    _write(tmp_path / "handout.pdf", "pdf")
+    _article(tmp_path / "post.md", image="handout.pdf")
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    message = str(exc_info.value)
+    assert "handout.pdf" in message
+    assert "Field: image" in message
+    assert "not an image" in message
+
+
+def test_article_image_pointing_at_a_content_file_fails(tmp_path: Path):
+    _article(tmp_path / "other.md")
+    _article(tmp_path / "post.md", image="other.md")
+
+    with pytest.raises(ValueError, match="Validation failed") as exc_info:
+        validate(tmp_path)
+
+    assert "not an image" in str(exc_info.value)
+
+
 def test_article_image_path_with_parent_segments_resolves(tmp_path: Path):
     _write(tmp_path / "shared" / "cover.png", "png")
     _article(tmp_path / "posts" / "post.md", image="../shared/cover.png")
