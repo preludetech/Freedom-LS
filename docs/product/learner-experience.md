@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-04_
 
 ## Summary
 
@@ -16,7 +16,7 @@ _Last updated: 2026-10-01_
 - Hard deadlines lock uncompleted content after expiry; soft deadlines are shown to the learner but never lock anything.
 - Where a learner is studying through an organisation, that organisation's logo — or an initials monogram — and its name appear as a small, secondary mark in the course player. The site's own branding stays primary throughout.
 - Failures — a dead link, a refused permission, a form the site could not verify, too many attempts — show a branded, themed error page that carries its real HTTP status code and a route back into the app, rather than a generic framework fallback.
-- A site has a public blog: an index of its published articles and a page for each article, readable without logging in. See [Blog](#blog).
+- A site has a public blog: an index of its published articles and a page for each article, readable without logging in. An article can carry an image, shown on its page, its cards and its social-sharing preview. See [Blog](#blog).
 - A site footer with a copyright line and links to the site's terms of service and privacy policy appears on every page, shortened to a single line inside the course player. It is left off error pages and the form or quiz page a learner is answering.
 - When a site turns on notifications, a learner sees a bell in the header telling them when someone else has registered them for a course. See [Notifications](./notifications.md).
 
@@ -139,15 +139,17 @@ Prices are authored with the rest of the course metadata; see [content editing w
 
 ## Blog
 
-A site can publish articles for anyone to read, logged in or not. The blog is an index listing the site's published articles, newest first, each linking to its own article page. It lives at `/articles/` by default; an installation can change the prefix with the `BLOG_URL_PREFIX` setting (see [configuration and extension](./configuration-and-extension.md#settings-reference)).
+A site can publish articles for anyone to read, logged in or not. The blog is an index of the site's published articles, newest first, laid out as a grid of equal-height cards, each linking to its own article page. It lives at `/articles/` by default; an installation can change the prefix with the `BLOG_URL_PREFIX` setting (see [configuration and extension](./configuration-and-extension.md#settings-reference)).
 
 ![](screenshots/learner_blog_index.png)
 
 Each article page shows the title, any subtitle, and a byline with the author and the date. Either can be hidden on a single article, or for every article on the site. A hidden article returns "not found" and never appears on the index, in an article card, or in the sitemap; there is no staff preview of hidden articles.
 
+An article can carry an image. It appears as a header image on the article page and as a thumbnail on the article's cards, on the index and wherever an author places one; an article without an image keeps a text-only card. How an author adds one is covered in [content editing workflow](./content-editing-workflow.md#content-types).
+
 Authors can place article cards and course cards inside an article or any other authored content; see [content editing workflow](./content-editing-workflow.md#content-widgets).
 
-There are no article images, tags, RSS feed or pagination, and FLS adds no link to the blog in the site navigation, so an installing project adds its own.
+There are no article tags, RSS feed or pagination, and FLS adds no link to the blog in the site navigation, so an installing project adds its own.
 
 ## Deferred-login Intent Completion
 
@@ -161,7 +163,7 @@ This intent is preserved even through the new-user signup path that requires com
 
 ## Discoverability
 
-Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, whether the course is accessible for free, and the price as a schema.org offer where the course has one). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs. Each article page likewise carries its own title, description and social-sharing preview.
+Because the catalogue and course detail pages are public, they are crawlable. Each page emits a per-page `<title>` and `<meta name="description">`. Course detail pages include `schema.org/Course` JSON-LD structured data (populated only from fields that exist in the model: title, description, difficulty, estimated duration, learning outcomes, whether the course is accessible for free, and the price as a schema.org offer where the course has one). The catalogue page includes `schema.org/ItemList` JSON-LD covering the visible courses and their detail URLs. Each article page likewise carries its own title, description and social-sharing preview; when the article has an image, a shared link shows it as a large preview, and otherwise the site's default image is used.
 
 The installation serves a dynamic per-site `sitemap.xml` listing the catalogue and course detail pages, and a `robots.txt` that allows crawling of the public course paths and references the current site's sitemap. The sitemap follows the same visibility rules as the catalogue: hidden courses are excluded, while coming-soon courses (whose detail pages are publicly reachable) are included. The blog index and published articles are listed too, and `robots.txt` allows crawling of the blog. All URLs in structured data and the sitemap are absolute and tenant-correct. For details of per-tenant URL isolation, see [Multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 

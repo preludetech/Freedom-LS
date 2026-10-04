@@ -45,7 +45,7 @@ Ten content types are available:
 
 Categories are declared in a single `course_categories.yaml` at the content repository root, one entry per category in the order they should appear; a second declaration anywhere in the repo is rejected at validation time, so a site has exactly one ordered list. Each entry gets a UUID written back into the file on its first load, like every other content type.
 
-An article can sit anywhere in the content repository, inside or outside a course folder. It is either published or `hidden`, and its public URL comes from a `slug` that defaults to its file name. It can name an `author`, and `show_date` and `show_author` override the site-wide defaults for its byline. Articles carry no images or category, and there is no scheduled publishing. See [learner experience](./learner-experience.md#blog) for the public blog pages.
+An article can sit anywhere in the content repository, inside or outside a course folder. It is either published or `hidden`, and its public URL comes from a `slug` that defaults to its file name. It can name an `author`, and `show_date` and `show_author` override the site-wide defaults for its byline. An article can carry one optional `image`, a path relative to the article file, with `image_alt` text required alongside it; the image appears on the article page, its cards and its social-sharing preview. Articles have no category, and there is no scheduled publishing. See [learner experience](./learner-experience.md#blog) for the public blog pages.
 
 Loading never deletes an article. An administrator can delete one in the admin, but while its file remains in the repository it comes back on the next load, so removing an article for good means deleting the file as well.
 
@@ -99,7 +99,7 @@ Validation parses every YAML and Markdown file against strict schemas before any
 
 `content_save` runs validation internally on every run and writes only if it passes. It scans the path, then upserts every item in a single atomic transaction, keyed on the frontmatter UUID — so re-running against unchanged files has no visible effect. A `children:` entry or an `application_form` path that does not resolve to loaded content fails the whole load rather than being silently dropped.
 
-Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too.
+Validation also checks the `path` of every `c-article-link`, `c-article-card` and `c-course-card`: it must point at a validated file of the right type, so a broken link or card fails before anything is written. Two articles with the same slug are rejected too, as is an article `image` that does not point at an image file in the repository.
 
 A companion command, `danger_content_delete`, removes content. It is deliberately named to require considered invocation, and is the only route by which loaded content other than articles is deleted.
 
@@ -132,7 +132,7 @@ These widgets are available inside Markdown content:
 | `c-image-grid` | Multi-column image grid; a `c-grid` specialised for images |
 | `c-grid` | Column layout (2, 3 or 4 columns; one on phones) for any widgets, such as cards or pictures |
 | `c-article-link` | Inline link to a published article, by file path; shows the article's title unless link text is given, and falls back to plain text if the article is hidden or missing |
-| `c-article-card` | Card for a published article, by file path, in a row or `compact` variant; renders nothing if the article is hidden or missing |
+| `c-article-card` | Card for a published article, by file path, showing its image when it has one, in a row or `compact` variant; renders nothing if the article is hidden or missing |
 | `c-course-card` | Card for a course, by file path, showing its access badge and price, in a row or `compact` variant; renders nothing if the course is hidden or missing |
 | `c-table` | Accessible table wrapper |
 | `c-code-block` | Syntax-highlighted code block |
