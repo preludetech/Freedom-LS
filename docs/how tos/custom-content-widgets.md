@@ -172,8 +172,34 @@ allowlisted. Django autoescapes `{{ title }}`, which is enough for text. Two thi
 
 ## Telling your authors
 
-The `fls-content` Claude plugin only knows FLS's built-in widgets. Its `widget-reference` skill
-treats the allowlist as closed, and nothing in `.fls-content.yaml` declares extra widgets, so an
-author using the plugin will be told your widget does not exist and `/fls-content:format-content`
-won't produce it. Document your widgets wherever your authors look, and expect to correct the
-plugin when it flags them.
+The `fls-content` Claude plugin reads custom widgets from the content repo. For each widget, add a
+widget declaration at `.fls-content/widgets/c-<name>.md`, beside `.fls-content.yaml`. The plugin
+then accepts the widget and its attributes, and `/fls-content:format-content` can produce it.
+
+The plugin's `custom-widgets.md`
+(`claude_plugins/fls-content/skills/widget-reference/resources/custom-widgets.md`) defines the
+format and the rules. A declaration for the `c-worked-example` widget from this how-to looks like
+this:
+
+````markdown
+# `c-worked-example`
+
+A problem statement followed by a solution the learner can reveal. Body is markdown-rendered.
+
+**Allowed attributes:** `title`, `difficulty`
+
+| Attribute | Required | Default | Notes |
+|---|---|---|---|
+| `title` | No | `"Worked example"` | Heading text |
+| `difficulty` | No | `""` | Free text shown beside the heading |
+
+```markdown
+<c-worked-example title="Splitting the bill" difficulty="harder">
+...
+</c-worked-example>
+```
+````
+
+A declaration whose name matches a built-in widget is ignored, and the built-in keeps its
+attributes. Whether you generate the declaration files from your project or write them by hand is
+up to you.
