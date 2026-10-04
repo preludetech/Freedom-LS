@@ -12,7 +12,7 @@ always disabled afterwards and only the fallback branch can ever run.
 
 A third page fixes that: pressing next from page one lands on page two, where
 both arrows are live, so focus returns to the next arrow -- the primary branch,
-and the main accessibility assertion of the QA plan's section 8.1.
+and the main accessibility assertion of the dashboard paging QA.
 
 The courses are built by ``_ensure_pagination_course`` imported from
 ``qa_create_dashboard_paging_fixtures``, so they are identical in every respect

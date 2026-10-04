@@ -7,8 +7,7 @@ without spinning up the Django test client. It is consumed from
 
 A theme is a sparse directory: only ``static/themes/<slug>/theme.css`` is
 conventionally required. Themes may optionally ship ``templates/`` and other
-static assets. See ``spec_dd/.../themable-implementations-phase-1.../1. spec.md``
-for the full token contract and directory shape.
+static assets. The token contract lives in the default theme's ``theme.css``.
 """
 
 from __future__ import annotations

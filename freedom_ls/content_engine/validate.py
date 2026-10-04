@@ -328,7 +328,7 @@ def _category_reference_error(
     fix: str,
     list_label: str = "Categories declared in this repo",
 ) -> str:
-    """Build the course-side category error block shown in the spec.
+    """Build the course-side category error block.
 
     Shared by the four checks in `validate_category_references` that report a
     course's `categories`/`dashboard_category` against the declared set:

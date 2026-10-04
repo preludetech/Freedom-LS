@@ -61,7 +61,7 @@ def _mark_seen(request: HttpRequest) -> None:
 
 def _unseen_count(request: HttpRequest) -> int:
     """The one place the unseen count is computed: the bell tag, the badge
-    view, and (from slice 5 onward) the panel and mark responses all call
+    view, and the panel and mark responses all call
     this rather than counting separately."""
     return _notifications_for(request).unseen().count()
 

@@ -1,7 +1,6 @@
 /* FLS default theme — Tier-1 token bundle.
  *
- * The full role contract and rationale live in
- * spec_dd/.../themable-implementations-phase-1.../1. spec.md.
+ * The role contract is defined by the tokens below.
  *
  * Conventions:
  *  - Role tokens use the `--color-<role>` namespace so Tailwind v4 generates

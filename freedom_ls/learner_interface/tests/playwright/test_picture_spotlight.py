@@ -75,7 +75,7 @@ def test_closed_spotlight_is_inert_and_trigger_is_clickable(
 ):
     """A closed spotlight <dialog> must be hidden so it cannot swallow clicks.
 
-    Regression (QA Bug 1): the spotlight set ``display:flex`` on its base rule,
+    Regression: the spotlight set ``display:flex`` on its base rule,
     overriding the UA ``dialog:not([open]){display:none}``. Closed dialogs then
     stayed laid out full-viewport and intercepted pointer events over the page.
     """
@@ -104,7 +104,7 @@ def test_background_does_not_scroll_while_spotlight_open(
 ):
     """The page behind the spotlight must not scroll while it is open.
 
-    Regression (QA Bug 2): no scroll-lock was applied, so the page behind
+    Regression: no scroll-lock was applied, so the page behind
     scrolled while the spotlight was open.
     """
     page = logged_in_page
@@ -150,7 +150,7 @@ def test_long_description_keeps_spotlight_heading_reachable(
 ):
     """A long description must not clip the heading above the viewport.
 
-    Regression (QA Bug 3): the centred flex column overflowed upward on a short
+    Regression: the centred flex column overflowed upward on a short
     viewport, leaving the top heading permanently clipped and unreachable.
     """
     page = logged_in_page

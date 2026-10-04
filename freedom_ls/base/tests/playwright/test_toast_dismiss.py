@@ -1,22 +1,21 @@
 """E2E tests for toast dismissal and stack ordering.
 
-Covers two QA bugs surfaced in `qa_report.md`:
+Covers two toast defects:
 
-- Bug 1 — Clicking the close button must remove the toast root from the
+- Clicking the close button must remove the toast root from the
   DOM (not just hide it). Previously `dismiss()` referenced `this.$el`,
   which Alpine binds to the close *button* when the handler fires from
   `x-on:click` on the button — leaving the toast root attached forever
   and silently breaking the stacking-cap accounting.
-- Bug 2 — The newest toast must render at the bottom of the stack
-  (closest to the viewport edge), per the spec's bottom-anchored
-  conventions. Previously the regions used `flex flex-col-reverse`, so
+- The newest toast must render at the bottom of the stack
+  (closest to the viewport edge) in the bottom-anchored
+  layout. Previously the regions used `flex flex-col-reverse`, so
   the most recently appended DOM child (the newest toast) rendered at
   the top of the column.
 
 Both tests inject toast markup directly into the live ARIA regions —
 this isolates the Alpine `toast` component's behaviour from any
-particular server flow and matches the same approach used in the manual
-QA pass.
+particular server flow and matches how a manual check would drive them.
 """
 
 from __future__ import annotations
@@ -61,7 +60,7 @@ def _inject_toast(page: Page, region_id: str, toast_id: str, severity: str) -> N
 def test_close_button_removes_toast_from_dom(logged_in_page: Page) -> None:
     """Clicking the close button removes the toast element from the DOM.
 
-    Regression for QA Bug 1: previously the toast root remained attached
+    The toast root used to stay attached
     after the close-button click (only the button itself was removed),
     which broke `_enforceCap`'s child-count accounting and leaked
     window blur/focus listeners.
@@ -93,8 +92,7 @@ def test_close_button_removes_toast_from_dom(logged_in_page: Page) -> None:
 def test_newest_toast_renders_at_bottom_of_stack(logged_in_page: Page) -> None:
     """The newest toast must sit closest to the viewport edge.
 
-    Regression for QA Bug 2: per spec ("Stack behaviour — newest at the
-    bottom, older toasts pushed up"), the most recently inserted toast
+    Older toasts are pushed up, so the most recently inserted toast
     should have the largest y-coordinate of the stack on a bottom-
     anchored layout.
     """

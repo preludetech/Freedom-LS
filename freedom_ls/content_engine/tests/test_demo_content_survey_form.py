@@ -1,7 +1,7 @@
 """The demo form the course player's own runner serves.
 
 `test_demo_content_application_form.py` covers the application shell's form;
-this covers the in-course survey. Its shape is what the frontend QA plan drives
+this covers the in-course survey. Its shape is what the browser tests drive
 directly, and each fact pinned here is a one-word authoring detail that would
 otherwise be undone without anyone noticing.
 

@@ -3,7 +3,7 @@
 Two render modes, like partials/messages.html:
 - Default: the badge content only, for the initial page render inside
   #notification-badge and for the polling hx-get response that swaps into it.
-- OOB (oob=True, added from slice 5 onward): wraps itself so a mark-read
+- OOB (oob=True): wraps itself so a mark-read
   response can update the badge alongside its own fragment.
 {% endcomment %}
 {% if oob %}<div hx-swap-oob="innerHTML:#notification-badge">{% endif %}

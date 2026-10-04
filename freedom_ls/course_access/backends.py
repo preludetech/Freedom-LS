@@ -331,7 +331,7 @@ class FreeOnlyCourseAccessBackend(CourseAccessBackend):
 # ---------------------------------------------------------------------------
 
 # Acquisition-funnel copy for coming-soon courses, surfaced on the detail page via
-# CourseAccessDecision. Does NOT promise a launch notification (spec §7.2, §10).
+# CourseAccessDecision. Does NOT promise a launch notification: nothing sends one.
 _COMING_SOON_ENROLMENT_SUMMARY = "Coming soon"
 _COMING_SOON_ACQUISITION_HEADING = "Coming soon"
 _COMING_SOON_ACQUISITION_SUBTEXT = (

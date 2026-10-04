@@ -274,7 +274,7 @@ def test_intended_production_configuration_returns_no_errors(
     DEBUG=False,
 )
 def test_fs_alias_with_s3_default_and_debug_false_returns_error() -> None:
-    # The typo case section 5.3 promises is caught: the shared
+    # The typo case this check must catch: the shared
     # AWS_STORAGE_BUCKET_NAME is unset and AWS_S3_GENERATED_BUCKET_NAME is
     # misspelled, so 'reports' drops to local disk while 'default' keeps its own
     # bucket. Comparing against 'default' alone finds a difference and lets it

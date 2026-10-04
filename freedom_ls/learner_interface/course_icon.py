@@ -4,7 +4,7 @@ This module lives in ``learner_interface`` rather than in ``freedom_ls.icons``
 so that the icons app stays portable and reusable in downstream Django
 projects: "course icon resolution" is a learner-interface concern.
 
-The resolver walks the resolution order documented in the spec:
+The resolver walks the resolution order:
 
 1. ``icon`` empty -> default semantic ``"course"``.
 2. ``icon`` is a semantic name -> render via the icon backend.

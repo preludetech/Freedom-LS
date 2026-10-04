@@ -1,10 +1,8 @@
 """Build the whole cohort-progress-report QA fixture matrix in one command.
 
 The report's layout behaviour changes with two axes at once -- cohort size
-lengthens the landscape summary table, course length widens it -- so the QA plan
-(``spec_dd/2. in progress/basic_reports/3a. report_generation_qa/
-frontend_qa_report_generation.md``) defines eleven fixtures
-spanning 0 to 40 learners and 1 to 12+ quizzes, plus the degenerate,
+lengthens the landscape summary table, course length widens it -- so the QA pass
+needs eleven fixtures spanning 0 to 40 learners and 1 to 12+ quizzes, plus the degenerate,
 no-pass-mark and blank-answer cases. This command builds all of them, plus the
 four users the permission checks need: a cohort educator, a staff user scoped
 to one cohort by a cohort_viewer role assignment, and two organisation-role holders -- one on

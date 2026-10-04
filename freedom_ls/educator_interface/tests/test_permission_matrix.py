@@ -1,9 +1,8 @@
-"""The permission matrix: can() answers exactly what the spec's table allows.
+"""The permission matrix: can() answers exactly what the permission table allows.
 
-MATRIX is a hand-written transcription of the spec's table, reviewed against
-it and never parsed from it. Slice 7 still has to add the reports capability
-check itself; this slice only widens MATRIX and CAPABILITY_SCOPE_KINDS to
-every row.
+MATRIX is a hand-written transcription of that table, reviewed against it and
+never parsed from it. MATRIX and CAPABILITY_SCOPE_KINDS cover every row, but
+the reports capability's own check is not exercised here yet.
 
 The world: site A has organisation O1 (cohorts C1 granted and C2, learners L1
 in C1 and L2 in C2) and O2 (C3, L3). Site B has O3 (C4, L4). Grants:

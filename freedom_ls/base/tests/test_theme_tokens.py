@@ -1,9 +1,7 @@
 """Tests for Tier-1 / Tier-2 theme contract assertions.
 
 These tests guard the token + component contract for the FLS default and
-``first_class`` themes. They exist as a contract guard for the Tier-1 +
-Tier-2 work in
-``spec_dd/2. in progress/first-class-theme-implement-tier-1-and-2/``.
+``first_class`` themes.
 
 Per project conventions we do not test rendered classes / pixel widths /
 colours — these tests check the *source* CSS files for the role tokens

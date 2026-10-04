@@ -13,7 +13,7 @@ class RefusalReason(StrEnum):
     LAST_ORGANISATION_ADMIN = "last_organisation_admin"
 
 
-class RoleChangeRefused(Exception):  # noqa: N818 - name matches the spec's contract verbatim
+class RoleChangeRefused(Exception):  # noqa: N818 - callers catch this name, so it is public API
     """A role assignment or removal was refused. See RefusalReason for why."""
 
     def __init__(self, reason: RefusalReason) -> None:

@@ -1,10 +1,9 @@
 """The educator interface hides actions a request may not use.
 
-Slice 8 adds the 403 fragment for a denied action posted anyway. This slice
-only proves the control itself is never rendered for a role that cannot use
-it -- "hidden, not disabled" -- plus the end-to-end denial experience: a
-stale action posted anyway 404s or 403s, names an organisation admin to ask,
-and creates nothing.
+The control itself is never rendered for a role that cannot use it ("hidden,
+not disabled"). The end-to-end denial experience is covered too: a stale
+action posted anyway 404s or 403s, names an organisation admin to ask, and
+creates nothing.
 """
 
 from __future__ import annotations

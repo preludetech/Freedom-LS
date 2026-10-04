@@ -46,7 +46,7 @@ def _refuse_unless(
     *,
     assigning: bool,
 ) -> None:
-    """The checks every entry point below runs, in the order the spec fixes:
+    """The checks every entry point below runs, in this order:
     a grantor can't act on themselves, can't hand out access to an inactive
     account, and needs the capability itself. Removal skips the
     inactive-account check, since taking access away from a deactivated

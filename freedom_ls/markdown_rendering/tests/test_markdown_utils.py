@@ -349,7 +349,7 @@ This is **bold** text
     def test_c_flashcard_faces_cannot_be_widened_by_their_content(self, mock_request):
         """The faces must be free to shrink below their content's min-content width.
 
-        Regression (QA bug B1): both faces were grid items in a ``1fr`` track with
+        Regression: both faces were grid items in a ``1fr`` track with
         the default ``min-width: auto``, so a table or code block on the answer
         face set a floor the card could not go below and it ran off a 375px
         viewport, taking the whole page's horizontal scroll with it.

@@ -1,4 +1,4 @@
-"""Seed QA data for the google-analytics-setup frontend QA plan (section 0.2).
+"""Seed QA data for the google-analytics-setup frontend QA pass.
 
 Idempotent. Assumes ``create_demo_data`` and
 ``content_save demo_content <SITE_NAME>`` have already been run.

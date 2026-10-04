@@ -19,17 +19,16 @@ Available fixtures
   used CSS selectors (``input[name="login"]``, ``button[type="submit"]``).
 
 A ``fresh_login_page`` (no-auth) variant is intentionally not provided —
-no current test needs it, and the spec's "appears in 2+ tests" gate keeps
-us from shipping unused fixtures. Tests that need to drive the login or
+no current test needs it, and a fixture is only added once two or more tests
+need it. Tests that need to drive the login or
 signup UI themselves can use the standard ``page`` fixture directly.
 
 Scoping
 -------
 
-All fixtures here are function-scoped. The spec for Phase 4 originally
-called for a session-scoped ``storage_state`` login fixture so that the UI
-login is paid only once per session, with the resulting cookies +
-localStorage reused across every test via
+All fixtures here are function-scoped. A session-scoped ``storage_state``
+login fixture would pay for the UI login once per session and reuse the
+resulting cookies + localStorage across every test via
 ``browser.new_context(storage_state=...)``.
 
 That approach does not survive contact with the existing E2E test suite,

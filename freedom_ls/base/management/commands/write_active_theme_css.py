@@ -6,7 +6,7 @@ Tailwind build and the Django runtime cannot disagree about which file is the
 active theme. Invoked by the ``tailwind_build`` / ``tailwind_watch`` npm
 scripts immediately before Tailwind compiles ``tailwind.input.css``.
 
-Cascade contract (Phase 2 of themable-implementations):
+Cascade contract:
 
     - ``tailwind.input.css`` imports the default theme as the always-on
       baseline.

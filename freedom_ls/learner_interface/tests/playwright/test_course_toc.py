@@ -318,7 +318,7 @@ def test_side_drawer_variant_honours_its_width_cap(
 ):
     """The drawer presentation caps at 24rem instead of taking 80% of any screen.
 
-    Regression (QA bug B1): the cap lives in the shell's `@layer components`
+    Regression: the cap lives in the shell's `@layer components`
     block while the dialog carried a `max-w-none` utility, and utilities are a
     later cascade layer, so the cap never applied. At 900px the drawer measured
     720px. This is the width twin of the max-height trap the same file already
@@ -326,7 +326,7 @@ def test_side_drawer_variant_honours_its_width_cap(
 
     No shipped page selects this variant -- every consumer takes the
     bottom-sheet default -- so the variant is switched on the element, which is
-    exactly how the QA pass reached it. The CSS rule is what is under test.
+    how a manual check has to reach it. The CSS rule is what is under test.
     """
     course = CourseFactory(title="Drawer Course", slug="drawer-course")
     LearnerCourseRegistrationFactory(

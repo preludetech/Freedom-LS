@@ -98,7 +98,7 @@ def test_escape_closes_only_the_topmost_dropdown_leaving_the_drawer_open(
 ) -> None:
     """A dropdown menu opened over the drawer is its own layer: one Esc
     dismisses the dropdown and leaves the drawer open, a second Esc then
-    closes the drawer. Reproduces the QA bug where a single Esc closed both."""
+    closes the drawer. A single Esc used to close both."""
     page = educator_logged_in_page
     organisation_a = OrganisationFactory(name="Org A")
     organisation_b = OrganisationFactory(name="Org B")

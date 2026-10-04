@@ -325,7 +325,7 @@ class TestFormatEmailSubject:
         assert self._format(self.SUBJECT) == f"[PinnedSite] {self.SUBJECT}"
 
     def test_nothing_pinned_refuses_rather_than_naming_a_tenant(self, settings) -> None:
-        """The QA §12.1 case: no request, and nothing pinned to stand in for one.
+        """No request, and nothing pinned to stand in for one.
 
         Deliberately no ``mock_site_context`` -- that fixture patches the site
         resolution this exercises. Holding one Site row is not an answer: the

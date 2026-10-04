@@ -177,7 +177,7 @@ def test_tab_set_markup_is_navigation_not_an_aria_tab_widget(
 
 def test_forced_colours_rules_live_with_their_components() -> None:
     """Each component's forced-colors rule is proved from its own source,
-    not from the built CSS, so a later slice's rule shows up here too."""
+    not from the built CSS, so a rule added later shows up here too."""
     status_badge = (COMPONENTS_DIR / "panel-status-badge.html").read_text()
     progress_bar = (COMPONENTS_DIR / "panel-progress-bar.html").read_text()
     filter_toggle = (COMPONENTS_DIR / "panel-filter-toggle.html").read_text()

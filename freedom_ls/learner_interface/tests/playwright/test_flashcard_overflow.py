@@ -3,7 +3,7 @@
 These cover layout and hit-testing that unit tests cannot reach: whether a
 markdown table on the answer face pushes the card off a narrow viewport, whether
 that table scrolls instead of being clipped, and whether the flip trigger still
-receives a click now that it paints *below* both faces. They back QA bug B1.
+receives a click now that it paints *below* both faces.
 """
 
 import pytest
@@ -25,7 +25,7 @@ QUESTION = "Which status code for a failed write?"
 
 # A five-column table and a fenced code block: between them they set a
 # min-content width several times a phone's viewport. This is the shape of the
-# demo content that exposed B1.
+# demo content that exposed the overflow.
 WIDE_ANSWER = """
 | Code | Meaning | Client should | Retryable | Notes |
 | --- | --- | --- | --- | --- |
@@ -100,7 +100,7 @@ def test_a_wide_answer_does_not_push_the_card_off_a_narrow_viewport(
 ):
     """A table on the answer face must not widen the card past the viewport.
 
-    Regression (QA bug B1): both faces were grid items in a ``1fr`` track with
+    Regression: both faces were grid items in a ``1fr`` track with
     the default ``min-width: auto``, so the answer table's min-content width
     became a floor the card could not go below. At 375px the card measured
     586px and took the whole page's horizontal scroll with it.

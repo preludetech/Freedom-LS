@@ -2,8 +2,7 @@
 
 Records a learner's expressed interest in a coming-soon course.
 Deliberately minimal. Notification support (notified_at field) will be
-added via its own migration when the notify-on-launch feature is implemented
-(spec §10).
+added via its own migration when the notify-on-launch feature is implemented.
 """
 
 from __future__ import annotations

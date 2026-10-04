@@ -113,7 +113,7 @@ class TestExpressInterestOnPublishedCourse:
 class TestExpressInterestOnHiddenCourse:
     """POST express_interest on a hidden course 404s for unregistered users.
 
-    A hidden course must never confirm its existence (spec §13) — so it returns
+    A hidden course must never confirm its existence, so it returns
     404, not the distinguishable 422 a published course returns.
     """
 
@@ -397,7 +397,7 @@ class TestExpressInterestAnonymousRedirect:
 
 @pytest.mark.django_db
 class TestExpressInterestCTAContent:
-    """The interested-state CTA must NOT promise a notification (spec §7.2, §10)."""
+    """The interested-state CTA must NOT promise a notification."""
 
     def test_interested_state_contains_no_notification_promise(
         self, client, mock_site_context

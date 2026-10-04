@@ -28,9 +28,8 @@
     @claude The auto-close on window scroll below is shared by every
     dropdown in the app. With the now-sticky header, the user menu and
     its trigger remain on screen during scroll, so this close-on-scroll
-    fires more visibly. Spec defers any change. If QA finds the close
-    too aggressive on the sticky header specifically, scope the
-    listener to non-sticky triggers in a follow-up.
+    fires more visibly. If the close proves too aggressive on the sticky
+    header specifically, scope the listener to non-sticky triggers in a follow-up.
     {% endcomment %}
     <div x-show="open"
          x-cloak

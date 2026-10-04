@@ -1,7 +1,6 @@
 """Seed the browser-QA data set for the educator-interface permissions pass.
 
-Covers ``spec_dd/2. in progress/educator-interface-5-permissions/3. frontend_qa.md``
-§0.2: organisations Northside (Cohort A, Cohort B, Cohort Empty) and Southside
+Builds organisations Northside (Cohort A, Cohort B, Cohort Empty) and Southside
 (Cohort S), five learners, seven role personas granted through the raw role
 utilities, and one ready GeneratedReport each for Cohort A and Cohort B.
 

@@ -544,7 +544,7 @@ class TestCohortChangePageWithARemovedLearner:
 class TestDeadlineOverrideChangePageWithAnOutOfCohortLearner:
     """Narrowing the inline's queryset means an out-of-cohort learner now fails
     field validation, leaving cleaned_data without one. clean() must survive
-    that and let the field error surface -- the crash QA bug B2 described."""
+    that and let the field error surface -- which used to crash."""
 
     def test_it_is_a_validation_error_not_a_crash(self, staff_client) -> None:
         organisation = OrganisationFactory()

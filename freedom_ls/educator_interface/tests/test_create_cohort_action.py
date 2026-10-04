@@ -7,9 +7,9 @@ cleaning instead of blowing up as an IntegrityError at the database.
 
 Most of these are unit tests of the action, so they hand-build the request.
 That the view actually sets request.organisation is covered end to end in
-test_config_authorisation.py. The one true end-to-end test here proves the
-success criterion this slice exists for: an organisation admin with no
-superuser flag can create a cohort through the interface.
+test_config_authorisation.py. The one true end-to-end test here proves that
+an organisation admin with no superuser flag can create a cohort through the
+interface.
 """
 
 from __future__ import annotations
@@ -189,7 +189,7 @@ def test_renaming_a_cohort_onto_a_sibling_name_is_rejected(mock_site_context):
 def test_an_organisation_admin_with_no_superuser_flag_creates_a_cohort(
     mock_site_context: Site, logged_in_client
 ) -> None:
-    """The success criterion this slice exists for."""
+    """Creating a cohort needs organisation admin rights, not the superuser flag."""
     organisation = OrganisationFactory()
     user = UserFactory()
     assign_object_role(user, organisation, "organisation_admin")

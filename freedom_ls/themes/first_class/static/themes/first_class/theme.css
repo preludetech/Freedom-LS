@@ -1,8 +1,5 @@
 /* FLS first_class theme — Tier-1 token bundle ("Modern Altitude").
  *
- * Brand reference:
- *   spec_dd/.../themable-implementations-master-decomposed-into-phases/first-class-theme.md
- *
  * This file is intentionally sparse: it redeclares only the token *values*
  * that change versus the default theme. The `@theme inline` aliases that wire
  * `--radius-*`, `--font-*`, and `--color-focus-ring` onto Tailwind's expected

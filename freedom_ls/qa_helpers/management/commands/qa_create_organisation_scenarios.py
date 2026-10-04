@@ -1,7 +1,6 @@
 """Seed the full browser-QA data set for the Organisations feature.
 
-Covers the prerequisites table in
-``spec_dd/2. in progress/schools/3. frontend_qa.md`` §0.4: three organisations,
+Builds three organisations,
 four cohorts (including the same cohort name in two organisations, which is
 what proves the narrowed uniqueness constraint), and eight personas —
 including a learner registered through two organisations, one with a Learner
@@ -16,7 +15,7 @@ Notable behaviours:
 * The organisation formerly seeded as "Northside Academy" (slug
   ``northside-academy``) is replaced by one named exactly ``Northside`` with
   slug ``northside``. A slug is assigned once, at creation, and a later rename
-  in the admin must NOT change it — §7.5 renames Northside to "Northside
+  in the admin must NOT change it. The QA pass renames Northside to "Northside
   Academy" and asserts the monogram flips from "NO" to "NA", so the fixture
   has to start from the short name. The old row is deleted when nothing
   references it, and renamed to "Northside Old" when something does.
@@ -74,8 +73,8 @@ from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
 from freedom_ls.role_based_permissions.utils import assign_object_role
 from freedom_ls.site_aware_models.models import _thread_locals
 
-# Byte-identical to `spec_dd/2. in progress/schools/RT-logo.webp` (same md5);
-# the in-repo copy is used so the fixture survives the spec directory moving.
+# The logo is stored in the repo so the fixture doesn't depend on files outside
+# the app.
 LOGO_PATH = Path(__file__).resolve().parent.parent.parent / "fixtures" / "RT-logo.webp"
 
 RPAS_NAME, RPAS_SLUG = "RPAS Training", "rpas-training"
@@ -88,7 +87,7 @@ RPAS_OTHER_COHORT = "Year 10 Science"
 SOUTHGATE_COHORT = "Southgate Only"
 
 # The cohort course: 18 viewable items across course parts, so the player's
-# next/previous sweep (§7.2) has somewhere to go.
+# next/previous sweep has somewhere to go.
 COHORT_COURSE_SLUG = "functionality-demo-course-parts"
 # The solo learner's course. Deliberately a different one, so a course page
 # never carries both a cohort and an individual registration for one person.
@@ -179,7 +178,7 @@ def _ensure_logo(organisation: Organisation) -> None:
 
 
 def _clear_logo(organisation: Organisation) -> None:
-    """§7.5 needs Northside/Southgate to fall back to a monogram."""
+    """Clear the logo so Northside/Southgate fall back to a monogram."""
     if organisation.logo:
         organisation.logo.delete(save=True)
 
@@ -394,7 +393,7 @@ def _seed(site: Site) -> None:
     ]:
         _ensure_membership(site, rpas_maths, _ensure_user(site, email, first, last))
 
-    # A member the legacy educator holds no grant on, so §5's "other cohort
+    # A member the legacy educator holds no grant on, so the "other cohort
     # 404s" and "users list is limited to Year 9 Maths" checks can distinguish.
     _ensure_membership(
         site, rpas_other, _ensure_user(site, "y10.learner@example.com", "Ada", "Kruger")

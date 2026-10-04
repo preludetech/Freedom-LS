@@ -48,7 +48,7 @@ def test_fls_app_labels_are_prefixed() -> None:
         f"{', '.join(sorted(config.name for config in offenders))}. "
         'Either add label = "freedom_ls_<app>" to the app\'s AppConfig, or '
         "add its bare module name to UNPREFIXED_LABEL_ALLOWLIST above, citing "
-        "the spec that commits it to extraction."
+        "the commitment to extract it."
     )
 
 

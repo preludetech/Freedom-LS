@@ -1,6 +1,6 @@
 """E2E test for the mobile Filter & sort sheet with JavaScript off.
 
-The spec requires the sheet's form to be reachable *and visible* below md
+The sheet's form must be reachable *and visible* below md
 when JavaScript is disabled, not merely present in the DOM. The shared
 bottom-sheet dialog is closed by default (opacity:0, translateY(100%)), and
 the sheet's own <noscript> override only reset display/position, leaving it

@@ -1,6 +1,6 @@
 """The notification delivery-backend seam.
 
-A downstream or a later spec names a subclass in NOTIFICATION_DELIVERY_BACKENDS
+A downstream project names a subclass in NOTIFICATION_DELIVERY_BACKENDS
 to act on a stored notification (email, for instance). The base class carries
 no behaviour, in the manner of course_access.backends.CourseAccessBackend.
 """

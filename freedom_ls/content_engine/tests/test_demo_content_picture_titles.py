@@ -3,7 +3,7 @@
 The `number="N"` attribute already supplies a "Figure N" prefix in both the
 thumbnail figcaption and the spotlight heading, so a `title` that *also* begins
 with "Figure N:" renders a doubled "Figure 2: Figure 2:" caption. This guards
-the demo content against re-introducing that duplication (QA Bug 4).
+the demo content against re-introducing that duplication.
 """
 
 import re

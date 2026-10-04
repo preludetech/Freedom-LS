@@ -3,7 +3,7 @@
 Centralises the "hidden courses 404 for anyone not registered" rule so that
 every view surface (course detail, apply, express-interest) enforces it
 identically and cannot drift from the VisibilityEnforcingBackend's filter_visible
-rule (spec §13: hidden means hidden).
+rule: hidden means hidden.
 """
 
 from __future__ import annotations

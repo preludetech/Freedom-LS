@@ -7,7 +7,7 @@
 #
 # `htmx_success` and `htmx_error` deliberately render `partials/messages.html`
 # in OOB mode in the view itself — the pattern that originally exposed the
-# double-OOB bug documented in qa_report.md (Bug 1). The production
+# double-OOB bug, where two OOB message fragments were emitted. The production
 # `HtmxMessagesMiddleware` must tolerate this pattern and emit exactly one
 # OOB fragment, so these endpoints double as a regression check.
 
