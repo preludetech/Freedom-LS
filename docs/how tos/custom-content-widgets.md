@@ -173,7 +173,7 @@ allowlisted. Django autoescapes `{{ title }}`, which is enough for text. Two thi
 ## Telling your authors
 
 The `fls-content` Claude plugin reads custom widgets from the content repo. For each widget, add a
-widget declaration at `.fls-content/widgets/c-<name>.md`, beside `.fls-content.yaml`. The plugin
+widget declaration at `.claude/fls-content/widgets/c-<name>.md`. The plugin
 then accepts the widget and its attributes, and `/fls-content:format-content` can produce it.
 
 The plugin's `custom-widgets.md`

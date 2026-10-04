@@ -7,15 +7,15 @@ project. It tells the plugin the project already did.
 
 ## Location
 
-`.fls-content/widgets/c-<name>.md`, relative to the repo root (the current working directory),
-beside `.fls-content.yaml`. Only files matching `c-*.md` are declarations. Anything else in the
+`.claude/fls-content/widgets/c-<name>.md`, relative to the repo root (the current working directory).
+Only files matching `c-*.md` are declarations. Anything else in the
 directory is ignored without comment.
 
 ## Read step
 
 Do this at the start of each run and before any widget decision:
 
-1. Glob the literal pattern `.fls-content/widgets/c-*.md` from the repo root.
+1. Glob the literal pattern `.claude/fls-content/widgets/c-*.md` from the repo root.
 2. Read every match.
 3. Apply the validity rules below to each file.
 

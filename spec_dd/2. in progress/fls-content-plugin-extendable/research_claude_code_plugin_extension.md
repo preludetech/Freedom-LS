@@ -46,12 +46,12 @@ Source: https://code.claude.com/docs/en/plugins-reference
 ## 2. Extension patterns compared
 
 **(a) Consumer-owned config or data in the repo**
-This covers `.fls-content.yaml`, which already exists, and optionally `.fls-content/widgets/*.md`.
+This covers `.fls-content.yaml`, which already exists, and optionally `.claude/fls-content/widgets/*.md`.
 - Upgrade safety: best. The plugin never owns the file, and plugin updates cannot clobber it. Versioned with the content repo.
 - Validator integration: best. The bundled Python validator can parse the YAML and the widget directory directly. Docs and validation can share one source, for example a widget entry with a name, attributes and a doc file path.
 - Agent discoverability: only as good as the plugin skill's instructions.
   - Neither `${CLAUDE_PROJECT_DIR}` nor `${CLAUDE_PLUGIN_ROOT}` in the skill body gives the agent the repo's files. The agent works in the repo cwd anyway.
-  - The skill must say something explicit such as "before using widgets, Glob `.fls-content/widgets/*.md` and read the ones relevant". Without that line, the agent will not look.
+  - The skill must say something explicit such as "before using widgets, Glob `.claude/fls-content/widgets/*.md` and read the ones relevant". Without that line, the agent will not look.
   - With it, the agent reads on demand. This is the same lazy-loading model as the plugin's own `resources/c-*.md`, so there is no extra context cost until a widget is needed.
 - Pitfall: the pointer in the skill and the index must be robust. A short `index.md`, or a listing step in the skill, avoids the agent globbing and reading everything.
 

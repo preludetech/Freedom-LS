@@ -105,7 +105,7 @@ The FLS scanner skips:
 - `README.md` and `CLAUDE.md`
 - Names ending with `~`
 
-`.fls-content.yaml` (the deployment config) is never scanned as content because it starts with `.`. `.fls-content/` (the content repo's widget declarations, see the `fls-content:widget-reference` skill) is never scanned as content for the same reason.
+`.fls-content.yaml` (the deployment config) is never scanned as content because it starts with `.`. `.claude/fls-content/widgets/` (the content repo's widget declarations, see the `fls-content:widget-reference` skill) is never scanned as content for the same reason: it sits inside `.claude/`.
 
 ## Child auto-discovery
 

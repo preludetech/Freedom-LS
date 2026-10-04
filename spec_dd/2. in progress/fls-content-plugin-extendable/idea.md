@@ -27,9 +27,9 @@ the plugin already does with widgets also works with those custom widgets.
 - **One reference file per custom widget**, in the same shape as the plugin's own
   `skills/widget-reference/resources/c-*.md`: purpose, allowed attributes, attribute table and a
   copy-pasteable example. The allowed attributes listed in a widget's file are that widget's
-  complete attribute set. The files go in `.fls-content/widgets/c-<name>.md` at the content repo
-  root, next to `.fls-content.yaml`.
-- **No declarations means no custom widgets.** When `.fls-content/widgets/` is missing, the plugin
+  complete attribute set. The files go in `.claude/fls-content/widgets/c-<name>.md` at the content repo
+  root, following the `.claude/<plugin>/` convention for plugin configuration.
+- **No declarations means no custom widgets.** When `.claude/fls-content/widgets/` is missing, the plugin
   behaves as it does today, so existing content repos need nothing new.
 - **Only existing functionality changes, and none is added.**
   - The `widget-reference` skill must tell the agent to read the repo's custom widget files and to
@@ -45,7 +45,7 @@ the plugin already does with widgets also works with those custom widgets.
 
 ## Open for the spec
 
-- Confirm that `content_save` and the validator skip `.fls-content/`. Dot-prefixed files are not
+- Confirm that `content_save` and the validator skip `.claude/fls-content/`. Dot-prefixed files are not
   scanned as content (`skills/content-types/resources/file-layout.md`), but no one has checked that
   this holds for dot-prefixed directories too.
 

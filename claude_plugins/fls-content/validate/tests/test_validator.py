@@ -272,10 +272,10 @@ def test_empty_directory_exits_nonzero(tmp_path: Path) -> None:
 
 
 def test_widget_declarations_are_not_validated(tmp_path: Path) -> None:
-    """A declaration under `.fls-content/widgets/` has no frontmatter, so the run
+    """A declaration under `.claude/fls-content/widgets/` has no frontmatter, so the run
     only exits clean if the scanner never treats it as content."""
     write_valid_course(tmp_path)
-    widgets_dir = tmp_path / ".fls-content" / "widgets"
+    widgets_dir = tmp_path / ".claude" / "fls-content" / "widgets"
     widgets_dir.mkdir(parents=True)
     (widgets_dir / "c-foo.md").write_text(
         "# `c-foo`\n\n**Allowed attributes:** none\n", encoding="utf-8"

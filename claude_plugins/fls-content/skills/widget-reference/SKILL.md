@@ -68,7 +68,7 @@ But this base set is fully overridable — a deployment may add, remove, or rena
 
 ## Custom widgets are declared per content repo
 
-A concrete project may declare widgets of its own in `.fls-content/widgets/`. Follow the read step in [`resources/custom-widgets.md`](resources/custom-widgets.md) before answering about or writing any widget, and treat declared widgets as valid alongside the built-ins.
+A concrete project may declare widgets of its own in `.claude/fls-content/widgets/`. Follow the read step in [`resources/custom-widgets.md`](resources/custom-widgets.md) before answering about or writing any widget, and treat declared widgets as valid alongside the built-ins.
 
 ## HTML-escaping rule (critical for two widgets)
 

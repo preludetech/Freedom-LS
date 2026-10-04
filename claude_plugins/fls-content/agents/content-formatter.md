@@ -48,7 +48,7 @@ it — the path is fixed.
 
 When Step 1 loaded `widget-reference`, follow the read step in its
 `resources/custom-widgets.md` before you format anything; you are done when every declaration
-is classified. A missing `.fls-content/widgets/` means no custom widgets: formatting continues
+is classified. A missing `.claude/fls-content/widgets/` means no custom widgets: formatting continues
 with the built-ins, and it never makes you return `blocked`.
 
 If `./.fls-content.yaml` is missing or unreadable/malformed, return `status: blocked` with
