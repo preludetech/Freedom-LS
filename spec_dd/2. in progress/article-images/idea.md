@@ -13,20 +13,38 @@ image.
   the way `c-picture` and `c-card` resolve `src` (`get_file_by_path`). It comes with alt text. An
   article with no image behaves exactly as it does today.
 - **`og:image` and the Twitter card.** When an article has an image, its page fills the `og_image`
-  block in `_base.html` with an absolute URL and switches `twitter_card` to
-  `summary_large_image`. `docs/how tos/landing-pages.md` describes both blocks. When it doesn't,
-  the site default still applies.
-- **Article cards.** Both variants (horizontal and compact) show the image when there is one.
-  A card with no image keeps its existing layout.
+  block in `_base.html` with an absolute URL, adds `og:image:alt` when the alt text is non-empty,
+  and switches `twitter_card` to `summary_large_image`. `docs/how tos/landing-pages.md` describes
+  both blocks. When it doesn't, the site default still applies.
+- **Article cards.** Both `c-article-card` variants (`row`, the horizontal one, and `compact`)
+  show the image when there is one. A card with no image keeps its existing layout. An article
+  whose `image` does not resolve to a loaded file behaves as one with no image.
 - **The validator** reports an image path that doesn't resolve, as it does for other widget paths.
 
-## Open for the spec
+## Decisions
 
-- Whether the image also shows on the article page itself (as a hero above the body) and on the blog
-  index.
-- Image sizing and cropping for cards and for social previews (crawlers prefer about 1200×630).
-- The frontmatter field names (`image` / `image_alt` or similar).
-- Whether a missing alt text is a validation error.
+The spec stage was skipped, so these were taken while planning. Edit them here to overrule them.
+
+- **The image shows on the article page** as a header image between the byline and the body, and
+  **on the blog index**, which becomes a grid of compact article cards with thumbnails. A card with
+  no image keeps its text-only layout and still fills its grid cell, so every card in a row is the
+  same height.
+- **Sizing and cropping.** Card thumbnails are 16:10 and the header image is 2:1, both cropped
+  with `object-cover`. The social preview uses the stored file as it is: `content_save` already
+  caps images at 1600 px on the longest edge, so an author who commits a 1200×630 image gets that
+  size back. No new rendition is made.
+- **Field names are `image` and `image_alt`.** `image` already exists on the shared frontmatter
+  base schema, where the `ARTICLE` schema currently rejects it as a course-only field. That
+  rejection goes; `category` stays rejected. The `Article` model gains the two columns, and
+  `Article.image_file` resolves `image` to the `File` row behind it, or `None`. The blog index
+  resolves every listed article's image in one query through
+  `ArticleQuerySet.with_image_files()`.
+- **Alt text is required when there is an image.** An `image` with no `image_alt` key is a
+  validation error. `image_alt: ""` is allowed and means the image is decorative, the same
+  convention as `alt=""` on `c-picture`.
+- **The `og:image` URL** is `request.build_absolute_uri(image_file.file.url)`. In development that
+  prefixes the media path with the host. In production, where course media serves signed URLs, the
+  URL is already absolute and is used as is.
 
 ## Depends on
 
