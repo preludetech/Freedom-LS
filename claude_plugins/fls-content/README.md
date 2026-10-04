@@ -11,3 +11,5 @@ A Claude plugin for authoring FLS course content in a content repo.
   valid, well-structured FLS content, in place. Run when importing or cleaning up content.
 - `/fls-content:validate-content <path>` — check content structure and auto-fix obvious
   problems. Run before considering content done, or whenever you want to confirm it is valid.
+
+A content repo can declare its project's custom widgets in `.fls-content/widgets/`, one `c-<name>.md` per widget, and the plugin treats them like built-ins.

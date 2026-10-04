@@ -156,7 +156,7 @@ Binary assets — images, PDFs, audio, video — are uploaded and stored by `con
 
 `fls-content` is a Claude Code plugin for course authors working in a content repository without access to the FLS source. It provides:
 
-- **Offline reference** — the content types and their frontmatter, the available widgets and their permitted attributes, file layout and numbering conventions, and UUID and escaping rules.
+- **Offline reference** — the content types and their frontmatter, the available widgets, including any custom widgets the content repo declares, and their permitted attributes, file layout and numbering conventions, and UUID and escaping rules.
 - **Markdown conversion** (`/fls-content:format-content`) — reformats messy Markdown into valid FLS structure in place. Conservative by design: lossless transforms are applied automatically, while anything semantic is collected for author review rather than applied silently. Git is the safety net; there is no separate backup or dry-run mode.
 - **Offline validation** (`/fls-content:validate-content`) — runs a bundled Django-free copy of the schema validator, reporting the same errors as `content_validate` without needing a running FLS host. This is a structural pre-flight only; `content_save` on a host remains authoritative, since UUID assignment, icon resolution, cross-reference resolution, and asset upload happen there.
 - **Repo scaffolding** (`/fls-content:init`) — creates a configuration file declaring the deployment's valid admonition types, so the plugin knows which are valid for that project. It never overwrites an existing config.

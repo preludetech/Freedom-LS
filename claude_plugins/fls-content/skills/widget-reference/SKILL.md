@@ -1,12 +1,12 @@
 ---
 name: widget-reference
-description: Every FLS c-* widget — purpose, attributes, and examples. Use when asking about a widget, component, admonition, flashcard, accordion, youtube, picture, table, code block, card, article link, article card, course card, grid, pull quote, or equation.
+description: FLS c-* widgets, built-in and any custom widgets the content repo declares — purpose, attributes, and examples. Use when asking about a widget, custom widget, component, admonition, flashcard, accordion, youtube, picture, table, code block, card, article link, article card, course card, grid, pull quote, or equation.
 allowed-tools: Read, Grep, Glob
 ---
 
 # FLS Widget Reference
 
-Widgets are `c-*` cotton components embedded in markdown content bodies. They must be registered in `MARKDOWN_ALLOWED_TAGS` or the nh3 sanitiser strips them wholesale before the template ever renders. **The allowlist is closed — you cannot invent new `c-*` names.** Any unknown `c-*` tag is stripped silently, so it produces no error and no output.
+Widgets are `c-*` cotton components embedded in markdown content bodies. They must be registered in `MARKDOWN_ALLOWED_TAGS` or the nh3 sanitiser strips them wholesale before the template ever renders. Authors cannot invent `c-*` names. The valid set is the built-ins below plus the custom widgets the content repo declares (see [`resources/custom-widgets.md`](resources/custom-widgets.md)). Any unknown `c-*` tag is stripped silently, so it produces no error and no output.
 
 ## All widgets at a glance
 
@@ -32,9 +32,9 @@ Widgets are `c-*` cotton components embedded in markdown content bodies. They mu
 | `c-course-card` | Clickable card for a COURSE |
 | `c-slot` | Named slot inside `c-flashcard` (not a standalone widget) |
 
-## Authorised attribute sets (complete allowlist)
+## Authorised attribute sets (built-in widgets)
 
-The documented attribute set for each widget equals the `MARKDOWN_ALLOWED_TAGS` allowlist exactly. Any attribute outside this set is **silently stripped** by the sanitiser before the template renders.
+This block lists the built-in widgets only. A declared custom widget's attribute set is the `**Allowed attributes:**` line of its declaration. For each widget, the documented attribute set equals the `MARKDOWN_ALLOWED_TAGS` allowlist exactly. Any attribute outside the set is **silently stripped** by the sanitiser before the template renders.
 
 ```
 c-youtube:        video_id, video_title, caption
@@ -65,6 +65,10 @@ c-slot:           name
 `note`, `tip`, `important`, `warning`, `danger`, `key_takeaways`, `checklist`, `default`
 
 But this base set is fully overridable — a deployment may add, remove, or rename these types. **Do not treat the base set as exhaustive.** An unknown type falls back **silently** to the `default` style at render time with no error, so you must rely on the types declared in your project's `.fls-content.yaml`, not guess.
+
+## Custom widgets are declared per content repo
+
+A concrete project may declare widgets of its own in `.fls-content/widgets/`. Follow the read step in [`resources/custom-widgets.md`](resources/custom-widgets.md) before answering about or writing any widget, and treat declared widgets as valid alongside the built-ins.
 
 ## HTML-escaping rule (critical for two widgets)
 
@@ -107,5 +111,6 @@ one file per widget:
 - [`resources/c-article-link.md`](resources/c-article-link.md)
 - [`resources/c-article-card.md`](resources/c-article-card.md)
 - [`resources/c-course-card.md`](resources/c-course-card.md)
+- [`resources/custom-widgets.md`](resources/custom-widgets.md)
 
 HTML-escaping rule detail: see the `fls-content:conventions` skill.

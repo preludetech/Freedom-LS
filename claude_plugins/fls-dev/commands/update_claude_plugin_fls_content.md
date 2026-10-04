@@ -48,6 +48,7 @@ Read `.sdd-work/fls_content_sync.md` by path. Apply the drafted edits to the rel
 - **When any mirrored source changed** (the six paths listed in Step 2b): re-copy the trimmed validator from the FLS sources and **re-apply every patch listed in the `# Patches applied:` header of `claude_plugins/fls-content/validate/schema.py` and of `claude_plugins/fls-content/validate/validate.py`**. Those two headers are the authoritative patch list — read them before editing, and add a numbered entry there for any new patch. Do not rely on a list duplicated here: one kept drifting out of date, which is the same failure this command exists to catch.
 - Note that `validate/schema.py` bundles **four** sources, not one: `content_base/schema.py`, `content_engine/schema.py`, `form_engine/schema.py`, and a hand-ported mirror of `form_engine/typed_answers.question_bounds_error`.
 - Touch **only** the affected sections — never rewrite the whole plugin and never add detail beyond what the source files express.
+- `skills/widget-reference/resources/custom-widgets.md` and the custom-widget wording in `skills/widget-reference/SKILL.md` are hand-maintained and have no FLS source. Keep them when built-in widget sections are edited.
 
 Delete this command's scratch file after all edits are applied, naming it explicitly and letting the
 wrapper drop the directory once it is empty:
