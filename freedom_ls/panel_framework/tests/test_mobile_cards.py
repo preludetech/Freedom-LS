@@ -91,3 +91,17 @@ def test_filter_and_sort_buttons_render_only_when_declared(
     assert table_a.xpath(".//button[normalize-space()='Sort']")
     assert not table_b.xpath(".//button[normalize-space()='Filter']")
     assert not table_b.xpath(".//button[normalize-space()='Sort']")
+
+
+def test_card_row_renders_primary_and_secondary_content(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-card", kind="a")
+
+    html = fetch(_panel_path(stub.pk)).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table,) = document.cssselect("#stub-table")
+    (card,) = table.cssselect("ul li")
+    assert "row-card" in card.text_content()
+    assert "Alpha" in card.text_content()

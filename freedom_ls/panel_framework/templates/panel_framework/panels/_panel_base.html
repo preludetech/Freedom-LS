@@ -21,7 +21,7 @@ the heading itself from title.
          hx-target="#{{ region_id }}"
          hx-swap="outerHTML"
          {% endif %}>
-    <c-panel-card :title="title" heading_level="2">
+    <c-panel-card :title="title" heading_level="2" :flush="panel.card_flush">
         {% block panel_header %}{% endblock panel_header %}
         {% block panel_body %}{% endblock panel_body %}
         <c-slot name="actions">

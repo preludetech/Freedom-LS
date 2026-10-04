@@ -94,7 +94,7 @@ def test_an_override_of_the_leaf_keeps_the_base_markup(mock_site_context: Site) 
     html = _render(_bind(_PlainPanel))
 
     assert "<p data-override-marker>overridden</p>" in html
-    assert "<h2>Plain</h2>" in html
+    assert ">Plain</h2>" in html
     assert 'data-panel="x"' in html
 
 
@@ -105,7 +105,7 @@ def test_a_panel_template_extending_the_framework_template_renders_both(
     html = _render(_bind(StubDetailsPanel, _make_stub(name="Extended")))
 
     assert "<p data-stub-details>Extended</p>" in html
-    assert "<h2>Details</h2>" in html
+    assert ">Details</h2>" in html
     assert '<section data-panel="x"' in html
 
 

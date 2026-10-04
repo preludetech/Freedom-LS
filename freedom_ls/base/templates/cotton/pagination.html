@@ -8,14 +8,15 @@
         page_param_name="page"
         push_url=""
         links=""
-        page_url="" />
+        page_url=""
+        class="mt-6 px-4" />
 
 {% load pagination_tags %}
 
 {% if links %}
     {% if page_obj and page_obj.paginator.num_pages > 1 %}
         {# Mobile pagination: Previous / Page X of Y / Next #}
-        <div class="flex sm:hidden items-center justify-between mt-6 px-4">
+        <div class="flex sm:hidden items-center justify-between {{ class }}">
             <div>
                 {% if links.previous %}
                     {% querystring request.GET links.previous.changes as qs %}
@@ -23,7 +24,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary px-4 py-3">
+                       class="btn btn-secondary btn-sm">
                         Previous
                     </a>
                 {% endif %}
@@ -38,7 +39,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary px-4 py-3">
+                       class="btn btn-secondary btn-sm">
                         Next
                     </a>
                 {% endif %}
@@ -46,7 +47,8 @@
         </div>
 
         {# Desktop pagination: numbered buttons with ellipsis #}
-        <div class="hidden sm:flex items-center justify-between mt-6 px-4">
+        <div class="hidden sm:flex items-center justify-between gap-4 {{ class }}">
+            <span class="text-sm text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
             <div class="flex gap-2">
                 {% if links.previous %}
                     {% querystring request.GET links.previous.changes as qs %}
@@ -54,7 +56,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary">
+                       class="btn btn-secondary btn-sm">
                         Previous
                     </a>
                 {% endif %}
@@ -62,19 +64,19 @@
                 {% for link in links.pages %}
                     {% if link.number %}
                         {% if link.current %}
-                            <span class="btn btn-primary">{{ link.number }}</span>
+                            <span class="btn btn-primary btn-sm">{{ link.number }}</span>
                         {% else %}
                             {% querystring request.GET link.changes as qs %}
                             <a href="{{ page_url }}{{ qs }}"
                                hx-get="{{ base_url }}{{ qs }}"
                                hx-target="#{{ table_id }}"
                                hx-swap="outerHTML"
-                               class="btn btn-secondary">
+                               class="btn btn-secondary btn-sm">
                                 {{ link.number }}
                             </a>
                         {% endif %}
                     {% else %}
-                        <span class="btn btn-secondary pointer-events-none">...</span>
+                        <span class="btn btn-secondary btn-sm pointer-events-none">...</span>
                     {% endif %}
                 {% endfor %}
 
@@ -84,7 +86,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary">
+                       class="btn btn-secondary btn-sm">
                         Next
                     </a>
                 {% endif %}
@@ -95,7 +97,7 @@
     {% pagination_suffix sort_by=sort_by sort_order=sort_order search_query=search_query extra_params=extra_params as suffix %}
 
     {# Mobile pagination: Previous / Page X of Y / Next #}
-    <div class="flex sm:hidden items-center justify-between mt-6 px-4">
+    <div class="flex sm:hidden items-center justify-between {{ class }}">
         <div>
             {% if page_obj.has_previous %}
                 <a href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
@@ -103,7 +105,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary px-4 py-3">
+                   class="btn btn-secondary btn-sm">
                     Previous
                 </a>
             {% endif %}
@@ -118,7 +120,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary px-4 py-3">
+                   class="btn btn-secondary btn-sm">
                     Next
                 </a>
             {% endif %}
@@ -126,7 +128,8 @@
     </div>
 
     {# Desktop pagination: numbered buttons with First/Last and ellipsis #}
-    <div class="hidden sm:flex items-center justify-between mt-6 px-4">
+    <div class="hidden sm:flex items-center justify-between gap-4 {{ class }}">
+        <span class="text-sm text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
         <div class="flex flex-wrap gap-2">
             {% if page_obj.has_previous %}
                 <a href="?{{ page_param_name }}=1{{ suffix }}"
@@ -134,7 +137,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary">
+                   class="btn btn-secondary btn-sm">
                     First
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
@@ -142,27 +145,27 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary">
+                   class="btn btn-secondary btn-sm">
                     Previous
                 </a>
             {% endif %}
 
             {% for num in page_obj.paginator.page_range %}
                 {% if num == page_obj.number %}
-                    <span class="btn btn-primary">{{ num }}</span>
+                    <span class="btn btn-primary btn-sm">{{ num }}</span>
                 {% elif num <= 2 or num >= page_obj.paginator.num_pages|add:'-1' or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
                     <a href="?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-get="{{ base_url }}?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        {% if push_url %}hx-push-url="true"{% endif %}
-                       class="btn btn-secondary">
+                       class="btn btn-secondary btn-sm">
                         {{ num }}
                     </a>
                 {% elif num == 3 and page_obj.number > 5 %}
-                    <span class="btn btn-secondary pointer-events-none">...</span>
+                    <span class="btn btn-secondary btn-sm pointer-events-none">...</span>
                 {% elif num == page_obj.paginator.num_pages|add:'-2' and page_obj.number < page_obj.paginator.num_pages|add:'-4' %}
-                    <span class="btn btn-secondary pointer-events-none">...</span>
+                    <span class="btn btn-secondary btn-sm pointer-events-none">...</span>
                 {% endif %}
             {% endfor %}
 
@@ -172,7 +175,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary">
+                   class="btn btn-secondary btn-sm">
                     Next
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.paginator.num_pages }}{{ suffix }}"
@@ -180,7 +183,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary">
+                   class="btn btn-secondary btn-sm">
                     Last
                 </a>
             {% endif %}

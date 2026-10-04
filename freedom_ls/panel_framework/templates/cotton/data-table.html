@@ -38,7 +38,7 @@
         a descendant of this form (not the toolbar above, which is outside
         it) for tableSelection's event.target.closest("form") to find it.
         {% endcomment %}
-        <div class="mb-2 md:hidden">
+        <div class="px-4 py-2 sm:px-6 md:hidden">
             <label class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox"
                        aria-label="Select all on this page"
@@ -62,14 +62,14 @@
                             </th>
                         {% endif %}
                         {% for header in header_columns %}
-                            <th {% if header.column.header_class %}class="{{ header.column.header_class }}"{% endif %}>
+                            <th class="text-xs uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
                                 {% if header.column.sortable %}
                                     {% querystring request.GET header.changes as qs %}
                                     <a href="{{ page_url }}{{ qs }}"
                                        hx-get="{{ base_url }}{{ qs }}"
                                        hx-target="#{{ region_id }}"
                                        hx-swap="outerHTML"
-                                       class="cursor-pointer hover:text-primary inline-flex items-center gap-2">
+                                       class="cursor-pointer no-underline hover:text-primary inline-flex items-center gap-2">
                                         {{ header.column.header }}
                                         {% if header.state == 'asc' %}
                                             <c-icon name="sort_asc" class="size-4" />
@@ -140,6 +140,7 @@
                       :base_url="base_url"
                       :table_id="region_id"
                       :links="pagination"
-                      :page_url="page_url" />
+                      :page_url="page_url"
+                      class="px-4 py-3 sm:px-6" />
     {% endif %}
 </div>

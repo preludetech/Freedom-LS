@@ -118,7 +118,7 @@ def test_an_object_view_renders_its_object_at_the_section_url(
     html = _view("first-stub").content.decode()
 
     assert '<h1 id="instance-title">alpha</h1>' in html
-    assert "<h2>Deletable</h2>" in html
+    assert ">Deletable</h2>" in html
 
 
 def test_an_object_view_runs_check_access_on_its_object(
@@ -138,7 +138,7 @@ def test_a_base_view_renders_an_instance_free_table_panel(
     html = fetch("stub-base").content.decode()
 
     assert "row-in-base-view" in html
-    assert "<h2>Stub</h2>" in html
+    assert ">Stub</h2>" in html
     assert 'id="instance-title"' not in html
 
 
@@ -184,7 +184,7 @@ def test_a_hidden_panel_is_not_rendered(mock_site_context: Site) -> None:
 
     html = _view("first-stub").content.decode()
 
-    assert "<h2>Hidden</h2>" not in html
+    assert ">Hidden</h2>" not in html
 
 
 def test_a_hidden_panels_url_404s(mock_site_context: Site) -> None:

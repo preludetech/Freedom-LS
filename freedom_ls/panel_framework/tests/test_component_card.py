@@ -96,3 +96,20 @@ def test_landmark_false_string_renders_a_div() -> None:
 
     assert "<section" not in html
     assert 'id="overview-title"' not in html
+
+
+def test_flush_card_still_renders_header_body_and_footer() -> None:
+    html = render_cotton(
+        """
+        <c-panel-card title="Overview" flush="true">
+            Body content
+            <c-slot name="actions"><button>Save</button></c-slot>
+        </c-panel-card>
+        """
+    )
+
+    assert "<header" in html
+    assert "Overview" in html
+    assert "Body content" in html
+    assert "<footer" in html
+    assert "<button>Save</button>" in html

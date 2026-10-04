@@ -1,4 +1,4 @@
-<c-vars title="" description="" heading_level="2" landmark="" />
+<c-vars title="" description="" heading_level="2" landmark="" flush="" />
 
 {% load panel_tags %}
 
@@ -11,6 +11,9 @@ Attributes:
                  empty.
   description    One line under the heading, muted.
   heading_level  1-6 (default 2). Falls back to the default on anything else.
+  flush          On, the body drops its padding so content such as a table can
+                 run edge to edge; the header and footer keep theirs. Read
+                 through the `flag` filter.
   landmark       On, with a title: the root is a <section aria-labelledby>
                  pointing at the heading's id, so assistive tech can jump
                  straight to this card. Without a title there is no heading
@@ -33,13 +36,13 @@ id, otherwise "<title|slugify>-title".
     {% if title %}
         <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 sm:px-6">
             <div>
-                <h{{ level }}{% if landmark|flag %} id="{{ title_base }}-title"{% endif %}>{{ title }}</h{{ level }}>
+                <h{{ level }} class="text-base font-semibold"{% if landmark|flag %} id="{{ title_base }}-title"{% endif %}>{{ title }}</h{{ level }}>
                 {% if description %}<p class="text-sm text-muted">{{ description }}</p>{% endif %}
             </div>
             {% if header_action.strip %}<div class="shrink-0 text-sm">{{ header_action }}</div>{% endif %}
         </header>
     {% endif %}
-    <div class="px-4 py-4 sm:px-6">{{ slot }}</div>
+    <div class="{% if not flush|flag %}px-4 py-4 sm:px-6{% endif %}">{{ slot }}</div>
     {% if actions.strip %}
         <footer class="border-t border-border px-4 py-3 sm:px-6">
             <c-button-group variant="right">{{ actions }}</c-button-group>

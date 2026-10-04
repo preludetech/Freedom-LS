@@ -5,11 +5,13 @@
 {% else %}
     {% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
     {% if column.quick_view %}
-        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view">
+        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view"
+                              class="font-medium text-on-surface no-underline hover:text-primary">
             {{ cell_text }}
         </c-quick-view-trigger>
     {% else %}
         <a href="{{ resolved_url }}"
+           class="font-medium text-on-surface no-underline hover:text-primary"
            {% if column.htmx_nav %}
                hx-get="{{ resolved_url }}"
                hx-target="#main-content"

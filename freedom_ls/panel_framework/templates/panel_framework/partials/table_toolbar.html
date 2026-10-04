@@ -23,34 +23,35 @@ off.
         {% endfor %}
     </div>
 {% endpartialdef %}
-<div class="mb-4 space-y-3">
-    <div class="flex flex-wrap items-center gap-2">
-        {% if searchable %}
-            <form id="{{ query.key }}-search"
-                  method="get"
-                  action="{{ page_url }}"
-                  hx-get="{{ base_url }}"
-                  hx-trigger="submit, input changed delay:300ms from:#{{ query.key }}-q, search from:#{{ query.key }}-q"
-                  hx-sync="this:replace"
-                  hx-target="#{{ region_id }}"
-                  hx-swap="outerHTML"
-                  class="w-full md:w-auto md:max-w-md">
-                {% for name, value in hidden_inputs %}
-                    <input type="hidden" name="{{ name }}" value="{{ value }}">
-                {% endfor %}
-                <input type="search"
-                       id="{{ query.key }}-q"
-                       hx-preserve
-                       name="{{ query.key }}-q"
-                       placeholder="Search..."
-                       value="{{ query.search }}"
-                       class="w-full md:w-auto">
-            </form>
-        {% endif %}
+<div class="{% if searchable or toolbar or sorted_by %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3{% endif %}">
+    {% if searchable %}
+        <form id="{{ query.key }}-search"
+              method="get"
+              action="{{ page_url }}"
+              hx-get="{{ base_url }}"
+              hx-trigger="submit, input changed delay:300ms from:#{{ query.key }}-q, search from:#{{ query.key }}-q"
+              hx-sync="this:replace"
+              hx-target="#{{ region_id }}"
+              hx-swap="outerHTML"
+              class="w-full px-4 pt-3 sm:px-6 md:w-72 md:p-0 {% if toolbar or sortable_columns %}pb-0{% else %}border-b border-border pb-3 md:border-0{% endif %}">
+            {% for name, value in hidden_inputs %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+            <c-panel-search-field name="{{ query.key }}-q" id="{{ query.key }}-q"
+                                  value="{{ query.search }}" label="Search" label_hidden="true"
+                                  placeholder="Search..." hx-preserve />
+        </form>
+    {% endif %}
 
+    {% comment %}
+    Below md this wrapper is a plain block and the mobile row further down
+    takes over. At md and up the desktop controls use display: contents so
+    they sit in the wrapper's flex row beside the search form.
+    {% endcomment %}
+    <div class="hidden md:contents">
         {% for entry in toolbar %}
             {% if entry.shown %}
-                <details class="relative hidden md:block">
+                <details class="relative">
                     <summary class="list-none">
                         {% if entry.values %}
                             <c-chip variant="secondary" class="cursor-pointer">
@@ -80,7 +81,7 @@ off.
         {% endfor %}
 
         {% if add_filter %}
-            <details class="relative hidden md:block">
+            <details class="relative">
                 <summary class="list-none">
                     <c-chip variant="secondary" class="cursor-pointer">
                         Add filter
@@ -106,21 +107,21 @@ off.
                hx-get="{{ base_url }}{{ clear_qs }}"
                hx-target="#{{ region_id }}"
                hx-swap="outerHTML"
-               class="hidden md:inline">
+               class="text-sm">
                 Clear all
             </a>
         {% endif %}
 
         {% if exports %}
             {% querystring request.GET export_changes as export_qs %}
-            <a href="{{ base_url }}{{ export_qs }}" class="hidden md:inline">Export CSV</a>
+            <a href="{{ base_url }}{{ export_qs }}" class="text-sm">Export CSV</a>
         {% endif %}
 
-        {% if sorted_by %}<span class="ml-auto hidden text-sm text-muted md:inline">Sorted by {{ sorted_by }}</span>{% endif %}
+        {% if sorted_by %}<span class="ml-auto text-sm text-muted">Sorted by {{ sorted_by }}</span>{% endif %}
     </div>
 
     {% if toolbar or sortable_columns %}
-        <div class="flex flex-wrap items-center gap-2 md:hidden"
+        <div class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3 md:hidden"
              x-data="sidePanel"
              data-storage-key="{{ query.key }}-sheet"
              data-mobile-only="true">

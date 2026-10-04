@@ -54,6 +54,9 @@ class Panel:
     #: Domain events that make this panel re-fetch itself. Empty means the
     #: panel never refreshes itself in place.
     refresh_events: tuple[str, ...] = ()
+    #: The card drops its body padding because the body brings its own
+    #: edge-to-edge content.
+    card_flush: bool = False
 
     def __init__(self, ctx: PanelContext) -> None:
         if self.model is not None and ctx.instance is None:
@@ -216,6 +219,7 @@ class DataTablePanel(Panel):
     #: must set one; two DataTablePanels sharing a container must set
     #: different ones.
     table_key: str
+    card_flush = True
 
     @property
     def region_id(self) -> str:

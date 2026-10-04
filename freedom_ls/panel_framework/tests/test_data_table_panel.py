@@ -45,7 +45,7 @@ def test_a_request_targeting_the_region_gets_the_table_without_the_frame(
     assert f'id="{_region_id()}"' in html
     assert "row-x" in html
     assert "<section" not in html
-    assert "<h2>Stub</h2>" not in html
+    assert ">Stub</h2>" not in html
 
 
 def test_a_plain_get_keeps_the_frame(mock_site_context: Site) -> None:
@@ -54,7 +54,7 @@ def test_a_plain_get_keeps_the_frame(mock_site_context: Site) -> None:
     html = fetch(_panel_path(stub.pk)).content.decode()
 
     assert 'data-panel="default"' in html
-    assert "<h2>Stub</h2>" in html
+    assert ">Stub</h2>" in html
 
 
 def test_the_frame_refetches_its_own_region_on_the_stubs_declared_event(
@@ -493,3 +493,33 @@ def test_clear_all_keeps_search_and_sort(mock_site_context: Site) -> None:
     assert "stub-sort=name" in href
     assert "stub-q=row" in href
     assert "stub-kind" not in href
+
+
+def test_search_input_keeps_its_id_and_name_and_has_a_label(
+    mock_site_context: Site,
+) -> None:
+    panel = _bind_table_panel(StubDataTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    document = lxml.html.fromstring(html)
+    (search_input,) = document.cssselect('input[type="search"]')
+    assert search_input.get("id") == "stub-q"
+    assert search_input.get("name") == "stub-q"
+    assert document.cssselect('label[for="stub-q"]')
+
+
+def test_a_table_with_nothing_for_a_toolbar_renders_no_toolbar_form(
+    mock_site_context: Site,
+) -> None:
+    panel = _bind_table_panel(_NoSearchTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    document = lxml.html.fromstring(html)
+    assert not document.cssselect("form#nosearch-search")
+    assert not document.cssselect('input[type="search"]')
