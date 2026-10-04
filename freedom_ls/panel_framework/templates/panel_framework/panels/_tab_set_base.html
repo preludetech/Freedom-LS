@@ -7,6 +7,7 @@ htmx:afterSwap listener moves aria-current to the clicked link.
 {% endcomment %}
 <div data-panel="{{ name }}">
     {% block tab_nav %}
+        {% if tabs|length > 1 %}
         <nav aria-label="{{ title }}" class="mb-6">
             <ul class="flex list-none ml-0 gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)]">
                 {% for tab in tabs %}
@@ -24,6 +25,7 @@ htmx:afterSwap listener moves aria-current to the clicked link.
                 {% endfor %}
             </ul>
         </nav>
+        {% endif %}
     {% endblock tab_nav %}
     <div id="{{ region_id }}" data-tab-set>
         {% render_panel active_child %}

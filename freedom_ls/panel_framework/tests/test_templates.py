@@ -47,7 +47,16 @@ class _PanelWithTwoRefreshEvents(Panel):
 
 class _TabsWithAHiddenOne(TabSet):
     title = "Sections"
-    children = {"shown": _PlainPanel, "hidden": StubHiddenPanel}
+    children = {
+        "shown": _PlainPanel,
+        "also_shown": _PlainPanel,
+        "hidden": StubHiddenPanel,
+    }
+
+
+class _TabsWithOneChild(TabSet):
+    title = "Sections"
+    children = {"only": _PlainPanel}
 
 
 def _bind(
@@ -173,6 +182,18 @@ def test_tab_set_markup_is_navigation_not_an_aria_tab_widget(
     assert 'role="tab' not in html
     assert "aria-selected" not in html
     assert "data-tab-set" in html
+
+
+@pytest.mark.django_db
+def test_a_tab_set_with_one_tab_renders_its_content_without_a_tab_strip(
+    mock_site_context: Site,
+) -> None:
+    html = _render(_bind(_TabsWithOneChild, name=""))
+
+    document = lxml.html.fromstring(html)
+    assert not document.cssselect("nav[aria-label]")
+    (region,) = document.cssselect("[data-tab-set]")
+    assert "Plain" in region.text_content()
 
 
 def test_forced_colours_rules_live_with_their_components() -> None:

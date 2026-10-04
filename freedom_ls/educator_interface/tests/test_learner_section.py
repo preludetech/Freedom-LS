@@ -286,3 +286,22 @@ def test_learners_mobile_toolbar_offers_sort_and_no_filter(educator_client):
     document = lxml.html.fromstring(response.content.decode())
     assert document.xpath("//button[normalize-space()='Sort']")
     assert not document.xpath("//button[normalize-space()='Filter']")
+
+
+@pytest.mark.django_db
+def test_learner_detail_page_renders_details_and_cohorts_cards_with_definition_labels(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    headings = [h.text_content().strip() for h in document.cssselect("h2")]
+    labels = [dt.text_content().strip() for dt in document.cssselect("dl dt")]
+    assert "Details" in headings
+    assert "Cohorts" in headings
+    assert labels == ["First name", "Last name", "Email"]
