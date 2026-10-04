@@ -88,11 +88,9 @@ freedom_ls.learner_interface.tests.test_resume_and_redirect -> freedom_ls.role_b
 freedom_ls.learner_interface.tests.test_self_registration_learner -> freedom_ls.comms.models
 
 # learner_management
-freedom_ls.learner_management.tests.test_context_processors -> freedom_ls.role_based_permissions.utils
 freedom_ls.learner_management.tests.test_learner_admin -> freedom_ls.learner_progress.admin
 freedom_ls.learner_management.tests.test_learner_admin -> freedom_ls.learner_progress.factories
 freedom_ls.learner_management.tests.test_learner_admin -> freedom_ls.learner_progress.models
-freedom_ls.learner_management.tests.test_queries -> freedom_ls.role_based_permissions.utils
 freedom_ls.learner_management.tests.test_registration_webhook_events -> freedom_ls.learner_progress.models
 
 # learner_progress

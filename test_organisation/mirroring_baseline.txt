@@ -30,6 +30,7 @@ freedom_ls/accounts/tests/test_user_registration_webhook_integration.py
 freedom_ls/base/tests/test_analytics_events_partial.py
 freedom_ls/base/tests/test_button_component.py
 freedom_ls/base/tests/test_csp.py
+freedom_ls/base/tests/test_dev_tooling_disabled_in_tests.py
 freedom_ls/base/tests/test_dropdown_menu_component.py
 freedom_ls/base/tests/test_error_page_component.py
 freedom_ls/base/tests/test_error_pages.py
@@ -150,11 +151,13 @@ freedom_ls/google_tag/tests/test_google_tag_tags.py
 freedom_ls/health/tests/test_health_endpoints.py
 
 # icons
+freedom_ls/icons/tests/test_check_all_semantic_name.py
 freedom_ls/icons/tests/test_cohort_semantic_name.py
 freedom_ls/icons/tests/test_course_semantic_name.py
 freedom_ls/icons/tests/test_edit_semantic_name.py
 freedom_ls/icons/tests/test_icon_cotton_component.py
 freedom_ls/icons/tests/test_no_font_awesome.py
+freedom_ls/icons/tests/test_panel_component_semantic_names.py
 freedom_ls/icons/tests/test_renderer.py
 
 # learner_interface
@@ -237,6 +240,17 @@ freedom_ls/meta_pixel/tests/test_meta_pixel_tags.py
 # panel_framework
 freedom_ls/panel_framework/tests/test_breadcrumbs.py
 freedom_ls/panel_framework/tests/test_check_access.py
+freedom_ls/panel_framework/tests/test_component_attention_list.py
+freedom_ls/panel_framework/tests/test_component_avatar_chip.py
+freedom_ls/panel_framework/tests/test_component_card.py
+freedom_ls/panel_framework/tests/test_component_definition_list.py
+freedom_ls/panel_framework/tests/test_component_empty_state.py
+freedom_ls/panel_framework/tests/test_component_page_header.py
+freedom_ls/panel_framework/tests/test_component_progress_bar.py
+freedom_ls/panel_framework/tests/test_component_skeleton.py
+freedom_ls/panel_framework/tests/test_component_stat_tile.py
+freedom_ls/panel_framework/tests/test_component_status_badge.py
+freedom_ls/panel_framework/tests/test_component_toolbar.py
 freedom_ls/panel_framework/tests/test_configs.py
 freedom_ls/panel_framework/tests/test_data_table_panel.py
 freedom_ls/panel_framework/tests/test_document_title.py
