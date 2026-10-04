@@ -115,6 +115,7 @@ IMPORTANT: We will be generating a webserver port at random. we wont be using po
 - Note we will be following TDD. Do not write out all the tests at this point.
 - Include pseudocode for desired functionality where appropriate
 - if specific functions should be used or edited, or specific files need to be edited or referenced, mention them in the task description
+- Comments and docstrings in pseudocode and code snippets state the reasoning itself. They never cite the spec, the plan, its slices or its section numbers, because implementers copy them into the code verbatim.
 
 ## IMPORTANT
 
@@ -130,6 +131,7 @@ The review dimensions below become **one `sdd:sdd-worker` per dimension**, each 
 - No step in the plan contradicts any skill
 - No step will result in junk files that need to be manually cleaned up
 - All suggested code changes are clean and simple
+- No comment or docstring the plan proposes points at the spec, plan, a slice, a phase, the QA plan or a section number
 - Every noun, and every identifier the plan proposes, matches the spec's vocabulary and the codebase's
 
 ### IMPORTANT

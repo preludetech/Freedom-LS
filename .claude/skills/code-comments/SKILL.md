@@ -1,6 +1,6 @@
 ---
 name: code-comments
-description: "Best practices for code comments, docstrings, and inline explanations in the FreedomLS codebase, plus how to clean up stale or noisy comments. Use whenever you write or review a comment in Python, Django templates, JS, or CSS — and especially while implementing a spec/plan/research doc, so section citations (§4b, spec §6.1, per plan §8) never leak into the code. Consult this whenever you catch yourself writing a comment that restates the code, narrates implementation history, or points at an external document."
+description: "Best practices for code comments, docstrings, and inline explanations in the FreedomLS codebase, plus how to clean up stale or noisy comments. Use whenever you write or review a comment in Python, Django templates, JS, or CSS — and especially while implementing a spec/plan/research doc, so references to planning documents (§4b, spec 6, this slice, a later spec, QA Bug 2, spec_dd/ paths) never leak into the code. Consult this whenever you catch yourself writing a comment that restates the code, narrates implementation history, or points at an external document."
 ---
 
 # Code Comments
@@ -14,31 +14,49 @@ The single rule: **a comment must explain *why*, not *what*.** The code already 
 
 ---
 
-## Never cite spec / plan / research section numbers
+## Write comments that stand without the planning documents
 
-This is the most common rot in this codebase. While implementing a spec, it's tempting to
-tag the code with the section it came from:
+Every comment, docstring, template comment, CSS header and test docstring must make sense to a
+reader who has never seen the spec, plan, research note, QA plan or QA report behind it. State the
+fact itself, never a pointer to where the fact was written down.
+
+This is the most common rot in this codebase. These all point at planning documents:
+
+| Kind | Examples |
+|---|---|
+| Section numbers | `§4b`, `spec §6.1`, `per plan §8`, `research §5`, `section 0.2 of the QA plan` |
+| Spec, slice, batch and phase numbers | `Specs 6 to 9 add…`, `from slice 5 onward`, `Slice 7 still has to…`, `Phase 2 of themable-implementations`, `spec 12's visual check` |
+| Relative references | `this spec`, `a later spec`, `the spec requires`, `the spec's table`, `the success criterion this slice exists for` |
+| QA references | `QA §12.1`, `Regression for QA Bug 2`, `QA bug B1`, `bugs surfaced in qa_report.md` |
+| Paths into the spec tree | `spec_dd/2. in progress/schools/3. frontend_qa.md` |
+
+They rot for three reasons:
+
+- **Numbers repeat.** Every effort has its own spec 1, slice 3, §4b and QA Bug 2. "Spec 6" names
+  a different document in every effort, so the reader can't tell which one it means.
+- **Documents move.** Spec directories move from `next` to `in progress` to archived. Sections get
+  renumbered. The path or number goes stale even when it was once right.
+- **The code is the source of truth once it ships.** A reason that only lives in a planning doc is
+  a reason the maintainer doesn't have. The reason belongs in the comment, or in git history.
+
+**Rewrite each reference as the fact it stood for.** Open the document if you need to, find out
+what the reference meant, and write that down. If the comment was only a citation, delete it.
 
 ```python
-# §4b — start screen context: truthful, derivable facts   ← BAD
-"question_count": count_form_questions(form),
+# BAD
+"""Domain event names the educator interface's panel actions fire.
+
+Specs 6 to 9 add REGISTRATION_CHANGED and EDUCATOR_CHANGED consumers; this
+spec declares all four names now so later specs have nothing left to name.
+"""
+
+# GOOD
+"""Domain event names the educator interface's panel actions fire.
+
+All four names are declared here, including ones nothing listens for yet, so
+every panel fires events from one fixed list instead of inventing names.
+"""
 ```
-
-```django
-{% comment %}Breadcrumbs (spec §6.1){% endcomment %}      ← BAD
-{% comment %}Progress bar … (research §5){% endcomment %}  ← BAD
-```
-
-These are dead weight:
-
-- The section number points at a document that gets **renumbered the next time anything is
-  specced**. `§4b` today is `§3a` next sprint and gone the sprint after.
-- A future reader doesn't have that document version. The citation tells them *nothing*.
-- The spec is not the source of truth for *maintenance* — the code is. Once shipped, the
-  reason a line exists has to live in the code or in git history, not in a planning doc.
-
-**If a comment is only a citation, delete it.** If it's carrying real reasoning that
-happened to originate in the spec, **keep the reasoning and drop the citation:**
 
 ```python
 # BAD
@@ -47,6 +65,28 @@ happened to originate in the spec, **keep the reasoning and drop the citation:**
 # GOOD
 # Finalise any stale incomplete attempt before reading progress state.
 # No-op for save-on-exit forms.
+```
+
+```django
+{% comment %}Breadcrumbs (spec §6.1){% endcomment %}                          ← BAD
+{% comment %}Copy does NOT promise a notification (spec §7.2, §10){% endcomment %}  ← BAD
+{% comment %}Copy does not promise a notification: nothing sends one when the course launches.{% endcomment %}  ← GOOD
+```
+
+The same rule applies while you implement a plan. The plan's slice and batch numbers, and the
+spec's section numbers, are scaffolding for the work. They stay out of the code you write.
+
+### Regression tests
+
+A regression test's name and docstring describe the broken behaviour, not the bug's ID in a
+report:
+
+```python
+# BAD
+"""Regression for QA Bug 2: per spec, newest toast sits at the bottom."""
+
+# GOOD
+"""The newest toast sits closest to the viewport edge. It used to stack on top."""
 ```
 
 ---
@@ -143,7 +183,8 @@ below — it displays each category's quiz score and must not be removed.{% endc
 
 Before you leave a comment in, ask:
 
-1. Does it cite a spec/plan/research section? → strip the citation; keep any real reasoning.
+1. Does it point at a spec, plan, research note, QA plan or QA report (a section, a spec/slice/phase
+   number, "this spec", a QA bug ID, a `spec_dd/` path)? → replace it with the fact it stood for.
 2. Does it describe *the change* rather than *the code*? → delete it; git has the history.
 3. Does it say the same thing as the line below? → delete it.
 4. Could a reader who's never seen the spec act on it? → if not, it's not pulling its weight.

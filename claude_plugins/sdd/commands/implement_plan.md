@@ -49,6 +49,8 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 3. After all steps are done, run `uv run pytest` with the Bash tool's `run_in_background: true` and wait for the completion notification — all tests must pass. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10 minutes.
 4. **As its final step, make the `[batch <id>] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
 
+Every brief also carries this rule: comments, docstrings and test names state facts about the code and stand on their own. They never mention the spec, plan, research notes or QA plan, or their numbers: no `§4b`, `spec 6`, `this slice`, `batch 3`, `a later spec`, `Phase 2` or `spec_dd/` paths. Where the reasoning came from the spec, write the reasoning itself. If the project has a skill for writing code comments, the batch follows it.
+
 When the batch's slice has a `**Design states:**` line, the brief also passes the **design paths**, as paths and never contents:
 
 - the plan file and the heading of its Design section;

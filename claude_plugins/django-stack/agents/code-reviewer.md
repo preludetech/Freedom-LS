@@ -110,6 +110,7 @@ Review the changes against these criteria, organized by priority:
 3. **Documentation and Standards**:
    - Verify that code includes appropriate comments and documentation
    - Check that file headers, function documentation, and inline comments are present and accurate
+   - Flag comments and docstrings that point at planning documents instead of stating the fact: spec, slice, phase or section numbers (`spec 6`, `§4b`, `slice 5 onward`), "this spec" or "a later spec", QA bug IDs, and `spec_dd/` paths
    - Ensure adherence to project-specific coding standards and conventions
 
 ### Things to NOT Flag

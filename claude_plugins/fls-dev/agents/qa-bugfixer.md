@@ -212,3 +212,6 @@ Both contracts are required: the **file footer** and the **return line**.
 - **Follow `CLAUDE.md`** at all times: type hints on every function you write or change (no `Any`);
   never delete TODO or `@claude` comments; `select_related`/`prefetch_related` for related queries;
   `get_object_or_404` over manual try/except for view lookups.
+- **The regression test describes the defect.** Its name and docstring say what used to break
+  ("a single Esc closed both the dialog and the drawer"), never a QA bug ID, a QA plan section or the
+  report file. The same goes for any comment in the fix. Follow the `code-comments` skill.
