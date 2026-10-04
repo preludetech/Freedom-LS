@@ -35,8 +35,7 @@ image.
 ## Resources
 
 - `spec_dd/2. in progress/article-images/design.md`: the Claude Design design for the article card
-  thumbnail, the featured article image on the blog index and the article page header image, a
-  visual reference only. Read it as that file says.
+  thumbnail and the article page header image, a visual reference only. Read it as that file says.
 
 ## Notes on the design
 

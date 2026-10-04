@@ -47,12 +47,15 @@ match it. Express each icon with an existing semantic icon, and never propose an
 fit the project's icon set. Never build a new component where the project already has one that does
 the job. Where the theme cannot express a treatment, drop the treatment.
 
+- The design includes things this project does not need: article categories and tags, reading
+  time, author avatars, and a highlighted main article on the blog index. Leave them out.
+
 ## What it covers
 
 | Screen or state | Brief section | Built by |
 |---|---|---|
-| Article card with a thumbnail above the tag, title and description, in the index grid and under "More articles" (`Blog__1280.png`, `Blog__375.png`) | none | `article-images` |
-| Featured article on the blog index, image beside the text on desktop and stacked above it on mobile (`Blog__1280.png`, `Blog__375.png`) | none | `article-images` |
+| Article card with a thumbnail above the title and description, in the index grid and under "More articles" (`Blog__1280.png`, `Blog__375.png`) | none | `article-images` |
+| Featured article on the blog index, image beside the text on desktop and stacked above it on mobile (`Blog__1280.png`, `Blog__375.png`) | none | none (out of scope) |
 | Article page header image, 2:1, between the byline and the body (source only) | none | `article-images`, if its spec keeps a header image |
 | Blog index and article page layout apart from the images: heading, tag filters, tags, bylines, author initials, reading time, "Copy link", "More articles" | none | none (out of scope) |
 | Site header with brand and navigation | none | none (out of scope) |
