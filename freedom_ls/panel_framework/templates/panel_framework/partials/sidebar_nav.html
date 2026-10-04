@@ -1,4 +1,4 @@
-<nav id="sidebar-nav" class="sticky top-4 w-64" aria-label="Sections"
+<nav id="sidebar-nav" class="mt-2" aria-label="Sections"
      {% if oob %}hx-swap-oob="true"{% endif %}>
     {% for group in menu_groups %}
         <h2 class="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">{{ group.heading }}</h2>
@@ -13,7 +13,7 @@
                            hx-push-url="true"
                            hx-swap="outerHTML"
                            {% if item.active and not item.expanded %}aria-current="page"{% endif %}
-                           class="flex-1 flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted transition-colors hover:bg-surface-2 aria-[current=page]:bg-surface-2 aria-[current=page]:border-l-2 aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-on-surface {% if item.expanded %}border-l-2 border-primary text-on-surface{% endif %}">
+                           class="flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-on-surface aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary aria-[current=page]:font-semibold {% if item.expanded %}text-on-surface font-semibold{% endif %}">
                             {% if item.icon %}<c-icon :name="item.icon" class="size-4 shrink-0" />{% endif %}
                             <span>{{ item.label }}</span>
                             {% if item.count is not None %}<span class="ml-auto tabular-nums text-xs text-muted">{{ item.count }}</span>{% endif %}
@@ -44,7 +44,7 @@
                                hx-push-url="true"
                                hx-swap="outerHTML"
                                aria-current="page"
-                               class="block px-3 py-1.5 rounded-md text-sm bg-surface-2 border-l-2 border-primary font-semibold text-on-surface">
+                               class="block px-3 py-1.5 rounded-md text-sm bg-primary/10 text-primary font-semibold">
                                 {{ item.instance_label }}
                             </a>
                         </li>

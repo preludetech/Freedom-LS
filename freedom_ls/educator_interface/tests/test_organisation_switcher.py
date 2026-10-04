@@ -217,6 +217,10 @@ class TestSwitcherRendering:
         switcher = _switcher(response)
         assert "Solo Org" in switcher
         assert 'role="menuitemradio"' not in switcher
+        assert (
+            "Organisation"
+            in lxml.html.fromstring(switcher).cssselect("p")[0].text_content()
+        )
 
     def test_two_accessible_organisations_renders_current_one_as_checked(
         self, logged_in_client
@@ -232,3 +236,7 @@ class TestSwitcherRendering:
         assert 'role="menuitemradio"' in switcher
         assert 'aria-checked="true"' in switcher
         assert 'aria-checked="false"' in switcher
+        assert (
+            "Organisation"
+            in lxml.html.fromstring(switcher).cssselect("p")[0].text_content()
+        )

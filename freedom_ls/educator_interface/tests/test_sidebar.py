@@ -74,3 +74,16 @@ def test_sidebar_footer_names_the_signed_in_user(
 
     assert "Ada Lovelace" in page
     assert "ada@example.com" in page
+
+
+@pytest.mark.django_db
+def test_user_block_follows_the_nav_inside_the_sidebar_dialog(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+    dialog = nav.xpath("ancestor::dialog[@aria-label='Navigation']")[0]
+
+    (user_block,) = dialog.cssselect("#sidebar-user")
+
+    assert user_block.getparent() is nav.getparent()
+    assert nav in user_block.itersiblings(preceding=True)

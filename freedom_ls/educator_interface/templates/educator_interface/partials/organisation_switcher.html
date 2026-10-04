@@ -10,14 +10,15 @@ from request.path.
 <div id="organisation-switcher"
      class="mb-2"
      {% if oob %}hx-swap-oob="true"{% endif %}>
+    <p class="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">Organisation</p>
     {% with current_organisation=request.organisation accessible_organisations=request.accessible_organisations %}
         {% if accessible_organisations|length > 1 %}
             <c-dropdown-menu class="w-full"
-                             trigger_class="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm font-semibold text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                             trigger_class="flex w-full items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
                              aria_label="Switch organisation">
                 <c-slot name="trigger">
-                    <span class="flex-1 text-left truncate">{{ current_organisation.name }}</span>
-                    <c-icon name="dropdown" class="size-4 shrink-0" />
+                    <span class="flex-1 text-left truncate" title="{{ current_organisation.name }}">{{ current_organisation.name }}</span>
+                    <c-icon name="dropdown" class="size-4 shrink-0 text-muted" />
                 </c-slot>
                 {% for organisation in accessible_organisations %}
                     <button type="button"
@@ -44,7 +45,7 @@ from request.path.
                 {% endfor %}
             </c-dropdown-menu>
         {% else %}
-            <span class="flex items-center gap-2 w-full px-3 py-2 text-sm font-semibold text-on-surface">
+            <span class="flex items-center gap-2 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm font-semibold text-on-surface">
                 {{ current_organisation.name }}
             </span>
         {% endif %}

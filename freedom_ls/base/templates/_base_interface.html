@@ -196,7 +196,7 @@
                     sidebar_content. This keeps the panel identical across every
                     interface — only the slotted content differs.
                     {% endcomment %}
-                    <div class="px-4 pb-6 lg:px-6 {% block sidebar_body_top_pad %}pt-6{% endblock sidebar_body_top_pad %}">
+                    <div class="flex flex-col lg:min-h-full px-4 pb-6 lg:px-6 {% block sidebar_body_top_pad %}pt-6{% endblock sidebar_body_top_pad %}">
                         {% block sidebar_content %}
                         {% endblock sidebar_content %}
                     </div>
