@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from typing import cast
 
+import lxml.html
 import pytest
 
 from django.db import connection
@@ -253,3 +254,35 @@ class TestLearnerDataTableQueryCost:
         four_learners = self._render_query_count(site_aware_request, learner_count=4)
 
         assert one_learner == four_learners
+
+
+@pytest.mark.django_db
+def test_learner_detail_cohorts_card_rows_end_with_a_decorative_chevron(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    CohortMembershipFactory(
+        learner=learner, cohort=_make_cohort(organisation=organisation)
+    )
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (row,) = document.cssselect("#cohorts-table ul li")
+    (decoration,) = row.xpath("./*[last()][@aria-hidden='true']")
+    assert decoration.cssselect("svg")
+
+
+@pytest.mark.django_db
+def test_learners_mobile_toolbar_offers_sort_and_no_filter(educator_client):
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.xpath("//button[normalize-space()='Sort']")
+    assert not document.xpath("//button[normalize-space()='Filter']")

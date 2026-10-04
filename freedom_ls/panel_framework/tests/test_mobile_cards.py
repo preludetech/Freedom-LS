@@ -105,3 +105,20 @@ def test_card_row_renders_primary_and_secondary_content(
     (card,) = table.cssselect("ul li")
     assert "row-card" in card.text_content()
     assert "Alpha" in card.text_content()
+
+
+def test_card_row_ends_with_a_decorative_icon_after_the_content(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-chevron", kind="a")
+
+    html = fetch(_panel_path(stub.pk)).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table,) = document.cssselect("#stub-table")
+    (card,) = table.cssselect("ul li")
+    (decoration,) = card.xpath("./*[last()][@aria-hidden='true']")
+    assert decoration.cssselect("svg")
+    (content,) = card.xpath("./div[contains(@class, 'flex-1')]")
+    assert "row-chevron" in content.text_content()
+    assert decoration.getprevious() is content

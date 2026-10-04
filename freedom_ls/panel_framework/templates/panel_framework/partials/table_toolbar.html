@@ -142,10 +142,10 @@ off.
             {% endfor %}
 
             {% if toolbar %}
-                <button type="button" x-on:click="toggle">Filter</button>
+                <c-button type="button" variant="secondary" size="small" icon_left="filter" x-on:click="toggle">Filter</c-button>
             {% endif %}
             {% if sortable_columns %}
-                <button type="button" x-on:click="toggle" class="ml-auto">Sort</button>
+                <c-button type="button" variant="secondary" size="small" icon_left="sort_neutral" class="ml-auto" x-on:click="toggle">Sort</c-button>
             {% endif %}
 
             {% include "panel_framework/partials/table_sheet.html" %}
