@@ -1204,6 +1204,37 @@ def test_article_with_category_fails(tmp_path: Path) -> None:
     assert "category" in result.stdout + result.stderr
 
 
+def test_article_with_image_and_alt_passes(tmp_path: Path) -> None:
+    """An article may carry an image when it also says what the image shows."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "pictured.md", extra="image: pic.png\nimage_alt: A chart\n")
+
+    result = run_validator(content)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_article_with_image_and_empty_alt_passes(tmp_path: Path) -> None:
+    """An empty `image_alt` marks the image as decorative and is accepted."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "pictured.md", extra='image: pic.png\nimage_alt: ""\n')
+
+    result = run_validator(content)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_article_image_without_alt_fails(tmp_path: Path) -> None:
+    """An article image with no `image_alt` is rejected."""
+    content = make_content_tree(tmp_path)
+    write_article(content, "pictured.md", extra="image: pic.png\n")
+
+    result = run_validator(content)
+
+    assert result.returncode != 0
+    assert "image_alt" in result.stdout + result.stderr
+
+
 DEMO_CONTENT = Path(__file__).resolve().parents[4] / "demo_content"
 
 
