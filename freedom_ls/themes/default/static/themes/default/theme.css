@@ -119,6 +119,10 @@
     --fls-font-display: var(--fls-font-sans);
     --fls-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas,
         "Liberation Mono", "Courier New", monospace;
+
+    /* Layout tokens — FLS namespace. The line length of rendered markdown,
+     * and of anything that has to line up with it. */
+    --fls-reading-width: 42rem;
 }
 
 /* `@theme inline` aliases live tokens into Tailwind's expected slots so
@@ -134,6 +138,8 @@
     --font-sans: var(--fls-font-sans);
     --font-display: var(--fls-font-display);
     --font-mono: var(--fls-font-mono);
+
+    --container-reading: var(--fls-reading-width);
 }
 
 /* Header component-tier tokens — defaults alias the brand role tokens so

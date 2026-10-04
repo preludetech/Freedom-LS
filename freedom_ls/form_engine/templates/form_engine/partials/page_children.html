@@ -12,7 +12,7 @@ existing_answers, rejected_answers, read_only.
             {% include "form_engine/question.html" %}
         {% endwith %}
     {% elif child.content_type == "FORM_CONTENT" %}
-        <c-markdown-container class="max-w-none">
+        <c-markdown-container width="full">
             {{ child.rendered_content }}
         </c-markdown-container>
     {% endif %}

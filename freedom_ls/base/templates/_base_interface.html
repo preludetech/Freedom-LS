@@ -207,38 +207,39 @@
             <div id="interface-main" class="flex-1 min-w-0">
                 {% include "partials/analytics_events.html" %}
                 {% comment %}
-                Shared content header. Same markup on every breakpoint: a top
-                row with breadcrumbs and the mobile expand button beside them,
-                then the shared page_title region (an <h1> styled identically
-                everywhere via partials/page_title.html, with an optional
-                subtitle) full-width underneath, then an optional header_extra
-                slot for other elements (e.g. a progress bar). A bottom border
-                separates the header from the content on desktop only. The
-                expand button is mobile-only (lg:hidden) and sits next to the
-                breadcrumbs — on desktop the panel is always docked, so there
-                is nothing to toggle.
+                Shared content header, drawn by c-content-header so it matches
+                blog articles. Same markup on every breakpoint: a top row with
+                breadcrumbs and the mobile expand button beside them, then an
+                optional header_extra slot (e.g. a progress bar), then the
+                shared page_title region. The expand button is mobile-only
+                (lg:hidden) — on desktop the panel is always docked, so there
+                is nothing to toggle. Override header_width to line the header
+                up with a narrower content column.
                 {% endcomment %}
-                <header class="max-w-7xl mx-auto pt-4 pb-4 lg:border-b lg:border-border">
-                    <div class="flex items-center gap-2">
-                        <div class="flex-1 min-w-0">
-                            {% block breadcrumbs %}
-                            {% endblock breadcrumbs %}
-                        </div>
-                        <button x-on:click="toggle"
-                                x-bind:aria-expanded="open"
-                                class="lg:hidden shrink-0 p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
-                                aria-label="{% block panel_toggle_label %}Open navigation panel{% endblock panel_toggle_label %}">
-                            <c-icon name="table_of_contents" class="size-5" />
-                        </button>
-                    </div>
-                    {% block header_extra %}
-                    {% endblock header_extra %}
+                <div class="{% block header_width %}max-w-7xl{% endblock header_width %} mx-auto">
+                    <c-content-header>
+                        <c-slot name="top">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 min-w-0">
+                                    {% block breadcrumbs %}
+                                    {% endblock breadcrumbs %}
+                                </div>
+                                <button x-on:click="toggle"
+                                        x-bind:aria-expanded="open"
+                                        class="lg:hidden shrink-0 p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+                                        aria-label="{% block panel_toggle_label %}Open navigation panel{% endblock panel_toggle_label %}">
+                                    <c-icon name="table_of_contents" class="size-5" />
+                                </button>
+                            </div>
+                            {% block header_extra %}
+                            {% endblock header_extra %}
+                        </c-slot>
 
-                    {% block page_title %}
-                        {% include "partials/page_title.html" %}
-
-                    {% endblock page_title %}
-                </header>
+                        {% block page_title %}
+                            {% include "partials/page_title.html" %}
+                        {% endblock page_title %}
+                    </c-content-header>
+                </div>
 
                 {% block content %}
                 {% endblock content %}

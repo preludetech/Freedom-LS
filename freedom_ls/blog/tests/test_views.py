@@ -359,7 +359,7 @@ def test_article_page_orders_back_link_title_subtitle_byline_then_body(
     main = body[body.index("<main") :]
     positions = [
         main.index(f'href="{reverse("blog:index")}"'),
-        main.index("<h1>Ordered Title</h1>"),
+        main.index("Ordered Title</h1>"),
         main.index("Ordered subtitle"),
         main.index("Ada Lovelace"),
         main.index("<p>Body paragraph.</p>"),

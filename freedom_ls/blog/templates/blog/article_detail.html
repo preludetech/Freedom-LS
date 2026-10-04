@@ -22,18 +22,20 @@
 {% endblock extra_head %}
 
 {% block content %}
-    <c-page width="narrow">
-        <div class="mx-auto max-w-3xl">
-            <a href="{% url 'blog:index' %}" class="inline-flex items-center gap-2 text-sm font-medium no-underline">
-                <c-icon name="previous" class="size-4" />
-                {{ blog_name }}
-            </a>
-            <hgroup class="mt-8 sm:mt-10">
-                <h1>{{ article.title }}</h1>
-                {% if article.subtitle %}<p class="mt-4 sm:mt-5 text-lg sm:text-xl text-muted">{{ article.subtitle }}</p>{% endif %}
-            </hgroup>
-            <c-article-byline :article="article" variant="header" class="mt-6 sm:mt-8" />
-            <c-markdown-container class="mt-8 sm:mt-10">
+    <c-page width="narrow" class="pt-0 lg:pt-0">
+        <div class="mx-auto max-w-reading">
+            <c-content-header :title="article.title" :subtitle="article.subtitle">
+                <c-slot name="top">
+                    <a href="{% url 'blog:index' %}" class="inline-flex items-center gap-2 text-sm font-medium no-underline">
+                        <c-icon name="previous" class="size-4" />
+                        {{ blog_name }}
+                    </a>
+                </c-slot>
+                <c-slot name="byline">
+                    <c-article-byline :article="article" />
+                </c-slot>
+            </c-content-header>
+            <c-markdown-container>
                 {{ article.rendered_content }}
             </c-markdown-container>
         </div>

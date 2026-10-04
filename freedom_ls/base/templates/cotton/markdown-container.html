@@ -1,3 +1,26 @@
-<div class="space-y-4 {{ class }}">
+{% comment %}
+Wrapper for rendered markdown. Owns the reading width and the vertical rhythm
+between blocks, so every page that shows authored content lays it out the same.
+
+Headings get extra space above them so each one reads as the start of a new
+section rather than another paragraph. The first child gets none, so the
+container's own top edge stays where the caller put it.
+
+Props:
+  width - "reading" (default) caps the line length for comfortable reading
+          and centres the column. Anything that has to line up with the
+          content (the course player footer) uses the same max-w-reading.
+          "full" fills the parent, for content that sits alongside other
+          full-width blocks (form questions, a grid column).
+  class - extra classes.
+
+Usage:
+<c-markdown-container>
+    {{ topic.rendered_content }}
+</c-markdown-container>
+{% endcomment %}
+<c-vars width="reading" class="" />
+
+<div class="{% if width != 'full' %}mx-auto max-w-reading {% endif %}space-y-4 [&>:is(h2,h3,h4,h5,h6):not(:first-child)]:mt-10 {{ class }}">
     {{ slot }}
 </div>

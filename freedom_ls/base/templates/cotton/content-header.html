@@ -1,0 +1,39 @@
+{% comment %}
+The header above a page's content: a link or breadcrumbs on top, then the
+title and subtitle, then an optional byline. Whitespace below it separates it
+from the content, so there is no rule. The interface shell and blog articles
+both use it, so the two headers stay identical.
+
+The title and subtitle render through partials/page_title.html, the same
+markup the educator interface OOB-swaps. A caller that renders that partial
+itself (the shell, through its page_title block) leaves title empty and passes
+the partial as the default slot.
+
+Width is the caller's: wrap it, or pass a max-w-* in class.
+
+Props:
+  title    - the page's <h1>.
+  subtitle - one muted line under the title.
+  class    - extra classes for the <header>.
+
+Slots:
+  top    - a back link or breadcrumbs.
+  byline - author and date, e.g. <c-article-byline>.
+
+Usage:
+<c-content-header :title="article.title" :subtitle="article.subtitle">
+    <c-slot name="top"><a href="...">Articles</a></c-slot>
+    <c-slot name="byline"><c-article-byline :article="article" /></c-slot>
+</c-content-header>
+{% endcomment %}
+<c-vars title="" subtitle="" class="" />
+
+<header class="pt-4 pb-8 sm:pb-10 {{ class }}">
+    {{ top }}
+    {% if title %}
+        {% include "partials/page_title.html" with page_title=title page_subtitle=subtitle %}
+    {% else %}
+        {{ slot }}
+    {% endif %}
+    {% if byline %}<div class="mt-3">{{ byline }}</div>{% endif %}
+</header>

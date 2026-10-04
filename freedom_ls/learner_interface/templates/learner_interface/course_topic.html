@@ -2,17 +2,20 @@
 
 {% block item_head_title %}{{ topic.title }}{% endblock %}
 
+{% comment %}The title lines up with the topic's markdown and footer, not the full player column.{% endcomment %}
+{% block header_width %}max-w-reading{% endblock header_width %}
+
 {% block page_title %}{% include "partials/page_title.html" with page_title=topic.title page_subtitle=topic.subtitle %}{% endblock page_title %}
 
 {% block content %}
-    <c-page flush="true" class="pt-2 lg:pt-4">
+    <c-page flush="true" class="pt-0 lg:pt-0">
         <div class="space-y-8" x-data="coursePlayer">
 
             <c-markdown-container>
                 {{ topic.rendered_content }}
             </c-markdown-container>
 
-            <c-player-footer :previous_url="previous_url">
+            <c-player-footer :previous_url="previous_url" class="mx-auto max-w-reading">
                 {% comment %}Nothing grants this learner the course, so there is no record to
                 mark against — the plain Next below carries them on instead.{% endcomment %}
                 {% if can_record_progress and not is_complete %}
