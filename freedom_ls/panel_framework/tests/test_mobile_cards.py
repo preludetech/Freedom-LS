@@ -122,3 +122,34 @@ def test_card_row_ends_with_a_decorative_icon_after_the_content(
     (content,) = card.xpath("./div[contains(@class, 'flex-1')]")
     assert "row-chevron" in content.text_content()
     assert decoration.getprevious() is content
+
+
+def test_sheet_renders_reset_legends_and_footer_buttons(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-00")
+
+    html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
+
+    document = lxml.html.fromstring(html)
+    (sheet,) = document.cssselect("#a-table dialog#a-sheet")
+    assert sheet.xpath(".//a[normalize-space()='Reset']")
+    legends = sheet.cssselect("fieldset legend")
+    assert legends
+    assert "Sort" in [legend.text_content().strip() for legend in legends]
+    assert sheet.xpath(".//button[@type='button'][normalize-space()='Cancel']")
+    assert sheet.xpath(".//button[@type='submit'][normalize-space()='Show results']")
+
+
+def test_sheet_without_declared_filters_renders_no_filter_fieldset(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-00")
+
+    html = fetch(f"stubs/{stub.pk}/__tabs/sortonly").content.decode()
+
+    document = lxml.html.fromstring(html)
+    (sheet,) = document.cssselect("dialog#sortonly-sheet")
+    legends = [legend.text_content().strip() for legend in sheet.cssselect("legend")]
+    assert legends == ["Sort"]
+    assert not sheet.cssselect("select")

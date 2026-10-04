@@ -291,6 +291,21 @@ class StubPairStack(PanelStack):
     children = {"a": StubATablePanel, "b": StubBTablePanel}
 
 
+class StubSortOnlyDataTable(StubDataTable):
+    """The same rows and sortable column as StubDataTable, with no filters
+    declared, so the filter and sort sheet shows its Sort section alone."""
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return []
+
+
+class StubSortOnlyTablePanel(DataTablePanel):
+    title = "Sort only"
+    data_table = StubSortOnlyDataTable
+    table_key = "sortonly"
+
+
 class StubCardDataTable(StubDataTable):
     """The same rows and columns as StubDataTable, with its default card
     body replaced by a custom template."""
@@ -350,6 +365,7 @@ class StubTabSet(TabSet):
         "pair": StubPairStack,
         "children": StubChildTablePanel,
         "cards": StubCardTablePanel,
+        "sortonly": StubSortOnlyTablePanel,
     }
 
 

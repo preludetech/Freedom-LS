@@ -25,17 +25,17 @@ via the <noscript> override below.
                 <a href="{{ page_url }}{{ reset_qs }}"
                    hx-get="{{ base_url }}{{ reset_qs }}"
                    hx-target="#{{ region_id }}"
-                   hx-swap="outerHTML">
+                   hx-swap="outerHTML"
+                   class="py-2 text-sm font-semibold text-primary no-underline">
                     Reset
                 </a>
             </div>
 
             {% for entry in toolbar %}
                 {% if entry.filter.widget == "select" %}
-                    <label class="flex flex-col gap-1 text-sm font-medium">
+                    <label class="flex flex-col gap-1 text-xs font-semibold uppercase tracking-wide text-muted">
                         {{ entry.filter.label }}
-                        <select name="{{ query.key }}-{{ entry.filter.key }}"
-                                class="rounded-md border border-border px-2 py-2">
+                        <select name="{{ query.key }}-{{ entry.filter.key }}">
                             <option value="">All</option>
                             {% for choice in entry.choices %}
                                 <option value="{{ choice.value }}" {% if choice.selected %}selected{% endif %}>
@@ -46,7 +46,7 @@ via the <noscript> override below.
                     </label>
                 {% else %}
                     <fieldset class="space-y-2">
-                        <legend class="text-sm font-medium">{{ entry.filter.label }}</legend>
+                        <legend class="text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
                         <div class="flex flex-wrap gap-2">
                             {% for choice in entry.choices %}
                                 <label class="relative inline-flex cursor-pointer items-center gap-1 rounded-full border border-border px-3 py-1 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-on-primary">
@@ -65,40 +65,40 @@ via the <noscript> override below.
 
             {% if sortable_columns %}
                 <fieldset class="space-y-1">
-                    <legend class="text-sm font-medium">Sort</legend>
-                    <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-2">
+                    <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Sort</legend>
+                    <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
                         <input type="radio"
                                name="{{ query.key }}-sort"
                                value=""
                                {% if not query.sort %}checked{% endif %}
                                class="peer sr-only">
                         <span class="flex-1">Default order</span>
-                        <span class="invisible peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
+                        <span class="invisible text-primary peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
                     </label>
                     {% for column in sortable_columns %}
-                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-2">
+                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
                             <input type="radio"
                                    name="{{ query.key }}-sort"
                                    value="{{ column.sort_field }}"
                                    {% if query.sort == column.sort_field %}checked{% endif %}
                                    class="peer sr-only">
                             <span class="flex-1">{{ column.header }} (ascending)</span>
-                            <span class="invisible peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
+                            <span class="invisible text-primary peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
                         </label>
-                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-surface-2">
+                        <label class="relative flex items-center justify-between gap-2 rounded-md px-2 py-3 text-sm hover:bg-surface-2">
                             <input type="radio"
                                    name="{{ query.key }}-sort"
                                    value="-{{ column.sort_field }}"
                                    {% if query.sort == "-"|add:column.sort_field %}checked{% endif %}
                                    class="peer sr-only">
                             <span class="flex-1">{{ column.header }} (descending)</span>
-                            <span class="invisible peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
+                            <span class="invisible text-primary peer-checked:visible" aria-hidden="true"><c-icon name="check" class="size-4" /></span>
                         </label>
                     {% endfor %}
                 </fieldset>
             {% endif %}
 
-            <div class="mt-auto flex justify-end gap-2 pt-2">
+            <div class="mt-auto grid grid-cols-2 gap-2 border-t border-border pt-4">
                 <c-button type="button" variant="secondary" x-on:click="close">Cancel</c-button>
                 <c-button type="submit" variant="primary">Show results</c-button>
             </div>
