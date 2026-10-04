@@ -271,6 +271,23 @@ def test_empty_directory_exits_nonzero(tmp_path: Path) -> None:
     )
 
 
+def test_widget_declarations_are_not_validated(tmp_path: Path) -> None:
+    """A declaration under `.fls-content/widgets/` has no frontmatter, so the run
+    only exits clean if the scanner never treats it as content."""
+    write_valid_course(tmp_path)
+    widgets_dir = tmp_path / ".fls-content" / "widgets"
+    widgets_dir.mkdir(parents=True)
+    (widgets_dir / "c-foo.md").write_text(
+        "# `c-foo`\n\n**Allowed attributes:** none\n", encoding="utf-8"
+    )
+
+    result = run_validator(tmp_path, repo_root=tmp_path)
+
+    assert result.returncode == 0, (
+        f"Expected exit 0.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
 def _build_golden_tree(root: Path) -> None:
     """
     Build a small, correctly-converted content tree:
