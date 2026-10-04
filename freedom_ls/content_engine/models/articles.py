@@ -23,6 +23,30 @@ class ArticleQuerySet(models.QuerySet["Article"]):
     def published(self) -> ArticleQuerySet:
         return self.filter(visibility=ArticleVisibility.PUBLISHED)
 
+    def with_image_files(self) -> list[Article]:
+        """Evaluate the queryset and resolve every article's image in one File query.
+
+        Keyed by site as well as path, so a page that lists one site's
+        articles never picks up another site's file at the same path.
+        """
+        articles = list(self)
+        wanted = {
+            (article.site_id, article.calculate_path_from_root(article.image))
+            for article in articles
+            if article.image
+        }
+        found = {
+            (file.site_id, file.file_path): file
+            for file in File.objects.filter(
+                site_id__in={site_id for site_id, _ in wanted},
+                file_path__in={path for _, path in wanted},
+            )
+        }
+        for article in articles:
+            key = (article.site_id, article.calculate_path_from_root(article.image))
+            article.image_file = found.get(key) if article.image else None
+        return articles
+
 
 class ArticleManager(SiteAwareManager):
     # Hand-written pass-through, the way comms.NotificationManager does it,

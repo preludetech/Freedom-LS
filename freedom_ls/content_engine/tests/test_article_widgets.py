@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from django.template.loader import render_to_string
 from django.test import override_settings
 from django.urls import reverse
 
@@ -22,6 +23,10 @@ if app_not_installed("freedom_ls.blog"):
 
 def _render(body: str, topic: Topic) -> str:
     return str(render_markdown(body, None, context={"content_instance": topic}))
+
+
+def _squash(html: str) -> str:
+    return re.sub(r"\s+", " ", html).strip()
 
 
 @pytest.fixture
@@ -294,3 +299,37 @@ class TestArticleCard:
 
         assert "before" in result
         assert "Other Site Title" not in result
+
+
+@pytest.mark.django_db
+class TestArticleCardFromArticle:
+    def test_article_attribute_renders_the_same_card_as_path(
+        self, article_with_image
+    ) -> None:
+        topic = cast("Topic", TopicFactory(file_path="2. topic/content.md"))
+        by_path = _render(
+            _card(path="../articles/with-image.md", variant="compact"), topic
+        )
+
+        page = render_to_string(
+            "blog/article_list.html",
+            {"articles": [article_with_image], "blog_name": "Blog"},
+        )
+        match = re.search(r"<article.*?</article>", page, re.DOTALL)
+        assert match is not None
+        by_article = match.group(0)
+
+        assert by_path.strip() != ""
+        assert _squash(by_article) == _squash(by_path)
+
+    def test_article_attribute_written_in_markdown_is_stripped(
+        self, source_topic: Topic
+    ) -> None:
+        ArticleFactory(slug="target", file_path="articles/target.md")
+
+        result = _render(
+            '<c-article-card article="target" path="../articles/missing.md"></c-article-card>',
+            source_topic,
+        )
+
+        assert "<article" not in result

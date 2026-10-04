@@ -3,7 +3,9 @@ from datetime import date
 
 import pytest
 
+from django.db import connection
 from django.test import Client, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory
@@ -493,3 +495,49 @@ def test_decorative_header_image_renders_empty_alt(client, article_with_image):
     main = body[body.index("<main") :]
     [image_tag] = re.findall(r"<img[^>]*>", main)
     assert 'alt=""' in image_tag
+
+
+@pytest.mark.django_db
+def test_index_renders_each_title_as_a_link_inside_a_card(client, mock_site_context):
+    article = ArticleFactory(title="Card piece")
+
+    body = client.get(reverse("blog:index")).content.decode()
+
+    assert re.search(
+        rf'<article[^>]*>.*?<a href="{article.get_absolute_url()}"[^>]*>\s*Card piece\s*</a>.*?</article>',
+        body,
+        re.DOTALL,
+    )
+
+
+@pytest.mark.django_db
+def test_index_shows_the_image_only_on_the_article_that_has_one(
+    client, article_with_image
+):
+    ArticleFactory(title="Plain piece", file_path="articles/plain.md", slug="plain")
+
+    body = client.get(reverse("blog:index")).content.decode()
+
+    assert body.count('loading="lazy"') == 1
+    assert article_with_image.image_file.file.url in body
+    assert 'alt="A grey square"' in body
+
+
+@pytest.mark.django_db
+def test_index_query_count_does_not_grow_with_the_number_of_articles(
+    client, article_with_image, django_assert_max_num_queries
+):
+    url = reverse("blog:index")
+    client.get(url)  # warm caches that are not per-article
+    with CaptureQueriesContext(connection) as one:
+        client.get(url)
+
+    for number in range(4):
+        ArticleFactory(
+            file_path=f"articles/extra-{number}.md",
+            slug=f"extra-{number}",
+            image="photo.png",
+        )
+
+    with django_assert_max_num_queries(len(one)):
+        client.get(url)

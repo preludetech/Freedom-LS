@@ -152,3 +152,32 @@ def test_image_file_ignores_a_file_belonging_to_another_site(mock_site_context):
     article = ArticleFactory(file_path="articles/a.md", image="photo.png")
 
     assert article.image_file is None
+
+
+@pytest.mark.django_db
+def test_with_image_files_resolves_every_image_in_two_queries(
+    mock_site_context, django_assert_num_queries
+):
+    with_image = ArticleFactory(
+        file_path="articles/a.md",
+        slug="a",
+        image="photo.png",
+        published_on=date(2026, 3, 1),
+    )
+    ArticleFactory(file_path="articles/b.md", slug="b", published_on=date(2026, 2, 1))
+    unresolved = ArticleFactory(
+        file_path="articles/c.md",
+        slug="c",
+        image="missing.png",
+        published_on=date(2026, 1, 1),
+    )
+    photo = FileFactory(file_path="articles/photo.png")
+
+    with django_assert_num_queries(2):
+        articles = Article.objects.published().with_image_files()
+        images = [article.image_file for article in articles]
+
+    assert articles == list(Article.objects.published())
+    assert articles[0] == with_image
+    assert images == [photo, None, None]
+    assert articles[2] == unresolved

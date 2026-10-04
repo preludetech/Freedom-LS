@@ -1,4 +1,5 @@
 import base64
+from datetime import date
 from typing import cast
 
 import pytest
@@ -229,3 +230,68 @@ def test_card_and_picture_in_the_same_grid_row_share_top_and_height(
     assert picture_box is not None
     assert picture_box["y"] == card_box["y"]
     assert picture_box["height"] == card_box["height"]
+
+
+@pytest.fixture
+def index_with_one_image(mock_site_context) -> None:
+    FileFactory(
+        file_path="articles/photo.png",
+        original_filename="photo.png",
+        file_type="image",
+        file=ContentFile(PNG_BYTES, name="photo.png"),
+    )
+    ArticleFactory(
+        title="Illustrated Article",
+        slug="illustrated-article",
+        description="A description long enough to wrap onto several lines in a card.",
+        file_path="articles/illustrated.md",
+        image="photo.png",
+        image_alt="A grey square",
+        published_on=date(2026, 3, 3),
+    )
+    ArticleFactory(
+        title="Plain Article",
+        slug="plain-article",
+        file_path="articles/plain.md",
+        published_on=date(2026, 3, 2),
+    )
+    ArticleFactory(
+        title="Another Plain Article With A Rather Long Title To Force Wrapping",
+        slug="another-plain-article",
+        file_path="articles/another.md",
+        published_on=date(2026, 3, 1),
+    )
+
+
+@VIEWPORTS
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_index_of_cards_does_not_overflow_the_viewport(
+    live_server, live_server_site, index_with_one_image, page: Page, width, height
+):
+    page.set_viewport_size({"width": width, "height": height})
+    page.goto(reverse_url(live_server, "blog:index"))
+
+    expect(page.get_by_role("link", name="Illustrated Article")).to_be_visible()
+    assert _overflows(page) is False
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_index_cards_in_the_first_row_share_one_height_at_desktop_width(
+    live_server, live_server_site, index_with_one_image, page: Page
+):
+    page.set_viewport_size({"width": 1280, "height": 800})
+    page.goto(reverse_url(live_server, "blog:index"))
+
+    heights = []
+    for title in (
+        "Illustrated Article",
+        "Plain Article",
+        "Another Plain Article With A Rather Long Title To Force Wrapping",
+    ):
+        box = _card_of(page.get_by_role("link", name=title, exact=True)).bounding_box()
+        assert box is not None
+        heights.append(box["height"])
+
+    assert len(set(heights)) == 1

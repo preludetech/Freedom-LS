@@ -25,7 +25,7 @@ def article_detail(request: HttpRequest, slug: str) -> HttpResponse:
 
 
 def article_list(request: HttpRequest) -> HttpResponse:
-    articles = Article.objects.published()
+    articles = Article.objects.published().with_image_files()
     return render(
         request,
         "blog/article_list.html",

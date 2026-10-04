@@ -1,11 +1,12 @@
-<c-vars path variant="row" />
+<c-vars path="" article="" variant="row" />
 {% load content_tags %}
 {% comment %}
 Card for a published article; the whole card clicks through via the stretched
-title link. Renders nothing when the article is hidden, missing or the blog
-app is not installed.
+title link. Takes either `path` (an authoring widget: relative to the file
+holding it) or `article` (a template passing the row it already has). Renders
+nothing when the article is hidden, missing or the blog app is not installed.
 {% endcomment %}
-{% with article=path|get_published_article_by_path:content_instance %}
+{% partialdef article-card %}
 {% if article %}{% url 'blog:article_detail' slug=article.slug as url %}{% endif %}
 {% if url %}
 {% with image_file=article.image_file %}
@@ -27,4 +28,9 @@ app is not installed.
 </article>
 {% endwith %}
 {% endif %}
-{% endwith %}
+{% endpartialdef %}
+{% if article %}
+    {% partial article-card %}
+{% else %}
+    {% with article=path|get_published_article_by_path:content_instance %}{% partial article-card %}{% endwith %}
+{% endif %}
