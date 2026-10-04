@@ -31,3 +31,5 @@ image.
 ## Depends on
 
 `new-content-type-articles`, which adds the `Article` model, the article cards and the article page.
+
+## Notes on the design
