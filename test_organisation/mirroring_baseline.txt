@@ -40,7 +40,6 @@ freedom_ls/base/tests/test_head_metadata.py
 freedom_ls/base/tests/test_header_bar_user_menu.py
 freedom_ls/base/tests/test_htmx_messages_middleware.py
 freedom_ls/base/tests/test_messages_partial.py
-freedom_ls/base/tests/test_modal_component.py
 freedom_ls/base/tests/test_pagination_component.py
 freedom_ls/base/tests/test_premailer_templatetag.py
 freedom_ls/base/tests/test_settings_theme_wiring.py
@@ -250,6 +249,7 @@ freedom_ls/learner_progress/tests/test_course_progress_for.py
 freedom_ls/learner_progress/tests/test_ensure_course_progress_record.py
 freedom_ls/learner_progress/tests/test_recalculate_progress_percentages.py
 freedom_ls/learner_progress/tests/test_registration_signals.py
+freedom_ls/learner_progress/tests/test_registrations_with_progress_for_learner.py
 
 # meta_pixel
 freedom_ls/meta_pixel/tests/test_meta_pixel_tags.py
@@ -269,12 +269,14 @@ freedom_ls/panel_framework/tests/test_component_stat_tile.py
 freedom_ls/panel_framework/tests/test_component_status_badge.py
 freedom_ls/panel_framework/tests/test_component_toolbar.py
 freedom_ls/panel_framework/tests/test_configs.py
+freedom_ls/panel_framework/tests/test_conftest.py
 freedom_ls/panel_framework/tests/test_data_table_panel.py
 freedom_ls/panel_framework/tests/test_document_title.py
 freedom_ls/panel_framework/tests/test_export.py
 freedom_ls/panel_framework/tests/test_htmx_navigation.py
 freedom_ls/panel_framework/tests/test_instance_details_panel.py
 freedom_ls/panel_framework/tests/test_instance_dropdown.py
+freedom_ls/panel_framework/tests/test_link_cell.py
 freedom_ls/panel_framework/tests/test_list_view_refresh.py
 freedom_ls/panel_framework/tests/test_menu_items.py
 freedom_ls/panel_framework/tests/test_mobile_cards.py
