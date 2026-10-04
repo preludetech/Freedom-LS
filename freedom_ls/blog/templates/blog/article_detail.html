@@ -43,6 +43,11 @@
                     <c-article-byline :article="article" />
                 </c-slot>
             </c-content-header>
+            {% if image_file %}
+                <img src="{{ image_file.file.url }}"
+                     alt="{{ article.image_alt }}"
+                     class="w-full aspect-[2/1] object-cover rounded-md border border-border mb-8 sm:mb-10" />
+            {% endif %}
             <c-markdown-container>
                 {{ article.rendered_content }}
             </c-markdown-container>

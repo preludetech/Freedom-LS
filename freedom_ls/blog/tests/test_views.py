@@ -445,3 +445,51 @@ def test_decorative_image_emits_og_image_without_alt(client, article_with_image)
     # Assert
     assert _meta(body, "property", "og:image")
     assert _meta(body, "property", "og:image:alt") is None
+
+
+@pytest.mark.django_db
+def test_header_image_sits_between_the_byline_and_the_body(client, article_with_image):
+    # Arrange
+    article_with_image.author = "Ada Lovelace"
+    article_with_image.content = "Body paragraph."
+    article_with_image.save()
+
+    # Act
+    body = _get_article_page(client, article_with_image)
+
+    # Assert
+    main = body[body.index("<main") :]
+    assert main.count("<img") == 1
+    [image_tag] = re.findall(r"<img[^>]*>", main)
+    assert f'src="{article_with_image.image_file.file.url}"' in image_tag
+    assert 'alt="A grey square"' in image_tag
+    assert main.index("Ada Lovelace") < main.index("<img")
+    assert main.index("<img") < main.index("Body paragraph.")
+
+
+@pytest.mark.django_db
+def test_article_without_an_image_has_no_img_before_the_body(client, mock_site_context):
+    # Arrange
+    article = ArticleFactory(content="Body paragraph.")
+
+    # Act
+    body = _get_article_page(client, article)
+
+    # Assert
+    main = body[body.index("<main") :]
+    assert "<img" not in main[: main.index("Body paragraph.")]
+
+
+@pytest.mark.django_db
+def test_decorative_header_image_renders_empty_alt(client, article_with_image):
+    # Arrange
+    article_with_image.image_alt = ""
+    article_with_image.save()
+
+    # Act
+    body = _get_article_page(client, article_with_image)
+
+    # Assert
+    main = body[body.index("<main") :]
+    [image_tag] = re.findall(r"<img[^>]*>", main)
+    assert 'alt=""' in image_tag
