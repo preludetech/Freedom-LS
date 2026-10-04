@@ -48,6 +48,12 @@ to get only the portable contract set.
 
 **Scoping the marker:** prefer a file-level `pytestmark = pytest.mark.fls_internal` only when *every* test in the file is brand/demo-coupled (e.g. a file that only ever reads `demo_content/`). In a mixed file, mark the individual `fls_internal` tests instead.
 
+## Test organisation — FLS specifics
+
+- **Granting permissions:** the higher-level layer the generic "Granting permissions in tests" rule names is `role_based_permissions`. An app that checks permissions through guardian grants them with `assign_perm` in its tests, never by assigning an FLS role, unless the app depends on `role_based_permissions` at runtime.
+- **Stub models:** "some object with an assignable role" is the common FLS case for the stub-model technique, in `role_based_permissions`' own tests.
+- **Cross-cutting tests:** checks over the shipped `demo_content/` belong in a `content_engine/tests/demo_content/` subpackage and carry `fls_internal` (see the marker taxonomy below). Today they sit flat in `content_engine/tests/` as `test_demo_content_*.py`, listed in the mirroring baseline.
+
 ## Collection safety — FLS example
 
 Where the generic resource uses `myproject.optional_feature` / `WidgetFactory`, FLS's concrete target is `freedom_ls.course_applications` / `CourseApplicationFactory`, with the conftest at `freedom_ls/course_applications/tests/conftest.py`.
@@ -56,6 +62,7 @@ Where the generic resource uses `myproject.optional_feature` / `WidgetFactory`, 
 
 - **Ambient-default icon viewBox** — `icons/tests/test_renderer.py::test_returns_svg_with_viewbox` hardcoded `viewBox="0 0 24 24"` on the *ambient* default icon set. Rewrite to `assert re.search(r'viewBox="0 0 \d+ \d+"', result)`, proven to flex by a second case that stubs a non-`24 24` glyph set.
 - **Pinned icon set — leave as-is.** `icons/tests/test_renderer.py::test_lucide_icon_set` asserts the literal `viewBox="0 0 24 24"` under `@override_settings(FREEDOM_LS_ICON_SET="lucide")`. Where a test stubs one specific icon set (e.g. `icons/tests/test_render.py::test_literal_glyph_in_active_set`) without pinning `FREEDOM_LS_ICON_SET`, pin it with `@override_settings(FREEDOM_LS_ICON_SET="heroicons")`.
+- **Theme values read through the code** — tests that loaded a real theme `.css` and asserted `resolve_color(load_theme("first_class")) == "#283593"` or `email_safe_font_stack(theme["font-sans"]) == "sans-serif"` break the day someone re-skins `first_class`. Feed an explicit token dict instead (`resolve_color({"color-primary": "#283593"})`), and cover the shipped themes with a check that resolution succeeds.
 - **Logo scaling with an independent oracle** — `accounts/tests/test_email_utils.py::test_email_logo_dimensions_scales_to_display_height` used to hardcode the shipped `512x248` logo; monkeypatch `email_utils.image_dimensions` to `(300,100)` and assert hand-computed `(144, EMAIL_LOGO_DISPLAY_HEIGHT)` from `email_logo_dimensions("images/any.png")`.
 - **Shadowed partial → assert the contract, not the copy** — `learner_interface/tests/test_anonymous_home_page.py` pinned the hero's marketing headline, which a downstream replaces wholesale. Assert the partial's template name (`[t.name for t in response.templates]` reports the lookup name, so a shadow still matches) or a documented structural hook. Note that `html.split("Some Heading")` is the same bug wearing a different hat: under a shadow it raises `IndexError` rather than failing.
 - **Demo content → `fls_internal`** — `content_engine/tests/test_demo_content_picture_titles.py` reads a `demo_content/` file excluded from the packaged distribution; the whole file gets `pytestmark = pytest.mark.fls_internal`.

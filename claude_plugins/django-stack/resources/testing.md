@@ -30,13 +30,13 @@ A browser test gets one extra hop, `<app>/tests/playwright/test_<thing>.py`, the
 
 A helper or URLconf module that only an app's own tests use lives alongside those tests, for example `<app>/tests/root_urls.py` or `<app>/tests/builders.py`. It never lives in `conftest.py`; see "`conftest.py` vs. plain module" below.
 
-A project can enforce this rule with the `[tool.test_organisation]` table and `check_test_mirroring.py`.
+A project can enforce this rule with the `[tool.test_organisation]` table and `${CLAUDE_PLUGIN_ROOT}/scripts/check_test_mirroring.py`.
 
 ### Cross-cutting tests
 
 Some test files check a property rather than one module's behaviour: an import-order invariant, migration state, settings resolution, or a content or vendored-asset regression. They have no module to mirror, and that's fine.
 
-Group them in a clearly named test subpackage, such as `tests/demo_content/` or `tests/invariants/`, so they read as deliberate rather than as unit tests that lost their module.
+Group them in a clearly named test subpackage, such as `tests/invariants/` or `tests/migrations/`, so they read as deliberate rather than as unit tests that lost their module.
 
 ### Dependency direction
 
@@ -44,7 +44,7 @@ An app's tests import only apps the app depends on at runtime. A test that spans
 
 The project's app dependency map is the source of truth for what an app depends on, and for where the rule is violated today: the `/ds:app_map` command generates it into `docs/app_structure.md`, with a "Runtime deps" column and a "Test-only deps" column per app. A project can enforce the rule with the `[tool.test_organisation]` table and the import-linter contracts `generate_app_map.py` writes from that same table.
 
-Reading Python imports alone misses two dependencies that are just as real. With `[tool.test_organisation]` configured, the generator also sees a model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, and any `get_user_model()` call: both are runtime dependencies on the app that owns the target, and count as runtime edges in the contracts. A settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend, can't be read off an import or a string label, so it is a declared edge instead: a hand-written, reasoned entry in `declared_edges.toml`. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
+Reading Python imports alone misses two dependencies that are just as real. With `[tool.test_organisation]` configured, the generator also sees a model relation declared by a dotted string, such as `"myapp.Article"` or `settings.AUTH_USER_MODEL`, and any `get_user_model()` call: both are runtime dependencies on the app that owns the target, and count as runtime edges in the contracts. A settings-registered dotted path, such as a context processor, a piece of middleware or an authentication backend, can't be read off an import or a string label, so it is a declared edge instead: a hand-written, reasoned entry in the file the table's `declared_edges` key points at. The user is framework-level: every request carries one, so any app's tests may use the `UserFactory` of whichever app owns the user model (`AUTH_USER_MODEL`).
 
 ### Deciding an allowed exception
 
@@ -54,7 +54,7 @@ An intrinsic case gets a one-line comment at the import saying why, and no code 
 
 ### Granting permissions in tests
 
-When an app's code checks permissions through the authorisation layer's standard API, such as `user.has_perm(...)` or `get_objects_for_user(...)`, its tests grant exactly the permission the code checks, through that same layer (`assign_perm(codename, user, obj)` for guardian). They do not go through a higher-level role layer the app does not depend on to reach that permission. Whether a role maps to the right permissions is that role layer's own concern, tested in its own suite.
+When an app's code checks permissions through the authorisation layer's standard API, such as `user.has_perm(...)` or `get_objects_for_user(...)`, its tests grant exactly the permission the code checks, through that same layer (`assign_perm(codename, user, obj)` with django-guardian). When the project builds a higher-level layer on top, such as roles or groups that bundle permissions, and the app does not depend on it, the tests do not go through it to reach the permission. Whether that layer maps to the right permissions is its own concern, tested in its own suite.
 
 ### `conftest.py` vs. plain module
 
@@ -101,7 +101,7 @@ The project root `conftest.py` holds project-wide fixtures only, either autouse 
 
 ### Stub-model technique
 
-When a foundational app's tests need "some object with an assignable role" or "any model with this mixin" to prove genericity, define a tiny test-only model in a plain module beside that app's tests, such as `tests/stub_models.py`. Give it an explicit `Meta.app_label`, since Django registers the class in the app registry as soon as the class body runs. Never give the model a factory_boy factory. A plain helper (`make_stub`) in the same module stands in for it.
+When a foundational app's tests need "any model with this mixin" or "some object a generic relation can point at" to prove genericity, define a tiny test-only model in a plain module beside that app's tests, such as `tests/stub_models.py`. Give it an explicit `Meta.app_label`, since Django registers the class in the app registry as soon as the class body runs. Never give the model a factory_boy factory. A plain helper (`make_stub`) in the same module stands in for it.
 
 The app's `conftest.py` imports the model and creates its table with `connection.schema_editor()` in a session-scoped fixture. Test files import the model and the helper from `stub_models.py`, never from `conftest.py`, which keeps the conftest rule above.
 
@@ -438,7 +438,7 @@ If you are tempted to add `transaction=True` for any other reason (it makes a fl
 
 Register every custom marker in `pyproject.toml`'s `[tool.pytest.ini_options]` `markers = [...]` — with `--strict-markers` on, an unregistered marker is a hard collection error.
 
-- **Unmarked (default) = portable.** Contract/unit tests that pass under any settings, theme, or installed-app list. Most tests belong here — this is the set a downstream consumer of a reusable app can run.
+- **Unmarked (default) = portable.** Contract/unit tests that pass under any settings or installed-app list. Most tests belong here. When the project ships reusable apps, this is the set a downstream consumer can run.
 - **`playwright`** — browser-dependent; needs a running server (`live_server`) and a real browser. See the `ds:playwright-tests` skill. Lives under per-app `tests/playwright/` dirs.
 
 When a test genuinely depends on repo-only, non-distributed fixture data (something excluded from the packaged distribution), mark it with a project-specific marker so a downstream consumer can exclude it — and prefer decoupling the test from that data first (pin the input or assert the contract; see "Don't assert hardcoded config values" below).
@@ -534,7 +534,7 @@ Rule of thumb: **if you delete the production code and your test still computes 
 
 Never test that a hardcoded configuration value is what it is meant to be. Eg never say `assert config.hardcoded_value == [whatever]` or `assert "something" in config.hardcoded_value`.
 
-This also covers the subtler version where you read live configuration and run it **through** the code under test, then assert the **derived** result against a hardcoded expected — eg loading a real theme `.css` and asserting `resolve_color(load_theme("first_class")) == "#283593"`, or `email_safe_font_stack(theme["font-sans"]) == "sans-serif"`. Configuration exists precisely so it can change; a test like that breaks the day someone re-skins a theme or edits a setting, even though the code is still correct, and it duplicates the behaviour your controlled-input tests already cover. Test the function with an explicit input instead (`assert resolve_color({"color-primary": "#283593"}) == "#283593"`). If you genuinely need to know that the *real* shipped config still resolves, assert that via a system check / smoke test that the resolution succeeds (no exception) — not by pinning the exact values.
+This also covers the subtler version where you read live configuration and run it **through** the code under test, then assert the **derived** result against a hardcoded expected — eg reading the shipped `settings.CURRENCIES` and asserting `format_price(100, settings.CURRENCIES["default"]) == "$100.00"`. Configuration exists precisely so it can change; a test like that breaks the day someone edits a setting, even though the code is still correct, and it duplicates the behaviour your controlled-input tests already cover. Test the function with an explicit input instead (`assert format_price(100, {"symbol": "$", "decimals": 2}) == "$100.00"`). If you genuinely need to know that the *real* shipped config still resolves, assert that via a system check / smoke test that the resolution succeeds (no exception) — not by pinning the exact values.
 
 Four techniques for decoupling a test from ambient config:
 
@@ -543,10 +543,10 @@ Four techniques for decoupling a test from ambient config:
 3. **Supply controlled inputs; compute the expected by hand.** Feed a fixed input and assert a value you worked out yourself; never re-derive the expected from the same live asset the code reads. Example:
 
    ```python
-   def test_logo_dimensions_scales_to_display_height(monkeypatch):
-       monkeypatch.setattr(image_utils, "image_dimensions", lambda _p: (300, 100))
+   def test_thumbnail_size_scales_to_display_height(monkeypatch):
+       monkeypatch.setattr(images, "image_dimensions", lambda _p: (300, 100))
        # 300 wide at native height 100, scaled to display height 48 -> 144 (hand-computed)
-       assert logo_dimensions("images/any.png") == (144, LOGO_DISPLAY_HEIGHT)
+       assert thumbnail_size("images/any.png") == (144, THUMBNAIL_HEIGHT)
    ```
 
 4. **Mark tests that depend on non-distributed fixtures.** When a test genuinely can't be decoupled (e.g. it reads a fixture file only present in this repo), mark it with a project-specific marker so downstream consumers can exclude it — a last resort, after trying 1–3.
@@ -635,7 +635,7 @@ When testing validation logic: test the happy and unhappy path. Don't just test 
 
 Once `pytest-socket` is installed, all sockets are blocked by default during the test run (only `127.0.0.1` / `::1` allowed).
 
-The fix when a test needs to call out is **not** to whitelist sockets. Mock at the boundary instead — the `requests.post` call, the SDK client, the email backend — so the test exercises the real production code up to the boundary and replaces only the outbound side. See "Mock only at system boundaries" in the testing SKILL.md for the underlying rule.
+The fix when a test needs to call out is **not** to whitelist sockets. Mock at the boundary instead — the `requests.post` call, the SDK client, the email backend — so the test exercises the real production code up to the boundary and replaces only the outbound side. See "Mock only at system boundaries" in the `ds:testing` skill for the underlying rule.
 
 ## Branch coverage
 
