@@ -2,7 +2,8 @@
 The one shared native <dialog> every panel action's fragment loads into.
 Behaviour lives in Alpine.data("appModal")
 (panel_framework/static/panel_framework/js/alpine-components.js). A fragment
-supplies its own <h2 id="app-modal-title">; this host never renders one.
+supplies its own title through <c-modal-header>, which also holds the close
+control; this host never renders a title. Fragments pad themselves.
 {% endcomment %}
 <style>
 @layer components {
@@ -10,14 +11,11 @@ supplies its own <h2 id="app-modal-title">; this host never renders one.
         /* Preflight's `* { margin: 0 }` wipes the UA dialog stylesheet's
          * `margin: auto`, which is what centres a `position: fixed` dialog
          * in the viewport, so both are restored explicitly here. `position`
-         * itself is left to the UA (`fixed` while shown with showModal()):
-         * the close button's `absolute` positioning below it needs a
-         * containing block, and a fixed-position element in the top layer
-         * already is one, so #app-modal does not need `position: relative`
-         * of its own. */
+         * itself is left to the UA (`fixed` while shown with showModal()). */
         margin: auto;
         width: min(92vw, 32rem);
-        max-height: min(90vh, 100%);
+        /* dvh so the cap follows the on-screen keyboard. */
+        max-height: min(90dvh, 100%);
         overflow-y: auto;
     }
     html:has(#app-modal:modal) {
@@ -27,24 +25,50 @@ supplies its own <h2 id="app-modal-title">; this host never renders one.
          * within, undoing the centring below by the gutter's width. */
         overflow: hidden;
     }
+    /* Below sm the dialog is a bottom sheet that slides up, with the same
+     * motion as the navigation sheet. Gating the visible state on [open]
+     * keeps the UA's `dialog:not([open]) { display: none }` in force. */
+    @media (max-width: 639.98px) {
+        #app-modal {
+            margin: auto 0 0;
+            width: 100%;
+            /* Clears the UA's cap on a modal dialog, calc(100% - 6px - 2em). */
+            max-width: none;
+            max-height: 85dvh;
+            opacity: 0;
+            transform: translateY(100%);
+            transition: transform 200ms ease, opacity 200ms ease,
+                        overlay 200ms ease allow-discrete,
+                        display 200ms ease allow-discrete;
+        }
+        #app-modal[open] {
+            opacity: 1;
+            transform: none;
+        }
+        @starting-style {
+            #app-modal[open] {
+                opacity: 0;
+                transform: translateY(100%);
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #app-modal {
+                transition: none;
+            }
+        }
+    }
 }
 </style>
 <dialog id="app-modal"
         x-data="appModal"
         aria-labelledby="app-modal-title"
-        class="modal-backdrop-host rounded-lg border border-border bg-surface p-6 text-on-surface shadow-xl">
-    <div data-modal-discard-prompt hidden class="mb-4">
+        class="modal-backdrop-host rounded-t-2xl border border-border bg-surface text-on-surface shadow-xl max-sm:border-b-0 sm:rounded-lg">
+    <div data-modal-discard-prompt hidden class="px-6 pt-6">
         <p>Discard changes?</p>
         <c-button-group variant="right" class="mt-3 flex-wrap">
             <c-button variant="secondary" x-on:click="keepEditing" autofocus>Keep editing</c-button>
             <c-button variant="error" x-on:click="discard">Discard</c-button>
         </c-button-group>
     </div>
-    <button type="button"
-            x-on:click="requestClose"
-            aria-label="Close"
-            class="absolute top-4 right-4 text-muted hover:text-on-surface">
-        <c-icon name="close" class="size-6" />
-    </button>
     <div id="app-modal-body"></div>
 </dialog>

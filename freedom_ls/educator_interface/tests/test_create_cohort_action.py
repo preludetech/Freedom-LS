@@ -16,13 +16,15 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 
+import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
 from django.core.exceptions import NON_FIELD_ERRORS
 from django.http import HttpRequest
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -217,3 +219,26 @@ def test_an_organisation_admin_with_no_superuser_flag_creates_a_cohort(
 
     assert create_response.status_code == 204
     assert Cohort.objects.filter(organisation=organisation, name="New Cohort").exists()
+
+
+@pytest.mark.django_db
+def test_the_create_form_fragment_lists_cancel_before_submit_inside_the_form(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    client = logged_in_client(UserFactory(superuser=True))
+    url = reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": "cohorts/__actions/create_cohort",
+        },
+    )
+
+    response = client.get(url)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (form,) = document.cssselect("form")
+    buttons = form.cssselect("button")
+    assert buttons[0].text_content().strip() == "Cancel"
+    assert buttons[-1].get("type") == "submit"

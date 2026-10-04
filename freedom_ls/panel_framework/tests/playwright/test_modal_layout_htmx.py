@@ -1,7 +1,7 @@
-"""E2E Playwright tests for #app-modal's centring at desktop and phone widths.
+"""E2E Playwright tests for #app-modal's position at desktop and phone widths.
 
 Covers the open dialog's bounding box sitting centred in the viewport at
-both breakpoints, the close button staying inside the dialog's top-right
+desktop width and pinned to the bottom edge at phone width, the close button staying inside the dialog's top-right
 corner, and the form's button row fitting inside the dialog at phone width. Interaction behaviour lives in test_modal_form_htmx.py.
 """
 
@@ -43,7 +43,7 @@ def test_the_modal_is_centred_in_the_viewport_at_desktop_width(
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
-def test_the_modal_is_centred_in_the_viewport_at_phone_width(
+def test_the_modal_is_pinned_to_the_bottom_edge_at_phone_width(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     page: Page,
@@ -55,14 +55,17 @@ def test_the_modal_is_centred_in_the_viewport_at_phone_width(
 
     dialog = page.locator("#app-modal")
     expect(dialog).to_be_visible()
+    # The slide-up transition has to finish before the box is measured.
+    page.wait_for_timeout(400)
     box = dialog.bounding_box()
     assert box is not None
-    left_gap = box["x"]
-    right_gap = _PHONE_VIEWPORT["width"] - (box["x"] + box["width"])
-    top_gap = box["y"]
-    bottom_gap = _PHONE_VIEWPORT["height"] - (box["y"] + box["height"])
-    assert left_gap == pytest.approx(right_gap, abs=2)
-    assert top_gap == pytest.approx(bottom_gap, abs=2)
+    assert box["x"] == pytest.approx(0, abs=2)
+    assert _PHONE_VIEWPORT["width"] - (box["x"] + box["width"]) == pytest.approx(
+        0, abs=2
+    )
+    assert _PHONE_VIEWPORT["height"] - (box["y"] + box["height"]) == pytest.approx(
+        0, abs=2
+    )
 
 
 @pytest.mark.playwright

@@ -146,6 +146,26 @@ def test_the_delete_dialog_says_why_the_cohort_cannot_go(
 
 
 @pytest.mark.django_db
+def test_the_delete_dialog_has_a_heading_naming_the_cohort_and_cancel_then_delete(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+
+    document = lxml.html.fromstring(client.get(url).content)
+
+    (heading,) = document.cssselect("#app-modal-title")
+    assert heading.text_content().strip() == "Delete Empty Cohort"
+    names = [
+        el.text_content().split()[0]
+        for el in document.iter("button")
+        if el.text_content().strip()
+    ]
+    assert names[-2:] == ["Cancel", "Delete"]
+
+
+@pytest.mark.django_db
 def test_submitting_the_blocked_delete_answers_instead_of_erroring(
     cohort_with_granted_progress: Cohort, logged_in_client: Callable[[User], Client]
 ) -> None:

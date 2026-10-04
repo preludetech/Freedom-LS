@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+import lxml.html
 import pytest
 from pytest_mock import MockerFixture
 
@@ -543,6 +544,34 @@ def test_a_get_of_a_form_actions_url_returns_its_fragment(
     assert "autofocus" in content
 
 
+@pytest.mark.django_db
+def test_the_form_fragment_has_a_header_with_close_before_a_form_with_cancel_then_submit(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="edit-fragment-structure")
+    action = EditAction(
+        form_class=_StubModelForm, form_title="Edit Item", instance=item
+    )
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    RecordingCapabilityConfig.reset(answer=True)
+
+    response = _handle_action(request, _ResolvedAction(action, _ctx(request, item)))
+
+    assert isinstance(response, HttpResponse)
+    document = lxml.html.fromstring(response.content.decode())
+    (heading,) = document.cssselect("#app-modal-title")
+    assert heading.getparent().tag == "header"
+    labels = [
+        el.get("aria-label") or el.text_content().strip()
+        for el in document.iter("button")
+    ]
+    assert labels.index("Close") < labels.index("Cancel")
+    form_buttons = document.cssselect("form button")
+    assert form_buttons[0].text_content().strip() == "Cancel"
+    assert form_buttons[-1].get("type") == "submit"
+
+
 # -- DeleteAction tests --------------------------------------------------
 
 
@@ -772,6 +801,30 @@ def test_a_get_of_a_delete_actions_url_returns_its_fragment(
     content = response.content.decode()
     assert 'id="app-modal-title"' in content
     assert "hx-delete=" in content
+
+
+@pytest.mark.django_db
+def test_the_delete_fragment_lists_cancel_then_delete_after_its_body(
+    mock_site_context: Site,
+) -> None:
+    item = _make_stub(name="delete-fragment-structure")
+    action = DeleteAction(success_url="/items")
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    RecordingCapabilityConfig.reset(answer=True)
+
+    response = _handle_action(request, _ResolvedAction(action, _ctx(request, item)))
+
+    assert isinstance(response, HttpResponse)
+    document = lxml.html.fromstring(response.content.decode())
+    (heading,) = document.cssselect("#app-modal-title")
+    assert heading.getparent().tag == "header"
+    names = [
+        el.text_content().split()[0]
+        for el in document.iter("button")
+        if el.text_content().strip()
+    ]
+    assert names[-2:] == ["Cancel", "Delete"]
 
 
 # -- Read-only PanelAction tests ------------------------------------------

@@ -1,0 +1,17 @@
+{% comment %}
+The header row every #app-modal fragment starts with: the fragment's title
+(the default slot, which #app-modal's aria-labelledby points at) and the close
+control. Sticky so it stays in view while the dialog, which is the scroll
+container, scrolls. focus_title makes the heading take focus itself, for
+fragments with no form field to autofocus instead.
+{% endcomment %}
+<c-vars focus_title="" />
+<header class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-surface px-6 py-4">
+    <h2 id="app-modal-title" class="text-lg font-semibold"{% if focus_title %} tabindex="-1" autofocus{% endif %}>{{ slot }}</h2>
+    <button type="button"
+            x-on:click="requestClose"
+            aria-label="Close"
+            class="-my-2 -mr-3 shrink-0 cursor-pointer rounded-md p-3 text-muted transition-colors hover:bg-surface-2 hover:text-on-surface">
+        <c-icon name="close" class="size-5" />
+    </button>
+</header>

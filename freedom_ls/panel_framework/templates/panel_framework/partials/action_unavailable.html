@@ -4,10 +4,12 @@ whether the object was removed or the access was, so a 404 confirms nothing.
 data-htmx-swap-error lets the htmx:beforeSwap listener swap this 404 in.
 {% endcomment %}
 <div data-htmx-swap-error="true">
-    <h2 id="app-modal-title">This is no longer available</h2>
+    <c-modal-header>This is no longer available</c-modal-header>
+    <div class="px-6 py-4">
     <p>It may have been removed, or you may no longer have access to it.</p>
+    </div>
 
-    <c-button-group variant="right" class="mt-4">
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
         <c-button variant="secondary" x-on:click="requestClose" autofocus>Close</c-button>
     </c-button-group>
 </div>

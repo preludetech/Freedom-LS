@@ -2,11 +2,13 @@
 The modal fragment a bulk action's htmx POST returns, loaded into the shared
 #app-modal. Context: action, action_url, selection, count, noun, error.
 {% endcomment %}
-<h2 id="app-modal-title">{{ action.label }}</h2>
+<c-modal-header>{{ action.label }}</c-modal-header>
 
+<div class="px-6 py-4">
 {% include "panel_framework/partials/bulk_confirmation_message.html" %}
+</div>
 
-<c-button-group variant="right" class="mt-4 flex-wrap">
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
     <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
     {% include "panel_framework/partials/bulk_confirmation_form.html" %}
 </c-button-group>
