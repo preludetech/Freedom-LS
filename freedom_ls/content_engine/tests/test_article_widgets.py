@@ -188,6 +188,30 @@ class TestArticleCard:
             _card(variant="row"), source_topic
         )
 
+    @pytest.mark.parametrize("variant", ["row", "compact"])
+    def test_target_with_image_renders_img_and_keeps_one_link(
+        self, article_with_image, variant: str
+    ) -> None:
+        topic = cast("Topic", TopicFactory(file_path="2. topic/content.md"))
+        path = "../articles/with-image.md"
+
+        result = _render(_card(path=path, variant=variant), topic)
+
+        assert result.count("<img") == 1
+        assert article_with_image.image_file.file.url in result
+        assert 'alt="A grey square"' in result
+        assert result.count("<a ") == 1
+
+    @pytest.mark.parametrize("variant", ["row", "compact"])
+    def test_target_without_image_renders_no_img(
+        self, source_topic: Topic, variant: str
+    ) -> None:
+        ArticleFactory(slug="target", file_path="articles/target.md")
+
+        result = _render(_card(variant=variant), source_topic)
+
+        assert "<img" not in result
+
     def test_byline_shows_date_and_author_when_enabled(
         self, source_topic: Topic
     ) -> None:
