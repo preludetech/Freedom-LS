@@ -1,0 +1,160 @@
+- generic [active] [ref=f24e1]:
+  - banner [ref=f24e2]:
+    - link [ref=f24e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f24e4]
+      - heading "FirstClass" [level=1] [ref=f24e5]
+    - navigation [ref=f24e6]:
+      - generic [ref=f24e7]:
+        - generic [ref=f24e8]:
+          - button "Notifications, 1 new" [ref=f24e9]:
+            - img "notifications" [ref=f24e11]
+          - status:
+            - generic [ref=f24e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f24e14]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f24e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f24e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f24e18]:
+    - generic [ref=f24e20]:
+      - heading "Articles" [level=1] [ref=f24e22]
+      - generic [ref=f24e23]:
+        - article [ref=f24e24]:
+          - img "A simple flow diagram" [ref=f24e25]
+          - generic [ref=f24e26]:
+            - heading [level=3] [ref=f24e27]:
+              - link "Diagrams in Practice" [ref=f24e28] [cursor=pointer]:
+                - /url: /articles/qa-diagrams-in-practice/
+            - paragraph [ref=f24e29]:
+              - text: QA Author ·
+              - time [ref=f24e30]: Sept. 5, 2026
+        - article [ref=f24e31]:
+          - img "A man in a backyard smiles as he steers a drone hovering above the fence." [ref=f24e32]
+          - generic [ref=f24e33]:
+            - heading [level=3] [ref=f24e34]:
+              - link "Getting started with articles" [ref=f24e35] [cursor=pointer]:
+                - /url: /articles/getting-started-with-articles/
+            - paragraph [ref=f24e36]: How articles link to each other, to courses and to pictures.
+            - paragraph [ref=f24e37]:
+              - text: Demo Author ·
+              - time [ref=f24e38]: Sept. 1, 2026
+        - article [ref=f24e39]:
+          - img "Placeholder square illustration" [ref=f24e40]
+          - generic [ref=f24e41]:
+            - heading [level=3] [ref=f24e42]:
+              - link "Square Thinking" [ref=f24e43] [cursor=pointer]:
+                - /url: /articles/qa-square-thinking/
+            - paragraph [ref=f24e44]:
+              - time [ref=f24e45]: Aug. 25, 2026
+        - article [ref=f24e46]:
+          - img "A small drone hovering above a backyard lawn" [ref=f24e47]
+          - generic [ref=f24e48]:
+            - heading [level=3] [ref=f24e49]:
+              - link "QA extra article one" [ref=f24e50] [cursor=pointer]:
+                - /url: /articles/qa-extra-article-one/
+            - paragraph [ref=f24e51]: A first extra article created for QA so the blog index fills more than one row.
+            - paragraph [ref=f24e52]:
+              - text: QA Author ·
+              - time [ref=f24e53]: Aug. 20, 2026
+        - article [ref=f24e54]:
+          - img "A yellow sun over a blue sky above a dark band of ground." [ref=f24e55]
+          - generic [ref=f24e56]:
+            - heading [level=3] [ref=f24e57]:
+              - link "Unsigned update" [ref=f24e58] [cursor=pointer]:
+                - /url: /articles/unsigned-update/
+            - paragraph [ref=f24e59]: An article with no author, so its byline shows only the date.
+            - paragraph [ref=f24e60]:
+              - time [ref=f24e61]: Aug. 20, 2026
+        - article [ref=f24e62]:
+          - img "An illustrated landscape with hills under a sky" [ref=f24e63]
+          - generic [ref=f24e64]:
+            - heading [level=3] [ref=f24e65]:
+              - link "QA extra article two" [ref=f24e66] [cursor=pointer]:
+                - /url: /articles/qa-extra-article-two/
+            - paragraph [ref=f24e67]: A second extra article created for QA to push the blog index past three cards.
+            - paragraph [ref=f24e68]:
+              - text: QA Author ·
+              - time [ref=f24e69]: Aug. 15, 2026
+        - article [ref=f24e70]:
+          - generic [ref=f24e71]:
+            - heading [level=3] [ref=f24e72]:
+              - link "Undated notes" [ref=f24e73] [cursor=pointer]:
+                - /url: /articles/undated-notes/
+            - paragraph [ref=f24e74]: An article that hides its publication date and still shows its author.
+            - paragraph [ref=f24e75]: Demo Author
+  - contentinfo [ref=f24e76]:
+    - generic [ref=f24e77]:
+      - paragraph [ref=f24e78]: © 2026 FirstClass
+      - navigation "Legal" [ref=f24e79]:
+        - link "Terms and Conditions" [ref=f24e80] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f24e81] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f24e82] [cursor=pointer]: article-images
+  - list [ref=f24e84]:
+    - listitem [ref=f24e85]:
+      - link "Hide »" [ref=f24e86] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e87]:
+      - link "Toggle Theme" [ref=f24e88] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e91]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e92] [cursor=pointer]
+      - link "History /articles/" [ref=f24e93] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e94]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e95] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f24e96] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e97]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e98] [cursor=pointer]
+      - 'link "Time CPU: 41.71ms (59.73ms)" [ref=f24e99] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f24e100]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e101] [cursor=pointer]
+      - link "Settings" [ref=f24e102] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e103]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e104] [cursor=pointer]
+      - link "Headers" [ref=f24e105] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e106]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e107] [cursor=pointer]
+      - link "Request article_list" [ref=f24e108] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e109]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e110] [cursor=pointer]
+      - link "SQL 8 queries in 10.36ms" [ref=f24e111] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e112]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e113] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f24e114] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e115]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e116] [cursor=pointer]
+      - link "Templates blog/article_list.html" [ref=f24e117] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e118]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e119] [cursor=pointer]
+      - link "Alerts" [ref=f24e120] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e121]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e122] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f24e123] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e124]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e125] [cursor=pointer]
+      - link "Signals 79 receivers of 15 signals" [ref=f24e126] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e127]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f24e128] [cursor=pointer]
+      - link "Community" [ref=f24e129] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f24e130]:
+      - checkbox "Enable for next and successive requests" [ref=f24e131] [cursor=pointer]
+      - generic [ref=f24e132]: Intercept redirects
+    - listitem [ref=f24e133]:
+      - checkbox "Enable for next and successive requests" [ref=f24e134] [cursor=pointer]
+      - generic [ref=f24e135]: Profiling

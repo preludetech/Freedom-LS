@@ -1,0 +1,224 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - link [ref=f1e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f1e4]
+      - heading "FirstClass" [level=1] [ref=f1e5]
+    - navigation [ref=f1e6]:
+      - generic [ref=f1e7]:
+        - link "Login" [ref=f1e8] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f1e9] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f1e10]:
+    - generic [ref=f1e12]:
+      - generic [ref=f1e13]:
+        - link [ref=f1e14] [cursor=pointer]:
+          - /url: /articles/
+          - img "previous" [ref=f1e15]
+          - text: Articles
+        - heading "Getting started with articles" [level=1] [ref=f1e18]
+        - paragraph [ref=f1e20]:
+          - text: Demo Author ·
+          - time [ref=f1e21]: Sept. 1, 2026
+      - img "A small quadcopter drone hovering over a suburban backyard lawn" [ref=f1e22]
+      - generic [ref=f1e23]:
+        - heading "Linking to other articles" [level=2] [ref=f1e24]
+        - paragraph [ref=f1e25]:
+          - text: An article is a page anyone can read without registering. Link to another one with
+          - code [ref=f1e26]: c-article-link
+          - text: ". With text inside, the link shows that text:"
+          - link "read the undated notes" [ref=f1e27] [cursor=pointer]:
+            - /url: /articles/undated-notes/
+          - text: ". With nothing inside, it shows the article's title:"
+          - link "Unsigned update" [ref=f1e28] [cursor=pointer]:
+            - /url: /articles/unsigned-update/
+          - text: .
+        - paragraph [ref=f1e29]: "A link to an article that is hidden shows only its text, with no link: a draft nobody can open yet."
+        - heading "Article cards" [level=2] [ref=f1e30]
+        - paragraph [ref=f1e31]: The default card is the row variant.
+        - article [ref=f1e32]:
+          - generic [ref=f1e34]:
+            - heading [level=3] [ref=f1e35]:
+              - link "Undated notes" [ref=f1e36] [cursor=pointer]:
+                - /url: /articles/undated-notes/
+            - paragraph [ref=f1e37]: An article that hides its publication date and still shows its author.
+            - paragraph [ref=f1e38]: Demo Author
+        - paragraph [ref=f1e39]: The compact variant stacks its parts and suits narrow columns.
+        - article [ref=f1e40]:
+          - generic [ref=f1e41]:
+            - heading [level=3] [ref=f1e42]:
+              - link "Unsigned update" [ref=f1e43] [cursor=pointer]:
+                - /url: /articles/unsigned-update/
+            - paragraph [ref=f1e44]: An article with no author, so its byline shows only the date.
+            - paragraph [ref=f1e45]:
+              - time [ref=f1e46]: Aug. 20, 2026
+        - paragraph [ref=f1e47]: A card for a hidden article renders nothing, so the next paragraph follows the compact card directly.
+        - heading "Course cards" [level=2] [ref=f1e48]
+        - paragraph [ref=f1e49]: A course card works anywhere markdown does, not only in a course. The row variant first.
+        - article [ref=f1e50]:
+          - generic [ref=f1e54]:
+            - generic [ref=f1e55]: Free
+            - heading [level=3] [ref=f1e56]:
+              - 'link "Functionality Demo - Price: fixed" [ref=f1e57] [cursor=pointer]':
+                - /url: /courses/functionality-demo-price-fixed/detail/
+            - paragraph [ref=f1e58]: One amount, with a tax note.
+            - paragraph [ref=f1e59]: $250.00
+        - article [ref=f1e60]:
+          - generic [ref=f1e64]:
+            - generic [ref=f1e65]: By application
+            - heading [level=3] [ref=f1e66]:
+              - link "Functionality Demo - Application gated course" [ref=f1e67] [cursor=pointer]:
+                - /url: /courses/functionality-demo-application-gated-course/detail/
+            - paragraph [ref=f1e68]: A course you have to apply for
+            - paragraph [ref=f1e69]:
+              - generic [ref=f1e70]:
+                - generic [ref=f1e71]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f1e72]: "Now:"
+                - text: ZAR999.00
+        - paragraph [ref=f1e73]: Then the compact variant.
+        - article [ref=f1e74]:
+          - generic [ref=f1e78]:
+            - generic [ref=f1e79]: Free
+            - heading [level=3] [ref=f1e81]:
+              - 'link "Functionality Demo - Price: fixed" [ref=f1e82] [cursor=pointer]':
+                - /url: /courses/functionality-demo-price-fixed/detail/
+            - paragraph [ref=f1e83]: One amount, with a tax note.
+            - paragraph [ref=f1e84]: $250.00
+        - article [ref=f1e85]:
+          - generic [ref=f1e89]:
+            - generic [ref=f1e90]: By application
+            - heading [level=3] [ref=f1e92]:
+              - link "Functionality Demo - Application gated course" [ref=f1e93] [cursor=pointer]:
+                - /url: /courses/functionality-demo-application-gated-course/detail/
+            - paragraph [ref=f1e94]: A course you have to apply for
+            - paragraph [ref=f1e95]:
+              - generic [ref=f1e96]:
+                - generic [ref=f1e97]: "Original price:"
+                - text: ZAR1,499.00
+                - generic [ref=f1e98]: "Now:"
+                - text: ZAR999.00
+        - heading "Mixing cards in a grid" [level=2] [ref=f1e99]
+        - paragraph [ref=f1e100]:
+          - code [ref=f1e101]: c-grid
+          - text: lays out whatever you put inside it. Here it holds two article cards, two course cards and a picture.
+        - generic [ref=f1e102]:
+          - article [ref=f1e103]:
+            - generic [ref=f1e104]:
+              - heading [level=3] [ref=f1e105]:
+                - link "Undated notes" [ref=f1e106] [cursor=pointer]:
+                  - /url: /articles/undated-notes/
+              - paragraph [ref=f1e107]: An article that hides its publication date and still shows its author.
+              - paragraph [ref=f1e108]: Demo Author
+          - article [ref=f1e109]:
+            - generic [ref=f1e110]:
+              - heading [level=3] [ref=f1e111]:
+                - link "Unsigned update" [ref=f1e112] [cursor=pointer]:
+                  - /url: /articles/unsigned-update/
+              - paragraph [ref=f1e113]: An article with no author, so its byline shows only the date.
+              - paragraph [ref=f1e114]:
+                - time [ref=f1e115]: Aug. 20, 2026
+          - article [ref=f1e116]:
+            - generic [ref=f1e120]:
+              - generic [ref=f1e121]: Free
+              - heading [level=3] [ref=f1e123]:
+                - 'link "Functionality Demo - Price: fixed" [ref=f1e124] [cursor=pointer]':
+                  - /url: /courses/functionality-demo-price-fixed/detail/
+              - paragraph [ref=f1e125]: One amount, with a tax note.
+              - paragraph [ref=f1e126]: $250.00
+          - article [ref=f1e127]:
+            - generic [ref=f1e131]:
+              - generic [ref=f1e132]: By application
+              - heading [level=3] [ref=f1e134]:
+                - link "Functionality Demo - Application gated course" [ref=f1e135] [cursor=pointer]:
+                  - /url: /courses/functionality-demo-application-gated-course/detail/
+              - paragraph [ref=f1e136]: A course you have to apply for
+              - paragraph [ref=f1e137]:
+                - generic [ref=f1e138]:
+                  - generic [ref=f1e139]: "Original price:"
+                  - text: ZAR1,499.00
+                  - generic [ref=f1e140]: "Now:"
+                  - text: ZAR999.00
+          - figure [ref=f1e142]:
+            - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f1e143]
+            - generic [ref=f1e145]:
+              - paragraph
+              - button "Expand" [ref=f1e146] [cursor=pointer]
+  - contentinfo [ref=f1e150]:
+    - generic [ref=f1e151]:
+      - paragraph [ref=f1e152]: © 2026 FirstClass
+      - navigation "Legal" [ref=f1e153]:
+        - link "Terms and Conditions" [ref=f1e154] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f1e155] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f1e156] [cursor=pointer]: article-images
+  - list [ref=f1e158]:
+    - listitem [ref=f1e159]:
+      - link "Hide »" [ref=f1e160] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e161]:
+      - link "Toggle Theme" [ref=f1e162] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e165]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e166] [cursor=pointer]
+      - link "History /articles/getting-started-with-articles/" [ref=f1e167] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e168]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e169] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f1e170] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e171]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e172] [cursor=pointer]
+      - 'link "Time CPU: 185.02ms (232.20ms)" [ref=f1e173] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f1e174]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e175] [cursor=pointer]
+      - link "Settings" [ref=f1e176] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e177]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e178] [cursor=pointer]
+      - link "Headers" [ref=f1e179] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e180]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e181] [cursor=pointer]
+      - link "Request article_detail" [ref=f1e182] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e183]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e184] [cursor=pointer]
+      - link "SQL 19 queries in 42.34ms" [ref=f1e185] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e186]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e187] [cursor=pointer]
+      - link "Static files 8 files used" [ref=f1e188] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e189]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e190] [cursor=pointer]
+      - link "Templates blog/article_detail.html" [ref=f1e191] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e192]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e193] [cursor=pointer]
+      - link "Alerts" [ref=f1e194] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e195]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e196] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f1e197] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e198]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e199] [cursor=pointer]
+      - link "Signals 79 receivers of 15 signals" [ref=f1e200] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e201]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e202] [cursor=pointer]
+      - link "Community" [ref=f1e203] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e204]:
+      - checkbox "Enable for next and successive requests" [ref=f1e205] [cursor=pointer]
+      - generic [ref=f1e206]: Intercept redirects
+    - listitem [ref=f1e207]:
+      - checkbox "Enable for next and successive requests" [ref=f1e208] [cursor=pointer]
+      - generic [ref=f1e209]: Profiling

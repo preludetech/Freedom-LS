@@ -1,0 +1,100 @@
+- generic [active] [ref=f30e1]:
+  - banner [ref=f30e2]:
+    - link [ref=f30e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f30e4]
+      - heading "FirstClass" [level=1] [ref=f30e5]
+    - navigation [ref=f30e6]:
+      - generic [ref=f30e7]:
+        - generic [ref=f30e8]:
+          - button "Notifications, 1 new" [ref=f30e9]:
+            - img "notifications" [ref=f30e11]
+          - status:
+            - generic [ref=f30e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f30e14]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f30e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f30e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f30e18]:
+    - generic [ref=f30e20]:
+      - heading "Articles" [level=1] [ref=f30e22]
+      - paragraph [ref=f30e23]:
+        - text: No articles yet. Write them as Markdown in your content repo, then load them with
+        - code [ref=f30e24]: content_save
+        - text: .
+  - contentinfo [ref=f30e25]:
+    - generic [ref=f30e26]:
+      - paragraph [ref=f30e27]: © 2026 FirstClass
+      - navigation "Legal" [ref=f30e28]:
+        - link "Terms and Conditions" [ref=f30e29] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f30e30] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f30e31] [cursor=pointer]: article-images
+  - list [ref=f30e33]:
+    - listitem [ref=f30e34]:
+      - link "Hide »" [ref=f30e35] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e36]:
+      - link "Toggle Theme" [ref=f30e37] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e40]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e41] [cursor=pointer]
+      - link "History /articles/" [ref=f30e42] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e43]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e44] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f30e45] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e46]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e47] [cursor=pointer]
+      - 'link "Time CPU: 48.62ms (76.53ms)" [ref=f30e48] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f30e49]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e50] [cursor=pointer]
+      - link "Settings" [ref=f30e51] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e52]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e53] [cursor=pointer]
+      - link "Headers" [ref=f30e54] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e55]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e56] [cursor=pointer]
+      - link "Request article_list" [ref=f30e57] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e58]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e59] [cursor=pointer]
+      - link "SQL 7 queries in 22.84ms" [ref=f30e60] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e61]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e62] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f30e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e64]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e65] [cursor=pointer]
+      - link "Templates blog/article_list.html" [ref=f30e66] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e67]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e68] [cursor=pointer]
+      - link "Alerts" [ref=f30e69] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e70]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e71] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f30e72] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e73]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e74] [cursor=pointer]
+      - link "Signals 79 receivers of 15 signals" [ref=f30e75] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e76]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f30e77] [cursor=pointer]
+      - link "Community" [ref=f30e78] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f30e79]:
+      - checkbox "Enable for next and successive requests" [ref=f30e80] [cursor=pointer]
+      - generic [ref=f30e81]: Intercept redirects
+    - listitem [ref=f30e82]:
+      - checkbox "Enable for next and successive requests" [ref=f30e83] [cursor=pointer]
+      - generic [ref=f30e84]: Profiling

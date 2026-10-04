@@ -1,0 +1,269 @@
+- generic [active] [ref=f15e1]:
+  - banner [ref=f15e2]:
+    - heading "Page not found (404)" [level=1] [ref=f15e3]
+    - table [ref=f15e4]:
+      - rowgroup [ref=f15e5]:
+        - row [ref=f15e6]:
+          - rowheader "Request Method:" [ref=f15e7]
+          - cell "GET" [ref=f15e8]
+        - row [ref=f15e9]:
+          - rowheader "Request URL:" [ref=f15e10]
+          - cell "http://127.0.0.1:8814/admin/content_engine/article/?q=getting" [ref=f15e11]
+        - row [ref=f15e12]:
+          - rowheader "Raised by:" [ref=f15e13]
+          - cell "django.contrib.admin.sites.catch_all_view" [ref=f15e14]
+  - main [ref=f15e15]:
+    - paragraph [ref=f15e16]:
+      - text: Using the URLconf defined in
+      - code [ref=f15e17]: config.urls
+      - text: ", Django tried these URL patterns, in this order:"
+    - list [ref=f15e18]:
+      - listitem [ref=f15e19]:
+        - code [ref=f15e20]: health/
+      - listitem [ref=f15e21]:
+        - code [ref=f15e22]: admin/
+        - code [ref=f15e23]: search/ [name='search']
+      - listitem [ref=f15e24]:
+        - code [ref=f15e25]: admin/
+        - code [ref=f15e26]: "[name='index']"
+      - listitem [ref=f15e27]:
+        - code [ref=f15e28]: admin/
+        - code [ref=f15e29]: login/ [name='login']
+      - listitem [ref=f15e30]:
+        - code [ref=f15e31]: admin/
+        - code [ref=f15e32]: logout/ [name='logout']
+      - listitem [ref=f15e33]:
+        - code [ref=f15e34]: admin/
+        - code [ref=f15e35]: password_change/ [name='password_change']
+      - listitem [ref=f15e36]:
+        - code [ref=f15e37]: admin/
+        - code [ref=f15e38]: password_change/done/ [name='password_change_done']
+      - listitem [ref=f15e39]:
+        - code [ref=f15e40]: admin/
+        - code [ref=f15e41]: autocomplete/ [name='autocomplete']
+      - listitem [ref=f15e42]:
+        - code [ref=f15e43]: admin/
+        - code [ref=f15e44]: jsi18n/ [name='jsi18n']
+      - listitem [ref=f15e45]:
+        - code [ref=f15e46]: admin/
+        - code [ref=f15e47]: r/<path:content_type_id>/<path:object_id>/ [name='view_on_site']
+      - listitem [ref=f15e48]:
+        - code [ref=f15e49]: admin/
+        - code [ref=f15e50]: django_tasks_database/dbtaskresult/
+      - listitem [ref=f15e51]:
+        - code [ref=f15e52]: admin/
+        - code [ref=f15e53]: freedom_ls_content_engine/topic/
+      - listitem [ref=f15e54]:
+        - code [ref=f15e55]: admin/
+        - code [ref=f15e56]: freedom_ls_content_engine/article/
+      - listitem [ref=f15e57]:
+        - code [ref=f15e58]: admin/
+        - code [ref=f15e59]: freedom_ls_content_engine/activity/
+      - listitem [ref=f15e60]:
+        - code [ref=f15e61]: admin/
+        - code [ref=f15e62]: freedom_ls_content_engine/coursecategory/
+      - listitem [ref=f15e63]:
+        - code [ref=f15e64]: admin/
+        - code [ref=f15e65]: freedom_ls_content_engine/course/
+      - listitem [ref=f15e66]:
+        - code [ref=f15e67]: admin/
+        - code [ref=f15e68]: freedom_ls_content_engine/coursepart/
+      - listitem [ref=f15e69]:
+        - code [ref=f15e70]: admin/
+        - code [ref=f15e71]: freedom_ls_content_engine/contentcollectionitem/
+      - listitem [ref=f15e72]:
+        - code [ref=f15e73]: admin/
+        - code [ref=f15e74]: freedom_ls_content_engine/file/
+      - listitem [ref=f15e75]:
+        - code [ref=f15e76]: admin/
+        - code [ref=f15e77]: freedom_ls_form_engine/questionoption/
+      - listitem [ref=f15e78]:
+        - code [ref=f15e79]: admin/
+        - code [ref=f15e80]: freedom_ls_form_engine/formcontent/
+      - listitem [ref=f15e81]:
+        - code [ref=f15e82]: admin/
+        - code [ref=f15e83]: freedom_ls_form_engine/formquestion/
+      - listitem [ref=f15e84]:
+        - code [ref=f15e85]: admin/
+        - code [ref=f15e86]: freedom_ls_form_engine/formpage/
+      - listitem [ref=f15e87]:
+        - code [ref=f15e88]: admin/
+        - code [ref=f15e89]: freedom_ls_form_engine/form/
+      - listitem [ref=f15e90]:
+        - code [ref=f15e91]: admin/
+        - code [ref=f15e92]: freedom_ls_form_engine/formprogress/
+      - listitem [ref=f15e93]:
+        - code [ref=f15e94]: admin/
+        - code [ref=f15e95]: freedom_ls_form_engine/questionanswer/
+      - listitem [ref=f15e96]:
+        - code [ref=f15e97]: admin/
+        - code [ref=f15e98]: freedom_ls_form_engine/questionanswerfile/
+      - listitem [ref=f15e99]:
+        - code [ref=f15e100]: admin/
+        - code [ref=f15e101]: freedom_ls_accounts/sitesignuppolicy/
+      - listitem [ref=f15e102]:
+        - code [ref=f15e103]: admin/
+        - code [ref=f15e104]: freedom_ls_accounts/legalconsent/
+      - listitem [ref=f15e105]:
+        - code [ref=f15e106]: admin/
+        - code [ref=f15e107]: freedom_ls_accounts/user/
+      - listitem [ref=f15e108]:
+        - code [ref=f15e109]: admin/
+        - code [ref=f15e110]: freedom_ls_referral_tracking/signupattribution/
+      - listitem [ref=f15e111]:
+        - code [ref=f15e112]: admin/
+        - code [ref=f15e113]: freedom_ls_referral_tracking/firsttouchcount/
+      - listitem [ref=f15e114]:
+        - code [ref=f15e115]: admin/
+        - code [ref=f15e116]: freedom_ls_referral_tracking/referralcode/
+      - listitem [ref=f15e117]:
+        - code [ref=f15e118]: admin/
+        - code [ref=f15e119]: freedom_ls_referral_tracking/referralcodehit/
+      - listitem [ref=f15e120]:
+        - code [ref=f15e121]: admin/
+        - code [ref=f15e122]: freedom_ls_organisations/organisation/
+      - listitem [ref=f15e123]:
+        - code [ref=f15e124]: admin/
+        - code [ref=f15e125]: freedom_ls_learner_management/learner/
+      - listitem [ref=f15e126]:
+        - code [ref=f15e127]: admin/
+        - code [ref=f15e128]: freedom_ls_learner_management/cohort/
+      - listitem [ref=f15e129]:
+        - code [ref=f15e130]: admin/
+        - code [ref=f15e131]: freedom_ls_learner_management/learnercourseregistration/
+      - listitem [ref=f15e132]:
+        - code [ref=f15e133]: admin/
+        - code [ref=f15e134]: freedom_ls_learner_management/cohortcourseregistration/
+      - listitem [ref=f15e135]:
+        - code [ref=f15e136]: admin/
+        - code [ref=f15e137]: freedom_ls_learner_management/cohortdeadline/
+      - listitem [ref=f15e138]:
+        - code [ref=f15e139]: admin/
+        - code [ref=f15e140]: freedom_ls_learner_management/learnerdeadline/
+      - listitem [ref=f15e141]:
+        - code [ref=f15e142]: admin/
+        - code [ref=f15e143]: freedom_ls_learner_management/learnercohortdeadlineoverride/
+      - listitem [ref=f15e144]:
+        - code [ref=f15e145]: admin/
+        - code [ref=f15e146]: freedom_ls_learner_progress/topicprogress/
+      - listitem [ref=f15e147]:
+        - code [ref=f15e148]: admin/
+        - code [ref=f15e149]: freedom_ls_learner_progress/courseprogress/
+      - listitem [ref=f15e150]:
+        - code [ref=f15e151]: admin/
+        - code [ref=f15e152]: freedom_ls_learner_progress/courseformattempt/
+      - listitem [ref=f15e153]:
+        - code [ref=f15e154]: admin/
+        - code [ref=f15e155]: freedom_ls_reports/generatedreport/
+      - listitem [ref=f15e156]:
+        - code [ref=f15e157]: admin/
+        - code [ref=f15e158]: freedom_ls_course_interest/courseinterest/
+      - listitem [ref=f15e159]:
+        - code [ref=f15e160]: admin/
+        - code [ref=f15e161]: freedom_ls_course_recommendations/recommendedcourse/
+      - listitem [ref=f15e162]:
+        - code [ref=f15e163]: admin/
+        - code [ref=f15e164]: freedom_ls_webhooks/webhookendpoint/
+      - listitem [ref=f15e165]:
+        - code [ref=f15e166]: admin/
+        - code [ref=f15e167]: freedom_ls_webhooks/webhookevent/
+      - listitem [ref=f15e168]:
+        - code [ref=f15e169]: admin/
+        - code [ref=f15e170]: freedom_ls_webhooks/webhookdelivery/
+      - listitem [ref=f15e171]:
+        - code [ref=f15e172]: admin/
+        - code [ref=f15e173]: freedom_ls_webhooks/webhooksecret/
+      - listitem [ref=f15e174]:
+        - code [ref=f15e175]: admin/
+        - code [ref=f15e176]: account/emailaddress/
+      - listitem [ref=f15e177]:
+        - code [ref=f15e178]: admin/
+        - code [ref=f15e179]: axes/accessattempt/
+      - listitem [ref=f15e180]:
+        - code [ref=f15e181]: admin/
+        - code [ref=f15e182]: axes/accesslog/
+      - listitem [ref=f15e183]:
+        - code [ref=f15e184]: admin/
+        - code [ref=f15e185]: axes/accessfailurelog/
+      - listitem [ref=f15e186]:
+        - code [ref=f15e187]: admin/
+        - code [ref=f15e188]: ^(?P<app_label>django_tasks_database|freedom_ls_content_engine|freedom_ls_form_engine|freedom_ls_accounts|freedom_ls_referral_tracking|freedom_ls_organisations|freedom_ls_learner_management|freedom_ls_learner_progress|freedom_ls_reports|freedom_ls_course_interest|freedom_ls_course_recommendations|freedom_ls_webhooks|account|axes)/$ [name='app_list']
+      - listitem [ref=f15e189]:
+        - code [ref=f15e190]: admin/
+        - code [ref=f15e191]: (?P<url>.*)$
+    - paragraph [ref=f15e192]:
+      - text: The current path,
+      - code [ref=f15e193]: admin/content_engine/article/
+      - text: ", matched the last one."
+  - contentinfo [ref=f15e194]:
+    - paragraph [ref=f15e195]:
+      - text: You’re seeing this error because you have
+      - code [ref=f15e196]: DEBUG = True
+      - text: in your Django settings file. Change that to
+      - code [ref=f15e197]: "False"
+      - text: ", and Django will display a standard 404 page."
+  - list [ref=f15e199]:
+    - listitem [ref=f15e200]:
+      - link "Hide »" [ref=f15e201] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e202]:
+      - link "Toggle Theme" [ref=f15e203] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e206]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e207]
+      - link "History /admin/content_engine/article/?q=getting" [ref=f15e208] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e209]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e210]
+      - link "Versions Django 6.0.4" [ref=f15e211] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e212]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e213]
+      - 'link "Time CPU: 43.25ms (60.22ms)" [ref=f15e214] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f15e215]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e216]
+      - link "Settings" [ref=f15e217] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e218]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e219]
+      - link "Headers" [ref=f15e220] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e221]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e222]
+      - link "Request catch_all_view" [ref=f15e223] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e224]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e225]
+      - link "SQL 3 queries in 8.31ms" [ref=f15e226] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e227]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e228]
+      - link "Static files 2 files used" [ref=f15e229] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e230]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e231]
+      - link "Templates" [ref=f15e232] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e233]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e234]
+      - link "Alerts" [ref=f15e235] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e236]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e237]
+      - link "Cache 0 calls in 0.00ms" [ref=f15e238] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e239]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e240]
+      - link "Signals 79 receivers of 15 signals" [ref=f15e241] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e242]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f15e243]
+      - link "Community" [ref=f15e244] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f15e245]:
+      - checkbox "Enable for next and successive requests" [ref=f15e246]
+      - generic [ref=f15e247]: Intercept redirects
+    - listitem [ref=f15e248]:
+      - checkbox "Enable for next and successive requests" [ref=f15e249]
+      - generic [ref=f15e250]: Profiling

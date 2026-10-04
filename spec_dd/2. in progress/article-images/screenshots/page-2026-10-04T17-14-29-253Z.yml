@@ -1,0 +1,233 @@
+- generic [ref=f29e1]:
+  - banner [ref=f29e2]:
+    - link [ref=f29e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f29e4]
+      - heading "FirstClass" [level=1] [ref=f29e5]
+    - navigation [ref=f29e6]:
+      - generic [ref=f29e7]:
+        - generic [ref=f29e8]:
+          - button "Notifications, 1 new" [ref=f29e9]:
+            - img "notifications" [ref=f29e11]
+          - status:
+            - generic [ref=f29e13]: Notifications, 1 new
+            - generic [aria-hidden] [ref=f29e14]: "1"
+        - button "Open user menu for demodev@email.com" [ref=f29e16] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f29e17]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f29e18]:
+    - generic [ref=f29e20]:
+      - dialog "Course outline" [ref=f29e21]:
+        - generic [ref=f29e24]:
+          - generic [ref=f29e25]:
+            - paragraph [ref=f29e26]: Course outline
+            - paragraph [ref=f29e27]: Content Widgets - Demo Reference
+            - generic [ref=f29e29]:
+              - progressbar "Progress for Content Widgets - Demo Reference" [ref=f29e30]: 80%
+              - generic [ref=f29e31]: 80% complete
+          - navigation "Course outline" [ref=f29e32]:
+            - list [ref=f29e33]:
+              - listitem [ref=f29e34]:
+                - generic [ref=f29e35]:
+                  - generic [ref=f29e36]: "1."
+                  - generic [ref=f29e37]:
+                    - img "topic" [ref=f29e38]
+                    - generic [ref=f29e40]: Completed
+                  - link "Annotation and Emphasis" [active] [ref=f29e42] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/1/
+              - listitem [ref=f29e43]:
+                - generic [ref=f29e44]:
+                  - generic [ref=f29e45]: "2."
+                  - generic [ref=f29e46]:
+                    - img "topic" [ref=f29e47]
+                    - generic [ref=f29e49]: Completed
+                  - link "Media" [ref=f29e51] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/2/
+              - listitem [ref=f29e52]:
+                - generic [ref=f29e53]:
+                  - generic [ref=f29e54]: "3."
+                  - generic [ref=f29e55]:
+                    - img "topic" [ref=f29e56]
+                    - generic [ref=f29e58]: Completed
+                  - link "Structured Content" [ref=f29e60] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/3/
+              - listitem [ref=f29e61]:
+                - generic [ref=f29e62]:
+                  - generic [ref=f29e63]: "4."
+                  - generic [ref=f29e64]:
+                    - img "topic" [ref=f29e65]
+                    - generic [ref=f29e67]: Completed
+                  - link "Interactive Widgets" [ref=f29e69] [cursor=pointer]:
+                    - /url: /courses/content-widgets-demo-reference/4/
+              - listitem [ref=f29e70]:
+                - generic [ref=f29e71]:
+                  - generic [ref=f29e72]: "5."
+                  - generic [ref=f29e73]:
+                    - img "topic" [ref=f29e74]
+                    - generic [ref=f29e76]: Not started
+                  - generic [ref=f29e77]: Cards
+      - generic [ref=f29e78]:
+        - generic [ref=f29e80]:
+          - navigation "Breadcrumb" [ref=f29e83]:
+            - list [ref=f29e84]:
+              - listitem [ref=f29e85]:
+                - link "Content Widgets - Demo Reference" [ref=f29e86] [cursor=pointer]:
+                  - /url: /courses/content-widgets-demo-reference/detail/
+              - listitem [ref=f29e87]:
+                - generic [aria-hidden] [ref=f29e88]: ">"
+                - generic "Cards" [ref=f29e89]
+          - generic [ref=f29e90]:
+            - heading "Cards" [level=1] [ref=f29e91]
+            - paragraph [ref=f29e92]: Grouping a passage of content into a self-contained panel
+        - generic [ref=f29e94]:
+          - generic [ref=f29e95]:
+            - heading "Card" [level=3] [ref=f29e96]
+            - paragraph [ref=f29e97]: A card groups a passage of content into a self-contained, bordered panel. It can carry a header image across the top, an optional title, and a markdown body. Use a card to set a block of content apart from the surrounding flow — a worked example, a profile, a featured concept — when you want it to read as one unit rather than disappear into the page.
+            - paragraph [ref=f29e98]: "A card is static: unlike an accordion it hides nothing, and unlike an admonition it carries no fixed meaning or colour. Reach for it when the grouping itself is the point."
+            - paragraph [ref=f29e99]:
+              - text: The
+              - code [ref=f29e100]: src
+              - text: attribute sets a header image (resolved from the topic's
+              - code [ref=f29e101]: images/
+              - text: folder, the same way
+              - code [ref=f29e102]: c-picture
+              - text: works),
+              - code [ref=f29e103]: alt
+              - text: describes that image for screen-reader users, and
+              - code [ref=f29e104]: title
+              - text: sets the heading shown above the body. The
+              - code [ref=f29e105]: size
+              - text: attribute —
+              - code [ref=f29e106]: small
+              - text: ","
+              - code [ref=f29e107]: medium
+              - text: (the default), or
+              - code [ref=f29e108]: large
+              - text: — sets how wide the card is and how tall its header image renders. All four attributes are optional. The body is rendered as markdown.
+            - paragraph [ref=f29e109]: Cards are centred and deliberately narrower than the content column so they read as a self-contained panel rather than a full-width block. The header image is cropped to a fixed height, so cards of the same size line up regardless of the source image's proportions.
+            - heading "Header image, title, and body" [level=4] [ref=f29e110]
+            - paragraph [ref=f29e111]:
+              - text: "The full form: an image across the top, a heading, and a markdown body beneath. This one is"
+              - code [ref=f29e112]: size="large"
+              - text: — use the large size to feature a card you want to draw the eye to.
+            - generic [ref=f29e113]:
+              - img "A blue sky over a dark horizon with a yellow sun in the upper right" [ref=f29e114]
+              - generic [ref=f29e115]:
+                - heading "Planning the flight" [level=3] [ref=f29e116]
+                - paragraph [ref=f29e117]: Most of the work in a good flight happens before anything leaves the ground. Check the weather, confirm the airspace, and walk the route on a map before you walk it in the air.
+                - paragraph [ref=f29e118]: A card like this one pairs a visual with a short, focused passage — useful when the image sets the scene for the text.
+            - heading "Title and body, no image" [level=4] [ref=f29e119]
+            - paragraph [ref=f29e120]:
+              - text: Drop the
+              - code [ref=f29e121]: src
+              - text: attribute and the card renders as a clean titled panel. With no
+              - code [ref=f29e122]: size
+              - text: given, it uses the default
+              - code [ref=f29e123]: medium
+              - text: width.
+            - generic [ref=f29e125]:
+              - heading "What a card is for" [level=3] [ref=f29e126]
+              - paragraph [ref=f29e127]: Use a card when a block of content should read as a single, distinct unit — a definition, a worked example, or a featured idea.
+              - paragraph [ref=f29e128]:
+                - text: Because the body is markdown, you can include
+                - strong [ref=f29e129]: emphasis
+                - text: ", lists, and links:"
+              - list [ref=f29e130]:
+                - listitem [ref=f29e131]: It groups content without hiding it.
+                - listitem [ref=f29e132]: It carries no fixed meaning, unlike an admonition.
+                - listitem [ref=f29e133]: It needs no interaction, unlike an accordion.
+            - heading "Body only, small" [level=4] [ref=f29e134]
+            - paragraph [ref=f29e135]:
+              - text: With neither
+              - code [ref=f29e136]: src
+              - text: nor
+              - code [ref=f29e137]: title
+              - text: ", the card is a plain bordered panel — handy for setting a single passage apart. This one is"
+              - code [ref=f29e138]: size="small"
+              - text: ", the most compact width."
+            - paragraph [ref=f29e141]: Sometimes all you want is to lift one paragraph out of the surrounding flow and give it a quiet border of its own. A small card with no title and no image does exactly that.
+            - heading "Header image and body, no title" [level=4] [ref=f29e142]
+            - paragraph [ref=f29e143]: An image and a body with no heading — let the picture carry the introduction.
+            - generic [ref=f29e144]:
+              - img "A solid square framed by a thin border" [ref=f29e145]
+              - paragraph [ref=f29e147]: When the image and the prose speak for themselves, omit the title. The header image still sits flush against the top edge of the card, and the body follows immediately beneath it.
+          - generic [ref=f29e148]:
+            - link "Previous" [ref=f29e150] [cursor=pointer]:
+              - /url: /courses/content-widgets-demo-reference/4/
+            - button "Finish Course" [ref=f29e155] [cursor=pointer]
+  - contentinfo [ref=f29e159]:
+    - generic [ref=f29e160]:
+      - paragraph [ref=f29e161]: © 2026 FirstClass
+      - navigation "Legal" [ref=f29e162]:
+        - link "Terms and Conditions" [ref=f29e163] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f29e164] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f29e165] [cursor=pointer]: article-images
+  - list [ref=f29e167]:
+    - listitem [ref=f29e168]:
+      - link "Hide »" [ref=f29e169] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e170]:
+      - link "Toggle Theme" [ref=f29e171] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e174]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e175] [cursor=pointer]
+      - link "History /courses/content-widgets-demo-reference/5/" [ref=f29e176] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e177]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e178] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f29e179] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e180]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e181] [cursor=pointer]
+      - 'link "Time CPU: 123.11ms (195.59ms)" [ref=f29e182] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f29e183]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e184] [cursor=pointer]
+      - link "Settings" [ref=f29e185] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e186]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e187] [cursor=pointer]
+      - link "Headers" [ref=f29e188] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e189]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e190] [cursor=pointer]
+      - link "Request view_course_item" [ref=f29e191] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e192]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e193] [cursor=pointer]
+      - link "SQL 35 queries in 72.04ms" [ref=f29e194] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e195]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e196] [cursor=pointer]
+      - link "Static files 11 files used" [ref=f29e197] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e198]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e199] [cursor=pointer]
+      - link "Templates learner_interface/course_topic.html" [ref=f29e200] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e201]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e202] [cursor=pointer]
+      - link "Alerts" [ref=f29e203] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e204]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e205] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f29e206] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e207]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e208] [cursor=pointer]
+      - link "Signals 79 receivers of 15 signals" [ref=f29e209] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e210]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f29e211] [cursor=pointer]
+      - link "Community" [ref=f29e212] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f29e213]:
+      - checkbox "Enable for next and successive requests" [ref=f29e214] [cursor=pointer]
+      - generic [ref=f29e215]: Intercept redirects
+    - listitem [ref=f29e216]:
+      - checkbox "Enable for next and successive requests" [ref=f29e217] [cursor=pointer]
+      - generic [ref=f29e218]: Profiling

@@ -1,0 +1,135 @@
+- generic [active] [ref=f1e1]:
+  - banner [ref=f1e2]:
+    - link [ref=f1e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f1e4]
+    - navigation [ref=f1e5]:
+      - generic [ref=f1e6]:
+        - link "Login" [ref=f1e7] [cursor=pointer]:
+          - /url: /accounts/login/
+        - link "Sign up" [ref=f1e8] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - generic:
+    - status
+    - alert
+  - main [ref=f1e9]:
+    - generic [ref=f1e11]:
+      - heading "Articles" [level=1] [ref=f1e13]
+      - generic [ref=f1e14]:
+        - article [ref=f1e15]:
+          - img "A simple flow diagram" [ref=f1e16]
+          - generic [ref=f1e17]:
+            - heading [level=3] [ref=f1e18]:
+              - link "Diagrams in Practice" [ref=f1e19] [cursor=pointer]:
+                - /url: /articles/qa-diagrams-in-practice/
+            - paragraph [ref=f1e20]:
+              - text: QA Author ·
+              - time [ref=f1e21]: Sept. 5, 2026
+        - article [ref=f1e22]:
+          - img "A small quadcopter drone hovering over a suburban backyard lawn" [ref=f1e23]
+          - generic [ref=f1e24]:
+            - heading [level=3] [ref=f1e25]:
+              - link "Getting started with articles" [ref=f1e26] [cursor=pointer]:
+                - /url: /articles/getting-started-with-articles/
+            - paragraph [ref=f1e27]: How articles link to each other, to courses and to pictures.
+            - paragraph [ref=f1e28]:
+              - text: Demo Author ·
+              - time [ref=f1e29]: Sept. 1, 2026
+        - article [ref=f1e30]:
+          - img "Placeholder square illustration" [ref=f1e31]
+          - generic [ref=f1e32]:
+            - heading [level=3] [ref=f1e33]:
+              - link "Square Thinking" [ref=f1e34] [cursor=pointer]:
+                - /url: /articles/qa-square-thinking/
+            - paragraph [ref=f1e35]:
+              - time [ref=f1e36]: Aug. 25, 2026
+        - article [ref=f1e37]:
+          - img "Placeholder landscape illustration" [ref=f1e38]
+          - generic [ref=f1e39]:
+            - heading [level=3] [ref=f1e40]:
+              - link "Unsigned update" [ref=f1e41] [cursor=pointer]:
+                - /url: /articles/unsigned-update/
+            - paragraph [ref=f1e42]: An article with no author, so its byline shows only the date.
+            - paragraph [ref=f1e43]:
+              - time [ref=f1e44]: Aug. 20, 2026
+        - article [ref=f1e45]:
+          - generic [ref=f1e46]:
+            - heading [level=3] [ref=f1e47]:
+              - link "Undated notes" [ref=f1e48] [cursor=pointer]:
+                - /url: /articles/undated-notes/
+            - paragraph [ref=f1e49]: An article that hides its publication date and still shows its author.
+            - paragraph [ref=f1e50]: Demo Author
+  - contentinfo [ref=f1e51]:
+    - generic [ref=f1e52]:
+      - paragraph [ref=f1e53]: © 2026 FirstClass
+      - navigation "Legal" [ref=f1e54]:
+        - link "Terms and Conditions" [ref=f1e55] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f1e56] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f1e57] [cursor=pointer]: article-images
+  - list [ref=f1e59]:
+    - listitem [ref=f1e60]:
+      - link "Hide »" [ref=f1e61] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e62]:
+      - link "Toggle Theme" [ref=f1e63] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e66]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e67] [cursor=pointer]
+      - link "History /articles/" [ref=f1e68] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e69]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e70] [cursor=pointer]
+      - link "Versions Django 6.0.4" [ref=f1e71] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e72]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e73] [cursor=pointer]
+      - 'link "Time CPU: 39.78ms (51.91ms)" [ref=f1e74] [cursor=pointer]':
+        - /url: "#"
+    - listitem [ref=f1e75]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e76] [cursor=pointer]
+      - link "Settings" [ref=f1e77] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e78]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e79] [cursor=pointer]
+      - link "Headers" [ref=f1e80] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e81]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e82] [cursor=pointer]
+      - link "Request article_list" [ref=f1e83] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e84]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e85] [cursor=pointer]
+      - link "SQL 4 queries in 8.58ms" [ref=f1e86] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e87]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e88] [cursor=pointer]
+      - link "Static files 7 files used" [ref=f1e89] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e90]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e91] [cursor=pointer]
+      - link "Templates blog/article_list.html" [ref=f1e92] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e93]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e94] [cursor=pointer]
+      - link "Alerts" [ref=f1e95] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e96]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e97] [cursor=pointer]
+      - link "Cache 0 calls in 0.00ms" [ref=f1e98] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e99]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e100] [cursor=pointer]
+      - link "Signals 79 receivers of 15 signals" [ref=f1e101] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e102]:
+      - checkbox "Disable for next and successive requests" [checked] [ref=f1e103] [cursor=pointer]
+      - link "Community" [ref=f1e104] [cursor=pointer]:
+        - /url: "#"
+    - listitem [ref=f1e105]:
+      - checkbox "Enable for next and successive requests" [ref=f1e106] [cursor=pointer]
+      - generic [ref=f1e107]: Intercept redirects
+    - listitem [ref=f1e108]:
+      - checkbox "Enable for next and successive requests" [ref=f1e109] [cursor=pointer]
+      - generic [ref=f1e110]: Profiling
