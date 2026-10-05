@@ -1,7 +1,10 @@
+import copy
 import re
 from datetime import date
+from pathlib import Path
 
 import pytest
+import pytest_django.fixtures
 
 from django.db import connection
 from django.test import Client, override_settings
@@ -121,6 +124,17 @@ def _get_article_page(client: Client, article: Article) -> str:
     response = client.get(reverse("blog:article_detail", kwargs={"slug": article.slug}))
     assert response.status_code == 200
     return response.content.decode()
+
+
+def _main_region(body: str) -> str:
+    """The rendered <main> element, excluding everything the base template renders outside it.
+
+    Slicing from <main> to the end of the document would include the footer,
+    which a project may override with markup of its own, such as a logo image.
+    """
+    start = body.index("<main")
+    end = body.index("</main>", start) + len("</main>")
+    return body[start:end]
 
 
 def _title(body: str) -> str:
@@ -341,7 +355,25 @@ def test_article_body_is_wrapped_in_the_markdown_container(client, mock_site_con
     )
 
 
+@pytest.fixture
+def footer_with_image(
+    settings: pytest_django.fixtures.SettingsWrapper, tmp_path: Path
+) -> None:
+    """Override the footer partial with one that renders an image.
+
+    A downstream project puts its footer logo here, so the article-page tests
+    must hold up with an <img> after </main>.
+    """
+    partial = tmp_path / "partials" / "footer_bar.html"
+    partial.parent.mkdir()
+    partial.write_text('<footer><img src="/static/logo.png" alt=""></footer>')
+    templates = copy.deepcopy(settings.TEMPLATES)
+    templates[0]["DIRS"] = [str(tmp_path), *templates[0]["DIRS"]]
+    settings.TEMPLATES = templates
+
+
 @pytest.mark.django_db
+@pytest.mark.usefixtures("footer_with_image")
 def test_article_page_orders_back_link_title_subtitle_byline_then_body(
     client, mock_site_context
 ):
@@ -358,7 +390,7 @@ def test_article_page_orders_back_link_title_subtitle_byline_then_body(
     body = _get_article_page(client, article)
 
     # Assert
-    main = body[body.index("<main") :]
+    main = _main_region(body)
     positions = [
         main.index(f'href="{reverse("blog:index")}"'),
         main.index("Ordered Title</h1>"),
@@ -450,6 +482,7 @@ def test_decorative_image_emits_og_image_without_alt(client, article_with_image)
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("footer_with_image")
 def test_header_image_sits_between_the_byline_and_the_body(client, article_with_image):
     # Arrange
     article_with_image.author = "Ada Lovelace"
@@ -460,7 +493,7 @@ def test_header_image_sits_between_the_byline_and_the_body(client, article_with_
     body = _get_article_page(client, article_with_image)
 
     # Assert
-    main = body[body.index("<main") :]
+    main = _main_region(body)
     assert main.count("<img") == 1
     [image_tag] = re.findall(r"<img[^>]*>", main)
     assert f'src="{article_with_image.image_file.file.url}"' in image_tag
@@ -470,6 +503,7 @@ def test_header_image_sits_between_the_byline_and_the_body(client, article_with_
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("footer_with_image")
 def test_article_without_an_image_has_no_img_before_the_body(client, mock_site_context):
     # Arrange
     article = ArticleFactory(content="Body paragraph.")
@@ -478,11 +512,12 @@ def test_article_without_an_image_has_no_img_before_the_body(client, mock_site_c
     body = _get_article_page(client, article)
 
     # Assert
-    main = body[body.index("<main") :]
+    main = _main_region(body)
     assert "<img" not in main[: main.index("Body paragraph.")]
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures("footer_with_image")
 def test_decorative_header_image_renders_empty_alt(client, article_with_image):
     # Arrange
     article_with_image.image_alt = ""
@@ -492,9 +527,22 @@ def test_decorative_header_image_renders_empty_alt(client, article_with_image):
     body = _get_article_page(client, article_with_image)
 
     # Assert
-    main = body[body.index("<main") :]
+    main = _main_region(body)
     [image_tag] = re.findall(r"<img[^>]*>", main)
     assert 'alt=""' in image_tag
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("footer_with_image")
+def test_article_page_main_region_excludes_an_image_in_the_footer(
+    client: Client, article_with_image: Article
+) -> None:
+    # Act
+    body = _get_article_page(client, article_with_image)
+
+    # Assert
+    assert "/static/logo.png" in body
+    assert "/static/logo.png" not in _main_region(body)
 
 
 @pytest.mark.django_db
