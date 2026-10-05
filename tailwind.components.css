@@ -216,6 +216,19 @@
         @apply border border-border rounded-md py-4 px-4 sm:py-6 sm:px-8
     }
 
+    /* Panel-framework surfaces: the canvas an interface page sits on, and
+     * the raised surface its cards, table card, page header band, quick
+     * panel and modal are drawn in. Default is a grey canvas under white
+     * cards; a theme whose page surface is already off-white reopens both
+     * so the two still differ (first_class). */
+    .panel-canvas {
+        @apply bg-surface-2
+    }
+
+    .panel-surface {
+        @apply bg-surface
+    }
+
     /* Course-detail sign-up / CTA panel. Default sits on the off-white
      * surface-2 tint so it reads as a distinct panel against the page;
      * themes reopen this to retune the panel background. */

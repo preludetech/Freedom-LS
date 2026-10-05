@@ -9,6 +9,18 @@
 
 {% block panel_toggle_icon %}<c-icon name="menu_open" class="size-5" />{% endblock panel_toggle_icon %}
 
+{% comment %}
+The sidebar sits flush against the viewport's left edge with its own
+full-height rule on the right, and the content column carries its own
+padding instead of the shell's: the page header band and the canvas inside
+#main-content each pad themselves, so the shell's outer padding and the
+grid gap are both emptied here.
+{% endcomment %}
+{% block shell_padding %}{% endblock shell_padding %}
+{% block grid_gap %}{% endblock grid_gap %}
+{% block sidebar_body_class %}lg:border-e lg:border-border{% endblock sidebar_body_class %}
+{% block main_class %}panel-canvas flex flex-col{% endblock main_class %}
+
 {% block sidebar_content %}
     <div class="flex justify-end lg:hidden">
         <button type="button"
@@ -39,6 +51,21 @@
     </div>
 {% endblock sidebar_content %}
 
+{% comment %}
+The content header is the shell's toggle-and-back-link row alone, on the
+same raised surface as the page header band that follows it inside
+#main-content, so the two read as one band. On a list page, on desktop, the
+row holds nothing visible and takes no height. The shared #page-title
+region stays in the page, empty, because every navigation response swaps
+it out of band: the view's own heading renders through panel-page-header.
+{% endcomment %}
+{% block content_header %}
+    <div class="panel-surface px-1 sm:px-3 lg:px-5">
+        {% block content_header_top %}{{ block.super }}{% endblock content_header_top %}
+    </div>
+    {% include "partials/page_title.html" %}
+{% endblock content_header %}
+
 {% block breadcrumbs %}
     {% include "panel_framework/partials/breadcrumbs.html" %}
 {% endblock breadcrumbs %}
@@ -57,16 +84,7 @@ feeds the OOB fragment on HTMX navigation, so both paths read identically.
 {% endcomment %}
 {% block head_title %}{% include "panel_framework/partials/document_title.html#document-title" %}{% endblock head_title %}
 
-{% comment %}
-The view's own heading now renders inside main_template_name through
-panel-page-header, so the shared page_title region stays empty here — passing
-`heading` to it would show the same text twice.
-{% endcomment %}
-{% block page_title %}{% include "partials/page_title.html" %}{% endblock page_title %}
-
 {% block content %}
-    <c-page flush="true">
-        {% include main_template_name with main=main request=request csrf_token=csrf_token only %}
-    </c-page>
+    {% include main_template_name with main=main request=request csrf_token=csrf_token only %}
     {% include "panel_framework/partials/announcer_host.html" %}
 {% endblock content %}

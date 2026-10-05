@@ -1,7 +1,18 @@
 {% comment %}
-The swap target for sidebar and breadcrumb navigation. Every view template
-extends this, so #main-content is written in exactly one place.
+The swap target for sidebar and back-link navigation. Every view template
+extends this, so #main-content is written in exactly one place: a page
+header band on top (the view's heading and actions and, on a tabbed
+instance page, the tab row), then the canvas the panels sit on. Both run
+the full width of the content column and pad themselves. The two surfaces
+are .panel-surface and .panel-canvas in tailwind.components.css, so a theme
+retunes them together; the band's bottom padding is a block because a tab
+row at its foot brings its own.
 {% endcomment %}
-<div id="main-content" class="space-y-4 pl-2 sm:pl-6" tabindex="-1">
-    {% block main %}{% endblock main %}
+<div id="main-content" class="flex flex-1 flex-col" tabindex="-1">
+    <div class="panel-surface border-b border-border px-4 pt-4 sm:px-6 lg:px-8 {% block page_header_padding %}pb-5{% endblock page_header_padding %}">
+        {% block page_header %}{% endblock page_header %}
+    </div>
+    <div class="panel-canvas flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+        {% block main %}{% endblock main %}
+    </div>
 </div>

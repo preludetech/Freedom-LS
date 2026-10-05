@@ -5,30 +5,13 @@ with that tab active. A click swaps only the region below, and the nav sits
 outside that region so the focused link survives the swap. A document-level
 htmx:afterSwap listener moves aria-current to the clicked link.
 
-The row scrolls sideways on a narrow screen rather than wrapping, and its
-bottom rule is an inset shadow so the active tab's underline sits on it.
+An instance page renders the tab row itself, in its header band, and passes
+tab_nav_in_band so this template draws only the region.
 {% endcomment %}
 <div data-panel="{{ name }}">
     {% block tab_nav %}
-        {% if tabs|length > 1 %}
-        <nav aria-label="{{ title }}" class="mb-6">
-            <ul class="flex list-none ml-0 gap-1 overflow-x-auto shadow-[inset_0_-1px_0_var(--color-border)]">
-                {% for tab in tabs %}
-                    <li class="py-0">
-                        <a href="{{ tab.url }}"
-                           hx-get="{{ tab.url }}"
-                           hx-target="#{{ region_id }}"
-                           hx-push-url="true"
-                           hx-swap="innerHTML"
-                           {% if tab.active %}aria-current="page"{% endif %}
-                           class="flex items-baseline gap-1.5 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-on-surface/80 no-underline whitespace-nowrap transition-colors hover:text-on-surface aria-[current=page]:border-primary aria-[current=page]:font-semibold aria-[current=page]:text-primary">
-                            {{ tab.title }}
-                            {% if tab.count is not None %}<span class="font-mono text-xs text-muted tabular-nums">{{ tab.count }}</span>{% endif %}
-                        </a>
-                    </li>
-                {% endfor %}
-            </ul>
-        </nav>
+        {% if tabs|length > 1 and not tab_nav_in_band %}
+            {% include "panel_framework/panels/_tab_nav.html" with tabs=tabs title=title region_id=region_id in_band=False only %}
         {% endif %}
     {% endblock tab_nav %}
     <div id="{{ region_id }}" data-tab-set>

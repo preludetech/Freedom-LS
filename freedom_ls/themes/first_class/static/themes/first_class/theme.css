@@ -150,6 +150,17 @@
         @apply bg-white;
     }
 
+    /* The panel framework's canvas is the Stratosphere page surface itself,
+     * and its cards, page header band, quick panel and modal read as clean
+     * white on it, the way the course cards and the sign-up panel do. */
+    .panel-canvas {
+        @apply bg-surface;
+    }
+
+    .panel-surface {
+        @apply bg-white;
+    }
+
     .alert-success {
         @apply bg-success-light border-success/30 text-on-success-light;
     }

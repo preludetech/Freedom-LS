@@ -1,10 +1,13 @@
 {% extends "panel_framework/views/_main_base.html" %}
 {% load panel_tags %}
 
-{% block main %}
+{% block page_header %}
     <c-panel-page-header title="{{ main.heading }}">
         <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
     </c-panel-page-header>
+{% endblock page_header %}
+
+{% block main %}
     {% if main.refresh_events %}
         {% include "panel_framework/partials/list_refresh.html" with refresh_events=main.refresh_events refresh_url=main.refresh_url refresh_target=main.panel.region_id only %}
     {% endif %}

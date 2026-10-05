@@ -146,6 +146,11 @@
     inner content well doesn't double up on horizontal padding and lg:gap-12
     stays the single source of truth for sidebar/content distance.
 
+    A consumer that wants the sidebar flush against the viewport's edge (the
+    educator interface) empties shell_padding and grid_gap, gives the sidebar
+    body its own border through sidebar_body_class, and lets its content
+    column carry its own padding; main_class colours the column.
+
     The sidebar is a single <dialog> driven by the shared sidePanel controller:
     docked in-flow on desktop (dialog.show(), always open) and a modal overlay
     below lg (dialog.showModal()), opened from the content header's expand button.
@@ -153,7 +158,7 @@
     consumer can override it via the sidebar_presentation block.
     {% endcomment %}
     <div x-data="sidePanel"
-         class="px-4 sm:px-6 lg:px-8"
+         class="{% block shell_padding %}px-4 sm:px-6 lg:px-8{% endblock shell_padding %}"
          data-storage-key="{% block sidebar_storage_key %}sidebar{% endblock sidebar_storage_key %}"
          data-desktop-lock="true">
 
@@ -164,7 +169,7 @@
         {% endcomment %}
         <div x-ref="panelGrid"
              data-panel-open="false"
-             class="side-panel-grid grid lg:gap-12 relative {% block sidebar_class %}{% endblock sidebar_class %}">
+             class="side-panel-grid grid {% block grid_gap %}lg:gap-12{% endblock grid_gap %} relative {% block sidebar_class %}{% endblock sidebar_class %}">
 
             {% comment %} Sidebar panel: one <dialog>, docked on desktop, overlay on mobile. {% endcomment %}
             {% comment %}
@@ -191,7 +196,7 @@
                     data-variant="{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}"
                     class="side-panel-dialog modal-backdrop-host border-0 p-0 m-0 bg-transparent text-inherit"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
-                <div class="side-panel-body bg-sidepanel lg:h-full overflow-y-auto overscroll-contain">
+                <div class="side-panel-body bg-sidepanel lg:h-full overflow-y-auto overscroll-contain {% block sidebar_body_class %}{% endblock sidebar_body_class %}">
                     {% comment %}
                     The panel has no chrome of its own — no title row or close
                     control. On mobile it is a native modal sheet dismissed by the
@@ -209,7 +214,7 @@
             </dialog>
 
             {% comment %} Main content area. {% endcomment %}
-            <div id="interface-main" class="flex-1 min-w-0">
+            <div id="interface-main" class="flex-1 min-w-0 {% block main_class %}{% endblock main_class %}">
                 {% include "partials/analytics_events.html" %}
                 {% comment %}
                 Shared content header, drawn by c-content-header so it matches
@@ -219,11 +224,16 @@
                 shared page_title region. The expand button is mobile-only
                 (lg:hidden) — on desktop the panel is always docked, so there
                 is nothing to toggle. Override header_width to line the header
-                up with a narrower content column.
+                up with a narrower content column, or content_header to draw
+                the header another way; content_header_top is the toggle and
+                breadcrumbs row on its own, for a consumer that keeps that row
+                and drops the rest.
                 {% endcomment %}
+                {% block content_header %}
                 <div class="{% block header_width %}max-w-7xl{% endblock header_width %} mx-auto">
                     <c-content-header>
                         <c-slot name="top">
+                            {% block content_header_top %}
                             <div class="flex items-center gap-2">
                                 <button x-on:click="toggle"
                                         x-bind:aria-expanded="open"
@@ -236,6 +246,7 @@
                                     {% endblock breadcrumbs %}
                                 </div>
                             </div>
+                            {% endblock content_header_top %}
                             {% block header_extra %}
                             {% endblock header_extra %}
                         </c-slot>
@@ -245,6 +256,7 @@
                         {% endblock page_title %}
                     </c-content-header>
                 </div>
+                {% endblock content_header %}
 
                 {% block content %}
                 {% endblock content %}

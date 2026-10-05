@@ -1,7 +1,10 @@
 {% extends "panel_framework/views/_main_base.html" %}
 {% load panel_tags %}
 
-{% block main %}
+{% block page_header %}
     <c-panel-page-header title="{{ main.heading }}" />
+{% endblock page_header %}
+
+{% block main %}
     {% render_panel main.panel %}
 {% endblock main %}

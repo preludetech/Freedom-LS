@@ -104,15 +104,20 @@ def times(value: int | str | None) -> range:
 
 
 @register.simple_tag
-def render_panel(panel: Panel) -> SafeString:
+def render_panel(panel: Panel, **overrides: object) -> SafeString:
     """Render a bound panel through its own template and context.
 
     `{% include %}` cannot take a context dict, so this tag is how a template
     renders another panel. It renders against the panel's own request, so
-    context processors run as they would for a page.
+    context processors run as they would for a page. Keyword arguments are
+    laid over the panel's own context, for a caller that has taken over
+    part of the panel's rendering (an instance page drawing a TabSet's tab
+    row in its header band passes tab_nav_in_band=True).
     """
     return render_to_string(
-        panel.template_name, panel.get_context_data(), request=panel.request
+        panel.template_name,
+        {**panel.get_context_data(), **overrides},
+        request=panel.request,
     )
 
 

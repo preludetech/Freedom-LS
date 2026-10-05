@@ -6,7 +6,7 @@ container, scrolls. focus_title makes the heading take focus itself, for
 fragments with no form field to autofocus instead.
 {% endcomment %}
 <c-vars focus_title="" />
-<header class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-surface px-6 py-4">
+<header class="panel-surface sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border px-6 py-4">
     <h2 id="app-modal-title" class="text-lg font-semibold"{% if focus_title %} tabindex="-1" autofocus{% endif %}>{{ slot }}</h2>
     <button type="button"
             x-on:click="requestClose"

@@ -197,10 +197,14 @@ class TabSet(Panel):
                 return child
         return children[0]
 
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
+    @cached_property
+    def tabs(self) -> list[dict[str, object]]:
+        """One entry per shown child, in declared order: its name, label,
+        URL, whether it is the active tab, and its count. Cached, since the
+        instance page reads it for the header band and the template reads
+        it again."""
         active = self.get_active_child()
-        context["tabs"] = [
+        return [
             {
                 "name": child.ctx.name,
                 "title": child.title,
@@ -210,7 +214,11 @@ class TabSet(Panel):
             }
             for child in self.get_children()
         ]
-        context["active_child"] = active
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["tabs"] = self.tabs
+        context["active_child"] = self.get_active_child()
         return context
 
 

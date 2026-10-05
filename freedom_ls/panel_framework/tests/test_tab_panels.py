@@ -19,7 +19,7 @@ def _tab_links(html: str) -> dict[str, lxml.html.HtmlElement]:
     document = lxml.html.fromstring(html)
     return {
         link.text_content().strip(): link
-        for link in document.cssselect("[data-panel=''] > nav a")
+        for link in document.cssselect("nav[aria-label='Stub sections'] a")
     }
 
 

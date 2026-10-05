@@ -1,9 +1,23 @@
 {% extends "panel_framework/views/_main_base.html" %}
 {% load panel_tags %}
 
-{% block main %}
+{% comment %}
+A tabbed instance page draws its tab row at the foot of the header band,
+under the heading, so the band's own bottom padding gives way to it and the
+tab set below renders only its region. `main.panel.tabs` is empty for any
+root that is not a TabSet.
+{% endcomment %}
+{% block page_header_padding %}{% if main.panel.tabs|length > 1 %}pb-0{% else %}pb-5{% endif %}{% endblock page_header_padding %}
+
+{% block page_header %}
     <c-panel-page-header title="{{ main.title }}" title_id="instance-title">
         <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
     </c-panel-page-header>
-    {% render_panel main.panel %}
+    {% if main.panel.tabs|length > 1 %}
+        {% include "panel_framework/panels/_tab_nav.html" with tabs=main.panel.tabs title=main.panel.title region_id=main.panel.region_id in_band=True only %}
+    {% endif %}
+{% endblock page_header %}
+
+{% block main %}
+    {% render_panel main.panel tab_nav_in_band=True %}
 {% endblock main %}

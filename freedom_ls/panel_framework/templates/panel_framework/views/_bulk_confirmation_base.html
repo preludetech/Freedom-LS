@@ -1,7 +1,10 @@
 {% extends "panel_framework/views/_main_base.html" %}
 
+{% block page_header %}
+    <c-panel-page-header title="{{ main.action.label }}" />
+{% endblock page_header %}
+
 {% block main %}
-    <h1>{{ main.action.label }}</h1>
     {% include "panel_framework/partials/bulk_confirmation_message.html" with error=main.error count=main.count noun=main.noun only %}
     {% include "panel_framework/partials/bulk_confirmation_form.html" with error=main.error action_url=main.action_url selection=main.selection action=main.action %}
     {% querystring request.GET as qs %}
