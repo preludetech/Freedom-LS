@@ -24,10 +24,12 @@ from freedom_ls.form_engine.admin import (
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
     FormFactory,
+    FormPageFactory,
     FormProgressFactory,
     FormQuestionFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
+    QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import (
     Form,
@@ -38,6 +40,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
     QuestionOption,
 )
+from freedom_ls.form_engine.queries import FINAL_GROUP_TITLE
 
 CHANGE_URL_NAME = "admin:freedom_ls_form_engine_formprogress_change"
 
@@ -474,3 +477,115 @@ def test_the_admin_saves_a_valid_bound(staff_client, date_question) -> None:
 
     date_question.refresh_from_db()
     assert date_question.max == "2010-01-01"
+
+
+# ---------------------------------------------------------------------------
+# The answers document on the FormProgress change page
+# ---------------------------------------------------------------------------
+
+
+def _change_page(client, progress) -> str:
+    response = client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
+    assert response.status_code == 200
+    return str(response.content.decode())
+
+
+@pytest.mark.django_db
+def test_the_change_page_walks_the_pages_in_form_order_and_marks_skips(
+    staff_client,
+) -> None:
+    form = FormFactory()
+    second = FormPageFactory(form=form, title="Zebra page", order=1)
+    first = FormPageFactory(form=form, title="Aardvark page", order=0)
+    FormQuestionFactory(form_page=first, question="Skipped query", order=0)
+    FormQuestionFactory(form_page=second, question="Other query", order=0)
+    progress = FormProgressFactory(form=form)
+
+    body = _change_page(staff_client, progress)
+
+    assert body.index("Aardvark page") < body.index("Zebra page")
+    assert "Not answered" in body
+
+
+@pytest.mark.django_db
+def test_the_change_page_shows_options_dates_and_filenames_as_a_reader_sees_them(
+    staff_client,
+) -> None:
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    choice = FormQuestionFactory(form_page=page, type="multiple_choice", order=0)
+    option = QuestionOptionFactory(question=choice, text="Evenings only")
+    date = FormQuestionFactory(form_page=page, type=QuestionType.DATE, order=1)
+    file_question = FormQuestionFactory(form_page=page, type="file", order=2)
+    progress = FormProgressFactory(form=form)
+    QuestionAnswerFactory(form_progress=progress, question=choice).selected_options.add(
+        option
+    )
+    QuestionAnswerFactory(
+        form_progress=progress, question=date, text_answer="1987-03-14"
+    )
+    QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=progress, question=file_question),
+        original_filename="id-scan.png",
+    )
+
+    body = _change_page(staff_client, progress)
+
+    assert "Evenings only" in body
+    assert "March 14, 1987" in body
+    assert "id-scan.png" in body
+
+
+@pytest.mark.django_db
+def test_the_final_group_heading_appears_only_with_an_off_page_answer(
+    staff_client,
+) -> None:
+    form = FormFactory()
+    FormQuestionFactory(form_page=FormPageFactory(form=form))
+    progress = FormProgressFactory(form=form)
+    assert FINAL_GROUP_TITLE not in _change_page(staff_client, progress)
+
+    moved = FormQuestionFactory(form_page=FormPageFactory(form=FormFactory()))
+    QuestionAnswerFactory(form_progress=progress, question=moved)
+
+    assert FINAL_GROUP_TITLE in _change_page(staff_client, progress)
+
+
+@pytest.mark.django_db
+def test_the_change_page_is_read_only(staff_client) -> None:
+    form = FormFactory()
+    question = FormQuestionFactory(
+        form_page=FormPageFactory(form=form), type=QuestionType.SHORT_TEXT
+    )
+    progress = FormProgressFactory(form=form)
+    answer = QuestionAnswerFactory(
+        form_progress=progress, question=question, text_answer="original"
+    )
+    url = reverse(CHANGE_URL_NAME, args=[progress.pk])
+
+    response = staff_client.get(url)
+    staff_client.post(url, {"text_answer": "changed"})
+
+    answer.refresh_from_db()
+    assert not response.context["adminform"].form.fields
+    assert not response.context["inline_admin_formsets"]
+    assert answer.text_answer == "original"
+
+
+@pytest.mark.django_db
+def test_the_add_page_offers_user_and_form(staff_client) -> None:
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_formprogress_add")
+    )
+
+    fields = response.context["adminform"].form.fields
+    assert {"user", "form"} <= set(fields)
+
+
+@pytest.mark.django_db
+def test_the_change_page_shows_furthest_page_reached(staff_client) -> None:
+    progress = FormProgressFactory(furthest_page_reached=3)
+
+    body = _change_page(staff_client, progress)
+
+    assert "Furthest page reached" in body

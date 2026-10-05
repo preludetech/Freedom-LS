@@ -2,7 +2,7 @@ from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
 from django.contrib.sites.models import Site
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
 
@@ -25,6 +25,7 @@ from .models import (
     QuestionAnswerFile,
     QuestionOption,
 )
+from .queries import answer_groups
 from .typed_answers import format_answer
 
 
@@ -241,13 +242,9 @@ class FormAdmin(SiteAwareModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class QuestionAnswerInline(admin.TabularInline):
-    """Inline for question answers."""
-
-    model = QuestionAnswer
-    extra = 0
-    fields = ("question", "selected_options", "text_answer", "updated_at")
-    readonly_fields = ("updated_at",)
+def answers_context(form_progress: FormProgress) -> dict[str, object]:
+    """What the answers document needs from a sitting."""
+    return {"answer_groups": answer_groups(form_progress)}
 
 
 class FormProgressCompletionFilter(CompletionListFilter):
@@ -288,8 +285,14 @@ class FormProgressAdmin(SiteAwareModelAdmin):
     # attempt: it scores the attempt and sends form_attempt_completed, which is what
     # keeps CourseProgress.progress_percentage up to date. Stamping the field
     # directly would leave both stale.
-    readonly_fields = ("start_time", "last_updated_time", "completed_time", "scores")
-    inlines = [QuestionAnswerInline]
+    readonly_fields = (
+        "start_time",
+        "last_updated_time",
+        "completed_time",
+        "scores",
+        "furthest_page_reached",
+    )
+    change_form_template = "admin/form_engine/answers_change_form.html"
 
     fieldsets = (
         (None, {"fields": ("user", "form")}),
@@ -301,10 +304,37 @@ class FormProgressAdmin(SiteAwareModelAdmin):
                     "last_updated_time",
                     "completed_time",
                     "scores",
+                    "furthest_page_reached",
                 )
             },
         ),
     )
+
+    def get_readonly_fields(
+        self, request: HttpRequest, obj: FormProgress | None = None
+    ) -> list[str]:
+        # The sitting is the record of what one person was asked; its owner and
+        # form never change after the fact. The add page still needs both.
+        readonly = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            readonly += ["user", "form"]
+        return readonly
+
+    def render_change_form(
+        self,
+        request: HttpRequest,
+        context: dict[str, object],
+        add: bool = False,
+        change: bool = False,
+        form_url: str = "",
+        obj: FormProgress | None = None,
+    ) -> HttpResponse:
+        if obj is not None:
+            context.update(answers_context(obj))
+        response: HttpResponse = super().render_change_form(
+            request, context, add, change, form_url, obj
+        )
+        return response
 
     @admin.display(description="In course")
     def in_course(self, obj: FormProgress) -> str | None:

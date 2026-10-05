@@ -1,0 +1,25 @@
+{% load form_engine_tags %}
+<section aria-label="Answers" class="mt-6">
+    <h2 class="font-semibold text-lg mb-4 text-font-important-light dark:text-font-important-dark">Answers</h2>
+    {% for group in answer_groups %}
+        <h3 class="font-semibold mt-6 mb-2 text-font-important-light dark:text-font-important-dark">{{ group.title }}</h3>
+        <table class="w-full">
+            {% for row in group.rows %}
+                <tr class="border-b border-base-200 dark:border-base-800">
+                    <th scope="row" class="align-top font-semibold text-left py-2 pr-6 w-1/2 text-font-important-light dark:text-font-important-dark">{{ row.question.rendered_question }}</th>
+                    <td class="align-top py-2">
+                        {% if row.answer.answer_file %}
+                            <span>{{ row.answer.answer_file.original_filename }}</span>
+                        {% elif row.answer.text_answer %}
+                            <span class="whitespace-pre-line">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
+                        {% elif row.answer %}
+                            {% for option in row.answer.selected_options.all %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
+                        {% else %}
+                            <span class="text-font-subtle-light dark:text-font-subtle-dark">Not answered</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endfor %}
+</section>

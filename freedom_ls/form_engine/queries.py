@@ -1,6 +1,20 @@
 from __future__ import annotations
 
-from .models import Form, FormPage, FormProgress, FormQuestion, FormStrategy
+from dataclasses import dataclass
+from uuid import UUID
+
+from django.db.models import prefetch_related_objects
+
+from .models import (
+    Form,
+    FormPage,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+    QuestionAnswer,
+)
+
+FINAL_GROUP_TITLE = "Questions no longer on the form"
 
 
 def quiz_verdict(form: Form, form_progress: FormProgress) -> bool | None:
@@ -63,3 +77,60 @@ def page_questions(form_page: FormPage) -> list[FormQuestion]:
     return [
         child for child in form_page.children() if child.content_type == "FORM_QUESTION"
     ]
+
+
+@dataclass(frozen=True)
+class AnswerRow:
+    question: FormQuestion
+    # None when the applicant left the question unanswered: a blank answer stores no row.
+    answer: QuestionAnswer | None
+
+
+@dataclass(frozen=True)
+class AnswerGroup:
+    title: str
+    rows: list[AnswerRow]
+
+
+def answer_groups(form_progress: FormProgress) -> list[AnswerGroup]:
+    """The sitting's answers, laid out the way the form lays out its questions.
+
+    Walks the form's current pages, so a question the applicant skipped still
+    has a row and a question edited since shows its current wording. The join
+    is to the live form definition, not a snapshot. Answers whose question is
+    on no page follow in a final group.
+    """
+    prefetch_related_objects(
+        [form_progress],
+        "answers__selected_options",
+        "answers__answer_file",
+        "answers__question",
+    )
+    # One dict for the whole sitting rather than existing_answers_dict per page:
+    # the final group needs the answers no page accounts for.
+    answers = {answer.question_id: answer for answer in form_progress.answers.all()}
+    groups: list[AnswerGroup] = []
+    page_question_ids: set[UUID] = set()
+    pages = form_progress.form.pages.prefetch_related("text_items", "questions")
+    for page in pages:
+        questions = page_questions(page)
+        page_question_ids.update(question.id for question in questions)
+        groups.append(
+            AnswerGroup(
+                title=page.title,
+                rows=[
+                    AnswerRow(question, answers.get(question.id))
+                    for question in questions
+                ],
+            )
+        )
+    # A question can leave every page but never be deleted while answered (the
+    # answer's FK protects it), so an answer with no page is still an answer.
+    off_page_rows = [
+        AnswerRow(answer.question, answer)
+        for answer in form_progress.answers.all()
+        if answer.question_id not in page_question_ids
+    ]
+    if off_page_rows:
+        groups.append(AnswerGroup(title=FINAL_GROUP_TITLE, rows=off_page_rows))
+    return groups
