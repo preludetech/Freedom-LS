@@ -48,10 +48,23 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: docked side panel takes focus on page load so the first Tab skips the header (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: Courses table is not scoped to the selected organisation and shows other organisations' cohorts and counts — security-adjacent (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: sidebar nav links are underlined (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: learner name links in tables and mobile rows are medium weight, not bold (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: learner detail page title shows '<email> - DemoDev' instead of the learner's name (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: sidebar cohort sub-item keeps the old name after an inline rename (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: delete confirmation dialog renders an empty body band (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: navigation sheet ignores prefers-reduced-motion (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: widening past lg with the side-panel sheet open hides the sidebar and squeezes the content (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: cohort page actions sit in the Details card, not at the right of the page header (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: create cohort footer shows 'Save and add another' + 'Save' instead of Cancel + Create Cohort (TDD — failing test first, then fix)
+- [ ] (user) Decide whether cohort Edit/Delete belong at the right of the page header (design checklist 6.2) or in the Details card (plan step 6.3), then fix the template or the plan
+- [ ] (user) Decide whether the create cohort footer keeps 'Save and add another' and the 'Save' label or becomes Cancel + 'Create Cohort' as designed, then update the modal form or the plan
 
 ## 10. Product documentation
 
