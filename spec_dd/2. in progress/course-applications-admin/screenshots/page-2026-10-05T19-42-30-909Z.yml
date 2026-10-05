@@ -1,0 +1,135 @@
+- generic [active] [ref=f107e1]:
+  - generic [ref=f107e3]:
+    - generic [ref=f107e7]:
+      - generic [ref=f107e8]:
+        - generic [ref=f107e9] [cursor=pointer]: dock_to_right
+        - link "arrow_back" [ref=f107e12] [cursor=pointer]:
+          - /url: /admin/freedom_ls_form_engine/formprogress/
+        - heading "Form engine chevron_right Form progress records chevron_right Qa_applicant@email.com - Application form" [level=1] [ref=f107e14]:
+          - link "Form engine" [ref=f107e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_form_engine/
+          - generic [ref=f107e16]: chevron_right
+          - link "Form progress records" [ref=f107e17] [cursor=pointer]:
+            - /url: /admin/freedom_ls_form_engine/formprogress/
+          - generic [ref=f107e18]: chevron_right
+          - link "Qa_applicant@email.com - Application form" [ref=f107e19] [cursor=pointer]:
+            - /url: /admin/freedom_ls_form_engine/formprogress/129bb660-835b-46fc-bc83-08b6010c9881/change/
+      - generic [ref=f107e20]:
+        - link "more_horiz" [ref=f107e22] [cursor=pointer]:
+          - /url: "#"
+        - link "add" [ref=f107e25] [cursor=pointer]:
+          - /url: /admin/freedom_ls_form_engine/formprogress/add/
+    - generic [ref=f107e31]:
+      - group [ref=f107e32]:
+        - generic [ref=f107e33]:
+          - generic [ref=f107e35]:
+            - generic [ref=f107e36]: User
+            - link "qa_applicant@email.com" [ref=f107e40] [cursor=pointer]:
+              - /url: /admin/freedom_ls_accounts/user/70/change/
+          - generic [ref=f107e42]:
+            - generic [ref=f107e43]: Form
+            - link "Application form" [ref=f107e47] [cursor=pointer]:
+              - /url: /admin/freedom_ls_form_engine/form/c974f518-5dc3-44d5-b00d-505f38b35e60/change/
+      - group [ref=f107e48]:
+        - heading "Progress" [level=2] [ref=f107e49]
+        - generic [ref=f107e50]:
+          - generic [ref=f107e52]:
+            - generic [ref=f107e53]: Start time
+            - generic [ref=f107e55]: Oct. 5, 2026, 7:27 p.m.
+          - generic [ref=f107e58]:
+            - generic [ref=f107e59]: Last updated time
+            - generic [ref=f107e61]: Oct. 5, 2026, 7:35 p.m.
+          - generic [ref=f107e64]:
+            - generic [ref=f107e65]: Completed time
+            - generic [ref=f107e67]: Oct. 5, 2026, 7:29 p.m.
+          - generic [ref=f107e70]:
+            - generic [ref=f107e71]: Scores
+            - generic [ref=f107e73]:
+              - generic [ref=f107e74]: "null"
+              - generic [ref=f107e78]: Calculated scores by category
+          - generic [ref=f107e80]:
+            - generic [ref=f107e81]: Furthest page reached
+            - generic [ref=f107e83]:
+              - generic [ref=f107e84]: "3"
+              - generic [ref=f107e85]: The highest-numbered page this sitting has been shown
+      - region "Summary" [ref=f107e86]:
+        - table [ref=f107e87]:
+          - rowgroup [ref=f107e88]:
+            - row [ref=f107e89]:
+              - rowheader "Application" [ref=f107e90]
+              - cell [ref=f107e91]:
+                - link "Application for Functionality Demo - Application gated course" [ref=f107e92] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_applications/courseapplication/31f26655-8ee9-4447-9b9b-e82f1ce36ca8/change/
+      - region "Answers" [ref=f107e93]:
+        - heading "Answers" [level=2] [ref=f107e94]
+        - heading "About you" [level=3] [ref=f107e95]
+        - table [ref=f107e96]:
+          - rowgroup [ref=f107e97]:
+            - row [ref=f107e98]:
+              - rowheader [ref=f107e99]:
+                - paragraph [ref=f107e100]: What is your full name?
+              - cell "Ada QA" [ref=f107e101]
+            - row [ref=f107e102]:
+              - rowheader [ref=f107e103]:
+                - paragraph [ref=f107e104]: What is your date of birth?
+              - cell "Feb. 3, 1990" [ref=f107e105]
+            - row [ref=f107e106]:
+              - rowheader [ref=f107e107]:
+                - paragraph [ref=f107e108]: What is your email address?
+              - cell "ada.qa@example.com" [ref=f107e109]
+            - row [ref=f107e110]:
+              - rowheader [ref=f107e111]:
+                - paragraph [ref=f107e112]: What is your phone number?
+              - cell "+27 21 555 0123" [ref=f107e113]
+            - row [ref=f107e114]:
+              - rowheader [ref=f107e115]:
+                - paragraph [ref=f107e116]: Share a link to your portfolio, GitHub profile or LinkedIn, if you have one
+              - cell "https://github.com/adaqa" [ref=f107e117]
+            - row [ref=f107e118]:
+              - rowheader [ref=f107e119]:
+                - paragraph [ref=f107e120]: How many years have you been writing software?
+              - cell "4" [ref=f107e121]
+            - row [ref=f107e122]:
+              - rowheader [ref=f107e123]:
+                - paragraph [ref=f107e124]: How did you hear about this course?
+              - cell "A search engine" [ref=f107e125]
+            - row [ref=f107e126]:
+              - rowheader [ref=f107e127]:
+                - paragraph [ref=f107e128]: Which of these interest you?
+              - cell "Building web applications · Infrastructure and deployment" [ref=f107e129]
+            - row [ref=f107e130]:
+              - rowheader [ref=f107e131]:
+                - paragraph [ref=f107e132]: Why do you want to take this course?
+              - 'cell "First paragraph: I want to understand product analytics properly, beyond dashboards, so I can make better decisions in my team and explain those decisions to stakeholders who are not technical. Second paragraph: My current role has me writing SQL for ad-hoc questions, and I would like a structured way to think about metrics, experiments and the traps in each. Third paragraph: I can commit around six hours a week for the duration of the course." [ref=f107e133]'
+        - heading "Supporting documents" [level=3] [ref=f107e134]
+        - table [ref=f107e135]:
+          - rowgroup [ref=f107e136]:
+            - row [ref=f107e137]:
+              - rowheader [ref=f107e138]:
+                - paragraph [ref=f107e139]: Upload a scan of your ID or a recent certificate
+              - cell [ref=f107e140]:
+                - text: id-scan.png
+                - link "Download" [ref=f107e141] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_form_engine/questionanswerfile/63da2519-96de-4563-9f7e-e350942377ec/download/
+            - row [ref=f107e142]:
+              - rowheader [ref=f107e143]:
+                - paragraph [ref=f107e144]: Is there anything else we should know?
+              - cell "Not answered" [ref=f107e145]
+        - heading "Availability" [level=3] [ref=f107e146]
+        - table [ref=f107e147]:
+          - rowgroup [ref=f107e148]:
+            - row [ref=f107e149]:
+              - rowheader [ref=f107e150]:
+                - paragraph [ref=f107e151]: What time of day do you prefer for live sessions?
+              - cell "2 p.m." [ref=f107e152]
+            - row [ref=f107e153]:
+              - rowheader [ref=f107e154]:
+                - paragraph [ref=f107e155]: Which time zone are you usually in?
+              - cell "Pacific (UTC-8)" [ref=f107e156]
+    - generic [ref=f107e159]:
+      - button "Save" [ref=f107e160] [cursor=pointer]
+      - button "Save and continue editing" [ref=f107e161] [cursor=pointer]
+      - button "Save and add another" [ref=f107e162] [cursor=pointer]
+      - link "Delete form progress" [ref=f107e164] [cursor=pointer]:
+        - /url: /admin/freedom_ls_form_engine/formprogress/129bb660-835b-46fc-bc83-08b6010c9881/delete/
+  - generic "Show toolbar" [ref=f107e166]: DJDT

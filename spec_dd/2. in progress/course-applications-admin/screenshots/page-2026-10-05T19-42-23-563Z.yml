@@ -1,0 +1,55 @@
+- generic [active] [ref=f106e1]:
+  - generic [ref=f106e3]:
+    - generic [ref=f106e8]:
+      - generic [ref=f106e9] [cursor=pointer]: dock_to_right
+      - heading "Course applications chevron_right Course applications" [level=1] [ref=f106e12]:
+        - link "Course applications" [ref=f106e13] [cursor=pointer]:
+          - /url: /admin/freedom_ls_course_applications/
+        - generic [ref=f106e14]: chevron_right
+        - link "Course applications" [ref=f106e15] [cursor=pointer]:
+          - /url: /admin/freedom_ls_course_applications/courseapplication/
+    - generic [ref=f106e20]:
+      - generic [ref=f106e21]:
+        - generic [ref=f106e22]:
+          - search [ref=f106e24]:
+            - generic [ref=f106e25]:
+              - button "search" [ref=f106e26]
+              - textbox "Type to search" [ref=f106e28]
+              - generic [ref=f106e29]: /
+          - generic [ref=f106e30] [cursor=pointer]:
+            - text: Filters
+            - generic [ref=f106e31]: filter_list
+        - region "scrollable content" [ref=f106e37]:
+          - table [ref=f106e39]:
+            - rowgroup:
+              - row
+            - rowgroup [ref=f106e40]:
+              - row [ref=f106e41]:
+                - rowheader [ref=f106e42]:
+                  - text: Applicant
+                  - link "qa_applicant@email.com" [ref=f106e43] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_applications/courseapplication/31f26655-8ee9-4447-9b9b-e82f1ce36ca8/change/
+                - cell "Applicant name Ada QA" [ref=f106e44]
+                - cell "course Functionality Demo - Application gated course" [ref=f106e45]
+                - cell "Submitted check_small" [ref=f106e46]:
+                  - text: Submitted
+                  - generic "True" [ref=f106e47]: check_small
+                - cell "Submitted time Oct. 5, 2026, 7:29 p.m." [ref=f106e49]
+                - cell "created at Oct. 5, 2026, 7:27 p.m." [ref=f106e50]
+            - rowgroup [ref=f106e51]:
+              - row [ref=f106e52]:
+                - rowheader [ref=f106e53]:
+                  - text: Applicant
+                  - link "demodev_applicant@email.com" [ref=f106e54] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_applications/courseapplication/bb4a6c53-59fd-4ad4-9ffe-b60e6e599de8/change/
+                - cell "Applicant name Demo Applicant" [ref=f106e55]
+                - cell "course Advanced Product Analytics Masterclass" [ref=f106e56]
+                - cell "Submitted check_small" [ref=f106e57]:
+                  - text: Submitted
+                  - generic "True" [ref=f106e58]: check_small
+                - cell "Submitted time Oct. 5, 2026, 7:26 p.m." [ref=f106e60]
+                - cell "created at Oct. 5, 2026, 7:26 p.m." [ref=f106e61]
+      - text: expand_more update calendar_today warning update schedule warning update calendar_today warning update schedule warning
+    - generic [ref=f106e62]: 2 course applications
+  - generic "Show toolbar" [ref=f106e66]: DJDT
+  - text: navigate_before navigate_next navigate_before navigate_next

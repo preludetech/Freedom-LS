@@ -47,10 +47,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user) Decide whether a user's Learner rows should be erased with the user (add Learner to USER_ERASURE_CASCADE_MODELS, or let LearnerAdmin allow delete), then fix the User admin delete so a superuser can erase a learner
+- [ ] (user + cmd) Fix QA bug: superuser cannot erase a learner from the User admin because Learner rows block the delete (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
