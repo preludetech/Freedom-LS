@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import cast
 
 import pytest
@@ -323,3 +324,18 @@ def test_created_date_range_with_only_date_boxes_narrows_the_list(staff_client):
     )
 
     assert [row.pk for row in response.context["cl"].result_list] == [recent.pk]
+
+
+def test_change_page_submitted_time_is_formatted_like_created_at(staff_client):
+    application = _submitted()
+    assert application.form_progress is not None
+    application.form_progress.completed_time = datetime(
+        2026, 10, 5, 19, 29, 6, 975164, tzinfo=UTC
+    )
+    application.form_progress.save()
+
+    response = staff_client.get(reverse(CHANGE, args=[application.pk]))
+
+    content = response.content.decode()
+    assert "Oct. 5, 2026, 7:29 p.m." in content
+    assert "19:29:06.975164" not in content

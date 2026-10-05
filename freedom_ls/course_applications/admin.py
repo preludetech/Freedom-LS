@@ -9,6 +9,7 @@ from unfold.contrib.filters.admin import AutocompleteSelectFilter
 from django.contrib import admin
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
+from django.utils import formats, timezone
 
 from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.form_engine.admin import answers_context
@@ -90,7 +91,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         "user__last_name",
         "course__title",
     ]
-    fields = ["is_submitted", "submitted_time", "created_at"]
+    fields = ["is_submitted", "submitted_time_display", "created_at"]
     readonly_fields = fields
     change_form_template = "admin/form_engine/answers_change_form.html"
 
@@ -161,3 +162,15 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         if obj.form_progress is None:
             return obj.created_at
         return obj.form_progress.completed_time
+
+    @admin.display(description="Submitted time")
+    def submitted_time_display(self, obj: CourseApplication) -> str:
+        """The submitted time as the change page shows it.
+
+        Unfold prints a callable's datetime with ``str()``, skipping the
+        formatting that the changelist and model fields get.
+        """
+        submitted_time = self.submitted_time(obj)
+        if submitted_time is None:
+            return str(self.get_empty_value_display())
+        return formats.localize(timezone.localtime(submitted_time))
