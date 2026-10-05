@@ -589,3 +589,44 @@ def test_the_change_page_shows_furthest_page_reached(staff_client) -> None:
     body = _change_page(staff_client, progress)
 
     assert "Furthest page reached" in body
+
+
+def _progress_with_file_answer(filename: str = "id-scan.png"):
+    form = FormFactory()
+    page = FormPageFactory(form=form)
+    question = FormQuestionFactory(form_page=page, type="file", order=0)
+    progress = FormProgressFactory(form=form)
+    answer_file = QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=progress, question=question),
+        original_filename=filename,
+    )
+    return progress, answer_file
+
+
+@pytest.mark.django_db
+def test_a_superuser_sees_the_filename_and_a_download_link(staff_client) -> None:
+    progress, answer_file = _progress_with_file_answer()
+
+    body = _change_page(staff_client, progress)
+
+    assert "id-scan.png" in body
+    assert _admin_download_url(answer_file) in body
+
+
+@pytest.mark.django_db
+def test_a_reader_without_file_permission_sees_the_filename_but_no_link(
+    mock_site_context, logged_in_client
+) -> None:
+    viewer = UserFactory(is_staff=True, is_superuser=False)
+    viewer.user_permissions.set(
+        Permission.objects.filter(
+            content_type__app_label="freedom_ls_form_engine",
+            codename="view_formprogress",
+        )
+    )
+    progress, answer_file = _progress_with_file_answer()
+
+    body = _change_page(logged_in_client(viewer), progress)
+
+    assert "id-scan.png" in body
+    assert _admin_download_url(answer_file) not in body

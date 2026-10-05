@@ -10,6 +10,10 @@
                     <td class="align-top py-2">
                         {% if row.answer.answer_file %}
                             <span>{{ row.answer.answer_file.original_filename }}</span>
+                            {% if can_download_answer_files %}
+                                <a href="{% url 'admin:freedom_ls_form_engine_questionanswerfile_download' row.answer.answer_file.pk %}"
+                                   class="text-primary-600 dark:text-primary-500">Download</a>
+                            {% endif %}
                         {% elif row.answer.text_answer %}
                             <span class="whitespace-pre-line">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
                         {% elif row.answer %}

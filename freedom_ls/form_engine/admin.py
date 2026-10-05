@@ -25,6 +25,7 @@ from .models import (
     QuestionAnswerFile,
     QuestionOption,
 )
+from .permissions import can_download_answer_files
 from .queries import answer_groups
 from .typed_answers import format_answer
 
@@ -242,9 +243,15 @@ class FormAdmin(SiteAwareModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-def answers_context(form_progress: FormProgress) -> dict[str, object]:
-    """What the answers document needs from a sitting."""
-    return {"answer_groups": answer_groups(form_progress)}
+def answers_context(
+    request: HttpRequest, form_progress: FormProgress
+) -> dict[str, object]:
+    """What the answers document needs: the groups, and whether this reader may
+    follow a file's download link."""
+    return {
+        "answer_groups": answer_groups(form_progress),
+        "can_download_answer_files": can_download_answer_files(request.user),
+    }
 
 
 class FormProgressCompletionFilter(CompletionListFilter):
@@ -330,7 +337,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
         obj: FormProgress | None = None,
     ) -> HttpResponse:
         if obj is not None:
-            context.update(answers_context(obj))
+            context.update(answers_context(request, obj))
         response: HttpResponse = super().render_change_form(
             request, context, add, change, form_url, obj
         )
