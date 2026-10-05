@@ -293,3 +293,24 @@ def test_paging_one_table_keeps_sibling_page_in_url(
     page.reload()
     expect(page.locator("#a-table")).to_contain_text(f"row-{PAGE_SIZE:02d}")
     expect(page.locator("#b-table")).to_contain_text(f"row-{PAGE_SIZE:02d}")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_filter_sort_sheet_stays_hidden_on_phone_after_table_swap(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """The no-JavaScript inline override for the sheet leaked into the page
+    after an htmx swap (the swapped fragment parses <noscript> contents as
+    real elements), so the closed sheet showed inline above the rows."""
+    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    page.set_viewport_size({"width": 375, "height": 800})
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    page.locator("#stubs-q").fill("row")
+    expect(page).to_have_url(re.compile(r"stubs-q=row"))
+    expect(page.locator(".htmx-added")).to_have_count(0)
+
+    expect(page.locator("#stubs-sheet")).to_be_hidden()

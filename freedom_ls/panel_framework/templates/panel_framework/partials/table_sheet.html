@@ -1,7 +1,8 @@
 {% comment %}
 The mobile filter & sort sheet: a plain GET form inside base's shared
 bottom-sheet dialog, reachable and submittable below md with JavaScript off
-via the <noscript> override below.
+via the scripting-none override below. A <noscript> would leak into the page
+when htmx swaps this fragment in.
 {% endcomment %}
 <dialog id="{{ query.key }}-sheet"
         x-ref="panelDialog"
@@ -105,13 +106,13 @@ via the <noscript> override below.
         </form>
     </div>
 </dialog>
-<noscript>
-    <style>
+<style>
+    @media (scripting: none) {
         #{{ query.key }}-sheet {
             display: block;
             position: static;
             opacity: 1;
             transform: none;
         }
-    </style>
-</noscript>
+    }
+</style>
