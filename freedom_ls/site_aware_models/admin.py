@@ -8,7 +8,11 @@ from unfold.contrib.import_export.forms import ExportForm
 from django.contrib import admin
 from django.contrib.admin.exceptions import NotRegistered
 from django.contrib.sites.models import Site
+from django.db.models import Model
 from django.http import HttpRequest
+from django.urls import reverse
+from django.utils.html import format_html
+from django.utils.safestring import SafeString
 
 from freedom_ls.site_aware_models.admin_exports import FormulaSafeCSV
 
@@ -82,3 +86,30 @@ def admin_page_context(
         "model_admin": model_admin,
         "title": title,
     }
+
+
+def admin_change_link(
+    request: HttpRequest, obj: Model, label: str | None = None
+) -> SafeString:
+    """A link to obj's admin change page, or its text when this reader could not open it.
+
+    Asks the registered ModelAdmin rather than a permission string, so an admin
+    with its own view rule answers for itself. A link that ends in a 403 is
+    worse than none.
+    """
+    text = label if label is not None else str(obj)
+    try:
+        can_view = admin.site.get_model_admin(type(obj)).has_view_permission(
+            request, obj
+        )
+    except NotRegistered:
+        can_view = False
+    if not can_view:
+        return format_html("{}", text)
+    opts = obj._meta
+    url = reverse(f"admin:{opts.app_label}_{opts.model_name}_change", args=[obj.pk])
+    return format_html(
+        '<a href="{}" class="text-primary-600 dark:text-primary-500">{}</a>',
+        url,
+        text,
+    )

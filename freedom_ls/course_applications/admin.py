@@ -5,10 +5,12 @@ from __future__ import annotations
 from datetime import datetime
 
 from django.contrib import admin
-from django.http import HttpRequest
+from django.db.models import QuerySet
+from django.http import HttpRequest, HttpResponse
 
 from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.form_engine.admin import answers_context
+from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
 
 from .models import CourseApplication
 
@@ -42,6 +44,43 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ordering = ["-created_at"]
     fields = ["is_submitted", "submitted_time", "created_at"]
     readonly_fields = fields
+    change_form_template = "admin/form_engine/answers_change_form.html"
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[CourseApplication]:
+        queryset: QuerySet[CourseApplication] = (
+            super()
+            .get_queryset(request)
+            .select_related("user", "course", "form_progress")
+        )
+        return queryset
+
+    def render_change_form(
+        self,
+        request: HttpRequest,
+        context: dict[str, object],
+        add: bool = False,
+        change: bool = False,
+        form_url: str = "",
+        obj: CourseApplication | None = None,
+    ) -> HttpResponse:
+        if obj is not None:
+            form_progress = obj.form_progress
+            context["summary_rows"] = [
+                ("Applicant", admin_change_link(request, obj.user)),
+                ("Course", admin_change_link(request, obj.course)),
+                (
+                    "Form progress record",
+                    admin_change_link(request, form_progress)
+                    if form_progress is not None
+                    else "The course asked for no application form.",
+                ),
+            ]
+            if form_progress is not None:
+                context.update(answers_context(request, form_progress))
+        response: HttpResponse = super().render_change_form(
+            request, context, add, change, form_url, obj
+        )
+        return response
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

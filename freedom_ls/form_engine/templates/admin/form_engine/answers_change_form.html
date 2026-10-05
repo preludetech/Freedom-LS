@@ -2,5 +2,6 @@
 
 {% block after_field_sets %}
     {{ block.super }}
+    {% if summary_rows %}{% include "admin/form_engine/_summary.html" %}{% endif %}
     {% if answer_groups %}{% include "admin/form_engine/_answers.html" %}{% endif %}
 {% endblock %}

@@ -1,0 +1,10 @@
+<section aria-label="Summary" class="mt-6">
+    <table class="w-full">
+        {% for label, value in summary_rows %}
+            <tr class="border-b border-base-200 dark:border-base-800">
+                <th scope="row" class="align-top font-semibold text-left py-2 pr-6 w-40 text-font-important-light dark:text-font-important-dark">{{ label }}</th>
+                <td class="align-top py-2">{{ value }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</section>

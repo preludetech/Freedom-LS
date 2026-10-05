@@ -16,8 +16,13 @@ from freedom_ls.accounts.models import User
 from freedom_ls.course_applications.admin import CourseApplicationAdmin
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.form_engine.factories import FormProgressFactory
-from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.course_applications.tests.conftest import gated_course_with_form
+from freedom_ls.form_engine.factories import (
+    FormProgressFactory,
+    QuestionAnswerFactory,
+    QuestionAnswerFileFactory,
+)
+from freedom_ls.form_engine.models import FormProgress, FormQuestion
 
 pytestmark = pytest.mark.django_db
 
@@ -135,3 +140,94 @@ def test_staff_without_view_permission_cannot_open_changelist(mock_site_context)
     client.force_login(UserFactory(is_staff=True))
 
     assert client.get(reverse(CHANGELIST)).status_code == 403
+
+
+def _answered_application() -> tuple[CourseApplication, str]:
+    """A submitted application with one text answer, one skipped question and
+    one uploaded file; returns it and the file's download URL."""
+    course, form = gated_course_with_form()
+    progress = FormProgressFactory(form=form, completed_time=timezone.now())
+    application = cast(
+        CourseApplication,
+        CourseApplicationFactory(
+            user=progress.user, course=course, form_progress=progress
+        ),
+    )
+    name = FormQuestion.objects.get(form_page__form=form, question="Your name")
+    QuestionAnswerFactory(
+        form_progress=progress, question=name, text_answer="Ada Lovelace"
+    )
+    upload = FormQuestion.objects.get(form_page__form=form, type="file_upload")
+    answer_file = QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=progress, question=upload),
+        original_filename="id-scan.png",
+    )
+    download_url = reverse(
+        "admin:freedom_ls_form_engine_questionanswerfile_download",
+        args=[answer_file.pk],
+    )
+    return application, download_url
+
+
+def test_change_page_shows_the_answers_document(staff_client):
+    application, _ = _answered_application()
+
+    response = staff_client.get(reverse(CHANGE, args=[application.pk]))
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "About you" in content
+    assert "Supporting documents" in content
+    assert "Ada Lovelace" in content
+    assert "Not answered" in content
+    assert "id-scan.png" in content
+
+
+def test_change_page_summary_links_to_user_course_and_sitting(staff_client):
+    application, _ = _answered_application()
+    assert application.form_progress is not None
+
+    content = staff_client.get(reverse(CHANGE, args=[application.pk])).content.decode()
+
+    for name, obj in [
+        ("freedom_ls_accounts_user_change", application.user),
+        ("freedom_ls_content_engine_course_change", application.course),
+        ("freedom_ls_form_engine_formprogress_change", application.form_progress),
+    ]:
+        assert f'href="{reverse(f"admin:{name}", args=[obj.pk])}"' in content
+
+
+def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_links(
+    mock_site_context,
+):
+    application, download_url = _answered_application()
+    assert application.form_progress is not None
+    staff = UserFactory(is_staff=True)
+    staff.user_permissions.add(
+        Permission.objects.get(codename="view_courseapplication")
+    )
+    client = Client()
+    client.force_login(staff)
+
+    content = client.get(reverse(CHANGE, args=[application.pk])).content.decode()
+
+    assert application.user.email in content
+    assert application.course.title in content
+    assert str(application.form_progress) in content
+    for name, obj in [
+        ("freedom_ls_accounts_user_change", application.user),
+        ("freedom_ls_content_engine_course_change", application.course),
+        ("freedom_ls_form_engine_formprogress_change", application.form_progress),
+    ]:
+        assert reverse(f"admin:{name}", args=[obj.pk]) not in content
+    assert "id-scan.png" in content
+    assert download_url not in content
+
+
+def test_change_page_of_an_application_with_no_form_says_so(staff_client):
+    application = CourseApplicationFactory()
+
+    content = staff_client.get(reverse(CHANGE, args=[application.pk])).content.decode()
+
+    assert "The course asked for no application form." in content
+    assert ">Answers<" not in content
