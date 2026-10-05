@@ -187,3 +187,24 @@ def test_a_sheet_carried_across_to_desktop_unwinds_its_entry_when_closed(
     page.go_back()
 
     expect(page).to_have_url(detail_url)
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_a_tap_on_the_backdrop_closes_the_mobile_sheet_and_returns_focus_to_the_trigger(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """The modal sheet used to stay open when the dimmed backdrop was clicked."""
+    _make_stub(name="Alpha")
+    page.set_viewport_size(_MOBILE_VIEWPORT)
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    trigger = page.get_by_role("link", name="Quick view: Alpha")
+    trigger.click()
+    expect(page.locator("dialog:modal")).to_have_count(1)
+
+    page.mouse.click(20, 20)
+
+    expect(page.locator("dialog:modal")).to_have_count(0)
+    expect(trigger).to_be_focused()

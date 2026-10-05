@@ -368,6 +368,21 @@ document.addEventListener("alpine:init", () => {
                 this._close();
             });
 
+            // A click on the ::backdrop targets the dialog element itself, but
+            // so does one on the dialog's own padding: only a click outside
+            // the dialog's box is a backdrop click. The docked drawer has no
+            // backdrop, so this only applies while it is modal.
+            trackListener(this._qvHandlers, this._qvDialog, "click", (event) => {
+                if (event.target !== this._qvDialog || !this._isModal) return;
+                const box = this._qvDialog.getBoundingClientRect();
+                const inside =
+                    event.clientX >= box.left &&
+                    event.clientX <= box.right &&
+                    event.clientY >= box.top &&
+                    event.clientY <= box.bottom;
+                if (!inside) this._close();
+            });
+
             // Crossing the 1280px breakpoint while open has to reopen in the
             // other mode (modal below it, docked at and above it), which
             // only takes effect through a fresh show()/showModal() call.
