@@ -108,6 +108,28 @@ def test_save_closes_the_modal_and_navigates_with_a_history_entry(
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
+def test_pressing_enter_in_the_name_field_submits_as_save_not_save_and_add_another(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """Implicit submission used the first submit button in tree order, which is
+    "Save and add another", so Enter kept the dialog open instead of saving."""
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    _open_create_modal_and_wait_for_settle(page)
+    name_field = page.locator("#app-modal").get_by_label("Name")
+    name_field.fill("Delta")
+    name_field.press("Enter")
+
+    expect(page.locator("#instance-title")).to_have_text("Delta")
+    expect(page.locator("#app-modal")).to_be_hidden()
+    item = StubModel.objects.get(name="Delta")
+    expect(page).to_have_url(f"{live_server.url}/test-panel/framework/stubs/{item.pk}")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
 def test_cancel_closes_the_modal_and_returns_focus_to_the_trigger(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
@@ -231,7 +253,7 @@ def test_clicking_save_disables_every_submit_button_while_the_request_is_pending
 
     # Located by CSS, not accessible name: the clicked button's own label
     # swaps to its loading text once the request is in flight.
-    submit_buttons = page.locator("#app-modal-body button[type='submit']")
+    submit_buttons = page.locator("#app-modal-body button[type='submit']:not([hidden])")
     save_and_add_button = submit_buttons.nth(0)
     save_button = submit_buttons.nth(1)
     save_button.click()

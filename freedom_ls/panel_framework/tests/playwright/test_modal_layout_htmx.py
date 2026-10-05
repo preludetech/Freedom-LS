@@ -107,7 +107,7 @@ def test_the_form_buttons_fit_inside_the_dialog_at_phone_width(
     expect(dialog).to_be_visible()
     dialog_box = dialog.bounding_box()
     assert dialog_box is not None
-    buttons = page.locator("#app-modal-body form button")
+    buttons = page.locator("#app-modal-body form button:not([hidden])")
     expect(buttons.first).to_be_visible()
     heights: list[float] = []
     for button in buttons.all():

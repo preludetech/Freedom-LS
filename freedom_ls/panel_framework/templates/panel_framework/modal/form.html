@@ -26,6 +26,8 @@ field_error_count, form_title, form_url, submit_buttons.
 
     <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
         <c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button>
+        {# The first submit button in tree order is what Enter triggers; this one acts as the primary Save. #}
+        <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
         {% for btn in submit_buttons %}
             {% if btn.name %}
                 <c-button type="submit"
