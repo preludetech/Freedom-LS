@@ -25,5 +25,9 @@ class QuickView:
     def get_title(self) -> str:
         return str(self.instance)
 
+    def get_subtitle(self) -> str:
+        """One muted line under the drawer's heading. Empty means none."""
+        return ""
+
     def get_context_data(self) -> dict[str, object]:
         return {}

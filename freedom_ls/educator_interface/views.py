@@ -36,6 +36,7 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
+    EditAction,
     PanelAction,
 )
 from freedom_ls.panel_framework.panels import (
@@ -152,15 +153,16 @@ def _interface_link(
     quick_view: bool = False,
 ) -> Column:
     """A link column into the educator interface, the shape every table's
-    name/title column shares. A quick_view link opens the row in the
-    quick-view drawer instead of navigating to it."""
+    name/title column shares. The link always navigates to the row's page;
+    quick_view adds a trigger beside it that opens the row in the quick-view
+    drawer instead."""
     return Column(
         header=header,
         template="cotton/data-table-cells/link.html",
         text_attr=text_attr,
         url_name="educator_interface:interface",
         url_path_template=path_template,
-        htmx_nav=not quick_view,
+        htmx_nav=True,
         quick_view=quick_view,
         sortable=sortable,
         card=card,
@@ -259,7 +261,6 @@ class LearnerDataTable(DataTable):
                 "user.last_name",
                 "learners/{pk}",
                 sortable=True,
-                quick_view=True,
             ),
             Column(
                 header="Email",
@@ -322,26 +323,7 @@ class LearnerInstanceView(InstanceView):
 class CohortDetailsPanel(InstanceDetailsPanel):
     model = Cohort
     fields = ["name"]
-    editable = True
-    form_class = CohortForm
     refresh_events = (COHORT_CHANGED,)
-
-    def get_actions(self) -> list[PanelAction]:
-        # The instance already carries its own organisation, so the success
-        # URL needs nothing from the request.
-        cohort = cast(Cohort, self.instance)
-        return [
-            *super().get_actions(),
-            DeleteAction(
-                success_url=reverse(
-                    "educator_interface:interface",
-                    kwargs={
-                        "organisation_slug": cohort.organisation.slug,
-                        "path_string": "cohorts",
-                    },
-                ),
-            ),
-        ]
 
 
 class CohortCourseRegistrationDataTable(DataTable):
@@ -375,6 +357,9 @@ class CohortLearnersPanel(DataTablePanel):
             super().get_queryset(request).filter(cohortmembership__cohort=self.instance)
         )
 
+    def get_tab_count(self) -> int | None:
+        return self.get_queryset(self.request).count()
+
 
 class CourseRegistrationsPanel(DataTablePanel):
     title = "Course Registrations"
@@ -391,17 +376,38 @@ class CohortDetailsStack(PanelStack):
     children = {
         "details": CohortDetailsPanel,
         "courses": CourseRegistrationsPanel,
-        "learners": CohortLearnersPanel,
     }
 
 
 class CohortTabSet(TabSet):
     title = "Cohort sections"
-    children = {"details": CohortDetailsStack}
+    children = {"details": CohortDetailsStack, "learners": CohortLearnersPanel}
 
 
 class CohortInstanceView(InstanceView):
     panel = CohortTabSet
+
+    def get_actions(self) -> list[PanelAction]:
+        # The instance already carries its own organisation, so the success
+        # URL needs nothing from the request.
+        cohort = cast(Cohort, self.instance)
+        return [
+            EditAction(
+                form_class=CohortForm,
+                form_title=f"Edit {cohort}",
+                instance=cohort,
+                success_events=(COHORT_CHANGED,),
+            ),
+            DeleteAction(
+                success_url=reverse(
+                    "educator_interface:interface",
+                    kwargs={
+                        "organisation_slug": cohort.organisation.slug,
+                        "path_string": "cohorts",
+                    },
+                ),
+            ),
+        ]
 
 
 class CreateCohortAction(CreateInstanceAction):
@@ -410,6 +416,9 @@ class CreateCohortAction(CreateInstanceAction):
     form_title = "Create Cohort"
     action_name = "create_cohort"
     success_events = (COHORT_CHANGED,)
+    # One cohort at a time: a new cohort is opened straight away to register
+    # courses and learners, so there is no "save and add another".
+    submit_buttons = [{"label": "Create Cohort", "variant": "primary"}]
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
@@ -474,6 +483,10 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
     quick_view = LearnerQuickView
 
     @classmethod
+    def get_instance_label(cls, instance: Model) -> str:
+        return cast(Learner, instance).user.display_name
+
+    @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
@@ -487,24 +500,46 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 class CourseDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
+        # Courses are shared across the Site (CourseConfig is exempt from
+        # organisation scoping), but the cohorts and learners counted and
+        # linked on each row belong to one organisation each. Both the
+        # annotations and the prefetches the Cohorts cell and
+        # _annotate_total_learner_count read are narrowed to what this
+        # educator may see in the organisation in view, so another
+        # organisation's cohorts never show through a shared course.
+        scoped = cast(OrganisationScopedRequest, request)
+        visible_cohorts = cohorts_visible_to(scoped.user, scoped.organisation)
+        visible_learners = learners_visible_to(scoped.user, scoped.organisation)
         qs: QuerySet = (
             Course.objects.all()
             .annotate(
                 cohort_count=Count(
                     "cohort_registrations",
-                    filter=Q(cohort_registrations__is_active=True),
+                    filter=Q(cohort_registrations__is_active=True)
+                    & Q(cohort_registrations__cohort__in=visible_cohorts),
                     distinct=True,
                 ),
                 direct_learner_count=Count(
                     "learner_registrations",
-                    filter=Q(learner_registrations__is_active=True),
+                    filter=Q(learner_registrations__is_active=True)
+                    & Q(learner_registrations__learner__in=visible_learners),
                     distinct=True,
                 ),
                 interest_count=Count("interests", distinct=True),
             )
             .prefetch_related(
-                "cohort_registrations__cohort__cohortmembership_set__learner",
-                "learner_registrations__learner",
+                Prefetch(
+                    "cohort_registrations",
+                    queryset=CohortCourseRegistration.objects.filter(
+                        cohort__in=visible_cohorts
+                    ).prefetch_related("cohort__cohortmembership_set__learner"),
+                ),
+                Prefetch(
+                    "learner_registrations",
+                    queryset=LearnerCourseRegistration.objects.filter(
+                        learner__in=visible_learners
+                    ).select_related("learner"),
+                ),
             )
             .order_by("title")
         )
@@ -644,7 +679,6 @@ class CourseLearnerRegistrationDataTable(DataTable):
                 "Last Name",
                 "learner.user.last_name",
                 "learners/{learner.pk}",
-                quick_view=True,
             ),
             Column(
                 header="Email",

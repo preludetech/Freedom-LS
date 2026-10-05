@@ -3,7 +3,8 @@
         class=""
         aria_label="Menu"
         menu_label=""
-        trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors" />
+        trigger_class="p-2 hover:bg-surface-2 rounded-md transition-colors"
+        panel_class="fixed w-40" />
 
 <div class="relative inline-block {{ class }}" x-data="dropdownMenu">
     {% comment %} 3-dots menu button {% endcomment %}
@@ -47,7 +48,7 @@
          x-transition:leave-start="transform opacity-100 scale-100"
          x-transition:leave-end="transform opacity-0 scale-95"
          x-ref="menuPanel"
-         class="dropdown-panel fixed w-40 bg-surface border border-border rounded-md shadow-lg z-[9999]"
+         class="dropdown-panel {{ panel_class }} bg-surface border border-border rounded-md shadow-lg z-[9999]"
          style="display: none">
         <div class="py-1 space-y-1"
              role="menu"
@@ -61,6 +62,11 @@
 {# djlint:on H037 H026 H021 #}
 
 {% comment %}
+`panel_class` sizes and positions the panel: the default is a fixed popover
+160px wide, placed by dropdownMenu's positionMenu(); a caller that wants the
+panel in flow below md (the organisation switcher inside the navigation
+sheet) passes a static width for small screens and `lg:fixed` for large.
+
 The panel is a `role="menu"`, so everything passed in the slot must be a menu
 item: `<c-button dropdown="true">` already is one, and a hand-written option
 needs `role="menuitem"`, `menuitemradio` or `menuitemcheckbox`. `menu_label`

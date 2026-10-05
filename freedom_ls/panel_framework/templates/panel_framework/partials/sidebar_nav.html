@@ -1,11 +1,17 @@
+{% comment %}
+The section list. An item's active state is a tinted fill, primary text and
+icon, and a 2px primary bar drawn as an inset shadow so it follows the
+rounded corner. The group headings share the overline treatment of the
+organisation switcher's label, so the two read as one system.
+{% endcomment %}
 <nav id="sidebar-nav" class="mt-2" aria-label="Sections"
      {% if oob %}hx-swap-oob="true"{% endif %}>
     {% for group in menu_groups %}
-        <h2 class="px-3 pt-4 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">{{ group.heading }}</h2>
-        <ul class="list-none ml-0">
+        <h2 class="px-2 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">{{ group.heading }}</h2>
+        <ul class="list-none ml-0 space-y-0.5">
             {% for item in group.items %}
                 <li x-data="sidebarMenuItem" data-expanded="{{ item.expanded|yesno:'true,false' }}"
-                    x-on:keydown.escape="close">
+                    x-on:keydown.escape="close" class="py-0">
                     <div class="flex items-center justify-between">
                         <a href="{{ item.url }}"
                            hx-get="{{ item.url }}"
@@ -13,10 +19,10 @@
                            hx-push-url="true"
                            hx-swap="outerHTML"
                            {% if item.active and not item.expanded %}aria-current="page"{% endif %}
-                           class="flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-on-surface aria-[current=page]:bg-primary/10 aria-[current=page]:text-primary aria-[current=page]:font-semibold {% if item.expanded %}text-on-surface font-semibold{% endif %}">
-                            {% if item.icon %}<c-icon :name="item.icon" class="size-4 shrink-0" />{% endif %}
+                           class="group flex-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-on-surface no-underline transition-colors hover:bg-surface-2 aria-[current=page]:bg-surface-2 aria-[current=page]:text-primary aria-[current=page]:font-semibold aria-[current=page]:shadow-[inset_2px_0_0_var(--color-primary)] {% if item.expanded %}font-semibold text-primary{% endif %}">
+                            {% if item.icon %}<span class="shrink-0 text-muted group-hover:text-on-surface group-aria-[current=page]:text-primary {% if item.expanded %}text-primary{% endif %}"><c-icon :name="item.icon" class="size-4" /></span>{% endif %}
                             <span>{{ item.label }}</span>
-                            {% if item.count is not None %}<span class="ml-auto tabular-nums text-xs text-muted">{{ item.count }}</span>{% endif %}
+                            {% if item.count is not None %}<span class="ml-auto font-mono text-xs text-muted tabular-nums">{{ item.count }}</span>{% endif %}
                         </a>
                         {% if item.instance_label %}
                         <button x-on:click="toggle"
@@ -35,16 +41,20 @@
                         {% comment %}
                         instance_label is only populated for the currently viewed
                         instance, so aria-current="page" is always correct here. The
-                        sidebar is OOB-swapped on every navigation, keeping this in sync.
+                        sidebar is OOB-swapped on every navigation, keeping this in
+                        sync; a saved rename updates it in place through the
+                        instanceTitleChanged listener, which finds it by the data
+                        attribute.
                         {% endcomment %}
-                        <li>
+                        <li class="py-0">
                             <a href="{{ item.instance_url }}"
                                hx-get="{{ item.instance_url }}"
                                hx-target="#main-content"
                                hx-push-url="true"
                                hx-swap="outerHTML"
                                aria-current="page"
-                               class="block px-3 py-1.5 rounded-md text-sm wrap-anywhere bg-primary/10 text-primary font-semibold">
+                               data-sidebar-instance-label
+                               class="block px-3 py-1.5 rounded-md text-sm wrap-anywhere no-underline bg-surface-2 text-primary font-semibold shadow-[inset_2px_0_0_var(--color-primary)]">
                                 {{ item.instance_label }}
                             </a>
                         </li>

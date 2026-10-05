@@ -8,7 +8,9 @@ import pytest
 from django.contrib.sites.models import Site
 from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse
+from django.test import RequestFactory
 
+from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.views import InstanceView, ListViewConfig, NavGroup
 
 from .conftest import StubModel, _make_stub
@@ -138,3 +140,17 @@ def test_quick_view_response_varies_on_hx_request(mock_site_context: Site) -> No
     response = _view(f"quick-view-stub/{stub.pk}/__quick-view", htmx=True)
 
     assert "HX-Request" in response["Vary"]
+
+
+def test_the_frame_carries_the_consumers_subtitle(mock_site_context: Site) -> None:
+    stub = _make_stub(name="Ada")
+
+    response = _view(f"quick-view-stub/{stub.pk}/__quick-view", htmx=True)
+
+    assert 'data-quick-view-subtitle=""' in response.content.decode()
+
+
+def test_a_quick_view_has_no_subtitle_unless_its_consumer_gives_one() -> None:
+    assert (
+        QuickView(RequestFactory().get("/"), StubModel(name="Ada")).get_subtitle() == ""
+    )

@@ -98,6 +98,11 @@ class Panel:
     def get_actions(self) -> list[PanelAction]:
         return []
 
+    def get_tab_count(self) -> int | None:
+        """A number shown after this panel's tab label when it is a tab, or
+        None to show none."""
+        return None
+
     @cached_property
     def _shown_children(self) -> list[Panel]:
         bound = []
@@ -201,6 +206,7 @@ class TabSet(Panel):
                 "title": child.title,
                 "url": child.ctx.base_url,
                 "active": child is active,
+                "count": child.get_tab_count(),
             }
             for child in self.get_children()
         ]

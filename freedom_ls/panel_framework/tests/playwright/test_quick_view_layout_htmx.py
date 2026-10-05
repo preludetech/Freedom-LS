@@ -34,7 +34,7 @@ def test_the_docked_drawer_is_pinned_full_height_to_the_inline_end_edge(
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("#quick-view")).to_be_visible()
     # The slide-in transform transitions over 200ms, so wait for it to settle
     # before measuring the box, or the read races the animation.
@@ -59,7 +59,7 @@ def test_the_page_content_makes_room_for_the_docked_drawer(
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("#quick-view")).to_have_css("transform", "none")
 
     drawer_box = page.locator("#quick-view").bounding_box()
@@ -85,7 +85,7 @@ def test_below_1280_the_drawer_is_a_modal_side_drawer(
     page.set_viewport_size(_TABLET_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("dialog:modal")).to_have_count(1)
     expect(page.locator("#quick-view")).to_have_css("transform", "none")
 
@@ -111,7 +111,7 @@ def test_the_mobile_sheet_spans_the_full_width_anchored_to_the_bottom(
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("dialog:modal")).to_have_count(1)
     # The slide-up transform transitions over 200ms, so wait for it to settle
     # before measuring the box, or the read races the animation.
@@ -142,7 +142,7 @@ def test_the_drawer_is_not_displayed_under_print_media(
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("#quick-view")).to_be_visible()
 
     page.emulate_media(media="print")

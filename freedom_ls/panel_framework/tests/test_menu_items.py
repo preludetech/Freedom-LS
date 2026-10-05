@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from django.db.models import Model
 from django.http import HttpRequest
 from django.test import RequestFactory
@@ -13,6 +15,7 @@ from freedom_ls.panel_framework.views import (
     _build_menu_items,
 )
 
+from .conftest import _make_stub
 from .stub_panels import StubDataTablePanel
 
 
@@ -106,3 +109,35 @@ def test_extra_url_kwargs_merge_into_section_url() -> None:
 
     cohorts = next(i for g in groups for i in g["items"] if i["label"] == "Cohorts")
     assert cohorts["url"] == "/test-panel/scoped/acme/cohorts"
+
+
+class _NicknamedConfig(ListViewConfig):
+    """A section whose rows are not best named by their str()."""
+
+    url_name = "nicknamed"
+    menu_label = "Nicknamed"
+
+    @classmethod
+    def get_instance_label(cls, instance: Model) -> str:
+        return f"Nickname of {instance.name}"
+
+
+NICKNAMED_CONFIG = [NavGroup("People", [_NicknamedConfig])]
+
+
+@pytest.mark.django_db
+def test_the_instance_sub_item_is_labelled_by_the_sections_instance_label(
+    mock_site_context: None,
+) -> None:
+    instance = _make_stub(name="Ada")
+
+    groups = _build_menu_items(
+        NICKNAMED_CONFIG,
+        URL_NAME,
+        RequestFactory().get("/"),
+        "nicknamed",
+        current_instance=instance,
+    )
+
+    item = next(i for g in groups for i in g["items"] if i["label"] == "Nicknamed")
+    assert item["instance_label"] == "Nickname of Ada"

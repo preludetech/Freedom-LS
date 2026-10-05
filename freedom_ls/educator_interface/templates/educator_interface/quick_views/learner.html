@@ -1,57 +1,41 @@
 {% load panel_tags %}
 
-<dl class="space-y-4">
-    <div>
-        <dt class="text-sm font-semibold text-muted">Name</dt>
-        <dd class="mt-1">{{ learner.user.display_name }}</dd>
-    </div>
-    <div>
-        <dt class="text-sm font-semibold text-muted">Email</dt>
-        <dd class="mt-1">{{ learner.user.email }}</dd>
-    </div>
-    <div>
-        <dt class="text-sm font-semibold text-muted">Status</dt>
-        <dd class="mt-1">
-            {% comment %}TODO: show "pending" once learner administration adds a pending state.{% endcomment %}
-            {% if learner.is_active %}Active{% else %}Removed{% endif %}
-        </dd>
-    </div>
-    <div>
-        <dt class="text-sm font-semibold text-muted">Cohorts</dt>
-        <dd class="mt-1">
-            {% for membership in memberships %}
-                <a href="{% resolve_url_path_template membership.cohort 'educator_interface:interface' 'cohorts/{pk}' %}">{{ membership.cohort.name }}</a>{% if not forloop.last %}, {% endif %}
+{% comment %}
+The learner's name and email are the drawer's heading and subtitle, so the
+rows start at their status.
+{% endcomment %}
+<c-panel-definition-list columns="2">
+    <c-panel-definition-row label="Status">
+        {% comment %}TODO: show "pending" once learner administration adds a pending state.{% endcomment %}
+        {% if learner.is_active %}Active{% else %}Removed{% endif %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Last active">
+        {% comment %}
+        CourseProgress.last_accessed_time, not User.last_login: last_login
+        is site-wide and records a login, not course activity.
+        {% endcomment %}
+        {% if last_active %}{{ last_active }}{% else %}Never{% endif %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Cohorts" class="col-span-2">
+        {% for membership in memberships %}
+            <a href="{% resolve_url_path_template membership.cohort 'educator_interface:interface' 'cohorts/{pk}' %}">{{ membership.cohort.name }}</a>{% if not forloop.last %}, {% endif %}
+        {% empty %}
+            &mdash;
+        {% endfor %}
+    </c-panel-definition-row>
+    <c-panel-definition-row label="Course registrations" class="col-span-2">
+        <ul class="list-none ml-0 space-y-1">
+            {% for registration in registrations %}
+                <li class="py-0">
+                    {{ registration.course.title }}
+                    &mdash;
+                    {% if registration.cohort %}through {{ registration.cohort }}{% else %}individual{% endif %}
+                    &mdash;
+                    {% if registration.progress_percentage is not None %}{{ registration.progress_percentage }}%{% else %}No progress yet{% endif %}
+                </li>
             {% empty %}
-                &mdash;
+                <li class="py-0">&mdash;</li>
             {% endfor %}
-        </dd>
-    </div>
-    <div>
-        <dt class="text-sm font-semibold text-muted">Course registrations</dt>
-        <dd class="mt-1">
-            <ul class="space-y-1">
-                {% for registration in registrations %}
-                    <li>
-                        {{ registration.course.title }}
-                        &mdash;
-                        {% if registration.cohort %}through {{ registration.cohort }}{% else %}individual{% endif %}
-                        &mdash;
-                        {% if registration.progress_percentage is not None %}{{ registration.progress_percentage }}%{% else %}No progress yet{% endif %}
-                    </li>
-                {% empty %}
-                    <li>&mdash;</li>
-                {% endfor %}
-            </ul>
-        </dd>
-    </div>
-    <div>
-        <dt class="text-sm font-semibold text-muted">Last active</dt>
-        <dd class="mt-1">
-            {% comment %}
-            CourseProgress.last_accessed_time, not User.last_login: last_login
-            is site-wide and records a login, not course activity.
-            {% endcomment %}
-            {% if last_active %}{{ last_active }}{% else %}Never{% endif %}
-        </dd>
-    </div>
-</dl>
+        </ul>
+    </c-panel-definition-row>
+</c-panel-definition-list>

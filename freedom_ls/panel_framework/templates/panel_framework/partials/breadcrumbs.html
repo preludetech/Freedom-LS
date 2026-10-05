@@ -1,12 +1,23 @@
-{% comment %}Panel-framework breadcrumb trail. Delegates rendering to the shared
-c-breadcrumbs component, passing the panel's HTMX target so crumb links swap
-#main-content in place. The id/oob keep the <nav> swappable out-of-band; the
-empty-state div preserves the #breadcrumbs target when there are no crumbs.{% endcomment %}
-{% if breadcrumbs %}
-    <c-breadcrumbs :crumbs="breadcrumbs"
-                   hx_target="#main-content"
-                   id="breadcrumbs"
-                   :oob="oob" />
+{% comment %}
+The trail _build_breadcrumbs builds, rendered as a back link rather than a
+list of crumbs: an instance page gets "← <section>" pointing at its list
+(HTMX nav into #main-content, like every other panel link), and a list,
+object or base view gets nothing, since its own heading already names it.
+The id/oob keep the element swappable out-of-band on every navigation, and
+the empty div preserves the #breadcrumbs target when there is no link.
+{% endcomment %}
+{% if breadcrumbs|length > 1 and breadcrumbs.0.url %}
+    <nav id="breadcrumbs" aria-label="Back" {% if oob %}hx-swap-oob="true"{% endif %}>
+        <a href="{{ breadcrumbs.0.url }}"
+           hx-get="{{ breadcrumbs.0.url }}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           hx-swap="outerHTML"
+           class="inline-flex min-h-11 items-center gap-1.5 rounded-md py-2 pe-2 text-sm font-semibold text-primary no-underline hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring">
+            <span aria-hidden="true"><c-icon name="previous" class="size-4" /></span>
+            {{ breadcrumbs.0.label }}
+        </a>
+    </nav>
 {% else %}
     <div id="breadcrumbs" {% if oob %}hx-swap-oob="true"{% endif %}></div>
 {% endif %}

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import lxml.html
+
 from .cotton_helpers import render_cotton
 
 
@@ -113,3 +115,19 @@ def test_flush_card_still_renders_header_body_and_footer() -> None:
     assert "Body content" in html
     assert "<footer" in html
     assert "<button>Save</button>" in html
+
+
+def test_a_definition_card_draws_no_rule_under_its_heading() -> None:
+    html = render_cotton('<c-panel-card title="Overview">Body</c-panel-card>')
+
+    (header,) = lxml.html.fromstring(html).cssselect("header")
+    assert "border-b" not in header.get("class")
+
+
+def test_a_flush_card_keeps_the_rule_between_its_heading_and_its_table() -> None:
+    html = render_cotton(
+        '<c-panel-card title="Overview" flush="true">Body</c-panel-card>'
+    )
+
+    (header,) = lxml.html.fromstring(html).cssselect("header")
+    assert "border-b" in header.get("class")

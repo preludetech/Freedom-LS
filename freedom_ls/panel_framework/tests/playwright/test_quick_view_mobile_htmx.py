@@ -32,7 +32,7 @@ def test_the_drawer_opens_as_a_modal_sheet_below_the_breakpoint(
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
 
     expect(page.locator("dialog:modal")).to_have_count(1)
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
@@ -50,7 +50,7 @@ def test_back_closes_the_mobile_sheet_and_leaves_the_url_unchanged(
     list_url = f"{live_server.url}/test-panel/framework/stubs/"
     page.goto(list_url)
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("#quick-view")).to_be_visible()
 
     page.go_back()
@@ -69,7 +69,7 @@ def test_crossing_the_breakpoint_while_open_keeps_the_content_with_no_new_reques
     _make_stub(name="Alpha")
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("dialog:modal")).to_have_count(1)
 
     quick_view_requests: list[str] = []
@@ -104,7 +104,7 @@ def test_crossing_the_breakpoint_twice_while_open_still_unwinds_a_single_entry(
     page.goto(detail_url)
     page.goto(list_url)
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("dialog:modal")).to_have_count(1)
 
     # Cross to desktop and back to mobile before closing, as in the bug
@@ -144,13 +144,13 @@ def test_a_sheet_closed_with_escape_after_back_dismissed_the_docked_drawer_unwin
     # popstate on this page rather than leaving it.
     page.evaluate("history.pushState({}, '')")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("#quick-view")).to_be_visible()
     page.go_back()
     expect(page.locator("#quick-view")).to_be_hidden()
 
     page.set_viewport_size(_MOBILE_VIEWPORT)
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("dialog:modal")).to_have_count(1)
     page.keyboard.press("Escape")
     expect(page.locator("#quick-view")).to_be_hidden()
@@ -174,7 +174,7 @@ def test_a_sheet_carried_across_to_desktop_unwinds_its_entry_when_closed(
     page.goto(detail_url)
     page.goto(list_url)
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("dialog:modal")).to_have_count(1)
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     expect(page.locator("dialog:modal")).to_have_count(0)

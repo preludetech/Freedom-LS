@@ -31,6 +31,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.views import (
     CohortCourseRegistrationDataTable,
     CourseCohortRegistrationDataTable,
+    CourseDataTable,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -224,6 +225,53 @@ class TestCrossOrganisationIsolation:
         )
 
         assert response.status_code == 404
+
+    def test_courses_list_counts_and_links_only_organisation_as_cohorts(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        """Every course is listed, but its cohorts and learner counts are
+        read through the organisation in view."""
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_a, course=isolation.course_a
+        )
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_b, course=isolation.course_a
+        )
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "courses")
+        )
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert isolation.course_a.title in content
+        assert isolation.cohort_a.name in content
+        assert isolation.cohort_b.name not in content
+
+    def test_course_table_counts_read_through_the_organisation_in_view(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_a, course=isolation.course_a
+        )
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_b, course=isolation.course_a
+        )
+        request = RequestFactory().get("/")
+        request.user = isolation.educator
+        request.organisation = isolation.organisation_a
+
+        query = CourseDataTable.parse_query(request, "courses")
+        page = CourseDataTable.get_rows(
+            request, CourseDataTable.get_queryset(request), query
+        )
+
+        (row,) = [row for row in page.object_list if row.pk == isolation.course_a.pk]
+        assert row.cohort_count == 1
+        # cohort_a holds learner_a and shared_in_a; learner_b and shared_in_b
+        # sit in cohort_b and must not be counted, nor the direct
+        # registration shared_in_b holds for course_b.
+        assert row.total_learner_count == 2
 
     def test_course_detail_cohort_registrations_never_show_organisation_bs_cohort(
         self, isolation: SimpleNamespace

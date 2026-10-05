@@ -27,7 +27,7 @@ def test_clicking_a_row_opens_the_drawer_with_focus_on_the_link(
     _make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    trigger = page.get_by_role("link", name="Alpha")
+    trigger = page.get_by_role("link", name="Quick view: Alpha")
     trigger.click()
 
     expect(page.locator("#quick-view")).to_be_visible()
@@ -48,7 +48,7 @@ def test_the_title_is_blank_while_loading_and_comes_from_the_frame(
     held: list[Route] = []
     page.route("**/__quick-view", lambda route: held.append(route))
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("#quick-view")).to_be_visible()
     expect(page.locator("#quick-view-body")).to_have_attribute("aria-busy", "true")
     expect(page.locator("#quick-view-title")).to_have_text("")
@@ -69,16 +69,16 @@ def test_clicking_a_second_row_repopulates_the_drawer_and_the_table_stays_clicka
     _make_stub(name="Beta")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
 
-    page.get_by_role("link", name="Beta").click()
+    page.get_by_role("link", name="Quick view: Beta").click()
 
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Beta")
-    expect(page.get_by_role("link", name="Alpha")).to_have_attribute(
+    expect(page.get_by_role("link", name="Quick view: Alpha")).to_have_attribute(
         "aria-expanded", "false"
     )
-    expect(page.get_by_role("link", name="Beta")).to_have_attribute(
+    expect(page.get_by_role("link", name="Quick view: Beta")).to_have_attribute(
         "aria-expanded", "true"
     )
 
@@ -101,7 +101,7 @@ def test_clicking_the_same_row_closes_and_reopens_the_drawer_with_no_second_requ
             else None
         ),
     )
-    trigger = page.get_by_role("link", name="Alpha")
+    trigger = page.get_by_role("link", name="Quick view: Alpha")
 
     trigger.click()
     expect(page.locator("#quick-view")).to_be_visible()
@@ -124,7 +124,7 @@ def test_escape_closes_the_drawer_and_returns_focus_to_the_trigger(
 ) -> None:
     _make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
-    trigger = page.get_by_role("link", name="Alpha")
+    trigger = page.get_by_role("link", name="Quick view: Alpha")
     trigger.click()
     expect(page.locator("#quick-view")).to_be_visible()
 
@@ -145,7 +145,7 @@ def test_a_ctrl_click_opens_the_full_page_in_a_new_tab(
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     with page.context.expect_page() as new_page_info:
-        page.get_by_role("link", name="Alpha").click(modifiers=["Control"])
+        page.get_by_role("link", name="Quick view: Alpha").click(modifiers=["Control"])
     new_page = new_page_info.value
     new_page.wait_for_load_state()
 
@@ -175,7 +175,7 @@ def test_a_server_error_shows_retry_and_retry_loads_the_content(
 
     page.route("**/__quick-view", _fail_once)
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
 
     expect(page.get_by_text("Something went wrong loading this.")).to_be_visible()
 
@@ -199,12 +199,12 @@ def test_clicking_back_to_a_shown_row_after_another_row_failed_loads_it_again(
         lambda route: route.fulfill(status=500, body="boom"),
     )
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
-    page.get_by_role("link", name="Beta").click()
+    page.get_by_role("link", name="Quick view: Beta").click()
     expect(page.get_by_text("Something went wrong loading this.")).to_be_visible()
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
 
     expect(page.locator("#quick-view")).to_be_visible()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
@@ -223,17 +223,17 @@ def test_reopening_a_row_after_closing_mid_load_of_another_shows_the_reopened_ro
     held: list[Route] = []
     page.route(f"**/{beta.pk}/__quick-view", lambda route: held.append(route))
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
-    page.get_by_role("link", name="Beta").click()
+    page.get_by_role("link", name="Quick view: Beta").click()
     expect(page.locator("#quick-view-body")).to_have_attribute("aria-busy", "true")
     page.keyboard.press("Escape")
     expect(page.locator("#quick-view")).to_be_hidden()
 
-    page.get_by_role("link", name="Alpha").click()
+    page.get_by_role("link", name="Quick view: Alpha").click()
 
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
-    expect(page.get_by_role("link", name="Alpha")).to_have_attribute(
+    expect(page.get_by_role("link", name="Quick view: Alpha")).to_have_attribute(
         "aria-expanded", "true"
     )
 
@@ -257,7 +257,7 @@ def test_reopening_a_row_whose_load_failed_requests_it_again(
             route.continue_()
 
     page.route("**/__quick-view", _fail_once)
-    trigger = page.get_by_role("link", name="Alpha")
+    trigger = page.get_by_role("link", name="Quick view: Alpha")
 
     trigger.click()
     expect(page.get_by_text("Something went wrong loading this.")).to_be_visible()

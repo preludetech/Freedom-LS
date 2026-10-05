@@ -241,6 +241,7 @@ document.addEventListener("alpine:init", () => {
             this._qvDialog = this.$el;
             this._qvBody = document.getElementById("quick-view-body");
             this._title = document.getElementById("quick-view-title");
+            this._subtitle = document.getElementById("quick-view-subtitle");
             this._openLink = document.getElementById("quick-view-open");
             this._status = document.getElementById("quick-view-status");
             this._skeletonTemplate = this._qvDialog.querySelector(
@@ -479,6 +480,7 @@ document.addEventListener("alpine:init", () => {
             // The title comes only from the frame, so it stays blank until
             // one arrives rather than showing the last entity's.
             this._title.textContent = "";
+            this._subtitle.textContent = "";
             // The drawer now belongs to this url, loaded or not, so a click on
             // any other trigger loads that one rather than reusing what was
             // shown before this load started.
@@ -489,6 +491,7 @@ document.addEventListener("alpine:init", () => {
             const frame = this._qvBody.firstElementChild;
             const title = (frame && frame.dataset.quickViewTitle) || "";
             this._title.textContent = title;
+            this._subtitle.textContent = (frame && frame.dataset.quickViewSubtitle) || "";
             this._entityId = frame ? frame.dataset.entityId : null;
             this._shownUrl = event.detail.pathInfo.requestPath;
             this._stale = false;
@@ -664,17 +667,17 @@ document.addEventListener("htmx:afterSwap", (event) => {
 
 // A saved edit renames the instance it edited. Panels re-fetch themselves on
 // their own declared domain events through their own hx-trigger; the page
-// heading and the breadcrumb trail's current-page crumb are both outside
-// every panel, so they are updated here. The current-instance crumb is the
-// only one under #breadcrumbs without a link (see _build_breadcrumbs), so
-// it is the sole match for aria-current="page".
+// heading and the sidebar's sub-item for the instance are both outside
+// every panel, so they are updated here. The sub-item is marked by
+// sidebar_nav.html, and there is at most one: only the viewed instance has
+// one.
 document.addEventListener("instanceTitleChanged", (event) => {
     const title = event.detail && event.detail.title;
     if (!title) return;
     const heading = document.getElementById("instance-title");
     if (heading) heading.textContent = title;
-    const crumb = document.querySelector('#breadcrumbs [aria-current="page"]');
-    if (crumb) crumb.textContent = title;
+    const subItem = document.querySelector("#sidebar-nav [data-sidebar-instance-label]");
+    if (subItem) subItem.textContent = title;
 });
 
 // A table region swap replaces the whole region element (outerHTML), so the

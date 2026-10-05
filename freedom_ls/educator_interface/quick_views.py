@@ -29,6 +29,9 @@ class LearnerQuickView(QuickView):
     def get_title(self) -> str:
         return cast(Learner, self.instance).user.display_name
 
+    def get_subtitle(self) -> str:
+        return cast(Learner, self.instance).user.email
+
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
         request = cast("OrganisationScopedRequest", self.request)

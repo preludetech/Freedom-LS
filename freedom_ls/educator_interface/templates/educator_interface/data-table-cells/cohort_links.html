@@ -1,9 +1,19 @@
 {% load data_table_tags panel_tags %}
+{% comment %}
+Every cohort in the row's relation, each a link to its page. A row's own
+quick-view trigger sits beside its name cell; these related cohorts get
+none, so a cell naming three cohorts does not carry three icons.
+{% endcomment %}
 {% with items=object|getattr_str:column.relation_set %}
 {% for item in items %}
     {% with link_object=item|getattr_str:column.link_object_attr %}
         {% resolve_url_path_template link_object column.url_name column.url_path_template as resolved_url %}
-        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view">{{ item|getattr_str:column.link_text_attr }}</c-quick-view-trigger>{% if not forloop.last %}, {% endif %}
+        <a href="{{ resolved_url }}"
+           hx-get="{{ resolved_url }}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           hx-swap="outerHTML"
+           class="no-underline hover:underline">{{ item|getattr_str:column.link_text_attr }}</a>{% if not forloop.last %}, {% endif %}
     {% endwith %}
 {% empty %}
     -

@@ -186,7 +186,7 @@ def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragme
     client = logged_in_client(user)
     delete_url = _interface_url(
         organisation.slug,
-        f"cohorts/{cohort.pk}/__tabs/details/__panels/details/__actions/delete",
+        f"cohorts/{cohort.pk}/__actions/delete",
     )
     assert client.get(delete_url, HTTP_HX_REQUEST="true").status_code == 200
 

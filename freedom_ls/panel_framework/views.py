@@ -89,6 +89,13 @@ class SectionConfigBase:
         return None
 
     @classmethod
+    def get_instance_label(cls, instance: Model) -> str:
+        """How the page heading, the sidebar sub-item and the back link name
+        one of this section's instances. `str(instance)` by default; a
+        section whose model's `str()` is not a name overrides this."""
+        return str(instance)
+
+    @classmethod
     def get_scope(cls, request: HttpRequest) -> Model | None:
         """The object a list-level action or panel is asked about, when this
         section scopes its requests to one. None by default."""
@@ -629,6 +636,7 @@ def _handle_quick_view(
         {
             "quick_view": quick_view,
             "title": quick_view.get_title(),
+            "subtitle": quick_view.get_subtitle(),
             # Space-separated event names: simple identifiers, so no JSON
             # escaping is needed in the data-* attribute.
             "refresh_events": " ".join(quick_view.refresh_events),
@@ -661,10 +669,13 @@ def _main_for(
             for action in resolved.instance_view.get_actions()
             if action.has_permission(root.ctx)
         ]
+        if resolved.instance is None:
+            raise ValueError("An instance view must resolve with its instance")
         return (
             "panel_framework/views/instance_view.html",
             {
                 "instance": resolved.instance,
+                "title": section.get_instance_label(resolved.instance),
                 "panel": root,
                 "actions": actions,
                 "ctx": root.ctx,
@@ -883,7 +894,7 @@ def _build_menu_items(
                 and current_instance is not None
                 and issubclass(section, ListViewConfig)
             ):
-                instance_label = str(current_instance)
+                instance_label = section.get_instance_label(current_instance)
                 instance_url = reverse(
                     url_name,
                     kwargs={
@@ -921,7 +932,8 @@ def _build_breadcrumbs(
     """Build hierarchy-based breadcrumbs.
 
     Returns list of dicts: [{"label": "...", "url": "..."}, ...]
-    Last item has no "url" key (current page).
+    Last item has no "url" key (current page). The partial renders the trail
+    as a back link to the section (partials/breadcrumbs.html).
 
     Only a list section's instance page gets a second crumb. Tabs and panels
     below it add none, because the tab nav already shows where the reader is,
@@ -941,7 +953,7 @@ def _build_breadcrumbs(
         section_crumb["url"] = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
-        return [section_crumb, {"label": str(current_instance)}]
+        return [section_crumb, {"label": section.get_instance_label(current_instance)}]
     return [section_crumb]
 
 

@@ -42,7 +42,9 @@ def test_create_cohort_dialog_shows_its_field_and_buttons_and_cancel_closes_it(
     expect(dialog).to_be_visible()
     expect(dialog.get_by_label("Name")).to_be_in_viewport()
     expect(dialog.get_by_role("button", name="Cancel")).to_be_in_viewport()
-    expect(dialog.get_by_role("button", name="Save", exact=True)).to_be_in_viewport()
+    expect(
+        dialog.get_by_role("button", name="Create Cohort", exact=True)
+    ).to_be_in_viewport()
 
     dialog.get_by_role("button", name="Cancel").click()
 

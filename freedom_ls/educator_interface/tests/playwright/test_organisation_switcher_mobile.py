@@ -84,7 +84,7 @@ def test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_tog
     )
     expect(sheet).to_be_hidden()
     expect(page.locator("#organisation-switcher")).to_contain_text("Org A")
-    expect(page.get_by_role("link", name="Alpha Cohort")).to_be_visible()
+    expect(page.get_by_role("link", name="Alpha Cohort", exact=True)).to_be_visible()
 
 
 def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_reload(
@@ -109,7 +109,7 @@ def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_relo
     sheet.get_by_role("link", name="Cohorts").click()
 
     expect(page).to_have_url(_interface_url(live_server, organisation.slug, "cohorts"))
-    expect(page.get_by_role("link", name="Alpha Cohort")).to_be_visible()
+    expect(page.get_by_role("link", name="Alpha Cohort", exact=True)).to_be_visible()
     expect(sheet).to_be_hidden()
     assert page.evaluate("window.__noReloadMarker === true")
 

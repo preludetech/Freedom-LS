@@ -223,3 +223,36 @@ def test_no_panel_component_uses_raw_colours() -> None:
                 offenders.append(f"{path.name}: {line.strip()}")
 
     assert offenders == []
+
+
+def test_an_instance_pages_trail_renders_as_a_back_link_to_its_section() -> None:
+    html = render_to_string(
+        "panel_framework/partials/breadcrumbs.html",
+        {
+            "breadcrumbs": [
+                {"label": "Cohorts", "url": "/test-panel/cohorts"},
+                {"label": "Year 9 Maths"},
+            ]
+        },
+    )
+
+    document = lxml.html.fromstring(html)
+    (link,) = document.cssselect("#breadcrumbs a")
+    assert link.get("href") == "/test-panel/cohorts"
+    assert link.get("hx-get") == "/test-panel/cohorts"
+    assert link.get("hx-target") == "#main-content"
+    assert link.text_content().strip() == "Cohorts"
+    assert link.cssselect("svg")
+    assert "Year 9 Maths" not in html
+
+
+def test_a_list_pages_trail_renders_no_link_at_all() -> None:
+    html = render_to_string(
+        "panel_framework/partials/breadcrumbs.html",
+        {"breadcrumbs": [{"label": "Cohorts"}]},
+    )
+
+    document = lxml.html.fromstring(html)
+    assert document.get("id") == "breadcrumbs" or document.cssselect("#breadcrumbs")
+    assert not document.cssselect("a")
+    assert "Cohorts" not in html

@@ -430,8 +430,13 @@ document.addEventListener("alpine:init", () => {
             // Single point every dismiss route (Escape, scrim, programmatic,
             // Back) funnels through. Unwind the pushed history entry here unless
             // Back is what closed us (in which case the entry is already gone).
+            // The close event is queued, not synchronous: a breakpoint flip
+            // closes the modal sheet and re-shows the panel docked before
+            // this runs, so `open` is read back off the dialog rather than
+            // assumed false, or the docked panel would be recorded closed.
             this.dialog.addEventListener("close", () => {
-                this.open = false;
+                this.open = this.dialog.open;
+                this._syncGrid();
                 if (this.triggerEl) this.triggerEl.focus();
                 if (this._historyPushed) {
                     this._historyPushed = false;
@@ -501,8 +506,11 @@ document.addEventListener("alpine:init", () => {
 
             // Back closes the modal sheet instead of navigating the page. The
             // entry pushed on open has just been popped, so only close here.
+            // Only the mobile sheet ever pushed an entry: the docked panel
+            // is left alone, including the one a breakpoint flip has just
+            // re-shown while the sheet's own entry is still being unwound.
             this._popstateHandler = () => {
-                if (this.dialog.open) {
+                if (this.dialog.open && this.isMobile) {
                     this._closingFromPopstate = true;
                     this.dialog.close();
                 }
@@ -563,11 +571,34 @@ document.addEventListener("alpine:init", () => {
         _setDesktopOpen(value) {
             this.open = value;
             if (value && !this.dialog.open) {
+                const focusedBefore = document.activeElement;
                 this.dialog.show();
+                this._releaseStolenFocus(focusedBefore);
             } else if (!value && this.dialog.open) {
                 this.dialog.close();
             }
             this._syncGrid();
+        },
+        // show() runs the dialog focusing steps, which focus the panel's
+        // first control, so a page load would otherwise start keyboard
+        // navigation inside the sidebar and the first Tab would skip the
+        // site header. Blurring is not enough: the browser's sequential
+        // focus starting point stays where focus last was. Focusing <body>
+        // (briefly focusable) puts the starting point back at the top of the
+        // document, so the first Tab lands on the first control in the page.
+        // Focus the reader had already placed somewhere is left alone.
+        _releaseStolenFocus(focusedBefore) {
+            const active = document.activeElement;
+            if (!active || !this.dialog.contains(active)) return;
+            if (focusedBefore && focusedBefore !== document.body) {
+                focusedBefore.focus({ preventScroll: true });
+                return;
+            }
+            const body = document.body;
+            const hadTabindex = body.hasAttribute("tabindex");
+            if (!hadTabindex) body.setAttribute("tabindex", "-1");
+            body.focus({ preventScroll: true });
+            if (!hadTabindex) body.removeAttribute("tabindex");
         },
         // Reflect whether the docked panel occupies a grid column so the CSS can
         // collapse the content area to full width when the desktop panel is

@@ -29,6 +29,18 @@ from freedom_ls.role_based_permissions.utils import assign_object_role
 # -- Task 5.1: visibility column + interest count -----------------------
 
 
+def _organisation_request(
+    site_aware_request: RequestFactory, organisation: Organisation | None = None
+):
+    """A request resolved onto an organisation, as interface() leaves it: the
+    course table reads the organisation to scope its cohort and learner
+    counts."""
+    request = site_aware_request.get("/")
+    request.user = UserFactory(superuser=True)
+    request.organisation = organisation or OrganisationFactory()
+    return request
+
+
 def _find_row(page, course: Course):
     for row in page.object_list:
         if row.pk == course.pk:
@@ -43,7 +55,7 @@ def test_course_table_includes_visibility_label(
     """Each course row exposes its visibility human label."""
     course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
 
-    request = site_aware_request.get("/")
+    request = _organisation_request(site_aware_request)
     query = CourseDataTable.parse_query(request, "courses")
     page = CourseDataTable.get_rows(
         request, CourseDataTable.get_queryset(request), query
@@ -65,7 +77,7 @@ def test_course_table_interest_count_matches_interest_rows(
     other_course = CourseFactory()
     CourseInterestFactory(course=other_course, user=UserFactory())
 
-    request = site_aware_request.get("/")
+    request = _organisation_request(site_aware_request)
     query = CourseDataTable.parse_query(request, "courses")
     page = CourseDataTable.get_rows(
         request, CourseDataTable.get_queryset(request), query
@@ -91,7 +103,7 @@ def test_course_table_interest_count_is_site_scoped(
         site=other_site,
     )
 
-    request = site_aware_request.get("/")
+    request = _organisation_request(site_aware_request)
     query = CourseDataTable.parse_query(request, "courses")
     page = CourseDataTable.get_rows(
         request, CourseDataTable.get_queryset(request), query
@@ -165,9 +177,10 @@ class TestCourseTableTotalLearnerCountQueryCost:
         registration_count: int,
     ) -> None:
         course = CourseFactory()
-        _add_registrations(course, OrganisationFactory(), registration_count)
+        organisation = OrganisationFactory()
+        _add_registrations(course, organisation, registration_count)
 
-        request = site_aware_request.get("/")
+        request = _organisation_request(site_aware_request, organisation)
         query = CourseDataTable.parse_query(request, "courses")
 
         with django_assert_max_num_queries(8):

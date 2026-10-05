@@ -22,7 +22,7 @@ class TestFullPage:
         assert response.status_code == 200
         content = response.content.decode()
         assert 'id="sidebar-nav"' in content
-        assert 'aria-label="Breadcrumb"' in content
+        assert 'id="breadcrumbs"' in content
         assert 'aria-current="page"' in content
         assert "Stubs" in content
 

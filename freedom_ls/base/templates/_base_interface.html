@@ -109,6 +109,11 @@
                     transform: translateY(100%);
                 }
             }
+            @media (prefers-reduced-motion: reduce) {
+                .side-panel-dialog {
+                    transition: none;
+                }
+            }
         }
 
         /* Desktop (lg+): docked, sticky, full-height column with its own scroll. */

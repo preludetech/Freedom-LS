@@ -2,7 +2,7 @@
 {% load panel_tags %}
 
 {% block main %}
-    <c-panel-page-header :title="main.instance" title_id="instance-title">
+    <c-panel-page-header title="{{ main.title }}" title_id="instance-title">
         <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
     </c-panel-page-header>
     {% render_panel main.panel %}

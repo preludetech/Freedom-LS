@@ -78,7 +78,7 @@ def test_save_and_add_another_leaves_a_blank_form_and_shows_the_row(
     expect(page.locator("#app-modal")).to_be_visible()
     expect(page.locator("#app-modal").get_by_label("Name")).to_have_value("")
     expect(
-        page.locator("#stubs-table tbody").get_by_role("link", name="Alpha")
+        page.locator("#stubs-table tbody").get_by_role("link", name="Alpha", exact=True)
     ).to_be_visible()
 
 

@@ -82,7 +82,7 @@ def test_a_grant_revoked_while_the_create_cohort_modal_is_open_denies_the_submit
     page.get_by_label("Name").fill("Should never exist")
 
     remove_object_role(educator_user, organisation, "organisation_admin")
-    page.get_by_role("button", name="Save", exact=True).click()
+    page.locator("#app-modal").get_by_role("button", name="Create Cohort").click()
 
     heading = page.get_by_role(
         "heading", name="You can't use “Create Cohort” here any more"

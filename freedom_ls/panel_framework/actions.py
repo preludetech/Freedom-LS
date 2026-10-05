@@ -333,6 +333,7 @@ class DeleteAction(PanelAction):
     ) -> dict[str, object]:
         return {
             "instance": instance,
+            "noun": instance._meta.verbose_name,
             "cascade_summary": cascade_summary,
             "blocked_reason": blocked_reason,
             "delete_url": self.get_action_url(ctx),

@@ -3,10 +3,11 @@
 {% comment %}
 Definition list — the grid every instance-details panel renders its label/value
 pairs into. `<dl>` over a `<table>` since these are label/value pairs, not
-tabular data with column headers.
+tabular data with column headers. Two columns on a phone, the full count
+from md up.
 
 Attributes:
   columns  2, 3 or 4 (default 3). Anything else falls back to 3.
 {% endcomment %}
 
-<dl class="grid gap-x-6 gap-y-4 {% if columns == "2" %}grid-cols-1 sm:grid-cols-2 md:grid-cols-2{% elif columns == "4" %}grid-cols-1 sm:grid-cols-2 md:grid-cols-4{% else %}grid-cols-1 sm:grid-cols-2 md:grid-cols-3{% endif %}" {{ attrs }}>{{ slot }}</dl>
+<dl class="grid gap-x-6 gap-y-4 {% if columns == "2" %}grid-cols-2{% elif columns == "4" %}grid-cols-2 md:grid-cols-4{% else %}grid-cols-2 md:grid-cols-3{% endif %}" {{ attrs }}>{{ slot }}</dl>

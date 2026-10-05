@@ -21,7 +21,7 @@ either way.
             {% include card_template with object=row.object %}
         {% else %}
             {% if primary_column %}
-                <div class="font-medium break-words">
+                <div class="font-bold break-words">
                     {% include primary_column.template with object=row.object column=primary_column %}
                 </div>
             {% endif %}

@@ -49,7 +49,7 @@ def test_the_docked_drawer_leaves_the_header_actions_and_table_uncovered(
     page.set_viewport_size(viewport)
 
     page.goto(interface_url(live_server, organisation.slug, "cohorts"))
-    page.get_by_role("link", name="Year 9 Maths").click()
+    page.get_by_role("link", name="Quick view: Year 9 Maths").click()
 
     drawer = page.locator("#quick-view")
     expect(drawer).to_be_visible()
@@ -89,7 +89,7 @@ def test_pagination_stays_inside_the_card_beside_a_docked_drawer(
     page.set_viewport_size({"width": 1400, "height": 900})
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
-    page.get_by_role("link", name="Learner", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Learner", exact=True).first.click()
 
     drawer = page.locator("#quick-view")
     expect(drawer).to_be_visible()
@@ -120,7 +120,7 @@ def test_docked_drawer_clears_the_header_after_widening_from_mobile(
 
     page.goto(interface_url(live_server, organisation.slug, "learners"))
     page.set_viewport_size({"width": 1400, "height": 900})
-    page.get_by_role("link", name="Learner", exact=True).first.click()
+    page.get_by_role("link", name="Quick view: Learner", exact=True).first.click()
 
     drawer = page.locator("#quick-view")
     expect(drawer).to_be_visible()

@@ -20,9 +20,22 @@
     </div>
     {% include "educator_interface/partials/organisation_switcher.html" %}
     {% include "panel_framework/partials/sidebar_nav.html" with menu_groups=menu_groups request=request only %}
-    <div id="sidebar-user" class="mt-auto border-t border-border pt-4 min-w-0">
-        <p class="text-sm font-semibold text-on-surface truncate">{{ request.user.get_full_name }}</p>
-        <p class="text-xs text-muted truncate">{{ request.user.email }}</p>
+    {% comment %}
+    Pinned to the bottom of the column. The negative margins cancel the
+    sidebar body's own padding so the rule runs edge to edge, and the email
+    is the second line only when the name is not already the email.
+    {% endcomment %}
+    <div id="sidebar-user" class="mt-auto -mx-4 -mb-6 flex min-w-0 items-center gap-2 border-t border-border px-4 py-4 lg:-mx-6 lg:px-6">
+        {% if request.user.display_name == request.user.email %}
+            <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" class="min-w-0 flex-1 text-sm font-semibold" />
+        {% else %}
+            <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :secondary="request.user.email" class="min-w-0 flex-1 text-sm font-semibold" />
+        {% endif %}
+        <a href="{% url 'accounts:account_profile' %}"
+           aria-label="Account settings"
+           class="-me-2 flex size-10 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
+            <c-icon name="settings" class="size-5" />
+        </a>
     </div>
 {% endblock sidebar_content %}
 

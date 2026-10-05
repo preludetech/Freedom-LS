@@ -1,6 +1,7 @@
-"""A cohort's Details tab holds two tables side by side: its course
-registrations and its learners. Each paginates through its own table key, so
-paging one leaves the other on its own page."""
+"""A cohort page holds two tables, its course registrations on the Details
+tab and its learners on the Learners tab. Each paginates through its own
+table key, so a learners page in the address bar leaves the course
+registrations on their own page."""
 
 from __future__ import annotations
 
@@ -53,14 +54,19 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
         )
     client = logged_in_client(UserFactory(superuser=True))
 
-    response = client.get(_cohort_url(cohort), {"learners-page": "2"})
+    learners_tab = client.get(
+        f"{_cohort_url(cohort)}/__tabs/learners", {"learners-page": "2"}
+    )
+    details_tab = client.get(_cohort_url(cohort), {"learners-page": "2"})
 
-    assert response.status_code == 200
-    content = response.content.decode()
+    assert learners_tab.status_code == 200
+    content = learners_tab.content.decode()
     # The learners table is on its own page 2: the 26th learner shows, the
     # 1st (on page 1) does not.
     assert "Learner25" in content
     assert "Learner00" not in content
     # The course registrations table is untouched, still on page 1.
+    assert details_tab.status_code == 200
+    content = details_tab.content.decode()
     assert "Course 0" in content
     assert "Course 1" in content

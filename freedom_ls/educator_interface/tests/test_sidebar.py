@@ -101,3 +101,86 @@ def test_navigation_dialog_has_a_close_button_before_the_organisation_switcher(
 
     document_order = list(dialog.iter())
     assert document_order.index(close_button) < document_order.index(switcher)
+
+
+@pytest.mark.django_db
+def test_nav_links_are_not_underlined(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+
+    links = nav.cssselect("a")
+
+    assert links
+    assert all("no-underline" in link.get("class") for link in links)
+
+
+@pytest.mark.django_db
+def test_the_active_item_draws_a_rounded_primary_bar_on_a_tinted_fill(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+
+    (active,) = [a for a in nav.cssselect("a") if a.get("aria-current") == "page"]
+
+    classes = active.get("class")
+    assert "aria-[current=page]:bg-surface-2" in classes
+    assert "aria-[current=page]:text-primary" in classes
+    assert "aria-[current=page]:shadow-[inset_2px_0_0_var(--color-primary)]" in classes
+    assert "border-l" not in classes
+
+
+@pytest.mark.django_db
+def test_the_user_block_shows_an_initials_avatar_the_name_the_email_and_a_settings_link(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+    dialog = nav.xpath("ancestor::dialog[@aria-label='Navigation']")[0]
+
+    (user_block,) = dialog.cssselect("#sidebar-user")
+
+    (avatar,) = user_block.cssselect("[aria-hidden='true'].rounded-full")
+    assert avatar.text_content().strip() == "AL"
+    assert "Ada Lovelace" in user_block.text_content()
+    assert "ada@example.com" in user_block.text_content()
+    (settings_link,) = user_block.cssselect("a[aria-label='Account settings']")
+    assert settings_link.get("href") == reverse("accounts:account_profile")
+    assert settings_link.cssselect("svg")
+
+
+@pytest.mark.django_db
+def test_the_rule_above_the_user_block_runs_the_full_sidebar_width(
+    sidebar: tuple[lxml.html.HtmlElement, str],
+) -> None:
+    nav, _page = sidebar
+    dialog = nav.xpath("ancestor::dialog[@aria-label='Navigation']")[0]
+
+    (user_block,) = dialog.cssselect("#sidebar-user")
+
+    classes = user_block.get("class")
+    assert "border-t" in classes
+    assert "-mx-4" in classes
+    assert "lg:-mx-6" in classes
+
+
+@pytest.mark.django_db
+def test_a_user_with_no_name_shows_their_email_once(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    user = UserFactory(
+        staff=True, first_name="", last_name="", email="nameless@example.com"
+    )
+    assign_object_role(user, organisation, "organisation_admin")
+    response = logged_in_client(user).get(
+        reverse(
+            "educator_interface:interface",
+            kwargs={"organisation_slug": organisation.slug, "path_string": "cohorts"},
+        )
+    )
+
+    (user_block,) = lxml.html.fromstring(response.content).cssselect("#sidebar-user")
+
+    assert user_block.text_content().count("nameless@example.com") == 1
+    (avatar,) = user_block.cssselect("[aria-hidden='true'].rounded-full")
+    assert avatar.text_content().strip() == "NA"

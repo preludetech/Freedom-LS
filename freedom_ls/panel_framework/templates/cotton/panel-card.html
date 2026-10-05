@@ -7,13 +7,14 @@ Card — the bordered surface every panel and any hand-placed card renders
 through, so both get the same chrome from one file.
 
 Attributes:
-  title          Heading text. The header (and its border) is omitted when
-                 empty.
+  title          Heading text. The header is omitted when empty.
   description    One line under the heading, muted.
   heading_level  1-6 (default 2). Falls back to the default on anything else.
   flush          On, the body drops its padding so content such as a table can
-                 run edge to edge; the header and footer keep theirs. Read
-                 through the `flag` filter.
+                 run edge to edge; the header and footer keep theirs, and the
+                 header draws a rule above the content. Off, the header runs
+                 straight into the padded body with no rule between them.
+                 Read through the `flag` filter.
   landmark       On, with a title: the root is a <section aria-labelledby>
                  pointing at the heading's id, so assistive tech can jump
                  straight to this card. Without a title there is no heading
@@ -30,19 +31,22 @@ body.
 
 With landmark, the heading's id is "<id>-title" when the caller passes an
 id, otherwise "<title|slugify>-title".
+
+The card is a raised surface (.panel-surface) on the page canvas; the two
+classes live in tailwind.components.css so a theme can retune both at once.
 {% endcomment %}
 
 {% partialdef card_body %}
     {% if title %}
-        <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3 sm:px-6">
-            <div>
-                <h{{ level }} class="text-base font-semibold"{% if landmark|flag %} id="{{ title_base }}-title"{% endif %}>{{ title }}</h{{ level }}>
+        <header class="flex items-start justify-between gap-4 px-4 sm:px-6 {% if flush|flag %}border-b border-border py-3 sm:py-4{% else %}pt-4 pb-2 sm:pt-6{% endif %}">
+            <div class="min-w-0">
+                <h{{ level }} class="text-lg font-semibold font-display"{% if landmark|flag %} id="{{ title_base }}-title"{% endif %}>{{ title }}</h{{ level }}>
                 {% if description %}<p class="text-sm text-muted">{{ description }}</p>{% endif %}
             </div>
             {% if header_action.strip %}<div class="shrink-0 text-sm">{{ header_action }}</div>{% endif %}
         </header>
     {% endif %}
-    <div class="{% if not flush|flag %}px-4 py-4 sm:px-6{% endif %}">{{ slot }}</div>
+    <div class="{% if not flush|flag %}px-4 pb-4 sm:px-6 sm:pb-6 {% if title %}pt-2{% else %}pt-4 sm:pt-6{% endif %}{% endif %}">{{ slot }}</div>
     {% if actions.strip %}
         <footer class="border-t border-border px-4 py-3 sm:px-6">
             <c-button-group variant="right">{{ actions }}</c-button-group>
@@ -53,8 +57,8 @@ id, otherwise "<title|slugify>-title".
 {% with level=heading_level|heading_level:"2" %}
     {% if landmark|flag and title %}
         {% firstof id title|slugify as title_base %}
-        <section aria-labelledby="{{ title_base }}-title" class="bg-surface border border-border rounded-lg" {{ attrs }}>{% partial card_body %}</section>
+        <section aria-labelledby="{{ title_base }}-title" class="panel-surface border border-border rounded-lg" {{ attrs }}>{% partial card_body %}</section>
     {% else %}
-        <div class="bg-surface border border-border rounded-lg" {{ attrs }}>{% partial card_body %}</div>
+        <div class="panel-surface border border-border rounded-lg" {{ attrs }}>{% partial card_body %}</div>
     {% endif %}
 {% endwith %}

@@ -240,3 +240,40 @@ class TestSwitcherRendering:
             "Organisation"
             in lxml.html.fromstring(switcher).cssselect("p")[0].text_content()
         )
+
+    def test_the_trigger_and_every_option_carry_an_initials_tile(
+        self, logged_in_client
+    ):
+        organisation_a, _organisation_b, _cohort_a, educator = (
+            _two_organisation_educator()
+        )
+        client = logged_in_client(educator)
+
+        response = client.get(_interface_url(organisation_a.slug, "cohorts"))
+
+        switcher = lxml.html.fromstring(_switcher(response))
+        (trigger,) = switcher.cssselect("button[aria-haspopup='menu']")
+        (trigger_tile,) = trigger.cssselect("[data-organisation-initials]")
+        assert trigger_tile.text_content().strip() == "OA"
+        assert trigger_tile.get("aria-hidden") == "true"
+        options = switcher.cssselect("[role='menuitemradio']")
+        assert [
+            option.cssselect("[data-organisation-initials]")[0].text_content().strip()
+            for option in options
+        ] == ["OA", "OB"]
+
+    def test_the_single_organisation_shell_carries_the_tile_but_no_caret(
+        self, logged_in_client
+    ):
+        organisation = OrganisationFactory(name="Solo Org")
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_admin")
+        client = logged_in_client(educator)
+
+        response = client.get(_interface_url(organisation.slug, "cohorts"))
+
+        switcher = lxml.html.fromstring(_switcher(response))
+        (tile,) = switcher.cssselect("[data-organisation-initials]")
+        assert tile.text_content().strip() == "SO"
+        assert not switcher.cssselect("button")
+        assert not switcher.cssselect("svg")

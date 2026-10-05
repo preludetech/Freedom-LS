@@ -1,7 +1,7 @@
-"""Deleting a cohort from its Details panel.
+"""Deleting a cohort from its page header.
 
-The delete action lives on the Details panel, so it renders and submits
-through that panel's own URL.
+The delete action belongs to the cohort page as a whole, so it renders and
+submits through the instance URL rather than any one panel's.
 
 The cohort panel also renders for a cohort whose registrations granted progress.
 
@@ -69,10 +69,8 @@ def _panel_url(cohort) -> str:
 
 
 def _delete_url(client: Client, cohort: Cohort) -> str:
-    """The delete action's URL, read off the Details panel the page renders."""
-    document = lxml.html.fromstring(client.get(_panel_url(cohort)).content)
-    (details_panel,) = document.cssselect('section[data-panel="details"]')
-    return f"{details_panel.get('hx-get')}/__actions/delete"
+    """The delete action's URL: it belongs to the cohort page as a whole."""
+    return f"{_panel_url(cohort)}/__actions/delete"
 
 
 @pytest.mark.django_db
@@ -104,11 +102,13 @@ def test_the_cohort_pages_panels_refresh_on_cohort_changed(
 
     body = client.get(_panel_url(cohort)).content.decode()
 
-    assert body.count('hx-trigger="cohortChanged from:body"') >= 3
+    # The Details tab holds the details and course registration panels; the
+    # learners panel on the other tab listens the same way.
+    assert body.count('hx-trigger="cohortChanged from:body"') >= 2
 
 
 @pytest.mark.django_db
-def test_the_details_panel_renders_the_delete_trigger(
+def test_the_cohort_page_renders_the_delete_trigger(
     mock_site_context: Site, logged_in_client: Callable[[User], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
@@ -199,3 +199,18 @@ def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
     assert response.status_code == 403
     assert "You do not have access to this page" in response.content.decode()
     assert Cohort.objects.filter(pk=cohort.pk).exists()
+
+
+@pytest.mark.django_db
+def test_the_delete_dialog_body_says_the_delete_cannot_be_undone(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+
+    document = lxml.html.fromstring(client.get(url).content)
+
+    (body,) = document.cssselect("header + div")
+    assert "cannot be undone" in body.text_content()
+    assert "cohort" in body.text_content()

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import lxml.html
+
 from django.template.loader import render_to_string
 
 from .conftest import StubModel
@@ -82,3 +84,50 @@ def test_a_column_without_quick_view_keeps_its_htmx_nav_link() -> None:
     assert 'hx-get="/test-panel/framework/stubs/1"' in html
     assert 'hx-target="#main-content"' in html
     assert "aria-controls" not in html
+
+
+def test_a_quick_view_column_renders_the_name_as_a_link_to_the_page() -> None:
+    row = StubModel(pk=1, name="Ada")
+    column = {
+        "url_name": URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+        "quick_view": True,
+        "htmx_nav": True,
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    document = lxml.html.fromstring(f"<div>{html}</div>")
+    (name_link,) = [
+        a for a in document.cssselect("a") if a.text_content().strip() == "Ada"
+    ]
+    assert name_link.get("href") == "/test-panel/framework/stubs/1"
+    assert name_link.get("hx-get") == "/test-panel/framework/stubs/1"
+    assert name_link.get("hx-target") == "#main-content"
+    assert name_link.get("aria-controls") is None
+
+
+def test_a_quick_view_column_renders_a_labelled_icon_trigger_beside_the_name() -> None:
+    row = StubModel(pk=1, name="Ada")
+    column = {
+        "url_name": URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+        "quick_view": True,
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    document = lxml.html.fromstring(f"<div>{html}</div>")
+    (trigger,) = document.cssselect('[aria-controls="quick-view"]')
+    assert trigger.get("aria-label") == "Quick view: Ada"
+    assert trigger.get("hx-get") == "/test-panel/framework/stubs/1/__quick-view"
+    assert trigger.cssselect("svg")
+    assert "Ada" not in trigger.text_content()
+    links = document.cssselect("a")
+    assert links.index(trigger) == len(links) - 1

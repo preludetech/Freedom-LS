@@ -1,15 +1,17 @@
 {% comment %}
-The modal fragment a DeleteAction's GET returns. Context: instance,
+The modal fragment a DeleteAction's GET returns. Context: instance, noun,
 cascade_summary, blocked_reason, delete_url.
 {% endcomment %}
 <c-modal-header>Delete {{ instance }}</c-modal-header>
 
-<div class="px-6 py-4">
+<div class="space-y-3 px-6 py-4">
 {% if blocked_reason %}
     <div class="rounded-md border border-error/20 bg-error/10 p-3">
         <p class="text-sm text-on-surface">{{ blocked_reason }}</p>
     </div>
-{% elif cascade_summary %}
+{% else %}
+    <p class="text-sm">Deleting this {{ noun }} cannot be undone.</p>
+    {% if cascade_summary %}
     <div class="rounded-md border border-error/20 bg-error/10 p-3">
         <p class="mb-2 text-sm font-semibold text-error">This will also delete:</p>
         <ul class="list-inside list-disc text-sm">
@@ -18,6 +20,7 @@ cascade_summary, blocked_reason, delete_url.
             {% endfor %}
         </ul>
     </div>
+    {% endif %}
 {% endif %}
 </div>
 

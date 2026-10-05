@@ -242,3 +242,32 @@ def test_the_create_form_fragment_lists_cancel_before_submit_inside_the_form(
     buttons = form.cssselect("button")
     assert buttons[0].text_content().strip() == "Cancel"
     assert buttons[-1].get("type") == "submit"
+
+
+@pytest.mark.django_db
+def test_the_create_form_footer_offers_cancel_then_create_cohort_only(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    client = logged_in_client(UserFactory(superuser=True))
+    url = reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": "cohorts/__actions/create_cohort",
+        },
+    )
+
+    response = client.get(url)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (form,) = document.cssselect("form")
+    # A submit button's text runs its label and its hidden loading label
+    # together; the first span is the label.
+    labels = [
+        (button.cssselect("span") or [button])[0].text_content().strip()
+        for button in form.cssselect("button")
+        if button.text_content().strip()
+    ]
+    assert labels == ["Cancel", "Create Cohort"]
+    assert "Save and add another" not in response.content.decode()
