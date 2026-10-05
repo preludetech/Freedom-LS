@@ -680,7 +680,7 @@ def _main_for(
                 "actions": actions,
                 "ctx": root.ctx,
             },
-            "",
+            section.get_instance_label(resolved.instance),
         )
     if issubclass(section, ListViewConfig):
         list_actions = [

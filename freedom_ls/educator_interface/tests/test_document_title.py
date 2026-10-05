@@ -16,6 +16,7 @@ from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -70,3 +71,25 @@ def test_htmx_navigation_title_matches_the_full_page_title(cohorts_page):
     assert _title_text(navigation.content.decode()) == _title_text(
         full_page.content.decode()
     )
+
+
+@pytest.mark.django_db
+def test_instance_page_title_names_the_cohort(cohorts_page, mock_site_context):
+    """A cohort's page used to title the tab with only the organisation and
+    site, because the instance label never reached the document title."""
+    client, _url, organisation = cohorts_page
+    cohort = CohortFactory(name="Tab Title Cohort", organisation=organisation)
+    url = reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"cohorts/{cohort.pk}",
+        },
+    )
+
+    full_page = client.get(url)
+    navigation = client.get(url, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="main-content")
+
+    expected = f"Tab Title Cohort — {organisation.name} — {mock_site_context.name}"
+    assert _title_text(full_page.content.decode()) == expected
+    assert _title_text(navigation.content.decode()) == expected
