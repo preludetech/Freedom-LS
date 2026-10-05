@@ -266,3 +266,60 @@ def test_form_progress_change_page_shows_application_as_text_without_view_permis
 
     assert f"Application for {application.course.title}" in content
     assert reverse(CHANGE, args=[application.pk]) not in content
+
+
+def test_submitted_filter_agrees_with_is_submitted(staff_client):
+    draft = _draft()
+    submitted = _submitted()
+    no_form = CourseApplicationFactory()
+
+    def listed(value: str) -> set[int]:
+        response = staff_client.get(reverse(CHANGELIST), {"submitted": value})
+        assert response.status_code == 200
+        return {row.pk for row in response.context["cl"].result_list}
+
+    assert listed("submitted") == {submitted.pk, no_form.pk}
+    assert listed("draft") == {draft.pk}
+    assert draft.is_submitted is False
+    assert submitted.is_submitted is True
+    assert no_form.is_submitted is True
+
+
+def test_course_filter_returns_only_that_courses_applications(staff_client):
+    wanted = CourseApplicationFactory()
+    CourseApplicationFactory()
+
+    response = staff_client.get(
+        reverse(CHANGELIST), {"course__id__exact": wanted.course.pk}
+    )
+
+    assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+
+def test_search_by_last_name_and_course_title(staff_client):
+    application = CourseApplicationFactory(
+        user=UserFactory(last_name="Zyxwvuts"),
+        course=CourseApplicationFactory().course,
+    )
+    CourseApplicationFactory()
+
+    for term in ("Zyxwvuts", application.course.title):
+        response = staff_client.get(reverse(CHANGELIST), {"q": term})
+        pks = {row.pk for row in response.context["cl"].result_list}
+        assert application.pk in pks
+
+
+def test_created_date_range_with_only_date_boxes_narrows_the_list(staff_client):
+    old = CourseApplicationFactory()
+    recent = CourseApplicationFactory()
+    CourseApplication.objects.filter(pk=old.pk).update(
+        created_at=timezone.now() - timezone.timedelta(days=30)
+    )
+    day = timezone.localdate(recent.created_at)
+
+    response = staff_client.get(
+        reverse(CHANGELIST),
+        {"created_at_from_0": day.isoformat(), "created_at_to_0": day.isoformat()},
+    )
+
+    assert [row.pk for row in response.context["cl"].result_list] == [recent.pk]

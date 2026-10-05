@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime
 
+from unfold.contrib.filters.admin import AutocompleteSelectFilter
+
 from django.contrib import admin
-from django.db.models import QuerySet
+from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
 
 from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.form_engine.admin import answers_context
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
+from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 
 from .models import CourseApplication
 
@@ -18,6 +21,37 @@ from .models import CourseApplication
 # Erasing the applicant is the one path that must take them along, and the User
 # admin only vouches for the models named here.
 USER_ERASURE_CASCADE_MODELS.add(CourseApplication)
+
+
+class CourseApplicationSubmittedFilter(admin.SimpleListFilter):
+    """Submitted or draft, by the same rule as CourseApplication.is_submitted.
+
+    An application with no sitting was submitted the moment it was created, so
+    "submitted" is an OR over two shapes and the shared completion filter, which
+    tests one timestamp, cannot express it.
+    """
+
+    title = "submitted"
+    parameter_name = "submitted"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin
+    ) -> list[tuple[str, str]]:
+        return [("submitted", "Submitted"), ("draft", "Draft")]
+
+    def queryset(
+        self, request: HttpRequest, queryset: QuerySet[CourseApplication]
+    ) -> QuerySet[CourseApplication]:
+        if self.value() == "submitted":
+            return queryset.filter(
+                Q(form_progress__isnull=True)
+                | Q(form_progress__completed_time__isnull=False)
+            )
+        if self.value() == "draft":
+            return queryset.filter(
+                form_progress__isnull=False, form_progress__completed_time__isnull=True
+            )
+        return queryset
 
 
 @admin.register(CourseApplication)
@@ -42,6 +76,20 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     # queries once per row.
     list_select_related = ["user", "course", "form_progress"]
     ordering = ["-created_at"]
+    list_filter = [
+        CourseApplicationSubmittedFilter,
+        ("course", AutocompleteSelectFilter),
+        ("created_at", InclusiveRangeDateTimeFilter),
+    ]
+    # Filters apply on Submit, so a created-date range goes through as a pair of
+    # dates rather than refreshing the list after each box.
+    list_filter_submit = True
+    search_fields = [
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "course__title",
+    ]
     fields = ["is_submitted", "submitted_time", "created_at"]
     readonly_fields = fields
     change_form_template = "admin/form_engine/answers_change_form.html"
