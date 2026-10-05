@@ -27,20 +27,20 @@ Admins use it to find an application and read it.
   - Search: applicant email and name, and course title.
   - Drafts are listed alongside submitted applications.
 - **Change page:**
-  - A summary that links to the applicant, the course and the form progress record.
+  - A summary that links to the applicant, the course and the form progress record. An application with no form says so in place of the form progress link.
   - The applicant's answers, displayed in the same way as on the `FormProgress` page (below).
 
 ### A better `FormProgress` change page
 
 - Answers show as a read-only document that walks the form in order, rather than as an editable inline:
-  - Grouped by page, in question order.
+  - Grouped by page, in question order, one row per question.
   - Each question's text sits next to the answer.
   - Choice answers show the option text.
   - Dates and times go through `format_answer`.
   - Long answers appear in full.
   - Skipped questions are marked "Not answered".
   - Files show their filename and a download link.
-- If an answer's question is no longer on any of the form's pages, it still appears, in a final group, so no answer is hidden.
+- If an answer's question is no longer on any of the form's pages, it still appears, in a final group headed "Questions no longer on the form", so no answer is hidden.
 - The page links to the sitting's `CourseApplication` when there is one.
 - It also shows `furthest_page_reached`.
 - One shared rendering is used on both pages.
