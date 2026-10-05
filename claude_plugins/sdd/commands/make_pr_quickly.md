@@ -1,149 +1,38 @@
 ---
-description: Open a pull request for the current branch from the spec and todo, without re-reading the work
-allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent
+description: Open a pull request for the current branch immediately, with no checks, rebase, tests or commits
+allowed-tools: Bash
 ---
 
-Open a pull request for the current branch. Fast, from what the SDD workflow already wrote down.
+Open a pull request for the current branch **right now**. Nothing comes first.
 
-The spec directory already holds the *what* and `todo.md` already holds the *status*. Neither needs
-to be reconstructed from the diff, and reconstructing it is what makes ordinary PR-writing slow.
+The user wants the PR to exist. The title and body do not matter. Speed is the only goal.
 
-This command runs at **depth 0**, inline. It spawns no subagents.
+## Never
 
-## The speed contract
+- rebase, fetch, or run the pre-step rebase
+- run tests, linters, type checkers, pre-commit, or migrations
+- make, amend, or stash commits, or touch uncommitted changes
+- edit or tick `todo.md` or any other file
+- read the spec, plan, todo, or any source file
+- spawn subagents or invoke other commands or skills
+- ask the user anything
 
-The one exception to every rule below is Step 0: the pre-step rebase reads and runs whatever it
-needs to.
+## Steps
 
-Read these and nothing else:
-
-- the **first 80 lines** of the spec's `1. spec.md`
-- the spec's `todo.md`, in full
-
-Run these git commands and nothing else, plus the push and `gh` calls in Step 5:
-
-- `git branch --show-current`
-- `git log main..HEAD --oneline`
-- `git diff main...HEAD --stat`
-- `git status --short`
-
-**Do not**, under any circumstances:
-
-- read `2. plan.md`, `research_*.md`, `qa_report.md`, `upgrade_notes.md`, `3. frontend_qa.md`, or any
-  source file in the repo
-- run `git diff` in patch mode (no `-p`, no bare `git diff`, no `git show`)
-- run tests, linters, type checkers, or `gh pr view`
-- spawn a subagent, invoke another slash command (except `/sdd:commit_quickly` in Step 7, once the
-  user says yes), or launch a search
-
-If the spec does not say something, the PR body does not claim it.
-
-## Step 0: Pre-step rebase
-
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
-
-If the rebase returns `failed` or `blocked` only because the working tree has uncommitted changes,
-skip the rebase and carry on to Step 1. Mention the skipped rebase in the Step 7 report.
-
-## Step 1: Locate the spec
+Run this as a single Bash call:
 
 ```
-git branch --show-current
+git push -u origin HEAD && gh pr create --base main --fill
 ```
 
-The spec directory is `spec_dd/2. in progress/<branch>/`.
+`--fill` takes the title and body from the commits, so nothing has to be written.
 
-If that directory does not exist, run `ls "spec_dd/2. in progress/"`:
+- If the push is rejected because the remote branch has diverged (for example after a local
+  rebase), retry once with `git push -u origin HEAD --force-with-lease --force-if-includes`, then
+  run `gh pr create --base main --fill`.
+- If `gh pr create` says a pull request already exists for the branch, that's fine. Get its URL with
+  `gh pr view --json url -q .url`.
 
-- exactly one entry — use it
-- zero or several entries — skip Step 2, build the body from the commit log alone, and say so in the
-  final report
+## Report
 
-## Step 2: Read the two files
-
-```
-head -80 "<spec dir>/1. spec.md"
-```
-
-Use `head` via Bash, not the Read tool. Spec files run to tens of thousands of tokens; the title and
-the opening summary are all the body needs.
-
-Then read `<spec dir>/todo.md` in full. It is small.
-
-## Step 3: Get the git facts
-
-```
-git log main..HEAD --oneline
-git diff main...HEAD --stat
-git status --short
-```
-
-Uncommitted changes never stop this command. The PR covers what is committed. Note any paths
-`git status --short` prints and list them in the Step 7 report. Do not commit, stash or discard them.
-
-## Step 4: Draft the body
-
-Write the body to `.sdd-work/pr_body.md` (create `.sdd-work/` if it is missing). Writing to a file
-rather than passing `--body` avoids shell quoting problems entirely.
-
-```markdown
-## What
-
-<Two to four sentences, taken from the spec summary. Nothing invented.>
-
-## Changes
-
-<Three to eight bullets, grouped from the commit log. Group related commits — the reviewer
-wants the shape of the change, not a commit-by-commit replay.>
-
-## Spec
-
-`spec_dd/2. in progress/<branch>/`
-
-## SDD status
-
-Done: <every ticked (cmd) item, by section name>
-Outstanding: <every unticked (cmd) item, by section name>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-```
-
-The **SDD status** section is a mechanical transcription of the `todo.md` checkboxes. Make no
-judgement about whether a step was really needed and add no commentary. This section is what earns
-the PR its review: it tells the reviewer at a glance that, say, the security review and the QA pass
-have not run yet.
-
-Title: a short imperative line drawn from the spec title. Lowercase after the first word, no trailing
-full stop, no branch name.
-
-## Step 5: Push and create
-
-```
-git push -u origin HEAD
-gh pr create --base main --head "<branch>" --title "<title>" --body-file .sdd-work/pr_body.md
-```
-
-If `gh pr create` reports that a pull request already exists for the branch, run this instead and
-report it as an update rather than a new PR:
-
-```
-gh pr edit --title "<title>" --body-file .sdd-work/pr_body.md
-```
-
-Delete `.sdd-work/pr_body.md` once the call succeeds.
-
-## Step 6: Tick the todo
-
-Read `claude_plugins/sdd/commands/protected/update_todo.md` and follow its steps literally, with:
-
-- `<todo-path>`: the `todo.md` in the spec directory
-- `tick:"Open a pull request"`
-
-No new items to add. If Step 1 could not find a spec directory, skip this step.
-
-## Step 7: Report
-
-One line. The PR URL, then the outstanding SDD steps from the body. If Step 3 found uncommitted
-changes, add a second line listing them, saying the PR does not include them and that
-`/sdd:commit_quickly` followed by a push will add them.
+One line: the PR URL. Nothing else.
