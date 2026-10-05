@@ -630,3 +630,15 @@ def test_a_reader_without_file_permission_sees_the_filename_but_no_link(
 
     assert "id-scan.png" in body
     assert _admin_download_url(answer_file) not in body
+
+
+@pytest.mark.django_db
+def test_the_change_page_of_a_sitting_with_no_application_has_no_summary_rows(
+    staff_client,
+) -> None:
+    progress = FormProgressFactory()
+
+    response = staff_client.get(reverse(CHANGE_URL_NAME, args=[progress.pk]))
+
+    assert response.status_code == 200
+    assert "summary_rows" not in response.context

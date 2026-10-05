@@ -231,3 +231,38 @@ def test_change_page_of_an_application_with_no_form_says_so(staff_client):
 
     assert "The course asked for no application form." in content
     assert ">Answers<" not in content
+
+
+def _application_sitting_change_url(application: CourseApplication) -> str:
+    assert application.form_progress is not None
+    return reverse(
+        "admin:freedom_ls_form_engine_formprogress_change",
+        args=[application.form_progress.pk],
+    )
+
+
+def test_form_progress_change_page_links_to_its_application(staff_client):
+    application, _ = _answered_application()
+    label = f"Application for {application.course.title}"
+
+    content = staff_client.get(
+        _application_sitting_change_url(application)
+    ).content.decode()
+
+    assert label in content
+    assert f'href="{reverse(CHANGE, args=[application.pk])}"' in content
+
+
+def test_form_progress_change_page_shows_application_as_text_without_view_permission(
+    mock_site_context,
+):
+    application, _ = _answered_application()
+    staff = UserFactory(is_staff=True)
+    staff.user_permissions.add(Permission.objects.get(codename="view_formprogress"))
+    client = Client()
+    client.force_login(staff)
+
+    content = client.get(_application_sitting_change_url(application)).content.decode()
+
+    assert f"Application for {application.course.title}" in content
+    assert reverse(CHANGE, args=[application.pk]) not in content

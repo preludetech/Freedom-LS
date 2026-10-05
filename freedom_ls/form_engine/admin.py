@@ -7,7 +7,7 @@ from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
 from freedom_ls.site_aware_models.admin_filters import (
     CompletionListFilter,
     InclusiveRangeDateTimeFilter,
@@ -338,6 +338,22 @@ class FormProgressAdmin(SiteAwareModelAdmin):
     ) -> HttpResponse:
         if obj is not None:
             context.update(answers_context(request, obj))
+            # The application is reached only through its reverse accessor: the
+            # app that owns it sits above this one and may not be installed, so
+            # there is no model to import and no select_related path to name.
+            # Two queries on a single change page is the price.
+            if hasattr(obj, "course_application"):
+                application = obj.course_application
+                context["summary_rows"] = [
+                    (
+                        "Application",
+                        admin_change_link(
+                            request,
+                            application,
+                            label=f"Application for {application.course.title}",
+                        ),
+                    )
+                ]
         response: HttpResponse = super().render_change_form(
             request, context, add, change, form_url, obj
         )
