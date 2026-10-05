@@ -15,7 +15,7 @@
                                    class="text-primary-600 dark:text-primary-500">Download</a>
                             {% endif %}
                         {% elif row.answer.text_answer %}
-                            <span class="whitespace-pre-line">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
+                            <span class="answer-text">{{ row.answer.text_answer|answer_display:row.question.type }}</span>
                         {% elif row.answer %}
                             {% for option in row.answer.selected_options.all %}{{ option.text }}{% if not forloop.last %} · {% endif %}{% endfor %}
                         {% else %}

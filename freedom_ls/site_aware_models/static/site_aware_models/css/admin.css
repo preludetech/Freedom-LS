@@ -4,3 +4,9 @@
 .readonly {
     overflow-wrap: anywhere;
 }
+
+/* unfold's stylesheet is prebuilt and ships no whitespace-pre-line utility, so
+   long answers need their own rule to keep the newlines they were typed with. */
+.answer-text {
+    white-space: pre-line;
+}
