@@ -1,13 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime, time
 
 from unfold.contrib.filters.admin import RangeDateTimeFilter
+from unfold.contrib.filters.forms import RangeDateTimeForm
 from unfold.utils import parse_datetime_str
 
 from django.conf import settings
 from django.contrib import admin
 from django.core.validators import EMPTY_VALUES
 from django.db.models import QuerySet
-from django.forms import ValidationError
+from django.forms import SplitDateTimeField, ValidationError
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.translation import gettext
@@ -46,6 +47,29 @@ class CompletionListFilter(admin.SimpleListFilter):
         )
 
 
+class _BlankTimeSplitDateTimeField(SplitDateTimeField):
+    """A split date/time field that accepts a date with no time."""
+
+    def compress(self, data_list: tuple[date, time] | None) -> datetime | None:
+        if data_list and data_list[0] not in EMPTY_VALUES and not data_list[1]:
+            return datetime.combine(data_list[0], time.min)
+        return super().compress(data_list)
+
+
+class InclusiveRangeDateTimeForm(RangeDateTimeForm):
+    """Unfold's range form, minus the "Enter a valid time." error on a blank time."""
+
+    def __init__(self, name: str, *args: object, **kwargs: object) -> None:
+        super().__init__(name, *args, **kwargs)
+        for suffix in ("_from", "_to"):
+            original = self.fields[name + suffix]
+            self.fields[name + suffix] = _BlankTimeSplitDateTimeField(
+                label=original.label,
+                required=False,
+                widget=original.widget,
+            )
+
+
 class InclusiveRangeDateTimeFilter(RangeDateTimeFilter):
     """A date range over a timestamp that works when only the dates are filled.
 
@@ -65,6 +89,8 @@ class InclusiveRangeDateTimeFilter(RangeDateTimeFilter):
     ``parse_datetime_str`` returns a naive datetime, which Django would warn about
     on a timezone-aware field, so each bound is made aware in the active timezone.
     """
+
+    form_class = InclusiveRangeDateTimeForm
 
     #: Times substituted per bound when the time box is left empty.
     BLANK_TIME_FROM = "00:00:00"

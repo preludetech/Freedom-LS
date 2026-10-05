@@ -339,3 +339,15 @@ def test_change_page_submitted_time_is_formatted_like_created_at(staff_client):
     content = response.content.decode()
     assert "Oct. 5, 2026, 7:29 p.m." in content
     assert "19:29:06.975164" not in content
+
+
+def test_created_date_range_with_blank_times_shows_no_time_errors(staff_client):
+    """A date-only range used to flag both empty time boxes as "Enter a valid time."."""
+    recent = CourseApplicationFactory()
+    day = timezone.localdate(recent.created_at).isoformat()
+
+    response = staff_client.get(
+        reverse(CHANGELIST), {"created_at_from_0": day, "created_at_to_0": day}
+    )
+
+    assert "Enter a valid time." not in response.content.decode()
