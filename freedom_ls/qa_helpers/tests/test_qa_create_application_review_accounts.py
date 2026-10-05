@@ -20,6 +20,7 @@ from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.form_engine.factories import QuestionAnswerFileFactory
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.qa_helpers.management.commands.qa_create_application_review_accounts import (
+    REVIEWER_PERMISSION_SPECS,
     _purge_course_data,
 )
 
@@ -39,3 +40,9 @@ def test_the_purge_takes_the_sitting_and_its_stored_file(mock_site_context):
     assert counts["FormProgress"] == 1
     assert not FormProgress._base_manager.filter(user=user).exists()
     assert not storage.exists(name)
+
+
+def test_the_reviewer_is_granted_the_view_permission_on_applications() -> None:
+    codenames = {codename for _, codename in REVIEWER_PERMISSION_SPECS}
+
+    assert "view_courseapplication" in codenames

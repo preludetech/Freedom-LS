@@ -28,34 +28,6 @@ from .models import (
 from .typed_answers import format_answer
 
 
-class SuperuserOnlyAdmin:
-    """Restricts a whole admin class to superusers.
-
-    An applicant's sitting, their answers and the documents they attached are
-    their own words and papers. Rights over course content are not rights over
-    those, and Django's per-model permissions cannot express the difference --
-    so the gate is here rather than in a permission grant.
-    """
-
-    def has_view_permission(
-        self, request: HttpRequest, obj: object | None = None
-    ) -> bool:
-        return request.user.is_superuser
-
-    def has_change_permission(
-        self, request: HttpRequest, obj: object | None = None
-    ) -> bool:
-        return request.user.is_superuser
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return request.user.is_superuser
-
-    def has_delete_permission(
-        self, request: HttpRequest, obj: object | None = None
-    ) -> bool:
-        return request.user.is_superuser
-
-
 class QuestionOptionInline(admin.TabularInline):
     """Inline for question options."""
 
@@ -283,7 +255,7 @@ class FormProgressCompletionFilter(CompletionListFilter):
 
 
 @admin.register(FormProgress)
-class FormProgressAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
+class FormProgressAdmin(SiteAwareModelAdmin):
     list_display = [
         "user",
         "form",
@@ -352,7 +324,7 @@ class FormProgressAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
 
 
 @admin.register(QuestionAnswer)
-class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
+class QuestionAnswerAdmin(SiteAwareModelAdmin):
     list_display = [
         "form_progress",
         "question",
@@ -386,11 +358,11 @@ class QuestionAnswerAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
 
 
 @admin.register(QuestionAnswerFile)
-class QuestionAnswerFileAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
-    """The reviewer's view of the documents applicants attached.
+class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
+    """The documents applicants attached.
 
-    The file itself is reachable only through the superuser-only download route
-    below, never from a link on the page.
+    The file itself is reachable only through the permission-checked download
+    route below, never from a link on the page.
     """
 
     list_display = [
@@ -410,7 +382,7 @@ class QuestionAnswerFileAdmin(SuperuserOnlyAdmin, SiteAwareModelAdmin):
     ]
     # `file` is excluded rather than read-only: rendering the field would put a
     # storage URL on the page, reachable without passing the download route's
-    # superuser check.
+    # permission check.
     exclude = ["site", "file"]
 
     def has_add_permission(self, request: HttpRequest) -> bool:

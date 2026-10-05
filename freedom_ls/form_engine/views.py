@@ -24,6 +24,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswer,
     QuestionAnswerFile,
 )
+from freedom_ls.form_engine.permissions import can_download_answer_files
 from freedom_ls.form_engine.uploads import validate_and_sanitise
 
 FILE_WIDGET_TEMPLATE = "form_engine/inputs/file_upload.html"
@@ -176,12 +177,12 @@ def own_question_answer_file(request: HttpRequest, file_pk: str) -> FileResponse
 def question_answer_file_download_view(
     request: HttpRequest, object_id: str
 ) -> FileResponse:
-    """The reviewer's route, wired into the admin.
+    """The admin route that streams an applicant's attached file.
 
-    The superuser check is explicit because `admin_view` only guarantees staff,
-    and rights over course content are not rights over an applicant's papers.
+    The permission check is explicit because `admin_view` only guarantees
+    staff, and not every staff user may read an applicant's papers.
     """
-    if not request.user.is_superuser:
+    if not can_download_answer_files(request.user):
         raise PermissionDenied
     answer_file = get_object_or_404(QuestionAnswerFile, pk=object_id)
     return stream_question_answer_file(answer_file)

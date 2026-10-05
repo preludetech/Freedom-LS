@@ -4,9 +4,10 @@ Seeds (or resets to a known state) three DemoDev accounts:
 
 - ``qa_applicant@email.com``  -- plain learner, no registrations, no applications
 - ``qa_bystander@email.com``  -- identical shape to the applicant
-- ``qa_reviewer@email.com``   -- ``is_staff`` with exactly three form_engine view
-  permissions granted directly on the user, to prove that those three model
-  permissions alone do NOT open the corresponding admin pages.
+- ``qa_reviewer@email.com``   -- ``is_staff`` with exactly four view permissions
+  (course application, form progress, answer, answer file) granted directly on
+  the user, to prove that those permissions alone open the application, form
+  progress, answer and file pages read-only, and open nothing else.
 
 DemoDev-only convention: each account's password is set to its own email address
 (the same convention ``create_demo_data`` uses), and each gets a verified+primary
@@ -57,16 +58,20 @@ REVIEWER_EMAIL = "qa_reviewer@email.com"
 #: the real app label is used whatever it happens to be (it is currently
 #: ``freedom_ls_form_engine``, not ``form_engine``).
 REVIEWER_PERMISSION_SPECS: list[
-    tuple[type[QuestionAnswer | FormProgress | QuestionAnswerFile], str]
+    tuple[
+        type[CourseApplication | QuestionAnswer | FormProgress | QuestionAnswerFile],
+        str,
+    ]
 ] = [
     (QuestionAnswer, "view_questionanswer"),
     (FormProgress, "view_formprogress"),
     (QuestionAnswerFile, "view_questionanswerfile"),
+    (CourseApplication, "view_courseapplication"),
 ]
 
 
 def _reviewer_permissions() -> list[Permission]:
-    """Resolve the three reviewer permissions, failing loudly if one is missing."""
+    """Resolve the reviewer permissions, failing loudly if one is missing."""
     permissions: list[Permission] = []
     for model, codename in REVIEWER_PERMISSION_SPECS:
         content_type = ContentType.objects.get_for_model(model)

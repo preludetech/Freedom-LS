@@ -1,4 +1,4 @@
-"""The form_engine admin: what it will not let an editor do."""
+"""The form_engine admin: who may open, add to and delete from it."""
 
 from __future__ import annotations
 
@@ -148,20 +148,31 @@ class TestFormProgressChangelist:
 
 
 # ---------------------------------------------------------------------------
-# Answer data is restricted to superusers
+# Answer data is gated by view permissions
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def editor_client(mock_site_context, logged_in_client):
-    """The admin as staff who are not a superuser.
+def viewer_client(mock_site_context, logged_in_client):
+    """Staff holding only the three form_engine view permissions."""
+    viewer = UserFactory(is_staff=True, is_superuser=False)
+    viewer.user_permissions.set(
+        Permission.objects.filter(
+            content_type__app_label="freedom_ls_form_engine",
+            codename__in=[
+                "view_formprogress",
+                "view_questionanswer",
+                "view_questionanswerfile",
+            ],
+        )
+    )
+    return logged_in_client(viewer)
 
-    Granted every model permission there is, so what the tests below measure is
-    the superuser gate itself rather than an editor who simply has no rights.
-    """
-    editor = UserFactory(is_staff=True, is_superuser=False)
-    editor.user_permissions.set(Permission.objects.all())
-    return logged_in_client(editor)
+
+@pytest.fixture
+def no_permission_client(mock_site_context, logged_in_client):
+    """Staff holding no permissions at all."""
+    return logged_in_client(UserFactory(is_staff=True, is_superuser=False))
 
 
 ANSWER_CHANGELISTS = [
@@ -173,13 +184,20 @@ ANSWER_CHANGELISTS = [
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("url_name", ANSWER_CHANGELISTS)
-def test_an_editor_cannot_reach_answer_data(editor_client, url_name):
-    """A sitting and its answers are an applicant's own words and documents.
-    Content editing rights are not rights over those.
-    """
-    response = editor_client.get(reverse(url_name))
+def test_staff_without_permission_cannot_reach_answer_data(
+    no_permission_client, url_name
+):
+    response = no_permission_client.get(reverse(url_name))
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("url_name", ANSWER_CHANGELISTS)
+def test_a_viewer_can_reach_answer_data(viewer_client, url_name):
+    response = viewer_client.get(reverse(url_name))
+
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
@@ -201,10 +219,10 @@ ANSWER_FACTORIES = {
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_an_editor_cannot_add_answer_data(editor_client, model_name):
-    """Django's add view consults only has_add_permission, so the view and
-    change gates alone would leave an editor free to fabricate an answer."""
-    response = editor_client.get(
+def test_a_viewer_cannot_add_answer_data(viewer_client, model_name):
+    """Django's add view consults only has_add_permission, so a view permission
+    must not be enough to fabricate an answer."""
+    response = viewer_client.get(
         reverse(f"admin:freedom_ls_form_engine_{model_name}_add")
     )
 
@@ -213,13 +231,12 @@ def test_an_editor_cannot_add_answer_data(editor_client, model_name):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("model_name", ANSWER_MODELS)
-def test_an_editor_cannot_delete_answer_data(editor_client, model_name):
-    """Django's delete view consults only has_delete_permission, so the view and
-    change gates alone would leave an editor free to destroy an applicant's ID
-    scan."""
+def test_a_viewer_cannot_delete_answer_data(viewer_client, model_name):
+    """Django's delete view consults only has_delete_permission, so a view
+    permission must not be enough to destroy an applicant's ID scan."""
     row = ANSWER_FACTORIES[model_name]()
 
-    response = editor_client.post(
+    response = viewer_client.post(
         reverse(f"admin:freedom_ls_form_engine_{model_name}_delete", args=[row.pk]),
         {"post": "yes"},
     )
@@ -229,10 +246,12 @@ def test_an_editor_cannot_delete_answer_data(editor_client, model_name):
 
 
 @pytest.mark.django_db
-def test_the_admin_index_lists_no_answer_data_for_an_editor(editor_client):
+def test_the_admin_index_lists_no_answer_data_without_permission(
+    no_permission_client,
+):
     """A model with any one of add, change, delete or view still gets an index
-    entry, so all four have to be shut for the listing to go."""
-    response = editor_client.get(reverse("admin:index"))
+    entry, so all four have to be denied for the listing to go."""
+    response = no_permission_client.get(reverse("admin:index"))
 
     body = response.content.decode()
     assert not any(reverse(url_name) in body for url_name in ANSWER_CHANGELISTS)
@@ -273,7 +292,7 @@ def test_two_forms_added_with_no_slug_both_save(staff_client):
 
 
 # ---------------------------------------------------------------------------
-# The reviewer's download route
+# The admin download route
 # ---------------------------------------------------------------------------
 
 
@@ -285,16 +304,27 @@ def _admin_download_url(answer_file) -> str:
 
 
 @pytest.mark.django_db
-def test_an_editor_cannot_download_an_answer_file(mock_site_context, editor_client):
+def test_staff_without_permission_cannot_download_an_answer_file(
+    mock_site_context, no_permission_client
+):
     answer_file = QuestionAnswerFileFactory()
 
-    response = editor_client.get(_admin_download_url(answer_file))
+    response = no_permission_client.get(_admin_download_url(answer_file))
 
     assert response.status_code == 403
 
 
 @pytest.mark.django_db
-def test_an_answer_file_is_served_to_a_reviewer(mock_site_context, staff_client):
+def test_an_answer_file_is_served_to_a_viewer(mock_site_context, viewer_client):
+    answer_file = QuestionAnswerFileFactory()
+
+    response = viewer_client.get(_admin_download_url(answer_file))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_an_answer_file_is_served_to_a_superuser(mock_site_context, staff_client):
     answer_file = QuestionAnswerFileFactory()
 
     response = staff_client.get(_admin_download_url(answer_file))
