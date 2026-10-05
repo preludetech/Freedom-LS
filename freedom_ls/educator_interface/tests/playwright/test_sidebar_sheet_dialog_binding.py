@@ -80,3 +80,33 @@ def test_nav_button_opens_navigation_not_the_tables_filter_sheet(
     expect(nav_sheet).to_be_visible()
     expect(filter_sheet).to_be_hidden()
     expect(nav_sheet.locator("#sidebar-nav")).to_be_visible()
+
+
+def test_docked_desktop_sidebar_does_not_take_focus_on_page_load(
+    live_server,
+    mobile_educator_page: Page,
+    mobile_educator: User,
+) -> None:
+    """``dialog.show()`` used to move focus into the docked sidebar on load."""
+    # Arrange
+    page = mobile_educator_page
+    page.set_viewport_size({"width": 1442, "height": 900})
+    organisation = OrganisationFactory()
+    assign_object_role(mobile_educator, organisation, "organisation_admin")
+    path = reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": "learners"},
+    )
+
+    # Act
+    page.goto(f"{live_server.url}{path}")
+    page.wait_for_function(
+        "document.querySelector('dialog[aria-label=\"Navigation\"]')?.open === true"
+    )
+
+    # Assert
+    focus_in_sidebar = page.evaluate(
+        "document.querySelector('dialog[aria-label=\"Navigation\"]')"
+        ".contains(document.activeElement)"
+    )
+    assert focus_in_sidebar is False

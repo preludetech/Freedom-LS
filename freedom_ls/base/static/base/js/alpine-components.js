@@ -563,7 +563,14 @@ document.addEventListener("alpine:init", () => {
         _setDesktopOpen(value) {
             this.open = value;
             if (value && !this.dialog.open) {
+                // show() runs the dialog focusing steps and pulls focus into
+                // the docked panel; put it back where it was.
+                const previous = document.activeElement;
                 this.dialog.show();
+                if (this.dialog.contains(document.activeElement)) {
+                    document.activeElement.blur();
+                    if (previous && previous !== document.body) previous.focus();
+                }
             } else if (!value && this.dialog.open) {
                 this.dialog.close();
             }
