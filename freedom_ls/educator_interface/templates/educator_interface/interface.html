@@ -14,10 +14,13 @@ The sidebar sits flush against the viewport's left edge with its own
 full-height rule on the right, and the content column carries its own
 padding instead of the shell's: the page header band and the canvas inside
 #main-content each pad themselves, so the shell's outer padding and the
-grid gap are both emptied here.
+grid gap both go. The shell is at least the viewport's height below the
+site header (--sidebar-top, set by the sidePanel controller), so the canvas
+reaches the bottom of the screen on a short page instead of stopping at
+the last card.
 {% endcomment %}
-{% block shell_padding %}{% endblock shell_padding %}
-{% block grid_gap %}{% endblock grid_gap %}
+{% block shell_class %}flex min-h-[calc(100dvh-var(--sidebar-top,0px))] flex-col{% endblock shell_class %}
+{% block grid_class %}flex-1{% endblock grid_class %}
 {% block sidebar_body_class %}lg:border-e lg:border-border{% endblock sidebar_body_class %}
 {% block main_class %}panel-canvas flex flex-col{% endblock main_class %}
 
@@ -38,11 +41,13 @@ grid gap are both emptied here.
     is the second line only when the name is not already the email.
     {% endcomment %}
     <div id="sidebar-user" class="mt-auto -mx-4 -mb-6 flex min-w-0 items-center gap-2 border-t border-border px-4 py-4 lg:-mx-6 lg:px-6">
-        {% if request.user.display_name == request.user.email %}
-            <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" class="min-w-0 flex-1 text-sm font-semibold" />
-        {% else %}
-            <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :secondary="request.user.email" class="min-w-0 flex-1 text-sm font-semibold" />
-        {% endif %}
+        <div class="min-w-0 flex-1 text-sm font-semibold">
+            {% if request.user.display_name == request.user.email %}
+                <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" />
+            {% else %}
+                <c-panel-avatar-chip :name="request.user.display_name" :initials="request.user.initials" :user_id="request.user.pk" :secondary="request.user.email" />
+            {% endif %}
+        </div>
         <a href="{% url 'accounts:account_profile' %}"
            aria-label="Account settings"
            class="-me-2 flex size-10 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">

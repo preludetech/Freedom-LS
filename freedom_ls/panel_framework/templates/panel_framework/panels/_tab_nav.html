@@ -7,7 +7,7 @@ the active tab's underline; on its own it draws that rule itself and keeps
 a gap below. Labels stay on one line and the row scrolls sideways on a
 narrow screen.
 {% endcomment %}
-<nav aria-label="{{ title }}" class="{% if in_band %}-mb-px mt-1{% else %}mb-6{% endif %}">
+<nav aria-label="{{ title }}" class="{% if in_band %}-mb-px -ms-3 mt-1{% else %}mb-6{% endif %}">
     <ul class="flex list-none ml-0 gap-1 overflow-x-auto {% if not in_band %}shadow-[inset_0_-1px_0_var(--color-border)]{% endif %}">
         {% for tab in tabs %}
             <li class="py-0">

@@ -5,8 +5,8 @@
 {% comment %}
 Page header — the view's own heading, plus an optional status badge, meta
 line, stat row and action buttons. The actions sit level with the heading
-at the right from md up. It draws no rule of its own: the page header band
-it sits in does.
+at the right, and wrap under it only when the two cannot share a row. It
+draws no rule of its own: the page header band it sits in does.
 
 Attributes:
   title          Heading text (required).
@@ -24,7 +24,7 @@ whitespace-only.
 {% endcomment %}
 
 {% with level=heading_level|heading_level:"1" %}
-<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between" {{ attrs }}>
+<div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3" {{ attrs }}>
     <div class="min-w-0 wrap-anywhere">
         <div class="flex flex-wrap items-center gap-3">
             <h{{ level }}{% if title_id %} id="{{ title_id }}"{% endif %}>{{ title }}</h{{ level }}>
@@ -34,6 +34,6 @@ whitespace-only.
         {% if meta.strip %}<div class="text-sm text-muted">{{ meta }}</div>{% endif %}
     </div>
     {% if stats.strip %}<div>{{ stats }}</div>{% endif %}
-    {% if actions.strip %}<c-button-group variant="right" class="shrink-0 flex-wrap">{{ actions }}</c-button-group>{% endif %}
+    {% if actions.strip %}<c-button-group variant="right" class="ms-auto shrink-0 flex-wrap">{{ actions }}</c-button-group>{% endif %}
 </div>
 {% endwith %}
