@@ -521,14 +521,7 @@ document.addEventListener("alpine:init", () => {
             // when locked (player TOC) always open and ignore stored state.
             // On mobile, always start collapsed. A mobile-only panel (a
             // table's filter & sort sheet) never opens as a docked panel.
-            const stored = localStorage.getItem(this._storageKey);
-            if (!this.isMobile && !this._mobileOnly) {
-                if (this._desktopLock) {
-                    this._setDesktopOpen(true);
-                } else {
-                    this._setDesktopOpen(stored === null ? true : stored === "true");
-                }
-            }
+            if (!this.isMobile) this._restoreDesktopState();
             this._syncGrid();
 
             this._mqHandler = (e) => {
@@ -546,16 +539,7 @@ document.addEventListener("alpine:init", () => {
                 // Reset to the correct mode for the new breakpoint.
                 if (this.dialog.open) this.dialog.close();
                 this.open = false;
-                if (!this.isMobile && !this._mobileOnly) {
-                    if (this._desktopLock) {
-                        this._setDesktopOpen(true);
-                    } else {
-                        const desktopStored = localStorage.getItem(this._storageKey);
-                        this._setDesktopOpen(
-                            desktopStored === null ? true : desktopStored === "true",
-                        );
-                    }
-                }
+                if (!this.isMobile) this._dockOnceNoModalIsOpen();
                 this._syncGrid();
             };
             this._mq.addEventListener("change", this._mqHandler);
@@ -567,6 +551,35 @@ document.addEventListener("alpine:init", () => {
             if (this._popstateHandler) {
                 window.removeEventListener("popstate", this._popstateHandler);
             }
+        },
+        _restoreDesktopState() {
+            if (this._mobileOnly) return;
+            if (this._desktopLock) {
+                this._setDesktopOpen(true);
+                return;
+            }
+            const stored = localStorage.getItem(this._storageKey);
+            this._setDesktopOpen(stored === null ? true : stored === "true");
+        },
+        // Every dialog that is shown gets a close watcher, and Escape goes to
+        // the newest one. Docking the panel with show() while another
+        // dialog is open modally would put the panel's watcher on top, and a
+        // non-modal dialog ignores Escape, so the modal could no longer be
+        // closed from the keyboard. The page behind a modal is inert anyway,
+        // so the panel docks as soon as that modal closes instead.
+        _dockOnceNoModalIsOpen() {
+            const modal = document.querySelector("dialog:modal");
+            if (!modal) {
+                this._restoreDesktopState();
+                return;
+            }
+            modal.addEventListener(
+                "close",
+                () => {
+                    if (!this.isMobile && !this.dialog.open) this._restoreDesktopState();
+                },
+                { once: true },
+            );
         },
         _setDesktopOpen(value) {
             this.open = value;
