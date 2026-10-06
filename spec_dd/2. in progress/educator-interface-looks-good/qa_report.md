@@ -1,6 +1,6 @@
 # QA report: educator interface looks good
 
-This run recorded 80 test results plus 11 design checks. On desktop there were 45 results: 40 pass, 4 fail (9.6, 8.2, general, 7.8-escape) and 1 skip (8.1). On mobile there were 29 results: 27 pass, 2 fail (4.8, 9.6) and 0 skip. On tablet there were 6 results: 6 pass, 0 fail and 0 skip. All 11 design checks passed (5 desktop, 6 mobile). The smoke gate passed. Five bugs are documented, and all are unresolved.
+This run recorded 80 test results plus 11 design checks. On desktop there were 45 results: 40 pass, 4 fail (9.6, 8.2, general, 7.8-escape) and 1 skip (8.1). On mobile there were 29 results: 27 pass, 2 fail (4.8, 9.6) and 0 skip. On tablet there were 6 results: 6 pass, 0 fail and 0 skip. All 11 design checks passed (5 desktop, 6 mobile). The smoke gate passed. Five bugs are documented, and all are fixed.
 
 ## Methodology
 
@@ -200,9 +200,9 @@ Actual: Escape is ignored after widening from 375 to 1442 with #app-modal open, 
 
 - **FIXED** (commit: d193c130) — Filter & sort sheet renders inline after an HTMX table swap on the phone (noscript style leak). Re-verified at 375 wide: after search and sort swaps the sheet dialog stays `display: none` with no leaked stylesheet, Sort still opens it as a modal sheet, and the no-JS inline fallback still submits (![](screenshots/page-2026-10-05T14-09-45-305Z.png)). The cohort page's Learners-tab sheet (same shared partial) was spot-checked clean.
 - **FIXED** (commit: 15ee5c6a) — Quick view modal drawer and bottom sheet do not close on a backdrop tap. Re-verified at 392 and 1000 wide: a backdrop click closes the panel, focus returns to the trigger and the pushed history entry is unwound; a click inside the panel keeps it open; the docked panel at 1920 ignores page clicks and closes from its Close control. The create cohort dialog in the same Alpine file still behaves (backdrop stays, dirty Escape prompts, Discard closes).
-- **UNRESOLVED** — first_class muted text falls below 4.5:1 contrast on sidebar labels, table header and pager (reason: the failing colour is the first_class theme's `--color-muted` brand token; darkening it changes every muted surface in that theme, which is a design decision for a human, not a code fix)
+- **FIXED** (commit: 039a3a99) — first_class muted text falls below 4.5:1 contrast on sidebar labels, table header and pager. The first_class `--color-muted` token is now #5F6B7F (decided by a human): 5.39:1 on white, 5.12:1 on the #F8F9FC canvas and 4.79:1 on the #EDF2F7 table header. A theme-token test checks the ratio for both themes.
 - **FIXED** (commit: 46da8f88) — Browser tab title on cohort and learner detail pages omits the page name. Re-verified: "QA Looks Cohort — DemoDev — DemoDev" on full load, after HTMX navigation from the list and on the Learners tab; "Andrew Peters — DemoDev — DemoDev" for a learner; list pages, Back and the second organisation's scope segment unchanged; h1 and sidebar sub-item unaffected.
-- **UNRESOLVED** — Escape stops working on the create cohort dialog after widening past the sidebar breakpoint (reason: fix budget exhausted this run; green-lane candidate for a follow-up)
+- **FIXED** (commit: 18058687) — Escape stops working on the create cohort dialog after widening past the sidebar breakpoint. Cause: docking the sidebar with `show()` while #app-modal was modal put the sidebar's close watcher on top, so it received the Escape and ignored it. The sidebar now docks when the modal closes. Playwright tests cover 390→1442 with a clean form (Escape closes, then the sidebar docks) and a dirty form (Escape shows the discard prompt).
 
 ## General notes
 
@@ -218,4 +218,4 @@ Actual: Escape is ignored after widening from 375 to 1442 with #app-modal open, 
 - A quick-view focus-return edge case was seen once after a breakpoint flip and was not reproduced in isolation.
 
 status: ok
-reason: 5 bugs — 3 fixed, 2 unresolved; report rendered, screenshots verified
+reason: 5 bugs — 5 fixed; report rendered, screenshots verified

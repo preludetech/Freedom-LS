@@ -65,9 +65,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Fix QA bug: create cohort footer shows 'Save and add another' + 'Save' instead of Cancel + Create Cohort (TDD — failing test first, then fix)
 - [x] (user) Decide whether cohort Edit/Delete belong at the right of the page header (design checklist 6.2) or in the Details card (plan step 6.3), then fix the template or the plan
 - [x] (user) Decide whether the create cohort footer keeps 'Save and add another' and the 'Save' label or becomes Cancel + 'Create Cohort' as designed, then update the modal form or the plan
-- [ ] (user) Decide whether the first_class theme's `--color-muted` (#718096, 4.0:1 on white) should be darkened so sidebar group labels, table headers, definition labels and 'Page X of Y' reach 4.5:1, then update the theme token or accept the ratio in the QA plan
-- [ ] (user + cmd) Fix QA bug: first_class muted text falls below 4.5:1 contrast on sidebar labels, table header and pager (TDD — failing test first, then fix)
-- [ ] (user + cmd) Fix QA bug: Escape stops working on the create cohort dialog after widening past the sidebar breakpoint (TDD — failing test first, then fix)
+- [x] (user) Decide whether the first_class theme's `--color-muted` (#718096, 4.0:1 on white) should be darkened so sidebar group labels, table headers, definition labels and 'Page X of Y' reach 4.5:1, then update the theme token or accept the ratio in the QA plan
+- [x] (user + cmd) Fix QA bug: first_class muted text falls below 4.5:1 contrast on sidebar labels, table header and pager (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: Escape stops working on the create cohort dialog after widening past the sidebar breakpoint (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
