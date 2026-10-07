@@ -55,7 +55,7 @@ def test_sidebar_lists_the_four_sections_each_with_an_icon(
 ) -> None:
     nav, _page = sidebar
 
-    links = nav.cssselect("ul > li > div > a")
+    links = nav.cssselect("ul > li > a")
 
     assert [link.text_content().strip() for link in links] == [
         "Dashboard",
@@ -124,9 +124,9 @@ def test_the_active_item_draws_a_rounded_primary_bar_on_a_tinted_fill(
     (active,) = [a for a in nav.cssselect("a") if a.get("aria-current") == "page"]
 
     classes = active.get("class")
-    assert "aria-[current=page]:bg-surface-2" in classes
-    assert "aria-[current=page]:text-primary" in classes
-    assert "aria-[current=page]:shadow-[inset_2px_0_0_var(--color-primary)]" in classes
+    assert "aria-[current]:bg-surface-2" in classes
+    assert "aria-[current]:text-primary" in classes
+    assert "aria-[current]:shadow-[inset_2px_0_0_var(--color-primary)]" in classes
     assert "border-l" not in classes
 
 

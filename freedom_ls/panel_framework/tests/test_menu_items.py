@@ -111,33 +111,34 @@ def test_extra_url_kwargs_merge_into_section_url() -> None:
     assert cohorts["url"] == "/test-panel/scoped/acme/cohorts"
 
 
-class _NicknamedConfig(ListViewConfig):
-    """A section whose rows are not best named by their str()."""
+def test_the_active_section_is_the_current_page_on_its_own_list() -> None:
+    items = _by_label("cohorts")
 
-    url_name = "nicknamed"
-    menu_label = "Nicknamed"
-
-    @classmethod
-    def get_instance_label(cls, instance: Model) -> str:
-        return f"Nickname of {instance.name}"
-
-
-NICKNAMED_CONFIG = [NavGroup("People", [_NicknamedConfig])]
+    assert items["Cohorts"]["aria_current"] == "page"
+    assert items["Learners"]["aria_current"] == ""
+    assert items["Dashboard"]["aria_current"] == ""
 
 
 @pytest.mark.django_db
-def test_the_instance_sub_item_is_labelled_by_the_sections_instance_label(
+def test_on_an_instance_page_its_section_stays_current_but_not_as_the_page(
     mock_site_context: None,
 ) -> None:
-    instance = _make_stub(name="Ada")
+    items = _by_label("cohorts", current_instance=_make_stub(name="Ada"))
 
+    assert items["Cohorts"]["aria_current"] == "true"
+    assert items["Learners"]["aria_current"] == ""
+
+
+@pytest.mark.django_db
+def test_an_instance_page_adds_nothing_about_the_instance_to_the_menu(
+    mock_site_context: None,
+) -> None:
     groups = _build_menu_items(
-        NICKNAMED_CONFIG,
+        CONFIG,
         URL_NAME,
         RequestFactory().get("/"),
-        "nicknamed",
-        current_instance=instance,
+        "cohorts",
+        current_instance=_make_stub(name="Ada"),
     )
 
-    item = next(i for g in groups for i in g["items"] if i["label"] == "Nicknamed")
-    assert item["instance_label"] == "Nickname of Ada"
+    assert "Ada" not in str(groups)

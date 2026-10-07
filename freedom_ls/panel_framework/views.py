@@ -887,21 +887,14 @@ def _build_menu_items(
         items: list[dict[str, object]] = []
         for section in group.sections:
             is_active = section.url_name == active_section
-            instance_label = ""
-            instance_url = ""
-            if (
-                is_active
-                and current_instance is not None
-                and issubclass(section, ListViewConfig)
-            ):
-                instance_label = section.get_instance_label(current_instance)
-                instance_url = reverse(
-                    url_name,
-                    kwargs={
-                        "path_string": f"{section.url_name}/{current_instance.pk}",
-                        **extra_url_kwargs,
-                    },
-                )
+            # The section stays marked on its own instance pages, but only
+            # its list is the page itself.
+            if not is_active:
+                aria_current = ""
+            elif current_instance is None:
+                aria_current = "page"
+            else:
+                aria_current = "true"
             items.append(
                 {
                     "label": section.menu_label,
@@ -912,9 +905,7 @@ def _build_menu_items(
                     "icon": section.icon,
                     "count": section.get_menu_count(request),
                     "active": is_active,
-                    "expanded": bool(instance_label),
-                    "instance_label": instance_label,
-                    "instance_url": instance_url,
+                    "aria_current": aria_current,
                 }
             )
         if items:

@@ -565,20 +565,6 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // Sidebar menu item component (panel_framework/partials/sidebar_nav.html)
-    Alpine.data("sidebarMenuItem", () => ({
-        expanded: false,
-        init() {
-            this.expanded = this.$el.dataset.expanded === "true";
-        },
-        toggle() {
-            this.expanded = !this.expanded;
-        },
-        close() {
-            this.expanded = false;
-        },
-    }));
-
     // Row selection for a table's bulk-action bar (cotton/data-table.html).
     // Lives on the wrapping <form>, so every row and header checkbox reaches
     // it, including the mobile "select all" control and every card checkbox,
@@ -682,17 +668,12 @@ document.addEventListener("htmx:afterSwap", (event) => {
 
 // A saved edit renames the instance it edited. Panels re-fetch themselves on
 // their own declared domain events through their own hx-trigger; the page
-// heading and the sidebar's sub-item for the instance are both outside
-// every panel, so they are updated here. The sub-item is marked by
-// sidebar_nav.html, and there is at most one: only the viewed instance has
-// one.
+// heading is outside every panel, so it is updated here.
 document.addEventListener("instanceTitleChanged", (event) => {
     const title = event.detail && event.detail.title;
     if (!title) return;
     const heading = document.getElementById("instance-title");
     if (heading) heading.textContent = title;
-    const subItem = document.querySelector("#sidebar-nav [data-sidebar-instance-label]");
-    if (subItem) subItem.textContent = title;
 });
 
 // A table region swap replaces the whole region element (outerHTML), so the

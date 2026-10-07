@@ -3,8 +3,7 @@
 The Django test client coverage of EditAction's response contract lives in
 educator_interface/tests/test_cohort_delete_action.py and
 panel_framework/tests/test_panel_actions.py. What only a browser shows is
-that the modal actually closes and the page heading and the sidebar's
-sub-item for the cohort update in place.
+that the modal actually closes and the page heading updates in place.
 """
 
 from __future__ import annotations
@@ -45,25 +44,3 @@ def test_editing_a_cohorts_name_closes_the_modal_and_updates_the_title(
 
     expect(page.locator("#app-modal")).to_be_hidden()
     expect(page.locator("#instance-title")).to_have_text("New Name")
-
-
-def test_editing_a_cohorts_name_updates_the_sidebar_sub_item(
-    live_server,
-    educator_logged_in_page: Page,
-    educator_user: User,
-) -> None:
-    page = educator_logged_in_page
-    organisation = OrganisationFactory(name="Org A")
-    cohort = CohortFactory(organisation=organisation, name="Old Name")
-    assign_object_role(educator_user, organisation, "organisation_admin")
-    assign_perm("freedom_ls_learner_management.change_cohort", educator_user, cohort)
-
-    page.goto(interface_url(live_server, organisation.slug, f"cohorts/{cohort.pk}"))
-
-    page.get_by_role("button", name="Edit").click()
-    page.locator("#app-modal-body").get_by_label("Name").fill("New Name")
-    page.get_by_role("button", name="Save", exact=True).click()
-
-    expect(page.locator("#app-modal")).to_be_hidden()
-    sub_item = page.locator("#sidebar-nav [data-sidebar-instance-label]")
-    expect(sub_item).to_have_text("New Name")

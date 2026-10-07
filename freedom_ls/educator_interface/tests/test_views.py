@@ -118,11 +118,27 @@ def test_learner_detail_page_is_titled_with_the_learners_name_not_the_user_str(
 
     (heading,) = document.cssselect("#instance-title")
     assert heading.text_content().strip() == "Ada Lovelace"
-    (sub_item,) = document.cssselect("#sidebar-nav ul ul a")
-    assert sub_item.text_content().strip() == "Ada Lovelace"
     assert "ada@example.com - Northside" not in lxml.html.tostring(
         document, encoding="unicode"
     )
+
+
+@pytest.mark.django_db
+def test_an_instance_page_marks_its_section_current_without_naming_the_instance(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Evening group")
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+    )
+
+    (nav,) = document.cssselect("#sidebar-nav")
+    (current,) = nav.cssselect("a[aria-current]")
+    assert current.text_content().strip().startswith("Cohorts")
+    assert current.get("aria-current") == "true"
+    assert "Evening group" not in nav.text_content()
 
 
 @pytest.mark.django_db

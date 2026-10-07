@@ -56,23 +56,3 @@ def test_long_unbroken_instance_title_does_not_widen_the_page(
 
     scroll_width = page.evaluate("document.documentElement.scrollWidth")
     assert scroll_width == 392
-
-
-@pytest.mark.playwright
-@pytest.mark.django_db(transaction=True)
-def test_long_unbroken_sidebar_instance_label_stays_inside_its_box(
-    live_server: pytest_django.live_server_helper.LiveServer,
-    live_server_site: Site,
-    page: Page,
-) -> None:
-    """A long sidebar instance label used to run past its tinted background."""
-    stub = _make_stub(name=_LONG_UNBROKEN_NAME)
-    page.set_viewport_size({"width": 1442, "height": 900})
-
-    page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}")
-
-    overflow = page.evaluate(
-        '(() => { const a = document.querySelector(\'a[aria-current="page"]'
-        '[hx-swap="outerHTML"]\'); return a ? a.scrollWidth - a.clientWidth : -1; })()'
-    )
-    assert overflow == 0

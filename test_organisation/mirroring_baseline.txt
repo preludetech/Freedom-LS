@@ -275,7 +275,6 @@ freedom_ls/panel_framework/tests/test_document_title.py
 freedom_ls/panel_framework/tests/test_export.py
 freedom_ls/panel_framework/tests/test_htmx_navigation.py
 freedom_ls/panel_framework/tests/test_instance_details_panel.py
-freedom_ls/panel_framework/tests/test_instance_dropdown.py
 freedom_ls/panel_framework/tests/test_link_cell.py
 freedom_ls/panel_framework/tests/test_list_view_refresh.py
 freedom_ls/panel_framework/tests/test_menu_items.py
