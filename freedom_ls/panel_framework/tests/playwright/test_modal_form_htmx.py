@@ -23,7 +23,7 @@ from ..conftest import StubModel, _make_stub
 def _open_create_modal_and_wait_for_settle(page: Page) -> None:
     """htmx focuses the fragment's [autofocus] field again when the swap
     settles, 20ms after it lands. Typing and pressing Esc inside that window
-    would lose focus from the discard prompt to that late refocus."""
+    would lose focus from the discard confirmation to that late refocus."""
     page.get_by_role("button", name="Create Item").click()
     expect(page.locator("#app-modal").get_by_label("Name")).to_be_visible()
     expect(page.locator("#app-modal-body")).not_to_have_class(
@@ -163,7 +163,7 @@ def test_esc_on_a_clean_form_closes_the_modal(
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
-def test_esc_on_a_dirty_form_shows_the_discard_prompt_with_the_form_intact(
+def test_esc_on_a_dirty_form_swaps_the_dialog_to_a_discard_confirmation(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     page: Page,
@@ -174,14 +174,48 @@ def test_esc_on_a_dirty_form_shows_the_discard_prompt_with_the_form_intact(
     page.locator("#app-modal").get_by_label("Name").fill("Dirty")
     page.keyboard.press("Escape")
 
-    expect(page.locator("#app-modal")).to_be_visible()
-    expect(page.locator("#app-modal").get_by_label("Name")).to_have_value("Dirty")
+    confirmation = page.get_by_role("dialog", name="Discard changes?")
+    expect(confirmation).to_be_visible()
+    expect(page.locator("#app-modal").get_by_label("Name")).to_be_hidden()
+    expect(page.get_by_role("button", name="Cancel")).to_be_hidden()
     expect(page.get_by_role("button", name="Keep editing")).to_be_focused()
 
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
-def test_keep_editing_hides_the_prompt_and_returns_focus_to_the_form(
+def test_the_close_control_on_a_dirty_form_asks_before_closing(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    _open_create_modal_and_wait_for_settle(page)
+    page.locator("#app-modal").get_by_label("Name").fill("Dirty")
+    page.locator("#app-modal-body").get_by_role("button", name="Close").click()
+
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_cancel_on_a_dirty_form_closes_without_asking(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    _open_create_modal_and_wait_for_settle(page)
+    page.locator("#app-modal").get_by_label("Name").fill("Dirty")
+    page.get_by_role("button", name="Cancel").click()
+
+    expect(page.locator("#app-modal")).to_be_hidden()
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_keep_editing_brings_the_form_back_with_its_input(
     live_server: pytest_django.live_server_helper.LiveServer,
     live_server_site: Site,
     page: Page,
@@ -193,7 +227,8 @@ def test_keep_editing_hides_the_prompt_and_returns_focus_to_the_form(
     page.keyboard.press("Escape")
     page.get_by_role("button", name="Keep editing").click()
 
-    expect(page.locator("[data-modal-discard-prompt]")).to_be_hidden()
+    expect(page.get_by_role("button", name="Keep editing")).to_be_hidden()
+    expect(page.get_by_role("dialog", name="Create Item")).to_be_visible()
     expect(page.locator("#app-modal").get_by_label("Name")).to_have_value("Dirty")
     expect(page.locator("#app-modal").get_by_label("Name")).to_be_focused()
 

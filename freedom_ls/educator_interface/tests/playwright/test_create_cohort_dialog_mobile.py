@@ -90,4 +90,4 @@ def test_escape_on_a_dirty_dialog_after_widening_asks_to_discard(
     dialog.get_by_label("Name").focus()
     page.keyboard.press("Escape")
 
-    expect(dialog.locator("[data-modal-discard-prompt]")).to_be_visible()
+    expect(page.get_by_role("dialog", name="Discard changes?")).to_be_visible()

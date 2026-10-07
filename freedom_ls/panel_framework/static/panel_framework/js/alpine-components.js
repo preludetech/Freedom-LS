@@ -77,9 +77,8 @@ document.addEventListener("alpine:init", () => {
             });
 
             trackListener(this._handlers, this._dialog, "close", () => {
+                this._hideDiscardPrompt();
                 this._body.innerHTML = "";
-                const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
-                if (prompt) prompt.hidden = true;
                 this._snapshot = null;
                 this.dirty = false;
                 focusTriggerOrMain(this._trigger);
@@ -140,11 +139,16 @@ document.addEventListener("alpine:init", () => {
                 this._dialog.close();
             }
         },
-        // Hides the discard prompt without closing the dialog. Called from
+        // A form's own Cancel button is a deliberate choice to drop the
+        // input, so it closes without the dirty-form guard that the close
+        // control and Esc go through.
+        cancel() {
+            this._dialog.close();
+        },
+        // Brings the form back in place of the discard prompt. Called from
         // the prompt's "Keep editing" button.
         keepEditing() {
-            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
-            if (prompt) prompt.hidden = true;
+            this._hideDiscardPrompt();
             const form = this._body.querySelector("form");
             const field = form && form.querySelector("input, select, textarea");
             if (field) field.focus();
@@ -203,12 +207,22 @@ document.addEventListener("alpine:init", () => {
                 .map(([name, value]) => `${name}=${value}`)
                 .join("&");
         },
+        // The prompt takes the fragment's place, and the dialog's
+        // accessible name moves to the prompt's heading with it.
         _showDiscardPrompt() {
             const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
             if (!prompt) return;
+            this._body.hidden = true;
             prompt.hidden = false;
+            this._dialog.setAttribute("aria-labelledby", "app-modal-discard-title");
             const keepEditingButton = prompt.querySelector("[autofocus]");
             if (keepEditingButton) keepEditingButton.focus();
+        },
+        _hideDiscardPrompt() {
+            const prompt = this._dialog.querySelector("[data-modal-discard-prompt]");
+            if (prompt) prompt.hidden = true;
+            this._body.hidden = false;
+            this._dialog.setAttribute("aria-labelledby", "app-modal-title");
         },
     }));
 
