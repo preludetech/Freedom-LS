@@ -68,6 +68,13 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user) Decide whether the first_class theme's `--color-muted` (#718096, 4.0:1 on white) should be darkened so sidebar group labels, table headers, definition labels and 'Page X of Y' reach 4.5:1, then update the theme token or accept the ratio in the QA plan
 - [x] (user + cmd) Fix QA bug: first_class muted text falls below 4.5:1 contrast on sidebar labels, table header and pager (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: Escape stops working on the create cohort dialog after widening past the sidebar breakpoint (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: quick view trigger is an eye and the quick view's Open link a box-with-arrow icon (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: quick view eyes line up at the end of the name cell (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: sidebar stays a flat list on instance pages, with the section marked current (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: table header row shares the table's fill, bold mono labels mark it (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: quick view never modal or blurred at any width; no scrollbar-gutter strip on phones (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: tables show 10 rows a page (TDD — failing test first, then fix)
+- [x] (user + cmd) Human design review: discard confirmation replaces the dialog content; Cancel closes without asking (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
