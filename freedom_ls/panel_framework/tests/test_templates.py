@@ -256,3 +256,12 @@ def test_a_list_pages_trail_renders_no_link_at_all() -> None:
     assert document.get("id") == "breadcrumbs" or document.cssselect("#breadcrumbs")
     assert not document.cssselect("a")
     assert "Cohorts" not in html
+
+
+def test_the_quick_view_open_full_page_link_shows_the_open_page_icon() -> None:
+    html = render_to_string("panel_framework/partials/quick_view_host.html")
+
+    document = lxml.html.fromstring(f"<div>{html}</div>")
+    (link,) = document.cssselect("#quick-view-open")
+    (icon,) = link.cssselect("svg")
+    assert icon.get("aria-label") == "open_page"

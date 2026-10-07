@@ -131,3 +131,22 @@ def test_a_quick_view_column_renders_a_labelled_icon_trigger_beside_the_name() -
     assert "Ada" not in trigger.text_content()
     links = document.cssselect("a")
     assert links.index(trigger) == len(links) - 1
+
+
+def test_the_quick_view_trigger_shows_the_quick_view_icon() -> None:
+    row = StubModel(pk=1, name="Ada")
+    column = {
+        "url_name": URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+        "quick_view": True,
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    document = lxml.html.fromstring(f"<div>{html}</div>")
+    (trigger,) = document.cssselect('[aria-controls="quick-view"]')
+    (icon,) = trigger.cssselect("svg")
+    assert icon.get("aria-label") == "quick_view"

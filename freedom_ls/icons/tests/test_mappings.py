@@ -63,3 +63,13 @@ class TestVariantDicts:
             assert icon_name in icons, (
                 f"{set_name} mapping[{semantic!r}] -> {icon_name!r} not in Iconify JSON"
             )
+
+
+class TestQuickViewAndOpenPageAreDistinct:
+    """One previews a record in place, the other leaves for the record's own
+    page, so they must never share a glyph."""
+
+    @pytest.mark.parametrize("set_name", list(ICON_SETS.keys()))
+    def test_they_map_to_different_glyphs(self, set_name: str) -> None:
+        mapping = ICON_SETS[set_name].mapping
+        assert mapping["quick_view"] != mapping["open_page"]

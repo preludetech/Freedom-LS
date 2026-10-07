@@ -10,6 +10,8 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "table_of_contents",
     "dropdown",
     "fullscreen",
+    "quick_view",
+    "open_page",
     # Status
     "success",
     "error",
