@@ -32,6 +32,26 @@ def test_column_derives_sort_field() -> None:
     assert column.sort_field == "user__name"
 
 
+def test_a_column_with_a_url_is_a_link() -> None:
+    column = Column(
+        header="Name",
+        template="cotton/data-table-cells/link.html",
+        text_attr="name",
+        url_name="panel_framework_test:framework",
+        url_path_template="stubs/{pk}",
+    )
+
+    assert column.is_link is True
+
+
+def test_a_column_with_no_url_is_not_a_link() -> None:
+    column = Column(
+        header="Name", template="cotton/data-table-cells/text.html", attr="name"
+    )
+
+    assert column.is_link is False
+
+
 def test_a_table_shows_ten_rows_a_page_by_default() -> None:
     """Few enough that the pager sits on screen below the table."""
     assert DataTable.page_size == 10

@@ -161,6 +161,11 @@ class Column:
         if self.sortable and not self.sort_field:
             self.sort_field = (self.text_attr or self.attr).replace(".", "__")
 
+    @property
+    def is_link(self) -> bool:
+        """Whether the cell opens the row's page: only the link cell reads a URL."""
+        return bool(self.url_name or self.url_path_template)
+
 
 @dataclass(frozen=True)
 class ExportColumn:

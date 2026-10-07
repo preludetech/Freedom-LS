@@ -4,8 +4,9 @@
 One row of a table rendered as a card below md. `card_template`, when set on
 the DataTable, replaces the primary/secondary rendering below with its own
 markup for a denser layout; the selection checkbox around it is unchanged
-either way. The decorative open-page icon ends the primary line, in line with
-the name and its quick-view trigger. Every other value is labelled with its
+either way. When the primary column links to the row's page, a decorative
+open-page icon ends the primary line, in line with the name and its
+quick-view trigger. Every other value is labelled with its
 column header, since the table headings aren't on screen to explain it.
 {% endcomment %}
 <li class="flex items-center gap-3 px-4 py-3 sm:px-6">
@@ -27,7 +28,7 @@ column header, since the table headings aren't on screen to explain it.
                     <div class="min-w-0 flex-1 font-bold break-words">
                         {% include primary_column.template with object=row.object column=primary_column %}
                     </div>
-                    <span aria-hidden="true"><c-icon name="open_page" class="size-4 shrink-0 text-muted" /></span>
+                    {% if primary_column.is_link %}<span aria-hidden="true"><c-icon name="open_page" class="size-4 shrink-0 text-muted" /></span>{% endif %}
                 </div>
             {% endif %}
             {% if secondary_columns %}

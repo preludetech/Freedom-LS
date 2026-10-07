@@ -142,6 +142,23 @@ def test_card_primary_line_ends_with_a_decorative_open_page_icon(
     assert not card.xpath("./*[@aria-hidden='true']")
 
 
+def test_a_card_whose_primary_column_is_plain_text_draws_no_open_page_icon(
+    mock_site_context: Site,
+) -> None:
+    """The icon promises a page to open; table b's name column is text."""
+    stub = _make_stub(name="row-plain", kind="a")
+
+    html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table,) = document.cssselect("#b-table")
+    (card,) = table.cssselect("ul li")
+    (primary_line,) = card.cssselect("[data-card-primary-line]")
+    assert "row-plain" in primary_line.text_content()
+    assert not primary_line.cssselect("svg")
+    assert not primary_line.xpath("./*[@aria-hidden='true']")
+
+
 def test_sheet_renders_reset_legends_and_footer_buttons(
     mock_site_context: Site,
 ) -> None:
