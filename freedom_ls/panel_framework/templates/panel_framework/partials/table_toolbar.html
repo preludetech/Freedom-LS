@@ -23,7 +23,7 @@ off.
         {% endfor %}
     </div>
 {% endpartialdef %}
-<div class="{% if searchable or toolbar or sorted_by %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3{% endif %}">
+<div class="{% if searchable or toolbar or sorted_by or exports %}md:flex md:flex-wrap md:items-center md:gap-2 md:border-b md:border-border md:px-6 md:py-3{% endif %}">
     {% if searchable %}
         <form id="{{ query.key }}-search"
               method="get"

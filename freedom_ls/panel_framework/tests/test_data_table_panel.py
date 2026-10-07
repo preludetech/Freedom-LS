@@ -15,7 +15,9 @@ from django.template.loader import render_to_string
 from django.test import RequestFactory
 
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel
+from freedom_ls.panel_framework.tables import ExportColumn
 from freedom_ls.panel_framework.views import SectionConfigBase
 
 from .conftest import _make_stub
@@ -332,6 +334,25 @@ class _NoSearchTablePanel(DataTablePanel):
     table_key = "nosearch"
 
 
+class _ExportOnlyDataTable(_NoSearchDataTable):
+    """Nothing for the desktop toolbar but the export link: no search, no
+    filters and no sort applied."""
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return []
+
+    @staticmethod
+    def get_export_columns() -> list[ExportColumn]:
+        return [ExportColumn("Name", "name")]
+
+
+class _ExportOnlyTablePanel(DataTablePanel):
+    title = "Export only"
+    data_table = _ExportOnlyDataTable
+    table_key = "exportonly"
+
+
 def _bind_table_panel(panel_class: type[DataTablePanel]) -> DataTablePanel:
     return panel_class(
         PanelContext(
@@ -527,6 +548,25 @@ def test_a_table_with_nothing_for_a_toolbar_renders_no_toolbar_form(
 
     document = lxml.html.fromstring(html)
     assert not document.cssselect("form#nosearch-search")
+    assert not document.cssselect('input[type="search"]')
+
+
+def test_an_export_link_on_its_own_still_gets_the_toolbar_row(
+    mock_site_context: Site,
+) -> None:
+    """With no search, filters or applied sort the toolbar wrapper used to
+    carry no row styling, leaving the export link against the card's edge."""
+    panel = _bind_table_panel(_ExportOnlyTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    document = lxml.html.fromstring(html)
+    (link,) = [a for a in document.cssselect("a") if a.text_content() == "Export CSV"]
+    toolbar = link.getparent().getparent()
+    assert "md:px-6" in toolbar.get("class", "").split()
+    assert "md:border-b" in toolbar.get("class", "").split()
     assert not document.cssselect('input[type="search"]')
 
 
