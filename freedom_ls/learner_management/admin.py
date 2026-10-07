@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import ngettext
 
+from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.organisations.admin import (
     ORGANISATION_SUMMARIES,
     OrganisationAdmin,
@@ -290,6 +291,12 @@ class LearnerAdmin(SiteAwareModelAdmin):
                 return queryset.none(), may_have_duplicates
             queryset = narrow_learners(queryset, scope, cohort_id)
         return queryset, may_have_duplicates
+
+
+# LearnerAdmin denies delete because removing a learner is is_active=False, not
+# losing the row. Erasing the user is the one path that must take their Learner
+# rows along, and the User admin only vouches for the models named here.
+USER_ERASURE_CASCADE_MODELS.add(Learner)
 
 
 class CohortMembershipInline(TabularInline):

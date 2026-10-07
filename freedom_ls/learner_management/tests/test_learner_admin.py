@@ -145,6 +145,20 @@ class TestDeletePermission:
     ) -> None:
         assert admin_instance.has_delete_permission(request=None) is False
 
+    @pytest.mark.django_db
+    def test_erasing_the_user_takes_their_learner_rows(self, staff_client) -> None:
+        learner = LearnerFactory()
+        membership = CohortMembershipFactory(learner=learner)
+        registration = LearnerCourseRegistrationFactory(learner=learner)
+        url = reverse("admin:freedom_ls_accounts_user_delete", args=[learner.user.pk])
+
+        response = staff_client.post(url, {"post": "yes"})
+
+        assert response.status_code == 302
+        assert not Learner.objects.filter(pk=learner.pk).exists()
+        assert not CohortMembership.objects.filter(pk=membership.pk).exists()
+        assert not LearnerCourseRegistration.objects.filter(pk=registration.pk).exists()
+
 
 @pytest.mark.django_db
 class TestLearnerAdminSave:
