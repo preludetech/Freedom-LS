@@ -8,44 +8,34 @@ and the close button.
 <style>
 @layer components {
     /* Logical properties throughout, so RTL flips the layout without a
-     * separate rule set. Positioned fixed at every breakpoint: show() opens
-     * it non-modally from 1280px up, so nothing else takes it out of flow.
-     * Three layouts: a bottom sheet below 768px, a modal side drawer from
-     * 768px, and a side drawer docked beside the page from 1280px, the
-     * first width with room for the page and the drawer side by side. */
+     * separate rule set. Opened with show() at every width, never as a
+     * modal: the page stays usable beside it, so another row can be
+     * previewed straight away. Three layouts: a bottom sheet below 768px, a
+     * side drawer laid over the page from 768px, and a side drawer docked
+     * beside the page from 1280px, the first width with room for the page
+     * and the drawer side by side. */
     #quick-view {
         position: fixed;
         inset-inline: 0;
         inset-block-start: auto;
         inset-block-end: 0;
-        /* The UA dialog stylesheet sets a definite `height: fit-content` (not
-         * `auto`) on both the modal sheet and the non-modal drawer, which
-         * blocks the inset-based auto-stretch this rule and the 768px
-         * media query below rely on, and (together with an unset
-         * inset-block-start on `dialog:modal`) over-constrains the box so
-         * the browser ignores inset-block-end instead of honouring it.
-         * inline-size needs the same override: `dialog:modal`'s definite
-         * `width: fit-content` over-constrains inset-inline the same way.
-         * `dialog:modal` also caps max-width/max-height at
-         * calc(100% - 6px - 2em), which otherwise still clips the sheet
-         * below full width even once inline-size itself is fixed. */
+        /* The UA dialog stylesheet sets a definite `height: fit-content` and
+         * `width: fit-content`, which block the inset-based auto-stretch
+         * this rule and the 768px media query below rely on. */
         inline-size: 100%;
         max-inline-size: none;
         block-size: auto;
-        max-block-size: 85dvh;
+        max-block-size: 50dvh;
         margin: 0;
         border: none;
-        /* show()'d rather than showModal()'d when docked (see the 1280px
-         * media query below), so it never reaches the top layer and must
-         * out-rank the sticky site header (.header's z-30) by hand to stay
-         * clickable. */
+        /* A non-modal dialog never reaches the top layer, so it must
+         * out-rank the sticky site header (.header's z-30) by hand. */
         z-index: 40;
         opacity: 0;
         transform: translateY(100%);
         transition:
             transform 200ms ease,
             opacity 200ms ease,
-            overlay 200ms ease allow-discrete,
             display 200ms ease allow-discrete;
     }
     /* Gated on [open] so the UA's dialog:not([open]) { display: none } still
@@ -62,9 +52,18 @@ and the close button.
             transform: translateY(100%);
         }
     }
+    @media (max-width: 767.98px) {
+        /* Room to scroll the page's last rows up clear of the sheet. */
+        html:has(#quick-view[open]) #interface-main {
+            padding-block-end: 50dvh;
+        }
+    }
     @media (min-width: 768px) {
+        /* It starts below the site header, which stays usable. --sidebar-top
+         * is the header's height, set by sidePanel on the shell wrapper this
+         * host sits inside. */
         #quick-view {
-            inset-block: 0;
+            inset-block: var(--sidebar-top, 0px) 0;
             inset-inline-start: auto;
             inline-size: 30rem;
             max-inline-size: 100%;
@@ -78,14 +77,9 @@ and the close button.
         }
     }
     @media (min-width: 1280px) {
-        /* Docked: it starts below the site header, which stays usable, and
-         * the page content gives up the drawer's width so nothing is left
-         * underneath it. --sidebar-top is the header's height, set by
-         * sidePanel on the shell wrapper this host sits inside. */
-        #quick-view {
-            inset-block-start: var(--sidebar-top, 0px);
-        }
-        html:has(#quick-view[open]:not(:modal)) #interface-main {
+        /* Docked: the page content gives up the drawer's width so nothing is
+         * left underneath it. */
+        html:has(#quick-view[open]) #interface-main {
             padding-inline-end: 30rem;
         }
     }
@@ -107,30 +101,23 @@ and the close button.
             display: none;
         }
     }
-    /* Only true while the drawer is showModal()'d (below 1280px): the
-     * docked drawer is opened with show(), which never locks the page. */
-    html:has(#quick-view:modal) {
-        overflow: hidden;
-        scrollbar-gutter: stable;
-    }
 }
 </style>
 {% comment %}
 The header is an overline label with two equal icon controls; the shown
 record's name and subtitle head the body below it, outside the swapped
 #quick-view-body so they survive the skeleton and error states. The drawer
-has a start border when docked and a shadow only while it is a modal sheet
-or side drawer laid over the page.
+has a start border when docked and a shadow only while it is a sheet or
+side drawer laid over the page.
 {% endcomment %}
 <dialog id="quick-view"
         x-data="quickView"
         aria-labelledby="quick-view-title"
-        class="modal-backdrop-host panel-surface text-on-surface shadow-xl p-0 xl:border-s xl:border-border xl:shadow-none">
+        class="panel-surface text-on-surface shadow-xl p-0 xl:border-s xl:border-border xl:shadow-none">
     <header class="flex items-center gap-1 border-b border-border px-6 py-2">
         <p class="flex-1 min-w-0 truncate font-sans text-xs font-semibold uppercase tracking-wide text-muted">Quick view</p>
         <a id="quick-view-open"
            href="#"
-           x-on:click="followOpenLink"
            aria-label="Open full page"
            class="flex size-9 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-on-surface">
             <c-icon name="open_page" class="size-5" />
