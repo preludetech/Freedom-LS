@@ -163,3 +163,17 @@ def test_a_list_page_shows_no_breadcrumb(staff_client: Client):
 
     assert not document.cssselect("#breadcrumbs a")
     assert not document.cssselect("#breadcrumbs nav")
+
+
+@pytest.mark.django_db
+def test_navigation_toggle_shows_a_menu_icon_not_a_panel_chevron(
+    staff_client: Client,
+):
+    """The content header's navigation toggle drew a chevron instead of a menu icon."""
+    organisation = OrganisationFactory()
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    (toggle,) = document.cssselect("button[aria-label='Open navigation panel']")
+    (icon,) = toggle.cssselect("[role='img']")
+    assert icon.get("aria-label") == "menu"
