@@ -73,7 +73,7 @@
                                        hx-get="{{ base_url }}{{ qs }}"
                                        hx-target="#{{ region_id }}"
                                        hx-swap="outerHTML"
-                                       class="cursor-pointer no-underline hover:text-primary inline-flex items-center gap-2">
+                                       class="cursor-pointer no-underline text-muted hover:text-primary inline-flex items-center gap-2">
                                         {{ header.column.header }}
                                         {% if header.state == 'asc' %}
                                             <c-icon name="sort_asc" class="size-4" />
