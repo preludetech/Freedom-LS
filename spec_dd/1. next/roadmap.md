@@ -13,11 +13,15 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 `/sdd:roadmap`; `/sdd:start` and `/sdd:finish_worktree` keep it current between syncs.
 
 - `educator-interface-10-reporting-dashboards`
+- `educator-interface-6-cohort-administration`
+- `educator-interface-7-learner-administration`
+- `failed-login-follow-up`
 - `file-scanning`
 - `form-engine-branch-logic`
 - `phone-number-form-field`
 - `referral-attribution-over-time`
 - `retry-sent-emails`
+- `server-side-conversion-tracking`
 - `test-organisation-and-hygene-4-shared-test-infrastructure`
 
 ## Needs work on main first
@@ -136,6 +140,28 @@ and educators reachable from the educator interface's quick view, and a design b
 Design. The nested `student-communication/` draft it grew from is superseded; its research lives
 on in the parent and the children.
 
+Spec 1, `user-communication-1-notifications-core`, is done, and `better-looking-notifications`
+restyled it to the registered design. `docs/product/notifications.md` describes it for users.
+What FLS can do now:
+
+- **Raise a notification from any app.** The `comms` app has one call, `raise_notification`, and
+  a site-aware `Notification` model with read and seen state per user. `comms` keeps its own
+  category registry and never imports `webhooks`.
+- **Show it to the user.** Every signed-in learner and educator gets a bell in the shared header
+  with a badge for what arrived since they last looked, a panel of recent notifications, and a
+  notification centre page with All and Unread filters. Notifications can be marked read or
+  unread one at a time or all at once. Following one opens what it is about and marks it read.
+- **Notify on one event.** A learner registered for a course by someone else is notified.
+  Self-registration and course completion notify nobody, because FLS never notifies someone about
+  what they just did. Their webhooks still fire.
+- **Ship it dark.** The bell stays hidden until a project sets `NOTIFICATIONS_ENABLED`.
+  Notifications are recorded either way, so a site that turns the bell on later shows its history.
+- **Extend it.** A project adds categories through `NOTIFICATION_CATEGORIES`, each with an
+  optional icon-tile colour. `NOTIFICATION_DELIVERY_BACKENDS` is where spec 2 plugs email in.
+
+Not built yet: email or any other delivery, preferences, pop-up alerts, retention, and anything
+to do with messaging. Specs 2 to 8 below cover them.
+
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate-or-off preferences page, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
@@ -197,7 +223,7 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 | Unknown | Owner | Affects |
 |---|---|---|
-| Does raising a notification go through `fire_webhook_event`'s registry, or does `comms` keep its own category registry that webhooks may also read? | 1 | 2, 4, 7 |
+| Does raising a notification go through `fire_webhook_event`'s registry, or does `comms` keep its own category registry that webhooks may also read? Resolved: `comms` keeps its own registry, extended through `NOTIFICATION_CATEGORIES`, and never imports `webhooks`. | 1 | 2, 4, 7 |
 | How a layered messaging rule is expressed (flags per level, or named policies per level), how cohort and individual registrations combine, and whose configuration governs a pair. | 3 | 4, 5 |
 | Whether a conversation may continue once the policy stops permitting the pair (registration ended, learner left the organisation, config changed). | 3 | 4, 5, 6 |
 | Does a conversation record the organisation it was started in, giving one conversation per pair per organisation? | 4 | 5 |
@@ -332,20 +358,26 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 | Directory | Scope | Depends on | Status | Notes |
 |---|---|---|---|---|
+| `failed-login-follow-up` | Let staff find visitors who got stuck at the login page with no account, and what they were trying to reach, so they can follow up. | `more-prominent-signup-button` | next | The capture method is still open: an opt-in "having trouble?" form, an email to the typed address, or silent capture. `research_capturing_failed_signin_intent.md` weighs them. |
 | `file-scanning` | Malware-scan applicant uploads (`QuestionAnswerFile`) in a background task, with a quarantine gate on the reviewer download and a sweep for stuck rows. | none | next | Has `1. spec.md`. Adds sweeps to `deployment/housekeeping.py`, as does `retry-sent-emails`; whichever lands second rebases. |
 | `form-engine-branch-logic` | Form authors gate a page, question or content block on an earlier answer; skipped pages are the routing; off-path answers are dropped at submit and `max_score` is per sitting. | none | next | Shares a per-attempt record with in-progress `compliance-form-randomization`; whichever lands first designs it for both. |
 | `mega-qa` | Whole-system QA: a locked staging reset endpoint, a durable journey-and-area QA suite with a new report format, and downstream projects inheriting the plans. | none | next | Before starting: cut it with `/sdd:roadmap mega-qa` (three ideas in one directory, order already decided: `idea_1` staging reset, then `idea_2` whole-system suite, then `idea_3` downstream propagation). Idea 2 tests the educator interface, so it is best written after the rebuild. |
 | `phone-number-form-field` | A form-engine phone number field with country code and validation. | none | next | Has a `todo.md` from an earlier start. |
 | `referral-attribution-over-time` | A per-user timeline of referral touches and an append-only conversion record at signup, application, interest and self-registration, ahead of referral payouts. | none | next | Has `1. spec.md`. Three new app-structure edges to approve at plan time. Wants a consent-gate spec that does not exist yet. |
 | `retry-sent-emails` | Persist every queued email, classify SMTP failures, retry transient ones with deferred tasks, sweep stuck rows, and give admins a resend action. | none | next | Has `1. spec.md`. The transport layer that `user-communication-2-notification-email` sends through. |
+| `server-side-conversion-tracking` | Send conversion events from the server as well as the browser: Meta Conversions API, TikTok Events API and Google Measurement Protocol, deduplicated against the browser tags. | `tracking-pixels` | next | |
 | `user-profile-upgrades` | Redesign the user profile page and add phone number and date of birth, some possibly required at signup. | `phone-number-form-field` | next | |
 | `auto-run-tailwind-watch` | One command that starts the dev server and the Tailwind watch together, with Tailwind's errors visible. | none | in progress | |
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
 | `content_snapshots` | Immutable point-in-time snapshots of content_engine objects, so what a learner saw on the day is recorded. | none | in progress | |
+| `course-applications-admin` | Show what applicants answered in the application form in the Django admin. | none | in progress | |
+| `educator-interface-looks-good` | Restyle the educator interface to its Claude Design design using existing brand tokens, with no new scope. | none | in progress | |
 | `in-app-feedback` | Configurable feedback prompts at natural pause points, with a rating and free text. | none | in progress | Spec, plan and QA plan exist. |
+| `panel-framework-looks-good` | Make the panel framework's screens follow their design; the structure works but the look does not match. | none | in progress | |
+| `qa-boy-scout-throwaway` | Throwaway spec for QA of `test-organisation-and-hygene-2-sdd-review-and-boy-scout`: `page_count` on `health` and a `percent` filter on `form_engine`. | none | in progress | Local branch only, never merged. |
 
 ```
 phone-number-form-field ──── user-profile-upgrades
 ```
 
-No edges: `file-scanning`, `form-engine-branch-logic`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (inside this table; `user-communication-2-notification-email` depends on it), and every spec in progress.
+No edges inside this table: `failed-login-follow-up` and `server-side-conversion-tracking` (their dependencies are done), `file-scanning`, `form-engine-branch-logic`, `mega-qa`, `referral-attribution-over-time`, `retry-sent-emails` (`user-communication-2-notification-email` depends on it), and every spec in progress.
