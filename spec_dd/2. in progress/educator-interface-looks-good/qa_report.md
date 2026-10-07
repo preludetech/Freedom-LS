@@ -178,7 +178,7 @@ Actual: when "Last Name" wraps onto two lines, the inline-flex link squeezes the
 | B1 | **FIXED** (commit: b472bc79) — Sortable table header labels use the primary link colour instead of muted |
 | B2 | **FIXED** (commit: 9d69dc9c) — Educator navigation toggle shows a chevron instead of a menu icon |
 | B3 | **FIXED** (commit: e7518eed) — Mobile learner row secondary line is not muted |
-| B4 | **UNRESOLVED** — Sort icon in a sortable header shrinks when its label wraps (reason: fix budget exhausted this run) |
+| B4 | **FIXED** (commit: c653fd36) — Sort icon in a sortable header shrinks when its label wraps |
 
 Each fix was re-checked in the browser after its commit: B1 on the learners table and the cohort Learners tab (labels now #5F6B7F, hover still primary, sorting works); B2 at 392 and 768 (hamburger `menu` icon, 44x48, opens the sheet); B3 at 392 (secondary-line last name muted and normal weight; desktop cells and card primary names unchanged). The B2 fixer's full suite had one Playwright failure, `test_modal_form_htmx` (submit buttons disabled while pending); it passes when run alone, so it is a load-related flake, not caused by the fix. The fixers' test runs logged the browser session out twice; the tester logged back in.
 
