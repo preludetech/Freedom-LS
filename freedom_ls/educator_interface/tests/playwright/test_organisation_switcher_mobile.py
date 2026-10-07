@@ -119,6 +119,29 @@ def test_tapping_a_section_link_in_the_mobile_sheet_loads_it_without_a_page_relo
     )
 
 
+def test_navigating_from_the_mobile_sheet_moves_focus_into_the_new_content(
+    live_server,
+    mobile_educator_page: Page,
+    educator_user: User,
+):
+    """The toggle that opened the sheet is swapped out with the content it
+    sat in, so focus used to fall to <body> after a section link."""
+    page = mobile_educator_page
+    organisation = OrganisationFactory(name="Org A")
+    CohortFactory(organisation=organisation, name="Alpha Cohort")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+
+    page.goto(_interface_url(live_server, organisation.slug, "dashboard"))
+    sheet = page.locator("dialog[aria-label='Navigation']")
+    page.get_by_role("button", name="Open navigation panel").click()
+    expect(sheet).to_be_visible()
+
+    sheet.get_by_role("link", name="Cohorts").click()
+
+    expect(page.get_by_role("link", name="Alpha Cohort", exact=True)).to_be_visible()
+    expect(page.locator("#main-content")).to_be_focused()
+
+
 def test_close_button_dismisses_the_mobile_sheet_and_returns_focus_to_the_toggle(
     live_server,
     mobile_educator_page: Page,

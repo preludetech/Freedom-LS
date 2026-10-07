@@ -409,6 +409,8 @@ document.addEventListener("alpine:init", () => {
         _historyPushed: false,
         _closingFromPopstate: false,
         _closingForHtmxNav: false,
+        _refocusAfterHtmxNav: false,
+        _afterSwapHandler: null,
         triggerEl: null,
         init() {
             this.dialog = this.$refs.panelDialog;
@@ -434,10 +436,17 @@ document.addEventListener("alpine:init", () => {
             // closes the modal sheet and re-shows the panel docked before
             // this runs, so `open` is read back off the dialog rather than
             // assumed false, or the docked panel would be recorded closed.
+            // A sheet closed for an htmx navigation leaves the toggle alone:
+            // it sits in the content the response is about to swap out, so
+            // focus goes to the new content once the swap lands instead.
             this.dialog.addEventListener("close", () => {
                 this.open = this.dialog.open;
                 this._syncGrid();
-                if (this.triggerEl) this.triggerEl.focus();
+                if (this._closingForHtmxNav) {
+                    this._refocusAfterHtmxNav = true;
+                } else if (this.triggerEl) {
+                    this.triggerEl.focus();
+                }
                 if (this._historyPushed) {
                     this._historyPushed = false;
                     if (!this._closingFromPopstate && !this._closingForHtmxNav) {
@@ -504,6 +513,21 @@ document.addEventListener("alpine:init", () => {
                 this.close();
             });
 
+            // The browser hands focus back to the toggle as the sheet closes,
+            // and the swap then detaches that toggle, dropping focus to
+            // <body>. Only then is the new content claimed. Focus that some
+            // other handler has already placed (a table's own region focus
+            // after a sort from its sheet) is left where it is.
+            this._afterSwapHandler = () => {
+                if (!this._refocusAfterHtmxNav) return;
+                this._refocusAfterHtmxNav = false;
+                const active = document.activeElement;
+                if (active && active !== document.body && active.isConnected) return;
+                const main = document.getElementById("main-content");
+                if (main) main.focus();
+            };
+            document.addEventListener("htmx:afterSwap", this._afterSwapHandler);
+
             // Back closes the modal sheet instead of navigating the page. The
             // entry pushed on open has just been popped, so only close here.
             // Only the mobile sheet ever pushed an entry: the docked panel
@@ -550,6 +574,9 @@ document.addEventListener("alpine:init", () => {
             }
             if (this._popstateHandler) {
                 window.removeEventListener("popstate", this._popstateHandler);
+            }
+            if (this._afterSwapHandler) {
+                document.removeEventListener("htmx:afterSwap", this._afterSwapHandler);
             }
         },
         _restoreDesktopState() {
