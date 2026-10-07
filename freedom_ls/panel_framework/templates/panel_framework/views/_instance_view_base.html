@@ -10,7 +10,7 @@ root that is not a TabSet.
 {% block page_header_padding %}{% if main.panel.tabs|length > 1 %}pb-0{% else %}pb-5{% endif %}{% endblock page_header_padding %}
 
 {% block page_header %}
-    <c-panel-page-header title="{{ main.title }}" title_id="instance-title">
+    <c-panel-page-header title="{{ main.title }}" title_id="instance-title" panel_toggle="true">
         <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
     </c-panel-page-header>
     {% if main.panel.tabs|length > 1 %}

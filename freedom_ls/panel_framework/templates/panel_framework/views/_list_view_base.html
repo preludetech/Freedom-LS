@@ -2,7 +2,7 @@
 {% load panel_tags %}
 
 {% block page_header %}
-    <c-panel-page-header title="{{ main.heading }}">
+    <c-panel-page-header title="{{ main.heading }}" panel_toggle="true">
         <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
     </c-panel-page-header>
 {% endblock page_header %}

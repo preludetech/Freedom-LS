@@ -1,0 +1,15 @@
+{% comment %}
+The mobile navigation toggle, drawn at the start of the page heading's row
+so it costs no row of its own. It sits inside #main-content and is swapped
+with it on every navigation; Alpine binds the new copy to the shell's
+sidePanel controller. The negative margins cancel the button's padding, so
+the icon lines up with the band's gutter and sits the row's own gap from the
+heading.
+{% endcomment %}
+<button type="button"
+        x-on:click="toggle"
+        x-bind:aria-expanded="open"
+        class="lg:hidden -mx-3 shrink-0 p-3 rounded-md text-muted hover:text-on-surface hover:bg-surface-2 transition-colors cursor-pointer"
+        aria-label="Open navigation panel">
+    <c-icon name="menu" class="size-5" />
+</button>

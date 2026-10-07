@@ -7,8 +7,6 @@
 
 {% block sidebar_storage_key %}sidebar-educator{% endblock sidebar_storage_key %}
 
-{% block panel_toggle_icon %}<c-icon name="menu" class="size-5" />{% endblock panel_toggle_icon %}
-
 {% comment %}
 The sidebar sits flush against the viewport's left edge with its own
 full-height rule on the right, and the content column carries its own
@@ -57,23 +55,24 @@ the last card.
 {% endblock sidebar_content %}
 
 {% comment %}
-The content header is the shell's toggle-and-back-link row alone, on the
-same raised surface as the page header band that follows it inside
-#main-content, so the two read as one band. On a list page, on desktop, the
+The content header is the back link alone, on the same raised surface as
+the page header band that follows it inside #main-content, so the two read
+as one band. The mobile navigation toggle is not here: it sits on the page
+heading's row (panel_toggle on c-panel-page-header), so on a list page this
 row holds nothing visible and takes no height. The shared #page-title
 region stays in the page, empty, because every navigation response swaps
 it out of band: the view's own heading renders through panel-page-header.
 {% endcomment %}
 {% block content_header %}
-    <div class="panel-surface px-1 sm:px-3 lg:px-5">
-        {% block content_header_top %}{{ block.super }}{% endblock content_header_top %}
+    <div class="panel-surface px-4 sm:px-6 lg:px-8">
+        {% block content_header_top %}
+            {% block breadcrumbs %}
+                {% include "panel_framework/partials/breadcrumbs.html" %}
+            {% endblock breadcrumbs %}
+        {% endblock content_header_top %}
     </div>
     {% include "partials/page_title.html" %}
 {% endblock content_header %}
-
-{% block breadcrumbs %}
-    {% include "panel_framework/partials/breadcrumbs.html" %}
-{% endblock breadcrumbs %}
 
 {% block quick_view_host %}
     {% include "panel_framework/partials/quick_view_host.html" %}

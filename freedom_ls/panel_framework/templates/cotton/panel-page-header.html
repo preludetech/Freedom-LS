@@ -1,4 +1,4 @@
-<c-vars title="" subtitle="" heading_level="1" title_id="" />
+<c-vars title="" subtitle="" heading_level="1" title_id="" panel_toggle="" />
 
 {% load panel_tags %}
 
@@ -14,10 +14,13 @@ Attributes:
   heading_level  1-6 (default 1). Falls back to the default on anything else.
   title_id       id on the heading element, e.g. the "instance-title" id the
                  instanceTitleChanged listener in alpine-components.js looks up.
+  panel_toggle   "true" on a page's own heading: puts the mobile navigation
+                 toggle at the start of the heading's row.
 
 The heading holds the title text and nothing else, so that listener's
 textContent swap never wipes out a badge nested inside it — the badge sits
-beside it instead.
+beside it instead. The toggle sits outside the wrapping title row, so a long
+title wraps beside it rather than dropping underneath it.
 
 Named slots: badge, meta, stats, actions. Each is skipped when empty or
 whitespace-only.
@@ -26,9 +29,12 @@ whitespace-only.
 {% with level=heading_level|heading_level:"1" %}
 <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3" {{ attrs }}>
     <div class="min-w-0 wrap-anywhere">
-        <div class="flex flex-wrap items-center gap-3">
-            <h{{ level }}{% if title_id %} id="{{ title_id }}"{% endif %}>{{ title }}</h{{ level }}>
-            {% if badge.strip %}{{ badge }}{% endif %}
+        <div class="flex items-center gap-3">
+            {% if panel_toggle %}{% include "panel_framework/partials/panel_toggle.html" %}{% endif %}
+            <div class="flex min-w-0 flex-wrap items-center gap-3">
+                <h{{ level }}{% if title_id %} id="{{ title_id }}"{% endif %}>{{ title }}</h{{ level }}>
+                {% if badge.strip %}{{ badge }}{% endif %}
+            </div>
         </div>
         {% if subtitle %}<p class="text-muted">{{ subtitle }}</p>{% endif %}
         {% if meta.strip %}<div class="text-sm text-muted">{{ meta }}</div>{% endif %}

@@ -26,9 +26,15 @@ accounts:legal_doc unconditionally too, so it is blanked for the same reason.
     {% include "panel_framework/partials/sidebar_nav.html" with menu_groups=menu_groups request=request only %}
 {% endblock sidebar_content %}
 
-{% block breadcrumbs %}
-    {% include "panel_framework/partials/breadcrumbs.html" %}
-{% endblock breadcrumbs %}
+{% comment %}
+The view's page header draws the mobile navigation toggle on its own heading
+row, so the shell's toggle-and-back-link row keeps only the back link.
+{% endcomment %}
+{% block content_header_top %}
+    {% block breadcrumbs %}
+        {% include "panel_framework/partials/breadcrumbs.html" %}
+    {% endblock breadcrumbs %}
+{% endblock content_header_top %}
 
 {% block quick_view_host %}
     {% include "panel_framework/partials/quick_view_host.html" %}

@@ -177,3 +177,15 @@ def test_navigation_toggle_shows_a_menu_icon_not_a_panel_chevron(
     (toggle,) = document.cssselect("button[aria-label='Open navigation panel']")
     (icon,) = toggle.cssselect("[role='img']")
     assert icon.get("aria-label") == "menu"
+
+
+@pytest.mark.django_db
+def test_navigation_toggle_sits_in_the_page_heading_row(staff_client: Client):
+    """On mobile the toggle took a row of its own above the page heading."""
+    organisation = OrganisationFactory()
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    (toggle,) = document.cssselect("button[aria-label='Open navigation panel']")
+    (heading,) = document.cssselect("#main-content h1")
+    assert toggle.getparent() is heading.getparent().getparent()
