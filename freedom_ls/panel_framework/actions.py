@@ -237,13 +237,19 @@ class EditAction(FormPanelAction):
         form = self.form_class(data, instance=instance)
         return form
 
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        # The page heading is named by the section, not by str(instance), so
+        # the title a save sends back has to come from the same place.
+        self._section = ctx.config
+        return super().handle_submit(ctx)
+
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         form.save()
         response = HttpResponse(status=204)
         response["HX-Trigger"] = build_hx_trigger(
             self.get_success_events(form.instance),
             close_modal=True,
-            title=str(form.instance),
+            title=self._section.get_instance_label(form.instance),
         )
         return response
 

@@ -430,6 +430,45 @@ def test_edit_action_form_valid_saves_and_returns_trigger(
     assert "HX-Redirect" not in response
 
 
+class _LabelledConfig(RecordingCapabilityConfig):
+    """A section whose instances are named by something other than str()."""
+
+    @classmethod
+    def get_instance_label(cls, instance: Model) -> str:
+        return f"Item {instance.name}"
+
+
+@pytest.mark.django_db
+def test_edit_action_names_the_new_title_the_way_its_section_does(
+    mock_site_context: Site,
+) -> None:
+    """The page heading comes from the section's get_instance_label, so the
+    title a save sends back must too, or the heading changes shape after a
+    rename."""
+    item = _make_stub(name="Old Name")
+    action = EditAction(
+        form_class=_StubModelForm,
+        form_title="Edit Item",
+        instance=item,
+        success_events=("itemChanged",),
+    )
+    request = RequestFactory().post("/", {"name": "New Name"})
+    request.user = make_staff_user()
+    ctx = PanelContext(
+        request=request,
+        instance=item,
+        base_url="/test",
+        name="",
+        config=_LabelledConfig,
+    )
+
+    response = action.handle_submit(ctx)
+
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {"itemChanged": [str(item.pk)]}, close_modal=True, title="Item New Name"
+    )
+
+
 @pytest.mark.django_db
 def test_edit_action_duplicate_name_returns_422(mock_site_context: Site) -> None:
     """Duplicate name returns 422 with validation error."""

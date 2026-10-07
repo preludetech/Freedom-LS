@@ -564,12 +564,19 @@ document.addEventListener("htmx:afterSwap", (event) => {
 
 // A saved edit renames the instance it edited. Panels re-fetch themselves on
 // their own declared domain events through their own hx-trigger; the page
-// heading is outside every panel, so it is updated here.
+// heading is outside every panel, so it is updated here. The browser tab's
+// title opens with the same name (the rest of it names the scope and the
+// site), so only that leading segment is swapped.
 document.addEventListener("instanceTitleChanged", (event) => {
     const title = event.detail && event.detail.title;
     if (!title) return;
     const heading = document.getElementById("instance-title");
-    if (heading) heading.textContent = title;
+    if (!heading) return;
+    const previous = heading.textContent;
+    heading.textContent = title;
+    if (previous && document.title.startsWith(previous)) {
+        document.title = title + document.title.slice(previous.length);
+    }
 });
 
 // A table region swap replaces the whole region element (outerHTML), so the

@@ -3,10 +3,13 @@
 The Django test client coverage of EditAction's response contract lives in
 educator_interface/tests/test_cohort_delete_action.py and
 panel_framework/tests/test_panel_actions.py. What only a browser shows is
-that the modal actually closes and the page heading updates in place.
+that the modal actually closes and the page heading and the browser tab's
+title update in place.
 """
 
 from __future__ import annotations
+
+import re
 
 import pytest
 from guardian.shortcuts import assign_perm
@@ -44,3 +47,4 @@ def test_editing_a_cohorts_name_closes_the_modal_and_updates_the_title(
 
     expect(page.locator("#app-modal")).to_be_hidden()
     expect(page.locator("#instance-title")).to_have_text("New Name")
+    expect(page).to_have_title(re.compile(r"^New Name — "))
