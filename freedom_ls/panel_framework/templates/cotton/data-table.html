@@ -76,11 +76,11 @@
                                        class="cursor-pointer no-underline text-muted hover:text-primary inline-flex items-center gap-2">
                                         {{ header.column.header }}
                                         {% if header.state == 'asc' %}
-                                            <c-icon name="sort_asc" class="size-4" />
+                                            <c-icon name="sort_asc" class="size-4 shrink-0" />
                                         {% elif header.state == 'desc' %}
-                                            <c-icon name="sort_desc" class="size-4" />
+                                            <c-icon name="sort_desc" class="size-4 shrink-0" />
                                         {% else %}
-                                            <c-icon name="sort_neutral" class="size-4 text-muted" />
+                                            <c-icon name="sort_neutral" class="size-4 shrink-0 text-muted" />
                                         {% endif %}
                                     </a>
                                 {% else %}

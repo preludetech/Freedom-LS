@@ -1,5 +1,4 @@
-"""E2E test that a sortable column's header link looks like every other
-header label rather than picking up the global link colour."""
+"""E2E tests for how a sortable column's header link is styled."""
 
 from __future__ import annotations
 
@@ -34,3 +33,23 @@ def test_sortable_header_link_has_the_same_colour_as_its_header_cell(
     )
 
     assert link_colour == cell_colour
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_sort_icon_keeps_its_size_when_the_header_label_is_squeezed(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    """When a narrow column made the header label wrap, the flex link
+    squeezed the sort icon down to a dot."""
+    _make_stub(name="row-01")
+
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+
+    link = page.locator("#stubs-table thead").get_by_role("link", name="Name")
+    link.evaluate("el => { el.style.width = '2rem'; }")
+    icon_width = link.locator("svg").evaluate("el => el.getBoundingClientRect().width")
+
+    assert icon_width == 16
