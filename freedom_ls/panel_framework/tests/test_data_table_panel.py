@@ -523,3 +523,18 @@ def test_a_table_with_nothing_for_a_toolbar_renders_no_toolbar_form(
     document = lxml.html.fromstring(html)
     assert not document.cssselect("form#nosearch-search")
     assert not document.cssselect('input[type="search"]')
+
+
+def test_the_header_row_shares_the_tables_fill_and_marks_itself_with_text(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-x")
+
+    html = fetch(_panel_path(stub.pk)).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (thead,) = document.cssselect(f"#{_region_id()} thead")
+    assert "bg-transparent" in thead.get("class")
+    for th in thead.cssselect("th[class]"):
+        classes = th.get("class").split()
+        assert {"font-mono", "font-bold", "uppercase"} <= set(classes)

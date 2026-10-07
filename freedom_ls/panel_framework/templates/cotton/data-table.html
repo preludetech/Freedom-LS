@@ -50,8 +50,12 @@
     {% endif %}
 
     <div class="hidden overflow-x-auto md:block {{ class }}">
+        {% comment %}
+        The header row shares the table's own fill; bold mono labels and a
+        rule beneath set it apart from the rows.
+        {% endcomment %}
         <table>
-                <thead>
+                <thead class="border-b border-border bg-transparent">
                     <tr>
                         {% if bulk_actions %}
                             <th>
@@ -62,7 +66,7 @@
                             </th>
                         {% endif %}
                         {% for header in header_columns %}
-                            <th class="text-xs uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
+                            <th class="font-mono text-xs font-bold uppercase tracking-wide{% if header.column.header_class %} {{ header.column.header_class }}{% endif %}">
                                 {% if header.column.sortable %}
                                     {% querystring request.GET header.changes as qs %}
                                     <a href="{{ page_url }}{{ qs }}"
