@@ -75,6 +75,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user + cmd) Human design review: quick view never modal or blurred at any width; no scrollbar-gutter strip on phones (TDD — failing test first, then fix)
 - [x] (user + cmd) Human design review: tables show 10 rows a page (TDD — failing test first, then fix)
 - [x] (user + cmd) Human design review: discard confirmation replaces the dialog content; Cancel closes without asking (TDD — failing test first, then fix)
+- [ ] (user + cmd) Fix QA bug: sort icon in a sortable table header shrinks to a dot when its label wraps (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

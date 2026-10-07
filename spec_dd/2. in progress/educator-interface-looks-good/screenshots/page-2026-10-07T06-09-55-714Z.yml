@@ -1,0 +1,125 @@
+- generic [active] [ref=f7e1]:
+  - banner [ref=f7e2]:
+    - link [ref=f7e3] [cursor=pointer]:
+      - /url: /
+      - img "FirstClass" [ref=f7e4]
+      - heading "FirstClass" [level=1] [ref=f7e5]
+    - navigation [ref=f7e6]:
+      - generic [ref=f7e7]:
+        - generic [ref=f7e8]:
+          - button "Notifications, none new" [ref=f7e9]:
+            - img "notifications" [ref=f7e11]
+          - status:
+            - generic [ref=f7e13]: Notifications, none new
+        - button "Open user menu for demodev@email.com" [ref=f7e15] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f7e16]: DE
+  - generic:
+    - status
+    - alert
+  - main [ref=f7e17]:
+    - generic [ref=f7e19]:
+      - dialog "Navigation" [ref=f7e20]:
+        - generic [ref=f7e22]:
+          - generic [ref=f7e279]:
+            - paragraph [ref=f7e280]: Organisation
+            - button "Switch organisation" [ref=f7e282] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f7e283]: QO
+              - generic "QA Second Org" [ref=f7e284]
+              - img "dropdown" [ref=f7e285]
+          - navigation "Sections" [ref=f7e287]:
+            - heading "Teaching" [level=2] [ref=f7e288]
+            - list [ref=f7e289]:
+              - listitem [ref=f7e290]:
+                - link "home Dashboard" [ref=f7e291] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-second-org-2/dashboard
+                  - img "home" [ref=f7e293]
+                  - generic [ref=f7e295]: Dashboard
+              - listitem [ref=f7e296]:
+                - link "cohort Cohorts" [ref=f7e297] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-second-org-2/cohorts
+                  - img "cohort" [ref=f7e299]
+                  - generic [ref=f7e301]: Cohorts
+              - listitem [ref=f7e302]:
+                - link "user Learners" [ref=f7e303] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-second-org-2/learners
+                  - img "user" [ref=f7e305]
+                  - generic [ref=f7e307]: Learners
+              - listitem [ref=f7e308]:
+                - link "course Courses" [ref=f7e309] [cursor=pointer]:
+                  - /url: /educator/organisations/qa-second-org-2/courses
+                  - img "course" [ref=f7e311]
+                  - generic [ref=f7e313]: Courses
+          - generic [ref=f7e58]:
+            - generic [ref=f7e60]:
+              - generic [aria-hidden] [ref=f7e61]: DE
+              - generic [ref=f7e62]: demodev@email.com
+            - link "Account settings" [ref=f7e64] [cursor=pointer]:
+              - /url: /accounts/profile/
+              - img "settings" [ref=f7e65]
+      - generic [ref=f7e69]:
+        - generic [ref=f7e314]:
+          - heading "Learners" [level=1] [ref=f7e319]
+          - generic [ref=f7e324]:
+            - generic [ref=f7e327]:
+              - generic [ref=f7e328]: Search
+              - searchbox "Search" [ref=f7e86]
+            - table [ref=f7e331]:
+              - rowgroup [ref=f7e332]:
+                - row [ref=f7e333]:
+                  - columnheader [ref=f7e334]:
+                    - link [ref=f7e335] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-second-org-2/learners?learners-sort=user__first_name
+                      - text: First Name
+                      - img "sort_neutral" [ref=f7e336]
+                  - columnheader [ref=f7e338]:
+                    - link [ref=f7e339] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-second-org-2/learners?learners-sort=user__last_name
+                      - text: Last Name
+                      - img "sort_neutral" [ref=f7e340]
+                  - columnheader "Email" [ref=f7e342]
+                  - columnheader "Cohorts" [ref=f7e343]
+                  - columnheader "Registered Courses" [ref=f7e344]
+              - rowgroup [ref=f7e345]:
+                - row [ref=f7e346]:
+                  - cell [ref=f7e347]:
+                    - generic [ref=f7e348]:
+                      - link "Second Org" [ref=f7e349] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-second-org-2/learners/8247d21c-7971-446a-b14e-6c23c729769f
+                      - 'link "Quick view: Second Org" [ref=f7e350] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-second-org-2/learners/8247d21c-7971-446a-b14e-6c23c729769f
+                        - img "quick_view" [ref=f7e351]
+                  - cell [ref=f7e355]:
+                    - link "Learner 1" [ref=f7e356] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-second-org-2/learners/8247d21c-7971-446a-b14e-6c23c729769f
+                  - cell "qa.secondorg.1@example.com" [ref=f7e357]
+                  - cell [ref=f7e358]:
+                    - link "QA Second Org Cohort" [ref=f7e359] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-second-org-2/cohorts/02028004-6c16-4405-8f96-406dcd40aeb7
+                  - cell "-" [ref=f7e360]
+                - row [ref=f7e361]:
+                  - cell [ref=f7e362]:
+                    - generic [ref=f7e363]:
+                      - link "Second Org" [ref=f7e364] [cursor=pointer]:
+                        - /url: /educator/organisations/qa-second-org-2/learners/2735262b-7f85-4275-babd-16449d1aadf8
+                      - 'link "Quick view: Second Org" [ref=f7e365] [cursor=pointer]':
+                        - /url: /educator/organisations/qa-second-org-2/learners/2735262b-7f85-4275-babd-16449d1aadf8
+                        - img "quick_view" [ref=f7e366]
+                  - cell [ref=f7e370]:
+                    - link "Learner 2" [ref=f7e371] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-second-org-2/learners/2735262b-7f85-4275-babd-16449d1aadf8
+                  - cell "qa.secondorg.2@example.com" [ref=f7e372]
+                  - cell [ref=f7e373]:
+                    - link "QA Second Org Cohort" [ref=f7e374] [cursor=pointer]:
+                      - /url: /educator/organisations/qa-second-org-2/cohorts/02028004-6c16-4405-8f96-406dcd40aeb7
+                  - cell "-" [ref=f7e375]
+        - generic [ref=f7e248]: Now viewing QA Second Org
+  - contentinfo [ref=f7e250]:
+    - generic [ref=f7e251]:
+      - paragraph [ref=f7e252]: © 2026 FirstClass
+      - navigation "Legal" [ref=f7e253]:
+        - link "Terms and Conditions" [ref=f7e254] [cursor=pointer]:
+          - /url: /accounts/legal/terms/
+        - link "Privacy Policy" [ref=f7e255] [cursor=pointer]:
+          - /url: /accounts/legal/privacy/
+  - generic [ref=f7e256] [cursor=pointer]: educator-interface-looks-good
+  - generic "Show toolbar" [ref=f7e258]: DJDT
