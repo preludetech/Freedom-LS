@@ -162,3 +162,35 @@ def test_a_learner_changed_event_naming_the_shown_learner_refetches_it(
             "{detail: {ids: [id]}}))",
             str(learner.pk),
         )
+
+
+@pytest.mark.parametrize(
+    "viewport",
+    [{"width": 1440, "height": 900}, {"width": 390, "height": 844}],
+    ids=["table", "cards"],
+)
+def test_every_rows_quick_view_trigger_lines_up_whatever_the_name_length(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+    viewport: dict[str, int],
+) -> None:
+    page = educator_logged_in_page
+    page.set_viewport_size(viewport)
+    organisation = OrganisationFactory(name="Org A")
+    assign_object_role(educator_user, organisation, "organisation_admin")
+    for first_name in ("Al", "Christopher"):
+        LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(first_name=first_name, last_name="Lovelace"),
+        )
+
+    page.goto(interface_url(live_server, organisation.slug, "learners"))
+
+    edges = []
+    for first_name in ("Al", "Christopher"):
+        trigger = page.get_by_role("link", name=f"Quick view: {first_name}", exact=True)
+        box = trigger.bounding_box()
+        assert box is not None
+        edges.append(box["x"] + box["width"])
+    assert abs(edges[0] - edges[1]) < 1

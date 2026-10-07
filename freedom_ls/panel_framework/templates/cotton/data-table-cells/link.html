@@ -1,8 +1,9 @@
 {% load data_table_tags panel_tags %}
 {% comment %}
 The row's name as a link to its page. With column.quick_view, a small icon
-trigger follows the name and opens the row in the #quick-view drawer
-instead, so both the page and the drawer are reachable from every row. The
+trigger sits at the cell's end edge and opens the row in the #quick-view
+drawer instead, so both the page and the drawer are reachable from every row
+and the triggers line up down the column whatever each name's length. The
 trigger is labelled by the name it sits beside, and is at least 44px square
 below md, where it sits on a card tapped with a finger.
 {% endcomment %}
@@ -11,8 +12,9 @@ below md, where it sits on a card tapped with a finger.
     -
 {% else %}
     {% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
+    {% if column.quick_view %}<span class="flex items-center justify-between gap-2">{% endif %}
     <a href="{{ resolved_url }}"
-       class="font-bold text-on-surface no-underline hover:text-primary"
+       class="{% if column.quick_view %}min-w-0 break-words {% endif %}font-bold text-on-surface no-underline hover:text-primary"
        {% if column.htmx_nav %}
            hx-get="{{ resolved_url }}"
            hx-target="#main-content"
@@ -21,8 +23,8 @@ below md, where it sits on a card tapped with a finger.
        {% endif %}>{{ cell_text }}</a>{% if column.quick_view %}
     <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view"
                           aria-label="Quick view: {{ cell_text }}"
-                          class="ms-1 inline-flex size-11 shrink-0 items-center justify-center rounded-md align-middle text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8">
+                          class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8">
         <c-icon name="quick_view" class="size-4" />
-    </c-quick-view-trigger>{% endif %}
+    </c-quick-view-trigger></span>{% endif %}
 {% endif %}
 {% endwith %}
