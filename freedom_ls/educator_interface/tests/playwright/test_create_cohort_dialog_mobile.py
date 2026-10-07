@@ -60,6 +60,27 @@ def test_create_cohort_dialog_shows_its_field_and_buttons_and_cancel_closes_it(
     expect(dialog).to_be_hidden()
 
 
+def test_cancel_keeps_the_form_in_the_sheet_until_the_next_open(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user,
+) -> None:
+    """The sheet slides out over its closing transition, so emptying it on
+    close sent an empty sheet down the screen. The content stays until the
+    next open replaces it."""
+    page = educator_logged_in_page
+    dialog = _open_create_cohort_on_a_phone(live_server, page, educator_user)
+    dialog.get_by_label("Name").fill("Half-typed cohort")
+
+    dialog.get_by_role("button", name="Cancel").click()
+
+    expect(page.locator("#app-modal-body form")).to_have_count(1)
+    expect(dialog).to_be_hidden()
+    page.get_by_role("button", name="Create Cohort").click()
+    expect(dialog).to_be_visible()
+    expect(dialog.get_by_label("Name")).to_have_value("")
+
+
 def test_escape_closes_the_dialog_after_widening_past_the_sidebar_breakpoint(
     live_server,
     educator_logged_in_page: Page,

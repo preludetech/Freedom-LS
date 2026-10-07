@@ -50,8 +50,12 @@ document.addEventListener("alpine:init", () => {
             // hx-disabled-elt blurs the trigger before showModal() runs, so
             // native focus return cannot be relied on — the trigger is
             // recorded here instead, while it is still the active element.
+            // The previous fragment is dropped here too, not on close: below
+            // sm the sheet is still sliding out when close fires, and would
+            // go down the screen empty.
             trackListener(this._handlers, document, "htmx:beforeRequest", (event) => {
                 if (event.detail.target === this._body && !this._dialog.open) {
+                    this._body.innerHTML = "";
                     this._trigger = event.detail.elt;
                 }
             });
@@ -78,7 +82,6 @@ document.addEventListener("alpine:init", () => {
 
             trackListener(this._handlers, this._dialog, "close", () => {
                 this._hideDiscardPrompt();
-                this._body.innerHTML = "";
                 this._snapshot = null;
                 this.dirty = false;
                 focusTriggerOrMain(this._trigger);
