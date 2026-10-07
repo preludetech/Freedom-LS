@@ -156,3 +156,18 @@ def test_widening_past_lg_with_the_sheet_open_docks_the_sidebar(
     assert sidebar_box["width"] >= 200
     assert main_box["width"] >= 800
     assert main_box["x"] >= sidebar_box["x"] + sidebar_box["width"]
+
+
+def test_the_navigation_sheet_has_rounded_top_corners(
+    live_server, educator_logged_in_page: Page, educator_user: User
+) -> None:
+    page = educator_logged_in_page
+    page.set_viewport_size(_PHONE)
+
+    page.goto(_cohorts_url(live_server, educator_user))
+    page.get_by_role("button", name="Open navigation panel").click()
+
+    body = page.locator("dialog[aria-label='Navigation'] .side-panel-body")
+    expect(body).to_be_visible()
+    expect(body).to_have_css("border-top-left-radius", "16px")
+    expect(body).to_have_css("border-top-right-radius", "16px")

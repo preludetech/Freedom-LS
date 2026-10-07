@@ -378,3 +378,26 @@
         gap: 0.5rem;
     }
 }
+
+/* Bottom sheet: a panel that slides up from the bottom edge on narrow
+ * screens. Utilities rather than component classes so a responsive prefix
+ * (max-md:, max-lg:) picks the width at which each panel is a sheet.
+ * `bottom-sheet` is for a sheet over a backdrop, which already sets it apart
+ * from the page. `bottom-sheet-bare` is for one with no backdrop: the border
+ * along its rounded top edge shows where the page ends. The border runs down
+ * the sides too, because a top-only border tapers away round the corners. */
+@utility bottom-sheet {
+    border-start-start-radius: 1rem;
+    border-start-end-radius: 1rem;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+}
+
+@utility bottom-sheet-bare {
+    border-start-start-radius: 1rem;
+    border-start-end-radius: 1rem;
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+    border: 1px solid var(--color-border);
+    border-block-end-width: 0;
+}

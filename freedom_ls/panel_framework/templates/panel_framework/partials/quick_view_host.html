@@ -108,12 +108,13 @@ The header is an overline label with two equal icon controls; the shown
 record's name and subtitle head the body below it, outside the swapped
 #quick-view-body so they survive the skeleton and error states. The drawer
 has a start border when docked and a shadow only while it is a sheet or
-side drawer laid over the page.
+side drawer laid over the page. As a phone sheet it has no backdrop, so it
+takes the bordered bottom-sheet-bare look to mark where the page ends.
 {% endcomment %}
 <dialog id="quick-view"
         x-data="quickView"
         aria-labelledby="quick-view-title"
-        class="panel-surface text-on-surface shadow-xl p-0 xl:border-s xl:border-border xl:shadow-none">
+        class="panel-surface text-on-surface shadow-xl p-0 max-md:bottom-sheet-bare xl:border-s xl:border-border xl:shadow-none">
     <header class="flex items-center gap-1 border-b border-border px-6 py-2">
         <p class="flex-1 min-w-0 truncate font-sans text-xs font-semibold uppercase tracking-wide text-muted">Quick view</p>
         <a id="quick-view-open"

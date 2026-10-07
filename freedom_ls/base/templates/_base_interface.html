@@ -75,10 +75,6 @@
                 height: auto;
                 transform: translateY(100%);
             }
-            .side-panel-dialog[data-variant="bottom-sheet"] .side-panel-body {
-                border-top-left-radius: 1rem;
-                border-top-right-radius: 1rem;
-            }
             .side-panel-dialog .side-panel-body {
                 box-shadow: 0 10px 25px rgb(0 0 0 / 0.25);
                 /* The panel is capped, so its body has to be the part that gives:
@@ -197,7 +193,7 @@
                     data-variant="{% block sidebar_presentation %}bottom-sheet{% endblock sidebar_presentation %}"
                     class="side-panel-dialog modal-backdrop-host border-0 p-0 m-0 bg-transparent text-inherit"
                     aria-label="{% block sidebar_heading_aria %}Navigation{% endblock sidebar_heading_aria %}">
-                <div class="side-panel-body bg-sidepanel lg:h-full overflow-y-auto overscroll-contain {% block sidebar_body_class %}{% endblock sidebar_body_class %}">
+                <div class="side-panel-body bg-sidepanel lg:h-full max-lg:in-data-[variant=bottom-sheet]:bottom-sheet overflow-y-auto overscroll-contain {% block sidebar_body_class %}{% endblock sidebar_body_class %}">
                     {% comment %}
                     The panel has no chrome of its own — no title row or close
                     control. On mobile it is a native modal sheet dismissed by the

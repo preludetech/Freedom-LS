@@ -153,9 +153,9 @@ def test_the_quick_view_trigger_shows_the_quick_view_icon() -> None:
     assert icon.get("aria-label") == "quick_view"
 
 
-def test_a_link_in_a_card_secondary_line_is_plain_weight_and_muted() -> None:
-    """The secondary line is muted body text, so a link cell in it must not
-    keep the bold, full-contrast look it has as a table's name column."""
+def test_a_link_in_a_card_secondary_line_is_plain_weight() -> None:
+    """A card's labelled values are plain body text, so a link cell among
+    them must not keep the bold look it has as a table's name column."""
     row = StubModel(pk=1, name="Ada")
     column = {
         "template": "cotton/data-table-cells/link.html",
@@ -173,7 +173,7 @@ def test_a_link_in_a_card_secondary_line_is_plain_weight_and_muted() -> None:
     (link,) = lxml.html.fromstring(html).cssselect("a")
     classes = link.get("class").split()
     assert "font-bold" not in classes
-    assert "text-on-surface" not in classes
+    assert "text-on-surface" in classes
 
 
 def test_a_link_in_a_table_cell_stays_bold() -> None:

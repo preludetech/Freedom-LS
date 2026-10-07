@@ -107,21 +107,39 @@ def test_card_row_renders_primary_and_secondary_content(
     assert "Alpha" in card.text_content()
 
 
-def test_card_row_ends_with_a_decorative_icon_after_the_content(
+def test_card_secondary_values_are_labelled_with_their_column_header(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub(name="row-chevron", kind="a")
+    stub = _make_stub(name="row-labelled", kind="a")
 
     html = fetch(_panel_path(stub.pk)).content.decode()
 
     document = lxml.html.fromstring(html)
     (table,) = document.cssselect("#stub-table")
     (card,) = table.cssselect("ul li")
-    (decoration,) = card.xpath("./*[last()][@aria-hidden='true']")
+    pairs = [
+        (term.text_content().strip(), term.getnext().text_content().strip())
+        for term in card.cssselect("dl dt")
+    ]
+    assert pairs == [("Kind", "Alpha")]
+    assert "Name" not in card.text_content()
+
+
+def test_card_primary_line_ends_with_a_decorative_open_page_icon(
+    mock_site_context: Site,
+) -> None:
+    stub = _make_stub(name="row-open-page", kind="a")
+
+    html = fetch(_panel_path(stub.pk)).content.decode()
+
+    document = lxml.html.fromstring(html)
+    (table,) = document.cssselect("#stub-table")
+    (card,) = table.cssselect("ul li")
+    (primary_line,) = card.cssselect("[data-card-primary-line]")
+    (decoration,) = primary_line.xpath("./*[last()][@aria-hidden='true']")
     assert decoration.cssselect("svg")
-    (content,) = card.xpath("./div[contains(@class, 'flex-1')]")
-    assert "row-chevron" in content.text_content()
-    assert decoration.getprevious() is content
+    assert "row-open-page" in primary_line.text_content()
+    assert not card.xpath("./*[@aria-hidden='true']")
 
 
 def test_sheet_renders_reset_legends_and_footer_buttons(

@@ -134,3 +134,39 @@ def test_crossing_the_breakpoint_while_open_keeps_the_content_with_no_new_reques
     expect(page.locator("dialog:modal")).to_have_count(0)
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
     assert quick_view_requests == []
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_the_phone_sheet_has_a_rounded_bordered_top_edge(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    _make_stub(name="Alpha")
+    page.set_viewport_size(_MOBILE_VIEWPORT)
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    page.get_by_role("link", name="Quick view: Alpha").click()
+
+    sheet = page.locator("#quick-view")
+    expect(sheet).to_have_css("border-top-left-radius", "16px")
+    expect(sheet).to_have_css("border-top-right-radius", "16px")
+    expect(sheet).to_have_css("border-top-width", "1px")
+    expect(sheet).to_have_css("border-bottom-width", "0px")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_the_tablet_drawer_keeps_square_corners(
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    page: Page,
+) -> None:
+    _make_stub(name="Alpha")
+    page.set_viewport_size(_TABLET_VIEWPORT)
+    page.goto(f"{live_server.url}/test-panel/framework/stubs/")
+    page.get_by_role("link", name="Quick view: Alpha").click()
+
+    sheet = page.locator("#quick-view")
+    expect(sheet).to_be_visible()
+    expect(sheet).to_have_css("border-top-left-radius", "0px")

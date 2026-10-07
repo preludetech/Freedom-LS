@@ -9,7 +9,7 @@ when htmx swaps this fragment in.
         data-variant="bottom-sheet"
         class="side-panel-dialog modal-backdrop-host md:hidden"
         aria-label="Filter and sort">
-    <div class="side-panel-body bg-surface overflow-y-auto overscroll-contain">
+    <div class="side-panel-body bg-surface max-lg:in-data-[variant=bottom-sheet]:bottom-sheet overflow-y-auto overscroll-contain">
         <form method="get"
               action="{{ page_url }}"
               hx-get="{{ base_url }}"

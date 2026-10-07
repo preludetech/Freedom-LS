@@ -14,7 +14,7 @@ below md, where it sits on a card tapped with a finger.
     {% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
     {% if column.quick_view %}<span class="flex items-center justify-between gap-2">{% endif %}
     <a href="{{ resolved_url }}"
-       class="{% if column.quick_view %}min-w-0 break-words {% endif %}{% if in_secondary_line %}text-muted{% else %}font-bold text-on-surface{% endif %} no-underline hover:text-primary"
+       class="{% if column.quick_view %}min-w-0 break-words {% endif %}{% if not in_secondary_line %}font-bold {% endif %}text-on-surface no-underline hover:text-primary"
        {% if column.htmx_nav %}
            hx-get="{{ resolved_url }}"
            hx-target="#main-content"
