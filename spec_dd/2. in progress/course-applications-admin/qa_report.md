@@ -128,7 +128,7 @@ Actual: "Cannot delete user ... your account doesn't have permission to delete t
 - **FIXED** (commit: 7499d57c) — Long answers lose their paragraph breaks in the admin answers document
 - **FIXED** (commit: 7676fa61) — Submitted time on the course application change page shows a raw timestamp
 - **FIXED** (commit: 6910011d) — Date-only created-at range filter shows "Enter a valid time." on the empty time boxes
-- **UNRESOLVED** — A superuser cannot erase a learner from the User admin: Learner rows block the delete (reason: red lane — permission-adjacent and a product decision on whether Learner rows should join `USER_ERASURE_CASCADE_MODELS`; predates this branch)
+- **FIXED** (commit: 4910211d) — A superuser cannot erase a learner from the User admin: Learner rows block the delete (Learner added to `USER_ERASURE_CASCADE_MODELS`)
 
 Each fix was re-verified against the live dev server: B1 computed `white-space: pre-line` on both change pages, B2 Submitted time formatted like Created at on the submitted and no-form applications, B3 no "Enter a valid time." after a date-only range, with the learner-progress admins that share the filter also clean.
 
