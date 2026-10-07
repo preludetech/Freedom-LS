@@ -7,10 +7,14 @@ the full width of the content column and pad themselves. The two surfaces
 are .panel-surface and .panel-canvas in tailwind.components.css, so a theme
 retunes them together; the band's bottom padding is a block because a tab
 row at its foot brings its own.
+
+The mobile navigation toggle lives inside the page heading's row, so a page
+that fills in no heading (the empty path renders this template bare) draws
+the toggle on its own, or a phone has no way into the navigation.
 {% endcomment %}
 <div id="main-content" class="flex flex-1 flex-col" tabindex="-1">
     <div class="panel-surface border-b border-border px-4 pt-4 sm:px-6 lg:px-8 {% block page_header_padding %}pb-5{% endblock page_header_padding %}">
-        {% block page_header %}{% endblock page_header %}
+        {% block page_header %}<div class="flex items-center gap-3">{% include "panel_framework/partials/panel_toggle.html" %}</div>{% endblock page_header %}
     </div>
     <div class="panel-canvas flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         {% block main %}{% endblock main %}

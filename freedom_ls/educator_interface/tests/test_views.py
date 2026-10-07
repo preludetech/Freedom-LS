@@ -189,3 +189,19 @@ def test_navigation_toggle_sits_in_the_page_heading_row(staff_client: Client):
     (toggle,) = document.cssselect("button[aria-label='Open navigation panel']")
     (heading,) = document.cssselect("#main-content h1")
     assert toggle.getparent() is heading.getparent().getparent()
+
+
+@pytest.mark.django_db
+def test_organisation_root_page_still_offers_the_navigation_toggle(
+    staff_client: Client,
+):
+    """The organisation root has no page heading of its own, which used to
+    leave a phone with no way to open the navigation."""
+    organisation = OrganisationFactory()
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, ""))
+
+    (toggle,) = document.cssselect(
+        "#main-content button[aria-label='Open navigation panel']"
+    )
+    assert toggle.cssselect("[role='img']")

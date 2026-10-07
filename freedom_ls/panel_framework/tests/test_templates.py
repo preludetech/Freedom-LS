@@ -131,6 +131,20 @@ def test_a_leaf_declaring_refresh_events_refetches_its_own_region(
     assert f'id="{panel.region_id}"' in html
 
 
+def test_a_view_template_with_no_page_header_still_draws_the_navigation_toggle() -> (
+    None
+):
+    """A page that fills in no heading (the bare main base, as the empty path
+    renders) keeps the toggle, or a phone has no way into the navigation."""
+    html = render_to_string("panel_framework/views/_main_base.html")
+
+    document = lxml.html.fromstring(html)
+    (toggle,) = document.cssselect(
+        "#main-content button[aria-label='Open navigation panel']"
+    )
+    assert toggle.get("x-on:click") == "toggle"
+
+
 @pytest.mark.django_db
 def test_a_panel_with_no_actions_renders_no_footer(mock_site_context: Site) -> None:
     html = _render(_bind(_PlainPanel))
