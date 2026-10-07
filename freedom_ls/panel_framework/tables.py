@@ -184,7 +184,7 @@ class ExportColumn:
 class DataTable:
     """Abstract class used for rendering data tables"""
 
-    page_size = 25
+    page_size = 10
     search_fields: list[str] = []
     #: A template that replaces the default card body (the primary/secondary
     #: cell rendering) below md, for a denser layout than the generic card

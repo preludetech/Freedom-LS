@@ -25,6 +25,11 @@ from .view_helpers import fetch
 pytestmark = pytest.mark.django_db
 
 
+# Enough rows for a second page, whatever the page size.
+_PAGE_SIZE = StubDataTable.page_size
+_ROWS = _PAGE_SIZE + 5
+
+
 def _panel_path(stub_pk: object) -> str:
     return f"stubs/{stub_pk}/__tabs/default"
 
@@ -70,7 +75,7 @@ def test_the_frame_refetches_its_own_region_on_the_stubs_declared_event(
 
 
 def test_two_tables_page_independently(mock_site_context: Site) -> None:
-    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(_ROWS)]
 
     html = fetch(
         f"stubs/{stubs[0].pk}/__tabs/pair", data={"a-page": "2"}
@@ -79,12 +84,12 @@ def test_two_tables_page_independently(mock_site_context: Site) -> None:
     document = lxml.html.fromstring(html)
     (table_a,) = document.cssselect("#a-table")
     (table_b,) = document.cssselect("#b-table")
-    assert "row-25" in table_a.text_content()
-    assert "row-29" in table_a.text_content()
+    assert f"row-{_PAGE_SIZE:02d}" in table_a.text_content()
+    assert f"row-{_ROWS - 1:02d}" in table_a.text_content()
     assert "row-00" not in table_a.text_content()
     assert "row-00" in table_b.text_content()
-    assert "row-24" in table_b.text_content()
-    assert "row-25" not in table_b.text_content()
+    assert f"row-{_PAGE_SIZE - 1:02d}" in table_b.text_content()
+    assert f"row-{_PAGE_SIZE:02d}" not in table_b.text_content()
 
 
 def test_links_keep_other_tables_state(mock_site_context: Site) -> None:
@@ -243,14 +248,14 @@ def test_region_response_treats_a_trailing_slash_as_the_same_url(
 
 
 def test_plain_get_renders_pushed_state(mock_site_context: Site) -> None:
-    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(_ROWS)]
     pk = stubs[0].pk
 
     html = fetch(f"stubs/{pk}/__tabs/pair", data={"a-page": "2"}).content.decode()
 
     document = lxml.html.fromstring(html)
     (table_a,) = document.cssselect("#a-table")
-    assert "row-29" in table_a.text_content()
+    assert f"row-{_ROWS - 1:02d}" in table_a.text_content()
     assert "row-00" not in table_a.text_content()
     assert 'data-panel="a"' in html
 
@@ -366,19 +371,19 @@ def test_a_table_with_search_fields_renders_a_search_input(
 
 
 def test_region_response_includes_announcement(mock_site_context: Site) -> None:
-    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(_ROWS)]
 
     html = fetch(
         _panel_path(stubs[0].pk), htmx=True, hx_target=_region_id()
     ).content.decode()
 
     assert 'hx-swap-oob="innerHTML:#scope-announcer"' in html
-    assert "Showing 1\u201325 of 30" in html
+    assert f"Showing 1\u2013{_PAGE_SIZE} of {_ROWS}" in html
     assert ", sorted by" not in html
 
 
 def test_region_response_announcement_includes_sort(mock_site_context: Site) -> None:
-    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(30)]
+    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(_ROWS)]
 
     html = fetch(
         _panel_path(stubs[0].pk),
@@ -387,7 +392,7 @@ def test_region_response_announcement_includes_sort(mock_site_context: Site) -> 
         hx_target=_region_id(),
     ).content.decode()
 
-    assert "Showing 1\u201325 of 30, sorted by Name" in html
+    assert f"Showing 1\u2013{_PAGE_SIZE} of {_ROWS}, sorted by Name" in html
 
 
 def test_region_response_announcement_with_no_rows(mock_site_context: Site) -> None:

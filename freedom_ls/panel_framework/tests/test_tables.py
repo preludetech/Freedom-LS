@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from django.test import RequestFactory
 
-from freedom_ls.panel_framework.tables import Column
+from freedom_ls.panel_framework.tables import Column, DataTable
 
 from .stub_panels import StubDataTable
 
@@ -30,3 +30,8 @@ def test_column_derives_sort_field() -> None:
     column = Column("N", "t", text_attr="user.name", sortable=True)
 
     assert column.sort_field == "user__name"
+
+
+def test_a_table_shows_ten_rows_a_page_by_default() -> None:
+    """Few enough that the pager sits on screen below the table."""
+    assert DataTable.page_size == 10

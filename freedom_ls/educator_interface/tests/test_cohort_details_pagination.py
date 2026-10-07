@@ -24,6 +24,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.tables import DataTable
 
 
 def _cohort_url(cohort: Cohort) -> str:
@@ -42,7 +43,7 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
 ) -> None:
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Big Cohort")
-    for i in range(26):
+    for i in range(DataTable.page_size + 1):
         learner = LearnerFactory(
             user=UserFactory(first_name=f"Learner{i:02d}", last_name="Test"),
             organisation=organisation,
@@ -61,9 +62,9 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
 
     assert learners_tab.status_code == 200
     content = learners_tab.content.decode()
-    # The learners table is on its own page 2: the 26th learner shows, the
+    # The learners table is on its own page 2: the last learner shows, the
     # 1st (on page 1) does not.
-    assert "Learner25" in content
+    assert f"Learner{DataTable.page_size:02d}" in content
     assert "Learner00" not in content
     # The course registrations table is untouched, still on page 1.
     assert details_tab.status_code == 200
