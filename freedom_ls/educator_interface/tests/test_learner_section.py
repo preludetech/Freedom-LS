@@ -257,9 +257,11 @@ class TestLearnerDataTableQueryCost:
 
 
 @pytest.mark.django_db
-def test_learner_detail_cohorts_card_rows_end_with_a_decorative_chevron(
+def test_learner_detail_cohorts_card_rows_end_with_a_decorative_open_page_icon(
     educator_client,
 ):
+    """The cohort name opens the cohort's page, so its card line ends with
+    the open-page icon the framework draws for a link column."""
     organisation = OrganisationFactory()
     learner = _make_learner(organisation=organisation)
     CohortMembershipFactory(
@@ -272,7 +274,8 @@ def test_learner_detail_cohorts_card_rows_end_with_a_decorative_chevron(
 
     document = lxml.html.fromstring(response.content.decode())
     (row,) = document.cssselect("#cohorts-table ul li")
-    (decoration,) = row.xpath("./*[last()][@aria-hidden='true']")
+    (primary_line,) = row.cssselect("[data-card-primary-line]")
+    (decoration,) = primary_line.xpath("./*[last()][@aria-hidden='true']")
     assert decoration.cssselect("svg")
 
 
