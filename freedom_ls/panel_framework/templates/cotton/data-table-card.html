@@ -28,7 +28,7 @@ either way.
             {% if secondary_columns %}
                 <div class="flex flex-wrap gap-x-3 text-sm text-muted">
                     {% for column in secondary_columns %}
-                        <span class="min-w-0 break-words">{% include column.template with object=row.object column=column %}</span>
+                        <span class="min-w-0 break-words">{% include column.template with object=row.object column=column in_secondary_line=True %}</span>
                     {% endfor %}
                 </div>
             {% endif %}

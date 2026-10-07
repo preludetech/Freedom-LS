@@ -7,6 +7,7 @@ import lxml.html
 from django.template.loader import render_to_string
 
 from .conftest import StubModel
+from .cotton_helpers import render_cotton
 
 URL_NAME = "panel_framework_test:framework"
 
@@ -150,3 +151,42 @@ def test_the_quick_view_trigger_shows_the_quick_view_icon() -> None:
     (trigger,) = document.cssselect('[aria-controls="quick-view"]')
     (icon,) = trigger.cssselect("svg")
     assert icon.get("aria-label") == "quick_view"
+
+
+def test_a_link_in_a_card_secondary_line_is_plain_weight_and_muted() -> None:
+    """The secondary line is muted body text, so a link cell in it must not
+    keep the bold, full-contrast look it has as a table's name column."""
+    row = StubModel(pk=1, name="Ada")
+    column = {
+        "template": "cotton/data-table-cells/link.html",
+        "url_name": URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+    }
+
+    html = render_cotton(
+        "<c-data-table-card :row=row :secondary_columns=columns />",
+        row={"object": row, "label": "Ada"},
+        columns=[column],
+    )
+
+    (link,) = lxml.html.fromstring(html).cssselect("a")
+    classes = link.get("class").split()
+    assert "font-bold" not in classes
+    assert "text-on-surface" not in classes
+
+
+def test_a_link_in_a_table_cell_stays_bold() -> None:
+    row = StubModel(pk=1, name="Ada")
+    column = {
+        "url_name": URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    (link,) = lxml.html.fromstring(html).cssselect("a")
+    assert "font-bold" in link.get("class").split()
