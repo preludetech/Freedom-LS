@@ -46,20 +46,9 @@ For each actionable issue that has NOT already been fixed:
 2. If you think it should be addressed: fix it immediately
 3. If you think it should NOT be addressed: explain why and ask the user for confirmation before skipping
 
-## Step 5: Run tests
+## Step 5: Run the targeted tier
 
-After making all changes, run the full test suite:
-
-```
-uv run pytest -x -q
-```
-
-Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion
-notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this
-worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10
-minutes.
-
-Fix any failures.
+Read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--working-tree`. A failure follows "When a targeted run or full run fails" in the tier definition the helper names. CI re-runs the whole suite on the pushed PR and is the backstop, so the local run is feedback on the review fixes.
 
 ## Step 6: Run the pre-commit
 
