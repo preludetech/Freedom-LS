@@ -29,6 +29,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.queries import educators_of
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
     build_world,
@@ -38,6 +39,10 @@ from freedom_ls.messaging_policy.policy import LayeredMessagingPolicy
 from freedom_ls.messaging_policy.tests.messaging_world import (
     allowed_pairs,
     recipients_pairs,
+)
+from freedom_ls.role_based_permissions.utils import (
+    assign_object_role,
+    remove_object_role,
 )
 
 pytestmark = pytest.mark.django_db
@@ -72,6 +77,11 @@ QUERIES_NO_RELATIONSHIP = 5
 
 def open_course_peers(settings: SettingsWrapper) -> None:
     settings.MESSAGING_DEFAULT_FLAGS = {**ALL_CLOSED, "learner_to_course_peer": "open"}
+
+
+def open_educators(settings: SettingsWrapper, offered: list[str]) -> None:
+    settings.MESSAGING_DEFAULT_FLAGS = {**ALL_CLOSED, "learner_to_educator": "open"}
+    settings.MESSAGING_OFFERED_EDUCATOR_ROLES = offered
 
 
 def open_cohort_peers(settings: SettingsWrapper) -> None:
@@ -659,6 +669,134 @@ def test_a_removed_learner_or_inactive_registration_removes_the_candidate_backwa
 
     decision = policy.can_start(
         sender=peers.recipient.user, recipient=peers.sender.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
+
+
+def test_a_learner_starting_with_their_cohort_admin_is_closed_by_configuration_out_of_the_box(
+    out_of_the_box_policy: LayeredMessagingPolicy, world: World
+) -> None:
+    decision = out_of_the_box_policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+@pytest.mark.parametrize(
+    ("holder", "reason"),
+    [
+        ("c1_admin", None),
+        ("c1_viewer", MessagingRefusal.CLOSED_BY_CONFIGURATION),
+        ("o1_admin", MessagingRefusal.CLOSED_BY_CONFIGURATION),
+        ("site_admin", MessagingRefusal.CLOSED_BY_CONFIGURATION),
+    ],
+)
+def test_only_an_offered_educator_role_is_open_when_the_educator_flag_is_open(
+    policy: LayeredMessagingPolicy,
+    world: World,
+    settings: SettingsWrapper,
+    holder: str,
+    reason: MessagingRefusal | None,
+) -> None:
+    open_educators(settings, ["cohort_admin"])
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders[holder],
+        site=world.site,
+    )
+
+    assert decision.reason == reason
+
+
+def test_a_learner_may_not_start_with_an_offered_educator_when_the_flag_is_closed(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    settings.MESSAGING_OFFERED_EDUCATOR_ROLES = ["cohort_admin"]
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_an_opened_learner_reaches_their_organisation_admin_when_that_role_is_offered(
+    policy: LayeredMessagingPolicy, mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, ["organisation_admin"])
+    learner = LearnerFactory()
+    admin = UserFactory()
+    assign_object_role(admin, learner.organisation, "organisation_admin")
+
+    decision = policy.can_start(
+        sender=learner.user, recipient=admin, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+def test_no_educator_is_open_when_no_role_is_offered(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, [])
+
+    decisions = {
+        policy.can_start(
+            sender=world.learners["in_c1"].user,
+            recipient=world.role_holders[holder],
+            site=world.site,
+        ).reason
+        for holder in ("c1_admin", "c1_viewer", "o1_admin", "site_admin")
+    }
+
+    assert decisions == {MessagingRefusal.CLOSED_BY_CONFIGURATION}
+
+
+def test_a_role_that_does_not_grant_view_learner_is_never_offered(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, ["custom_bystander"])
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["custom_bystander_o1"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
+
+
+def test_recipients_for_an_opened_learner_that_are_not_colleagues_are_educators_of_the_row(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, ["cohort_admin", "organisation_admin", "site_admin"])
+    learner = world.learners["in_c1"]
+
+    recipients = set(policy.recipients_for(sender=learner.user, site=world.site))
+
+    assert recipients <= set(educators_of(learner))
+
+
+def test_a_learner_reply_to_an_educator_whose_role_was_removed_has_no_relationship(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, ["cohort_admin"])
+    remove_object_role(
+        world.role_holders["c1_admin"], world.cohorts["c1"], "cohort_admin"
+    )
+
+    decision = policy.can_reply(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+        conversation=world.learners["in_c1"],
     )
 
     assert decision.reason == MessagingRefusal.NO_RELATIONSHIP

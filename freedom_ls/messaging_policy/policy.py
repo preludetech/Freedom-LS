@@ -22,6 +22,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     VIEW_LEARNER,
     colleagues_of,
+    educators_of,
     holds_registration_for_any_expression,
     is_in_cohort_expression,
     registrations_of,
@@ -29,11 +30,26 @@ from freedom_ls.learner_management.queries import (
 )
 from freedom_ls.messaging_policy.config import config
 from freedom_ls.messaging_policy.models import MessagingFlag
-from freedom_ls.messaging_policy.resolver import resolved_flag_expression
+from freedom_ls.messaging_policy.resolver import (
+    resolve_flag,
+    resolved_flag_expression,
+)
 
 if TYPE_CHECKING:
     from django.contrib.sites.models import Site
     from django.db.models import Model, QuerySet
+
+
+def offered_roles_for(site: Site, site_config: object | None) -> frozenset[str]:
+    """The role keys a learner may be offered as educators on this site.
+
+    The setting applies until the site row overrides it. Always intersected with
+    the roles that grant VIEW_LEARNER, so every offered educator is an educator of
+    the learner; a key the site's role config does not know is dropped here and
+    reported by the system check instead.
+    """
+    chosen: list[str] = config.MESSAGING_OFFERED_EDUCATOR_ROLES
+    return frozenset(chosen) & roles_granting(VIEW_LEARNER, site)
 
 
 class _Resolution(NamedTuple):
@@ -41,6 +57,7 @@ class _Resolution(NamedTuple):
 
     site: Site
     rows: list[Learner]  # the sender's active Learner rows on the site
+    site_config: object | None = None  # the site's override row, once one exists
 
 
 class LayeredMessagingPolicy(MessagingPolicy):
@@ -143,8 +160,24 @@ class LayeredMessagingPolicy(MessagingPolicy):
             holds_registration_for_any_expression(site, own_courses)
             | holds_registration_for_any_expression(site, cohort_courses)
         )
-        return Q(pk__in=through_shared_cohorts.values("user_id")) | Q(
-            pk__in=through_courses.values("user_id")
+        if open_only:
+            layers = self._row_layers(row, resolution, "learner_to_educator")
+            educators = educators_of(
+                row,
+                roles=offered_roles_for(site, resolution.site_config),
+                through_cohorts=self._resolved_cohorts(
+                    row, resolution, "learner_to_educator", open_only=True
+                ).values("pk"),
+                # Organisation and site role links have no cohort layer, so their chain is a constant.
+                through_organisation_and_site=resolve_flag(layers).value
+                == MessagingFlag.OPEN,
+            )
+        else:
+            educators = educators_of(row)
+        return (
+            Q(pk__in=through_shared_cohorts.values("user_id"))
+            | Q(pk__in=through_courses.values("user_id"))
+            | Q(pk__in=educators.values("pk"))
         )
 
     def _row_layers(

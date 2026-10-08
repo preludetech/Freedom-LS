@@ -141,6 +141,7 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | **colleague** (coined) | `learner_management/queries.py` `colleagues_of` | An active user, other than the given one, holding an organisation- or cohort-scoped role granting `VIEW_LEARNER` in an organisation where the given user holds one too. A site-scoped role makes nobody a colleague. |
 | **peer** (coined) | `learner_management/queries.py` `peers_of` | Another user's active `Learner` row in the same organisation that shares a cohort with the given learner, or a course both hold an active registration for (individually or through a cohort). Course peers stay inside the organisation because a course is not owned by one. |
 | **candidate** (coined) | `messaging_policy/policy.py` | A relationship that could let one user start a conversation with another, before the settings layers decide whether it is open. A candidate that resolves open allows the start; one that resolves closed is refused with `CLOSED_BY_CONFIGURATION`; no candidate at all is `NO_RELATIONSHIP`. Today every cohort the sender shares with another learner is one. |
+| **offered educator** (coined) | `messaging_policy/policy.py` `offered_roles_for` | An educator of a learner whose role is on the offered list (`MESSAGING_OFFERED_EDUCATOR_ROLES`), always narrowed to roles granting `VIEW_LEARNER`. Only an offered educator can resolve open as a candidate; an educator through any other role is still a candidate and resolves closed. |
 
 ## Words that are already taken
 

@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
+from django.contrib.sites.models import Site
 from django.test import override_settings
 
-from freedom_ls.messaging_policy.checks import check_default_flags
+from freedom_ls.learner_management.tests.scenario_world import custom_role_config
+from freedom_ls.messaging_policy.checks import (
+    check_default_flags,
+    check_offered_roles_exist,
+)
 
 VALID_FLAGS = {
     "learner_to_educator": "closed",
@@ -41,3 +47,28 @@ def test_valid_default_flags_produce_no_error() -> None:
 
 def test_the_shipped_default_flags_produce_no_error() -> None:
     assert check_default_flags(None) == []
+
+
+def test_an_unknown_offered_role_produces_an_error() -> None:
+    with override_settings(MESSAGING_OFFERED_EDUCATOR_ROLES=["cohort_admin", "nope"]):
+        errors = check_offered_roles_exist(None)
+
+    assert [error.id for error in errors] == ["freedom_ls_messaging_policy.E002"]
+
+
+def test_the_shipped_offered_roles_produce_no_error() -> None:
+    assert check_offered_roles_exist(None) == []
+
+
+@pytest.mark.django_db
+def test_an_offered_role_missing_from_a_site_role_config_produces_an_error(
+    mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    settings.MESSAGING_OFFERED_EDUCATOR_ROLES = ["cohort_admin"]
+
+    with custom_role_config(
+        mock_site_context, settings, without=frozenset({"cohort_admin"})
+    ):
+        errors = check_offered_roles_exist(None)
+
+    assert [error.id for error in errors] == ["freedom_ls_messaging_policy.E002"]
