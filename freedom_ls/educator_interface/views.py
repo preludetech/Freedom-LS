@@ -16,6 +16,10 @@ from django.urls import reverse
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
+from freedom_ls.educator_interface.filters import (
+    ShowInactiveFilter,
+    VisibleCourseFilter,
+)
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.quick_views import CohortQuickView, LearnerQuickView
 from freedom_ls.learner_management.capabilities import can
@@ -40,6 +44,7 @@ from freedom_ls.panel_framework.actions import (
     EditAction,
     PanelAction,
 )
+from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     InstanceDetailsPanel,
@@ -188,34 +193,98 @@ def _registration_columns() -> list[Column]:
 
 
 class CohortDataTable(DataTable):
+    search_fields = ["name"]
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         request = cast(OrganisationScopedRequest, request)
         return (
             cohorts_visible_to(request.user, request.organisation)
             .annotate(
-                learner_count=Count("cohortmembership", distinct=True),
+                learner_count=Count(
+                    "cohortmembership",
+                    filter=Q(cohortmembership__learner__is_active=True),
+                    distinct=True,
+                ),
             )
-            .prefetch_related("course_registrations__course")
-            .order_by("name")
+            .prefetch_related(
+                Prefetch(
+                    "course_registrations",
+                    queryset=CohortCourseRegistration.objects.filter(
+                        is_active=True
+                    ).select_related("course"),
+                )
+            )
+            .order_by("name", "pk")
         )
 
     @staticmethod
     def get_columns() -> list[Column]:
         return [
             _interface_link(
-                "Cohort Name", "name", "cohorts/{pk}", card="primary", quick_view=True
+                "Name",
+                "name",
+                "cohorts/{pk}",
+                sortable=True,
+                card="primary",
+                quick_view=True,
             ),
             Column(
-                header="Active Learners",
+                header="Status",
+                template="educator_interface/data-table-cells/active_status.html",
+                attr="is_active",
+            ),
+            Column(
+                header="Learners",
                 template="cotton/data-table-cells/text.html",
                 attr="learner_count",
+                sortable=True,
             ),
             Column(
-                header="Registered Courses",
+                header="Courses",
                 template="educator_interface/data-table-cells/cohort_courses.html",
             ),
+            Column(
+                header="Created",
+                template="cotton/data-table-cells/text.html",
+                attr="created_at",
+                sortable=True,
+                card="md_only",
+            ),
         ]
+
+    @classmethod
+    def get_filters(cls) -> list[TableFilter]:
+        return [
+            ShowInactiveFilter("inactive", "Show inactive"),
+            VisibleCourseFilter(
+                "course", "Course", lookup="course_registrations__course"
+            ),
+        ]
+
+    @classmethod
+    def filter_queryset(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> QuerySet:
+        # The toggle can only widen, so the table excludes inactive cohorts
+        # itself whenever it offers the toggle and the toggle is unset.
+        if cls.get_filters() and "inactive" not in query.filters:
+            queryset = queryset.filter(is_active=True)
+        queryset = super().filter_queryset(request, queryset, query)
+        if query.sort:
+            # Keep the default tie-breaker under a sort, or pages repeat and
+            # skip rows when several cohorts share a value.
+            queryset = queryset.order_by(query.sort, "name", "pk")
+        return queryset
+
+
+class LearnerCohortDataTable(CohortDataTable):
+    """The learner page's cohorts: every cohort the learner belongs to, active
+    or not, with search, sort and pagination but no filters."""
+
+    @classmethod
+    def get_filters(cls) -> list[TableFilter]:
+        return []
 
 
 class LearnerDataTable(DataTable):
@@ -298,7 +367,7 @@ class LearnerDetailsPanel(InstanceDetailsPanel):
 
 class LearnerCohortsPanel(DataTablePanel):
     title = "Cohorts"
-    data_table = CohortDataTable
+    data_table = LearnerCohortDataTable
     table_key = "cohorts"
     refresh_events = (LEARNER_CHANGED,)
 

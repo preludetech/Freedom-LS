@@ -308,3 +308,46 @@ def test_learner_detail_page_renders_details_and_cohorts_cards_with_definition_l
     assert "Details" in headings
     assert "Cohorts" in headings
     assert labels == ["First name", "Last name", "Email"]
+
+
+@pytest.mark.django_db
+def test_learner_detail_cohorts_panel_lists_an_inactive_cohort_with_its_badge(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    cohort = CohortFactory(
+        organisation=organisation, name="Retired group", is_active=False
+    )
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (row,) = document.xpath(
+        "//*[@id='cohorts-table']//li[contains(., 'Retired group')]"
+    )
+    assert "Inactive" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_learner_detail_cohorts_panel_renders_no_filter_toolbar(educator_client):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    CohortMembershipFactory(
+        learner=learner, cohort=_make_cohort(organisation=organisation)
+    )
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.xpath(
+        "//*[@id='cohorts-table']//*[contains(., 'Show inactive')]"
+    )
+    assert not document.xpath(
+        "//*[@id='cohorts-table']//button[normalize-space()='Filter']"
+    )

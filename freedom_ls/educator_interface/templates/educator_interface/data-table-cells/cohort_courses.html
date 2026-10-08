@@ -1,5 +1,9 @@
-{% for registration in object.course_registrations.all %}
-    {{ registration.course.title }} ({{ registration.registered_at|date:"Y-m-d" }}){% if not forloop.last %}, {% endif %}
-{% empty %}
+{% if object.course_registrations.all %}
+    <ul class="list-none ml-0 space-y-1">
+        {% for registration in object.course_registrations.all %}
+            <li class="py-0">{{ registration.course.title }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
     -
-{% endfor %}
+{% endif %}

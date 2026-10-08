@@ -323,6 +323,22 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
+    def test_cohort_list_ignores_a_course_filter_outside_the_visible_courses(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        """A dropped filter leaves the list unfiltered, so A's cohort still
+        shows, rather than the filter narrowing it to nothing."""
+        hidden = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(cohort=isolation.cohort_b, course=hidden)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "cohorts")
+            + f"?cohorts-course={hidden.pk}"
+        )
+
+        assert response.status_code == 200
+        assert isolation.cohort_a.name in response.content.decode()
+
     def test_course_list_and_detail_never_show_organisation_bs_people(
         self, isolation: SimpleNamespace
     ) -> None:
