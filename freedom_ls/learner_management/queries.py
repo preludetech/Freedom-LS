@@ -334,6 +334,53 @@ def learners_visible_to(
     return within.filter(visible_learners_expression(user, roles, organisation.site))
 
 
+def educators_of(
+    learner: Learner,
+    *,
+    roles: frozenset[str] | None = None,
+    through_cohorts: QuerySet | None = None,
+    through_organisation_and_site: bool = True,
+) -> QuerySet[User]:
+    """Active users who are educators of this learner, the inverse of
+    learners_visible_to minus its superuser branch.
+
+    `roles` defaults to every role granting VIEW_LEARNER on the learner's site; a
+    caller may narrow it to a subset. `through_cohorts` (a values("pk") queryset)
+    restricts the cohort branch to those cohorts, and `through_organisation_and_site`
+    False drops the organisation and site branches. Narrowing can only remove users,
+    so every narrowed answer is a subset of the full one.
+
+    Built from the same grant builders as the forward direction, so a change to the
+    gate changes both directions at once. Like the forward direction it ignores the
+    learner's own User.is_active and does not exclude the learner's own user.
+    """
+    from freedom_ls.accounts.models import User
+
+    if not learner.is_active:
+        return User.objects.none()
+    site = learner.site
+    if roles is None:
+        roles = roles_granting(VIEW_LEARNER, site)
+    # Each _granted_* queryset is the direct argument of an Exists, and inside it
+    # _grant_exists and _member_organisations sit one level deeper, so the User row
+    # under test is two levels up. Wrapping a builder in a further subquery would
+    # silently move `holder` one level too high.
+    holder = OuterRef(OuterRef("pk"))
+    cohorts = _granted_cohorts(holder, roles).filter(
+        site=site, cohortmembership__learner=learner
+    )
+    if through_cohorts is not None:
+        cohorts = cohorts.filter(pk__in=through_cohorts)
+    condition: Q | Exists = Exists(cohorts)
+    if through_organisation_and_site:
+        condition |= Exists(_site_grants(OuterRef("pk"), roles, site)) | Exists(
+            _granted_organisations(holder, roles).filter(
+                site=site, pk=learner.organisation_id
+            )
+        )
+    return User.objects.filter(site=site, is_active=True).filter(condition)
+
+
 def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
     """Active organisation_admin role holders currently helping run this
     organisation, ordered by name.

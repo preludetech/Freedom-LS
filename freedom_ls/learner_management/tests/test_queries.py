@@ -40,11 +40,18 @@ from freedom_ls.learner_management.queries import (
     all_cohorts_visible_to,
     can_view_cohort,
     cohorts_visible_to,
+    educators_of,
     latest_registration,
     learner_for_course,
     learners_visible_to,
     organisation_for_learner_course,
     organisations_accessible_to,
+)
+from freedom_ls.learner_management.tests.scenario_world import (
+    World,
+    educator_names,
+    educator_pairs,
+    visible_pairs,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -804,3 +811,128 @@ class TestOrganisationForLearnerCourseQueryCount:
 
         with django_assert_max_num_queries(2):
             organisation_for_learner_course(user, course)
+
+
+@pytest.mark.django_db
+class TestEducatorsOf:
+    """The inverse of learners_visible_to, built from the same grant builders."""
+
+    def test_educators_of_agrees_with_learners_visible_to_inside_a_request(
+        self, world: World
+    ) -> None:
+        """Neither direction consults a cohort's own active state, because Cohort
+        has none. If one is added, change learners_visible_to and educators_of
+        together; this test fails when only one moves."""
+        assert visible_pairs(world) == educator_pairs(world)
+
+    @pytest.mark.usefixtures("without_request")
+    def test_educators_of_agrees_with_learners_visible_to_outside_a_request(
+        self, world: World
+    ) -> None:
+        assert visible_pairs(world) == educator_pairs(world)
+
+    def test_a_superuser_with_no_role_is_in_learners_visible_to(
+        self, world: World
+    ) -> None:
+        learner = world.learners["in_c1"]
+        superuser = UserFactory(superuser=True)
+
+        assert (
+            learners_visible_to(superuser, learner.organisation)
+            .filter(pk=learner.pk)
+            .exists()
+        )
+
+    def test_a_superuser_with_no_role_is_not_in_educators_of(
+        self, world: World
+    ) -> None:
+        superuser = UserFactory(superuser=True)
+
+        assert (
+            not educators_of(world.learners["in_c1"]).filter(pk=superuser.pk).exists()
+        )
+
+    def test_an_organisation_admin_is_an_educator_of_their_own_learner_row(
+        self, world: World
+    ) -> None:
+        learner = world.learners["also_o1_admin"]
+
+        assert educators_of(learner).filter(pk=learner.user_id).exists()
+
+    def test_an_inactive_learner_has_no_educators(self, world: World) -> None:
+        assert list(educators_of(world.learners["inactive_in_c1"])) == []
+
+    def test_the_learners_own_user_being_inactive_does_not_remove_their_educators(
+        self, world: World
+    ) -> None:
+        learner = world.learners["in_c1"]
+        learner.user.is_active = False
+        learner.user.save()
+
+        assert "c1_admin" in educator_names(world, "in_c1")
+
+    @pytest.mark.parametrize(
+        "learner_name",
+        [
+            "no_cohort",
+            "in_c1",
+            "in_c1_and_c2",
+            "in_o1_and_o2",
+            "in_o1_and_o2_via_c3",
+            "also_o1_admin",
+        ],
+    )
+    def test_a_site_admin_without_an_organisation_member_row_is_an_educator_of_every_active_learner(
+        self, world: World, learner_name: str
+    ) -> None:
+        site_admin = world.role_holders["site_admin"]
+        OrganisationMember.objects.filter(user=site_admin).delete()
+
+        assert "site_admin" in educator_names(world, learner_name)
+
+    def test_a_site_admin_is_an_educator_of_no_learner_on_another_site(
+        self, world: World
+    ) -> None:
+        other_site = SiteFactory()
+        other_learner = LearnerFactory(
+            organisation=OrganisationFactory(site=other_site)
+        )
+
+        assert (
+            not educators_of(other_learner)
+            .filter(pk=world.role_holders["site_admin"].pk)
+            .exists()
+        )
+
+    def test_roles_narrows_to_that_subset(self, world: World) -> None:
+        assert educator_names(world, "in_c1", roles=frozenset({"cohort_viewer"})) == {
+            "c1_viewer",
+            "c1_c2_viewer",
+        }
+
+    def test_through_cohorts_drops_a_cohort_only_educator_whose_cohort_is_not_listed(
+        self, world: World
+    ) -> None:
+        only_c1 = Cohort.objects.filter(pk=world.cohorts["c1"].pk).values("pk")
+
+        assert educator_names(world, "in_c1_and_c2", through_cohorts=only_c1) == {
+            "site_admin",
+            "o1_admin",
+            "c1_admin",
+            "c1_viewer",
+            "c1_c2_admin",
+            "c1_c2_viewer",
+        }
+
+    def test_without_organisation_and_site_branches_only_cohort_educators_remain(
+        self, world: World
+    ) -> None:
+        assert educator_names(
+            world, "in_c1_and_c2", through_organisation_and_site=False
+        ) == {
+            "c1_admin",
+            "c1_viewer",
+            "c1_c2_admin",
+            "c1_c2_viewer",
+            "custom_educator_c2",
+        }

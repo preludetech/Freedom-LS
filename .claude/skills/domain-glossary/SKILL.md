@@ -132,11 +132,12 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 
 ---
 
-## Messaging, `freedom_ls/comms/messaging_policy.py`
+## Messaging: `freedom_ls/messaging_policy/`, `freedom_ls/learner_management/queries.py`
 
 | Term | Defined at | Means |
 | --- | --- | --- |
 | `MessagingDecision`, `MessagingRefusal`, `MessagingPolicy` | `comms/messaging_policy.py` | Whether one user may message another. `MessagingDecision` follows the `*Decision` suffix, the house pattern for a policy's return value; read `.allowed`, never its truthiness. |
+| **educator of a learner** (coined) | `learner_management/queries.py` `educators_of` | An active user holding an active grant, through a role granting `VIEW_LEARNER`, that reaches a `Learner` row: a site grant, an organisation grant on the learner's organisation, or a cohort grant on a cohort the learner belongs to. The inverse of `learners_visible_to` without its superuser branch. |
 
 ## Words that are already taken
 
