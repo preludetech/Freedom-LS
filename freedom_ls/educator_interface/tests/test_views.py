@@ -883,3 +883,84 @@ def test_educators_block_is_absent_for_a_cohort_admin(
 
     assert not page.cssselect("section[data-panel='educators']")
     assert fragment.status_code == 404
+
+
+def _register_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[str]:
+    url = _interface_url(
+        cohort.organisation.slug,
+        f"cohorts/{cohort.pk}/__tabs/courses/__actions/register",
+    )
+    return [
+        button.get("hx-get")
+        for button in document.cssselect("button[hx-get]")
+        if button.get("hx-get") == url
+    ]
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_shows_each_registrations_status_badge(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
+    )
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Geometry"), is_active=False
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    (region,) = document.cssselect("[data-tab-set]")
+    text = " ".join(region.text_content().split())
+    assert "Active" in text
+    assert "Inactive" in text
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_offers_register_to_a_cohort_admin(
+    mock_site_context, logged_in_client
+):
+    cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=cohort.organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    document = _get_document(
+        logged_in_client(educator),
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    assert len(_register_triggers(document, cohort)) == 1
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_shows_a_cohort_viewer_no_register_trigger(
+    mock_site_context, logged_in_client
+):
+    cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
+    grantor = LearnerFactory(user__superuser=True).user
+    viewer = LearnerFactory(user__staff=True, organisation=cohort.organisation).user
+    assign_role(grantor, viewer, "cohort_viewer", cohort)
+
+    document = _get_document(
+        logged_in_client(viewer),
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    assert _register_triggers(document, cohort) == []
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohorts_courses_tab_shows_no_register_trigger(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    assert _register_triggers(document, cohort) == []

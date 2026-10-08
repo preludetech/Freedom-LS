@@ -218,3 +218,23 @@ def test_a_cohort_viewers_pasted_deactivate_url_answers_403(
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_pasted_register_url_answers_403(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    assign_object_role(user, cohort, "cohort_viewer")
+    client = logged_in_client(user)
+
+    response = client.get(
+        _interface_url(
+            organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses/__actions/register"
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 403

@@ -21,7 +21,7 @@ from django.utils import timezone
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -52,6 +52,7 @@ from freedom_ls.learner_management.queries import (
     organisation_for_learner_course,
     organisations_accessible_to,
     peers_of,
+    registerable_courses_for,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
@@ -1233,3 +1234,36 @@ class TestInactiveCohortAccess:
         resolved = learner_for_course(user, course)
 
         assert resolved == ResolvedRegistration(individual.learner, individual)
+
+
+@pytest.mark.django_db
+class TestRegisterableCoursesFor:
+    def test_lists_a_hidden_course(self, mock_site_context):
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+        assert list(registerable_courses_for(cohort)) == [course]
+
+    def test_omits_a_coming_soon_course(self, mock_site_context):
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        assert list(registerable_courses_for(cohort)) == []
+
+    def test_omits_a_course_the_cohort_actively_holds(self, mock_site_context):
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        CohortCourseRegistrationFactory(cohort=cohort, is_active=True)
+
+        assert list(registerable_courses_for(cohort)) == []
+
+    def test_includes_a_course_the_cohort_holds_inactively(self, mock_site_context):
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        registration = CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+
+        assert list(registerable_courses_for(cohort)) == [registration.course]
+
+    def test_includes_a_course_only_another_cohort_holds(self, mock_site_context):
+        cohort = _make_cohort(organisation=OrganisationFactory())
+        registration = CohortCourseRegistrationFactory(is_active=True)
+
+        assert list(registerable_courses_for(cohort)) == [registration.course]

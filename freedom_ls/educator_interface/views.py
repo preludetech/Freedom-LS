@@ -17,6 +17,7 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
     EditCohortAction,
+    RegisterCohortForCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
 )
@@ -437,10 +438,11 @@ class CohortDetailsPanel(Panel):
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        organisation = cast(OrganisationScopedRequest, request).organisation
+        request = cast(OrganisationScopedRequest, request)
+        visible_cohorts = cohorts_visible_to(request.user, request.organisation)
         return (
-            CohortCourseRegistration.objects.select_related("course")
-            .filter(cohort__organisation=organisation)
+            CohortCourseRegistration.objects.select_related("course", "cohort")
+            .filter(cohort__in=visible_cohorts)
             .order_by("course__title")
         )
 
@@ -469,14 +471,20 @@ class CohortLearnersPanel(DataTablePanel):
         return self.get_queryset(self.request).count()
 
 
-class CourseRegistrationsPanel(DataTablePanel):
-    title = "Course Registrations"
+class CohortCoursesPanel(DataTablePanel):
+    title = "Courses"
     data_table = CohortCourseRegistrationDataTable
-    table_key = "course_registrations"
-    refresh_events = (COHORT_CHANGED,)
+    table_key = "cohort_courses"
+    refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(cohort=self.instance)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [RegisterCohortForCourseAction()]
+
+    def get_tab_count(self) -> int | None:
+        return self.get_queryset(self.request).filter(is_active=True).count()
 
 
 @dataclass(frozen=True)
@@ -603,7 +611,7 @@ class CohortTabSet(TabSet):
     children = {
         "overview": CohortOverviewStack,
         "learners": CohortLearnersPanel,
-        "courses": CourseRegistrationsPanel,
+        "courses": CohortCoursesPanel,
         "settings": CohortSettingsPanel,
     }
 
