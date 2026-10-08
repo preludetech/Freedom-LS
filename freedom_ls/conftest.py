@@ -96,6 +96,20 @@ def _clear_course_access_backend_cache():
     get_course_access_backend.cache_clear()
 
 
+@pytest.fixture(autouse=True)
+def _clear_messaging_policy_cache():
+    """Reset the cached messaging policy before and after each test.
+
+    get_messaging_policy() is @functools.cache'd for the process lifetime, so a
+    test that overrides MESSAGING_POLICY would otherwise leak its instance.
+    """
+    from freedom_ls.comms.messaging_loader import get_messaging_policy
+
+    get_messaging_policy.cache_clear()
+    yield
+    get_messaging_policy.cache_clear()
+
+
 def reverse_url(
     live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
 ):

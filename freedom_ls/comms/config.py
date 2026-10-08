@@ -12,12 +12,16 @@ class CommsConfig(AppSettings):
     NOTIFICATION_CATEGORIES: list[NotificationCategory]
     NOTIFICATION_DELIVERY_BACKENDS: list[str]
     NOTIFICATION_BADGE_POLL_SECONDS: int
+    MESSAGING_POLICY: str
 
     declared_settings = {
         "NOTIFICATIONS_ENABLED": Setting(default=False),
         "NOTIFICATION_CATEGORIES": Setting(default=FLS_NOTIFICATION_CATEGORIES),
         "NOTIFICATION_DELIVERY_BACKENDS": Setting(default=[]),
         "NOTIFICATION_BADGE_POLL_SECONDS": Setting(default=45),
+        "MESSAGING_POLICY": Setting(
+            default="freedom_ls.messaging_policy.policy.LayeredMessagingPolicy"
+        ),
     }
 
 

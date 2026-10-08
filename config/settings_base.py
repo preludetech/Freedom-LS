@@ -141,6 +141,7 @@ INSTALLED_APPS = [
     "django_ace",
     "freedom_ls.webhooks",
     "freedom_ls.comms",
+    "freedom_ls.messaging_policy",
     "allauth",
     "allauth.account",
     "axes",

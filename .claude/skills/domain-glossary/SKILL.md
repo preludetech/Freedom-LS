@@ -132,6 +132,12 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 
 ---
 
+## Messaging, `freedom_ls/comms/messaging_policy.py`
+
+| Term | Defined at | Means |
+| --- | --- | --- |
+| `MessagingDecision`, `MessagingRefusal`, `MessagingPolicy` | `comms/messaging_policy.py` | Whether one user may message another. `MessagingDecision` follows the `*Decision` suffix, the house pattern for a policy's return value; read `.allowed`, never its truthiness. |
+
 ## Words that are already taken
 
 Do not give these a second meaning.
