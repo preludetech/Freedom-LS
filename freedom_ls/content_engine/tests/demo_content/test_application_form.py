@@ -20,7 +20,9 @@ APPLICATION_FORM_TITLE = "Application form"
 
 
 @pytest.mark.django_db
-def test_the_gated_demo_course_is_application_gated(site, loaded_demo_content):
+def test_the_gated_demo_course_is_application_gated(
+    site, loaded_demo_content, mock_site_context
+):
     course = Course.objects.get(title=GATED_COURSE_TITLE, site=site)
 
     assert course.access_config == {
@@ -31,7 +33,7 @@ def test_the_gated_demo_course_is_application_gated(site, loaded_demo_content):
 
 @pytest.mark.django_db
 def test_the_gated_demo_course_names_the_demo_application_form(
-    site, loaded_demo_content
+    site, loaded_demo_content, mock_site_context
 ):
     course = Course.objects.get(title=GATED_COURSE_TITLE, site=site)
 
@@ -39,14 +41,18 @@ def test_the_gated_demo_course_names_the_demo_application_form(
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_is_unscored(site, loaded_demo_content):
+def test_the_demo_application_form_is_unscored(
+    site, loaded_demo_content, mock_site_context
+):
     form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
 
     assert form.strategy == FormStrategy.UNSCORED
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_asks_for_a_file(site, loaded_demo_content):
+def test_the_demo_application_form_asks_for_a_file(
+    site, loaded_demo_content, mock_site_context
+):
     form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
 
     assert FormQuestion.objects.filter(
@@ -55,35 +61,45 @@ def test_the_demo_application_form_asks_for_a_file(site, loaded_demo_content):
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_asks_a_number_question(site, loaded_demo_content):
+def test_the_demo_application_form_asks_a_number_question(
+    site, loaded_demo_content, mock_site_context
+):
     form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
 
     assert FormQuestion.objects.filter(form_page__form=form, type="number").exists()
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_asks_a_date_question(site, loaded_demo_content):
+def test_the_demo_application_form_asks_a_date_question(
+    site, loaded_demo_content, mock_site_context
+):
     form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
 
     assert FormQuestion.objects.filter(form_page__form=form, type="date").exists()
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_asks_an_email_question(site, loaded_demo_content):
+def test_the_demo_application_form_asks_an_email_question(
+    site, loaded_demo_content, mock_site_context
+):
     form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
 
     assert FormQuestion.objects.filter(form_page__form=form, type="email").exists()
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_asks_a_url_question(site, loaded_demo_content):
+def test_the_demo_application_form_asks_a_url_question(
+    site, loaded_demo_content, mock_site_context
+):
     form = Form.objects.get(title=APPLICATION_FORM_TITLE, site=site)
 
     assert FormQuestion.objects.filter(form_page__form=form, type="url").exists()
 
 
 @pytest.mark.django_db
-def test_the_demo_application_form_is_content_of_no_course(site, loaded_demo_content):
+def test_the_demo_application_form_is_content_of_no_course(
+    site, loaded_demo_content, mock_site_context
+):
     """An application form is not coursework, so it must not appear in any
     course's contents -- only as the form a course points at.
     """

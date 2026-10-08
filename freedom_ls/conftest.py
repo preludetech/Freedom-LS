@@ -17,6 +17,7 @@ from freedom_ls.accounts.factories import UserFactory
 # Re-export Playwright fixtures (logged_in_page, reset_local_storage) so
 # tests can consume them without importing the fixtures module directly.
 from freedom_ls.tests.playwright_fixtures import *  # noqa: F403
+from freedom_ls.tests.site_context import site_context
 from freedom_ls.tests.storages import (
     PathlessFileSystemStorage,
     bind_pathless_logo_storage,
@@ -152,45 +153,10 @@ def make_temp_file():
 
 
 @pytest.fixture
-def mock_site_context(site, mocker):
-    """Mock the thread local request and get_current_site for SiteAwareModel and templates."""
-    from django.contrib.sites.models import SITE_CACHE
-
-    from freedom_ls.site_aware_models.models import _thread_locals
-
-    # Check if request attribute already exists
-    had_request = hasattr(_thread_locals, "request")
-    old_request = getattr(_thread_locals, "request", None) if had_request else None
-
-    mock_request = mocker.Mock()
-    # Set _cached_site to the actual site object to prevent Mock issues in ORM queries
-    mock_request._cached_site = site
-    _thread_locals.request = mock_request
-
-    mocker.patch(
-        "freedom_ls.site_aware_models.models.get_current_site", return_value=site
-    )
-    # Also patch for template context processors
-    mocker.patch("django.contrib.sites.shortcuts.get_current_site", return_value=site)
-    # assign_object_role and the role registry resolve the site through
-    # Site.objects.get_current(), which reads SITE_ID rather than the thread
-    # local. Point it at the same site so role assignment sees one site.
-    mocker.patch(
-        "django.contrib.sites.models.SiteManager.get_current", return_value=site
-    )
-
-    # Clear and populate SITE_CACHE to ensure RequestFactory requests work
-    SITE_CACHE.clear()
-    SITE_CACHE["testserver"] = site
-
-    yield site
-
-    # Cleanup: restore original state and clear cache
-    SITE_CACHE.clear()
-    if had_request:
-        _thread_locals.request = old_request
-    elif hasattr(_thread_locals, "request"):
-        delattr(_thread_locals, "request")
+def mock_site_context(site):
+    """Make `site` the ambient site for SiteAwareModel, templates and the role registry."""
+    with site_context(site):
+        yield site
 
 
 @pytest.fixture

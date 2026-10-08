@@ -47,7 +47,6 @@ freedom_ls/base/tests/test_tailwind_components_headings.py
 freedom_ls/base/tests/test_theme_tokens.py
 
 # blog
-freedom_ls/blog/tests/test_demo_articles.py
 freedom_ls/blog/tests/test_seo_discoverability.py
 
 # comms
@@ -84,12 +83,6 @@ freedom_ls/content_engine/tests/test_course_price_model.py
 freedom_ls/content_engine/tests/test_course_price_schema.py
 freedom_ls/content_engine/tests/test_course_viewable_items.py
 freedom_ls/content_engine/tests/test_course_visibility.py
-freedom_ls/content_engine/tests/test_demo_content_application_form.py
-freedom_ls/content_engine/tests/test_demo_content_articles.py
-freedom_ls/content_engine/tests/test_demo_content_form_link.py
-freedom_ls/content_engine/tests/test_demo_content_picture_titles.py
-freedom_ls/content_engine/tests/test_demo_content_prices.py
-freedom_ls/content_engine/tests/test_demo_content_survey_form.py
 freedom_ls/content_engine/tests/test_file_admin_form.py
 freedom_ls/content_engine/tests/test_form_save.py
 freedom_ls/content_engine/tests/test_iso_duration.py
@@ -203,7 +196,6 @@ freedom_ls/learner_interface/tests/test_dashboard_pagination.py
 freedom_ls/learner_interface/tests/test_dashboard_section_slugs.py
 freedom_ls/learner_interface/tests/test_dashboard_view.py
 freedom_ls/learner_interface/tests/test_deadline_integration.py
-freedom_ls/learner_interface/tests/test_demo_content_course_card.py
 freedom_ls/learner_interface/tests/test_form_complete_results.py
 freedom_ls/learner_interface/tests/test_form_page_navigation.py
 freedom_ls/learner_interface/tests/test_form_runner_views.py

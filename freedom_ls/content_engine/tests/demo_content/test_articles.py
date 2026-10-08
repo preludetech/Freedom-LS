@@ -25,14 +25,18 @@ DEMO_ARTICLES = settings.BASE_DIR / "demo_content" / "functionality_demo_article
 
 
 @pytest.mark.django_db
-def test_the_demo_set_has_a_hidden_article(site, loaded_demo_content):
+def test_the_demo_set_has_a_hidden_article(
+    site, loaded_demo_content, mock_site_context
+):
     hidden = Article.objects.filter(site=site, visibility=ArticleVisibility.HIDDEN)
 
     assert [a.slug for a in hidden] == ["hidden-draft"]
 
 
 @pytest.mark.django_db
-def test_the_demo_set_has_an_article_that_hides_its_date(site, loaded_demo_content):
+def test_the_demo_set_has_an_article_that_hides_its_date(
+    site, loaded_demo_content, mock_site_context
+):
     article = Article.objects.get(site=site, slug="undated-notes")
 
     assert article.show_date is False
@@ -41,7 +45,7 @@ def test_the_demo_set_has_an_article_that_hides_its_date(site, loaded_demo_conte
 
 @pytest.mark.django_db
 def test_the_getting_started_article_has_the_drone_flight_image(
-    site, loaded_demo_content
+    site, loaded_demo_content, mock_site_context
 ):
     article = Article.objects.get(site=site, slug="getting-started-with-articles")
 
@@ -50,14 +54,18 @@ def test_the_getting_started_article_has_the_drone_flight_image(
 
 
 @pytest.mark.django_db
-def test_the_undated_notes_article_has_no_image(site, loaded_demo_content):
+def test_the_undated_notes_article_has_no_image(
+    site, loaded_demo_content, mock_site_context
+):
     article = Article.objects.get(site=site, slug="undated-notes")
 
     assert article.image_file is None
 
 
 @pytest.mark.django_db
-def test_the_demo_set_has_an_article_with_no_author(site, loaded_demo_content):
+def test_the_demo_set_has_an_article_with_no_author(
+    site, loaded_demo_content, mock_site_context
+):
     article = Article.objects.get(site=site, slug="unsigned-update")
 
     assert article.author == ""
@@ -66,7 +74,7 @@ def test_the_demo_set_has_an_article_with_no_author(site, loaded_demo_content):
 @pytest.mark.skipif(app_not_installed("freedom_ls.blog"), reason="blog not installed")
 @pytest.mark.django_db
 def test_the_mixed_grid_article_shows_a_linked_article_card_title(
-    site, loaded_demo_content
+    site, loaded_demo_content, mock_site_context
 ):
     article = Article.objects.get(site=site, slug="getting-started-with-articles")
 

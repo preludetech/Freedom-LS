@@ -5,3 +5,6 @@
 # One path per line, each followed by "  # <reason>" (two spaces before the
 # "#"). A line with no reason fails the check. So does an exemption that
 # covers no violation, and a path also listed in mirroring_baseline.txt.
+freedom_ls/content_engine/tests/demo_content/  # reads the shipped demo_content/ tree, which mirrors no module
+freedom_ls/blog/tests/demo_content/  # reads the shipped demo_content/ tree, which mirrors no module
+freedom_ls/learner_interface/tests/demo_content/  # reads the shipped demo_content/ tree, which mirrors no module

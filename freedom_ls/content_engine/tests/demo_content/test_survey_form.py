@@ -20,7 +20,9 @@ SURVEY_TITLE = "Course Feedback Survey"
 
 
 @pytest.mark.django_db
-def test_the_demo_survey_requires_its_checkbox_group(site, loaded_demo_content):
+def test_the_demo_survey_requires_its_checkbox_group(
+    site, loaded_demo_content, mock_site_context
+):
     """A checkbox group is the one question the browser cannot validate itself,
     so the runner reveals its own "Select at least one option." message. Without
     a required group shipped in demo content, nothing exercises that path.
@@ -33,7 +35,7 @@ def test_the_demo_survey_requires_its_checkbox_group(site, loaded_demo_content):
 
 
 @pytest.mark.django_db
-def test_the_demo_survey_submits_on_exit(site, loaded_demo_content):
+def test_the_demo_survey_submits_on_exit(site, loaded_demo_content, mock_site_context):
     """`form_submit_and_exit` refuses any form that does not set this, and a
     save-on-exit form's "Leave and save" is a GET carrying no answers. So this
     is the only demo form on which leaving mid-attempt posts a page of answers.
@@ -46,7 +48,7 @@ def test_the_demo_survey_submits_on_exit(site, loaded_demo_content):
 @pytest.mark.django_db
 @pytest.mark.parametrize("question_type", ["date", "email", "url"])
 def test_the_demo_survey_asks_a_typed_question(
-    site, loaded_demo_content, question_type
+    site, loaded_demo_content, mock_site_context, question_type
 ):
     """The typed question types are otherwise demonstrated only in the
     application shell, leaving the course player's runner unexercised.
@@ -59,7 +61,9 @@ def test_the_demo_survey_asks_a_typed_question(
 
 
 @pytest.mark.django_db
-def test_the_demo_survey_asks_no_dropdown_question(site, loaded_demo_content):
+def test_the_demo_survey_asks_no_dropdown_question(
+    site, loaded_demo_content, mock_site_context
+):
     """`score_category_value_sum` reads option values from `multiple_choice`
     and `dropdown` questions alone. A dropdown here would join the survey's
     `max_value` and move every score this form has ever stored.

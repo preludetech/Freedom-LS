@@ -9,13 +9,9 @@ import re
 
 import pytest
 
-from django.conf import settings
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.content_engine.management.commands.content_save import (
-    save_content_to_db,
-)
 from freedom_ls.content_engine.models import File
 
 pytestmark = pytest.mark.fls_internal
@@ -24,13 +20,8 @@ IMAGE_FILES = ["images/backyard-drone-flight.jpg", "images/landscape.svg"]
 PUBLISHED = ["getting-started-with-articles", "undated-notes", "unsigned-update"]
 
 
-@pytest.fixture
-def loaded_demo_content(site, mock_site_context) -> None:
-    save_content_to_db(settings.BASE_DIR / "demo_content", site.name)
-
-
 @pytest.mark.django_db
-def test_the_hidden_demo_article_returns_404(loaded_demo_content):
+def test_the_hidden_demo_article_returns_404(loaded_demo_content, mock_site_context):
     response = Client().get(
         reverse("blog:article_detail", kwargs={"slug": "hidden-draft"})
     )
@@ -40,14 +31,18 @@ def test_the_hidden_demo_article_returns_404(loaded_demo_content):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("slug", PUBLISHED)
-def test_a_published_demo_article_returns_200(loaded_demo_content, slug):
+def test_a_published_demo_article_returns_200(
+    loaded_demo_content, mock_site_context, slug
+):
     response = Client().get(reverse("blog:article_detail", kwargs={"slug": slug}))
 
     assert response.status_code == 200
 
 
 @pytest.mark.django_db
-def test_the_index_lists_the_published_demo_articles(loaded_demo_content):
+def test_the_index_lists_the_published_demo_articles(
+    loaded_demo_content, mock_site_context
+):
     response = Client().get(reverse("blog:index"))
 
     assert response.status_code == 200
@@ -57,6 +52,7 @@ def test_the_index_lists_the_published_demo_articles(loaded_demo_content):
 @pytest.mark.django_db
 def test_the_sitemap_lists_published_demo_articles_and_not_the_hidden_one(
     loaded_demo_content,
+    mock_site_context,
 ):
     body = Client().get(reverse("sitemap")).content.decode()
 
@@ -68,14 +64,16 @@ def test_the_sitemap_lists_published_demo_articles_and_not_the_hidden_one(
 
 
 @pytest.mark.django_db
-def test_robots_txt_allows_the_blog_index(loaded_demo_content):
+def test_robots_txt_allows_the_blog_index(loaded_demo_content, mock_site_context):
     content = Client().get("/robots.txt").content.decode()
 
     assert f"Allow: {reverse('blog:index')}" in content
 
 
 @pytest.mark.django_db
-def test_the_getting_started_article_does_not_skip_from_h1_to_h3(loaded_demo_content):
+def test_the_getting_started_article_does_not_skip_from_h1_to_h3(
+    loaded_demo_content, mock_site_context
+):
     body = (
         Client()
         .get(
@@ -93,6 +91,7 @@ def test_the_getting_started_article_does_not_skip_from_h1_to_h3(loaded_demo_con
 @pytest.mark.django_db
 def test_the_getting_started_page_emits_og_image_and_a_large_twitter_card(
     loaded_demo_content,
+    mock_site_context,
 ):
     body = (
         Client()
@@ -110,7 +109,7 @@ def test_the_getting_started_page_emits_og_image_and_a_large_twitter_card(
 
 @pytest.mark.django_db
 def test_the_index_shows_a_thumbnail_for_each_demo_article_with_an_image(
-    site, loaded_demo_content
+    site, loaded_demo_content, mock_site_context
 ):
     body = Client().get(reverse("blog:index")).content.decode()
 
