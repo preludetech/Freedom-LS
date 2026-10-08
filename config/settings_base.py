@@ -120,6 +120,7 @@ INSTALLED_APPS = [
     "freedom_ls.referral_tracking",
     "freedom_ls.organisations",
     "freedom_ls.learner_management",
+    "freedom_ls.hr_attributes",
     "freedom_ls.learner_progress",
     "freedom_ls.site_aware_models",
     "freedom_ls.panel_framework",

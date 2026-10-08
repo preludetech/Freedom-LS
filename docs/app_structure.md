@@ -28,6 +28,7 @@ flowchart TB
     form_engine
     google_tag
     health
+    hr_attributes
     icons
     learner_interface
     learner_management
@@ -106,6 +107,9 @@ flowchart TB
     form_engine --> site_aware_models
     google_tag --> base
     health --> base
+    hr_attributes --> learner_management
+    hr_attributes --> organisations
+    hr_attributes --> site_aware_models
     icons --> base
     learner_interface --> accounts
     learner_interface --> content_base
@@ -262,6 +266,7 @@ flowchart TB
 | form_engine | accounts, base, content_base, markdown_rendering, site_aware_models | — |
 | google_tag | base | accounts, content_engine, learner_management |
 | health | base | — |
+| hr_attributes | learner_management, organisations, site_aware_models | — |
 | icons | base | — |
 | learner_interface | accounts, content_base, content_engine, course_access, course_interest, course_recommendations, form_engine, icons, learner_management, learner_progress, organisations, site_aware_models, webhooks | base, comms, course_applications, markdown_rendering, role_based_permissions |
 | learner_management | accounts, base, content_engine, form_engine, organisations, role_based_permissions, site_aware_models | learner_progress |
