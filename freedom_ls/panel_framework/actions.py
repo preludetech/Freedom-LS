@@ -21,6 +21,29 @@ def _model_capability(model: type[Model] | Model, verb: str) -> str:
     return f"{meta.app_label}.{verb}_{meta.model_name}"
 
 
+def navigation_response(path: str) -> HttpResponse:
+    """204 that closes the modal and navigates the main content to `path`."""
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = build_hx_trigger({}, close_modal=True)
+    response["HX-Location"] = json.dumps(
+        {"path": path, "target": "#main-content", "swap": "outerHTML"}
+    )
+    return response
+
+
+def count_noun(model: type[Model], count: int) -> str:
+    """A count and the model's name, singular for exactly one."""
+    noun = model._meta.verbose_name if count == 1 else model._meta.verbose_name_plural
+    return f"{count} {noun}"
+
+
+def join_prose(parts: list[str]) -> str:
+    """Run a list into readable prose: a, then a and b, then a, b and c."""
+    if len(parts) < 2:
+        return "".join(parts)
+    return f"{', '.join(parts[:-1])} and {parts[-1]}"
+
+
 class PanelAction:
     """A button on a panel, list or instance view, and what submitting it does.
 
@@ -61,6 +84,16 @@ class PanelAction:
         if scope is None:
             return False
         return ctx.config.has_capability(ctx.request, capability, scope)
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        """Whether the trigger renders. An action that is permitted but not
+        offered still resolves, so a stale submit reaches handle_submit and
+        is refused with a reason instead of a 404."""
+        return True
+
+    def is_available(self, ctx: PanelContext) -> bool:
+        """Whether the trigger renders for this request: permitted and offered."""
+        return self.has_permission(ctx) and self.is_offered(ctx)
 
     def get_success_events(self, instance: Model | None) -> dict[str, list[str]]:
         ids = [str(instance.pk)] if instance is not None else []
@@ -197,15 +230,8 @@ class CreateInstanceAction(FormPanelAction):
             response = HttpResponse(html)
             response["HX-Trigger"] = build_hx_trigger(events)
             return response
-        response = HttpResponse(status=204)
+        response = navigation_response(self.get_success_url(instance))
         response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
-        response["HX-Location"] = json.dumps(
-            {
-                "path": self.get_success_url(instance),
-                "target": "#main-content",
-                "swap": "outerHTML",
-            }
-        )
         return response
 
 
@@ -295,7 +321,7 @@ class DeleteAction(PanelAction):
         for fast_delete in collector.fast_deletes:
             counts[fast_delete.model] += fast_delete.count()
         return [
-            self._count_noun(model, count)
+            count_noun(model, count)
             for model, count in counts.items()
             if count and model is not type(instance)
         ]
@@ -306,28 +332,13 @@ class DeleteAction(PanelAction):
             type(obj) for obj in error.protected_objects
         )
         dependents = [
-            self._count_noun(model, counts[model])
+            count_noun(model, counts[model])
             for model in sorted(counts, key=lambda m: str(m._meta.verbose_name))
         ]
         return (
             f"This {instance._meta.verbose_name} cannot be deleted because it "
-            f"still has {self._join(dependents)}."
+            f"still has {join_prose(dependents)}."
         )
-
-    @staticmethod
-    def _count_noun(model: type[Model], count: int) -> str:
-        """A count and the model's name, singular for exactly one."""
-        noun = (
-            model._meta.verbose_name if count == 1 else model._meta.verbose_name_plural
-        )
-        return f"{count} {noun}"
-
-    @staticmethod
-    def _join(parts: list[str]) -> str:
-        """Run a list into readable prose: a, then a and b, then a, b and c."""
-        if len(parts) < 2:
-            return "".join(parts)
-        return f"{', '.join(parts[:-1])} and {parts[-1]}"
 
     def _confirmation_context(
         self,
@@ -390,19 +401,15 @@ class DeleteAction(PanelAction):
                 request=ctx.request,
             )
             return HttpResponse(html, status=422)
-        response = HttpResponse(status=204)
         if not self.success_url:
+            response = HttpResponse(status=204)
             response["HX-Trigger"] = build_hx_trigger(events, close_modal=True)
             return response
         # htmx handles HX-Trigger before HX-Location, so domain events would
         # reach the page being left while it is still on screen, and its
         # panels would refetch URLs scoped to the row just deleted. The page
         # navigated to renders fresh and needs none of them.
-        response["HX-Trigger"] = build_hx_trigger({}, close_modal=True)
-        response["HX-Location"] = json.dumps(
-            {"path": self.success_url, "target": "#main-content", "swap": "outerHTML"}
-        )
-        return response
+        return navigation_response(self.success_url)
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         """The instance to delete only -- never a list-level scope fallback,

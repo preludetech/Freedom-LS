@@ -14,6 +14,11 @@ from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.actions import (
+    EditCohortAction,
+    cohort_not_empty_sentence,
+    cohort_state_actions,
+)
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
     EDUCATOR_CHANGED,
@@ -39,6 +44,7 @@ from freedom_ls.learner_management.queries import (
     active_organisation_admins,
     cohort_course_count,
     cohort_educators,
+    cohort_is_empty,
     cohort_learner_count,
     cohorts_visible_to,
     courses_visible_to,
@@ -49,7 +55,6 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     DeleteAction,
-    EditAction,
     PanelAction,
 )
 from freedom_ls.panel_framework.filters import TableFilter
@@ -400,6 +405,13 @@ class LearnerInstanceView(InstanceView):
     panel = LearnerPanelStack
 
 
+def _interface_path(organisation: Organisation, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
+    )
+
+
 def active_status_badge(is_active: bool) -> StatusBadge:
     """The badge for an `is_active` flag, matching `<c-active-status-badge>`."""
     if is_active:
@@ -549,6 +561,26 @@ class CohortEducatorsPanel(Panel):
         return context
 
 
+class CohortSettingsPanel(Panel):
+    title = "Settings"
+    capability = "freedom_ls_learner_management.change_cohort"
+    template_name = "educator_interface/panels/cohort_settings.html"
+    refresh_events = (COHORT_CHANGED,)
+
+    def get_actions(self) -> list[PanelAction]:
+        return cohort_state_actions()
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        context = super().get_context_data()
+        context["cohort"] = cohort
+        context["is_empty"] = cohort_is_empty(cohort)
+        context["not_empty_sentence"] = (
+            "" if context["is_empty"] else cohort_not_empty_sentence(cohort)
+        )
+        return context
+
+
 class CohortOverviewStack(PanelStack):
     title = "Overview"
     refresh_events = (COHORT_CHANGED,)
@@ -566,6 +598,7 @@ class CohortTabSet(TabSet):
         "overview": CohortOverviewStack,
         "learners": CohortLearnersPanel,
         "courses": CourseRegistrationsPanel,
+        "settings": CohortSettingsPanel,
     }
 
 
@@ -587,20 +620,15 @@ class CohortInstanceView(InstanceView):
         # URL needs nothing from the request.
         cohort = cast(Cohort, self.instance)
         return [
-            EditAction(
+            EditCohortAction(
                 form_class=CohortForm,
                 form_title=f"Edit {cohort}",
                 instance=cohort,
                 success_events=(COHORT_CHANGED,),
             ),
+            *cohort_state_actions(),
             DeleteAction(
-                success_url=reverse(
-                    "educator_interface:interface",
-                    kwargs={
-                        "organisation_slug": cohort.organisation.slug,
-                        "path_string": "cohorts",
-                    },
-                ),
+                success_url=_interface_path(cohort.organisation, "cohorts"),
             ),
         ]
 
@@ -624,17 +652,11 @@ class CreateCohortAction(CreateInstanceAction):
         form = super().get_form(request, instance)
         organisation = cast(OrganisationScopedRequest, request).organisation
         cast(Cohort, form.instance).organisation = organisation
-        self._organisation_slug = organisation.slug
+        self._organisation = organisation
         return form
 
     def get_success_url(self, instance: Model) -> str:
-        return reverse(
-            "educator_interface:interface",
-            kwargs={
-                "organisation_slug": self._organisation_slug,
-                "path_string": f"cohorts/{instance.pk}",
-            },
-        )
+        return _interface_path(self._organisation, f"cohorts/{instance.pk}")
 
 
 class CohortConfig(OrganisationSectionConfig, ListViewConfig):

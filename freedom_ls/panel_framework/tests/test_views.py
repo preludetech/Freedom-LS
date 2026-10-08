@@ -13,6 +13,8 @@ from django.db.models import Model
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.test import RequestFactory
 
+from freedom_ls.panel_framework.actions import PanelAction
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
     InstanceView,
@@ -326,6 +328,37 @@ class _StubInstanceView(InstanceView):
     panel = StubDetailsPanel
 
 
+class _NotFoundOnSubmitAction(PanelAction):
+    """Resolves and is permitted, but not offered, and its submit 404s."""
+
+    label = "Vanish"
+    action_name = "vanish"
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return False
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        raise Http404("gone while submitting")
+
+
+class _VanishingInstanceView(InstanceView):
+    panel = StubDetailsPanel
+
+    def get_actions(self) -> list[PanelAction]:
+        return [_NotFoundOnSubmitAction()]
+
+
+class VanishingConfig(ListViewConfig):
+    url_name = "vanishing-stub"
+    menu_label = "Vanishing Stub"
+    model = StubModel
+    instance_view = _VanishingInstanceView
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        return None
+
+
 class DenyByDefaultConfig(ListViewConfig):
     """Defines model and instance_view but never overrides authorise_instance."""
 
@@ -511,6 +544,42 @@ class TestOutOfScopeActionRequests:
 
         with pytest.raises(Http404):
             self._dispatch(f"deny-stub/{stub.pk}", HTTP_HX_REQUEST="true")
+
+
+@pytest.mark.django_db
+class TestActionsThatAreNotOffered:
+    def _post(self, path_string: str, **headers: str) -> HttpResponse:
+        request = RequestFactory().post(f"/test-panel/{path_string}", **headers)
+        request.user = make_staff_user()
+        response = panel_framework_view(
+            config=[NavGroup("Stubs", [VanishingConfig])],
+            request=request,
+            path_string=path_string,
+            template_name=INTERFACE_TEMPLATE,
+            url_name=INTERFACE_URL_NAME,
+        )
+        assert isinstance(response, HttpResponse)
+        return response
+
+    def test_an_action_that_is_not_offered_still_resolves_for_a_submit(
+        self, mock_site_context: None
+    ) -> None:
+        stub = make_stub(name="Stale Stub")
+
+        with pytest.raises(Http404, match="gone while submitting"):
+            self._post(f"vanishing-stub/{stub.pk}/__actions/vanish")
+
+    def test_a_404_raised_while_an_htmx_action_submits_gets_the_unavailable_fragment(
+        self, mock_site_context: None
+    ) -> None:
+        stub = make_stub(name="Stale Stub")
+
+        response = self._post(
+            f"vanishing-stub/{stub.pk}/__actions/vanish", HTTP_HX_REQUEST="true"
+        )
+
+        assert response.status_code == 404
+        assert "This is no longer available" in response.content.decode()
 
 
 # Tests for _build_breadcrumbs.

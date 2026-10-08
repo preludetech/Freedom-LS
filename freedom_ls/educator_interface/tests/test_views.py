@@ -58,7 +58,7 @@ def _get_document(client: Client, url: str) -> lxml.html.HtmlElement:
 
 
 @pytest.mark.django_db
-def test_cohort_detail_page_has_overview_learners_and_courses_tabs(
+def test_cohort_detail_page_has_overview_learners_courses_and_settings_tabs(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -78,6 +78,7 @@ def test_cohort_detail_page_has_overview_learners_and_courses_tabs(
         "overview",
         "learners",
         "courses",
+        "settings",
     ]
     assert links[0].get("aria-current") == "page"
     assert links[1].get("aria-current") is None
@@ -128,7 +129,11 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
     (heading,) = document.cssselect("#instance-title")
     header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
     triggers = {button.get("hx-get") for button in header.cssselect("button[hx-get]")}
-    assert triggers == {f"{page_url}/__actions/edit", f"{page_url}/__actions/delete"}
+    assert triggers == {
+        f"{page_url}/__actions/edit",
+        f"{page_url}/__actions/deactivate",
+        f"{page_url}/__actions/delete",
+    }
     (details_panel,) = document.cssselect("section[data-panel='details']")
     assert not details_panel.cssselect("footer")
     assert not details_panel.cssselect("button[hx-get]")
@@ -296,23 +301,70 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
 
 
 @pytest.mark.django_db
-def test_renaming_a_cohort_onto_a_sibling_name_answers_422_and_keeps_the_name(
-    staff_client: Client,
+def test_settings_tab_is_present_for_an_organisation_admin(
+    mock_site_context, logged_in_client
 ):
     organisation = OrganisationFactory()
-    CohortFactory(organisation=organisation, name="Year 10 Science")
-    cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, admin, "organisation_admin", organisation)
 
-    response = staff_client.post(
-        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__actions/edit"),
-        {"name": "Year 10 Science"},
-        HTTP_HX_REQUEST="true",
+    document = _get_document(
+        logged_in_client(admin),
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}"),
     )
 
-    cohort.refresh_from_db()
-    assert response.status_code == 422
-    assert "Another cohort already has this name." in response.content.decode()
-    assert cohort.name == "Year 11 Science"
+    (nav,) = document.cssselect("nav[aria-label='Cohort sections']")
+    assert "Settings" in [a.text_content().split()[0] for a in nav.cssselect("a")]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["cohort_admin", "cohort_viewer"])
+def test_settings_tab_answers_404_for_a_role_without_change_cohort(
+    mock_site_context, logged_in_client, role: str
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, role, cohort)
+
+    response = logged_in_client(educator).get(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/settings")
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_header_offers_deactivate_on_an_active_cohort(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+
+    document = _get_document(staff_client, page_url)
+
+    (heading,) = document.cssselect("#instance-title")
+    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+    triggers = {button.get("hx-get") for button in header.cssselect("button[hx-get]")}
+    assert f"{page_url}/__actions/deactivate" in triggers
+    assert f"{page_url}/__actions/reactivate" not in triggers
+
+
+@pytest.mark.django_db
+def test_header_offers_reactivate_on_an_inactive_cohort(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, is_active=False)
+    page_url = _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+
+    document = _get_document(staff_client, page_url)
+
+    (heading,) = document.cssselect("#instance-title")
+    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+    triggers = {button.get("hx-get") for button in header.cssselect("button[hx-get]")}
+    assert f"{page_url}/__actions/reactivate" in triggers
+    assert f"{page_url}/__actions/deactivate" not in triggers
 
 
 @pytest.mark.django_db

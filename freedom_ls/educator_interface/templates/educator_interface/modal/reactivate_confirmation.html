@@ -1,0 +1,24 @@
+{% comment %}
+The modal fragment a ReactivateCohortAction's GET returns. Context: cohort,
+cohort_course_count, action_url.
+{% endcomment %}
+<c-modal-header>Reactivate {{ cohort }}</c-modal-header>
+
+<div class="space-y-3 px-6 py-4 text-sm">
+    <p>
+        The cohort's registrations give access to its {{ cohort_course_count }}
+        course{{ cohort_course_count|pluralize }} again.
+    </p>
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <form hx-post="{{ action_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <c-button type="submit" variant="secondary" loading="true" loading_text="Reactivating...">
+            Reactivate
+        </c-button>
+    </form>
+</c-button-group>

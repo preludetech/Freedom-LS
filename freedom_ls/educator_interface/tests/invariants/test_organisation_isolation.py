@@ -227,6 +227,22 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
+    @pytest.mark.parametrize(
+        "suffix", ["__tabs/settings", "__actions/deactivate", "__actions/reactivate"]
+    )
+    def test_cohort_settings_surfaces_404_for_a_cohort_outside_organisation_a(
+        self, isolation, suffix: str
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/{suffix}",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
     def test_cohort_educators_panel_fetch_404s_for_a_cohort_outside_organisation_a(
         self, isolation
     ):

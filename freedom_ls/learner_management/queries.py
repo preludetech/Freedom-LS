@@ -323,6 +323,17 @@ def cohort_course_count(cohort: Cohort) -> int:
     return cohort.course_registrations.filter(is_active=True).count()
 
 
+def cohort_is_empty(cohort: Cohort) -> bool:
+    """No memberships and no registrations at all. A membership whose
+    Learner.is_active is False and a registration whose
+    CohortCourseRegistration.is_active is False both count, because
+    deleting the cohort would cascade them away."""
+    return (
+        not cohort.cohortmembership_set.exists()
+        and not cohort.course_registrations.exists()
+    )
+
+
 def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
     """Whether this user may see one cohort, by either path.
 
