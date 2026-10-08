@@ -109,7 +109,7 @@ def test_educator_manages_cohorts_and_learners(
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
     announcer = page.locator("#scope-announcer")
     expect(announcer).to_have_count(1)
-    page.get_by_role("link", name="Learners").click()
+    page.locator('a[href$="/learners"]').click()
     expect(page).to_have_url(
         interface_url(live_server, organisation_a.slug, "learners")
     )
@@ -230,7 +230,7 @@ def test_educator_manages_cohorts_and_learners(
     assign_object_role(educator_user, year_nine, "cohort_viewer")
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
     page.get_by_role("button", name="Create Cohort").click()
-    page.get_by_label("Name").fill("Should never exist")
+    page.locator("#app-modal").get_by_label("Name").fill("Should never exist")
     remove_object_role(educator_user, organisation_a, "organisation_admin")
     modal.get_by_role("button", name="Save", exact=True).click()
     heading = page.get_by_role(
@@ -238,7 +238,7 @@ def test_educator_manages_cohorts_and_learners(
     )
     expect(heading).to_be_visible()
     expect(page.get_by_text("Your role doesn't allow it.")).to_be_visible()
-    expect(page.get_by_label("Name")).to_have_count(0)
+    expect(page.locator("#app-modal").get_by_label("Name")).to_have_count(0)
     close_button = page.get_by_role("button", name="Close").last
     expect(close_button).to_be_visible()
     close_button.click()

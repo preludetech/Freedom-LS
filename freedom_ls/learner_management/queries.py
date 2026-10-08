@@ -311,6 +311,17 @@ def courses_visible_to(
     )
 
 
+def cohort_learner_count(cohort: Cohort) -> int:
+    """Members of this cohort whose Learner is still active in the
+    organisation. Every surface showing a cohort's learner count reads this."""
+    return cohort.cohortmembership_set.filter(learner__is_active=True).count()
+
+
+def cohort_course_count(cohort: Cohort) -> int:
+    """Courses this cohort holds an active registration for."""
+    return cohort.course_registrations.filter(is_active=True).count()
+
+
 def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
     """Whether this user may see one cohort, by either path.
 

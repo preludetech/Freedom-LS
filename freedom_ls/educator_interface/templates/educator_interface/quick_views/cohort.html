@@ -1,7 +1,6 @@
 <c-panel-definition-list columns="2">
     <c-panel-definition-row label="Status">
-        {% comment %}TODO: read the status from Cohort.is_active once cohort administration adds it.{% endcomment %}
-        Active
+        <c-active-status-badge :active="cohort.is_active" />
     </c-panel-definition-row>
     <c-panel-definition-row label="Learners">{{ learner_count }}</c-panel-definition-row>
     <c-panel-definition-row label="Courses" class="col-span-2">
