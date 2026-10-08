@@ -68,9 +68,17 @@ exercise another app's behaviour into that app. The matching lines come out of
 `mirroring_baseline.txt` and `import_baseline.txt` in the same change, because both are delete-only
 and a stale line fails the CI lint job. Cross-cutting tests that cannot mirror a module are grouped
 into a subpackage and declared in `mirroring_exemptions.txt`, which is what the testing skill
-already says and nobody has done. The helper functions that the per-app `conftest.py` files in
-`learner_interface`, `reports`, `course_applications`, `deployment` and `panel_framework` expose for
-hand-import move to plain helper modules. The duplicated builders, `collection_item_for` in two apps
+already says and nobody has done. The subpackages are `demo_content/` for tests that read the
+shipped demo tree, `components/` for tests of Cotton components, which have no Python module, and
+`invariants/` for repo-lint and cross-app invariant tests. `learner_interface` also gets a
+`tests/views/` subpackage with one file per page, because its single `views.py` would otherwise
+draw several thousand lines of tests into one file. The helper functions that the per-app
+`conftest.py` files in `learner_interface`, `reports`, `course_applications`, `deployment` and
+`panel_framework` expose for hand-import move to a plain `helpers.py` beside the tests, and
+`panel_framework`'s stub models to `stub_models.py`. The shared builders live in the lowest app
+that owns what they build: `collection_item_for` in `content_engine/tests/helpers.py`,
+`register_user_for_course` in `learner_management/tests/helpers.py` and `course_progress_record`
+in `learner_progress/tests/helpers.py`. The duplicated builders, `collection_item_for` in two apps
 and the three course-progress-record builders, collapse to one each.
 `research_test_suite_inventory.md` lists the files, the per-app baseline counts and the
 test-to-source ratios.
@@ -78,7 +86,10 @@ test-to-source ratios.
 ### Playwright flow tests
 
 A flow test is one Playwright test that walks a user journey through a page or a few pages, logs in
-once, builds its data once, and asserts many things along the way. The current suite is the
+once, builds its data once, and asserts many things along the way. Each flow is one file named
+`test_<journey>_flow.py` in the app's `tests/playwright/`. The three QA viewports and the overflow
+assertion the layout checks share live in `freedom_ls/tests/playwright_helpers.py` as
+`QA_VIEWPORTS` and `assert_no_horizontal_overflow`. The current suite is the
 opposite: 189 test functions in 52 files, most asserting one value each after a full login and
 flush. `research_playwright_consolidation.md` groups them into about ten candidate flows and names
 which tests each replaces: the panel_framework create-modal lifecycle, the data table, quick views,
@@ -110,8 +121,8 @@ What is settled about the shape:
 Tests of the QA seeders in `freedom_ls/qa_helpers/tests/`, the `danger_` commands in
 `freedom_ls/dev_tools/tests/`, the git and database scripts under the top-level `tests/` directory,
 the design-screenshot tool, and the fls-content validator in
-`claude_plugins/fls-content/validate/tests/` get a marker in the style of `ci_only`, are deselected
-in `addopts`, and run in their own CI step. They are not deleted. `test_guard.py` is the only thing
+`claude_plugins/fls-content/validate/tests/` get a `dev_tooling` marker in the style of `ci_only`,
+are deselected in `addopts`, and run in their own CI step. They are not deleted. `test_guard.py` is the only thing
 that stops a `danger_` command wiping a production database, and the tests of `dev_db_delete.sh`,
 `land_on_main.sh` and the rebase lost-change check guard scripts that drop databases and move
 `main`. The seed-shape tests that only prove a QA fixture builder produced consistent data are junk
@@ -145,7 +156,10 @@ deleting admin and Cotton component tests lowers it.
 The `loaded_demo_content` fixture in `content_engine/tests/conftest.py` imports the demo content
 tree per test. The demo-content tests in `blog`, `content_engine` and `learner_interface` each
 assert one fact about that import, and together they are about half of the slow time in the unit
-suite. They become one import per module with the facts asserted against it. The image-processing
+suite. They become one import per module with the facts asserted against it: `loaded_demo_content`
+becomes a module-scoped fixture in `freedom_ls/tests/demo_content_fixtures.py`, and the ambient-site
+patching that `mock_site_context` does becomes a reusable `site_context` context manager in
+`freedom_ls/tests/site_context.py`. The image-processing
 tests in `content_engine` are the next largest block and are real work; they stay.
 
 ### Skills, agents and commands
