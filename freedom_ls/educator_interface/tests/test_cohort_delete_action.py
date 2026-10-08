@@ -1,9 +1,9 @@
-"""Deleting a cohort from its page header.
+"""Deleting an empty cohort from its settings tab.
 
-The delete action belongs to the cohort page as a whole, so it renders and
-submits through the instance URL rather than any one panel's.
+Only a cohort with no memberships and no course registrations can be deleted;
+removed learners and inactive registrations still count.
 
-The cohort panel also renders for a cohort whose registrations granted progress.
+The cohort page also renders for a cohort whose registrations granted progress.
 
 CourseProgress protects its grant FKs, so Django's Collector raises rather than
 returning a cascade preview. DeleteAction renders that preview on every GET, for
@@ -14,6 +14,7 @@ saw nothing wrong.
 
 from __future__ import annotations
 
+import html
 import json
 from collections.abc import Callable
 
@@ -27,13 +28,14 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course
+from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -69,8 +71,8 @@ def _panel_url(cohort) -> str:
 
 
 def _delete_url(client: Client, cohort: Cohort) -> str:
-    """The delete action's URL: it belongs to the cohort page as a whole."""
-    return f"{_panel_url(cohort)}/__actions/delete"
+    """The delete action's URL, on the settings tab."""
+    return f"{_panel_url(cohort)}/__tabs/settings/__actions/delete"
 
 
 @pytest.mark.django_db
@@ -114,34 +116,35 @@ def test_the_cohort_page_renders_the_delete_trigger(
     client = logged_in_client(UserFactory(superuser=True))
     url = _delete_url(client, cohort)
 
-    body = client.get(_panel_url(cohort)).content.decode()
+    body = client.get(f"{_panel_url(cohort)}/__tabs/settings").content.decode()
 
     assert f'hx-get="{url}"' in body
     assert f'hx-delete="{url}"' in client.get(url).content.decode()
 
 
 @pytest.mark.django_db
-def test_cohort_panel_renders_for_a_viewer_who_can_delete_it(
+def test_settings_tab_renders_for_a_viewer_who_can_delete_a_cohort_with_progress(
     cohort_with_granted_progress, logged_in_client
 ):
     client = logged_in_client(UserFactory(superuser=True))
 
-    response = client.get(_panel_url(cohort_with_granted_progress))
+    response = client.get(f"{_panel_url(cohort_with_granted_progress)}/__tabs/settings")
 
     assert response.status_code == 200
 
 
 @pytest.mark.django_db
-def test_the_delete_dialog_says_why_the_cohort_cannot_go(
+def test_the_settings_tab_says_why_delete_is_unavailable(
     cohort_with_granted_progress, logged_in_client
 ):
     client = logged_in_client(UserFactory(superuser=True))
-    url = _delete_url(client, cohort_with_granted_progress)
+    cohort = cohort_with_granted_progress
+    url = _delete_url(client, cohort)
 
-    body = client.get(url).content.decode()
+    body = client.get(f"{_panel_url(cohort)}/__tabs/settings").content.decode()
 
-    assert "cannot be deleted because it still has" in body
-    assert "course progress record" in body
+    assert cohort_not_empty_sentence(cohort) in html.unescape(body)
+    assert f'hx-get="{url}"' not in body
 
 
 @pytest.mark.django_db
@@ -175,18 +178,20 @@ def test_submitting_the_blocked_delete_answers_instead_of_erroring(
     response = client.delete(url)
 
     assert response.status_code == 422
-    assert "cannot be deleted because it still has" in response.content.decode()
+    assert cohort_not_empty_sentence(cohort_with_granted_progress) in html.unescape(
+        response.content.decode()
+    )
     assert CourseProgress.objects.filter(
         cohort_registration__cohort=cohort_with_granted_progress
     ).exists()
 
 
 @pytest.mark.django_db
-def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
+def test_a_cohort_viewers_pasted_delete_url_answers_404_and_keeps_the_cohort(
     mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
-    """A cohort viewer can open the cohort but not delete it. Pasting the
-    action URL gets the site's own 403 page, not an empty 403 body."""
+    """A cohort viewer can open the cohort but not its settings tab, so the
+    delete action beneath that tab is not reachable either."""
     cohort = CohortFactory(organisation=OrganisationFactory())
     url = _delete_url(logged_in_client(UserFactory(superuser=True)), cohort)
     educator = UserFactory(staff=True)
@@ -196,8 +201,7 @@ def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
 
     response = client.get(url)
 
-    assert response.status_code == 403
-    assert "You do not have access to this page" in response.content.decode()
+    assert response.status_code == 404
     assert Cohort.objects.filter(pk=cohort.pk).exists()
 
 
@@ -214,3 +218,69 @@ def test_the_delete_dialog_body_says_the_delete_cannot_be_undone(
     (body,) = document.cssselect("header + div")
     assert "cannot be undone" in body.text_content()
     assert "cohort" in body.text_content()
+
+
+@pytest.fixture(params=["removed learner", "inactive registration"])
+def cohort_holding_only_dormant_rows(
+    request: pytest.FixtureRequest, mock_site_context: Site
+) -> Cohort:
+    cohort: Cohort = CohortFactory(organisation=OrganisationFactory(), name="Dormant")
+    if request.param == "removed learner":
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(organisation=cohort.organisation, is_active=False),
+        )
+    else:
+        CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+    return cohort
+
+
+@pytest.mark.django_db
+def test_a_cohort_holding_only_dormant_rows_offers_no_delete_and_says_why(
+    cohort_holding_only_dormant_rows: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    cohort = cohort_holding_only_dormant_rows
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+
+    body = client.get(f"{_panel_url(cohort)}/__tabs/settings").content.decode()
+
+    assert f'hx-get="{url}"' not in body
+    assert cohort_not_empty_sentence(cohort) in html.unescape(body)
+
+
+@pytest.mark.django_db
+def test_deleting_a_cohort_holding_only_dormant_rows_answers_422_and_keeps_it(
+    cohort_holding_only_dormant_rows: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
+) -> None:
+    cohort = cohort_holding_only_dormant_rows
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.delete(_delete_url(client, cohort))
+
+    assert response.status_code == 422
+    assert cohort_not_empty_sentence(cohort) in html.unescape(response.content.decode())
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_delete_of_a_cohort_that_gained_a_member_answers_422_and_keeps_it(
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Stale page")
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+    assert client.get(url).status_code == 200
+    membership = CohortMembershipFactory(
+        cohort=cohort, learner=LearnerFactory(organisation=organisation)
+    )
+
+    response = client.delete(url)
+
+    assert response.status_code == 422
+    assert cohort_not_empty_sentence(cohort) in html.unescape(response.content.decode())
+    assert Cohort.objects.filter(pk=cohort.pk).exists()
+    assert CohortMembership.objects.filter(pk=membership.pk).exists()

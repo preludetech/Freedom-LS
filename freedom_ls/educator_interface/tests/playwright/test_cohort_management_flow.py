@@ -205,15 +205,20 @@ def test_educator_manages_cohorts_and_learners(
         interface_url(live_server, organisation_a.slug, f"learners/{ada.pk}")
     )
 
-    # Delete the cohort from its own page without a failing request: the page
-    # being left must not refetch panels for the cohort that no longer exists.
+    # Delete the cohort from its settings tab without a failing request: the
+    # page being left must not refetch panels for the cohort that no longer
+    # exists.
     failed: list[str] = []
 
     def record_failure(response: Response) -> None:
         if response.status >= 400:
             failed.append(f"{response.status} {response.url}")
 
-    page.goto(interface_url(live_server, organisation_a.slug, f"cohorts/{created.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation_a.slug, f"cohorts/{created.pk}/__tabs/settings"
+        )
+    )
     page.on("response", record_failure)
     page.get_by_role("button", name="Delete", exact=True).click()
     # Scoped: the trigger with the same name sits behind the dialog.
@@ -249,7 +254,11 @@ def test_educator_manages_cohorts_and_learners(
     # one carries no cohort grant, so it leaves with organisation_admin.
     assign_object_role(educator_user, organisation_a, "organisation_admin")
     leaving = CohortFactory(organisation=organisation_a, name="Leaving Scope")
-    page.goto(interface_url(live_server, organisation_a.slug, f"cohorts/{leaving.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation_a.slug, f"cohorts/{leaving.pk}/__tabs/settings"
+        )
+    )
     page.get_by_role("button", name="Delete").first.click()
     dialog_delete = page.get_by_role("dialog").get_by_role("button", name="Delete")
     expect(dialog_delete).to_be_visible()
