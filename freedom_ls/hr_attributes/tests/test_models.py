@@ -118,3 +118,31 @@ def test_deleting_the_learners_user_removes_their_attributes(mock_site_context):
 
     # Assert
     assert not LearnerHRAttributes.objects.filter(pk=attributes.pk).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory_class", LIST_FACTORIES)
+def test_full_clean_strips_surrounding_whitespace_from_name(
+    mock_site_context, factory_class
+):
+    # Arrange
+    entry = factory_class.build(organisation=OrganisationFactory(), name=" Finance ")
+
+    # Act
+    entry.full_clean()
+
+    # Assert
+    assert entry.name == "Finance"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory_class", LIST_FACTORIES)
+def test_full_clean_keeps_the_case_of_name(mock_site_context, factory_class):
+    # Arrange
+    entry = factory_class.build(organisation=OrganisationFactory(), name="IT")
+
+    # Act
+    entry.full_clean()
+
+    # Assert
+    assert entry.name == "IT"

@@ -37,6 +37,11 @@ class JobTitle(SiteAwareModel):
             )
         ]
 
+    def clean(self) -> None:
+        super().clean()
+        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
+        self.name = self.name.strip()
+
     def __str__(self) -> str:
         # The suffix is what tells a reader of the learner page that a held
         # entry has since been deactivated.
@@ -68,6 +73,11 @@ class Department(SiteAwareModel):
             )
         ]
 
+    def clean(self) -> None:
+        super().clean()
+        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
+        self.name = self.name.strip()
+
     def __str__(self) -> str:
         # The suffix is what tells a reader of the learner page that a held
         # entry has since been deactivated.
@@ -98,6 +108,11 @@ class Location(SiteAwareModel):
                 name="unique_location_name_per_organisation",
             )
         ]
+
+    def clean(self) -> None:
+        super().clean()
+        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
+        self.name = self.name.strip()
 
     def __str__(self) -> str:
         # The suffix is what tells a reader of the learner page that a held
