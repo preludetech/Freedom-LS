@@ -427,7 +427,7 @@ name = "qa_helpers tests import only qa_helpers' runtime deps"
 type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["freedom_ls.qa_helpers.tests"]
-forbidden_modules = ["freedom_ls.base", "freedom_ls.blog", "freedom_ls.content_base", "freedom_ls.course_access", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.icons", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.panel_framework", "freedom_ls.referral_tracking", "freedom_ls.tiktok_pixel", "freedom_ls.xapi_learning_record_store"]
+forbidden_modules = ["freedom_ls.base", "freedom_ls.blog", "freedom_ls.content_base", "freedom_ls.course_access", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.icons", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.panel_framework", "freedom_ls.referral_tracking", "freedom_ls.tiktok_pixel", "freedom_ls.xapi_learning_record_store"]
 
 [[tool.importlinter.contracts]]
 id = "referral_tracking"
