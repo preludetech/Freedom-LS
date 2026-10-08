@@ -7,9 +7,12 @@ client test can prove work.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory
 from freedom_ls.conftest import reverse_url
 from freedom_ls.form_engine.uploads import MAX_UPLOAD_BYTES
 from freedom_ls.tests.app_guards import app_not_installed
@@ -142,3 +145,43 @@ def test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded(
     assert uploads == []
     expect(logged_in_page.get_by_text("Choose a smaller one")).to_be_visible()
     expect(logged_in_page.get_by_label("Upload your ID")).to_have_value("")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_an_anonymous_visitor_can_apply_and_is_handed_off_to_signup(
+    live_server, page: Page, mock_site_context, tmp_path
+):
+    """Without an account, the applicant fills in the form, attaches a file,
+    gives an email address, and arrives at signup with that address prefilled."""
+    SiteSignupPolicyFactory(allow_signups=True)
+    course, _form = gated_course_with_form()
+    scan = tmp_path / "id-scan.png"
+    scan.write_bytes(png_bytes())
+
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    # Page 1 has no file question, and says the answers live in this browser.
+    expect(page.get_by_text("saved in this browser only")).to_be_visible()
+    expect(page.locator("input[type=file]")).to_have_count(0)
+    page.get_by_label("Your name").fill("Ada Lovelace")
+    page.get_by_role("button", name="Next").click()
+
+    # Page 2: the answers so far are held, so the file can be attached.
+    page.get_by_label("Upload your ID").set_input_files(str(scan))
+    expect(page.get_by_text("id-scan.png")).to_be_visible()
+    page.get_by_role("button", name="Next").click()
+
+    page.get_by_label("Where should we send your decision?").fill("ada@example.com")
+    page.get_by_role("button", name="Submit application").click()
+
+    expect(page).to_have_url(re.compile(r"email=ada%40example\.com"))
+    expect(page).to_have_url(re.compile(r"next="))
+    expect(page.get_by_label("Email")).to_have_value("ada@example.com")
+    expect(page.get_by_text("Your application for")).to_be_visible()
