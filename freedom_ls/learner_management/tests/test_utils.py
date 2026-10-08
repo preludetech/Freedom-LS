@@ -144,6 +144,54 @@ class TestCohortRegistration:
 
 
 @pytest.mark.django_db
+class TestInactiveCohort:
+    def test_a_member_of_an_inactive_cohort_has_no_access_through_it(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        cohort = _register_via_cohort(learner, course)
+        cohort.is_active = False
+        cohort.save()
+
+        _assert_both_agree(learner.user, course, expected=False)
+
+    def test_an_individual_registration_still_grants_access(self, mock_site_context):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        cohort = _register_via_cohort(learner, course)
+        cohort.is_active = False
+        cohort.save()
+        LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+
+        _assert_both_agree(learner.user, course, expected=True)
+
+    def test_an_active_registration_in_a_second_cohort_still_grants_access(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        inactive_cohort = _register_via_cohort(learner, course)
+        inactive_cohort.is_active = False
+        inactive_cohort.save()
+        _register_via_cohort(learner, course)
+
+        _assert_both_agree(learner.user, course, expected=True)
+
+    def test_reactivating_the_cohort_restores_access(self, mock_site_context):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        cohort = _register_via_cohort(learner, course)
+        cohort.is_active = False
+        cohort.save()
+
+        cohort.is_active = True
+        cohort.save()
+
+        _assert_both_agree(learner.user, course, expected=True)
+
+
+@pytest.mark.django_db
 class TestNoRegistration:
     def test_a_user_with_no_registration_at_all_has_no_access(self, mock_site_context):
         course = CourseFactory()

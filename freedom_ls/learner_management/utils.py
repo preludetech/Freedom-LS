@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -22,9 +22,9 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
 
     learner_interface.get_is_registered delegates to this function.
     """
-    from freedom_ls.learner_management.models import (
-        CohortCourseRegistration,
-        LearnerCourseRegistration,
+    from freedom_ls.learner_management.models import LearnerCourseRegistration
+    from freedom_ls.learner_management.queries import (
+        access_granting_cohort_registrations,
     )
 
     if not user.is_authenticated:
@@ -39,12 +39,15 @@ def is_registered_for_course(user: RequestUser, course: Course) -> bool:
     # row, but split across two calls they can match different rows of the
     # cohort's memberships -- so a cohort holding this user's removed Learner
     # alongside a second, active Learner would otherwise grant access.
-    cohort = CohortCourseRegistration.objects.filter(
-        cohort__cohortmembership__learner__user=user,
-        cohort__cohortmembership__learner__is_active=True,
-        course=course,
-        is_active=True,
-    ).exists()
+    cohort = (
+        access_granting_cohort_registrations()
+        .filter(
+            cohort__cohortmembership__learner__user=cast("User", user),
+            cohort__cohortmembership__learner__is_active=True,
+            course=course,
+        )
+        .exists()
+    )
     return cohort
 
 

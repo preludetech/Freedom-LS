@@ -33,6 +33,8 @@ from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.learner_interface.tests.helpers import rendered_section
 from freedom_ls.learner_interface.utils import BLOCKED
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
@@ -586,6 +588,30 @@ def test_course_home_hidden_registered_still_resolves(
     response = client.get(url)
 
     assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_course_home_hidden_inactive_cohort_member_returns_404(
+    mock_site_context, course_with_topic, logged_in_client
+):
+    """A member of an inactive cohort loses the access the cohort's registration gave."""
+    course = course_with_topic(visibility=CourseVisibility.HIDDEN, slug="hidden-course")
+    registration = CohortCourseRegistrationFactory(course=course, is_active=True)
+    user = UserFactory()
+    CohortMembershipFactory(
+        learner=LearnerFactory(
+            user=user, organisation=registration.cohort.organisation
+        ),
+        cohort=registration.cohort,
+    )
+    registration.cohort.is_active = False
+    registration.cohort.save()
+    client = logged_in_client(user)
+
+    url = reverse("learner_interface:course_home", kwargs={"course_slug": course.slug})
+    response = client.get(url)
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db

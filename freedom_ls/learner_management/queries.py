@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-from django.db.models import Exists, Model, OuterRef, Q
+from django.db.models import Exists, Model, OuterRef, Q, QuerySet
 
 from freedom_ls.learner_management.capabilities import (
     _active_role_assignments,
@@ -48,6 +48,18 @@ class ResolvedRegistration(NamedTuple):
     registration: LearnerCourseRegistration | CohortCourseRegistration
 
 
+def access_granting_cohort_registrations() -> QuerySet[CohortCourseRegistration]:
+    """Cohort registrations that give their members course access.
+
+    CohortCourseRegistration.is_active and Cohort.is_active are checked
+    here and nowhere else, so no read site can honour one and forget the
+    other.
+    """
+    return CohortCourseRegistration.objects.filter(
+        is_active=True, cohort__is_active=True
+    )
+
+
 def is_registered_for_course_expression(user: RequestUser) -> Q:
     """Build a Q expression marking courses this user is registered for.
 
@@ -67,10 +79,7 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
     """
     # Lazy import inside the body — mirrors is_registered_for_course (utils.py),
     # which imports these models locally to avoid a module-load import cycle.
-    from freedom_ls.learner_management.models import (
-        CohortCourseRegistration,
-        LearnerCourseRegistration,
-    )
+    from freedom_ls.learner_management.models import LearnerCourseRegistration
 
     return Exists(
         LearnerCourseRegistration.objects.filter(
@@ -84,11 +93,10 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
         # is_registered_for_course (utils.py) for why a split would leak
         # access through a cohort holding both a removed and an active
         # Learner for this user.
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations().filter(
             course=OuterRef("pk"),
-            cohort__cohortmembership__learner__user=user,
+            cohort__cohortmembership__learner__user=cast("User", user),
             cohort__cohortmembership__learner__is_active=True,
-            is_active=True,
         )
     )
 
@@ -132,14 +140,12 @@ def learner_for_course(user: User, course: Course) -> ResolvedRegistration | Non
     an active registration for this course would land on whichever record
     the query planner happened to return.
     """
-    from freedom_ls.learner_management.models import CohortCourseRegistration, Learner
-
     cohort_registration = (
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations()
+        .filter(
             course=course,
             cohort__cohortmembership__learner__user=user,
             cohort__cohortmembership__learner__is_active=True,
-            is_active=True,
         )
         .select_related("cohort__organisation")
         .order_by("-is_active", "-registered_at")

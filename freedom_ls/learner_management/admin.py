@@ -351,7 +351,8 @@ class CohortCourseRegistrationInline(TabularInline):
 @admin.register(Cohort)
 class CohortAdmin(GuardedSiteAwareModelAdmin):
     form = CohortAdminForm
-    list_display = ["name"]
+    list_display = ["name", "is_active"]
+    list_filter = ["is_active"]
     search_fields = ["name"]
     autocomplete_fields = ["organisation"]
     inlines = [CohortMembershipInline, CohortCourseRegistrationInline]
