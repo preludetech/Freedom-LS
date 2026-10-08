@@ -7,6 +7,9 @@ Rebase the current branch onto `main`, resolve any conflicts, verify the result,
 command runs to completion without asking for confirmation along the way; it only stops to report
 `status: ok`, `status: failed`, or `status: blocked`.
 
+Input from the caller: `<tier>`, `targeted` or `full`. Run by hand or without a value, it is
+`targeted`.
+
 ## Step 1: Check the branch
 
 ```
@@ -181,29 +184,32 @@ uv run manage.py migrate
 
 ## Step 9: Run the tests
 
-```
-uv run pytest -x -q
-```
+Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`; every command below is one of its tiers.
 
-Run this until it passes, then run the full suite once more:
+`<tier>` is `full` → run the full tier.
 
-```
-uv run pytest -q
-```
+`<tier>` is `targeted` →
 
-Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion
-notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this
-worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10
-minutes.
+1. The branch's diff:
 
-A failure is fixed on the branch, test first: write or adjust the failing test, make the smallest
-fix that passes it, then commit:
+       .claude/ds/scripts/select_tests.sh --range origin/main..HEAD
+
+   `tier: none` → the branch holds nothing a test can see. Report `tier: none`; go to Step 10.
+2. Main's diff, with the branch's own tests:
+
+       .claude/ds/scripts/select_tests.sh --range $OLD_BASE..origin/main --tests-changed-in origin/main..HEAD
+
+   `tier: none` → main brought in nothing the branch's code can interact with. Report
+   `tier: none`. Otherwise run the printed command.
+
+A failure is fixed on the branch, test first, following "When a targeted run or full run fails"
+in the tier definition, then committed:
 
 ```
 uv run git commit -m "<branch>: fix <what> after rebase"
 ```
 
-Three attempts. If the suite still fails after that, stop with `status: failed`.
+Three attempts. If the run still fails after that, stop with `status: failed`.
 
 ## Step 10: Pre-commit
 
@@ -219,7 +225,7 @@ Report:
 
 - how many commits were replayed
 - any conflicts that were resolved, and how
-- any test failures that were fixed
+- the tier that ran, and any test failures that were fixed
 - the lost-change check's result
 
 ## Step 12: Push
@@ -242,8 +248,8 @@ A caller that reads and follows this file inline gets the result from this line:
 
 ```
 status: ok|failed|blocked · rebased: yes|no · old-base: <sha> · old-tip: <sha> ·
-replayed: <n> · conflicts: <n> · lost-change check: pass|fixed · tests: pass ·
-pushed: yes|no · reason: <short>
+replayed: <n> · conflicts: <n> · lost-change check: pass|fixed ·
+tier: none|targeted|full · pushed: yes|no · reason: <short>
 ```
 
 This file carries no `model:` frontmatter. A caller that reads and follows it inline runs it on its

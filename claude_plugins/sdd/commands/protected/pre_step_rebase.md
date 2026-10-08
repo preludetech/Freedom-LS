@@ -8,7 +8,8 @@ feature-branch command follows it as its own Step 0 when invoked directly. It ru
 inline, on the caller's model and tool grants.
 
 Inputs from the caller: `<spec-dir>` and `<todo-path>` when already known; otherwise resolve them the
-way `claude_plugins/sdd/commands/next.md` Step 1 does.
+way `claude_plugins/sdd/commands/next.md` Step 1 does. Optionally `<tier>`, `targeted` or `full`:
+the test tier the rebase runs.
 
 ## Step 0: Skip conditions
 
@@ -40,13 +41,14 @@ Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists —
 precedence). Under `## Rebase Hooks`, look at the `Rebase command` value:
 
 - blank, or the file or section absent → `status: ok · reason: no rebase command`. Stop.
-- a non-blank path → read that file and follow its steps here.
+- a non-blank path → read that file and follow its steps here with `<tier>`: the value the caller
+  passed, or `targeted` when it passed none.
 
 Once it returns:
 
 - `rebased: no` → `status: ok · reason: up to date`. Stop.
 - `failed` or `blocked` → return that status and its reason as this helper's own. The caller stops.
-- otherwise, keep `old-base` and `old-tip` from its return contract for the steps below.
+- otherwise, keep `old-base`, `old-tip` and `tier` from its return contract for the steps below.
 
 ## Step 2: Front-end check
 
@@ -172,7 +174,8 @@ in the spec directory as a sibling of the spec, like any research file.
 ## Return contract
 
 ```
-status: ok|paused|failed|blocked · rebased: yes|no · reason: <short>
+status: ok|paused|failed|blocked · rebased: yes|no · tier: none|targeted|full · reason: <short>
 ```
 
-A caller continues only on `ok`. On any other status it relays the reason and stops.
+`tier` is the tier the rebase command reported, or `none` when the rebase stopped early. A caller
+continues only on `ok`. On any other status it relays the reason and stops.

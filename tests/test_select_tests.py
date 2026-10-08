@@ -735,3 +735,144 @@ def test_malformed_tooling_entry_exits_2_naming_the_key(
     # Assert
     assert result.returncode == 2
     assert "tooling" in result.stderr
+
+
+def commit_all(project: Path, message: str) -> None:
+    run_command(["git", "add", "."], project)
+    run_command(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-m",
+            message,
+        ],
+        project,
+    )
+
+
+def repo_with_two_commits(tmp_path: Path, second_commit: dict[str, str]) -> None:
+    """A repository whose HEAD~1..HEAD range holds exactly `second_commit`."""
+    write_tree(tmp_path, alpha_app())
+    run_command(["git", "init"], tmp_path)
+    commit_all(tmp_path, "init")
+    write_tree(tmp_path, second_commit)
+    commit_all(tmp_path, "change")
+
+
+def test_range_selects_the_test_directory_of_a_file_changed_in_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--range", "HEAD~1..HEAD")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests"
+    ]
+
+
+def test_tests_changed_in_a_docs_only_range_stays_tier_none(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_two_commits(
+        tmp_path,
+        {"docs/new.md": "", "pkg/alpha/tests/test_services.py": "x = 1\n"},
+    )
+    run_command(["git", "tag", "docs-only"], tmp_path)
+    write_tree(tmp_path, {"docs/other.md": ""})
+    commit_all(tmp_path, "docs")
+
+    # Act
+    result = run_script(
+        SCRIPT,
+        tmp_path,
+        "--range",
+        "HEAD~1..HEAD",
+        "--tests-changed-in",
+        "HEAD~2..docs-only",
+    )
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert lines(result.stdout, "command") == []
+    assert (
+        "why: pkg/alpha/tests/test_services.py -> pkg/alpha/tests/test_services.py"
+        " (branch test file; runs only with a targeted tier)"
+    ) in lines(result.stdout, "why")
+
+
+def test_tests_changed_in_adds_the_branch_test_file_to_a_selecting_range(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_two_commits(
+        tmp_path,
+        {"pkg/alpha/services.py": "x = 1\n", "pkg/alpha/tests/test_extra.py": ""},
+    )
+    write_tree(tmp_path, {"pkg/alpha/tests/test_late.py": ""})
+    commit_all(tmp_path, "late test")
+    run_command(["git", "tag", "late"], tmp_path)
+
+    # Act
+    result = run_script(
+        SCRIPT,
+        tmp_path,
+        "--range",
+        "HEAD~2..HEAD~1",
+        "--tests-changed-in",
+        "HEAD~1..late",
+    )
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert (
+        "why: pkg/alpha/tests/test_late.py -> pkg/alpha/tests/test_late.py"
+        " (branch test file; runs only with a targeted tier)"
+    ) in lines(result.stdout, "why")
+
+
+def test_tests_changed_in_skips_a_test_file_deleted_in_the_checkout(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/tests/test_extra.py": ""})
+    run_command(["git", "rm", "-q", "pkg/alpha/tests/test_extra.py"], tmp_path)
+    commit_all(tmp_path, "remove")
+
+    # Act
+    result = run_script(
+        SCRIPT,
+        tmp_path,
+        "--range",
+        "HEAD~2..HEAD~2",
+        "--tests-changed-in",
+        "HEAD~1..HEAD",
+    )
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert lines(result.stdout, "why") == []
+
+
+@pytest.mark.parametrize(
+    "value", ["--output=x", "HEAD~1..HEAD; ls", "HEAD", "a..b$(id)"]
+)
+@pytest.mark.parametrize("option", ["--range", "--tests-changed-in"])
+def test_range_value_that_is_not_a_plain_revision_range_exits_2(
+    tmp_path: Path, option: str, value: str
+) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, option, value)
+
+    # Assert
+    assert result.returncode == 2

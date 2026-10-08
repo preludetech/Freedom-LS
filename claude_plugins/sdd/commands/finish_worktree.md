@@ -25,9 +25,9 @@ On `main` or `master`, stop: this command runs in a feature worktree only.
 
 # Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn). Any status other than `ok` is this command's own
-status; relay its reason and stop.
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tier>`:
+`full` (skip this when `/sdd:next` says it already ran this turn). Any status other than `ok` is
+this command's own status; relay its reason and stop.
 
 Two notes for its conflict resolution:
 
@@ -70,7 +70,12 @@ Only when Step 0 reported `rebased: yes` and there is a `3. frontend_qa.md` for 
 - say whether you think the frontend_qa should be run again
 - only if you think it should, ask the user for confirmation before moving forward
 
-The rebase command has already run the test suite and pre-commit; there is nothing to re-run here.
+When the rebase this turn, whether Step 0 or the one `/sdd:next` ran, reported `tier: full`, the
+branch is proven. Otherwise delegate to `sdd:sdd-mechanic`: read
+`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `full`,
+returning the summary line and any failing test names. A failure is `status: failed · reason: full
+run failed before landing: <tests>`; nothing is moved or landed until a human fixes it. A rebased
+branch has also passed pre-commit; there is nothing to re-run for that.
 
 # Step 2: Tear down any per-worktree resources
 
@@ -143,7 +148,7 @@ and any `.claude/settings.json` change from Step 5.
 
 3. **exit 7** → `origin/main` moved after Step 0. Read the `Rebase command` value from
    `.claude/sdd/config.md` (and `.claude/sdd/config.local.md`, whose values take precedence) under
-   `## Rebase Hooks`, exactly as `pre_step_rebase.md` Step 1 does, follow that file once, then run
+   `## Rebase Hooks`, exactly as `pre_step_rebase.md` Step 1 does, follow that file once with `<tier>`: `full`, then run
    `<script-path> land` again. Do not re-run the whole pre-step rebase: the spec directory is now
    under `3. done/`, so its skip rule would return early, and an upstream-change review is
    meaningless for a finished spec. A second exit 7 → `status: blocked · reason: origin/main keeps

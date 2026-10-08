@@ -12,8 +12,10 @@ runs pytest names its tier; the flags live here and nowhere else.
   .claude/ds/scripts/select_tests.sh <diff arguments>
   ```
 
-  The diff arguments are the step's own: `--working-tree` for uncommitted and untracked files, or
-  explicit paths. Read the `tier:` line: it is the tier that applies, and `none` means there is
+  The diff arguments are the step's own: `--working-tree` for uncommitted and untracked files,
+  explicit paths, `--range <rev>..<rev>` for the files a git range changed, and
+  `--tests-changed-in <rev>..<rev>` for test files that join a targeted run without ever raising
+  its tier. Read the `tier:` line: it is the tier that applies, and `none` means there is
   nothing to run. Then run the `command:` line exactly as printed. The `why:` lines are the
   selection's reasons; quote them when reporting. The generic `none` and escalation lists are the
   two glob tuples at the top of `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's own

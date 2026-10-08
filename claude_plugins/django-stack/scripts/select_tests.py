@@ -3,7 +3,8 @@
 """Pick the pytest tier for a set of changed paths and print the paths to run.
 
 Usage:
-    python select_tests.py [--working-tree] [<path>...]
+    python select_tests.py [--working-tree] [--range <rev>..<rev>]
+        [--tests-changed-in <rev>..<rev>] [<path>...]
 
 Prints `tier:`, one `why:` line per changed path and, for a targeted or full
 run, the `command:` to run. Project-specific globs come from `[tool.test_tiers]`
@@ -13,10 +14,11 @@ in `pyproject.toml`. Stdlib only, like its siblings.
 from __future__ import annotations
 
 import argparse
+import re
 import shlex
 import subprocess
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path, PurePosixPath
 from typing import Literal
 
@@ -68,6 +70,12 @@ UI_GLOBS: tuple[str, ...] = (
 )
 
 APP_MAP = "docs/app_structure.md"
+
+# Plain revision characters on both sides of `..`. Nothing else reaches git, and
+# `--end-of-options` stops a value from reading as an option either way.
+RANGE_PATTERN = re.compile(r"^[A-Za-z0-9_./~^@{}-]+\.\.[A-Za-z0-9_./~^@{}-]+$")
+
+BRANCH_TEST_REASON = "branch test file; runs only with a targeted tier"
 
 FULL_COMMAND = "uv run pytest -n auto"
 TARGETED_PREFIX = "uv run pytest -n auto --no-cov"
@@ -274,13 +282,51 @@ def git_lines(argv: list[str]) -> list[str]:
     return result.stdout.splitlines()
 
 
-def changed_paths(paths: list[str], working_tree: bool) -> list[str]:
-    """The given paths plus, with `working_tree`, uncommitted and untracked ones."""
+def range_type(value: str) -> str:
+    if RANGE_PATTERN.fullmatch(value) is None:
+        raise argparse.ArgumentTypeError(f"not a <rev>..<rev> range: {value!r}")
+    return value
+
+
+def range_paths(revision_range: str) -> list[str]:
+    return git_lines(["git", "diff", "--name-only", "--end-of-options", revision_range])
+
+
+def changed_paths(
+    paths: list[str], working_tree: bool, revision_range: str | None = None
+) -> list[str]:
+    """The given paths plus, with `working_tree`, uncommitted and untracked ones.
+
+    With `revision_range`, also the paths that range changed.
+    """
     found = set(paths)
+    if revision_range is not None:
+        found.update(range_paths(revision_range))
     if working_tree:
         found.update(git_lines(["git", "diff", "--name-only", "HEAD"]))
         found.update(git_lines(["git", "ls-files", "--others", "--exclude-standard"]))
     return sorted(found)
+
+
+def branch_test_decisions(
+    revision_range: str,
+    apps: list[App],
+    config: TierConfig,
+    edges: Edges | None,
+    project_root: Path,
+) -> list[Decision]:
+    """One decision per collected test file the range changed and the checkout still has.
+
+    These files join the selection but are kept out of the tier calculation, so a
+    branch's own tests never turn a `none` result into a run.
+    """
+    decisions = [
+        d
+        for path in sorted(range_paths(revision_range))
+        for d in decide(path, apps, config, edges, project_root)
+        if d.kind == "select" and d.reason.startswith("changed test file")
+    ]
+    return [replace(d, reason=BRANCH_TEST_REASON) for d in decisions]
 
 
 def compose_command(selected: set[str], touched: set[str], project_root: Path) -> str:
@@ -313,11 +359,24 @@ def main() -> int:
         action="store_true",
         help="also use uncommitted and untracked paths",
     )
+    parser.add_argument(
+        "--range",
+        type=range_type,
+        help="also use the paths changed in <rev>..<rev>",
+    )
+    parser.add_argument(
+        "--tests-changed-in",
+        type=range_type,
+        help=(
+            "add the test files changed in <rev>..<rev> to a targeted run; "
+            "they never raise the tier"
+        ),
+    )
     args = parser.parse_args()
 
     project_root = Path.cwd()
     try:
-        paths = changed_paths(args.paths, args.working_tree)
+        paths = changed_paths(args.paths, args.working_tree, args.range)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         parser.error(f"git failed: {exc}")
     try:
@@ -328,17 +387,25 @@ def main() -> int:
     apps = find_apps(project_root)
     edges = parse_existing_edges(project_root / APP_MAP)
     decisions = [d for p in paths for d in decide(p, apps, config, edges, project_root)]
+    tier_decisions = decisions
+    if args.tests_changed_in is not None:
+        try:
+            decisions = decisions + branch_test_decisions(
+                args.tests_changed_in, apps, config, edges, project_root
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            parser.error(f"git failed: {exc}")
 
+    if any(d.kind == "full" for d in tier_decisions):
+        tier = "full"
+    elif any(d.selects for d in tier_decisions):
+        tier = "targeted"
+    else:
+        tier = "none"
     selected = minimal_selection(
         {s for d in decisions for s in d.selects}, project_root
     )
     touched = {t for d in decisions for t in d.touched}
-    if any(d.kind == "full" for d in decisions):
-        tier = "full"
-    elif selected:
-        tier = "targeted"
-    else:
-        tier = "none"
 
     print(f"tier: {tier}")
     for d in decisions:

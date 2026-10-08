@@ -14,6 +14,10 @@
 
 - Design check: claude_plugins/fls-dev/commands/protected/design_check.md
 
+## Test Hooks
+
+- Test tiers: claude_plugins/django-stack/resources/test_tiers.md
+
 ## Vocabulary Sources
 
 - .claude/skills/domain-glossary/SKILL.md
