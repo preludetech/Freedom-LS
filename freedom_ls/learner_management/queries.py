@@ -14,8 +14,10 @@ from freedom_ls.learner_management.capabilities import (
 )
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     CohortMembership,
     Learner,
+    LearnerCourseRegistration,
     OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
@@ -27,10 +29,6 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.learner_management.models import (
-        CohortCourseRegistration,
-        LearnerCourseRegistration,
-    )
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -408,6 +406,85 @@ def colleagues_of(user: User, site: Site) -> QuerySet[User]:
         User.objects.filter(site=site, is_active=True)
         .exclude(pk=user.pk)
         .filter(holds_role_there)
+    )
+
+
+def is_in_cohort_expression(site: Site, cohorts: QuerySet) -> Exists:
+    """Exists() for a Learner queryset: the outer row is a member of one of `cohorts`
+    (a values() queryset of cohort ids)."""
+    return Exists(
+        CohortMembership.objects.filter(
+            site=site, learner=OuterRef("pk"), cohort__in=cohorts
+        )
+    )
+
+
+def holds_registration_for_any_expression(site: Site, courses: QuerySet) -> Q:
+    """Q for a Learner queryset: the outer row holds an active registration for one
+    of `courses` (a values() queryset of course ids), individually or through a
+    cohort it belongs to.
+
+    Both cohort conditions sit in one filter() call, for the reason
+    is_registered_for_course_expression gives: split across two calls, the
+    membership and the registration could match different cohorts.
+    """
+    return Exists(
+        LearnerCourseRegistration.objects.filter(
+            site=site, learner=OuterRef("pk"), course__in=courses, is_active=True
+        )
+    ) | Exists(
+        CohortCourseRegistration.objects.filter(
+            site=site,
+            course__in=courses,
+            cohort__cohortmembership__learner=OuterRef("pk"),
+            is_active=True,
+        )
+    )
+
+
+def registrations_of(
+    learner: Learner,
+) -> tuple[QuerySet[LearnerCourseRegistration], QuerySet[CohortCourseRegistration]]:
+    """This learner's active registrations by each path: its own, and those of the
+    cohorts it is a member of. Returned separately because each kind carries its
+    own configuration."""
+    site = learner.site
+    return (
+        LearnerCourseRegistration.objects.filter(
+            site=site, learner=learner, is_active=True
+        ),
+        CohortCourseRegistration.objects.filter(
+            site=site, cohort__cohortmembership__learner=learner, is_active=True
+        ),
+    )
+
+
+def peers_of(learner: Learner) -> QuerySet[Learner]:
+    """Other users' active Learner rows in this learner's organisation that share
+    a cohort with it, or share a course both hold an active registration for.
+
+    Course peers are restricted to the organisation: a course is not owned by one,
+    so without this a client's learners would see another client's.
+    """
+    if not learner.is_active:
+        return Learner.objects.none()
+    site = learner.site
+    cohorts = CohortMembership.objects.filter(site=site, learner=learner).values(
+        "cohort_id"
+    )
+    own, through_cohorts = registrations_of(learner)
+    return (
+        Learner.objects.filter(
+            site=site, organisation=learner.organisation, is_active=True
+        )
+        .exclude(user_id=learner.user_id)
+        .filter(
+            is_in_cohort_expression(site, cohorts)
+            | holds_registration_for_any_expression(site, own.values("course_id"))
+            | holds_registration_for_any_expression(
+                site, through_cohorts.values("course_id")
+            )
+        )
     )
 
 

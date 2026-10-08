@@ -24,8 +24,10 @@ from django.contrib.sites.models import Site
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
@@ -141,6 +143,20 @@ def build_world(site: Site, *, scale: int = 1) -> World:
     CohortMembershipFactory(cohort=c3, learner=in_o1_and_o2_via_c3)
     also_o1_admin = cast(Learner, LearnerFactory(organisation=o1))
     assign_object_role(also_o1_admin.user, o1, "organisation_admin")
+
+    individual_course = LearnerCourseRegistrationFactory(learner=in_c1).course
+    LearnerCourseRegistrationFactory(learner=no_cohort, course=individual_course)
+    LearnerCourseRegistrationFactory(
+        learner=inactive_in_c1, course=individual_course, is_active=False
+    )
+    cohort_course = CohortCourseRegistrationFactory(cohort=c1).course
+    LearnerCourseRegistrationFactory(learner=in_c1_and_c2, course=cohort_course)
+    cross_organisation_course = LearnerCourseRegistrationFactory(
+        learner=in_o1_and_o2
+    ).course
+    LearnerCourseRegistrationFactory(
+        learner=LearnerFactory(organisation=o2), course=cross_organisation_course
+    )
 
     role_holders = {
         "site_admin": cast(User, UserFactory()),

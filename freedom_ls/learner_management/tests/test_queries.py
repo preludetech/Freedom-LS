@@ -15,6 +15,7 @@ import pytest
 from guardian.shortcuts import assign_perm
 
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.sites.models import Site
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
@@ -31,6 +32,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
+    Learner,
     LearnerCourseRegistration,
     OrganisationMember,
 )
@@ -47,6 +49,7 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     organisation_for_learner_course,
     organisations_accessible_to,
+    peers_of,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
@@ -1019,3 +1022,105 @@ class TestColleaguesOf:
 
     def test_an_inactive_user_is_not_a_colleague(self, world: World) -> None:
         assert "c1_admin_inactive_user" not in _colleague_names(world, "o1_admin")
+
+
+def _peer_names(world: World, learner_name: str) -> set[str]:
+    learner_names = {learner.pk: name for name, learner in world.learners.items()}
+    pks = peers_of(world.learners[learner_name]).values_list("pk", flat=True)
+    return {learner_names[pk] for pk in pks if pk in learner_names}
+
+
+def _register_through(
+    learner: Learner, course: Course, *, through_cohort: bool
+) -> None:
+    if not through_cohort:
+        LearnerCourseRegistrationFactory(learner=learner, course=course)
+        return
+    cohort = CohortFactory(organisation=learner.organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+
+
+@pytest.mark.django_db
+class TestPeersOf:
+    def test_learners_in_a_shared_cohort_are_peers(self, world: World) -> None:
+        assert "in_c1_and_c2" in _peer_names(world, "in_c1")
+
+    def test_a_learner_in_no_shared_cohort_with_no_shared_course_is_not_a_peer(
+        self, world: World
+    ) -> None:
+        assert "also_o1_admin" not in _peer_names(world, "in_c1")
+
+    @pytest.mark.parametrize(
+        ("own_cohort_registration", "other_cohort_registration"),
+        [(False, False), (False, True), (True, False), (True, True)],
+        ids=[
+            "individual-individual",
+            "individual-cohort",
+            "cohort-individual",
+            "cohort-cohort",
+        ],
+    )
+    def test_learners_registered_for_the_same_course_by_any_pair_of_paths_are_peers(
+        self,
+        mock_site_context: Site,
+        own_cohort_registration: bool,
+        other_cohort_registration: bool,
+    ) -> None:
+        organisation = OrganisationFactory(site=mock_site_context)
+        course = LearnerCourseRegistrationFactory().course
+        own = LearnerFactory(organisation=organisation)
+        other = LearnerFactory(organisation=organisation)
+        _register_through(own, course, through_cohort=own_cohort_registration)
+        _register_through(other, course, through_cohort=other_cohort_registration)
+
+        assert peers_of(own).filter(pk=other.pk).exists()
+
+    def test_an_inactive_learner_has_no_peers(self, world: World) -> None:
+        assert _peer_names(world, "inactive_in_c1") == set()
+
+    def test_an_inactive_learner_is_not_a_peer(self, world: World) -> None:
+        assert "inactive_in_c1" not in _peer_names(world, "in_c1")
+
+    def test_an_inactive_registration_of_the_other_learner_makes_no_peer(
+        self, world: World
+    ) -> None:
+        LearnerCourseRegistration.objects.filter(
+            learner=world.learners["no_cohort"]
+        ).update(is_active=False)
+
+        assert "no_cohort" not in _peer_names(world, "in_c1")
+
+    def test_an_inactive_registration_of_the_learner_makes_no_peer(
+        self, world: World
+    ) -> None:
+        LearnerCourseRegistration.objects.filter(
+            learner=world.learners["in_c1"]
+        ).update(is_active=False)
+
+        assert "no_cohort" not in _peer_names(world, "in_c1")
+
+    def test_a_course_shared_across_two_organisations_is_not_a_peer_relationship(
+        self, world: World
+    ) -> None:
+        peer_organisations = set(
+            peers_of(world.learners["in_o1_and_o2"]).values_list(
+                "organisation_id", flat=True
+            )
+        )
+
+        assert world.organisations["o2"].pk not in peer_organisations
+
+    def test_a_learner_is_not_their_own_peer(self, world: World) -> None:
+        assert "in_c1" not in _peer_names(world, "in_c1")
+
+    def test_a_learner_is_not_a_peer_of_their_other_organisation_row(
+        self, world: World
+    ) -> None:
+        assert "in_o1_and_o2_via_c3" not in _peer_names(world, "in_o1_and_o2")
+
+    @pytest.mark.usefixtures("without_request")
+    def test_cohort_and_course_peers_are_found_outside_a_request(
+        self, world: World
+    ) -> None:
+        assert _peer_names(world, "in_c1") >= {"in_c1_and_c2", "no_cohort"}
