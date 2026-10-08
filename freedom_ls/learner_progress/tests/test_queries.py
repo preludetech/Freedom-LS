@@ -28,6 +28,7 @@ from freedom_ls.learner_progress.queries import (
     registrations_with_progress_for_learner,
 )
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
+from freedom_ls.organisations.factories import OrganisationFactory
 
 # The bulk resolver must agree with the single-course one, course for course.
 #
@@ -117,6 +118,30 @@ class TestAgreesWithCourseProgressFor:
             course.id: course_progress_for(user, course)
             for course in courses
             if course_progress_for(user, course) is not None
+        }
+
+    def test_an_inactive_cohort_is_skipped_and_the_individual_record_wins(
+        self, mock_site_context
+    ):
+        course: Course = CourseFactory()
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(user=user, organisation=organisation)
+        cohort = CohortFactory(organisation=organisation, is_active=False)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        ensure_course_progress_record(
+            learner,
+            course,
+            CohortCourseRegistrationFactory(cohort=cohort, course=course),
+        )
+        individual_record = ensure_course_progress_record(
+            learner,
+            course,
+            LearnerCourseRegistrationFactory(learner=learner, course=course),
+        )
+
+        assert course_progress_by_course_for(user, [course]) == {
+            course.id: individual_record
         }
 
     def test_the_cohort_record_wins_over_the_individual_one(self, mock_site_context):
@@ -417,6 +442,30 @@ def test_a_registration_through_a_cohort_reports_the_cohort(mock_site_context):
             cohort=cohort,
             progress_percentage=record.progress_percentage,
             last_accessed_time=record.last_accessed_time,
+        )
+    ]
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohorts_registration_is_skipped_and_the_individual_one_reported(
+    mock_site_context,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation, is_active=False)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    course: Course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+
+    result = registrations_with_progress_for_learner(learner)
+
+    assert result == [
+        LearnerRegistrationProgress(
+            course=course,
+            cohort=None,
+            progress_percentage=None,
+            last_accessed_time=None,
         )
     ]
 

@@ -44,6 +44,7 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     colleagues_of,
     educators_of,
+    is_registered_for_course_expression,
     latest_registration,
     learner_for_course,
     learners_visible_to,
@@ -57,6 +58,7 @@ from freedom_ls.learner_management.tests.scenario_world import (
     educator_pairs,
     visible_pairs,
 )
+from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
@@ -1124,3 +1126,63 @@ class TestPeersOf:
         self, world: World
     ) -> None:
         assert _peer_names(world, "in_c1") >= {"in_c1_and_c2", "no_cohort"}
+
+
+@pytest.mark.django_db
+class TestInactiveCohortAccess:
+    @pytest.mark.parametrize(
+        ("scenario", "expected"),
+        [
+            ("inactive_cohort_only", False),
+            ("inactive_cohort_and_individual", True),
+            ("inactive_cohort_and_active_cohort", True),
+            ("reactivated_cohort", True),
+        ],
+    )
+    def test_the_per_row_check_and_the_queryset_expression_agree(
+        self, mock_site_context, scenario, expected
+    ):
+        course = CourseFactory()
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        cohort = _make_cohort(organisation=organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
+        cohort.is_active = scenario == "reactivated_cohort"
+        cohort.save()
+        if scenario == "inactive_cohort_and_individual":
+            LearnerCourseRegistrationFactory(
+                learner=learner, course=course, is_active=True
+            )
+        if scenario == "inactive_cohort_and_active_cohort":
+            second = _make_cohort(organisation=organisation)
+            CohortMembershipFactory(learner=learner, cohort=second)
+            CohortCourseRegistrationFactory(cohort=second, course=course)
+
+        per_row = is_registered_for_course(learner.user, course)
+        in_queryset = (
+            Course.objects.filter(pk=course.pk)
+            .annotate(_is_registered=is_registered_for_course_expression(learner.user))
+            .get()
+            ._is_registered
+        )
+
+        assert (per_row, in_queryset) == (expected, expected)
+
+    def test_learner_for_course_skips_an_inactive_cohorts_registration(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        cohort.is_active = False
+        cohort.save()
+        learner = LearnerFactory(user=user, organisation=organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        individual = _make_registration(user, course, organisation=organisation)
+
+        resolved = learner_for_course(user, course)
+
+        assert resolved == ResolvedRegistration(individual.learner, individual)

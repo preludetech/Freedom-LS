@@ -35,6 +35,7 @@ class Cohort(SiteAwareModel, TimestampedModel):
         on_delete=models.PROTECT,
     )
     name = models.CharField(_("name"), max_length=150)
+    is_active = models.BooleanField(_("active"), default=True)
 
     class Meta:
         constraints = [

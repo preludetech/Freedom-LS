@@ -773,3 +773,28 @@ class TestLearnerChangePagePanels:
 
         assert response.status_code == 200
         assert response.context["inline_admin_formsets"] == []
+
+
+@pytest.mark.django_db
+class TestCohortAdminActiveFlag:
+    def test_the_changelist_has_an_is_active_column_and_filter(
+        self, staff_client
+    ) -> None:
+        CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
+
+        response = staff_client.get(
+            reverse("admin:freedom_ls_learner_management_cohort_changelist")
+        )
+
+        change_list = response.context["cl"]
+        assert ("is_active" in change_list.list_display, change_list.list_filter) == (
+            True,
+            ["is_active"],
+        )
+
+    def test_the_change_form_renders_an_is_active_field(self, staff_client) -> None:
+        cohort = CohortFactory(organisation=OrganisationFactory(), name="Cohort A")
+
+        response = staff_client.get(reverse(COHORT_CHANGE_URL_NAME, args=[cohort.pk]))
+
+        assert "is_active" in response.context["adminform"].form.fields
