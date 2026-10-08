@@ -64,6 +64,15 @@ If you are told not to implement a feature immediately then that does not mean t
 - `learner_management` — Learner profiles, cohorts, course registrations
 - `learner_progress` — Progress tracking for topics and courses
 
+## Plugins
+
+`claude_plugins/django-stack` (`ds`) and `claude_plugins/sdd` are generic. They stay generic: no
+FLS name, path, app or value goes into them, ever. A project value reaches them only through their
+per-project configuration: `.claude/ds/config.md`, `.claude/sdd/config.md`, or a `[tool.*]` table
+in `pyproject.toml`. FLS-specific content lives in `claude_plugins/fls-dev`, the overlay on `ds`. A
+spec or plan that asks a generic plugin to carry project knowledge is wrong, and the spec review,
+plan review and structure review reject it.
+
 ## Conventions
 
 - We use a custom site-aware user model `AUTH_USER_MODEL = "accounts.User"`

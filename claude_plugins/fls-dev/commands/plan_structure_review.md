@@ -65,6 +65,12 @@ Also read `1. spec.md` and `2. plan.md` in full.
 - New tests in app `A` that rely on factories, fixtures, or data builders from app `B`.
 - New management commands or signal handlers in `A` that orchestrate work in `B`.
 
+A plugin boundary is a structure boundary too. Also record every plan step that would write an FLS
+name, path, app or value into `claude_plugins/django-stack` or `claude_plugins/sdd`; both are
+generic plugins and project values reach them only through `.claude/ds/config.md`,
+`.claude/sdd/config.md` or a `[tool.*]` table in `pyproject.toml`. Each such step is a finding
+with an obvious fix: move the value to the configuration and have the plugin read it.
+
 For each such signal, record the directed edge `(source_app, target_app)`. Classify each edge as **runtime** or **test-only** based on where the code would live (tests/, `test_*.py`, `conftest.py` → test-only; everything else → runtime). If the plan is vague about where code will live, record that ambiguity rather than guessing.
 
 **Classify each proposed edge:**

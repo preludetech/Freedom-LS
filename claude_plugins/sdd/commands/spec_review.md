@@ -35,6 +35,10 @@ Check the spec's names against `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabular
 
 Read any mentioned source code files and any related code and look for inconsistencies and problems.
 
+A spec that asks a plugin whose README says it is generic to carry project-specific knowledge (a
+project name, path, app or value) is wrong, however the idea phrased it. Rewrite the spec so the
+value reaches the plugin through its per-project configuration, and say so in the summary.
+
 For each problem you find:
 - Clearly describe the problem, ask for input if the solution if needed
 - Edit the spec file to fix the problem

@@ -129,6 +129,7 @@ The review dimensions below become **one `sdd:sdd-worker` per dimension**, each 
 - All the success criteria will be met by the plan in place
 - The plan is ordered as vertical slices (see Step 3): each slice delivers working, tested behaviour end to end, the first slice is the thinnest one that runs end to end, and no step groups work by layer
 - No step in the plan contradicts any skill
+- No step puts project-specific knowledge (a project name, path, app or value) into a plugin whose README says it is generic; such a value reaches the plugin only through its per-project configuration
 - No step will result in junk files that need to be manually cleaned up
 - All suggested code changes are clean and simple
 - No comment or docstring the plan proposes points at the spec, plan, a slice, a phase, the QA plan or a section number

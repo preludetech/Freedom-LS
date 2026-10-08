@@ -53,8 +53,14 @@ command, so a command names a tier rather than copying pytest flags.
 A targeted run escalates to full when the diff touches anything with fan-out the mirror map cannot
 see: migrations, `config/`, root or app `conftest.py`, factories and fixtures, `urls.py`,
 middleware, signals, `apps.py`, the site-aware and content base apps, `pyproject.toml` or
-`uv.lock`. The escalation list is an explicit glob list in the tier definition, not a judgment call. A
-model follows a list; it does not reliably follow "use judgment".
+`uv.lock`. The escalation list is an explicit glob list, not a judgment call. A model follows a list; it
+does not reliably follow "use judgment". The list has two parts, because the django-stack plugin
+stays generic: the Django-generic entries (migrations, `conftest.py`, factories, fixtures,
+`urls.py`, middleware, signals, `apps.py`, `pyproject.toml`, `uv.lock`) ship in the plugin, and
+FLS's own entries (`config/`, the site-aware and content base apps) live in a `[tool.test_tiers]`
+table in this project's `pyproject.toml`, the way `[tool.test_organisation]` already configures the
+mirroring check and the app map. The same table holds FLS's `none`-tier paths that the plugin
+cannot know about (`spec_dd/`, the plugin markdown this repository hosts).
 
 ### Where each tier runs
 
@@ -117,10 +123,18 @@ Concepts the plan needed that the sections above did not name:
 - **unmapped path.** A changed path that is neither `none`-tier, nor a test file, nor on the
   escalation list, nor inside an app, nor repository tooling. It escalates to `full`, as does a
   missing app dependency map.
-- **repository tooling.** `claude_plugins/*/scripts/`, `claude_plugins/*/templates/`,
-  `.claude/*/scripts/` and helpers under the top-level `tests/`: their tests are the top-level
-  `tests/` directory. `claude_plugins/fls-content/` maps to its own tests and to
-  `content_engine`'s validator tests.
+- **repository tooling.** Paths outside any app whose tests live somewhere the mirror cannot
+  see. The generic part (`.claude/*/scripts/` wrappers and helpers under the top-level `tests/`
+  map to `tests/`) ships in the plugin; FLS's part (`claude_plugins/*/scripts/` and
+  `claude_plugins/*/templates/` map to `tests/`; `claude_plugins/fls-content/` maps to its own
+  tests and to `content_engine`'s validator tests) is `tooling` in `[tool.test_tiers]`.
+- **`[tool.test_tiers]`.** The `pyproject.toml` table that holds this project's `none`,
+  `escalation` and `tooling` entries. The plugin's script reads it; nothing FLS-specific goes into
+  the plugin.
+- **`Test tiers` hook.** The key under `## Test Hooks` in `.claude/sdd/config.md` that points the
+  sdd plugin at the tier definition, the way `Rebase command` points it at the rebase command. An
+  sdd helper reads the key; blank means the helper falls back to plain `uv run pytest`. No sdd
+  file names django-stack.
 - **touched app.** An app whose templates, static files, JavaScript or views the diff changed,
   or whose `tests/playwright/` holds a changed test file. Only a touched app's
   `tests/playwright/` runs in a targeted run; every other selected app's is ignored by directory.
