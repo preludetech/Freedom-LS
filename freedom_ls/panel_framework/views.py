@@ -41,6 +41,22 @@ from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
 
 
+@dataclass(frozen=True)
+class StatusBadge:
+    """A status chip: a `panel-status-badge` tone and its label."""
+
+    tone: str
+    label: str
+
+
+@dataclass(frozen=True)
+class HeaderStat:
+    """One labelled figure shown inline under an instance heading."""
+
+    label: str
+    value: str
+
+
 class InstanceView:
     """Used for displaying specific instances. For example one User, Cohort, etc.
 
@@ -55,6 +71,14 @@ class InstanceView:
         self.instance = instance
 
     def get_actions(self) -> list[PanelAction]:
+        return []
+
+    def get_status_badge(self) -> StatusBadge | None:
+        """A badge beside the heading, or None for none."""
+        return None
+
+    def get_stats(self) -> list[HeaderStat]:
+        """Inline figures under the heading, in order. Empty for none."""
         return []
 
     def get_action(self, action_name: str) -> PanelAction | None:
@@ -678,6 +702,8 @@ def _main_for(
                 "title": section.get_instance_label(resolved.instance),
                 "panel": root,
                 "actions": actions,
+                "status_badge": resolved.instance_view.get_status_badge(),
+                "stats": resolved.instance_view.get_stats(),
                 "ctx": root.ctx,
             },
             section.get_instance_label(resolved.instance),

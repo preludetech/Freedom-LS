@@ -102,8 +102,7 @@ def test_the_cohort_pages_panels_refresh_on_cohort_changed(
 
     body = client.get(_panel_url(cohort)).content.decode()
 
-    # The Details tab holds the details and course registration panels; the
-    # learners panel on the other tab listens the same way.
+    # The Overview tab holds the details, completion and attention panels.
     assert body.count('hx-trigger="cohortChanged from:body"') >= 2
 
 

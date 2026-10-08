@@ -11,6 +11,14 @@ root that is not a TabSet.
 
 {% block page_header %}
     <c-panel-page-header title="{{ main.title }}" title_id="instance-title" panel_toggle="true">
+        {% if main.status_badge %}<c-slot name="badge"><c-panel-status-badge tone="{{ main.status_badge.tone }}" label="{{ main.status_badge.label }}" /></c-slot>{% endif %}
+        {% if main.stats %}
+            <c-slot name="stats">
+                <c-panel-stat-row variant="inline">
+                    {% for stat in main.stats %}<c-panel-stat-tile variant="inline" label="{{ stat.label }}" value="{{ stat.value }}" />{% endfor %}
+                </c-panel-stat-row>
+            </c-slot>
+        {% endif %}
         <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
     </c-panel-page-header>
     {% if main.panel.tabs|length > 1 %}

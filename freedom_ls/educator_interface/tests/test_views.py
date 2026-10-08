@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import cast
 
 import lxml.html
 import pytest
@@ -14,9 +15,15 @@ from django.template.loader import render_to_string
 from django.test import Client, RequestFactory
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.tests.interface_walk import (
+    WalkedPanel,
+    walk_interface,
+)
 from freedom_ls.educator_interface.views import CohortDataTable
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -24,7 +31,13 @@ from freedom_ls.learner_management.factories import (
     CohortMembershipFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    CohortMembership,
+    Learner,
+)
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.tables import DataTable
@@ -44,7 +57,7 @@ def _get_document(client: Client, url: str) -> lxml.html.HtmlElement:
 
 
 @pytest.mark.django_db
-def test_cohort_detail_page_has_a_details_tab_and_a_learners_tab(
+def test_cohort_detail_page_has_overview_learners_and_courses_tabs(
     staff_client: Client,
 ):
     organisation = OrganisationFactory()
@@ -61,16 +74,17 @@ def test_cohort_detail_page_has_a_details_tab_and_a_learners_tab(
     (nav,) = document.cssselect("nav[aria-label='Cohort sections']")
     links = nav.cssselect("a")
     assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
-        "details",
+        "overview",
         "learners",
+        "courses",
     ]
     assert links[0].get("aria-current") == "page"
     assert links[1].get("aria-current") is None
     assert links[1].text_content().split() == ["Learners", "2"]
-    headings = [h.text_content().strip() for h in document.cssselect("h2")]
-    assert "Details" in headings
-    assert "Course Registrations" in headings
-    assert "Learners" not in headings
+    headings = [
+        h.text_content().strip() for h in document.cssselect("[data-tab-set] h2")
+    ]
+    assert headings == ["Details", "Course completion", "Needs attention"]
 
 
 @pytest.mark.django_db
@@ -92,7 +106,7 @@ def test_the_learners_tab_url_renders_the_cohorts_learners(staff_client: Client)
     assert active.text_content().split()[0] == "Learners"
     (region,) = document.cssselect("[data-tab-set]")
     assert "Lovelace" in region.text_content()
-    assert "Course Registrations" not in region.text_content()
+    assert "Course completion" not in region.text_content()
 
 
 @pytest.mark.django_db
@@ -221,7 +235,7 @@ def test_organisation_root_page_still_offers_the_navigation_toggle(
     assert toggle.cssselect("[role='img']")
 
 
-# A cohort page holds two tables, its course registrations on the Details
+# A cohort page holds two tables, its course registrations on the Courses
 # tab and its learners on the Learners tab. Each paginates through its own
 # table key, so a learners page in the address bar leaves the course
 # registrations on their own page.
@@ -258,7 +272,9 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
     learners_tab = client.get(
         f"{_cohort_url(cohort)}/__tabs/learners", {"learners-page": "2"}
     )
-    details_tab = client.get(_cohort_url(cohort), {"learners-page": "2"})
+    courses_tab = client.get(
+        f"{_cohort_url(cohort)}/__tabs/courses", {"learners-page": "2"}
+    )
 
     assert learners_tab.status_code == 200
     content = learners_tab.content.decode()
@@ -267,8 +283,8 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
     assert f"Learner{DataTable.page_size:02d}" in content
     assert "Learner00" not in content
     # The course registrations table is untouched, still on page 1.
-    assert details_tab.status_code == 200
-    content = details_tab.content.decode()
+    assert courses_tab.status_code == 200
+    content = courses_tab.content.decode()
     assert "Course 0" in content
     assert "Course 1" in content
 
@@ -512,3 +528,237 @@ class TestCohortListQueryCount:
         ten = self._query_count(site_aware_request, 10, "cohorts-course={course}")
 
         assert one == ten
+
+
+def _cohort_page(client: Client, cohort: Cohort) -> lxml.html.HtmlElement:
+    return _get_document(
+        client, _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}")
+    )
+
+
+def _add_member(cohort: Cohort) -> Learner:
+    learner = cast(Learner, LearnerFactory(organisation=cohort.organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return learner
+
+
+def _add_cohort_progress(
+    registration: CohortCourseRegistration, learner: Learner, completed: bool
+) -> None:
+    CourseProgressFactory(
+        learner=learner,
+        course=registration.course,
+        learner_registration=None,
+        cohort_registration=registration,
+        completed_time=timezone.now() if completed else None,
+    )
+
+
+def _completion_card(document: lxml.html.HtmlElement) -> lxml.html.HtmlElement:
+    (card,) = document.cssselect("section[data-panel='completion']")
+    return card
+
+
+@pytest.fixture
+def completion_scenario() -> tuple[Cohort, CohortCourseRegistration, Learner]:
+    """A cohort registered for one course, with two members holding one course
+    progress record each; the returned learner's record is the completed one."""
+    cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
+    registration = cast(
+        CohortCourseRegistration,
+        CohortCourseRegistrationFactory(
+            cohort=cohort, course=CourseFactory(title="Algebra")
+        ),
+    )
+    done = _add_member(cohort)
+    _add_cohort_progress(registration, done, completed=True)
+    _add_cohort_progress(registration, _add_member(cohort), completed=False)
+    return cohort, registration, done
+
+
+@pytest.mark.django_db
+def test_cohort_header_shows_the_active_badge(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=True)
+
+    document = _cohort_page(staff_client, cohort)
+
+    (heading,) = document.cssselect("#instance-title")
+    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+    assert "Active" in header.text_content().split()
+
+
+@pytest.mark.django_db
+def test_inactive_cohort_header_shows_the_inactive_badge(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
+
+    document = _cohort_page(staff_client, cohort)
+
+    (heading,) = document.cssselect("#instance-title")
+    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+    assert "Inactive" in header.text_content().split()
+
+
+@pytest.mark.django_db
+def test_cohort_header_shows_learner_and_course_counts(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    _add_member(cohort)
+    _add_member(cohort)
+    _add_member(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort)
+
+    document = _cohort_page(staff_client, cohort)
+
+    (heading,) = document.cssselect("#instance-title")
+    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+    stats = {
+        dl.cssselect("dt")[0].text_content().strip(): dl.cssselect("dd")[0]
+        .text_content()
+        .strip()
+        for dl in header.cssselect("dl")
+    }
+    assert stats == {"Learners": "3", "Courses": "1"}
+
+
+@pytest.mark.django_db
+def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+
+    document = _cohort_page(staff_client, cohort)
+
+    (nav,) = document.cssselect("nav[aria-label='Cohort sections']")
+    (active,) = [a for a in nav.cssselect("a") if a.get("aria-current") == "page"]
+    assert active.text_content().split()[0] == "Overview"
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_lists_the_course_registrations(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    (region,) = document.cssselect("[data-tab-set]")
+    assert "Algebra" in region.text_content()
+
+
+@pytest.mark.django_db
+def test_course_completion_reads_one_of_two_completed(
+    staff_client: Client,
+    completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
+):
+    cohort, _, _ = completion_scenario
+
+    card = _completion_card(_cohort_page(staff_client, cohort))
+
+    text = " ".join(card.text_content().split())
+    assert "Algebra" in text
+    assert "1 of 2 completed" in text
+
+
+@pytest.mark.django_db
+def test_course_completion_progress_bar_is_at_fifty(
+    staff_client: Client,
+    completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
+):
+    cohort, _, _ = completion_scenario
+
+    card = _completion_card(_cohort_page(staff_client, cohort))
+
+    (bar,) = card.cssselect("progress")
+    assert bar.get("value") == "50"
+
+
+@pytest.mark.django_db
+def test_course_completion_falls_when_the_completed_member_leaves(
+    staff_client: Client,
+    completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
+):
+    cohort, _, done = completion_scenario
+    CohortMembership.objects.get(cohort=cohort, learner=done).delete()
+
+    card = _completion_card(_cohort_page(staff_client, cohort))
+
+    assert "0 of 1 completed" in " ".join(card.text_content().split())
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohort_still_shows_completion_for_active_registrations(
+    staff_client: Client,
+    completion_scenario: tuple[Cohort, CohortCourseRegistration, Learner],
+):
+    cohort, _, _ = completion_scenario
+    cohort.is_active = False
+    cohort.save()
+
+    card = _completion_card(_cohort_page(staff_client, cohort))
+
+    assert "1 of 2 completed" in " ".join(card.text_content().split())
+
+
+@pytest.mark.django_db
+def test_course_completion_leaves_out_an_inactive_registration(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Retired"), is_active=False
+    )
+
+    card = _completion_card(_cohort_page(staff_client, cohort))
+
+    assert "Retired" not in card.text_content()
+    assert "No courses registered." in card.text_content()
+
+
+@pytest.mark.django_db
+def test_needs_attention_card_renders_its_placeholder(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+
+    document = _cohort_page(staff_client, cohort)
+
+    (card,) = document.cssselect("section[data-panel='attention']")
+    assert "Nothing needs attention yet." in card.text_content()
+
+
+@pytest.mark.django_db
+def test_overview_lists_details_completion_and_attention_in_order(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+
+    document = _cohort_page(staff_client, cohort)
+
+    panels = [
+        s.get("data-panel")
+        for s in document.cssselect("[data-tab-set] section[data-panel]")
+    ]
+    assert panels[:3] == ["details", "completion", "attention"]
+
+
+@pytest.mark.django_db
+def test_every_panel_under_the_cohort_page_refreshes_on_cohort_changed(
+    mock_site_context: Site,
+):
+    organisation = OrganisationFactory()
+    cohort_paths = [
+        item
+        for item in walk_interface(organisation)
+        if isinstance(item, WalkedPanel)
+        and item.path.startswith("cohorts/")
+        and "/__" in item.path
+        and "/__actions/" not in item.path
+    ]
+
+    missing = [
+        item.path
+        for item in cohort_paths
+        if COHORT_CHANGED not in item.panel.refresh_events
+    ]
+
+    assert cohort_paths
+    assert missing == []

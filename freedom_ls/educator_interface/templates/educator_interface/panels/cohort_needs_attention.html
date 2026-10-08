@@ -1,0 +1,6 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% comment %}TODO: list the learners in this cohort who need an educator's attention, such as stalled or overdue progress, once something computes that. Until then the card shows only the empty state.{% endcomment %}
+    <c-panel-empty-state message="Nothing needs attention yet." />
+{% endblock panel_body %}

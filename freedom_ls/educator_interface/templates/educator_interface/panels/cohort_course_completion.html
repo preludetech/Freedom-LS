@@ -1,0 +1,19 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% if completions %}
+        <ul class="flex flex-col gap-4">
+            {% for entry in completions %}
+                <li>
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+                        <span class="font-medium">{{ entry.course.title }}</span>
+                        <span class="text-sm text-muted">{{ entry.completed_count }} of {{ entry.record_count }} completed</span>
+                    </div>
+                    <c-panel-progress-bar percentage="{{ entry.percentage }}" label="{{ entry.course.title }} completion" />
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <c-panel-empty-state message="No courses registered." />
+    {% endif %}
+{% endblock panel_body %}
