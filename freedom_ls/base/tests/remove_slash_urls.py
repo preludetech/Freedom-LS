@@ -11,7 +11,7 @@ context and the database into tests about URL routing.
 from __future__ import annotations
 
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseNotFound
-from django.urls import path
+from django.urls import path, re_path
 
 
 def _ok(request: HttpRequest) -> HttpResponse:
@@ -33,4 +33,7 @@ urlpatterns = [
     path("plain", _ok, name="plain"),
     path("slashed/", _ok, name="slashed"),
     path("missing/", _not_found, name="missing"),
+    # Matches a path whose first segment is empty, which FLS's own routes
+    # never do but a downstream project's might.
+    re_path(r"^/(?P<host>[^/]+)/x$", _ok, name="leading_slash"),
 ]

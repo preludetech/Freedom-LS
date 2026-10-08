@@ -53,8 +53,21 @@ def test_slashless_request_to_a_slashed_route_still_appends_a_slash() -> None:
     assert response["Location"] == "/slashed/"
 
 
-def test_post_to_a_slashed_path_redirects_like_a_get() -> None:
-    response = Client().post(reverse("plain") + "/")
+def test_head_to_a_slashed_path_redirects() -> None:
+    response = Client().head(reverse("plain") + "/")
 
     assert response.status_code == 301
     assert response["Location"] == "/plain"
+
+
+def test_post_to_a_slashed_path_stays_404() -> None:
+    response = Client().post(reverse("plain") + "/")
+
+    assert response.status_code == 404
+
+
+def test_redirect_escapes_a_leading_double_slash() -> None:
+    response = Client().get("/%2Fevil.com/x/")
+
+    assert response.status_code == 301
+    assert response["Location"] == "/%2Fevil.com/x"

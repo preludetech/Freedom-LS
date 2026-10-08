@@ -36,8 +36,8 @@ def follow_referral_code(request: HttpRequest, code: str, door: Door) -> HttpRes
     query_string = request.META.get("QUERY_STRING", "")
     target = build_redirect_url(referral_code, query_string)
     # A relative target passes the host check — it has neither a host nor a
-    # scheme to object to — and the browser would resolve it against this very
-    # route, so the leading slash is checked separately.
+    # scheme to object to — and the browser would resolve it against the
+    # requested path, so the leading slash is checked separately.
     if not target.startswith("/") or not url_has_allowed_host_and_scheme(
         target, allowed_hosts={request.get_host()}
     ):

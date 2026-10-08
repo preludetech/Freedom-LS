@@ -25,6 +25,7 @@ from django.http import (
 )
 from django.template.loader import render_to_string
 from django.urls import is_valid_path
+from django.utils.http import escape_leading_slashes
 
 
 class HtmxMessagesMiddleware:
@@ -93,10 +94,16 @@ class RemoveSlashMiddleware:
     `CommonMiddleware` only ever appends a slash, so a route with none
     (`/robots.txt`, `/sitemap.xml`, the learner form routes) 404s as soon as
     a browser, a chat app or a hand-typed link adds one. This is the same
-    rule in the other direction. It fires only on a 404 whose path does not
-    resolve but whose slashless form does, so it never turns a view's own
-    404 into a redirect. It strips exactly one slash: a path ending in `//`
-    is not a slip anyone makes, and redirecting it would hide a bad link.
+    rule in the other direction. It fires only on a 404 whose path matched no
+    route but whose slashless form does, so it never turns a view's own 404
+    into a redirect. It strips exactly one slash: a path ending in `//` is
+    not a slip anyone makes, and redirecting it would hide a bad link.
+
+    Only GET and HEAD are redirected: a browser follows a 301 with a GET, so
+    a redirected POST would lose its body without a word.
+
+    A route that cannot afford the extra hop accepts the slash in its own
+    pattern instead, as the referral routes do.
     """
 
     def __init__(
@@ -112,16 +119,21 @@ class RemoveSlashMiddleware:
         ):
             return response
         # `get_full_path` has already escaped the path and the query, so only
-        # the slash goes.
+        # the slash goes. A path starting `//` would read as a protocol-relative
+        # URL to another host, hence the leading slashes are escaped too.
         path, separator, query = request.get_full_path().partition("?")
-        return HttpResponsePermanentRedirect(f"{path[:-1]}{separator}{query}")
+        return HttpResponsePermanentRedirect(
+            f"{escape_leading_slashes(path[:-1])}{separator}{query}"
+        )
 
     @staticmethod
     def should_redirect_without_slash(request: HttpRequest) -> bool:
+        if request.method not in ("GET", "HEAD"):
+            return False
         path = request.path_info
         if not path.endswith("/") or path.endswith("//"):
             return False
+        if request.resolver_match is not None:
+            return False
         urlconf = getattr(request, "urlconf", None)
-        return not is_valid_path(path, urlconf) and bool(
-            is_valid_path(path[:-1], urlconf)
-        )
+        return bool(is_valid_path(path[:-1], urlconf))

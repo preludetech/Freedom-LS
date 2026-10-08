@@ -36,7 +36,7 @@ def _reversed_url(name: str, code: str = "mrbeast") -> str:
 
 @pytest.mark.parametrize("url", _spellings("mrbeast"))
 def test_every_spelling_redirects_to_the_same_target(
-    url: str, mock_site_context
+    url: str, mock_site_context: Site
 ) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
@@ -46,7 +46,7 @@ def test_every_spelling_redirects_to_the_same_target(
 
 
 @pytest.mark.parametrize("url", _spellings("mrbeast"))
-def test_each_spelling_records_a_hit(url: str, mock_site_context) -> None:
+def test_each_spelling_records_a_hit(url: str, mock_site_context: Site) -> None:
     referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
     Client().get(url)
@@ -68,7 +68,7 @@ def test_each_spelling_records_a_hit(url: str, mock_site_context) -> None:
     ],
 )
 def test_each_spelling_records_its_own_door(
-    url: str, door: str, mock_site_context
+    url: str, door: Door, mock_site_context: Site
 ) -> None:
     referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
@@ -81,7 +81,7 @@ def test_each_spelling_records_its_own_door(
 @pytest.mark.parametrize("suffix", ["", "/"])
 @pytest.mark.parametrize("name", ["follow_go", "follow_d"])
 def test_the_response_has_no_trailing_slash_redirect_hop(
-    name: str, suffix: str, mock_site_context
+    name: str, suffix: str, mock_site_context: Site
 ) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
@@ -91,7 +91,9 @@ def test_the_response_has_no_trailing_slash_redirect_hop(
 
 
 @pytest.mark.parametrize("name", ["follow_go", "follow_d"])
-def test_the_slashed_form_keeps_the_query_string(name: str, mock_site_context) -> None:
+def test_the_slashed_form_keeps_the_query_string(
+    name: str, mock_site_context: Site
+) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
     response = Client().get(_reversed_url(name) + "/?x=9")
@@ -107,7 +109,9 @@ def test_reverse_gives_the_slashless_url(name: str, expected: str) -> None:
     assert _reversed_url(name) == expected
 
 
-def test_referral_path_ending_in_double_slash_returns_404(mock_site_context) -> None:
+def test_referral_path_ending_in_double_slash_returns_404(
+    mock_site_context: Site,
+) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
     response = Client().get(_reversed_url("follow_go") + "//")
@@ -115,7 +119,7 @@ def test_referral_path_ending_in_double_slash_returns_404(mock_site_context) -> 
     assert response.status_code == 404
 
 
-def test_referral_path_with_extra_segment_returns_404(mock_site_context) -> None:
+def test_referral_path_with_extra_segment_returns_404(mock_site_context: Site) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
     response = Client().get(_reversed_url("follow_go") + "/extra")
@@ -124,7 +128,7 @@ def test_referral_path_with_extra_segment_returns_404(mock_site_context) -> None
 
 
 def test_the_response_carries_private_no_store_and_noindex_headers(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
@@ -135,7 +139,7 @@ def test_the_response_carries_private_no_store_and_noindex_headers(
 
 
 def test_an_inactive_code_redirects_to_its_inactive_destination_and_logs(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     referral_code = ReferralCodeFactory(
         code="mrbeast",
@@ -151,19 +155,19 @@ def test_an_inactive_code_redirects_to_its_inactive_destination_and_logs(
     assert ReferralCodeHit.objects.filter(referral_code=referral_code).exists()
 
 
-def test_an_unknown_code_404s(mock_site_context) -> None:
+def test_an_unknown_code_404s(mock_site_context: Site) -> None:
     response = Client().get("/go/doesnotexist")
 
     assert response.status_code == 404
 
 
-def test_unknown_code_with_a_trailing_slash_stays_404(mock_site_context) -> None:
+def test_unknown_code_with_a_trailing_slash_stays_404(mock_site_context: Site) -> None:
     response = Client().get(_reversed_url("follow_go", "doesnotexist") + "/")
 
     assert response.status_code == 404
 
 
-def test_a_code_on_another_site_404s(mock_site_context, site) -> None:
+def test_a_code_on_another_site_404s(mock_site_context: Site, site) -> None:
     other_site = Site.objects.create(name="Other", domain="other.example.com")
     ReferralCodeFactory(site=other_site, code="mrbeast", destination="/courses/")
 
@@ -172,7 +176,7 @@ def test_a_code_on_another_site_404s(mock_site_context, site) -> None:
     assert response.status_code == 404
 
 
-def test_head_redirects_without_recording_a_hit(mock_site_context) -> None:
+def test_head_redirects_without_recording_a_hit(mock_site_context: Site) -> None:
     referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
     response = Client().head("/go/mrbeast")
@@ -181,7 +185,7 @@ def test_head_redirects_without_recording_a_hit(mock_site_context) -> None:
     assert not ReferralCodeHit.objects.filter(referral_code=referral_code).exists()
 
 
-def test_post_is_refused(mock_site_context) -> None:
+def test_post_is_refused(mock_site_context: Site) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
     # The default client skips CSRF, so it never reaches the middleware that
     # refuses this request ahead of the view.
@@ -192,7 +196,7 @@ def test_post_is_refused(mock_site_context) -> None:
     assert response.status_code == 403
 
 
-def test_a_refused_post_records_no_hit(mock_site_context) -> None:
+def test_a_refused_post_records_no_hit(mock_site_context: Site) -> None:
     referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
     Client(enforce_csrf_checks=True).post("/go/mrbeast")
@@ -201,7 +205,7 @@ def test_a_refused_post_records_no_hit(mock_site_context) -> None:
 
 
 def test_a_database_error_recording_the_hit_still_redirects(
-    mock_site_context, mocker
+    mock_site_context: Site, mocker
 ) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
     mocker.patch.object(
@@ -215,7 +219,7 @@ def test_a_database_error_recording_the_hit_still_redirects(
 
 
 def test_an_unsafe_destination_falls_back_to_the_default_path(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     """A destination that resolves to another host fails the host check the
     view re-runs, and the visitor is sent to `/` instead of off-site."""
@@ -231,7 +235,7 @@ def test_an_unsafe_destination_falls_back_to_the_default_path(
 
 
 def test_a_relative_destination_falls_back_to_the_default_path(
-    mock_site_context,
+    mock_site_context: Site,
 ) -> None:
     """A destination with no leading slash must not resolve against /go/ itself.
 
@@ -248,7 +252,7 @@ def test_a_relative_destination_falls_back_to_the_default_path(
     assert response.url.startswith("/?")
 
 
-def test_a_throttled_hit_still_redirects(mock_site_context, settings) -> None:
+def test_a_throttled_hit_still_redirects(mock_site_context: Site, settings) -> None:
     """The cap bounds the hit log, never the link itself."""
     settings.REFERRAL_TRACKING_HIT_LOG_LIMIT = 1
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
