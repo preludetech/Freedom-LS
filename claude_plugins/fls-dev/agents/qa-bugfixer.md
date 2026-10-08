@@ -73,9 +73,8 @@ swap was expected), write a `@pytest.mark.playwright` test instead. Put it in th
 
 ### Step 2 — Confirm RED
 
-```
-uv run pytest <path-to-test-file>::<test-name> -x
-```
+Run the single test run defined in `claude_plugins/django-stack/resources/test_tiers.md` for
+`<path-to-test-file>::<test-name>`.
 
 The test **must fail**. If it passes, you have not reproduced the bug — stop and return
 `status: failed · reason: could not reproduce: test passed before any fix`.
@@ -88,9 +87,8 @@ static JS/CSS count as production code.
 
 ### Step 4 — Confirm GREEN
 
-```
-uv run pytest <path-to-test-file>::<test-name> -x
-```
+Run the single test run defined in `claude_plugins/django-stack/resources/test_tiers.md` for
+`<path-to-test-file>::<test-name>`.
 
 The test **must now pass**. If it still fails, return
 `status: failed · reason: fix did not make test pass`.
