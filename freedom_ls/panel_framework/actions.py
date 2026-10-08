@@ -31,10 +31,16 @@ def navigation_response(path: str) -> HttpResponse:
     return response
 
 
+def count_phrase(count: int, singular: object, plural: object) -> str:
+    """A count and a noun, singular for exactly one."""
+    return f"{count} {singular if count == 1 else plural}"
+
+
 def count_noun(model: type[Model], count: int) -> str:
     """A count and the model's name, singular for exactly one."""
-    noun = model._meta.verbose_name if count == 1 else model._meta.verbose_name_plural
-    return f"{count} {noun}"
+    return count_phrase(
+        count, model._meta.verbose_name, model._meta.verbose_name_plural
+    )
 
 
 def join_prose(parts: list[str]) -> str:

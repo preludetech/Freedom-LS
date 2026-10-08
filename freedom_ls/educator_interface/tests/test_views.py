@@ -132,7 +132,6 @@ def test_cohort_page_actions_sit_in_the_page_header_not_the_details_card(
     assert triggers == {
         f"{page_url}/__actions/edit",
         f"{page_url}/__actions/deactivate",
-        f"{page_url}/__actions/delete",
     }
     (details_panel,) = document.cssselect("section[data-panel='details']")
     assert not details_panel.cssselect("footer")

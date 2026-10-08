@@ -15,6 +15,7 @@ from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
+    DeleteEmptyCohortAction,
     EditCohortAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
@@ -54,7 +55,6 @@ from freedom_ls.learner_management.queries import (
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
-    DeleteAction,
     PanelAction,
 )
 from freedom_ls.panel_framework.filters import TableFilter
@@ -568,7 +568,13 @@ class CohortSettingsPanel(Panel):
     refresh_events = (COHORT_CHANGED,)
 
     def get_actions(self) -> list[PanelAction]:
-        return cohort_state_actions()
+        cohort = cast(Cohort, self.instance)
+        return [
+            *cohort_state_actions(),
+            DeleteEmptyCohortAction(
+                success_url=_interface_path(cohort.organisation, "cohorts"),
+            ),
+        ]
 
     def get_context_data(self) -> dict[str, object]:
         cohort = cast(Cohort, self.instance)
@@ -627,9 +633,6 @@ class CohortInstanceView(InstanceView):
                 success_events=(COHORT_CHANGED,),
             ),
             *cohort_state_actions(),
-            DeleteAction(
-                success_url=_interface_path(cohort.organisation, "cohorts"),
-            ),
         ]
 
 

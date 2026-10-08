@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from typing import cast
 
+from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.template.loader import render_to_string
 
 from freedom_ls.learner_management.models import (
     Cohort,
-    CohortCourseRegistration,
     Learner,
 )
 from freedom_ls.learner_management.queries import (
@@ -17,9 +18,11 @@ from freedom_ls.learner_management.queries import (
     cohort_is_empty,
 )
 from freedom_ls.panel_framework.actions import (
+    DeleteAction,
     EditAction,
     PanelAction,
     count_noun,
+    count_phrase,
     join_prose,
     navigation_response,
 )
@@ -34,7 +37,7 @@ def cohort_not_empty_sentence(cohort: Cohort) -> str:
     counts = join_prose(
         [
             count_noun(Learner, learners),
-            count_noun(CohortCourseRegistration, registrations),
+            count_phrase(registrations, "course registration", "course registrations"),
         ]
     )
     return (
@@ -122,6 +125,54 @@ class ReactivateCohortAction(CohortStateAction):
                 status=422,
             )
         return super().handle_submit(ctx)
+
+
+class DeleteEmptyCohortAction(DeleteAction):
+    """Deletes a cohort that has no memberships and no course registrations.
+
+    A cohort that is not empty is neither offered the action nor allowed to
+    submit it: deletion would cascade away removed learners' memberships and
+    inactive registrations, which nobody sees on the page.
+    """
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return cohort_is_empty(cast(Cohort, ctx.instance))
+
+    def _refuse_not_empty(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
+        html = render_to_string(
+            self.template_name,
+            self._confirmation_context(
+                ctx,
+                cohort,
+                cascade_summary=[],
+                blocked_reason=cohort_not_empty_sentence(cohort),
+            ),
+            request=ctx.request,
+        )
+        return HttpResponse(html, status=422)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        cohort = cast(Cohort, ctx.instance)
+        if not cohort_is_empty(cohort):
+            return self._confirmation_context(
+                ctx,
+                cohort,
+                cascade_summary=[],
+                blocked_reason=cohort_not_empty_sentence(cohort),
+            )
+        return super().get_context_data(ctx)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        with transaction.atomic():
+            # Lock the cohort so a membership added between this check and the
+            # delete either lands first and is refused here, or waits and then
+            # fails on the missing cohort.
+            cohort = Cohort.objects.select_for_update().get(
+                pk=cast(Cohort, ctx.instance).pk
+            )
+            if not cohort_is_empty(cohort):
+                return self._refuse_not_empty(ctx, cohort)
+            return super().handle_submit(ctx)
 
 
 def cohort_state_actions() -> list[PanelAction]:

@@ -228,7 +228,13 @@ class TestCrossOrganisationIsolation:
         assert response.status_code == 404
 
     @pytest.mark.parametrize(
-        "suffix", ["__tabs/settings", "__actions/deactivate", "__actions/reactivate"]
+        "suffix",
+        [
+            "__tabs/settings",
+            "__actions/deactivate",
+            "__actions/reactivate",
+            "__tabs/settings/__actions/delete",
+        ],
     )
     def test_cohort_settings_surfaces_404_for_a_cohort_outside_organisation_a(
         self, isolation, suffix: str

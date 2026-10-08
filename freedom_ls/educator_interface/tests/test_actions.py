@@ -8,6 +8,7 @@ from typing import cast
 import lxml.html
 import pytest
 
+from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
@@ -111,7 +112,7 @@ def test_deactivate_fragment_says_why_a_non_empty_cohort_cannot_be_deleted(
     )
 
     assert (
-        "Evening group can't be deleted while it has 1 learner and 1 cohort course "
+        "Evening group can't be deleted while it has 1 learner and 1 course "
         "registration, counting removed learners and inactive registrations." in text
     )
 
@@ -235,9 +236,20 @@ def test_cohort_not_empty_sentence_counts_removed_learners_and_inactive_registra
     sentence = cohort_not_empty_sentence(cohort)
 
     assert sentence == (
-        "Evening group can't be deleted while it has 2 learners and 1 cohort course "
+        "Evening group can't be deleted while it has 2 learners and 1 course "
         "registration, counting removed learners and inactive registrations."
     )
+
+
+@pytest.mark.django_db
+def test_not_empty_sentence_pluralises_course_registrations(
+    mock_site_context: Site,
+) -> None:
+    cohort = _cohort_with_courses(OrganisationFactory(), 2, name="Evening group")
+
+    sentence = cohort_not_empty_sentence(cohort)
+
+    assert "0 learners and 2 course registrations, counting" in sentence
 
 
 # inactive cohorts are read-only
