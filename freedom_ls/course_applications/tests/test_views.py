@@ -12,7 +12,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.factories import (
+    EmailAddressFactory,
+    SiteSignupPolicyFactory,
+    UserFactory,
+)
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
@@ -1609,7 +1613,7 @@ class TestAnonymousApply:
         response = client.post(_apply_url(course), {"email": "pat@example.com"})
 
         assert parse_qs(urlparse(response["Location"]).query)["next"] == [
-            reverse("learner_interface:dashboard")
+            reverse("course_applications:claim")
         ]
 
     def test_anonymous_submit_on_closed_signup_site_redirects_to_login(
@@ -1684,3 +1688,262 @@ class TestAnonymousApply:
 
         assert "no-store" in response["Cache-Control"]
         assert response["Referrer-Policy"] == "same-origin"
+
+
+def _hold(client, *applications):
+    session = client.session
+    session[UNCLAIMED_APPLICATIONS_SESSION_KEY] = [str(a.pk) for a in applications]
+    session.save()
+
+
+def _claim_url():
+    return reverse("course_applications:claim")
+
+
+def _signed_in_with_verified(client, email="pat@example.com"):
+    user = UserFactory()
+    EmailAddressFactory(user=user, email=email)
+    client.force_login(user)
+    return user
+
+
+@pytest.mark.django_db
+class TestClaimLanding:
+    def test_one_claimed_submitted_application_lands_on_its_status_page(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        response = client.get(_claim_url())
+
+        app.refresh_from_db()
+        assert app.user == user
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+
+    def test_claiming_says_the_application_is_on_the_dashboard(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        response = client.get(_claim_url())
+
+        assert [str(m) for m in get_messages(response.wsgi_request)] == [
+            f"Your application for {app.course.title} is now on your dashboard."
+        ]
+
+    def test_several_claimed_applications_land_on_the_dashboard(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        first = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        second = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, first, second)
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_a_collision_alone_lands_on_the_existing_application(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        course = CourseFactory()
+        existing = CourseApplicationFactory(user=user, course=course)
+        held = CourseApplicationFactory(
+            unclaimed=True, course=course, email="pat@example.com"
+        )
+        _hold(client, held)
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": existing.pk}
+        )
+
+    def test_a_collision_says_the_user_had_already_applied(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+        held = CourseApplicationFactory(
+            unclaimed=True, course=course, email="pat@example.com"
+        )
+        _hold(client, held)
+
+        response = client.get(_claim_url())
+
+        assert [str(m) for m in get_messages(response.wsgi_request)] == [
+            f"You had already applied to {course.title}. This is your application."
+        ]
+
+    def test_a_mismatch_shows_the_mismatch_page(self, client, mock_site_context):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        response = client.get(_claim_url())
+
+        assert response.status_code == 200
+        assert "pat@example.com" in response.content.decode()
+        assert "Link your application" in response.content.decode()
+
+    def test_a_mismatch_leaves_the_application_unclaimed(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        client.get(_claim_url())
+
+        app.refresh_from_db()
+        assert app.user is None
+
+    def test_nothing_held_says_no_application_was_found(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+
+        response = client.get(_claim_url())
+
+        assert (
+            response["Location"],
+            [str(m) for m in get_messages(response.wsgi_request)],
+        ) == (
+            reverse("learner_interface:dashboard"),
+            ["We couldn't find an application in this browser."],
+        )
+
+    def test_a_mismatch_mixed_with_a_claim_shows_the_mismatch_page(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        claimable = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        mismatched = CourseApplicationFactory(unclaimed=True, email="else@example.com")
+        _hold(client, claimable, mismatched)
+
+        response = client.get(_claim_url())
+
+        assert response.status_code == 200
+        assert "else@example.com" in response.content.decode()
+
+    def test_a_mixed_run_still_claims_the_matching_application(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        claimable = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        mismatched = CourseApplicationFactory(unclaimed=True, email="else@example.com")
+        _hold(client, claimable, mismatched)
+
+        client.get(_claim_url())
+
+        claimable.refresh_from_db()
+        assert claimable.user == user
+
+    def test_claim_landing_with_a_deleted_mismatched_application_finds_nothing(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+        app.delete()
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_claim_landing_links_a_mismatched_application_once_the_address_is_verified(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+        EmailAddressFactory(user=user, email="pat@example.com", primary=False)
+
+        response = client.get(_claim_url())
+
+        app.refresh_from_db()
+        assert (app.user, response["Location"]) == (
+            user,
+            reverse("course_applications:status", kwargs={"pk": app.pk}),
+        )
+
+    def test_mismatch_page_offers_the_link_my_application_button(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        html = client.get(_claim_url()).content.decode()
+
+        assert "Link my application" in html
+        assert f'href="{_claim_url()}"' in html
+
+    def test_claim_landing_is_login_required(self, client, mock_site_context):
+        response = client.get(_claim_url())
+
+        assert response.status_code == 302
+        assert reverse("account_login") in response["Location"]
+
+    def test_claim_landing_is_get_only(self, client, mock_site_context):
+        _signed_in_with_verified(client)
+
+        response = client.post(_claim_url())
+
+        assert response.status_code == 405
+
+    def test_claim_landing_revisit_finds_nothing(self, client, mock_site_context):
+        _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_claim_landing_sends_no_store_and_same_origin_referrer(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+
+        response = client.get(_claim_url())
+
+        assert "no-store" in response["Cache-Control"]
+        assert response["Referrer-Policy"] == "same-origin"
+
+    def test_claimed_application_appears_on_the_dashboard(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+
+        response = client.get(reverse("learner_interface:dashboard"))
+
+        assert app.course.title in response.content.decode()
+
+    def test_handoff_message_is_shown_on_the_signup_page(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        response = client.post(
+            _apply_url(course), {"email": "pat@example.com"}, follow=True
+        )
+
+        assert (
+            f"Your application for {course.title} has been sent."
+            in response.content.decode()
+        )

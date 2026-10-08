@@ -14,6 +14,7 @@ from django.db.models import prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_GET
 
 from freedom_ls.accounts.decorators import never_cache_same_origin
 from freedom_ls.accounts.legal_docs import has_legal_doc
@@ -23,6 +24,9 @@ from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.claims import (
+    CLAIM_REPORT_SESSION_KEY,
+    ClaimReport,
+    claim_unclaimed_applications,
     remember_unclaimed_application,
     unclaimed_application_for_course,
 )
@@ -199,8 +203,67 @@ def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpRe
     if auth_url is not None:
         auth_url = f"{auth_url}?{urlencode({'email': app.email})}"
     return redirect_to_auth(
-        request, next_url=reverse("learner_interface:dashboard"), auth_url=auth_url
+        request, next_url=reverse("course_applications:claim"), auth_url=auth_url
     )
+
+
+def _landing_for(app: CourseApplication) -> HttpResponse:
+    return redirect("course_applications:status", pk=app.pk)
+
+
+@login_required
+@require_GET
+@never_cache_same_origin
+def claim_landing(request: HttpRequest) -> HttpResponse:
+    """Attach this browser's applications to the signed-in account and say what happened.
+
+    Runs the claim again, so a visitor who has since verified the typed
+    address can retry from the mismatch page. The report of any earlier run,
+    such as the login receiver's, is shown once and then cleared.
+    """
+    claim_unclaimed_applications(request, cast(User, request.user))
+    report = ClaimReport.from_session(
+        request.session.pop(CLAIM_REPORT_SESSION_KEY, None)
+    )
+    claimed = list(
+        CourseApplication.objects.filter(pk__in=report.claimed).select_related(
+            "course", "form_progress__form"
+        )
+    )
+    for app in claimed:
+        messages.success(
+            request,
+            f"Your application for {app.course.title} is now on your dashboard.",
+        )
+    collided = (
+        CourseApplication.objects.filter(pk__in=report.collided)
+        .select_related("course")
+        .first()
+    )
+    if collided is not None:
+        messages.info(
+            request,
+            f"You had already applied to {collided.course.title}. This is your application.",
+        )
+    mismatched = (
+        CourseApplication.objects.filter(pk__in=report.mismatched)
+        .select_related("course")
+        .first()
+    )
+    if mismatched is not None:
+        return render(
+            request,
+            "course_applications/claim_mismatch.html",
+            {"application": mismatched, "course": mismatched.course},
+        )
+    if len(claimed) == 1:
+        return _landing_for(claimed[0])
+    if claimed:
+        return redirect("learner_interface:dashboard")
+    if collided is not None:
+        return redirect("course_applications:status", pk=collided.pk)
+    messages.info(request, "We couldn't find an application in this browser.")
+    return redirect("learner_interface:dashboard")
 
 
 @login_required

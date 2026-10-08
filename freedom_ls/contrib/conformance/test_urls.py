@@ -52,6 +52,7 @@ FLS_NAMESPACE_PROBES: list[_Probe] = [
         True,
         {"course_slug": "x"},
     ),
+    _Probe("freedom_ls.course_applications", "course_applications:claim", True),
     _Probe(
         "freedom_ls.course_applications",
         "course_applications:status",

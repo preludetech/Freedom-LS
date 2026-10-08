@@ -1,6 +1,7 @@
 """Factories for accounts models."""
 
 import factory
+from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
 
@@ -54,6 +55,18 @@ class UserFactory(SiteAwareFactory):
     class Params:
         staff = factory.Trait(is_staff=True)
         superuser = factory.Trait(is_staff=True, is_superuser=True)
+
+
+class EmailAddressFactory(factory.django.DjangoModelFactory):
+    """Factory for allauth EmailAddress: verified and primary by default."""
+
+    class Meta:
+        model = EmailAddress
+
+    user = factory.SubFactory(UserFactory)
+    email = factory.LazyAttribute(lambda obj: obj.user.email)
+    verified = True
+    primary = True
 
 
 class SiteSignupPolicyFactory(SiteAwareFactory):
