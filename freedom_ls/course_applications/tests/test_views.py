@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 from django.contrib.messages import get_messages
@@ -19,6 +22,7 @@ from freedom_ls.tests.images import png_bytes
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
+from freedom_ls.course_applications.claims import UNCLAIMED_APPLICATIONS_SESSION_KEY
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.form_engine.factories import (
@@ -66,15 +70,6 @@ class TestApplyViewGet:
         response = client.get(url)
 
         assert course.title in response.content.decode()
-
-    def test_get_unauthenticated_redirects_to_signup(self, client, mock_site_context):
-        """GET apply without login redirects to signup with next set to the apply URL."""
-        course = CourseFactory()
-        url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
-        response = client.get(url)
-
-        assert response.status_code == 302
-        assert response["Location"] == f"{reverse('account_signup')}?next={url}"
 
     def test_get_nonexistent_course_returns_404(self, client, mock_site_context):
         """GET apply for a non-existent course slug returns 404."""
@@ -1233,20 +1228,19 @@ def test_deferred_login_free_course_enrolls_and_redirects(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_apply_redirects_to_signup_with_next(
-    mock_site_context, course_with_topic
+def test_anonymous_access_to_apply_on_closed_site_redirects_to_login_with_next(
+    mock_site_context, course_with_topic, settings
 ):
-    """Anonymous GET of apply → 302 to signup?next=<apply-url>."""
+    """Anonymous GET of apply on a site closed for signups goes to login?next=<apply-url>."""
+    settings.ALLOW_SIGN_UPS = False
     course = course_with_topic(access_type="application_gated")
-    client = Client()
     apply_url = reverse(
         "course_applications:apply", kwargs={"course_slug": course.slug}
     )
-    response = client.get(apply_url, follow=False)
+    response = Client().get(apply_url, follow=False)
 
     assert response.status_code == 302
-    signup_url = reverse("account_signup")
-    assert response["Location"].startswith(signup_url)
+    assert response["Location"].startswith(reverse("account_login"))
     assert _next_param(response["Location"]) == apply_url
 
 
@@ -1278,15 +1272,15 @@ def test_deferred_login_gated_course_lands_on_apply_page(
 
 @pytest.mark.django_db
 def test_deferred_login_apply_round_trip_creates_no_application(
-    mock_site_context, client
+    mock_site_context, client, settings
 ):
-    """An anonymous apply click survives sign-in without auto-submitting.
+    """An anonymous apply GET creates nothing; only the POST does.
 
-    The anonymous POST redirects to login with next set to the apply URL
-    itself. Following that next after signing in lands on the GET
-    confirmation page, not an auto-created application — apply's GET and
-    POST share one URL, so `next` alone can't force the POST branch.
+    On a closed site the anonymous POST redirects to login with next set to
+    the apply URL itself. Following that next after signing in lands on the GET
+    confirmation page, not an auto-created application.
     """
+    settings.ALLOW_SIGN_UPS = False
     course = CourseFactory()
     user = UserFactory()
 
@@ -1300,7 +1294,25 @@ def test_deferred_login_apply_round_trip_creates_no_application(
     followed = client.get(next_url)
 
     assert followed.status_code == 200
-    assert not CourseApplication.objects.filter(user=user, course=course).exists()
+    assert not CourseApplication.objects.filter(course=course).exists()
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_post_creates_an_unclaimed_application(
+    mock_site_context, client
+):
+    course = CourseFactory()
+    apply_url = reverse(
+        "course_applications:apply", kwargs={"course_slug": course.slug}
+    )
+
+    client.get(apply_url)
+    assert not CourseApplication.objects.exists()
+    client.post(apply_url, {"email": "pat@example.com"})
+
+    assert CourseApplication.objects.filter(
+        course=course, user__isnull=True, email="pat@example.com"
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -1407,21 +1419,32 @@ def test_deferred_login_application_status_non_owner_gets_404(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_hidden_course_apply_redirects_to_signup_not_404(
+def test_anonymous_access_to_hidden_course_apply_is_404_on_open_site(
     mock_site_context,
 ):
-    """acquisition_login_required runs before any visibility check, so an
-    anonymous visitor to a hidden course's apply URL gets a signup redirect
-    rather than the 404 that confirms a registered learner would eventually
-    see."""
+    """On a site open for signups, apply serves anonymous visitors itself, so a
+    hidden course answers 404 like any unknown slug."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
-    client = Client()
 
     url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
-    response = client.get(url, follow=False)
+    response = Client().get(url, follow=False)
 
-    assert response.status_code == 302
-    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_anonymous_access_to_hidden_course_apply_redirects_to_login_on_closed_site(
+    mock_site_context, settings
+):
+    """With signups closed the login redirect comes before any course lookup,
+    so it reveals nothing about which slugs exist."""
+    settings.ALLOW_SIGN_UPS = False
+    course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+    url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+    response = Client().get(url, follow=False)
+
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 @pytest.mark.django_db
@@ -1459,3 +1482,205 @@ def test_anonymous_access_to_status_for_hidden_course_application_redirects_to_l
 
     assert response.status_code == 302
     assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+
+# ---------------------------------------------------------------------------
+# anonymous apply
+# ---------------------------------------------------------------------------
+
+
+def _apply_url(course):
+    return reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+
+
+@pytest.mark.django_db
+class TestAnonymousApply:
+    def test_anonymous_apply_on_closed_signup_site_redirects_to_login_with_next(
+        self, client, mock_site_context, settings
+    ):
+        settings.ALLOW_SIGN_UPS = False
+        course = CourseFactory()
+        url = _apply_url(course)
+
+        response = client.get(url)
+
+        assert response.status_code == 302
+        assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+    def test_anonymous_apply_to_hidden_course_is_404(self, client, mock_site_context):
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+        response = client.get(_apply_url(course))
+
+        assert response.status_code == 404
+
+    def test_anonymous_apply_to_coming_soon_course_redirects_to_detail(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+
+    def test_anonymous_apply_to_a_form_course_still_redirects_to_signup(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        url = _apply_url(course)
+
+        response = client.get(url)
+
+        assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+
+    def test_anonymous_no_form_get_shows_the_email_field(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        response = client.get(_apply_url(course))
+
+        assert response.status_code == 200
+        assert 'name="email"' in response.content.decode()
+
+    def test_anonymous_no_form_get_creates_nothing(self, client, mock_site_context):
+        course = CourseFactory()
+
+        client.get(_apply_url(course))
+
+        assert not CourseApplication.objects.exists()
+
+    def test_anonymous_submit_requires_email(self, client, mock_site_context):
+        course = CourseFactory()
+
+        response = client.post(_apply_url(course), {"email": ""})
+
+        assert response.status_code == 422
+        assert not CourseApplication.objects.exists()
+
+    def test_anonymous_no_form_submit_creates_an_unclaimed_application_with_the_email(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        client.post(_apply_url(course), {"email": "Pat@Example.com"})
+
+        app = CourseApplication.objects.get(course=course)
+        assert (app.user, app.email) == (None, "pat@example.com")
+
+    def test_anonymous_no_form_submit_records_the_submission_event(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        with patch(
+            "freedom_ls.course_applications.views.record_application_submitted"
+        ) as record:
+            client.post(_apply_url(course), {"email": "pat@example.com"})
+
+        record.assert_called_once()
+
+    def test_anonymous_no_form_submit_remembers_the_application_in_the_session(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        client.post(_apply_url(course), {"email": "pat@example.com"})
+
+        app = CourseApplication.objects.get(course=course)
+        assert client.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] == [str(app.pk)]
+
+    def test_anonymous_submit_redirects_to_signup_with_the_email_prefilled(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        response = client.post(_apply_url(course), {"email": "pat@example.com"})
+
+        location = response["Location"]
+        assert location.startswith(reverse("account_signup"))
+        assert parse_qs(urlparse(location).query)["email"] == ["pat@example.com"]
+
+    def test_anonymous_submit_carries_next(self, client, mock_site_context):
+        course = CourseFactory()
+
+        response = client.post(_apply_url(course), {"email": "pat@example.com"})
+
+        assert parse_qs(urlparse(response["Location"]).query)["next"] == [
+            reverse("learner_interface:dashboard")
+        ]
+
+    def test_anonymous_submit_on_closed_signup_site_redirects_to_login(
+        self, client, mock_site_context, settings
+    ):
+        settings.ALLOW_SIGN_UPS = False
+        course = CourseFactory()
+
+        response = client.post(_apply_url(course), {"email": "pat@example.com"})
+
+        assert response["Location"].startswith(reverse("account_login"))
+
+    def test_anonymous_submit_response_is_identical_for_registered_and_unregistered_email(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        UserFactory(email="known@example.com")
+
+        known = client.post(_apply_url(course), {"email": "known@example.com"})
+        unknown = Client().post(_apply_url(course), {"email": "stranger@example.com"})
+
+        assert known.status_code == unknown.status_code
+        assert known["Location"].replace("known", "x") == unknown["Location"].replace(
+            "stranger", "x"
+        )
+
+    def test_anonymous_apply_after_submit_redirects_to_handoff(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        client.post(_apply_url(course), {"email": "pat@example.com"})
+
+        response = client.get(_apply_url(course))
+
+        assert response.status_code == 302
+        assert parse_qs(urlparse(response["Location"]).query)["email"] == [
+            "pat@example.com"
+        ]
+        assert CourseApplication.objects.count() == 1
+
+    def test_signed_in_apply_shows_the_account_email_read_only(
+        self, client, mock_site_context
+    ):
+        user = UserFactory(email="me@example.com")
+        client.force_login(user)
+        course = CourseFactory()
+
+        response = client.get(_apply_url(course))
+
+        html = response.content.decode()
+        assert "me@example.com" in html
+        assert 'name="email"' not in html
+
+    def test_signed_in_application_is_created_with_account_email(
+        self, client, mock_site_context
+    ):
+        user = UserFactory(email="me@example.com")
+        client.force_login(user)
+        course = CourseFactory()
+
+        client.post(_apply_url(course))
+
+        assert CourseApplication.objects.get(user=user).email == "me@example.com"
+
+    @pytest.mark.parametrize("view_name", ["course_applications:apply"])
+    def test_every_unclaimed_application_view_sends_no_store_and_same_origin_referrer(
+        self, client, mock_site_context, view_name
+    ):
+        course = CourseFactory()
+
+        response = client.get(reverse(view_name, kwargs={"course_slug": course.slug}))
+
+        assert "no-store" in response["Cache-Control"]
+        assert response["Referrer-Policy"] == "same-origin"

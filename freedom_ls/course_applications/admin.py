@@ -115,7 +115,12 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         if obj is not None:
             form_progress = obj.form_progress
             context["summary_rows"] = [
-                ("Applicant", admin_change_link(request, obj.user)),
+                (
+                    "Applicant",
+                    admin_change_link(request, obj.user)
+                    if obj.user is not None
+                    else "Unclaimed: email unverified",
+                ),
                 ("Course", admin_change_link(request, obj.course)),
                 (
                     "Form progress record",
@@ -144,12 +149,16 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
-    @admin.display(description="Applicant", ordering="user__email")
+    @admin.display(description="Applicant", ordering="email")
     def applicant_email(self, obj: CourseApplication) -> str:
-        return obj.user.email
+        if obj.user is None:
+            return obj.email
+        return obj.email or obj.user.email
 
     @admin.display(description="Applicant name", ordering="user__last_name")
     def applicant_name(self, obj: CourseApplication) -> str:
+        if obj.user is None:
+            return "-"
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
     @admin.display(boolean=True, description="Submitted")

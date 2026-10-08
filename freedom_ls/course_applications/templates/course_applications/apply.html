@@ -14,7 +14,8 @@
 
             <form method="post">
                 {% csrf_token %}
-                <div class="flex gap-4">
+                {% include "course_applications/partials/applicant_email_fields.html" %}
+                <div class="flex gap-4 mt-6">
                     <c-button type="submit">
                         Submit application
                     </c-button>

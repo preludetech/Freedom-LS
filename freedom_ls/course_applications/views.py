@@ -3,21 +3,30 @@
 from __future__ import annotations
 
 from typing import cast
+from urllib.parse import urlencode
 from uuid import UUID
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from freedom_ls.accounts.decorators import acquisition_login_required
+from freedom_ls.accounts.decorators import never_cache_same_origin
+from freedom_ls.accounts.legal_docs import has_legal_doc
 from freedom_ls.accounts.models import User
+from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
+from freedom_ls.course_applications.claims import (
+    remember_unclaimed_application,
+    unclaimed_application_for_course,
+)
+from freedom_ls.course_applications.forms import ApplicantEmailForm
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.models import Form, FormProgress
@@ -34,6 +43,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_message,
 )
 from freedom_ls.form_engine.queries import page_questions
+from freedom_ls.site_aware_models.models import get_cached_site
 
 
 def _start_application(user: User, course: Course) -> CourseApplication:
@@ -41,13 +51,18 @@ def _start_application(user: User, course: Course) -> CourseApplication:
 
     A course that names an application form gets a sitting of that form created
     alongside the application; the sitting is a draft, not a submission.
+
+    Never called with a null user: `get_or_create(user=None, ...)` would match a
+    stranger's draft.
     """
     with transaction.atomic():
         # get_or_create is race-safe (savepoint + IntegrityError catch +
         # re-get), so concurrent requests that both pass the existing-application
         # check still converge on one row.
         app: CourseApplication
-        app, _ = CourseApplication.objects.get_or_create(user=user, course=course)
+        app, _ = CourseApplication.objects.get_or_create(
+            user=user, course=course, defaults={"email": user.email}
+        )
         if course.application_form is not None and app.form_progress is None:
             app.form_progress = FormProgress.objects.create(
                 user=user, form=course.application_form
@@ -56,7 +71,7 @@ def _start_application(user: User, course: Course) -> CourseApplication:
     return app
 
 
-@acquisition_login_required
+@never_cache_same_origin
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Apply entry view.
 
@@ -77,13 +92,16 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
       an atomic block and call app.submit() (the FSM transition) + create an
       ApplicationStateTransition audit row.
     """
+    if not request.user.is_authenticated and acquisition_auth_url(request) is None:
+        # Signups closed: send to login before any course lookup, so a closed
+        # site reveals nothing about which slugs exist.
+        return redirect_to_auth(request, next_url=request.get_full_path())
     course = get_object_or_404(Course, slug=course_slug)
-    user = cast(
-        User, request.user
-    )  # acquisition_login_required guarantees an authenticated User
-
     # Enforce course visibility: hidden courses 404 for unregistered users.
-    raise_404_if_hidden_unregistered(user, course)
+    raise_404_if_hidden_unregistered(request.user, course)
+    if not request.user.is_authenticated:
+        return _apply_anonymous(request, course)
+    user = cast(User, request.user)
 
     # An existing applicant always reaches their application record, even if the
     # course was later flipped to coming-soon — so this short-circuit precedes the
@@ -107,7 +125,81 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     return render(
         request,
         "course_applications/apply.html",
-        {"course": course},
+        {
+            "course": course,
+            "show_email_form": False,
+            "email_form": None,
+            "privacy_url": None,
+        },
+    )
+
+
+def _privacy_url(request: HttpRequest) -> str | None:
+    site = get_cached_site(request)
+    if isinstance(site, Site) and has_legal_doc(site, "privacy"):
+        return reverse("accounts:legal_doc", kwargs={"doc_type": "privacy"})
+    return None
+
+
+def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
+    held = unclaimed_application_for_course(request, course)
+    if held is not None:
+        if held.is_submitted:
+            return _redirect_to_handoff(request, held)
+        if held.form_progress is None:
+            raise Http404
+        return redirect(_resume_url(held, held.form_progress))
+    if course.visibility == CourseVisibility.COMING_SOON:
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
+    if course.application_form is not None:
+        return redirect_to_auth(
+            request,
+            next_url=request.get_full_path(),
+            auth_url=acquisition_auth_url(request),
+        )
+    return _apply_anonymous_no_form_course(request, course)
+
+
+def _apply_anonymous_no_form_course(
+    request: HttpRequest, course: Course
+) -> HttpResponse:
+    email_form = ApplicantEmailForm(request.POST or None)
+    if request.method == "POST" and email_form.is_valid():
+        app = CourseApplication.objects.create(
+            course=course, email=email_form.cleaned_data["email"]
+        )
+        record_application_submitted(request, course)
+        remember_unclaimed_application(request, app)
+        return _redirect_to_handoff(request, app)
+    return render(
+        request,
+        "course_applications/apply.html",
+        {
+            "course": course,
+            "email_form": email_form,
+            "show_email_form": True,
+            "privacy_url": _privacy_url(request),
+        },
+        status=422 if request.method == "POST" else 200,
+    )
+
+
+def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpResponse:
+    """Send an anonymous applicant to create or enter the account that will own this application.
+
+    The typed address prefills signup. The response is the same for a
+    registered and an unregistered address: nothing here looks an account up.
+    """
+    messages.success(
+        request,
+        f"Your application for {app.course.title} has been sent. "
+        f"Create an account or log in with {app.email} to see its progress.",
+    )
+    auth_url = acquisition_auth_url(request)
+    if auth_url is not None:
+        auth_url = f"{auth_url}?{urlencode({'email': app.email})}"
+    return redirect_to_auth(
+        request, next_url=reverse("learner_interface:dashboard"), auth_url=auth_url
     )
 
 

@@ -129,3 +129,29 @@ class TestIsSubmitted:
         app.form_progress.complete()
 
         assert app.is_submitted is True
+
+
+@pytest.mark.django_db
+class TestUnclaimedApplication:
+    def test_unclaimed_rows_are_not_deduplicated_by_the_unique_constraint(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        CourseApplicationFactory(unclaimed=True, course=course)
+        CourseApplicationFactory(unclaimed=True, course=course)
+
+        assert CourseApplication.objects.filter(course=course).count() == 2
+
+    def test_is_claimed_is_false_without_a_user(self, mock_site_context):
+        assert CourseApplicationFactory(unclaimed=True).is_claimed is False
+
+    def test_is_claimed_is_true_with_a_user(self, mock_site_context):
+        assert CourseApplicationFactory().is_claimed is True
+
+    def test_str_prints_the_email_of_an_unclaimed_row(self, mock_site_context):
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+
+        assert "pat@example.com" in str(app)
+
+    def test_a_no_form_unclaimed_row_is_submitted(self, mock_site_context):
+        assert CourseApplicationFactory(unclaimed=True).is_submitted is True

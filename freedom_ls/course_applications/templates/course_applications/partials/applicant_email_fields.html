@@ -1,0 +1,17 @@
+{% if show_email_form %}
+    {{ email_form.non_field_errors }}
+    <div hidden>{% for field in email_form.hidden_fields %}{{ field }}{% endfor %}</div>
+    <div class="space-y-2">
+        {% if email_form.email.errors %}
+            <p class="text-error text-sm">{{ email_form.email.errors.0 }}</p>
+        {% endif %}
+        <p>{{ email_form.email.label_tag }} {{ email_form.email }}</p>
+    </div>
+    <p class="text-sm text-muted mt-4">
+        We use this address to link your application to your account and to send your decision.
+        An application that is never linked to an account is kept until an administrator removes it.
+        {% if privacy_url %}<a href="{{ privacy_url }}" class="text-primary underline">Read our privacy policy.</a>{% endif %}
+    </p>
+{% else %}
+    <p class="text-muted">Your decision will be sent to {{ request.user.email }}.</p>
+{% endif %}

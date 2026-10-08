@@ -57,8 +57,8 @@ def test_changelist_lists_drafts_and_submitted(staff_client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert draft.user.email in content
-    assert submitted.user.email in content
+    assert draft.email in content
+    assert submitted.email in content
 
 
 def test_is_submitted_column(mock_site_context):
@@ -195,6 +195,7 @@ def test_change_page_summary_links_to_user_course_and_sitting(staff_client):
         ("freedom_ls_content_engine_course_change", application.course),
         ("freedom_ls_form_engine_formprogress_change", application.form_progress),
     ]:
+        assert obj is not None
         assert f'href="{reverse(f"admin:{name}", args=[obj.pk])}"' in content
 
 
@@ -212,7 +213,7 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
 
     content = client.get(reverse(CHANGE, args=[application.pk])).content.decode()
 
-    assert application.user.email in content
+    assert application.email in content
     assert application.course.title in content
     assert str(application.form_progress) in content
     for name, obj in [
@@ -220,6 +221,7 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
         ("freedom_ls_content_engine_course_change", application.course),
         ("freedom_ls_form_engine_formprogress_change", application.form_progress),
     ]:
+        assert obj is not None
         assert reverse(f"admin:{name}", args=[obj.pk]) not in content
     assert "id-scan.png" in content
     assert download_url not in content
@@ -352,3 +354,15 @@ def test_created_date_range_with_blank_times_shows_no_time_errors(staff_client):
     )
 
     assert "Enter a valid time." not in response.content.decode()
+
+
+class TestUnclaimedRows:
+    def test_unclaimed_row_lists_its_email(self, mock_site_context):
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+
+        assert CourseApplicationAdmin.applicant_email(None, app) == "pat@example.com"
+
+    def test_unclaimed_row_shows_a_dash_for_the_name(self, mock_site_context):
+        app = CourseApplicationFactory(unclaimed=True)
+
+        assert CourseApplicationAdmin.applicant_name(None, app) == "-"
