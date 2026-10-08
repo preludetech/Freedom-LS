@@ -29,8 +29,6 @@ ALLOWED = frozenset(
         "claude_plugins/fls-dev/commands/do_qa.md",
         # The fallback for a project with no tier definition.
         "claude_plugins/sdd/commands/protected/run_test_tier.md",
-        # Still to convert:
-        "claude_plugins/django-stack/commands/commit.md",
     }
 )
 

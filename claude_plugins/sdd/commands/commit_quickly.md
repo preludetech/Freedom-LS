@@ -6,7 +6,7 @@ argument-hint: "[mine|all]"
 
 Commit what is currently in flight. Fast.
 
-This is the quick counterpart to `/ds:commit`, which runs the full pytest suite first. Use this one
+This is the quick counterpart to `/ds:commit`, which runs the targeted test tier first. Use this one
 mid-implementation, when you already know the state of the work and want it recorded. Use `/ds:commit`
 when the commit is a checkpoint you have not verified.
 

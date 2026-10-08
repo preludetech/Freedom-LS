@@ -1,7 +1,7 @@
 Make a Git commit.
 
 0. Check you're not on main/master: `git branch --show-current`. If on main/master, warn the user and ask for confirmation before proceeding.
-1. Run `uv run pytest` to make sure all tests pass before committing
+1. Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md` and run the `targeted` tier on `.claude/ds/scripts/select_tests.sh --working-tree` before committing
 2. Run `git status` and `git diff` to review what will be committed
 3. Stage relevant files individually (don't use `git add .`)
 4. Write a short, lowercase commit message describing what changed

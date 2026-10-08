@@ -141,7 +141,7 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
    uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by
    hand.
 
-`/commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise `mine` (the files Claude touched this conversation) or `all`, and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs pytest first.
+`/commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise `mine` (the files Claude touched this conversation) or `all`, and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs the targeted test tier first.
 
 ---
 
