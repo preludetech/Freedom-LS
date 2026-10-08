@@ -206,17 +206,24 @@ def decide_app_path(
 
 def decide_tooling(
     path: str, config: TierConfig, project_root: Path
-) -> Decision | None:
-    """The test directories of the first tooling entry whose glob matches `path`."""
+) -> list[Decision] | None:
+    """The test directories of the first tooling entry whose glob matches `path`.
+
+    Each listed directory that does not exist selects nothing and gets its own reason.
+    """
     posix = PurePosixPath(path)
     for glob, directories in config.tooling:
         if not posix.full_match(glob):
             continue
         present = tuple(d for d in directories if (project_root / d).is_dir())
-        if not present:
-            missing = ", ".join(directories)
-            return Decision(path, "none", (), f"tooling; {missing} does not exist")
-        return Decision(path, "select", present, "tooling")
+        decisions = [
+            Decision(path, "none", (), f"tooling; {d} does not exist")
+            for d in directories
+            if d not in present
+        ]
+        if present:
+            decisions.insert(0, Decision(path, "select", present, "tooling"))
+        return decisions
     return None
 
 
@@ -255,7 +262,7 @@ def decide(
 
     tooling = decide_tooling(path, config, project_root)
     if tooling is not None:
-        return [tooling]
+        return tooling
 
     return [Decision(path, "full", (), "unmapped path")]
 

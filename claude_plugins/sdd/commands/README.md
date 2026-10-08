@@ -91,7 +91,7 @@ Run `/do_qa` to execute the QA plan.
 - If tests were skipped because of missing data or fixtures, create the needed test data (the `fls-dev:qa-data-helper` agent is designed for this).
 - If bugs were detected, `/do_qa` now includes a triage → TDD fix → re-verify loop: clear
   functional regressions that are unit-testable, single-app, and not security-adjacent are
-  auto-fixed by the `fls-dev:qa-bugfixer` agent using TDD (failing test → fix → full suite → commit →
+  auto-fixed by the `fls-dev:qa-bugfixer` agent using TDD (failing test → fix → targeted tier → commit →
   re-verify the Playwright flow). Bugs that do not meet the triage criteria are left `UNRESOLVED`
   with a human todo added automatically. Check the `## Bug status` section of `qa_report.md` for
   the outcome of each bug: `FIXED (commit: <hash>)` or `UNRESOLVED`.

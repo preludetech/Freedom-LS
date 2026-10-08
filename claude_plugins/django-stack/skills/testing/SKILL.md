@@ -42,10 +42,10 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 - Tests must pass in any order. `pytest-randomly` randomises order on every run — do **not** add `@pytest.mark.order` to paper over ordering bugs; fix the test instead.
 - Do not open network sockets in tests; `pytest-socket` blocks outbound sockets and only allows `127.0.0.1` / `::1`. Mock at the boundary, or add `@pytest.mark.allow_hosts(["host"])` for a genuine integration test (never `["*"]`).
 - Use `time-machine` for time-shaped code (deadlines, expiry windows, scheduled jobs) — prefer `time_machine.travel(...)` over manual `datetime.now()` patching.
-- Run the full suite in parallel locally with `uv run pytest -n auto` (xdist is opt-in, not baked into `addopts`).
-- Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10 minutes.
+- pytest: before running it, read `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`. It holds `-n auto`, `--no-cov`, the background rule and the tier to run.
 
 See:
+- `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md` — the tiers, their commands and how to run them
 - `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags
 - `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` — factory patterns
 - The `ds:playwright-tests` skill for browser tests

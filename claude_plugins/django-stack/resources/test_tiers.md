@@ -6,7 +6,19 @@ runs pytest names its tier; the flags live here and nowhere else.
 ## The tiers
 
 - **none.** No pytest. The step reports `tier: none` and moves on.
-- **targeted.** (written when the targeted wrapper exists)
+- **targeted.** Run the wrapper with the step's diff:
+
+  ```
+  .claude/ds/scripts/select_tests.sh <diff arguments>
+  ```
+
+  The diff arguments are the step's own: `--working-tree` for uncommitted and untracked files, or
+  explicit paths. Read the `tier:` line: it is the tier that applies, and `none` means there is
+  nothing to run. Then run the `command:` line exactly as printed. The `why:` lines are the
+  selection's reasons; quote them when reporting. The generic `none` and escalation lists are the
+  two glob tuples at the top of `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's own
+  are in `[tool.test_tiers]` in `pyproject.toml`. The script applies them, so nobody applies them
+  by hand. Done when every `why:` line is accounted for and the printed command exits zero.
 - **full.** The whole suite, in parallel, with whatever `addopts` in `pyproject.toml` adds
   (coverage, the threshold, browser tests):
 

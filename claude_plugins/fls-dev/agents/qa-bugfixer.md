@@ -2,7 +2,7 @@
 name: qa-bugfixer
 description: |-
   One bug, TDD: write a failing test → confirm RED → make the minimal fix →
-  confirm GREEN → run the full suite → commit. Non-interactive; never spawns
+  confirm GREEN → run the targeted tier → commit. Non-interactive; never spawns
   subagents. Returns a structured status line and writes a bugfix report file.
 tools: Bash, Read, Edit, Write, Glob, Grep, Skill
 skills:
@@ -93,24 +93,24 @@ Run the single test run defined in `claude_plugins/django-stack/resources/test_t
 The test **must now pass**. If it still fails, return
 `status: failed · reason: fix did not make test pass`.
 
-### Step 5 — Run the full suite
+### Step 5 — Run the targeted tier
+
+Follow the tier definition at `claude_plugins/django-stack/resources/test_tiers.md` and run
+`targeted` with the explicit paths from the two lists you track (files created, files modified):
 
 ```
-uv run pytest
+.claude/ds/scripts/select_tests.sh <production file> <test file> ...
 ```
 
-Run the full suite with the Bash tool's `run_in_background: true` and wait for the completion
-notification. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this
-worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10
-minutes.
+then run the printed command.
 
 No `-x` here: the orchestrator skips re-driving the regression layer on the strength of this run, so
-it has to be a whole-suite result, not "nothing failed before the first failure".
+it has to be the whole tier, not "nothing failed before the first failure".
 
 All tests must pass. If any test outside your new test fails, investigate: either your fix broke
 something (revert or widen the fix) or the test was already broken before you started (note it but do
-not fix it — that is a separate bug). Return `status: failed · reason: <description>` if the suite
-does not pass.
+not fix it — that is a separate bug). A failure follows "When a targeted run or full run fails" in the
+tier definition. Return `status: failed · reason: <description>` if the tier does not pass.
 
 ### Step 6 — Commit
 
@@ -130,7 +130,7 @@ uv run git commit -m "<message>"
 - Commit message describes the bug fixed and the TDD approach taken.
 - `--no-verify` is denied — do not attempt to bypass hooks.
 - The pre-commit hooks run ruff, mypy, bandit, shellcheck and whitespace/secret checks — **they do
-  NOT run pytest**. Your Step 5 suite run is the regression proof, not the commit hook. If a hook
+  NOT run pytest**. Your Step 5 targeted run is the regression proof, not the commit hook. If a hook
   auto-fixes a file (e.g. trailing whitespace) and aborts the commit, re-stage the same explicit
   paths and commit again.
 
@@ -165,8 +165,8 @@ identifier given in your spawn prompt — so for slug `learner-progress-404` the
 ## Commit hash
 <hash from `uv run git commit`, or "none" if the commit did not happen>
 
-## Suite result
-<"all passing" or a short description of any failures>
+## Tier result
+<the tier that ran, and "all passing" or a short description of any failures>
 ```
 
 **The file MUST end with this footer as its last line:**

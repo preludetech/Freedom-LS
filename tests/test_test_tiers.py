@@ -20,7 +20,6 @@ PLUGIN_DIRS = (
 ALLOWED = frozenset(
     {
         "claude_plugins/django-stack/resources/test_tiers.md",
-        "claude_plugins/django-stack/skills/testing/SKILL.md",
         "claude_plugins/fls-dev/skills/testing/SKILL.md",
         "claude_plugins/fls-dev/resources/testing.md",
         "claude_plugins/fls-dev/resources/playwright-testing.md",
@@ -31,7 +30,6 @@ ALLOWED = frozenset(
         "claude_plugins/django-stack/commands/commit.md",
         "claude_plugins/sdd/commands/implement_plan.md",
         "claude_plugins/sdd/commands/address_pr_review.md",
-        "claude_plugins/fls-dev/agents/qa-bugfixer.md",
         "claude_plugins/fls-dev/commands/do_qa.md",
     }
 )

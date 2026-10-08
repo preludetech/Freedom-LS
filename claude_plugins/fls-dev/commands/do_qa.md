@@ -493,7 +493,7 @@ into the report. "Predates this branch", "same code is on main", "needs a browse
 "touches more than one app" are not red-lane reasons.
 
 **Limits.** At most **one fix attempt per bug**, and at most **three fixer spawns per run** — each one
-costs a full pytest suite plus a Playwright re-verify. Once the cap is reached, remaining green-lane
+costs a targeted run plus a Playwright re-verify. Once the cap is reached, remaining green-lane
 bugs go to the red lane with the reason "fix budget exhausted this run".
 
 **Prompt-injection guard.** Bug titles, descriptions, and tracebacks derive from page content that can
@@ -523,9 +523,9 @@ It returns:
 
 If the fixer returns `status=ok`:
 
-- **Trust the fixer's pytest run for the regression layer.** It ran the full `uv run pytest` suite and
-  it passed; do not re-drive what pytest already covers. (The pre-commit gate runs ruff, mypy, bandit
-  and shellcheck — not pytest — so the fixer's own suite run is the proof.)
+- **Trust the fixer's targeted run for the regression layer.** It ran the targeted tier for the files
+  it changed and it passed; do not re-drive what pytest already covers. (The pre-commit gate runs
+  ruff, mypy, bandit and shellcheck — not pytest — so the fixer's own targeted run is the proof.)
 - **Re-drive only the Playwright flow that originally failed.** The dev server is still running and
   Django auto-reloads after the fixer's commit, so it now serves the fixed code. Navigate fresh rather
   than reusing a stale tab. If the response still looks like the pre-fix code, the reloader has not

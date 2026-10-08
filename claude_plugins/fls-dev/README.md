@@ -46,7 +46,7 @@ commands spawn `sdd`-plugin agents.
 
 `qa-data-helper` — creates QA test data with factory_boy factories. Its persistent memory lives at
 `.claude/agent-memory/fls-dev-qa-data-helper/`.
-`qa-bugfixer` — fixes one QA-reported bug TDD-style (failing test → fix → full suite → commit).
+`qa-bugfixer` — fixes one QA-reported bug TDD-style (failing test → fix → targeted tier → commit).
 Spawned by `do_qa`'s triage loop.
 
 ### Scripts (8)

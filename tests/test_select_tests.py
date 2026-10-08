@@ -674,7 +674,7 @@ tests = ["tests", "pkg/alpha/tests", "missing/tests"]
 """
 
 
-def test_project_tooling_entry_maps_its_glob_to_the_listed_directories(
+def test_project_tooling_entry_selects_existing_directories_and_reports_missing_ones(
     tmp_path: Path,
 ) -> None:
     # Arrange
@@ -687,7 +687,8 @@ def test_project_tooling_entry_maps_its_glob_to_the_listed_directories(
 
     # Assert
     assert lines(result.stdout, "why") == [
-        "why: plugins/p/scripts/run.py -> tests, pkg/alpha/tests (tooling)"
+        "why: plugins/p/scripts/run.py -> tests, pkg/alpha/tests (tooling)",
+        "why: plugins/p/scripts/run.py -> none (tooling; missing/tests does not exist)",
     ]
     assert lines(result.stdout, "command") == [
         "command: uv run pytest -n auto --no-cov pkg/alpha/tests tests"
