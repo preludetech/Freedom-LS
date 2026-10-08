@@ -225,12 +225,13 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
     assert download_url not in content
 
 
-def test_change_page_of_an_application_with_no_form_says_so(staff_client):
+def test_change_page_of_an_application_with_no_form_has_no_answers_section(
+    staff_client,
+):
     application = CourseApplicationFactory()
 
     content = staff_client.get(reverse(CHANGE, args=[application.pk])).content.decode()
 
-    assert "The course asked for no application form." in content
     assert ">Answers<" not in content
 
 

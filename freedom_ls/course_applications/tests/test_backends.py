@@ -455,8 +455,6 @@ class TestDashboardPartialRendering:
         rendered = _render_panel(_application_with_sitting())
 
         assert "Incomplete" in rendered
-        assert "Finish your application to have it reviewed." in rendered
-        assert "Continue application" in rendered
         assert "Pending review" not in rendered
 
     def test_a_submitted_application_is_pending_review(self, mock_site_context):

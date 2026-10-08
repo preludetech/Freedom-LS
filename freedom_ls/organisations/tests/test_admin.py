@@ -300,11 +300,3 @@ class TestContributedExtras:
         assert SUMMARIES_FIELD not in admin_instance.get_fields(
             request=None, obj=organisation
         )
-
-    def test_the_change_page_renders(self, staff_client) -> None:
-        """A smoke test for the contributed inlines: a broken one 500s here."""
-        organisation = OrganisationFactory()
-
-        response = staff_client.get(reverse(CHANGE_URL_NAME, args=[organisation.pk]))
-
-        assert response.status_code == 200

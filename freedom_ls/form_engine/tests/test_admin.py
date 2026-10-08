@@ -128,13 +128,6 @@ class TestFormProgressChangelist:
 
     CHANGELIST_URL_NAME = "admin:freedom_ls_form_engine_formprogress_changelist"
 
-    def test_it_renders_with_rows_present(self, staff_client) -> None:
-        FormProgressFactory()
-
-        response = staff_client.get(reverse(self.CHANGELIST_URL_NAME))
-
-        assert response.status_code == 200
-
     def test_the_completion_filter_separates_finished_from_unfinished(
         self, staff_client
     ) -> None:

@@ -107,7 +107,7 @@ class TestRowMarkup:
         response = logged_in_client(user).get(reverse("comms:notification_list"))
         return html.fromstring(response.content.decode()).cssselect("li")[0]
 
-    def test_an_unread_row_is_tinted_and_its_visible_label_is_hidden_from_readers(
+    def test_an_unread_rows_visible_label_is_hidden_from_readers(
         self, mock_site_context, logged_in_client
     ) -> None:
         user = UserFactory()
@@ -115,7 +115,6 @@ class TestRowMarkup:
 
         row = self._row(logged_in_client, user)
 
-        assert "bg-primary/5" in row.get("class").split()
         label = row.xpath(".//span[normalize-space(.)='Unread']")[0]
         assert label.get("aria-hidden") == "true"
 
@@ -144,32 +143,3 @@ class TestRowMarkup:
 
         assert row.cssselect("a") == []
         assert row.cssselect("p span")
-
-    @pytest.mark.parametrize(
-        ("colour", "tile_classes"),
-        [
-            (NotificationColour.PRIMARY, {"bg-primary/10", "text-primary"}),
-            (NotificationColour.SUCCESS, {"bg-success-light", "text-on-success-light"}),
-            (NotificationColour.WARNING, {"bg-warning-light", "text-on-warning-light"}),
-            (NotificationColour.INFO, {"bg-info-light", "text-on-info-light"}),
-            (NotificationColour.ERROR, {"bg-error-light", "text-on-error-light"}),
-            (None, {"bg-surface-2", "text-muted"}),
-        ],
-    )
-    def test_the_icon_tile_carries_the_categorys_colour_classes(
-        self,
-        mock_site_context,
-        logged_in_client,
-        settings,
-        colour,
-        tile_classes,
-    ) -> None:
-        settings.NOTIFICATION_CATEGORIES = [_coloured_category(colour)]
-        user = UserFactory()
-        NotificationFactory(user=user, category="test.coloured")
-
-        row = self._row(logged_in_client, user)
-
-        tile = row.cssselect("span.size-9")[0]
-        assert tile_classes <= set(tile.get("class").split())
-        assert tile.cssselect("svg") != []

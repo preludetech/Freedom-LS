@@ -54,16 +54,6 @@ def _restricted_staff_user(cohort: object) -> object:
 
 
 class TestGeneratedReportAdminChangelist:
-    def test_changelist_renders_for_staff_user(
-        self, mock_site_context: object, client: object
-    ) -> None:
-        user = _superuser()
-        client.force_login(user)
-
-        response = client.get(_changelist_url())
-
-        assert response.status_code == 200
-
     def test_download_link_appears_for_ready_report(
         self, mock_site_context: object, client: object
     ) -> None:

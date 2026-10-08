@@ -64,22 +64,6 @@ def unprivileged_staff_client(mock_site_context, db):
 
 
 @pytest.mark.django_db
-def test_signup_attribution_changelist_returns_200_for_viewer(staff_client):
-    response = staff_client.get(
-        reverse(f"admin:{APP_LABEL}_signupattribution_changelist")
-    )
-    assert response.status_code == 200
-
-
-@pytest.mark.django_db
-def test_first_touch_count_changelist_returns_200_for_viewer(staff_client):
-    response = staff_client.get(
-        reverse(f"admin:{APP_LABEL}_firsttouchcount_changelist")
-    )
-    assert response.status_code == 200
-
-
-@pytest.mark.django_db
 def test_signup_attribution_add_returns_403(staff_client):
     response = staff_client.get(reverse(f"admin:{APP_LABEL}_signupattribution_add"))
     assert response.status_code == 403

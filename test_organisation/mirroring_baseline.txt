@@ -43,7 +43,6 @@ freedom_ls/base/tests/test_messages_partial.py
 freedom_ls/base/tests/test_pagination_component.py
 freedom_ls/base/tests/test_premailer_templatetag.py
 freedom_ls/base/tests/test_settings_theme_wiring.py
-freedom_ls/base/tests/test_tailwind_components_headings.py
 
 # blog
 freedom_ls/blog/tests/test_seo_discoverability.py

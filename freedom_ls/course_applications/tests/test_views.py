@@ -607,10 +607,10 @@ class TestApplicationFormPage:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
 
-        body = client.get(_edit_url(app, 1)).content.decode()
+        response = client.get(_edit_url(app, 1))
 
-        assert "Save and return to your answers" in body
-        assert "Back to your answers" in body
+        assert response.context["return_to_check"]
+        assert _check_url(app) in response.content.decode()
 
     def test_a_page_reached_normally_offers_no_return_button(
         self, client, mock_site_context
@@ -618,9 +618,9 @@ class TestApplicationFormPage:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
 
-        body = client.get(_page_url(app, 1)).content.decode()
+        response = client.get(_page_url(app, 1))
 
-        assert "Save and return to your answers" not in body
+        assert not response.context["return_to_check"]
 
     def test_a_refused_page_keeps_the_return_marker(self, client, mock_site_context):
         course, _form = gated_course_with_form()
@@ -629,7 +629,7 @@ class TestApplicationFormPage:
         response = client.post(_edit_url(app, 1), {})
 
         assert response.status_code == 422
-        assert "Save and return to your answers" in response.content.decode()
+        assert response.context["return_to_check"]
 
     def test_a_refused_page_still_keeps_the_answers_that_were_given(
         self, client, mock_site_context
@@ -917,9 +917,9 @@ class TestCheckYourAnswersMarkup:
         course, _form = gated_course_with_form()
         app = _applied(client, course)
 
-        body = client.get(_check_url(app)).content.decode()
+        response = client.get(_check_url(app))
 
-        assert "Submit application" in body
+        assert not response.context["submitted"]
 
     def test_a_submitted_application_cannot_be_submitted_again(
         self, client, mock_site_context
@@ -930,9 +930,9 @@ class TestCheckYourAnswersMarkup:
         client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
         client.post(_check_url(app))
 
-        body = client.get(_check_url(app)).content.decode()
+        response = client.get(_check_url(app))
 
-        assert "Submit application" not in body
+        assert response.context["submitted"]
 
     def test_a_submitted_application_offers_no_change_links(
         self, client, mock_site_context
