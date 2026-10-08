@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
+from django.apps import apps
 from django.core import serializers
 from django.urls import reverse
 from django.utils import timezone
@@ -28,6 +29,10 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.utils import (
+    register_cohort_for_course,
+    unregister_cohort_from_course,
+)
 from freedom_ls.learner_progress.factories import (
     CourseFormAttemptFactory,
     CourseProgressFactory,
@@ -35,6 +40,12 @@ from freedom_ls.learner_progress.factories import (
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.signals import _ensure_and_announce
+
+
+def _webhook_events():
+    # Looked up by label: learner_management does not depend on webhooks.
+    return apps.get_model("freedom_ls_webhooks", "WebhookEvent").objects.all()
+
 
 # Contracts of the post_save receiver that recalculates course progress.
 #
@@ -712,3 +723,66 @@ class TestCourseRegisteredWebhookEvent:
             registration.save()
 
         mock_fire.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestCohortRegistrationWebhookEvents:
+    def test_registering_a_cohort_fires_no_webhook_event(
+        self, mock_site_context: object
+    ) -> None:
+        cohort = CohortFactory()
+        course = CourseFactory()
+
+        register_cohort_for_course(cohort, course)
+
+        assert not _webhook_events().exists()
+
+    def test_unregistering_a_cohort_fires_no_webhook_event(
+        self, mock_site_context: object
+    ) -> None:
+        registration = CohortCourseRegistrationFactory()
+        _webhook_events().delete()
+
+        unregister_cohort_from_course(registration)
+
+        assert not _webhook_events().exists()
+
+
+@pytest.mark.django_db
+class TestReRegisteringACohort:
+    def test_a_member_who_joined_while_inactive_gets_a_record(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        registration = CohortCourseRegistrationFactory(is_active=False)
+        member = CohortMembershipFactory(cohort=registration.cohort)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            register_cohort_for_course(registration.cohort, registration.course)
+
+        assert CourseProgress.objects.filter(
+            learner=member.learner, cohort_registration=registration
+        ).exists()
+
+    def test_an_existing_record_keeps_its_progress(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            registration = CohortCourseRegistrationFactory()
+            member = CohortMembershipFactory(cohort=registration.cohort)
+        unregister_cohort_from_course(registration)
+        record = CourseProgress.objects.get(
+            learner=member.learner, cohort_registration=registration
+        )
+        completed_time = timezone.now()
+        CourseProgress.objects.filter(pk=record.pk).update(
+            progress_percentage=50, completed_time=completed_time
+        )
+
+        with django_capture_on_commit_callbacks(execute=True):
+            register_cohort_for_course(registration.cohort, registration.course)
+
+        record.refresh_from_db()
+        assert (record.progress_percentage, record.completed_time) == (
+            50,
+            completed_time,
+        )

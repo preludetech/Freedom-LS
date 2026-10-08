@@ -28,12 +28,19 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+    OrganisationMember,
+)
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
 from freedom_ls.learner_management.utils import (
     ensure_learner,
     ensure_organisation_member,
     is_registered_for_course,
+    register_cohort_for_course,
+    unregister_cohort_from_course,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 
@@ -352,3 +359,38 @@ class TestEnsureOrganisationMember:
             ).count()
             == 1
         )
+
+
+@pytest.mark.django_db
+class TestRegisterCohortForCourse:
+    def test_a_fresh_pair_gets_an_active_registration(self, mock_site_context):
+        cohort = CohortFactory()
+        course = CourseFactory()
+
+        registration = register_cohort_for_course(cohort, course)
+
+        assert (registration.cohort, registration.course, registration.is_active) == (
+            cohort,
+            course,
+            True,
+        )
+
+    def test_registering_again_after_unregistering_reuses_the_row(
+        self, mock_site_context
+    ):
+        registration = CohortCourseRegistrationFactory()
+        unregister_cohort_from_course(registration)
+
+        again = register_cohort_for_course(registration.cohort, registration.course)
+
+        assert again.pk == registration.pk
+        assert again.is_active is True
+        assert CohortCourseRegistration.objects.count() == 1
+
+    def test_unregistering_deactivates_the_registration(self, mock_site_context):
+        registration = CohortCourseRegistrationFactory()
+
+        unregister_cohort_from_course(registration)
+
+        registration.refresh_from_db()
+        assert registration.is_active is False

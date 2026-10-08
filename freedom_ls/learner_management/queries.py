@@ -312,6 +312,19 @@ def courses_visible_to(
     )
 
 
+def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
+    """Published and hidden courses the cohort holds no active
+    registration for. A course with an inactive registration is
+    offered, and registering it reactivates that row."""
+    return (
+        Course.objects.exclude(visibility=CourseVisibility.COMING_SOON)
+        .exclude(
+            cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
+        )
+        .order_by("title")
+    )
+
+
 def cohort_learner_count(cohort: Cohort) -> int:
     """Members of this cohort whose Learner is still active in the
     organisation. Every surface showing a cohort's learner count reads this."""

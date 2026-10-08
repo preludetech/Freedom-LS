@@ -12,6 +12,7 @@ from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -20,6 +21,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 
@@ -297,3 +299,77 @@ def test_editing_an_inactive_cohort_leaves_its_name_unchanged(staff_client: Clie
 
     cohort.refresh_from_db()
     assert cohort.name == "Old group"
+
+
+# register
+
+
+def _register_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(organisation, cohort, "/__tabs/courses/__actions/register")
+
+
+@pytest.mark.django_db
+def test_register_fragment_title_names_the_cohort(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0, name="Evening group")
+
+    text = _get_fragment(staff_client, _register_url(organisation, cohort))
+
+    assert "Register Evening group for a course" in text
+
+
+@pytest.mark.django_db
+def test_register_post_answers_204_with_a_location_to_the_courses_tab(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0)
+    course = CourseFactory()
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    response = _post(
+        logged_in_client(educator),
+        _register_url(organisation, cohort),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Location"])["path"] == _cohort_url(
+        organisation, cohort, "/__tabs/courses"
+    )
+
+
+@pytest.mark.django_db
+def test_register_post_creates_the_registration(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0)
+    course = CourseFactory()
+
+    _post(
+        staff_client,
+        _register_url(organisation, cohort),
+        {"course": str(course.pk)},
+    )
+
+    assert cohort.course_registrations.filter(course=course, is_active=True).exists()
+
+
+@pytest.mark.django_db
+def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0, name="Old group", is_active=False)
+    course = CourseFactory()
+
+    response = _post(
+        staff_client,
+        _register_url(organisation, cohort),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 422
+    assert "Old group is inactive" in response.content.decode()
+    assert not cohort.course_registrations.exists()

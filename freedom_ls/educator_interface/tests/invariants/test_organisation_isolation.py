@@ -26,7 +26,7 @@ import pytest
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.views import (
@@ -41,6 +41,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -248,6 +249,58 @@ class TestCrossOrganisationIsolation:
         )
 
         assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "suffix", ["__tabs/courses", "__tabs/courses/__actions/register"]
+    )
+    def test_cohort_courses_surfaces_404_for_a_cohort_outside_organisation_a(
+        self, isolation, suffix: str
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/{suffix}",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_register_post_naming_a_coming_soon_course_answers_422_with_no_row(
+        self, isolation
+    ):
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        response = isolation.client.post(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/register",
+            ),
+            {"course": str(course.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert not isolation.cohort_a.course_registrations.filter(
+            course=course
+        ).exists()
+
+    def test_register_post_naming_another_sites_course_answers_422_with_no_row(
+        self, isolation
+    ):
+        course = CourseFactory(site=SiteFactory())
+
+        response = isolation.client.post(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/register",
+            ),
+            {"course": str(course.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert not CohortCourseRegistration.objects.filter(course=course).exists()
 
     def test_cohort_educators_panel_fetch_404s_for_a_cohort_outside_organisation_a(
         self, isolation

@@ -7,7 +7,12 @@ if TYPE_CHECKING:
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
-    from freedom_ls.learner_management.models import Learner, OrganisationMember
+    from freedom_ls.learner_management.models import (
+        Cohort,
+        CohortCourseRegistration,
+        Learner,
+        OrganisationMember,
+    )
     from freedom_ls.organisations.models import Organisation
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
@@ -104,3 +109,44 @@ def ensure_organisation_member(
         defaults={"is_active": True},
     )
     return member
+
+
+def announce_cohort_registration_change(registration: CohortCourseRegistration) -> None:
+    """Tell integrators a cohort registration changed.
+
+    Does nothing today because FLS_WEBHOOK_EVENT_TYPES has no cohort
+    registration event for a webhook to carry.
+    """
+    # TODO: fire the cohort registration webhook events here once they are declared in FLS_WEBHOOK_EVENT_TYPES.
+
+
+def register_cohort_for_course(
+    cohort: Cohort, course: Course
+) -> CohortCourseRegistration:
+    """Register, or re-register, the cohort for the course.
+
+    Reuses the row the unique constraint allows per cohort and course,
+    and saves through save() so the post_save fan-out mints a course
+    progress record for every member the row does not yet cover.
+    """
+    from freedom_ls.learner_management.models import CohortCourseRegistration
+
+    # _base_manager with an explicit site, as ensure_learner does: the
+    # site-aware manager only fills site from an ambient request, and this
+    # runs from commands and tests as well as views.
+    registration, created = CohortCourseRegistration._base_manager.get_or_create(
+        site=cohort.site, cohort=cohort, course=course
+    )
+    if not created and not registration.is_active:
+        registration.is_active = True
+        registration.save(update_fields=["is_active"])
+    announce_cohort_registration_change(registration)
+    return registration
+
+
+def unregister_cohort_from_course(registration: CohortCourseRegistration) -> None:
+    """Withdraw the registration. Reversible: the row and every course
+    progress record it minted stay."""
+    registration.is_active = False
+    registration.save(update_fields=["is_active"])
+    announce_cohort_registration_change(registration)

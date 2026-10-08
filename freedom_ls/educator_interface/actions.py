@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from typing import cast
 
+from django import forms
 from django.db import transaction
-from django.http import HttpResponse
+from django.db.models import Model
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.template.loader import render_to_string
 
+from freedom_ls.educator_interface.forms import CohortCourseRegistrationForm
 from freedom_ls.learner_management.models import (
     Cohort,
     Learner,
@@ -17,9 +20,11 @@ from freedom_ls.learner_management.queries import (
     cohort_course_count,
     cohort_is_empty,
 )
+from freedom_ls.learner_management.utils import register_cohort_for_course
 from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
+    FormPanelAction,
     PanelAction,
     count_noun,
     count_phrase,
@@ -173,6 +178,46 @@ class DeleteEmptyCohortAction(DeleteAction):
             if not cohort_is_empty(cohort):
                 return self._refuse_not_empty(ctx, cohort)
             return super().handle_submit(ctx)
+
+
+class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
+    """Registers the cohort for a course it holds no active registration for."""
+
+    label = "Register"
+    action_name = "register"
+    capability = "freedom_ls_learner_management.add_cohortcourseregistration"
+    submit_buttons = [
+        {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
+    ]
+    _cohort: Cohort
+    _page_url: str
+
+    def _bind(self, ctx: PanelContext) -> None:
+        self._cohort = cast(Cohort, ctx.instance)
+        self._page_url = ctx.page_url
+        self.form_title = f"Register {self._cohort} for a course"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        self._bind(ctx)
+        return super().get_context_data(ctx)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        self._bind(ctx)
+        return super().handle_submit(ctx)
+
+    def get_form(
+        self, request: HttpRequest, instance: Model | None = None
+    ) -> forms.ModelForm:
+        # On a POST, instance is the cohort, which must never reach a
+        # registration form.
+        data = request.POST if request.method == "POST" else None
+        return CohortCourseRegistrationForm(data, cohort=self._cohort)
+
+    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+        register_cohort_for_course(self._cohort, form.cleaned_data["course"])
+        # The courses tab, its count and the header's course stat all
+        # re-render, which a panel refresh alone could not do for the header.
+        return navigation_response(self._page_url)
 
 
 def cohort_state_actions() -> list[PanelAction]:
