@@ -8,13 +8,17 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Page
-from django.db.models import Count, Model, Prefetch, Q, QuerySet
+from django.db.models import Count, F, Model, Prefetch, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    LEARNER_CHANGED,
+    REGISTRATION_CHANGED,
+)
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
     ShowInactiveFilter,
@@ -32,6 +36,8 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     active_organisation_admins,
+    cohort_course_count,
+    cohort_learner_count,
     cohorts_visible_to,
     courses_visible_to,
     learners_visible_to,
@@ -55,10 +61,12 @@ from freedom_ls.panel_framework.panels import (
 from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
+    HeaderStat,
     InstanceView,
     ListViewConfig,
     NavGroup,
     SectionConfigBase,
+    StatusBadge,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -390,10 +398,26 @@ class LearnerInstanceView(InstanceView):
     panel = LearnerPanelStack
 
 
-class CohortDetailsPanel(InstanceDetailsPanel):
+def active_status_badge(is_active: bool) -> StatusBadge:
+    """The badge for an `is_active` flag, matching `<c-active-status-badge>`."""
+    if is_active:
+        return StatusBadge("success", "Active")
+    return StatusBadge("muted", "Inactive")
+
+
+class CohortDetailsPanel(Panel):
     model = Cohort
-    fields = ["name"]
+    title = "Details"
+    template_name = "educator_interface/panels/cohort_details.html"
     refresh_events = (COHORT_CHANGED,)
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        context = super().get_context_data()
+        context["cohort"] = cohort
+        context["cohort_learner_count"] = cohort_learner_count(cohort)
+        context["cohort_course_count"] = cohort_course_count(cohort)
+        return context
 
 
 class CohortCourseRegistrationDataTable(DataTable):
@@ -441,21 +465,104 @@ class CourseRegistrationsPanel(DataTablePanel):
         return super().get_queryset(request).filter(cohort=self.instance)
 
 
-class CohortDetailsStack(PanelStack):
-    title = "Details"
+@dataclass(frozen=True)
+class CourseCompletion:
+    """How far one course registration's current members have got."""
+
+    course: Course
+    completed_count: int
+    record_count: int
+    percentage: int
+
+
+class CohortCourseCompletionPanel(Panel):
+    model = Cohort
+    title = "Course completion"
+    template_name = "educator_interface/panels/cohort_course_completion.html"
+    refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        # Course progress records minted for members who have since been
+        # removed or have left the cohort are kept for ever, so the counts are
+        # narrowed to current, active members or they would disagree with the
+        # Learners tab.
+        current_member = Q(
+            course_progress_records__learner__is_active=True,
+            course_progress_records__learner__cohortmembership__cohort_id=F(
+                "cohort_id"
+            ),
+        )
+        registrations = (
+            cohort.course_registrations.filter(is_active=True)
+            .select_related("course")
+            .annotate(
+                record_count=Count(
+                    "course_progress_records", filter=current_member, distinct=True
+                ),
+                completed_count=Count(
+                    "course_progress_records",
+                    filter=current_member
+                    & Q(course_progress_records__completed_time__isnull=False),
+                    distinct=True,
+                ),
+            )
+            .order_by("course__title")
+        )
+        context = super().get_context_data()
+        context["completions"] = [
+            CourseCompletion(
+                course=registration.course,
+                completed_count=registration.completed_count,
+                record_count=registration.record_count,
+                percentage=(
+                    registration.completed_count * 100 // registration.record_count
+                    if registration.record_count
+                    else 0
+                ),
+            )
+            for registration in registrations
+        ]
+        return context
+
+
+class CohortNeedsAttentionPanel(Panel):
+    title = "Needs attention"
+    template_name = "educator_interface/panels/cohort_needs_attention.html"
+    refresh_events = (COHORT_CHANGED,)
+
+
+class CohortOverviewStack(PanelStack):
+    title = "Overview"
+    refresh_events = (COHORT_CHANGED,)
     children = {
         "details": CohortDetailsPanel,
-        "courses": CourseRegistrationsPanel,
+        "completion": CohortCourseCompletionPanel,
+        "attention": CohortNeedsAttentionPanel,
     }
 
 
 class CohortTabSet(TabSet):
     title = "Cohort sections"
-    children = {"details": CohortDetailsStack, "learners": CohortLearnersPanel}
+    children = {
+        "overview": CohortOverviewStack,
+        "learners": CohortLearnersPanel,
+        "courses": CourseRegistrationsPanel,
+    }
 
 
 class CohortInstanceView(InstanceView):
     panel = CohortTabSet
+
+    def get_status_badge(self) -> StatusBadge:
+        return active_status_badge(cast(Cohort, self.instance).is_active)
+
+    def get_stats(self) -> list[HeaderStat]:
+        cohort = cast(Cohort, self.instance)
+        return [
+            HeaderStat("Learners", str(cohort_learner_count(cohort))),
+            HeaderStat("Courses", str(cohort_course_count(cohort))),
+        ]
 
     def get_actions(self) -> list[PanelAction]:
         # The instance already carries its own organisation, so the success

@@ -220,7 +220,7 @@ class TestCrossOrganisationIsolation:
         response = isolation.client.get(
             _interface_url(
                 isolation.organisation_a.slug,
-                f"cohorts/{isolation.cohort_b.pk}/__tabs/details/__panels/details",
+                f"cohorts/{isolation.cohort_b.pk}/__tabs/overview/__panels/details",
             ),
             HTTP_HX_REQUEST="true",
         )
