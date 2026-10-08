@@ -1,0 +1,13 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% if educators %}
+        <c-panel-definition-list>
+            {% for user, role in educators %}
+                <c-panel-definition-row :label="user.display_name">{{ role }}</c-panel-definition-row>
+            {% endfor %}
+        </c-panel-definition-list>
+    {% else %}
+        <c-panel-empty-state message="No educators assigned to this cohort." />
+    {% endif %}
+{% endblock panel_body %}

@@ -227,6 +227,19 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
+    def test_cohort_educators_panel_fetch_404s_for_a_cohort_outside_organisation_a(
+        self, isolation
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/__tabs/overview/__panels/educators",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
     def test_courses_list_counts_and_links_only_organisation_as_cohorts(
         self, isolation: SimpleNamespace
     ) -> None:

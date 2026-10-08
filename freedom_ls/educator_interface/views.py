@@ -16,6 +16,7 @@ from django.urls import reverse
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
+    EDUCATOR_CHANGED,
     LEARNER_CHANGED,
     REGISTRATION_CHANGED,
 )
@@ -37,6 +38,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     active_organisation_admins,
     cohort_course_count,
+    cohort_educators,
     cohort_learner_count,
     cohorts_visible_to,
     courses_visible_to,
@@ -532,6 +534,21 @@ class CohortNeedsAttentionPanel(Panel):
     refresh_events = (COHORT_CHANGED,)
 
 
+class CohortEducatorsPanel(Panel):
+    title = "Educators"
+    capability = "freedom_ls_learner_management.view_organisationmember"
+    template_name = "educator_interface/panels/cohort_educators.html"
+    refresh_events = (COHORT_CHANGED, EDUCATOR_CHANGED)
+
+    def get_actions(self) -> list[PanelAction]:
+        return []
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["educators"] = cohort_educators(cast(Cohort, self.instance))
+        return context
+
+
 class CohortOverviewStack(PanelStack):
     title = "Overview"
     refresh_events = (COHORT_CHANGED,)
@@ -539,6 +556,7 @@ class CohortOverviewStack(PanelStack):
         "details": CohortDetailsPanel,
         "completion": CohortCourseCompletionPanel,
         "attention": CohortNeedsAttentionPanel,
+        "educators": CohortEducatorsPanel,
     }
 
 

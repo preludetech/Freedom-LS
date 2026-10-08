@@ -41,6 +41,7 @@ from freedom_ls.learner_management.queries import (
     active_organisation_admins,
     all_cohorts_visible_to,
     can_view_cohort,
+    cohort_educators,
     cohorts_visible_to,
     colleagues_of,
     educators_of,
@@ -62,6 +63,7 @@ from freedom_ls.learner_management.utils import is_registered_for_course
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
@@ -623,6 +625,51 @@ class TestActiveOrganisationAdmins:
         )
 
         assert list(active_organisation_admins(organisation)) == []
+
+
+@pytest.mark.django_db
+class TestCohortEducators:
+    def test_lists_a_cohort_admin_and_a_cohort_viewer_with_role_display_names(
+        self, mock_site_context
+    ):
+        cohort = _make_cohort()
+        admin = UserFactory(first_name="Ada", last_name="Admin")
+        viewer = UserFactory(first_name="Vera", last_name="Viewer")
+        assign_object_role(admin, cohort, "cohort_admin")
+        assign_object_role(viewer, cohort, "cohort_viewer")
+        roles = get_role_config(cohort.site.name)
+
+        assert cohort_educators(cohort) == [
+            (admin, roles["cohort_admin"].display_name),
+            (viewer, roles["cohort_viewer"].display_name),
+        ]
+
+    def test_an_inactive_organisation_member_is_excluded(self, mock_site_context):
+        cohort = _make_cohort()
+        educator = UserFactory()
+        assign_object_role(educator, cohort, "cohort_admin")
+        OrganisationMember.objects.filter(
+            user=educator, organisation=cohort.organisation
+        ).update(is_active=False)
+
+        assert cohort_educators(cohort) == []
+
+    def test_an_inactive_assignment_is_excluded(self, mock_site_context):
+        cohort = _make_cohort()
+        educator = UserFactory()
+        assign_object_role(educator, cohort, "cohort_admin")
+        remove_object_role(educator, cohort, "cohort_admin")
+
+        assert cohort_educators(cohort) == []
+
+    def test_an_assignment_on_a_sibling_cohort_is_excluded(self, mock_site_context):
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        sibling = _make_cohort(organisation=organisation)
+        educator = UserFactory()
+        assign_object_role(educator, sibling, "cohort_admin")
+
+        assert cohort_educators(cohort) == []
 
 
 @pytest.mark.django_db
