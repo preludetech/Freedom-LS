@@ -416,9 +416,6 @@ class CreateCohortAction(CreateInstanceAction):
     form_title = "Create Cohort"
     action_name = "create_cohort"
     success_events = (COHORT_CHANGED,)
-    # One cohort at a time: a new cohort is opened straight away to register
-    # courses and learners, so there is no "save and add another".
-    submit_buttons = [{"label": "Create Cohort", "variant": "primary"}]
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
