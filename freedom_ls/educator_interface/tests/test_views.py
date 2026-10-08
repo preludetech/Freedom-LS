@@ -37,6 +37,7 @@ from freedom_ls.learner_management.models import (
     CohortMembership,
     Learner,
 )
+from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -84,7 +85,12 @@ def test_cohort_detail_page_has_overview_learners_and_courses_tabs(
     headings = [
         h.text_content().strip() for h in document.cssselect("[data-tab-set] h2")
     ]
-    assert headings == ["Details", "Course completion", "Needs attention"]
+    assert headings == [
+        "Details",
+        "Course completion",
+        "Needs attention",
+        "Educators",
+    ]
 
 
 @pytest.mark.django_db
@@ -762,3 +768,67 @@ def test_every_panel_under_the_cohort_page_refreshes_on_cohort_changed(
 
     assert cohort_paths
     assert missing == []
+
+
+def _educators_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _interface_url(
+        organisation.slug, f"cohorts/{cohort.pk}/__tabs/overview/__panels/educators"
+    )
+
+
+@pytest.mark.django_db
+def test_educators_block_names_each_educator_and_their_role(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(
+        user__first_name="Ada", user__last_name="Lovelace", organisation=organisation
+    ).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, admin, "organisation_admin", organisation)
+
+    document = _get_document(
+        logged_in_client(admin),
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}"),
+    )
+
+    (card,) = document.cssselect("section[data-panel='educators']")
+    text = " ".join(card.text_content().split())
+    assert "Ada Lovelace" in text
+    assert "Cohort Admin" in text or "Cohort admin" in text
+
+
+@pytest.mark.django_db
+def test_educators_block_shows_an_empty_state_without_educators(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+    )
+
+    (card,) = document.cssselect("section[data-panel='educators']")
+    assert "No educators assigned to this cohort." in card.text_content()
+
+
+@pytest.mark.django_db
+def test_educators_block_is_absent_for_a_cohort_admin(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+    client = logged_in_client(educator)
+
+    page = _get_document(
+        client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+    )
+    fragment = client.get(_educators_url(organisation, cohort), HTTP_HX_REQUEST="true")
+
+    assert not page.cssselect("section[data-panel='educators']")
+    assert fragment.status_code == 404

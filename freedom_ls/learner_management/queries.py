@@ -22,6 +22,7 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -574,3 +575,36 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
         .filter(pk__in=members.values("user_id"))
         .order_by("first_name", "last_name")
     )
+
+
+def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
+    """Active users holding an active cohort_admin or cohort_viewer
+    assignment on this cohort, each with the role's display name, gated
+    on an active OrganisationMember the same way can() gates every
+    cohort-level grant. Ordered by name, then role."""
+    assignments = list(
+        _active_role_assignments(Cohort, frozenset({"cohort_admin", "cohort_viewer"}))
+        .filter(object_id=str(cohort.pk))
+        .select_related("user")
+    )
+    member_user_ids = set(
+        OrganisationMember.objects.filter(
+            organisation=cohort.organisation,
+            is_active=True,
+            user_id__in=[assignment.user_id for assignment in assignments],
+        ).values_list("user_id", flat=True)
+    )
+    roles = get_role_config(cohort.site.name)
+    educators = [
+        (assignment.user, roles[assignment.role].display_name, assignment.role)
+        for assignment in assignments
+        if assignment.user.is_active and assignment.user_id in member_user_ids
+    ]
+    educators.sort(
+        key=lambda educator: (
+            educator[0].first_name,
+            educator[0].last_name,
+            educator[2],
+        )
+    )
+    return [(user, display_name) for user, display_name, _ in educators]
