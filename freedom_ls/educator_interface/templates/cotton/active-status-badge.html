@@ -1,0 +1,7 @@
+<c-vars active="" />
+
+{% comment %}
+Active/Inactive badge for a model's is_active flag. Pass the flag as `:active`.
+{% endcomment %}
+
+<c-panel-status-badge tone="{% if active %}success{% else %}muted{% endif %}" label="{% if active %}Active{% else %}Inactive{% endif %}" />

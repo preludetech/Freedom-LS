@@ -1,0 +1,1 @@
+{% load data_table_tags %}{% with value=object|getattr_str:column.attr %}<c-active-status-badge :active="value" />{% endwith %}

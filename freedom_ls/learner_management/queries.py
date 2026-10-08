@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, NamedTuple, cast
 
 from django.db.models import Exists, Model, OuterRef, Q, QuerySet
 
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.capabilities import (
     _active_role_assignments,
     _current_site,
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
-    from freedom_ls.content_engine.models import Course
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -282,6 +282,32 @@ def all_cohorts_visible_to(user: RequestUser) -> QuerySet[Cohort]:
     return Cohort.objects.filter(
         Q(organisation__in=_granted_organisations(user, roles))
         | Q(pk__in=_granted_cohorts(user, roles).values("pk"))
+    )
+
+
+def courses_visible_to(
+    user: RequestUser, organisation: Organisation
+) -> QuerySet[Course]:
+    """Courses this user may see in this organisation: every published
+    course, plus any course a visible cohort or learner holds a
+    registration for, active or not. A hidden or coming-soon course
+    shows only through such a registration."""
+    everything = Course.objects.all()
+    resolved = _resolved_or_none(user, everything)
+    if resolved is not None:
+        return resolved
+    # Subqueries, not joins: CourseDataTable annotates Count() over the same
+    # relations, and a filter join would narrow those counts.
+    through_cohorts = CohortCourseRegistration.objects.filter(
+        cohort__in=cohorts_visible_to(user, organisation)
+    ).values("course_id")
+    through_learners = LearnerCourseRegistration.objects.filter(
+        learner__in=learners_visible_to(user, organisation)
+    ).values("course_id")
+    return everything.filter(
+        Q(visibility=CourseVisibility.PUBLISHED)
+        | Q(pk__in=through_cohorts)
+        | Q(pk__in=through_learners)
     )
 
 
