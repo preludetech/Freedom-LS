@@ -200,3 +200,21 @@ def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragme
     assert "This is no longer available" in html
     assert cohort.name not in html
     assert Cohort.objects.filter(pk=cohort.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_pasted_deactivate_url_answers_403(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    assign_object_role(user, cohort, "cohort_viewer")
+    client = logged_in_client(user)
+
+    response = client.get(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__actions/deactivate"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 403
