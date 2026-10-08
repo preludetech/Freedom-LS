@@ -17,6 +17,7 @@ from django.http import HttpRequest
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.form_engine.anonymous_sittings import forget_anonymous_sitting
 from freedom_ls.learner_management.utils import is_registered_for_course
 
 UNCLAIMED_APPLICATIONS_SESSION_KEY = "course_applications_unclaimed_ids"
@@ -118,14 +119,22 @@ def claim_unclaimed_applications(request: HttpRequest, user: User) -> ClaimRepor
         return ClaimReport()
     outcomes = {pk: _claim_one(pk, user) for pk in ids}
     report = ClaimReport(
-        claimed=[pk for pk, (outcome, _) in outcomes.items() if outcome == "claimed"],
+        claimed=[
+            pk for pk, (outcome, _, _) in outcomes.items() if outcome == "claimed"
+        ],
         collided=[
-            reported for outcome, reported in outcomes.values() if outcome == "collided"
+            reported
+            for outcome, reported, _ in outcomes.values()
+            if outcome == "collided"
         ],
         mismatched=[
-            pk for pk, (outcome, _) in outcomes.items() if outcome == "mismatched"
+            pk for pk, (outcome, _, _) in outcomes.items() if outcome == "mismatched"
         ],
     )
+    # A mismatched application stays claimable, so its sitting stays held too.
+    for outcome, _, sitting_pk in outcomes.values():
+        if outcome != "mismatched" and sitting_pk is not None:
+            forget_anonymous_sitting(request, sitting_pk)
     request.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] = report.mismatched
     if not report.is_empty():
         earlier = ClaimReport.from_session(
@@ -137,8 +146,11 @@ def claim_unclaimed_applications(request: HttpRequest, user: User) -> ClaimRepor
     return report
 
 
-def _claim_one(pk: str, user: User) -> tuple[ClaimOutcome, str]:
-    """Decide and apply the claim of one application: the outcome and the pk to report.
+def _claim_one(pk: str, user: User) -> tuple[ClaimOutcome, str, str | None]:
+    """Decide and apply the claim of one application.
+
+    Returns the outcome, the pk to report, and the pk of the application's
+    sitting (None when it has none) so the caller can stop holding it.
 
     The row is locked for the check and the write, so two requests claiming the
     same application cannot both attach it.
@@ -151,20 +163,28 @@ def _claim_one(pk: str, user: User) -> tuple[ClaimOutcome, str]:
             .first()
         )
         if application is None:
-            return "dropped", pk
+            return "dropped", pk, None
+        sitting_pk = (
+            str(application.form_progress_id)
+            if application.form_progress_id is not None
+            else None
+        )
         if application.user_id is not None:
-            return ("claimed" if application.user_id == user.pk else "dropped"), pk
+            outcome: ClaimOutcome = (
+                "claimed" if application.user_id == user.pk else "dropped"
+            )
+            return outcome, pk, sitting_pk
         course = application.course
         if course.visibility == CourseVisibility.HIDDEN and not (
             is_registered_for_course(user, course)
         ):
-            return "dropped", pk
+            return "dropped", pk, sitting_pk
         existing = _existing_application(user, course)
         if existing is not None:
-            return "collided", str(existing.pk)
+            return "collided", str(existing.pk), sitting_pk
         if application.email and not _has_verified_address(user, application.email):
-            return "mismatched", pk
-        return _attach(application, user)
+            return "mismatched", pk, sitting_pk
+        return (*_attach(application, user), sitting_pk)
 
 
 def _existing_application(user: User, course: Course) -> CourseApplication | None:
@@ -186,6 +206,9 @@ def _attach(application: CourseApplication, user: User) -> tuple[ClaimOutcome, s
     try:
         with transaction.atomic():
             application.save(update_fields=["user", "email", "updated_at"])
+            if application.form_progress is not None:
+                application.form_progress.user = user
+                application.form_progress.save(update_fields=["user"])
     except IntegrityError:
         winner = _existing_application(user, application.course)
         if winner is None:

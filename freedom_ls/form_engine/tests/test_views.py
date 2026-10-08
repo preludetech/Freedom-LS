@@ -6,9 +6,11 @@ import pytest
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.loader import render_to_string
+from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.form_engine.anonymous_sittings import ANONYMOUS_SITTINGS_SESSION_KEY
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -302,7 +304,9 @@ def test_the_download_is_never_cached(mock_site_context, client):
 
     response = client.get(_download_url(answer_file))
 
-    assert response["Cache-Control"] == "private, no-store, must-revalidate"
+    cache_control = response["Cache-Control"]
+    assert "no-store" in cache_control
+    assert "private" in cache_control
 
 
 @pytest.mark.django_db
@@ -569,3 +573,124 @@ def test_a_page_with_no_children_renders_nothing(mock_site_context):
     page: FormPage = FormPageFactory(order=0)
 
     assert _render_children(page).strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# A sitting no account owns yet is reached by the session that created it
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def held_sitting(
+    mock_site_context, client
+) -> tuple[FormProgress, FormQuestion, QuestionAnswerFile]:
+    """An unowned sitting with a file attached, held by the test client's session."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="file_upload", order=0, required=True
+    )
+    form_progress: FormProgress = FormProgressFactory(form=form, user=None)
+    answer_file: QuestionAnswerFile = QuestionAnswerFileFactory(
+        answer__form_progress=form_progress, answer__question=question
+    )
+    session = client.session
+    session[ANONYMOUS_SITTINGS_SESSION_KEY] = [str(form_progress.pk)]
+    session.save()
+    return form_progress, question, answer_file
+
+
+@pytest.mark.django_db
+def test_anonymous_owner_can_attach_a_file_on_a_session_held_sitting(
+    mock_site_context, client
+):
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=FormPageFactory(form=form, order=0), type="file_upload", order=0
+    )
+    form_progress: FormProgress = FormProgressFactory(form=form, user=None)
+    session = client.session
+    session[ANONYMOUS_SITTINGS_SESSION_KEY] = [str(form_progress.pk)]
+    session.save()
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+    assert form_progress.answers.get(question=question).answer_file.pk
+
+
+@pytest.mark.django_db
+def test_anonymous_owner_can_remove_it(client, held_sitting):
+    form_progress, question, _answer_file = held_sitting
+
+    response = client.post(_remove_url(form_progress, question), HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+    assert not form_progress.answers.filter(question=question).exists()
+
+
+@pytest.mark.django_db
+def test_anonymous_owner_can_download_it(client, held_sitting):
+    _form_progress, _question, answer_file = held_sitting
+
+    response = client.get(_download_url(answer_file))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("action", ["upload", "remove", "download"])
+def test_anonymous_request_without_the_sitting_in_session_is_404(
+    mock_site_context, client, held_sitting, action
+):
+    form_progress, question, answer_file = held_sitting
+    session = client.session
+    session[ANONYMOUS_SITTINGS_SESSION_KEY] = []
+    session.save()
+    if action == "upload":
+        response = client.post(
+            _upload_url(form_progress, question), {"file": _png_upload()}
+        )
+    elif action == "remove":
+        response = client.post(_remove_url(form_progress, question))
+    else:
+        response = client.get(_download_url(answer_file))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_signed_in_user_cannot_touch_a_session_held_sitting_of_another_browser(
+    mock_site_context, client, held_sitting
+):
+    form_progress, question, answer_file = held_sitting
+    other = Client()
+    other.force_login(UserFactory())
+
+    upload = other.post(_upload_url(form_progress, question), {"file": _png_upload()})
+    download = other.get(_download_url(answer_file))
+
+    assert (upload.status_code, download.status_code) == (404, 404)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("action", ["upload", "remove", "download"])
+def test_file_views_send_no_store_and_same_origin_referrer(
+    client, held_sitting, action
+):
+    form_progress, question, answer_file = held_sitting
+    if action == "upload":
+        response = client.post(
+            _upload_url(form_progress, question), {"file": _png_upload()}
+        )
+    elif action == "remove":
+        response = client.post(_remove_url(form_progress, question))
+    else:
+        response = client.get(_download_url(answer_file))
+
+    assert "no-store" in response["Cache-Control"]
+    assert response["Referrer-Policy"] == "same-origin"

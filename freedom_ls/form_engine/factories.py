@@ -84,7 +84,10 @@ class QuestionOptionFactory(SiteAwareFactory):
 
 
 class FormProgressFactory(SiteAwareFactory):
-    """Factory for creating FormProgress instances."""
+    """Factory for creating FormProgress instances.
+
+    Pass user=None for a sitting no account owns yet.
+    """
 
     class Meta:
         model = FormProgress

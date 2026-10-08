@@ -193,6 +193,16 @@ def test_recalculate_progress_percentage_catches_up_a_bulk_written_record(
     assert record.progress_percentage == 100
 
 
+@pytest.mark.django_db
+def test_receiver_tolerates_a_sitting_with_no_user(mock_site_context):
+    """A sitting no account owns yet completes without touching any course record."""
+    from freedom_ls.form_engine.factories import FormProgressFactory
+
+    FormProgressFactory(user=None, form=FormFactory()).complete()
+
+    assert not CourseProgress.objects.exists()
+
+
 # Records are minted from registrations, by the receivers in signals.py.
 #
 # The receivers defer their work to `transaction.on_commit`, which a test's

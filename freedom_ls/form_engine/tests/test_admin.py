@@ -635,3 +635,31 @@ def test_the_change_page_of_a_sitting_with_no_application_has_no_summary_rows(
 
     assert response.status_code == 200
     assert "summary_rows" not in response.context
+
+
+@pytest.mark.django_db
+def test_form_progress_changelist_shows_unclaimed_for_a_null_user(
+    mock_site_context, staff_client
+) -> None:
+    FormProgressFactory(user=None)
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_formprogress_changelist")
+    )
+
+    assert response.status_code == 200
+    assert "Unclaimed" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_answer_file_changelist_shows_unclaimed_for_a_null_user(
+    mock_site_context, staff_client
+) -> None:
+    QuestionAnswerFileFactory(answer__form_progress__user=None)
+
+    response = staff_client.get(
+        reverse("admin:freedom_ls_form_engine_questionanswerfile_changelist")
+    )
+
+    assert response.status_code == 200
+    assert "Unclaimed" in response.content.decode()

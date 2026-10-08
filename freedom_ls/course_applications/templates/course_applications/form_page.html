@@ -10,6 +10,12 @@
 {% block content %}
     <c-page width="narrow">
         <div class="space-y-6">
+            {% if is_unclaimed %}
+                <c-callout level="info">
+                    This application is saved in this browser only, for up to {{ session_days }} days. Submit it to keep it.
+                </c-callout>
+            {% endif %}
+
             <p class="text-muted">Application for {{ course.title }}</p>
             <h1>{{ form_page.title }}</h1>
 
@@ -27,6 +33,10 @@
                 <c-callout level="info">
                     This application has been submitted and can no longer be changed.
                 </c-callout>
+            {% endif %}
+
+            {% if saved_for_file %}
+                <c-callout level="info">Your answers are saved. You can now attach your file.</c-callout>
             {% endif %}
 
             {% include "form_engine/partials/answer_errors.html" %}

@@ -244,8 +244,14 @@ class FormProgress(SiteAwareModel):
     form = models.ForeignKey(
         Form, on_delete=models.PROTECT, related_name="progress_records"
     )
+    # Null for a sitting no account owns yet: an anonymous applicant fills in
+    # the form before they have an account, and the claim sets the user later.
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="form_progress"
+        User,
+        on_delete=models.CASCADE,
+        related_name="form_progress",
+        null=True,
+        blank=True,
     )
     start_time = models.DateTimeField(auto_now_add=True)
     last_updated_time = models.DateTimeField(auto_now=True)
@@ -263,6 +269,8 @@ class FormProgress(SiteAwareModel):
         verbose_name_plural = "Form progress records"
 
     def __str__(self):
+        if self.user_id is None:
+            return f"unclaimed sitting {self.pk} - {self.form.title}"
         return f"{self.user} - {self.form.title}"
 
     def quiz_percentage(self) -> int:
@@ -677,6 +685,8 @@ class QuestionAnswer(SiteAwareModel, TimestampedModel):
         ]
 
     def __str__(self):
+        if self.form_progress.user_id is None:
+            return f"unclaimed sitting {self.form_progress_id} - {self.question}"
         return f"{self.form_progress.user} - {self.question}"
 
 
@@ -689,16 +699,17 @@ def question_answer_file_upload_to(instance: QuestionAnswerFile, filename: str) 
     """The key an answer file's first upload lands at.
 
     `filename` is the name FLS chose after sniffing the content, never the
-    applicant's own. The applicant prefix is what gives an erasure request a
-    single subtree to sweep.
+    applicant's own. The key is the sitting's, not the applicant's: a sitting
+    can exist before anyone owns it, and nothing has to move when it is claimed.
+    Erasure finds an applicant's files through their QuestionAnswerFile rows,
+    never by key prefix.
 
     `user_uploads` never overwrites, so replacing a file at the same extension
     is stored under a storage-suffixed sibling of this key and
     `QuestionAnswerFile.save()` deletes the old one.
     """
     extension = Path(filename).suffix.lower()
-    user_id = instance.answer.form_progress.user_id
-    return f"user_uploads/{user_id}/form_answers/{instance.pk}{extension}"
+    return f"user_uploads/form_answers/{instance.answer.form_progress_id}/{instance.pk}{extension}"
 
 
 class QuestionAnswerFile(SiteAwareModel, TimestampedModel):

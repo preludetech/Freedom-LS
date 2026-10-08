@@ -75,13 +75,20 @@ def page_accessibility_limit(
 
 def build_page_links(
     form: Form,
-    form_progress: FormProgress,
+    form_progress: FormProgress | None,
     current_page_number: int,
     url_for_page: Callable[[int], str],
 ) -> list[dict[str, object]]:
-    """One entry per page for the page-jump nav, in page order."""
+    """One entry per page for the page-jump nav, in page order.
+
+    Without a sitting nothing has been reached, so the current page is the
+    furthest the nav may go.
+    """
     pages = list(form.pages.all())
-    limit = max(_resume_page_number(form_progress, pages), current_page_number)
+    if form_progress is None:
+        limit = current_page_number
+    else:
+        limit = max(_resume_page_number(form_progress, pages), current_page_number)
     return [
         {
             "number": number,
@@ -98,11 +105,14 @@ def unanswered_required_on_page(
     questions: list[FormQuestion],
     post_data: QueryDict,
     form_progress: FormProgress,
+    *,
+    ignore_file_questions: bool = False,
 ) -> list[FormQuestion]:
     """The required questions on this page the submission does not answer.
 
     A file question is measured against its stored row rather than the POST: its
     answer arrived on its own request and never rides the page submission.
+    `ignore_file_questions=True` leaves file questions out of the check.
     """
 
     def answered(question: FormQuestion) -> bool:
@@ -113,7 +123,9 @@ def unanswered_required_on_page(
     return [
         question
         for question in questions
-        if question.required and not answered(question)
+        if question.required
+        and not (ignore_file_questions and question.type == QuestionType.FILE_UPLOAD)
+        and not answered(question)
     ]
 
 

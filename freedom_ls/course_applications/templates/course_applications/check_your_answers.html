@@ -6,6 +6,12 @@
 {% block content %}
     <c-page width="narrow">
         <div class="space-y-6">
+            {% if is_unclaimed %}
+                <c-callout level="info">
+                    This application is saved in this browser only, for up to {{ session_days }} days. Submit it to keep it.
+                </c-callout>
+            {% endif %}
+
             <div class="space-y-2">
                 <p class="text-muted">Application for {{ course.title }}</p>
                 <h1>Check your answers</h1>
@@ -74,13 +80,20 @@
                 <c-callout level="success">
                     Your application has been submitted. You will hear back once it has been reviewed.
                 </c-callout>
-                <c-button href="{% url 'course_applications:status' pk=application.pk %}">
-                    Your application
-                </c-button>
+                {% if is_unclaimed %}
+                    <c-button href="{% url 'course_applications:apply' course_slug=course.slug %}">
+                        Your application
+                    </c-button>
+                {% else %}
+                    <c-button href="{% url 'course_applications:status' pk=application.pk %}">
+                        Your application
+                    </c-button>
+                {% endif %}
             {% else %}
                 <form method="post">
                     {% csrf_token %}
-                    <c-button type="submit">Submit application</c-button>
+                    {% include "course_applications/partials/applicant_email_fields.html" %}
+                    <c-button type="submit" class="mt-6">Submit application</c-button>
                 </form>
             {% endif %}
         </div>

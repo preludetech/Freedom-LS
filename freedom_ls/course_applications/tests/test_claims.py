@@ -30,6 +30,7 @@ from freedom_ls.course_applications.claims import (
 )
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.form_engine.models import FormProgress
 
 
 def _request() -> HttpRequest:
@@ -326,3 +327,85 @@ def test_two_concurrent_claims_attach_once(mock_site_context):
 
     assert sorted(len(r.claimed) for r in reports) == [1, 1]
     assert CourseApplication.objects.filter(user=user).count() == 1
+
+
+def _unclaimed_with_sitting(**kwargs) -> CourseApplication:
+    from freedom_ls.form_engine.factories import FormProgressFactory
+
+    app: CourseApplication = CourseApplicationFactory(
+        unclaimed=True, form_progress=FormProgressFactory(user=None), **kwargs
+    )
+    return app
+
+
+def _request_holding_sitting(application: CourseApplication) -> HttpRequest:
+    from freedom_ls.form_engine.anonymous_sittings import remember_anonymous_sitting
+
+    request = _request_holding(application)
+    remember_anonymous_sitting(request, application.form_progress)
+    return request
+
+
+@pytest.mark.django_db
+class TestClaimTheSitting:
+    def test_claim_sets_the_sitting_user(self, mock_site_context):
+        user = UserFactory()
+        EmailAddressFactory(user=user, email="pat@example.com")
+        app = _unclaimed_with_sitting(email="pat@example.com")
+
+        claim_unclaimed_applications(_request_holding_sitting(app), user)
+
+        sitting = FormProgress.objects.get(pk=app.form_progress_id)
+        assert sitting.user == user
+
+    def test_claim_forgets_the_sitting_id(self, mock_site_context):
+        from freedom_ls.form_engine.anonymous_sittings import (
+            ANONYMOUS_SITTINGS_SESSION_KEY,
+        )
+
+        user = UserFactory()
+        EmailAddressFactory(user=user, email="pat@example.com")
+        app = _unclaimed_with_sitting(email="pat@example.com")
+        request = _request_holding_sitting(app)
+
+        claim_unclaimed_applications(request, user)
+
+        assert request.session[ANONYMOUS_SITTINGS_SESSION_KEY] == []
+
+    def test_mismatch_keeps_the_sitting_id(self, mock_site_context):
+        from freedom_ls.form_engine.anonymous_sittings import (
+            ANONYMOUS_SITTINGS_SESSION_KEY,
+        )
+
+        user = UserFactory()
+        EmailAddressFactory(user=user)
+        app = _unclaimed_with_sitting(email="pat@example.com")
+        request = _request_holding_sitting(app)
+
+        claim_unclaimed_applications(request, user)
+
+        assert request.session[ANONYMOUS_SITTINGS_SESSION_KEY] == [
+            str(app.form_progress_id)
+        ]
+
+    def test_unsubmitted_draft_is_claimed_on_login_by_session_alone(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        app = _unclaimed_with_sitting(email="")
+
+        report = claim_unclaimed_applications(_request_holding_sitting(app), user)
+
+        app.refresh_from_db()
+        assert (app.user, report.claimed) == (user, [str(app.pk)])
+
+    def test_unsubmitted_draft_claim_sets_email_from_the_account(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        app = _unclaimed_with_sitting(email="")
+
+        claim_unclaimed_applications(_request_holding_sitting(app), user)
+
+        app.refresh_from_db()
+        assert app.email == user.email

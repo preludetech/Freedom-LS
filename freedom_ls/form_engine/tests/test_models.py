@@ -52,10 +52,10 @@ def answer_file(mock_site_context) -> QuestionAnswerFile:
 
 
 @pytest.mark.django_db
-def test_the_stored_key_is_namespaced_by_the_applicant(mock_site_context, answer_file):
-    user_id = answer_file.answer.form_progress.user_id
+def test_upload_key_is_keyed_by_sitting(mock_site_context, answer_file):
+    sitting_id = answer_file.answer.form_progress_id
 
-    assert answer_file.file.name.startswith(f"user_uploads/{user_id}/form_answers/")
+    assert answer_file.file.name.startswith(f"user_uploads/form_answers/{sitting_id}/")
 
 
 @pytest.mark.django_db
@@ -214,6 +214,40 @@ def test_record_page_reached_remembers_the_furthest_page(mock_site_context):
 
     form_progress.refresh_from_db()
     assert form_progress.furthest_page_reached == 3
+
+
+@pytest.mark.django_db
+def test_str_names_an_unclaimed_sitting(mock_site_context):
+    form_progress = FormProgressFactory(user=None)
+
+    assert str(form_progress) == (
+        f"unclaimed sitting {form_progress.pk} - {form_progress.form.title}"
+    )
+
+
+@pytest.mark.django_db
+def test_answer_str_names_an_unclaimed_sitting(mock_site_context):
+    answer = QuestionAnswerFactory(form_progress=FormProgressFactory(user=None))
+
+    assert str(answer).startswith(f"unclaimed sitting {answer.form_progress_id} - ")
+
+
+@pytest.mark.django_db
+def test_complete_with_null_user_sends_the_signal(mock_site_context):
+    from freedom_ls.form_engine.signals import form_attempt_completed
+
+    received: list[object] = []
+
+    def _capture(sender: object, user: object, **kwargs: object) -> None:
+        received.append(user)
+
+    form_attempt_completed.connect(_capture)
+    try:
+        FormProgressFactory(user=None).complete()
+    finally:
+        form_attempt_completed.disconnect(_capture)
+
+    assert received == [None]
 
 
 # Tests for FormProgress.complete() idempotency.

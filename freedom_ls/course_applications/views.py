@@ -6,6 +6,7 @@ from typing import cast
 from urllib.parse import urlencode
 from uuid import UUID
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
@@ -29,13 +30,20 @@ from freedom_ls.course_applications.claims import (
     claim_unclaimed_applications,
     remember_unclaimed_application,
     unclaimed_application_for_course,
+    unclaimed_application_ids,
 )
 from freedom_ls.course_applications.forms import ApplicantEmailForm
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
-from freedom_ls.form_engine.models import Form, FormProgress
+from freedom_ls.form_engine.anonymous_sittings import (
+    owned_or_held_q,
+    remember_anonymous_sitting,
+)
+from freedom_ls.form_engine.enums import QuestionType
+from freedom_ls.form_engine.models import Form, FormProgress, QuestionAnswer
 from freedom_ls.form_engine.page_flow import (
     PageSubmission,
+    page_at,
     page_context,
     render_form_page,
     resolve_page,
@@ -156,12 +164,69 @@ def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     if course.application_form is not None:
-        return redirect_to_auth(
-            request,
-            next_url=request.get_full_path(),
-            auth_url=acquisition_auth_url(request),
-        )
+        return _apply_anonymous_form_course(request, course)
     return _apply_anonymous_no_form_course(request, course)
+
+
+def _session_days() -> int:
+    """How many whole days a browser session, and so an unclaimed draft, lasts."""
+    return int(settings.SESSION_COOKIE_AGE) // 86400
+
+
+def _apply_anonymous_form_course(request: HttpRequest, course: Course) -> HttpResponse:
+    """Page 1 of the form with no rows behind it, until the first valid save.
+
+    Nothing is created for a visitor who only looks. The first page-1 POST
+    that validates creates the unclaimed application and its sitting and saves
+    the page; one that fails creates nothing.
+    """
+    form = course.application_form
+    current = page_at(form, 1) if form is not None else None
+    if form is None or current is None:
+        # A form with no pages has no page 1 to show an anonymous visitor.
+        raise Http404
+    submission = PageSubmission()
+    answers: dict[UUID, QuestionAnswer] = {}
+    if request.method == "POST":
+        with transaction.atomic():
+            form_progress = FormProgress.objects.create(user=None, form=form)
+            app = CourseApplication.objects.create(
+                course=course, email="", form_progress=form_progress
+            )
+            submission = submit_page(
+                current, request.POST, form_progress, ignore_file_questions=True
+            )
+            if not submission.accepted:
+                # The rows exist only so the page could be checked. They are
+                # rolled back, but what was typed is read first so the refused
+                # page is drawn over those answers rather than over blanks.
+                answers = form_progress.existing_answers_dict(current.questions)
+                prefetch_related_objects(list(answers.values()), "selected_options")
+                transaction.set_rollback(True)
+        if submission.accepted:
+            remember_anonymous_sitting(request, form_progress)
+            remember_unclaimed_application(request, app)
+            if any(
+                question.type == QuestionType.FILE_UPLOAD
+                for question in current.questions
+            ):
+                return redirect(f"{_page_url(app, 1)}?{SAVED_FOR_FILE}=1")
+            if current.is_last:
+                return redirect("course_applications:check_answers", pk=app.pk)
+            return redirect(_page_url(app, 2))
+    context = page_context(
+        form, current, None, submission, lambda number: request.path, answers=answers
+    ) | {
+        "application": None,
+        "course": course,
+        "return_to_check": False,
+        "check_answers_url": "",
+        "is_unclaimed": True,
+        "session_days": _session_days(),
+    }
+    return render_form_page(
+        request, "course_applications/form_page.html", context, submission
+    )
 
 
 def _apply_anonymous_no_form_course(
@@ -208,6 +273,8 @@ def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpRe
 
 
 def _landing_for(app: CourseApplication) -> HttpResponse:
+    if app.form_progress is not None and app.form_progress.completed_time is None:
+        return redirect(_resume_url(app, app.form_progress))
     return redirect("course_applications:status", pk=app.pk)
 
 
@@ -294,18 +361,27 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     )
 
 
-def _owned_application_with_form(
+def _application_for_request(
     request: HttpRequest, pk: UUID
 ) -> tuple[CourseApplication, Form, FormProgress]:
-    """The applicant's own application, and the form sitting it actually has.
+    """The application this request may read and write, and its sitting, or 404.
 
-    Returns all three because an application with no sitting has no form pages
-    to show, and 404 is the honest answer for a URL that names one.
+    The requester's own application, or an unclaimed one whose id the session
+    holds. Nothing else: a wrong, foreign, claimed or missing id is a plain
+    404. A signed-in account still reaches a session-held unclaimed
+    application, because until it is claimed the session is what created it.
     """
+    allowed = owned_or_held_q(
+        request,
+        user_path="user",
+        pk_path="pk",
+        held_ids=unclaimed_application_ids(request),
+    )
     app: CourseApplication = get_object_or_404(
-        CourseApplication.objects.select_related("course", "form_progress__form"),
+        CourseApplication.objects.select_related(
+            "course", "form_progress__form"
+        ).filter(allowed),
         pk=pk,
-        user=request.user,
     )
     if app.form_progress is None:
         raise Http404
@@ -334,8 +410,12 @@ def _resume_url(app: CourseApplication, form_progress: FormProgress) -> str:
 # page reached with it saves and goes straight back there instead of advancing.
 RETURN_TO_CHECK = "check"
 
+# Marker the first save of a page with a file question carries back to that
+# page, so it can say the file can now be attached.
+SAVED_FOR_FILE = "saved"
 
-@login_required
+
+@never_cache_same_origin
 def application_form_page(
     request: HttpRequest, pk: UUID, page_number: int
 ) -> HttpResponse:
@@ -344,7 +424,7 @@ def application_form_page(
     A submitted application is read-only: its pages still render, so the
     applicant can re-read what they said, but nothing more is written to it.
     """
-    app, form, form_progress = _owned_application_with_form(request, pk)
+    app, form, form_progress = _application_for_request(request, pk)
     current = resolve_page(form, page_number)
     read_only = form_progress.completed_time is not None
     # The page form posts to its own URL, query string included, so the marker
@@ -357,7 +437,7 @@ def application_form_page(
     submission = PageSubmission()
     if request.method == "POST":
         if read_only:
-            return redirect("course_applications:status", pk=app.pk)
+            return _redirect_after_submission(request, app)
         submission = submit_page(current, request.POST, form_progress)
         if submission.accepted:
             if not current.is_last and not return_to_check:
@@ -375,13 +455,29 @@ def application_form_page(
         "check_answers_url": reverse(
             "course_applications:check_answers", kwargs={"pk": app.pk}
         ),
+        "saved_for_file": request.GET.get(SAVED_FOR_FILE) == "1",
+        "is_unclaimed": not app.is_claimed,
+        "session_days": _session_days(),
     }
     return render_form_page(
         request, "course_applications/form_page.html", context, submission
     )
 
 
-@login_required
+def _redirect_after_submission(
+    request: HttpRequest, app: CourseApplication
+) -> HttpResponse:
+    """Where a submitted application goes next: the status page once it has an owner.
+
+    The status page is for the owner, so an unclaimed application re-enters the
+    handoff instead.
+    """
+    if app.is_claimed:
+        return redirect("course_applications:status", pk=app.pk)
+    return _redirect_to_handoff(request, app)
+
+
+@never_cache_same_origin
 def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Everything the applicant has said, one card per page, and the one place
     they submit from.
@@ -389,13 +485,18 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     The whole-form check is what catches a required question on a page they
     never visited -- the per-page check cannot see those.
     """
-    app, form, form_progress = _owned_application_with_form(request, pk)
+    app, form, form_progress = _application_for_request(request, pk)
     submitted = form_progress.completed_time is not None
     required_answers_error = ""
+    email_form = ApplicantEmailForm(request.POST if request.method == "POST" else None)
+    refused = False
 
     if request.method == "POST" and not submitted:
         unanswered = unanswered_required_in_form(form_progress)
-        if not unanswered:
+        if unanswered:
+            required_answers_error = unanswered_required_message(unanswered)
+            refused = True
+        elif app.is_claimed:
             form_progress.complete()
             record_application_submitted(request, app.course)
             messages.success(
@@ -404,9 +505,17 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
                 "and is pending review.",
             )
             return redirect("learner_interface:dashboard")
-        required_answers_error = unanswered_required_message(unanswered)
+        elif email_form.is_valid():
+            with transaction.atomic():
+                form_progress.complete()
+                app.email = email_form.cleaned_data["email"]
+                app.save(update_fields=["email", "updated_at"])
+            record_application_submitted(request, app.course)
+            return _redirect_to_handoff(request, app)
+        else:
+            refused = True
     elif request.method == "POST":
-        return redirect("course_applications:status", pk=app.pk)
+        return _redirect_after_submission(request, app)
 
     # Fills the answers cache once; existing_answers_dict then reads from it, so
     # the loop below makes no per-row queries.
@@ -429,7 +538,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             }
         )
 
-    response = render(
+    return render(
         request,
         "course_applications/check_your_answers.html",
         {
@@ -438,8 +547,11 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             "sections": sections,
             "submitted": submitted,
             "required_answers_error": required_answers_error,
+            "email_form": email_form,
+            "privacy_url": _privacy_url(request),
+            "show_email_form": not app.is_claimed,
+            "is_unclaimed": not app.is_claimed,
+            "session_days": _session_days(),
         },
-        status=422 if required_answers_error else 200,
+        status=422 if refused else 200,
     )
-    response["Cache-Control"] = "no-store"
-    return response

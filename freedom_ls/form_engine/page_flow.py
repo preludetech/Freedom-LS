@@ -21,7 +21,7 @@ from uuid import UUID
 from django.http import Http404, HttpRequest, HttpResponse, QueryDict
 from django.shortcuts import render
 
-from .models import Form, FormPage, FormProgress, FormQuestion
+from .models import Form, FormPage, FormProgress, FormQuestion, QuestionAnswer
 from .paging import (
     build_page_links,
     rejected_answers_message,
@@ -102,6 +102,7 @@ def submit_page(
     form_progress: FormProgress,
     *,
     require_answers: bool = True,
+    ignore_file_questions: bool = False,
 ) -> PageSubmission:
     """Save this page's answers, and report what refuses the submission.
 
@@ -114,9 +115,18 @@ def submit_page(
     stands: a blank required question must not trap someone inside an exit
     dialog. A rejected answer still refuses either way, because it cannot be
     stored at all, and finalising on it would freeze the sitting without it.
+
+    `ignore_file_questions=True` skips file questions in the required-answer
+    check. A file is measured against its stored row, and on the save that
+    creates the sitting no row can exist yet.
     """
     unanswered = (
-        unanswered_required_on_page(current.questions, post_data, form_progress)
+        unanswered_required_on_page(
+            current.questions,
+            post_data,
+            form_progress,
+            ignore_file_questions=ignore_file_questions,
+        )
         if require_answers
         else []
     )
@@ -139,11 +149,12 @@ def submit_page(
 def page_context(
     form: Form,
     current: CurrentPage,
-    form_progress: FormProgress,
+    form_progress: FormProgress | None,
     submission: PageSubmission,
     url_for_page: Callable[[int], str],
     *,
     read_only: bool = False,
+    answers: dict[UUID, QuestionAnswer] | None = None,
 ) -> dict[str, object]:
     """The keys every rendering of a form page needs.
 
@@ -154,7 +165,17 @@ def page_context(
     `next_page_url` is the address, `has_next_page` the fact. A template that
     only asks whether there is more to come should not have to hold a URL to
     find out.
+
+    `form_progress` is None for a first page shown before any sitting exists;
+    then nothing is stored, only page 1 is reachable, and `answers` may carry
+    what was just typed so a refused page is drawn over it.
     """
+    if answers is not None:
+        existing_answers = answers
+    elif form_progress is not None:
+        existing_answers = form_progress.existing_answers_dict(current.questions)
+    else:
+        existing_answers = {}
     next_page_url = None if current.is_last else url_for_page(current.number + 1)
     return {
         "form": form,
@@ -168,7 +189,7 @@ def page_context(
         "next_page_url": next_page_url,
         "has_next_page": next_page_url is not None,
         "read_only": read_only,
-        "existing_answers": form_progress.existing_answers_dict(current.questions),
+        "existing_answers": existing_answers,
         "page_links": build_page_links(
             form, form_progress, current.number, url_for_page
         ),
