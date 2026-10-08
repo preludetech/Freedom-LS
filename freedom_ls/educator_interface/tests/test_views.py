@@ -964,3 +964,71 @@ def test_an_inactive_cohorts_courses_tab_shows_no_register_trigger(
     )
 
     assert _register_triggers(document, cohort) == []
+
+
+def _unregister_triggers(document: lxml.html.HtmlElement, cohort: Cohort) -> list[str]:
+    prefix = _interface_url(
+        cohort.organisation.slug,
+        f"cohorts/{cohort.pk}/__tabs/courses/__actions/unregister",
+    )
+    return [
+        button.get("hx-get")
+        for button in document.cssselect("button[hx-get]")
+        if button.get("hx-get").startswith(prefix)
+    ]
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_offers_unregister_only_on_active_registrations(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    active = CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra"), is_active=True
+    )
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Geometry"), is_active=False
+    )
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    # The table and its small-screen card list each render the trigger.
+    (trigger,) = set(_unregister_triggers(document, cohort))
+    assert trigger.endswith(f"?registration={active.pk}")
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohorts_courses_tab_shows_no_unregister_trigger(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
+    CohortCourseRegistrationFactory(cohort=cohort, is_active=True)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    assert _unregister_triggers(document, cohort) == []
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_courses_tab_renders_no_action_buttons(
+    mock_site_context, logged_in_client
+):
+    cohort = cast(Cohort, CohortFactory(organisation=OrganisationFactory()))
+    CohortCourseRegistrationFactory(cohort=cohort, is_active=True)
+    grantor = LearnerFactory(user__superuser=True).user
+    viewer = LearnerFactory(user__staff=True, organisation=cohort.organisation).user
+    assign_role(grantor, viewer, "cohort_viewer", cohort)
+
+    document = _get_document(
+        logged_in_client(viewer),
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses"),
+    )
+
+    (region,) = document.cssselect("[data-tab-set]")
+    assert region.cssselect("button[hx-get]") == []

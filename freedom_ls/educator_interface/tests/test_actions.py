@@ -18,9 +18,10 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -373,3 +374,292 @@ def test_register_post_on_an_inactive_cohort_answers_422_and_creates_no_row(
     assert response.status_code == 422
     assert "Old group is inactive" in response.content.decode()
     assert not cohort.course_registrations.exists()
+
+
+# unregister
+
+
+def _unregister_post_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(organisation, cohort, "/__tabs/courses/__actions/unregister")
+
+
+def _unregister_url(
+    organisation: Organisation,
+    cohort: Cohort,
+    registration: CohortCourseRegistration | str,
+) -> str:
+    pk = registration if isinstance(registration, str) else registration.pk
+    return f"{_unregister_post_url(organisation, cohort)}?registration={pk}"
+
+
+def _member(organisation: Organisation, cohort: Cohort, first_name: str = "Ada"):
+    learner = LearnerFactory(
+        organisation=organisation, user__first_name=first_name, user__last_name="Lee"
+    )
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return learner
+
+
+def _registered_cohort(
+    organisation: Organisation, course_title: str = "Algebra", **cohort_fields: object
+):
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
+    registration = CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title=course_title)
+    )
+    return cohort, registration
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_title_names_the_cohort_and_course(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation, name="Evening group")
+
+    text = _get_fragment(
+        staff_client, _unregister_url(organisation, cohort, registration)
+    )
+
+    assert "Unregister Evening group from Algebra" in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_counts_members_who_lose_access(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    _member(organisation, cohort, "Ada")
+    _member(organisation, cohort, "Bea")
+    kept = _member(organisation, cohort, "Cy")
+    LearnerCourseRegistrationFactory(
+        learner=kept, course=registration.course, is_active=True
+    )
+
+    text = _get_fragment(
+        staff_client, _unregister_url(organisation, cohort, registration)
+    )
+
+    assert "2 learners lose access to Algebra." in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_names_a_member_kept_by_an_individual_registration(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    kept = _member(organisation, cohort, "Cy")
+    LearnerCourseRegistrationFactory(
+        learner=kept, course=registration.course, is_active=True
+    )
+
+    text = _get_fragment(
+        staff_client, _unregister_url(organisation, cohort, registration)
+    )
+
+    assert "These learners keep access through another registration: Cy Lee." in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_names_a_member_kept_by_another_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    kept = _member(organisation, cohort, "Dee")
+    other = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=other, learner=kept)
+    CohortCourseRegistrationFactory(cohort=other, course=registration.course)
+
+    text = _get_fragment(
+        staff_client, _unregister_url(organisation, cohort, registration)
+    )
+
+    assert "keep access through another registration: Dee Lee." in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_names_the_first_ten_keepers_and_counts_the_rest(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    for index in range(12):
+        learner = _member(organisation, cohort, f"Keeper{index:02d}")
+        LearnerCourseRegistrationFactory(
+            learner=learner, course=registration.course, is_active=True
+        )
+
+    text = _get_fragment(
+        staff_client, _unregister_url(organisation, cohort, registration)
+    )
+
+    assert "Keeper09 Lee and 2 more." in text
+    assert "Keeper10" not in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_omits_the_keepers_sentence_when_nobody_keeps_access(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    _member(organisation, cohort)
+
+    text = _get_fragment(
+        staff_client, _unregister_url(organisation, cohort, registration)
+    )
+
+    assert "keep access through another registration" not in text
+
+
+@pytest.mark.django_db
+def test_unregister_post_deactivates_the_registration(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+
+    _post(
+        staff_client,
+        _unregister_post_url(organisation, cohort),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_unregister_post_answers_204_with_a_location_to_the_courses_tab(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+
+    response = _post(
+        staff_client,
+        _unregister_post_url(organisation, cohort),
+        {"registration": str(registration.pk)},
+    )
+
+    assert response.status_code == 204
+    assert json.loads(response["HX-Location"])["path"] == _cohort_url(
+        organisation, cohort, "/__tabs/courses"
+    )
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_can_unregister_on_their_own_cohort(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(organisation)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    response = _post(
+        logged_in_client(educator),
+        _unregister_post_url(organisation, cohort),
+        {"registration": str(registration.pk)},
+    )
+
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
+def test_unregister_with_a_registration_from_another_cohort_answers_404(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, _ = _registered_cohort(organisation)
+    _, foreign = _registered_cohort(organisation, "Geometry")
+
+    response = staff_client.get(
+        _unregister_url(organisation, cohort, foreign), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_unregister_with_a_registration_from_another_cohort_changes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, _ = _registered_cohort(organisation)
+    _, foreign = _registered_cohort(organisation, "Geometry")
+
+    _post(
+        staff_client,
+        _unregister_post_url(organisation, cohort),
+        {"registration": str(foreign.pk)},
+    )
+
+    foreign.refresh_from_db()
+    assert foreign.is_active is True
+
+
+@pytest.mark.django_db
+def test_unregister_with_an_inactive_registration_answers_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    registration = CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+
+    response = staff_client.get(
+        _unregister_url(organisation, cohort, registration), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_unregister_with_a_malformed_registration_answers_404(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort, _ = _registered_cohort(organisation)
+
+    response = staff_client.get(
+        _unregister_url(organisation, cohort, "not-a-uuid"), HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_footer_offers_register_but_no_unregister_button(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, _ = _registered_cohort(organisation)
+
+    response = staff_client.get(
+        _cohort_url(organisation, cohort, "/__tabs/courses"), HTTP_HX_REQUEST="true"
+    )
+
+    footer_urls = [
+        button.get("hx-get")
+        for button in lxml.html.fromstring(response.content.decode()).cssselect(
+            "button[hx-get]"
+        )
+    ]
+    register_url = _register_url(organisation, cohort)
+    assert register_url in footer_urls
+    assert not [url for url in footer_urls if url.endswith("/__actions/unregister")]
+
+
+@pytest.mark.django_db
+def test_unregister_post_on_an_inactive_cohort_answers_422_and_changes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort, registration = _registered_cohort(
+        organisation, name="Old group", is_active=False
+    )
+
+    response = _post(
+        staff_client,
+        _unregister_post_url(organisation, cohort),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert response.status_code == 422
+    assert "Old group is inactive" in response.content.decode()
+    assert registration.is_active is True

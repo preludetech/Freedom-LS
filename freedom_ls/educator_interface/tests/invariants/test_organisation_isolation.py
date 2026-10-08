@@ -302,6 +302,22 @@ class TestCrossOrganisationIsolation:
         assert response.status_code == 422
         assert not CohortCourseRegistration.objects.filter(course=course).exists()
 
+    def test_unregister_naming_another_organisations_registration_answers_404(
+        self, isolation
+    ):
+        foreign = CohortCourseRegistrationFactory(cohort=isolation.cohort_b)
+
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/unregister",
+            ),
+            {"registration": str(foreign.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
     def test_cohort_educators_panel_fetch_404s_for_a_cohort_outside_organisation_a(
         self, isolation
     ):

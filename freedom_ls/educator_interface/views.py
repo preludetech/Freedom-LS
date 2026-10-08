@@ -18,6 +18,7 @@ from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
     EditCohortAction,
     RegisterCohortForCourseAction,
+    UnregisterCohortFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
 )
@@ -453,6 +454,11 @@ class CohortCourseRegistrationDataTable(DataTable):
                 "Course", "course.title", "courses/{course.pk}", card="primary"
             ),
             *_registration_columns(),
+            Column(
+                header="",
+                template="educator_interface/data-table-cells/unregister.html",
+                card="secondary",
+            ),
         ]
 
 
@@ -481,7 +487,22 @@ class CohortCoursesPanel(DataTablePanel):
         return super().get_queryset(request).filter(cohort=self.instance)
 
     def get_actions(self) -> list[PanelAction]:
-        return [RegisterCohortForCourseAction()]
+        # The unregister action is listed so the action route can find it,
+        # then dropped from the footer: it needs a registration to act on and
+        # renders per row instead.
+        return [RegisterCohortForCourseAction(), UnregisterCohortFromCourseAction()]
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["actions"] = [
+            action
+            for action in cast(list[PanelAction], context["actions"])
+            if not isinstance(action, UnregisterCohortFromCourseAction)
+        ]
+        context["can_unregister"] = UnregisterCohortFromCourseAction().is_available(
+            self.ctx
+        )
+        return context
 
     def get_tab_count(self) -> int | None:
         return self.get_queryset(self.request).filter(is_active=True).count()

@@ -325,6 +325,38 @@ def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
     )
 
 
+def members_keeping_access(
+    registration: CohortCourseRegistration,
+) -> QuerySet[Learner]:
+    """Active members of the registration's cohort who still reach its
+    course once the registration is withdrawn: through an active individual
+    registration, or through another cohort whose registration grants
+    access."""
+    other_cohorts = (
+        access_granting_cohort_registrations()
+        .filter(course_id=registration.course_id)
+        .exclude(pk=registration.pk)
+        .values("cohort_id")
+    )
+    # Both learnercourseregistration conditions sit in one Q so they bind to
+    # the same registration row.
+    return (
+        Learner.objects.filter(
+            is_active=True, cohortmembership__cohort_id=registration.cohort_id
+        )
+        .filter(
+            Q(
+                learnercourseregistration__course_id=registration.course_id,
+                learnercourseregistration__is_active=True,
+            )
+            | Q(cohortmembership__cohort_id__in=other_cohorts)
+        )
+        .select_related("user")
+        .distinct()
+        .order_by("user__first_name", "user__last_name")
+    )
+
+
 def cohort_learner_count(cohort: Cohort) -> int:
     """Members of this cohort whose Learner is still active in the
     organisation. Every surface showing a cohort's learner count reads this."""
