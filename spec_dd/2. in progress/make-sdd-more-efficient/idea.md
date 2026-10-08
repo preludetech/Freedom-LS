@@ -1,0 +1,1 @@
+Currently the sdd workflow runs the full test suite really often. This is a problem because it takes a very long time. We need to be more selective about what tests to run and when. We definately do need to do a full run over everything, but not over and over.
