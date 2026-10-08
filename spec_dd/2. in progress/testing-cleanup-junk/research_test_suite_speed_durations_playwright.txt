@@ -1,0 +1,129 @@
+........................................................................ [ 31%]
+........................................................................ [ 63%]
+........................................................................ [ 95%]
+..........                                                               [100%]
+============================ slowest 100 durations =============================
+6.62s setup    freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_the_open_quick_view_leaves_the_page_usable[chromium-tablet]
+5.62s call     freedom_ls/panel_framework/tests/playwright/test_modal_form_htmx.py::test_clicking_save_disables_every_submit_button_while_the_request_is_pending[chromium]
+5.26s call     freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_form_resumption[chromium]
+4.89s call     freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_pagination_stays_inside_the_card_beside_a_docked_drawer[chromium]
+4.11s call     freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_completed_quiz_shows_scores_on_landing_page[chromium]
+3.96s call     freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_quiz_completion_shows_scores[chromium]
+3.66s call     freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_quiz_shows_incorrect_answers_when_enabled[chromium]
+3.52s call     freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_start_and_fill_form_complete_workflow[chromium]
+2.76s call     freedom_ls/course_applications/tests/playwright/test_application_form_flow.py::test_an_applicant_can_fill_in_attach_change_and_submit[chromium]
+2.75s call     freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_quiz_does_not_show_incorrect_when_disabled[chromium]
+2.31s setup    freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_the_docked_drawer_leaves_the_header_actions_and_table_uncovered[chromium-1280]
+2.26s setup    freedom_ls/educator_interface/tests/playwright/test_learner_quick_view.py::test_a_learner_changed_event_naming_the_shown_learner_refetches_it[chromium]
+2.25s call     tests/playwright/test_design_screenshots.py::test_page_without_artboards_gets_two_whole_page_screenshots
+2.25s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_a_registration_someone_else_made_shows_in_the_panel[chromium]
+2.22s call     freedom_ls/form_engine/tests/playwright/test_admin_answers_layout.py::test_a_long_answer_keeps_its_paragraph_breaks_in_the_admin[chromium]
+2.22s call     tests/playwright/test_design_screenshots.py::test_canvas_page_that_renders_no_artboards_exits_1
+2.16s call     tests/playwright/test_design_screenshots.py::test_artboards_written_as_pngs_and_stale_ones_removed
+2.12s teardown tests/playwright/test_design_screenshots.py::test_canvas_page_that_renders_no_artboards_exits_1
+2.07s setup    freedom_ls/referral_tracking/tests/playwright/test_referral_code_copy_button.py::test_copy_button_meets_the_minimum_target_size[chromium-Copy /d/ URL]
+2.06s call     freedom_ls/comms/tests/playwright/test_notification_bell.py::test_badge_refresh_picks_up_a_new_notification_and_keeps_focus_on_the_bell[chromium]
+2.04s setup    freedom_ls/referral_tracking/tests/playwright/test_referral_code_copy_button.py::test_copy_button_is_bordered_so_it_does_not_read_as_body_text[chromium-Copy /d/ URL]
+2.00s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_a_failed_reopen_shows_the_error_and_try_again_recovers[chromium]
+1.98s call     freedom_ls/panel_framework/tests/playwright/test_bulk_actions.py::test_stub_bulk_action_confirms_in_the_shared_modal[chromium]
+1.92s setup    freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_docked_drawer_clears_the_header_after_widening_from_mobile[chromium]
+1.91s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_escape_closes_the_panel_and_returns_focus_to_the_bell[chromium]
+1.89s setup    freedom_ls/learner_interface/tests/playwright/test_picture_spotlight.py::test_background_does_not_scroll_while_spotlight_open[chromium]
+1.87s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_quiz_does_not_show_incorrect_when_disabled[chromium]
+1.87s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_layout_htmx.py::test_the_docked_drawer_is_pinned_full_height_to_the_inline_end_edge[chromium]
+1.86s setup    freedom_ls/course_applications/tests/playwright/test_application_form_flow.py::test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded[chromium]
+1.86s setup    freedom_ls/learner_interface/tests/playwright/test_form_required_validation.py::test_final_page_submit_dialog_blocked_until_required_answered[chromium]
+1.85s setup    freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_the_page_stays_put_when_the_docked_drawer_opens_and_closes[chromium-1920]
+1.84s setup    freedom_ls/base/tests/playwright/test_toast_dismiss.py::test_newest_toast_renders_at_bottom_of_stack[chromium]
+1.84s setup    freedom_ls/educator_interface/tests/playwright/test_learner_quick_view.py::test_every_rows_quick_view_trigger_lines_up_whatever_the_name_length[chromium-cards]
+1.84s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_layout_htmx.py::test_the_page_content_makes_room_for_the_docked_drawer[chromium]
+1.82s setup    freedom_ls/learner_interface/tests/playwright/test_picture_spotlight.py::test_long_description_keeps_spotlight_heading_reachable[chromium]
+1.82s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_badge_refresh_picks_up_a_new_notification_and_keeps_focus_on_the_bell[chromium]
+1.82s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_the_page_can_scroll_its_last_row_clear_of_the_phone_sheet[chromium]
+1.81s setup    freedom_ls/base/tests/playwright/test_toast_dismiss.py::test_close_button_removes_toast_from_dom[chromium]
+1.81s setup    freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_pagination_stays_inside_the_card_beside_a_docked_drawer[chromium]
+1.81s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_self_registering_adds_nothing_to_the_panel[chromium]
+1.81s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_opening_the_panel_zeroes_the_badge_with_one_request[chromium]
+1.80s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_mark_all_as_read_updates_the_panel_and_badge_with_one_request[chromium]
+1.80s setup    freedom_ls/educator_interface/tests/playwright/test_learner_quick_view.py::test_escape_closes_only_the_topmost_dropdown_leaving_the_drawer_open[chromium]
+1.80s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_click_opens_the_panel_and_sets_aria_expanded[chromium]
+1.79s setup    freedom_ls/educator_interface/tests/playwright/test_denied_experience.py::test_a_grant_revoked_while_the_create_cohort_modal_is_open_denies_the_submit[chromium]
+1.79s setup    freedom_ls/educator_interface/tests/playwright/test_denied_experience.py::test_a_cohort_leaving_scope_while_its_delete_dialog_is_open_says_so[chromium]
+1.79s setup    freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_the_docked_drawer_leaves_the_header_actions_and_table_uncovered[chromium-1920]
+1.78s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_escape_closes_the_sheet_and_returns_focus_to_the_trigger[chromium]
+1.78s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_keyboard_enter_on_the_focused_bell_opens_the_panel[chromium]
+1.77s setup    freedom_ls/learner_interface/tests/playwright/test_picture_spotlight.py::test_closed_spotlight_is_inert_and_trigger_is_clickable[chromium]
+1.76s setup    freedom_ls/learner_interface/tests/playwright/test_form_required_validation.py::test_required_checkbox_group_blocks_the_submit_dialog[chromium]
+1.76s setup    freedom_ls/educator_interface/tests/playwright/test_quick_view_layout.py::test_the_page_stays_put_when_the_docked_drawer_opens_and_closes[chromium-1442]
+1.76s setup    freedom_ls/referral_tracking/tests/playwright/test_admin_detail_mobile.py::test_detail_page_wraps_long_values_instead_of_scrolling_sideways[chromium-first_touch_count]
+1.75s setup    freedom_ls/educator_interface/tests/playwright/test_learner_quick_view.py::test_the_drawer_title_is_the_learners_name_and_stays_so_on_reopen[chromium]
+1.74s setup    freedom_ls/course_applications/tests/playwright/test_application_form_flow.py::test_an_applicant_can_fill_in_attach_change_and_submit[chromium]
+1.74s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_keyboard_mark_all_as_read_moves_focus_to_the_panel_heading[chromium]
+1.73s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_layout_htmx.py::test_the_mobile_sheet_spans_the_full_width_anchored_to_the_bottom[chromium]
+1.72s setup    freedom_ls/learner_interface/tests/playwright/test_flashcard_overflow.py::test_a_wide_answer_does_not_push_the_card_off_a_narrow_viewport[chromium-wide]
+1.72s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_form_resumption[chromium]
+1.72s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_quiz_completion_shows_scores[chromium]
+1.72s setup    freedom_ls/educator_interface/tests/playwright/test_learner_quick_view.py::test_clicking_a_learner_opens_the_drawer_and_open_leads_to_the_learner_page[chromium]
+1.71s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_quiz_shows_incorrect_answers_when_enabled[chromium]
+1.69s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_the_open_quick_view_leaves_the_page_usable[chromium-tablet]
+1.69s setup    freedom_ls/educator_interface/tests/playwright/test_learner_quick_view.py::test_every_rows_quick_view_trigger_lines_up_whatever_the_name_length[chromium-table]
+1.69s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_view_form_landing_page[chromium]
+1.69s setup    freedom_ls/comms/tests/playwright/test_notification_bell.py::test_the_open_panel_is_a_full_width_sheet_at_375px[chromium]
+1.69s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_layout_htmx.py::test_below_1280_the_drawer_lies_over_the_page_below_the_header[chromium]
+1.69s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_start_and_fill_form_complete_workflow[chromium]
+1.68s setup    freedom_ls/learner_interface/tests/playwright/form_ui_tests.py::test_completed_quiz_shows_scores_on_landing_page[chromium]
+1.66s call     freedom_ls/panel_framework/tests/playwright/test_modal_form_htmx.py::test_save_and_add_another_leaves_a_blank_form_and_shows_the_row[chromium]
+1.64s setup    freedom_ls/learner_interface/tests/playwright/test_form_option_layout.py::test_option_rows_do_not_overflow_the_viewport[chromium-tablet]
+1.64s call     freedom_ls/panel_framework/tests/playwright/test_data_table_panel_htmx.py::test_back_after_sort_restores_matching_table[chromium]
+1.63s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_the_open_quick_view_leaves_the_page_usable[chromium-phone]
+1.61s call     freedom_ls/comms/tests/playwright/test_notification_bell.py::test_self_registering_adds_nothing_to_the_panel[chromium]
+1.59s call     freedom_ls/panel_framework/tests/playwright/test_data_table_panel_htmx.py::test_data_table_sort_does_not_nest_panel_wrappers[chromium]
+1.57s call     freedom_ls/learner_interface/tests/playwright/test_form_exit_submits_page_answers.py::test_leave_and_submit_scores_the_answers_on_the_page_being_left[chromium]
+1.56s call     freedom_ls/educator_interface/tests/playwright/test_organisation_switcher_mobile.py::test_switching_from_the_mobile_sheet_closes_it_and_keeps_url_and_content_together[chromium]
+1.55s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_layout_htmx.py::test_the_drawer_is_not_displayed_under_print_media[chromium]
+1.54s call     freedom_ls/panel_framework/tests/playwright/test_modal_form_htmx.py::test_cancel_closes_the_modal_and_returns_focus_to_the_trigger[chromium]
+1.54s call     freedom_ls/panel_framework/tests/playwright/test_data_table_panel_htmx.py::test_list_view_data_table_swaps_keep_single_container[chromium]
+1.51s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_crossing_the_breakpoint_while_open_keeps_the_content_with_no_new_request[chromium]
+1.51s call     freedom_ls/panel_framework/tests/playwright/test_modal_form_htmx.py::test_discard_closes_the_dialog_and_loses_the_input[chromium]
+1.49s call     freedom_ls/panel_framework/tests/playwright/test_modal_form_htmx.py::test_the_close_control_on_a_dirty_form_asks_before_closing[chromium]
+1.49s call     freedom_ls/panel_framework/tests/playwright/test_stat_tile_progress_width.py::test_progress_bar_inside_stat_tile_has_visible_width[chromium]
+1.46s call     freedom_ls/panel_framework/tests/playwright/test_data_table_panel_htmx.py::test_nested_table_pushes_page_url[chromium]
+1.45s call     freedom_ls/panel_framework/tests/playwright/test_modal_read_only_htmx.py::test_a_click_in_the_dialogs_own_padding_leaves_a_read_only_fragment_open[chromium]
+1.44s call     freedom_ls/panel_framework/tests/playwright/test_modal_form_htmx.py::test_esc_on_a_clean_form_closes_the_modal[chromium]
+1.44s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_the_phone_sheet_has_a_rounded_bordered_top_edge[chromium]
+1.43s call     freedom_ls/panel_framework/tests/playwright/test_component_reference.py::test_reference_page_loads_and_stays_tappable_on_mobile[chromium]
+1.42s call     freedom_ls/educator_interface/tests/playwright/test_delete_modal.py::test_deleting_a_cohort_from_its_page_makes_no_failing_requests[chromium]
+1.42s call     freedom_ls/panel_framework/tests/playwright/test_modal_read_only_htmx.py::test_a_backdrop_click_closes_a_read_only_fragment[chromium]
+1.41s call     freedom_ls/learner_interface/tests/playwright/test_course_card_layout.py::test_clicking_an_article_card_in_the_mixed_grid_opens_the_article[chromium-tablet]
+1.40s call     freedom_ls/blog/tests/playwright/test_article_layout.py::test_focused_card_link_sits_inside_its_card[chromium-tablet]
+1.40s call     freedom_ls/blog/tests/playwright/test_article_layout.py::test_clicking_a_card_away_from_its_title_opens_the_article[chromium-tablet]
+1.38s call     freedom_ls/learner_interface/tests/playwright/test_course_detail_price_stat.py::test_stacked_stat_cells_share_one_width_below_md[chromium-small-tablet]
+1.36s call     freedom_ls/blog/tests/playwright/test_article_layout.py::test_clicking_a_card_away_from_its_title_opens_the_article[chromium-mobile]
+1.36s call     freedom_ls/panel_framework/tests/playwright/test_quick_view_mobile_htmx.py::test_the_tablet_drawer_keeps_square_corners[chromium]
+1.35s call     freedom_ls/learner_interface/tests/playwright/test_course_card_layout.py::test_clicking_a_course_card_away_from_its_title_opens_the_course[chromium-tablet]
+1.33s call     freedom_ls/learner_interface/tests/playwright/test_course_card_layout.py::test_focused_card_link_sits_inside_its_card[chromium-Alpha Course-tablet]
+1.33s call     freedom_ls/blog/tests/playwright/test_article_layout.py::test_article_with_card_grid_does_not_overflow_the_viewport[chromium-tablet]
+226 passed, 6516 deselected in 453.93s (0:07:33)
+	Command being timed: "uv run pytest -m playwright --no-cov -q -p no:cacheprovider --durations=100 --durations-min=0.5 -o addopts= --disable-socket --allow-hosts=127.0.0.1,::1 --tracing=off --screenshot=off"
+	User time (seconds): 170.40
+	System time (seconds): 31.84
+	Percent of CPU this job got: 43%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 7:42.10
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 551832
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 8190
+	Minor (reclaiming a frame) page faults: 8001915
+	Voluntary context switches: 532822
+	Involuntary context switches: 151139
+	Swaps: 0
+	File system inputs: 104918
+	File system outputs: 1083832
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
