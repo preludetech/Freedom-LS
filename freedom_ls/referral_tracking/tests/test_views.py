@@ -157,6 +157,12 @@ def test_an_unknown_code_404s(mock_site_context) -> None:
     assert response.status_code == 404
 
 
+def test_unknown_code_with_a_trailing_slash_stays_404(mock_site_context) -> None:
+    response = Client().get(_reversed_url("follow_go", "doesnotexist") + "/")
+
+    assert response.status_code == 404
+
+
 def test_a_code_on_another_site_404s(mock_site_context, site) -> None:
     other_site = Site.objects.create(name="Other", domain="other.example.com")
     ReferralCodeFactory(site=other_site, code="mrbeast", destination="/courses/")

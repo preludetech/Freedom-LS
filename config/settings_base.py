@@ -160,6 +160,9 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # Directly after CommonMiddleware: the reverse of its APPEND_SLASH, so
+    # /robots.txt/ redirects to /robots.txt instead of 404ing.
+    "freedom_ls.base.middleware.RemoveSlashMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
