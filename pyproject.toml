@@ -113,6 +113,21 @@ escalation = [
     "freedom_ls/content_base/**",
 ]
 
+# This repository hosts the plugins; their scripts and templates are tested in tests/.
+[[tool.test_tiers.tooling]]
+glob = "claude_plugins/*/scripts/**"
+tests = ["tests"]
+
+[[tool.test_tiers.tooling]]
+glob = "claude_plugins/*/templates/**"
+tests = ["tests"]
+
+# The course content plugin carries its own tests and is exercised by content_engine's
+# validator tests.
+[[tool.test_tiers.tooling]]
+glob = "claude_plugins/fls-content/**"
+tests = ["claude_plugins/fls-content", "freedom_ls/content_engine/tests"]
+
 [tool.coverage.run]
 branch = true
 source = ["freedom_ls"]

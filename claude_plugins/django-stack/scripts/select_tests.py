@@ -21,7 +21,7 @@ from pathlib import Path, PurePosixPath
 from typing import Literal
 
 from check_test_mirroring import is_collected, owning_app
-from generate_app_map import App, find_apps
+from generate_app_map import App, Edges, find_apps, parse_existing_edges
 
 # Paths whose change cannot alter a test result. "*.md" is root-level only on purpose:
 # markdown deeper in the tree can be content that tests read.
@@ -49,6 +49,26 @@ ESCALATION_GLOBS: tuple[str, ...] = (
     "uv.lock",
 )
 
+# Repository tooling has its tests in the top-level tests/ directory: the wrappers
+# ds:init generates, and helpers beside those tests.
+TOOLING: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (".claude/*/scripts/**", ("tests",)),
+    ("tests/**", ("tests",)),
+)
+
+# Changes a browser can see; the touched app's browser tests stay in the targeted run.
+UI_GLOBS: tuple[str, ...] = (
+    "**/templates/**",
+    "**/static/**",
+    "**/*.html",
+    "**/*.css",
+    "**/*.js",
+    "**/views.py",
+    "**/views/**",
+)
+
+APP_MAP = "docs/app_structure.md"
+
 FULL_COMMAND = "uv run pytest -n auto"
 TARGETED_PREFIX = "uv run pytest -n auto --no-cov"
 
@@ -70,13 +90,36 @@ class Decision:
     kind: Literal["none", "select", "full"]
     selects: tuple[str, ...]
     reason: str
+    touched: tuple[str, ...] = ()
 
 
-def glob_list(table: dict[str, object], key: str) -> tuple[str, ...]:
+def glob_list(
+    table: dict[str, object], key: str, key_prefix: str = ""
+) -> tuple[str, ...]:
     value = table.get(key, [])
     if not isinstance(value, list) or not all(isinstance(g, str) for g in value):
-        raise ConfigError(f"[tool.test_tiers] '{key}' must be a list of strings")
+        raise ConfigError(
+            f"[tool.test_tiers] {key_prefix}'{key}' must be a list of strings"
+        )
     return tuple(value)
+
+
+def tooling_entries(
+    table: dict[str, object],
+) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """The `tooling` array of tables: each entry maps a glob to test directories."""
+    value = table.get("tooling", [])
+    if not isinstance(value, list):
+        raise ConfigError("[tool.test_tiers] 'tooling' must be an array of tables")
+    entries: list[tuple[str, tuple[str, ...]]] = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            raise ConfigError("[tool.test_tiers] 'tooling' must be an array of tables")
+        glob = entry.get("glob")
+        if not isinstance(glob, str):
+            raise ConfigError("[tool.test_tiers] 'tooling' entry needs a string 'glob'")
+        entries.append((glob, glob_list(entry, "tests", key_prefix="tooling ")))
+    return tuple(entries)
 
 
 def load_tier_config(project_root: Path) -> TierConfig:
@@ -92,7 +135,7 @@ def load_tier_config(project_root: Path) -> TierConfig:
     return TierConfig(
         none=NONE_GLOBS + glob_list(table, "none"),
         escalation=ESCALATION_GLOBS + glob_list(table, "escalation"),
-        tooling=(),
+        tooling=TOOLING + tooling_entries(table),
     )
 
 
@@ -102,39 +145,119 @@ def first_match(path: str, globs: tuple[str, ...]) -> str | None:
     return next((glob for glob in globs if posix.full_match(glob)), None)
 
 
+def importers(app: App, edges: Edges) -> list[tuple[str, str]]:
+    """(importer short name, reason) for every app with a dep on `app` in the map."""
+    found = []
+    for pairs, dep in ((edges.runtime, "runtime dep"), (edges.test, "test-only dep")):
+        found += [
+            (src, f"{src} has a {dep} on {app.short_name}")
+            for src, dst in pairs
+            if dst == app.short_name
+        ]
+    return sorted(found)
+
+
+def tests_dir_of(app: App, project_root: Path) -> str:
+    return (app.directory / "tests").relative_to(project_root).as_posix()
+
+
+def decide_app_path(
+    path: str,
+    app: App,
+    apps: list[App],
+    edges: Edges | None,
+    project_root: Path,
+) -> list[Decision]:
+    """The owning app's test directory, then one decision per importer of the app."""
+    if edges is None:
+        return [Decision(path, "full", (), f"{APP_MAP} missing")]
+
+    tests_dir = tests_dir_of(app, project_root)
+    if not (project_root / tests_dir).is_dir():
+        owner = Decision(
+            path, "none", (), f"owning app {app.short_name} has no tests directory"
+        )
+    else:
+        reason = f"owning app {app.short_name}"
+        touched: tuple[str, ...] = ()
+        playwright_dir = f"{tests_dir}/playwright"
+        if first_match(path, UI_GLOBS) is not None:
+            touched = (tests_dir,)
+            if (project_root / playwright_dir).is_dir():
+                reason += f"; playwright: {playwright_dir}"
+        owner = Decision(path, "select", (tests_dir,), reason, touched)
+
+    by_name = {a.short_name: a for a in apps}
+    decisions = [owner]
+    for name, reason in importers(app, edges):
+        importer = by_name.get(name)
+        if importer is None:
+            decisions.append(Decision(path, "none", (), f"{reason}; app not found"))
+            continue
+        importer_tests = tests_dir_of(importer, project_root)
+        if (project_root / importer_tests).is_dir():
+            decisions.append(Decision(path, "select", (importer_tests,), reason))
+        else:
+            decisions.append(
+                Decision(path, "none", (), f"{reason}; no tests directory")
+            )
+    return decisions
+
+
+def decide_tooling(
+    path: str, config: TierConfig, project_root: Path
+) -> Decision | None:
+    """The test directories of the first tooling entry whose glob matches `path`."""
+    posix = PurePosixPath(path)
+    for glob, directories in config.tooling:
+        if not posix.full_match(glob):
+            continue
+        present = tuple(d for d in directories if (project_root / d).is_dir())
+        if not present:
+            missing = ", ".join(directories)
+            return Decision(path, "none", (), f"tooling; {missing} does not exist")
+        return Decision(path, "select", present, "tooling")
+    return None
+
+
 def decide(
-    path: str, apps: list[App], config: TierConfig, project_root: Path
-) -> Decision:
+    path: str,
+    apps: list[App],
+    config: TierConfig,
+    edges: Edges | None,
+    project_root: Path,
+) -> list[Decision]:
     """Apply the rules in order; the first one that matches `path` decides."""
     none_glob = first_match(path, config.none)
     if none_glob is not None:
-        return Decision(path, "none", (), f"matches {none_glob}")
+        return [Decision(path, "none", (), f"matches {none_glob}")]
 
     posix = PurePosixPath(path)
+    app = owning_app(apps, project_root, path)
     if is_collected(posix.name) and "tests" in posix.parts:
         if not (project_root / path).exists():
-            return Decision(path, "none", (), "deleted test file")
-        return Decision(path, "select", (path,), "changed test file")
+            return [Decision(path, "none", (), "deleted test file")]
+        reason = "changed test file"
+        touched: tuple[str, ...] = ()
+        if app is not None:
+            tests_dir = tests_dir_of(app, project_root)
+            if path.startswith(f"{tests_dir}/playwright/"):
+                reason += f"; playwright: {tests_dir}/playwright"
+                touched = (tests_dir,)
+        return [Decision(path, "select", (path,), reason, touched)]
 
     escalation_glob = first_match(path, config.escalation)
     if escalation_glob is not None:
-        return Decision(path, "full", (), f"matches {escalation_glob}")
+        return [Decision(path, "full", (), f"matches {escalation_glob}")]
 
-    app = owning_app(apps, project_root, path)
     if app is not None:
-        tests_dir = (app.directory / "tests").relative_to(project_root).as_posix()
-        if (project_root / tests_dir).is_dir():
-            return Decision(
-                path, "select", (tests_dir,), f"owning app {app.short_name}"
-            )
-        return Decision(
-            path,
-            "none",
-            (),
-            f"owning app {app.short_name} has no tests directory",
-        )
+        return decide_app_path(path, app, apps, edges, project_root)
 
-    return Decision(path, "full", (), "unmapped path")
+    tooling = decide_tooling(path, config, project_root)
+    if tooling is not None:
+        return [tooling]
+
+    return [Decision(path, "full", (), "unmapped path")]
 
 
 def git_lines(argv: list[str]) -> list[str]:
@@ -158,18 +281,16 @@ def compose_command(selected: set[str], touched: set[str], project_root: Path) -
     ignores = [
         f"--ignore={shlex.quote(d + '/playwright')}"
         for d in sorted(selected)
-        if d.endswith("/tests")
-        and d not in touched
-        and (project_root / d / "playwright").is_dir()
+        if d not in touched and (project_root / d / "playwright").is_dir()
     ]
     return " ".join(
         [TARGETED_PREFIX, *ignores, *(shlex.quote(p) for p in sorted(selected))]
     )
 
 
-def minimal_selection(selects: set[str]) -> set[str]:
-    """Drop every selected file whose containing directory is also selected."""
-    directories = {s for s in selects if s.endswith("/tests")}
+def minimal_selection(selects: set[str], project_root: Path) -> set[str]:
+    """Drop every selected path that lies inside another selected directory."""
+    directories = {s for s in selects if (project_root / s).is_dir()}
     return {
         s
         for s in selects
@@ -198,9 +319,13 @@ def main() -> int:
         parser.error(str(exc))
 
     apps = find_apps(project_root)
-    decisions = [decide(p, apps, config, project_root) for p in paths]
+    edges = parse_existing_edges(project_root / APP_MAP)
+    decisions = [d for p in paths for d in decide(p, apps, config, edges, project_root)]
 
-    selected = minimal_selection({s for d in decisions for s in d.selects})
+    selected = minimal_selection(
+        {s for d in decisions for s in d.selects}, project_root
+    )
+    touched = {t for d in decisions for t in d.touched}
     if any(d.kind == "full" for d in decisions):
         tier = "full"
     elif selected:
@@ -215,7 +340,7 @@ def main() -> int:
     if tier == "full":
         print(f"command: {FULL_COMMAND}")
     elif tier == "targeted":
-        print(f"command: {compose_command(selected, set(), project_root)}")
+        print(f"command: {compose_command(selected, touched, project_root)}")
     return 0
 
 

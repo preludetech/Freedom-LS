@@ -34,7 +34,7 @@ A project can enforce this rule with the `[tool.test_organisation]` table and `$
 
 ### Choosing which tests to run
 
-`${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py` takes changed paths (or `--working-tree`) and prints the tier (`none`, `targeted` or `full`), a `why:` line per path and the pytest `command:` to run. Its generic `none` and escalation lists live in the script. A project adds its own entries to the optional `[tool.test_tiers]` table in `pyproject.toml`: `none` for paths that cannot change a test result, and `escalation` for paths with fan-out the mirror and the app map cannot see. Each key is a list of globs; both extend the script's lists.
+`${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py` takes changed paths (or `--working-tree`) and prints the tier (`none`, `targeted` or `full`), a `why:` line per path and the pytest `command:` to run. Its generic `none` and escalation lists live in the script. A project adds its own entries to the optional `[tool.test_tiers]` table in `pyproject.toml`: `none` for paths that cannot change a test result, `escalation` for paths with fan-out the mirror and the app map cannot see, and `tooling` for repository paths outside any app whose tests live elsewhere. `none` and `escalation` are lists of globs that extend the script's lists. `tooling` is an array of tables, each with a `glob` and the `tests` directories it maps to. A change inside an app also selects the test directory of every app that depends on it in `docs/app_structure.md`, and keeps that app's `tests/playwright/` in the run only when the change is one a browser can see.
 
 ### Cross-cutting tests
 
