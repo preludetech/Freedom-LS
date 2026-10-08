@@ -17,3 +17,13 @@ def test_email_is_lowercased():
 
     assert form.is_valid()
     assert form.cleaned_data["email"] == "pat@example.com"
+
+
+def test_honeypot_trip_rejects_the_form_with_the_application_wording():
+    form = ApplicantEmailForm({"email": "pat@example.com", "fax_number": "bot"})
+
+    assert not form.is_valid()
+    assert form.non_field_errors() == [
+        "We couldn't process this application. If you used autofill or a "
+        "password manager, please try typing your email address in by hand."
+    ]

@@ -694,3 +694,149 @@ def test_file_views_send_no_store_and_same_origin_referrer(
 
     assert "no-store" in response["Cache-Control"]
     assert response["Referrer-Policy"] == "same-origin"
+
+
+# ---------------------------------------------------------------------------
+# The per-address cap on anonymous uploads
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def capped_uploads(settings) -> None:
+    settings.TRUSTED_PROXY_IP_HEADER = None
+    settings.FORM_ENGINE_ANONYMOUS_UPLOAD_LIMIT = 1
+    settings.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS = 600
+
+
+def _held_empty_sitting(client: Client) -> tuple[FormProgress, FormQuestion]:
+    """An unowned sitting with a file question and no file, held by `client`."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=FormPageFactory(form=form, order=0), type="file_upload", order=0
+    )
+    form_progress: FormProgress = FormProgressFactory(form=form, user=None)
+    session = client.session
+    session[ANONYMOUS_SITTINGS_SESSION_KEY] = [str(form_progress.pk)]
+    session.save()
+    return form_progress, question
+
+
+def _anonymous_upload(client, form_progress, question):
+    return client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+@pytest.mark.django_db
+def test_upload_cap_fires_with_the_widget_error_state(
+    mock_site_context, client, capped_uploads
+):
+    form_progress, question = _held_empty_sitting(client)
+    _anonymous_upload(client, form_progress, question)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert response.status_code == 422
+    assert "Too many uploads" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_upload_cap_zero_disables(mock_site_context, client, capped_uploads, settings):
+    settings.FORM_ENGINE_ANONYMOUS_UPLOAD_LIMIT = 0
+    form_progress, question = _held_empty_sitting(client)
+    _anonymous_upload(client, form_progress, question)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_upload_cap_key_holds_no_raw_ip(mock_site_context, client, capped_uploads):
+    from django.core.cache import cache
+
+    form_progress, question = _held_empty_sitting(client)
+
+    client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+        REMOTE_ADDR="203.0.113.7",
+    )
+
+    assert cache._cache
+    assert not [key for key in cache._cache if "203.0.113.7" in key]
+
+
+@pytest.mark.django_db
+def test_upload_cap_broken_cache_fails_open(
+    mock_site_context, client, capped_uploads, mocker
+):
+    mocker.patch(
+        "freedom_ls.accounts.throttling.cache.add",
+        side_effect=ConnectionError("no cache"),
+    )
+    mocker.patch("freedom_ls.accounts.throttling.sentry_sdk")
+    form_progress, question = _held_empty_sitting(client)
+    _anonymous_upload(client, form_progress, question)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_upload_cap_missing_proxy_header_is_forbidden(
+    mock_site_context, client, capped_uploads, settings
+):
+    settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+    form_progress, question = _held_empty_sitting(client)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_upload_cap_ignores_signed_in_requests(
+    mock_site_context, client, capped_uploads, sitting
+):
+    form_progress, question = sitting
+    client.force_login(form_progress.user)
+    _anonymous_upload(client, form_progress, question)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_upload_cap_creates_nothing_when_it_fires(
+    mock_site_context, client, capped_uploads
+):
+    form_progress, question = _held_empty_sitting(client)
+    other = Client()
+    session = other.session
+    session[ANONYMOUS_SITTINGS_SESSION_KEY] = [str(form_progress.pk)]
+    session.save()
+    _anonymous_upload(other, form_progress, question)
+    form_progress.answers.all().delete()
+
+    _anonymous_upload(client, form_progress, question)
+
+    assert not QuestionAnswerFile.objects.exists()
+
+
+@pytest.mark.django_db
+def test_upload_cap_error_keeps_the_attached_file_visible(
+    mock_site_context, client, capped_uploads, held_sitting
+):
+    form_progress, question, answer_file = held_sitting
+    _anonymous_upload(client, form_progress, question)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert response.status_code == 422
+    assert answer_file.original_filename in response.content.decode()

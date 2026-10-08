@@ -1,4 +1,4 @@
-"""Tests for `SiteAwareSignupForm`."""
+"""Tests for `SiteAwareSignupForm` and the shared form mixins in accounts.forms."""
 
 from __future__ import annotations
 
@@ -8,15 +8,20 @@ import re
 import pytest
 from allauth.core.context import request_context
 
+from django import forms
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
-from freedom_ls.accounts.forms import SiteAwareSignupForm
+from freedom_ls.accounts.forms import HoneypotFormMixin, SiteAwareSignupForm
 from freedom_ls.accounts.models import LegalConsent
 
 User = get_user_model()
+
+
+class _LabelledForm(HoneypotFormMixin, forms.Form):
+    honeypot_context_label = "Labelled"
 
 
 @pytest.fixture
@@ -360,3 +365,44 @@ def test_signup_with_empty_honeypot_creates_user(mock_site_context):
     Client().post(reverse("account_signup"), _signup_data(**{HONEYPOT_FIELD: ""}))
 
     assert User.objects.filter(email="honeypot@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_honeypot_mixin_behaves_the_same_on_signup(
+    allauth_request_ctx, mock_site_context, settings, caplog
+) -> None:
+    settings.TRUSTED_PROXY_IP_HEADER = None
+    allauth_request_ctx.META["REMOTE_ADDR"] = "203.0.113.7"
+    form = SiteAwareSignupForm(data={"email": "bot@example.com", "fax_number": "x"})
+
+    with caplog.at_level(logging.WARNING, logger="freedom_ls.accounts.forms"):
+        form.is_valid()
+
+    messages = [
+        r.getMessage() for r in caplog.records if r.name == "freedom_ls.accounts.forms"
+    ]
+    assert messages == [
+        f"Signup honeypot tripped on site {mock_site_context.domain} "
+        "from IP 203.0.113.7"
+    ]
+    assert str(HoneypotFormMixin.honeypot_error_message) in form.non_field_errors()
+
+
+@pytest.mark.django_db
+def test_honeypot_mixin_logs_with_its_context_label(
+    allauth_request_ctx, mock_site_context, settings, caplog
+) -> None:
+    settings.TRUSTED_PROXY_IP_HEADER = None
+    allauth_request_ctx.META["REMOTE_ADDR"] = "203.0.113.7"
+    form = _LabelledForm(data={"fax_number": "x"})
+
+    with caplog.at_level(logging.WARNING, logger="freedom_ls.accounts.forms"):
+        form.is_valid()
+
+    messages = [
+        r.getMessage() for r in caplog.records if r.name == "freedom_ls.accounts.forms"
+    ]
+    assert messages == [
+        f"Labelled honeypot tripped on site {mock_site_context.domain} "
+        "from IP 203.0.113.7"
+    ]

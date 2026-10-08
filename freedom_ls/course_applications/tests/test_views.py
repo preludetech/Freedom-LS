@@ -2379,3 +2379,124 @@ class TestClaimLandingResumesDraft:
         response = client.get(_claim_url())
 
         assert response["Location"] == _page_url(app, 2)
+
+
+# ---------------------------------------------------------------------------
+# Per-address caps and the honeypot on the anonymous apply
+# ---------------------------------------------------------------------------
+
+
+def _post_application(course, email: str = "pat@example.com", **extra: str):
+    """One anonymous no-form application POST from a browser of its own."""
+    return Client().post(_apply_url(course), {"email": email, **extra})
+
+
+@pytest.mark.django_db
+class TestAnonymousStartCap:
+    @pytest.fixture(autouse=True)
+    def _capped(self, settings, mock_site_context) -> None:
+        settings.TRUSTED_PROXY_IP_HEADER = None
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 1
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS = 600
+
+    def test_start_cap_fires_with_429(self):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response.status_code == 429
+
+    def test_start_cap_sets_retry_after(self, settings):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response["Retry-After"] == str(
+            settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS
+        )
+
+    def test_start_cap_zero_disables(self, settings):
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 0
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response.status_code == 302
+
+    def test_start_cap_key_holds_no_raw_ip(self):
+        from django.core.cache import cache
+
+        course = CourseFactory()
+
+        Client().post(
+            _apply_url(course),
+            {"email": "a@example.com"},
+            REMOTE_ADDR="203.0.113.7",
+        )
+
+        assert cache._cache
+        assert not [key for key in cache._cache if "203.0.113.7" in key]
+
+    def test_start_cap_broken_cache_fails_open(self, mocker):
+        mocker.patch(
+            "freedom_ls.accounts.throttling.cache.add",
+            side_effect=ConnectionError("no cache"),
+        )
+        mocker.patch("freedom_ls.accounts.throttling.sentry_sdk")
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response.status_code == 302
+
+    def test_start_cap_missing_proxy_header_is_forbidden(self, settings):
+        settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+        course = CourseFactory()
+
+        response = _post_application(course)
+
+        assert response.status_code == 403
+
+    def test_start_cap_ignores_signed_in_requests(self, client):
+        course = CourseFactory()
+        client.force_login(UserFactory())
+        _post_application(course, "a@example.com")
+
+        response = client.post(_apply_url(course))
+
+        assert response.status_code != 429
+
+    def test_start_cap_ignores_gets(self):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = Client().get(_apply_url(course))
+
+        assert response.status_code == 200
+
+    def test_start_cap_creates_nothing_when_it_fires(self):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        _post_application(course, "b@example.com")
+
+        assert CourseApplication.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_honeypot_trip_rejects_submit_without_creating_an_owner(
+    client, mock_site_context
+):
+    course = CourseFactory()
+
+    response = client.post(
+        _apply_url(course), {"email": "pat@example.com", "fax_number": "bot"}
+    )
+
+    assert response.status_code == 422
+    assert not CourseApplication.objects.exists()
+    assert UNCLAIMED_APPLICATIONS_SESSION_KEY not in client.session

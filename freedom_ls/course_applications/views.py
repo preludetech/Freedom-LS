@@ -20,6 +20,7 @@ from django.views.decorators.http import require_GET
 from freedom_ls.accounts.decorators import never_cache_same_origin
 from freedom_ls.accounts.legal_docs import has_legal_doc
 from freedom_ls.accounts.models import User
+from freedom_ls.accounts.throttling import is_ip_throttled
 from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_application_submitted
@@ -32,6 +33,7 @@ from freedom_ls.course_applications.claims import (
     unclaimed_application_for_course,
     unclaimed_application_ids,
 )
+from freedom_ls.course_applications.config import config
 from freedom_ls.course_applications.forms import ApplicantEmailForm
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
@@ -153,6 +155,23 @@ def _privacy_url(request: HttpRequest) -> str | None:
     return None
 
 
+def _start_cap_response(request: HttpRequest) -> HttpResponse | None:
+    """The 429 page when this address has started too many applications, else None."""
+    if not is_ip_throttled(
+        request,
+        namespace="course_applications.anonymous_start",
+        scope="start",
+        limit=config.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT,
+        window_seconds=config.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS,
+    ):
+        return None
+    response = render(request, "429.html", status=429)
+    response["Retry-After"] = str(
+        config.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS
+    )
+    return response
+
+
 def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
     held = unclaimed_application_for_course(request, course)
     if held is not None:
@@ -161,6 +180,10 @@ def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
         if held.form_progress is None:
             raise Http404
         return redirect(_resume_url(held, held.form_progress))
+    if request.method == "POST":
+        capped = _start_cap_response(request)
+        if capped is not None:
+            return capped
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     if course.application_form is not None:

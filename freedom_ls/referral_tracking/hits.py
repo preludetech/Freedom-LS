@@ -6,15 +6,13 @@ import re
 
 import sentry_sdk
 
-from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db import DatabaseError, transaction
 from django.db.models import F
 from django.http import HttpRequest
 from django.utils import timezone
-from django.utils.crypto import salted_hmac
 
-from freedom_ls.accounts.utils import get_client_ip
+from freedom_ls.accounts.throttling import is_ip_throttled
 from freedom_ls.referral_tracking.config import config
 from freedom_ls.referral_tracking.models import Door, ReferralCode, ReferralCodeHit
 
@@ -52,17 +50,6 @@ def is_machine_fetch(request: HttpRequest) -> bool:
     )
 
 
-def _client_fingerprint(ip: str) -> str:
-    """A per-deployment pseudonym for one client address.
-
-    The cache key reaches storage — under the default DatabaseCache it is a
-    row in the cache table — so the address must not be readable from it. A
-    plain digest would not do: the IPv4 space is small enough to exhaust, so
-    this is keyed on SECRET_KEY.
-    """
-    return salted_hmac("referral_tracking.hit_log", ip).hexdigest()[:32]
-
-
 def is_hit_log_throttled(referral_code: ReferralCode, request: HttpRequest) -> bool:
     """Whether this client has already had its fill of logged hits on this code.
 
@@ -72,44 +59,20 @@ def is_hit_log_throttled(referral_code: ReferralCode, request: HttpRequest) -> b
     either way, since these codes get printed on boards and scanned by a crowd
     behind one address, and refusing the redirect would break the link itself.
     """
-    limit = config.REFERRAL_TRACKING_HIT_LOG_LIMIT
-    window = config.REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS
-    if limit <= 0 or window <= 0:
-        return False
     try:
-        ip = get_client_ip(request)
+        return is_ip_throttled(
+            request,
+            namespace="referral_tracking.hit_log",
+            scope=f"{referral_code.site_id}:{referral_code.pk}",
+            limit=config.REFERRAL_TRACKING_HIT_LOG_LIMIT,
+            window_seconds=config.REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS,
+        )
     except PermissionDenied:
         # A configured proxy header is missing, so the edge was bypassed or is
         # misconfigured. Log the hit rather than silently dropping every one:
         # signup already refuses outright on the same deployment fault, so it
         # does not go unnoticed.
         return False
-    if not ip:
-        return False
-    # A key per window, rather than one key whose expiry is pushed out: on a
-    # backend without a native incr, `cache.incr` is get-then-set and resets
-    # the timeout, so a steady stream would keep one counter alive for good.
-    bucket = int(timezone.now().timestamp()) // window
-    key = (
-        f"referral-hit:{referral_code.site_id}:{referral_code.pk}"
-        f":{_client_fingerprint(ip)}:{bucket}"
-    )
-    try:
-        if cache.add(key, 1, window * 2):
-            return False
-        count = cache.incr(key)
-    except ValueError:
-        # The bucket expired between the add and the incr.
-        return False
-    except Exception as exc:
-        # The cache backend is the deployment's own choice, so what it can
-        # raise is open-ended — a connection error from Redis, say. These
-        # routes are public and must keep redirecting, and a logged hit is
-        # worth more than an enforced cap, so a broken cache costs the cap
-        # rather than the link. Reported rather than swallowed.
-        sentry_sdk.capture_exception(exc)
-        return False
-    return bool(count > limit)
 
 
 def record_hit(referral_code: ReferralCode, door: Door, request: HttpRequest) -> None:

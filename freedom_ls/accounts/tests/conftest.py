@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 
 import pytest
+
+from django.core.cache import cache
 
 
 @pytest.fixture
@@ -80,3 +82,16 @@ def legal_repo_mock(mock_legal_blobs):
         docs=(("terms", terms), ("privacy", privacy)),
     )
     return mock_legal_blobs
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache() -> Iterator[None]:
+    """Empty the cache around every test in this app.
+
+    The per-address caps count in the cache, and the default LocMemCache lives
+    for the whole test process, so counts would otherwise carry from one test
+    into the next.
+    """
+    cache.clear()
+    yield
+    cache.clear()

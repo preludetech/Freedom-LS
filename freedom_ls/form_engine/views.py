@@ -16,11 +16,13 @@ from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.decorators import never_cache_same_origin
+from freedom_ls.accounts.throttling import is_ip_throttled
 from freedom_ls.form_engine.anonymous_sittings import (
     held_sitting_ids,
     owned_or_held_q,
     sitting_for_request,
 )
+from freedom_ls.form_engine.config import config
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.models import (
     FormProgress,
@@ -76,6 +78,15 @@ def _render_file_widget(
     )
 
 
+def _attached_file(
+    form_progress: FormProgress, question: FormQuestion
+) -> QuestionAnswerFile | None:
+    """The file currently attached to this question, so an error draws over it."""
+    return QuestionAnswerFile.objects.filter(
+        answer__form_progress=form_progress, answer__question=question
+    ).first()
+
+
 @never_cache_same_origin
 @require_POST
 def partial_question_file_upload(
@@ -86,6 +97,22 @@ def partial_question_file_upload(
     if form_progress.completed_time is not None:
         return HttpResponse(status=409)
 
+    if not request.user.is_authenticated and is_ip_throttled(
+        request,
+        namespace="form_engine.anonymous_upload",
+        scope="upload",
+        limit=config.FORM_ENGINE_ANONYMOUS_UPLOAD_LIMIT,
+        window_seconds=config.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS,
+    ):
+        return _render_file_widget(
+            request,
+            form_progress,
+            question,
+            _attached_file(form_progress, question),
+            error="Too many uploads from your network. Try again in a few minutes.",
+            status=422,
+        )
+
     uploaded = request.FILES.get("file")
     # Read before validating, and truncated rather than rejected: the name is
     # only ever shown back to the applicant, and refusing an upload over a
@@ -95,7 +122,12 @@ def partial_question_file_upload(
         content, extension = validate_and_sanitise(uploaded)
     except ValidationError as err:
         return _render_file_widget(
-            request, form_progress, question, None, error=err.messages[0], status=422
+            request,
+            form_progress,
+            question,
+            _attached_file(form_progress, question),
+            error=err.messages[0],
+            status=422,
         )
 
     with transaction.atomic():
