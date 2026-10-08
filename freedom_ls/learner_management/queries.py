@@ -381,6 +381,36 @@ def educators_of(
     return User.objects.filter(site=site, is_active=True).filter(condition)
 
 
+def colleagues_of(user: User, site: Site) -> QuerySet[User]:
+    """Active users, other than `user`, holding an organisation- or cohort-scoped
+    VIEW_LEARNER-granting role in an organisation where `user` holds one too.
+
+    A site-scoped role makes nobody a colleague, because one site can hold
+    unrelated organisations. Both sides go through the OrganisationMember gate,
+    which the _granted_* builders enforce.
+    """
+    from freedom_ls.accounts.models import User
+
+    roles = roles_granting(VIEW_LEARNER, site)
+    shared = Organisation.objects.filter(site=site).filter(
+        Q(pk__in=_granted_organisations(user, roles).values("pk"))
+        | Q(pk__in=_granted_cohorts(user, roles).values("organisation_id"))
+    )
+    # Two separate Exists, each wrapping a builder directly, for the nesting reason
+    # educators_of explains.
+    holder = OuterRef(OuterRef("pk"))
+    holds_role_there = Exists(
+        _granted_organisations(holder, roles).filter(pk__in=shared.values("pk"))
+    ) | Exists(
+        _granted_cohorts(holder, roles).filter(organisation__in=shared.values("pk"))
+    )
+    return (
+        User.objects.filter(site=site, is_active=True)
+        .exclude(pk=user.pk)
+        .filter(holds_role_there)
+    )
+
+
 def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
     """Active organisation_admin role holders currently helping run this
     organisation, ordered by name.

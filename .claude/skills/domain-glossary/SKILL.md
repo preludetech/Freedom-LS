@@ -138,6 +138,7 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | --- | --- | --- |
 | `MessagingDecision`, `MessagingRefusal`, `MessagingPolicy` | `comms/messaging_policy.py` | Whether one user may message another. `MessagingDecision` follows the `*Decision` suffix, the house pattern for a policy's return value; read `.allowed`, never its truthiness. |
 | **educator of a learner** (coined) | `learner_management/queries.py` `educators_of` | An active user holding an active grant, through a role granting `VIEW_LEARNER`, that reaches a `Learner` row: a site grant, an organisation grant on the learner's organisation, or a cohort grant on a cohort the learner belongs to. The inverse of `learners_visible_to` without its superuser branch. |
+| **colleague** (coined) | `learner_management/queries.py` `colleagues_of` | An active user, other than the given one, holding an organisation- or cohort-scoped role granting `VIEW_LEARNER` in an organisation where the given user holds one too. A site-scoped role makes nobody a colleague. |
 
 ## Words that are already taken
 

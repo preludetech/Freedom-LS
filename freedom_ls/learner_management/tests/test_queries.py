@@ -40,6 +40,7 @@ from freedom_ls.learner_management.queries import (
     all_cohorts_visible_to,
     can_view_cohort,
     cohorts_visible_to,
+    colleagues_of,
     educators_of,
     latest_registration,
     learner_for_course,
@@ -936,3 +937,85 @@ class TestEducatorsOf:
             "c1_c2_viewer",
             "custom_educator_c2",
         }
+
+
+def _colleague_names(world: World, holder_name: str) -> set[str]:
+    holder_names = {user.pk: name for name, user in world.role_holders.items()}
+    pks = colleagues_of(world.role_holders[holder_name], world.site).values_list(
+        "pk", flat=True
+    )
+    return {holder_names[pk] for pk in pks if pk in holder_names}
+
+
+@pytest.mark.django_db
+class TestColleaguesOf:
+    def test_an_organisation_role_holder_and_a_cohort_role_holder_are_colleagues(
+        self, world: World
+    ) -> None:
+        assert "c1_admin" in _colleague_names(world, "o1_admin")
+        assert "o1_admin" in _colleague_names(world, "c1_admin")
+
+    def test_two_cohort_role_holders_in_the_same_organisation_are_colleagues(
+        self, world: World
+    ) -> None:
+        assert "custom_educator_c2" in _colleague_names(world, "c1_admin")
+
+    def test_a_role_holder_in_another_organisation_is_not_a_colleague(
+        self, world: World
+    ) -> None:
+        other_admin = UserFactory()
+        assign_object_role(
+            other_admin, OrganisationFactory(site=world.site), "organisation_admin"
+        )
+
+        assert (
+            not colleagues_of(world.role_holders["o1_admin"], world.site)
+            .filter(pk=other_admin.pk)
+            .exists()
+        )
+
+    def test_a_site_admin_with_no_organisation_or_cohort_role_is_not_a_colleague(
+        self, world: World
+    ) -> None:
+        assert "site_admin" not in _colleague_names(world, "o1_admin")
+
+    def test_a_site_admin_has_no_colleagues(self, world: World) -> None:
+        assert _colleague_names(world, "site_admin") == set()
+
+    def test_deactivating_the_colleagues_organisation_member_removes_them(
+        self, world: World
+    ) -> None:
+        OrganisationMember.objects.filter(user=world.role_holders["c1_admin"]).update(
+            is_active=False
+        )
+
+        assert "c1_admin" not in _colleague_names(world, "o1_admin")
+
+    def test_deactivating_the_senders_organisation_member_removes_their_colleagues(
+        self, world: World
+    ) -> None:
+        OrganisationMember.objects.filter(user=world.role_holders["o1_admin"]).update(
+            is_active=False
+        )
+
+        assert _colleague_names(world, "o1_admin") == set()
+
+    def test_a_superuser_without_a_role_is_not_a_colleague(self, world: World) -> None:
+        superuser = UserFactory(superuser=True)
+
+        assert (
+            not colleagues_of(world.role_holders["o1_admin"], world.site)
+            .filter(pk=superuser.pk)
+            .exists()
+        )
+
+    def test_a_holder_of_a_role_granting_nothing_is_not_a_colleague(
+        self, world: World
+    ) -> None:
+        assert "custom_bystander_o1" not in _colleague_names(world, "o1_admin")
+
+    def test_a_user_is_not_their_own_colleague(self, world: World) -> None:
+        assert "o1_admin" not in _colleague_names(world, "o1_admin")
+
+    def test_an_inactive_user_is_not_a_colleague(self, world: World) -> None:
+        assert "c1_admin_inactive_user" not in _colleague_names(world, "o1_admin")

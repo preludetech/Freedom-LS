@@ -1,5 +1,5 @@
 """LayeredMessagingPolicy: the refusals that do not depend on any relationship,
-and the educator of a learner relationship."""
+the educator of a learner relationship and the colleague relationship."""
 
 from __future__ import annotations
 
@@ -159,17 +159,17 @@ def test_a_reply_from_a_learner_to_an_educator_whose_role_was_removed_is_refused
     assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
 
 
-def test_recipients_for_a_cohort_admin_are_the_users_of_the_active_learners_in_their_cohort(
+def test_recipients_for_a_cohort_admin_include_the_users_of_the_active_learners_in_their_cohort(
     policy: LayeredMessagingPolicy, world: World
 ) -> None:
     recipients = policy.recipients_for(
         sender=world.role_holders["c1_admin"], site=world.site
     )
 
-    assert set(recipients) == {
+    assert {
         world.learners["in_c1"].user,
         world.learners["in_c1_and_c2"].user,
-    }
+    } <= set(recipients)
 
 
 def test_recipients_for_exclude_the_sender(
@@ -207,3 +207,25 @@ def test_recipients_for_exclude_a_user_from_another_site(
     )
 
     assert learner.user not in recipients
+
+
+def test_colleagues_may_start_with_each_other_out_of_the_box(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    decision = policy.can_start(
+        sender=world.role_holders["c1_admin"],
+        recipient=world.role_holders["o1_admin"],
+        site=world.site,
+    )
+
+    assert decision.allowed is True
+
+
+def test_recipients_for_an_organisation_admin_includes_a_cohort_viewer_of_the_organisation(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    recipients = policy.recipients_for(
+        sender=world.role_holders["o1_admin"], site=world.site
+    )
+
+    assert world.role_holders["c1_viewer"] in recipients

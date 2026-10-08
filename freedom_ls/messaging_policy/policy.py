@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.db.models import Q
+
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
@@ -14,6 +16,7 @@ from freedom_ls.learner_management.capabilities import roles_granting
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.learner_management.queries import (
     VIEW_LEARNER,
+    colleagues_of,
     visible_learners_expression,
 )
 
@@ -58,5 +61,8 @@ class LayeredMessagingPolicy(MessagingPolicy):
         return (
             User.objects.filter(site=site, is_active=True)
             .exclude(pk=sender.pk)
-            .filter(pk__in=visible_learners.values("user_id"))
+            .filter(
+                Q(pk__in=visible_learners.values("user_id"))
+                | Q(pk__in=colleagues_of(sender, site).values("pk"))
+            )
         )
