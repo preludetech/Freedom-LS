@@ -1,0 +1,28 @@
+{% comment %}
+The modal fragment an UnregisterCohortFromCourseAction's GET returns. Context:
+cohort, course, registration, losing_count, losing_phrase, keeping_names,
+confirm_url. keeping_names is empty when nobody keeps access.
+{% endcomment %}
+<c-modal-header>Unregister {{ cohort }} from {{ course }}</c-modal-header>
+
+<div class="space-y-3 px-6 py-4 text-sm">
+    <p>{{ losing_phrase }} lose{{ losing_count|pluralize:"s," }} access to {{ course }}.</p>
+    {% if keeping_names %}
+        <p>These learners keep access through another registration: {{ keeping_names }}.</p>
+    {% endif %}
+    <p>Everyone keeps their progress.</p>
+    <p>You can register {{ cohort }} again later.</p>
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <form hx-post="{{ confirm_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="registration" value="{{ registration.pk }}">
+        <c-button type="submit" variant="secondary" loading="true" loading_text="Unregistering...">
+            Unregister
+        </c-button>
+    </form>
+</c-button-group>

@@ -1,0 +1,8 @@
+{% comment %}
+The Unregister trigger on an active registration row. base_url is the courses
+tab's own URL, where the unregister action resolves; can_unregister is set by
+the panel from the user's capability and the cohort being active.
+{% endcomment %}
+{% if can_unregister and object.is_active %}
+    <c-modal-trigger url="{{ base_url }}/__actions/unregister?registration={{ object.pk }}" label="Unregister" variant="secondary" />
+{% endif %}

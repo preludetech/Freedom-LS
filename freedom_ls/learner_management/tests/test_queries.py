@@ -49,6 +49,7 @@ from freedom_ls.learner_management.queries import (
     latest_registration,
     learner_for_course,
     learners_visible_to,
+    members_keeping_access,
     organisation_for_learner_course,
     organisations_accessible_to,
     peers_of,
@@ -1267,3 +1268,74 @@ class TestRegisterableCoursesFor:
         registration = CohortCourseRegistrationFactory(is_active=True)
 
         assert list(registerable_courses_for(cohort)) == [registration.course]
+
+
+@pytest.mark.django_db
+class TestMembersKeepingAccess:
+    def _scenario(self):
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        course = CourseFactory()
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        return organisation, cohort, course, registration
+
+    def _member(self, organisation: Organisation, cohort: Cohort, **learner_fields):
+        learner = LearnerFactory(organisation=organisation, **learner_fields)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        return learner
+
+    def test_names_a_member_kept_by_an_individual_registration(self, mock_site_context):
+        organisation, cohort, course, registration = self._scenario()
+        member = self._member(organisation, cohort)
+        LearnerCourseRegistrationFactory(learner=member, course=course, is_active=True)
+
+        assert list(members_keeping_access(registration)) == [member]
+
+    def test_names_a_member_kept_by_another_active_cohort(self, mock_site_context):
+        organisation, cohort, course, registration = self._scenario()
+        member = self._member(organisation, cohort)
+        other = _make_cohort(organisation=organisation)
+        CohortMembershipFactory(learner=member, cohort=other)
+        CohortCourseRegistrationFactory(cohort=other, course=course)
+
+        assert list(members_keeping_access(registration)) == [member]
+
+    def test_excludes_a_member_kept_only_by_an_inactive_cohorts_registration(
+        self, mock_site_context
+    ):
+        organisation, cohort, course, registration = self._scenario()
+        member = self._member(organisation, cohort)
+        other = _make_cohort(organisation=organisation)
+        other.is_active = False
+        other.save()
+        CohortMembershipFactory(learner=member, cohort=other)
+        CohortCourseRegistrationFactory(cohort=other, course=course)
+
+        assert list(members_keeping_access(registration)) == []
+
+    def test_excludes_a_member_with_an_inactive_individual_registration(
+        self, mock_site_context
+    ):
+        organisation, cohort, course, registration = self._scenario()
+        member = self._member(organisation, cohort)
+        LearnerCourseRegistrationFactory(learner=member, course=course, is_active=False)
+
+        assert list(members_keeping_access(registration)) == []
+
+    def test_excludes_a_removed_learner(self, mock_site_context):
+        organisation, cohort, course, registration = self._scenario()
+        member = self._member(organisation, cohort, is_active=False)
+        LearnerCourseRegistrationFactory(learner=member, course=course, is_active=True)
+
+        assert list(members_keeping_access(registration)) == []
+
+    def test_costs_one_query(self, mock_site_context, django_assert_num_queries):
+        organisation, cohort, course, registration = self._scenario()
+        member = self._member(organisation, cohort)
+        LearnerCourseRegistrationFactory(learner=member, course=course, is_active=True)
+        registration = CohortCourseRegistration.objects.select_related("course").get(
+            pk=registration.pk
+        )
+
+        with django_assert_num_queries(1):
+            list(members_keeping_access(registration))

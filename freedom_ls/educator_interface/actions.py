@@ -3,24 +3,30 @@
 from __future__ import annotations
 
 from typing import cast
+from uuid import UUID
 
 from django import forms
 from django.db import transaction
 from django.db.models import Model
-from django.http import HttpRequest, HttpResponse
-from django.shortcuts import render
+from django.http import Http404, HttpRequest, HttpResponse
+from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
 from freedom_ls.educator_interface.forms import CohortCourseRegistrationForm
 from freedom_ls.learner_management.models import (
     Cohort,
+    CohortCourseRegistration,
     Learner,
 )
 from freedom_ls.learner_management.queries import (
     cohort_course_count,
     cohort_is_empty,
+    members_keeping_access,
 )
-from freedom_ls.learner_management.utils import register_cohort_for_course
+from freedom_ls.learner_management.utils import (
+    register_cohort_for_course,
+    unregister_cohort_from_course,
+)
 from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
@@ -218,6 +224,67 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(self._page_url)
+
+
+KEEPING_NAMES_SHOWN = 10
+
+
+class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
+    """Withdraws one of the cohort's active course registrations, after
+    confirmation. The registration travels as a `registration` parameter, so
+    the action resolves on the courses tab and never renders as a footer
+    button."""
+
+    label = "Unregister"
+    action_name = "unregister"
+    variant = "secondary"
+    capability = "freedom_ls_learner_management.change_cohortcourseregistration"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "educator_interface/modal/unregister_confirmation.html"
+
+    def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
+        params = ctx.request.POST if ctx.request.method == "POST" else ctx.request.GET
+        try:
+            registration_pk = UUID(params.get("registration", ""))
+        except ValueError:
+            raise Http404("No such registration") from None
+        return get_object_or_404(
+            cast(Cohort, ctx.instance).course_registrations.select_related("course"),
+            pk=registration_pk,
+            is_active=True,
+        )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        cohort = cast(Cohort, ctx.instance)
+        registration = self._registration(ctx)
+        keeping = list(members_keeping_access(registration))
+        member_count = cohort.cohortmembership_set.filter(
+            learner__is_active=True
+        ).count()
+        names = [learner.user.display_name for learner in keeping[:KEEPING_NAMES_SHOWN]]
+        if len(keeping) > KEEPING_NAMES_SHOWN:
+            names.append(f"{len(keeping) - KEEPING_NAMES_SHOWN} more")
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "cohort": cohort,
+                "registration": registration,
+                "course": registration.course,
+                "losing_count": member_count - len(keeping),
+                "losing_phrase": count_noun(Learner, member_count - len(keeping)),
+                "keeping_names": join_prose(names),
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        if not cast(Cohort, ctx.instance).is_active:
+            return self.refuse_inactive(ctx)
+        unregister_cohort_from_course(self._registration(ctx))
+        # The courses tab, its count and the header's course stat all
+        # re-render, which a panel refresh alone could not do for the header.
+        return navigation_response(ctx.page_url)
 
 
 def cohort_state_actions() -> list[PanelAction]:
