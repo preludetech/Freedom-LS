@@ -6,10 +6,40 @@ is empty, lie in the future, or fall before another, because rehires and
 acquisitions produce real data any ordering rule would reject.
 """
 
+from typing import Self, cast
+from uuid import UUID
+
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import models
+from django.db.models import Q
 from django.db.models.functions import Lower, Trim
 
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareManager, SiteAwareModel
+
+
+class ListEntryQuerySet(models.QuerySet):
+    def for_picker(self, organisation_id: UUID, current_pk: UUID | None) -> Self:
+        """Active entries of the organisation, plus the one currently held.
+
+        A deactivated entry leaves every picker but stays valid where it is
+        already chosen, so a learner holding one can still be saved.
+        """
+        return self.filter(organisation_id=organisation_id).filter(
+            Q(is_active=True) | Q(pk=current_pk)
+        )
+
+
+class ListEntryManager(SiteAwareManager):
+    # Hand-written pass-through, the way ArticleManager does it, because
+    # SiteAwareManager.from_queryset() is not a base mypy can resolve.
+    _queryset_class = ListEntryQuerySet
+
+    def for_picker(
+        self, organisation_id: UUID, current_pk: UUID | None
+    ) -> ListEntryQuerySet:
+        return cast("ListEntryQuerySet", self.get_queryset()).for_picker(
+            organisation_id, current_pk
+        )
 
 
 class JobTitle(SiteAwareModel):
@@ -22,6 +52,8 @@ class JobTitle(SiteAwareModel):
     # Deactivating is how an entry is withdrawn. A learner may still hold it,
     # so it is never deleted.
     is_active = models.BooleanField(default=True)
+
+    objects = ListEntryManager()
 
     class Meta:
         ordering = ["name"]
@@ -59,6 +91,8 @@ class Department(SiteAwareModel):
     # so it is never deleted.
     is_active = models.BooleanField(default=True)
 
+    objects = ListEntryManager()
+
     class Meta:
         ordering = ["name"]
         constraints = [
@@ -94,6 +128,8 @@ class Location(SiteAwareModel):
     # Deactivating is how an entry is withdrawn. A learner may still hold it,
     # so it is never deleted.
     is_active = models.BooleanField(default=True)
+
+    objects = ListEntryManager()
 
     class Meta:
         ordering = ["name"]
@@ -157,6 +193,32 @@ class LearnerHRAttributes(SiteAwareModel):
     class Meta:
         verbose_name = "HR attributes"
         verbose_name_plural = "HR attributes"
+
+    def clean(self) -> None:
+        """Refuse a list entry that belongs to another organisation than the learner's.
+
+        A deactivated entry is not refused, so a learner who holds one can
+        still be saved. Nothing here compares or orders the dates.
+        """
+        super().clean()
+        try:
+            learner = self.learner
+        except ObjectDoesNotExist:
+            # Unset means the form already holds a field error for it; let
+            # that surface rather than crash here.
+            return
+        errors: dict[str, ValidationError] = {}
+        for field_name, label, entry in (
+            ("job_title", "job title", self.job_title),
+            ("department", "department", self.department),
+            ("location", "location", self.location),
+        ):
+            if entry is not None and entry.organisation_id != learner.organisation_id:
+                errors[field_name] = ValidationError(
+                    f"Choose a {label} from this learner's organisation."
+                )
+        if errors:
+            raise ValidationError(errors)
 
     def __str__(self) -> str:
         return f"HR attributes for {self.learner}"

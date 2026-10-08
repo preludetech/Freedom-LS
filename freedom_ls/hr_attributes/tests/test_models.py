@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 
@@ -19,7 +22,12 @@ from freedom_ls.hr_attributes.factories import (
     LearnerHRAttributesFactory,
     LocationFactory,
 )
-from freedom_ls.hr_attributes.models import LearnerHRAttributes
+from freedom_ls.hr_attributes.models import (
+    Department,
+    JobTitle,
+    LearnerHRAttributes,
+    Location,
+)
 
 LIST_FACTORIES = [JobTitleFactory, DepartmentFactory, LocationFactory]
 HOLDING_FIELD_BY_FACTORY = {
@@ -146,3 +154,125 @@ def test_full_clean_keeps_the_case_of_name(mock_site_context, factory_class):
 
     # Assert
     assert entry.name == "IT"
+
+
+MODEL_BY_FACTORY = {
+    JobTitleFactory: JobTitle,
+    DepartmentFactory: Department,
+    LocationFactory: Location,
+}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory_class", LIST_FACTORIES)
+def test_full_clean_refuses_an_entry_from_another_organisation(
+    mock_site_context, factory_class
+):
+    # Arrange
+    field = HOLDING_FIELD_BY_FACTORY[factory_class]
+    attributes = LearnerHRAttributesFactory()
+    setattr(attributes, field, factory_class())
+
+    # Act
+    with pytest.raises(ValidationError) as excinfo:
+        attributes.full_clean(exclude=["site"])
+
+    # Assert
+    assert list(excinfo.value.error_dict) == [field]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory_class", LIST_FACTORIES)
+def test_full_clean_accepts_a_deactivated_entry_from_the_same_organisation(
+    mock_site_context, factory_class
+):
+    # Arrange
+    field = HOLDING_FIELD_BY_FACTORY[factory_class]
+    learner_attributes = LearnerHRAttributesFactory()
+    entry = factory_class(
+        organisation=learner_attributes.learner.organisation, is_active=False
+    )
+    setattr(learner_attributes, field, entry)
+
+    # Act / Assert
+    learner_attributes.full_clean(exclude=["site"])
+
+
+@pytest.mark.django_db
+def test_full_clean_accepts_start_dates_with_no_entries(mock_site_context):
+    # Arrange
+    attributes = LearnerHRAttributesFactory(
+        job_title=None,
+        department=None,
+        location=None,
+        organisation_start_date=date(2024, 1, 15),
+        job_title_start_date=date(2024, 2, 1),
+        department_start_date=date(2024, 3, 1),
+        location_start_date=date(2024, 4, 1),
+    )
+
+    # Act / Assert
+    attributes.full_clean(exclude=["site"])
+
+
+@pytest.mark.django_db
+def test_full_clean_accepts_a_start_date_far_in_the_future(mock_site_context):
+    # Arrange
+    attributes = LearnerHRAttributesFactory()
+    attributes.organisation_start_date = date(2999, 1, 1)
+
+    # Act / Assert
+    attributes.full_clean(exclude=["site"])
+
+
+@pytest.mark.django_db
+def test_full_clean_accepts_a_job_title_start_before_the_organisation_start(
+    mock_site_context,
+):
+    # Arrange
+    attributes = LearnerHRAttributesFactory(
+        organisation_start_date=date(2024, 6, 1),
+        job_title_start_date=date(2020, 1, 1),
+    )
+
+    # Act / Assert
+    attributes.full_clean(exclude=["site"])
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory_class", LIST_FACTORIES)
+def test_for_picker_returns_active_entries_and_the_held_inactive_one_in_name_order(
+    mock_site_context, factory_class
+):
+    # Arrange
+    model = MODEL_BY_FACTORY[factory_class]
+    organisation = OrganisationFactory()
+    factory_class(organisation=organisation, name="Charlie")
+    factory_class(organisation=organisation, name="Alpha")
+    held = factory_class(organisation=organisation, name="Bravo", is_active=False)
+    factory_class(organisation=organisation, name="Delta", is_active=False)
+    factory_class(name="Other organisation")
+
+    # Act
+    names = [entry.name for entry in model.objects.for_picker(organisation.pk, held.pk)]
+
+    # Assert
+    assert names == ["Alpha", "Bravo", "Charlie"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("factory_class", LIST_FACTORIES)
+def test_for_picker_without_a_held_entry_omits_inactive_entries(
+    mock_site_context, factory_class
+):
+    # Arrange
+    model = MODEL_BY_FACTORY[factory_class]
+    organisation = OrganisationFactory()
+    factory_class(organisation=organisation, name="Alpha")
+    factory_class(organisation=organisation, name="Bravo", is_active=False)
+
+    # Act
+    names = [entry.name for entry in model.objects.for_picker(organisation.pk, None)]
+
+    # Assert
+    assert names == ["Alpha"]
