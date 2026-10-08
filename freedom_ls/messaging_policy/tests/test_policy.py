@@ -1,23 +1,33 @@
 """LayeredMessagingPolicy: the refusals that do not depend on any relationship,
 the educator of a learner relationship, the colleague relationship and the
-cohort-peer candidates resolved through the settings layer."""
+cohort-peer and course-peer candidates resolved through the settings layer."""
 
 from __future__ import annotations
 
 from collections.abc import Iterator
+from typing import NamedTuple, cast
 
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.db.models import Model
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import MessagingRefusal
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
+)
+from freedom_ls.learner_management.models import (
+    CohortCourseRegistration,
+    Learner,
+    LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
@@ -58,6 +68,10 @@ QUERIES_RECIPIENTS = 3
 QUERIES_ALLOWED = 3
 QUERIES_CLOSED = 5
 QUERIES_NO_RELATIONSHIP = 5
+
+
+def open_course_peers(settings: SettingsWrapper) -> None:
+    settings.MESSAGING_DEFAULT_FLAGS = {**ALL_CLOSED, "learner_to_course_peer": "open"}
 
 
 def open_cohort_peers(settings: SettingsWrapper) -> None:
@@ -327,7 +341,7 @@ def test_a_learner_with_no_shared_cohort_has_no_relationship_even_when_the_flag_
 
     decision = policy.can_start(
         sender=world.learners["no_cohort"].user,
-        recipient=world.learners["in_c1"].user,
+        recipient=world.learners["in_o1_and_o2"].user,
         site=world.site,
     )
 
@@ -467,3 +481,184 @@ def test_can_start_runs_a_fixed_number_of_queries_for_a_pair_with_no_relationshi
             recipient=scaled_world.learners["in_c1"].user,
             site=scaled_world.site,
         )
+
+
+def _new_organisation() -> Model:
+    return cast(Model, CohortFactory().organisation)
+
+
+def _new_course(organisation: Model) -> Model:
+    """A course nobody is registered for, reached through a registration factory so
+    no test imports the content app."""
+    return cast(
+        Model,
+        CohortCourseRegistrationFactory(
+            cohort=CohortFactory(organisation=organisation), is_active=False
+        ).course,
+    )
+
+
+def _register_individually(
+    learner: Learner, course: Model
+) -> LearnerCourseRegistration | CohortCourseRegistration:
+    return cast(
+        LearnerCourseRegistration,
+        LearnerCourseRegistrationFactory(learner=learner, course=course),
+    )
+
+
+def _register_through_cohort(
+    learner: Learner, course: Model
+) -> LearnerCourseRegistration | CohortCourseRegistration:
+    cohort = CohortFactory(organisation=learner.organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return cast(
+        CohortCourseRegistration,
+        CohortCourseRegistrationFactory(cohort=cohort, course=course),
+    )
+
+
+REGISTRATION_PATHS = {
+    "individually": _register_individually,
+    "through_cohort": _register_through_cohort,
+}
+
+REGISTRATION_PATH_PAIRS = [
+    ("individually", "individually"),
+    ("individually", "through_cohort"),
+    ("through_cohort", "individually"),
+    ("through_cohort", "through_cohort"),
+]
+
+
+class CoursePeers(NamedTuple):
+    sender: Learner
+    recipient: Learner
+    recipient_registration: LearnerCourseRegistration | CohortCourseRegistration
+
+
+def _course_peers(
+    site: Site, sender_path: str = "individually", recipient_path: str = "individually"
+) -> CoursePeers:
+    organisation = _new_organisation()
+    course = _new_course(organisation)
+    sender = LearnerFactory(organisation=organisation)
+    recipient = LearnerFactory(organisation=organisation)
+    REGISTRATION_PATHS[sender_path](sender, course)
+    return CoursePeers(
+        sender, recipient, REGISTRATION_PATHS[recipient_path](recipient, course)
+    )
+
+
+def test_a_course_peer_is_closed_by_configuration_out_of_the_box(
+    out_of_the_box_policy: LayeredMessagingPolicy, mock_site_context: Site
+) -> None:
+    peers = _course_peers(mock_site_context)
+
+    decision = out_of_the_box_policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_a_course_peer_is_refused_when_the_flag_is_closed(
+    policy: LayeredMessagingPolicy, mock_site_context: Site
+) -> None:
+    peers = _course_peers(mock_site_context)
+
+    decision = policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+@pytest.mark.parametrize(("sender_path", "recipient_path"), REGISTRATION_PATH_PAIRS)
+def test_a_learner_may_start_with_a_course_peer_when_the_flag_is_open(
+    policy: LayeredMessagingPolicy,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
+    sender_path: str,
+    recipient_path: str,
+) -> None:
+    open_course_peers(settings)
+    peers = _course_peers(mock_site_context, sender_path, recipient_path)
+
+    decision = policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+def test_course_peers_in_different_organisations_have_no_relationship(
+    policy: LayeredMessagingPolicy, mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    open_course_peers(settings)
+    course = _new_course(_new_organisation())
+    sender = LearnerFactory(organisation=_new_organisation())
+    recipient = LearnerFactory(organisation=_new_organisation())
+    _register_individually(sender, course)
+    _register_individually(recipient, course)
+
+    decision = policy.can_start(
+        sender=sender.user, recipient=recipient.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
+
+
+def _remove_recipient_row(peers: CoursePeers) -> None:
+    peers.recipient.delete()
+
+
+def _deactivate_recipient_registration(peers: CoursePeers) -> None:
+    peers.recipient_registration.is_active = False
+    peers.recipient_registration.save()
+
+
+CANDIDATE_REMOVALS = {
+    "learner_removed": _remove_recipient_row,
+    "registration_inactive": _deactivate_recipient_registration,
+}
+
+
+@pytest.mark.parametrize("removal", CANDIDATE_REMOVALS)
+@pytest.mark.parametrize("path", REGISTRATION_PATHS)
+def test_a_removed_learner_or_inactive_registration_removes_the_candidate(
+    policy: LayeredMessagingPolicy,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
+    removal: str,
+    path: str,
+) -> None:
+    open_course_peers(settings)
+    peers = _course_peers(mock_site_context, recipient_path=path)
+    CANDIDATE_REMOVALS[removal](peers)
+
+    decision = policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
+
+
+@pytest.mark.parametrize("removal", CANDIDATE_REMOVALS)
+@pytest.mark.parametrize("path", REGISTRATION_PATHS)
+def test_a_removed_learner_or_inactive_registration_removes_the_candidate_backwards(
+    policy: LayeredMessagingPolicy,
+    mock_site_context: Site,
+    settings: SettingsWrapper,
+    removal: str,
+    path: str,
+) -> None:
+    open_course_peers(settings)
+    peers = _course_peers(mock_site_context, recipient_path=path)
+    CANDIDATE_REMOVALS[removal](peers)
+
+    decision = policy.can_start(
+        sender=peers.recipient.user, recipient=peers.sender.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.NO_RELATIONSHIP

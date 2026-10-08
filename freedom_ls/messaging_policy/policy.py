@@ -13,11 +13,18 @@ from freedom_ls.comms.messaging_policy import (
     MessagingRefusal,
 )
 from freedom_ls.learner_management.capabilities import roles_granting
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.queries import (
     VIEW_LEARNER,
     colleagues_of,
+    holds_registration_for_any_expression,
     is_in_cohort_expression,
+    registrations_of,
     visible_learners_expression,
 )
 from freedom_ls.messaging_policy.config import config
@@ -80,7 +87,7 @@ class LayeredMessagingPolicy(MessagingPolicy):
         rows = list(
             Learner.objects.filter(
                 user=sender, site=site, is_active=True
-            ).select_related("organisation")
+            ).select_related("organisation", "site")
         )
         return _Resolution(site=site, rows=rows)
 
@@ -124,10 +131,21 @@ class LayeredMessagingPolicy(MessagingPolicy):
         cohorts = self._resolved_cohorts(
             row, resolution, "learner_to_cohort_peer", open_only=open_only
         )
-        through_cohorts = peer_rows.filter(
+        through_shared_cohorts = peer_rows.filter(
             is_in_cohort_expression(site, cohorts.values("pk"))
         )
-        return Q(pk__in=through_cohorts.values("user_id"))
+        own, through_cohorts = self._resolved_registrations(
+            row, resolution, open_only=open_only
+        )
+        own_courses = own.values("course_id")
+        cohort_courses = through_cohorts.values("course_id")
+        through_courses = peer_rows.filter(
+            holds_registration_for_any_expression(site, own_courses)
+            | holds_registration_for_any_expression(site, cohort_courses)
+        )
+        return Q(pk__in=through_shared_cohorts.values("user_id")) | Q(
+            pk__in=through_courses.values("user_id")
+        )
 
     def _row_layers(
         self, row: Learner, resolution: _Resolution, flag: str
@@ -143,13 +161,45 @@ class LayeredMessagingPolicy(MessagingPolicy):
         cohorts = Cohort.objects.filter(
             site=resolution.site, cohortmembership__learner=row
         )
+        return self._keep_open(cohorts, row, resolution, flag, open_only=open_only)
+
+    def _resolved_registrations(
+        self, row: Learner, resolution: _Resolution, *, open_only: bool
+    ) -> tuple[QuerySet[LearnerCourseRegistration], QuerySet[CohortCourseRegistration]]:
+        """The sender row's active registrations by each path, each resolved for the
+        course-peer flag through its own chain; with open_only, only those resolving
+        open. Callers take values("course_id") of each."""
+        own, through_cohorts = registrations_of(row)
+        flag = "learner_to_course_peer"
+        return (
+            self._keep_open(own, row, resolution, flag, open_only=open_only),
+            self._keep_open(
+                through_cohorts, row, resolution, flag, open_only=open_only
+            ),
+        )
+
+    def _keep_open[T: Model](
+        self,
+        candidates: QuerySet[T],
+        row: Learner,
+        resolution: _Resolution,
+        flag: str,
+        *,
+        open_only: bool,
+    ) -> QuerySet[T]:
+        """`candidates` unchanged, or with open_only only those whose chain resolves
+        open for `flag`."""
         if not open_only:
-            return cohorts
+            return candidates
         expression = resolved_flag_expression(self._row_layers(row, resolution, flag))
         if isinstance(expression, Value):
-            # The chain is a constant for every cohort, so no join is needed.
-            return cohorts if expression.value == MessagingFlag.OPEN else cohorts.none()
-        open_cohorts: QuerySet[Cohort] = cohorts.annotate(resolved=expression).filter(
+            # The chain is a constant for every candidate, so no join is needed.
+            return (
+                candidates
+                if expression.value == MessagingFlag.OPEN
+                else candidates.none()
+            )
+        open_candidates: QuerySet[T] = candidates.annotate(resolved=expression).filter(
             resolved=MessagingFlag.OPEN
         )
-        return open_cohorts
+        return open_candidates
