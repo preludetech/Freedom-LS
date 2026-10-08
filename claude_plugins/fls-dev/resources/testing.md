@@ -54,6 +54,13 @@ to get only the portable contract set.
 - **Stub models:** "some object with an assignable role" is the common FLS case for the stub-model technique, in `role_based_permissions`' own tests.
 - **Cross-cutting tests:** checks over the shipped `demo_content/` belong in a `content_engine/tests/demo_content/` subpackage and carry `fls_internal` (see the marker taxonomy below). Today they sit flat in `content_engine/tests/` as `test_demo_content_*.py`, listed in the mirroring baseline.
 
+## Test tiers — FLS specifics
+
+`[tool.test_tiers]` in `pyproject.toml` extends the generic lists in `select_tests.py`:
+
+- `none`: `spec_dd/**` holds spec documents no test reads, and `claude_plugins/**/*.md` and `*.jsx` are plugin prompts and course-author components that no test executes.
+- `escalation`: `config/**` is the settings package every test runs under. `site_aware_models` and `content_base` are the bases every model and content type builds on, so a change there reaches apps the dependency map shows only indirectly.
+
 ## Collection safety — FLS example
 
 Where the generic resource uses `myproject.optional_feature` / `WidgetFactory`, FLS's concrete target is `freedom_ls.course_applications` / `CourseApplicationFactory`, with the conftest at `freedom_ls/course_applications/tests/conftest.py`.

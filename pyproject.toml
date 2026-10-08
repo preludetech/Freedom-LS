@@ -97,6 +97,22 @@ import_baseline = "test_organisation/import_baseline.txt"
 mirroring_baseline = "test_organisation/mirroring_baseline.txt"
 mirroring_exemptions = "test_organisation/mirroring_exemptions.txt"
 
+[tool.test_tiers]
+# Paths whose change cannot alter a test result: the spec directories, and the plugin
+# markdown this repository hosts.
+none = [
+    "spec_dd/**",
+    "claude_plugins/**/*.md",
+    "claude_plugins/**/*.jsx",
+]
+# Fan-out the mirror and the app map cannot see: the settings package, and the two apps
+# every model and every content type builds on.
+escalation = [
+    "config/**",
+    "freedom_ls/site_aware_models/**",
+    "freedom_ls/content_base/**",
+]
+
 [tool.coverage.run]
 branch = true
 source = ["freedom_ls"]

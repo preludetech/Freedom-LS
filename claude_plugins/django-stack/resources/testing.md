@@ -32,6 +32,10 @@ A helper or URLconf module that only an app's own tests use lives alongside thos
 
 A project can enforce this rule with the `[tool.test_organisation]` table and `${CLAUDE_PLUGIN_ROOT}/scripts/check_test_mirroring.py`.
 
+### Choosing which tests to run
+
+`${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py` takes changed paths (or `--working-tree`) and prints the tier (`none`, `targeted` or `full`), a `why:` line per path and the pytest `command:` to run. Its generic `none` and escalation lists live in the script. A project adds its own entries to the optional `[tool.test_tiers]` table in `pyproject.toml`: `none` for paths that cannot change a test result, and `escalation` for paths with fan-out the mirror and the app map cannot see. Each key is a list of globs; both extend the script's lists.
+
 ### Cross-cutting tests
 
 Some test files check a property rather than one module's behaviour: an import-order invariant, migration state, settings resolution, or a content or vendored-asset regression. They have no module to mirror, and that's fine.

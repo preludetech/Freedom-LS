@@ -1,0 +1,429 @@
+"""Tests for `claude_plugins/django-stack/scripts/select_tests.py`.
+
+The script's directory is hyphenated and not importable, and it finds its siblings through
+`sys.path[0]`, so these tests run it as a subprocess against a throwaway `tmp_path` project:
+a `pyproject.toml` plus a namespace package (`pkg/`, no `__init__.py`) holding apps.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from tests._script_trees import run_command, run_script, write_tree
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPT = REPO_ROOT / "claude_plugins" / "django-stack" / "scripts" / "select_tests.py"
+
+FULL_COMMAND = "command: uv run pytest -n auto"
+
+
+def apps_py(dotted_name: str, class_name: str) -> str:
+    return (
+        "from django.apps import AppConfig\n\n\n"
+        f"class {class_name}(AppConfig):\n"
+        f'    name = "{dotted_name}"\n'
+    )
+
+
+def alpha_app() -> dict[str, str]:
+    """An app with a module and a mirrored test file."""
+    return {
+        "pyproject.toml": "",
+        "pkg/alpha/__init__.py": "",
+        "pkg/alpha/apps.py": apps_py("pkg.alpha", "AlphaConfig"),
+        "pkg/alpha/services.py": "",
+        "pkg/alpha/tests/__init__.py": "",
+        "pkg/alpha/tests/test_services.py": "",
+    }
+
+
+def lines(output: str, kind: str) -> list[str]:
+    return [line for line in output.splitlines() if line.startswith(f"{kind}:")]
+
+
+def test_docs_path_alone_is_tier_none_without_a_command(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/guide.md")
+
+    # Assert
+    assert result.returncode == 0
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert lines(result.stdout, "command") == []
+    assert lines(result.stdout, "why") == [
+        "why: docs/guide.md -> none (matches docs/**)"
+    ]
+
+
+def test_migration_path_is_tier_full_with_the_whole_suite_command(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/migrations/0001_initial.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "command") == [FULL_COMMAND]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/migrations/0001_initial.py -> full (matches **/migrations/**)"
+    ]
+
+
+def test_project_none_entry_makes_a_path_tier_none(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(
+        tmp_path,
+        alpha_app() | {"pyproject.toml": '[tool.test_tiers]\nnone = ["notes/**"]\n'},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "notes/today.txt")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+
+
+def test_project_escalation_entry_makes_a_path_tier_full(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(
+        tmp_path,
+        alpha_app()
+        | {"pyproject.toml": '[tool.test_tiers]\nescalation = ["pkg/alpha/**"]\n'},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert "matches pkg/alpha/**" in result.stdout
+
+
+def test_generic_lists_apply_without_a_tool_test_tiers_table(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": "[tool.other]\nx = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "uv.lock")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+
+
+def test_generic_lists_apply_without_a_pyproject_file(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, {"docs/a.md": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+
+
+@pytest.mark.parametrize("key", ["none", "escalation"])
+def test_non_list_value_exits_2_naming_the_key(tmp_path: Path, key: str) -> None:
+    # Arrange
+    write_tree(
+        tmp_path, alpha_app() | {"pyproject.toml": f'[tool.test_tiers]\n{key} = "x"\n'}
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert result.returncode == 2
+    assert key in result.stderr
+
+
+def test_list_holding_a_non_string_exits_2_naming_the_key(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(
+        tmp_path,
+        alpha_app() | {"pyproject.toml": "[tool.test_tiers]\nescalation = [1]\n"},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert result.returncode == 2
+    assert "escalation" in result.stderr
+
+
+def test_malformed_pyproject_exits_2(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": "[tool.test_tiers\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert result.returncode == 2
+
+
+def test_module_change_selects_the_owning_apps_test_directory(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)"
+    ]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests"
+    ]
+
+
+def test_owning_app_without_a_tests_directory_is_tier_none(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(
+        tmp_path,
+        {
+            "pyproject.toml": "",
+            "pkg/beta/__init__.py": "",
+            "pkg/beta/apps.py": apps_py("pkg.beta", "BetaConfig"),
+            "pkg/beta/services.py": "",
+        },
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/beta/services.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/beta/services.py -> none (owning app beta has no tests directory)"
+    ]
+
+
+def test_changed_test_file_selects_itself(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/tests/test_services.py")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/tests/test_services.py -> pkg/alpha/tests/test_services.py "
+        "(changed test file)"
+    ]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests/test_services.py"
+    ]
+
+
+def test_deleted_test_file_selects_nothing(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/tests/test_gone.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/tests/test_gone.py -> none (deleted test file)"
+    ]
+
+
+def test_selected_test_directory_with_playwright_subdirectory_ignores_it(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pkg/alpha/tests/playwright/__init__.py": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov "
+        "--ignore=pkg/alpha/tests/playwright pkg/alpha/tests"
+    ]
+
+
+def test_test_file_inside_a_selected_directory_is_dropped_from_the_command(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, "pkg/alpha/services.py", "pkg/alpha/tests/test_services.py"
+    )
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov pkg/alpha/tests"
+    ]
+
+
+def test_path_with_a_space_is_printed_shell_quoted(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pkg/alpha/tests/test_a b.py": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/tests/test_a b.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov 'pkg/alpha/tests/test_a b.py'"
+    ]
+
+
+def test_none_and_selected_paths_together_are_targeted(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md", "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+    assert len(lines(result.stdout, "why")) == 2
+
+
+def test_one_escalation_hit_among_selected_paths_is_full(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py", "pkg/urls.py")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "command") == [FULL_COMMAND]
+    assert len(lines(result.stdout, "why")) == 2
+
+
+def test_unmapped_path_is_full(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "scripts/deploy.sh")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == [
+        "why: scripts/deploy.sh -> full (unmapped path)"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("path", "tier"),
+    [
+        ("conftest.py", "full"),
+        ("pkg/conftest.py", "full"),
+        ("pkg/alpha/factories.py", "full"),
+        ("pkg/alpha/fixtures/data.json", "full"),
+        ("docs/x/y.md", "none"),
+        ("docs/x.md", "none"),
+        (".claude/settings.json", "none"),
+        (".claude/ds/notes.md", "none"),
+        (".github/workflows/ci.yml", "none"),
+        ("README.md", "none"),
+        ("pkg/README.md", "full"),
+    ],
+)
+def test_glob_matching_facts(tmp_path: Path, path: str, tier: str) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, path)
+
+    # Assert
+    assert lines(result.stdout, "tier") == [f"tier: {tier}"]
+
+
+def test_two_runs_over_the_same_tree_print_identical_output(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+    args = ("pkg/alpha/services.py", "docs/a.md", "pkg/alpha/tests/test_services.py")
+
+    # Act
+    first = run_script(SCRIPT, tmp_path, *args)
+    second = run_script(SCRIPT, tmp_path, *reversed(args))
+
+    # Assert
+    assert first.stdout == second.stdout
+
+
+def test_working_tree_flag_picks_up_an_untracked_file(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+    run_command(["git", "init"], tmp_path)
+    run_command(["git", "add", "."], tmp_path)
+    run_command(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-m",
+            "init",
+        ],
+        tmp_path,
+    )
+    write_tree(tmp_path, {"docs/new.md": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert lines(result.stdout, "why") == ["why: docs/new.md -> none (matches docs/**)"]
+
+
+def test_working_tree_flag_picks_up_a_modified_tracked_file(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+    run_command(["git", "init"], tmp_path)
+    run_command(["git", "add", "."], tmp_path)
+    run_command(
+        [
+            "git",
+            "-c",
+            "user.name=t",
+            "-c",
+            "user.email=t@example.com",
+            "commit",
+            "-m",
+            "init",
+        ],
+        tmp_path,
+    )
+    write_tree(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: targeted"]
+
+
+def test_working_tree_flag_outside_a_repository_exits_2(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert result.returncode == 2
