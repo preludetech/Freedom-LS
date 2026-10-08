@@ -6,7 +6,7 @@ run beside, the decisions already taken and the assumptions every idea in the ef
 
 ## What
 
-An educator uploads a CSV of learners' HR attributes (job title, department, location, start date) on the bulk import page that `educator-interface-8-bulk-operations` builds. The page shows a preview with one label per row, and on confirm writes the attributes to each `Learner`. Registration rules then run once for the whole import.
+An educator uploads a CSV of learners' HR attributes (job title, department, location and the four start dates) on the bulk import page that `educator-interface-8-bulk-operations` builds. The page shows a preview with one label per row, and on confirm writes the attributes to each `Learner`. Registration rules then run once for the whole import.
 
 ## Why
 
@@ -18,7 +18,7 @@ An organisation with hundreds of staff will not set four attributes per person b
 
 **It updates `Learner` attributes only.** It never changes `User` details (name, email), so spec 8's rule against overwriting users' details holds. Rows are matched to a learner by email within the organisation. Adding people stays with spec 8's add-learner path; this spec adds nothing to it.
 
-**Values are matched by name, case-insensitive,** against the organisation's job title, department and location lists from `corporate-job-course-recommendations-1-hr-attributes`. Start date is a date column. A blank cell leaves that attribute unchanged.
+**Values are matched by name, case-insensitive,** against the organisation's job title, department and location lists from `corporate-job-course-recommendations-1-hr-attributes`. Each start date is a date column. A value that names a deactivated entry is a row error, like an unknown value. A blank cell leaves that attribute unchanged.
 
 **Rule evaluation runs once per import,** as a batch after the attributes are written, through the attribute-change trigger from `corporate-job-course-recommendations-2-registration-rules`. It does not run once per row. When the organisation's rules switch is on, the preview states that rules will run after the import. When it is off, the import still stores the attributes and no rules run.
 

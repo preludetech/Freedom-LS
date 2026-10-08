@@ -22,8 +22,11 @@ Today a registration exists only because a person or the learner made it, and no
 ## What is settled
 
 **Conditions**
-- A condition picks entries from the organisation's job title, department and location lists. Start date
-  is matchable with "on or after" and "before" a date.
+- A condition picks entries from the organisation's job title, department and location lists. Each of
+  the four start dates (organisation, job title, department, location) is matchable with "on or after"
+  and "before" a date.
+- A condition that names a deactivated list entry keeps matching the learners who hold it, and the rule
+  admin flags it. New conditions can't pick a deactivated entry. Deactivating an entry retracts nothing.
 - Conditions combine with AND across attributes and OR within one: department is Finance or Audit, and
   location is Cape Town. There are no exclusions.
 

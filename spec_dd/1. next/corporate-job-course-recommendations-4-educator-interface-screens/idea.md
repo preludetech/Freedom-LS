@@ -23,9 +23,9 @@ Specs 1 to 3 give an organisation lists, attributes and rules, but only in the D
 
 **The switch gates rules, not attributes.** The rules screens appear only when the organisation's switch is on. A learner's attributes are always viewable and editable, because attributes are stored regardless of the switch. The attribute lists are needed to fill those attributes, so they are reachable whether or not the switch is on.
 
-**Attribute lists.** One screen per list or one screen with three sections; the spec chooses. Add, rename and remove an entry. What happens to an entry learners or rules still use follows spec 1's decision, and the screen shows how many learners and rules use an entry before the admin removes or deactivates it.
+**Attribute lists.** One screen per list or one screen with three sections; the spec chooses. Add, rename and remove an entry. An entry learners or rules still use can be deactivated but not deleted, following spec 1. The screen shows how many learners and rules use an entry before the admin deactivates or deletes it.
 
-**Learner attributes.** The learner detail page gains a section for job title, department, location and start date. Pickers offer only the organisation's list entries. Saving an edit triggers re-evaluation through the path spec 2 owns. When the switch is on and an edit will change what rules do for that learner, the page says so.
+**Learner attributes.** The learner detail page gains a section for job title, department, location and the four start dates. Pickers offer only the organisation's active list entries, plus the learner's current value. Saving an edit triggers re-evaluation through the path spec 2 owns. When the switch is on and an edit will change what rules do for that learner, the page says so.
 
 **Rules.** The list shows each rule's course, outcome, conditions in words, enabled or disabled, and how many learners it has acted on. Create and edit take a course, an outcome, and conditions chosen from the organisation's lists (and a start-date "on or after" or "before" condition). Conditions combine with AND across attributes and OR within one. Enable and disable are explicit actions. A rule can be deleted only once disabled. A rule is never deleted from an enabled state, and the delete confirmation says what stays behind.
 
@@ -40,7 +40,7 @@ Specs 1 to 3 give an organisation lists, attributes and rules, but only in the D
 ## Open until the spec
 
 - Whether a `cohort_admin` or `cohort_viewer` sees a learner's attributes read-only on the learner detail page. Resolve it from the permission matrix `educator-interface-5-permissions` builds, and allow it only if the matrix makes it natural.
-- Where the organisation switch is changed. It stays in the Django admin unless the spec finds it belongs on an organisation settings screen. Where it lives (spec 1) affects what the screens read.
+- Where the organisation switch is changed. It stays in the Django admin unless the spec finds it belongs on an organisation settings screen. Spec 1 puts it in a settings row per organisation in `learner_management`, which the screens read.
 - Whether the preview is computed on opening the dialog or as a page of its own, and how a preview of thousands of learners is paged, filtered and searched.
 - What the screens show when the switch is on but the rules app is not installed, if spec 2 makes the app optional.
 - Where rules and lists sit in the sidebar navigation.

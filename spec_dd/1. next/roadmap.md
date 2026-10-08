@@ -369,7 +369,7 @@ recommend, then the educator-interface screens and a CSV import.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 1 | `corporate-job-course-recommendations-1-hr-attributes` | Per-organisation job title, department and location lists; those three and start date on `Learner`; the organisation-level switch, off by default; all in the Django admin. | none | next |
+| 1 | `corporate-job-course-recommendations-1-hr-attributes` | Per-organisation job title, department and location lists; those three and four start dates on `Learner`; the organisation-level switch, off by default; all in the Django admin. | none | next |
 | 2 | `corporate-job-course-recommendations-2-registration-rules` | Registration rules with the `register` outcome in the Django admin: conditions, provenance, evaluation as a background task, preview list, retraction, the rule-kind seam. | `corporate-job-course-recommendations-1-hr-attributes` | next |
 | 3 | `corporate-job-course-recommendations-3-recommend-outcome` | The `recommend` outcome: `RecommendedCourse` gains provenance and uniqueness, rules create and retract recommendations, every registration path clears one. | `corporate-job-course-recommendations-2-registration-rules` | next |
 | 4 | `corporate-job-course-recommendations-4-educator-interface-screens` | Educator-interface screens for the attribute lists, a learner's attributes, registration rules and their preview. | `corporate-job-course-recommendations-3-recommend-outcome`, `educator-interface-7-learner-administration` | next |
@@ -404,8 +404,9 @@ External edges: 4 needs `educator-interface-7-learner-administration`; 5 needs
 
 These were settled with the product owner while cutting the specs. The ideas rely on them and do not reopen them.
 
-1. **HR attributes are fixed fields on `Learner`**: job title, department, location, start date.
-   None is named "role". Organisation-defined custom attributes are out.
+1. **HR attributes are fixed fields on `Learner`**: job title, department, location, and four
+   start dates: at the organisation (the hire date), in the job title, in the department and at the
+   location. FLS never infers a date. None is named "role". Organisation-defined custom attributes are out.
 2. **Job titles, departments and locations are their own models, one list per organisation.**
    `Learner` points at an entry in each list. Rules choose from the same lists, so matching is
    exact and a typo can't split a group.
@@ -422,7 +423,7 @@ These were settled with the product owner while cutting the specs. The ideas rel
    enabled rule matching the same learner and course blocks retraction.
 8. **Disabling a rule counts as every learner unmatching it**, with the same preview. A rule can be
    deleted only once disabled.
-9. **Start date is matchable** with "on or after" and "before" a date.
+9. **Every start date is matchable** with "on or after" and "before" a date.
 10. **Rule-made registrations notify** like admin registrations and are not `self_registered`.
 11. **Switched on per organisation, off by default.** Off means no evaluation; existing rows stay.
 12. **Register first, recommend second**, as separate specs.
@@ -454,8 +455,8 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 | Unknown | Owner | Affects |
 |---|---|---|
-| Where the organisation switch lives: a field on `Organisation` or a settings row beside it. | 1 | 2, 4 |
-| What happens to a list entry learners or rules still use: protected, or deactivated and hidden from pickers. | 1 | 2, 4, 5 |
+| Where the organisation switch lives. Settled in idea 1: a one-to-one settings row per organisation in `learner_management`, where no row means off. | 1 | 2, 4 |
+| What happens to a list entry learners or rules still use. Settled in idea 1: it is deactivated with `is_active` and hidden from pickers, existing references stay and keep matching, and it can't be deleted while in use. | 1 | 2, 4, 5 |
 | Provenance shape on `LearnerCourseRegistration`: a nullable FK to the rule, or a source field. | 2 | 3, 4 |
 | How rule-made registrations fire `course.registered` when `fire_webhook_event` does nothing outside a request. | 2 | 3, 5 |
 | What "started" means for retraction. | 2 | 3 |
