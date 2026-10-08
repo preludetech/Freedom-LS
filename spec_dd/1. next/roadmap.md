@@ -13,7 +13,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 `/sdd:roadmap`; `/sdd:start` and `/sdd:finish_worktree` keep it current between syncs.
 
 - `educator-interface-10-reporting-dashboards`
-- `educator-interface-7-learner-administration`
 - `failed-login-follow-up`
 - `file-scanning`
 - `form-engine-branch-logic`
@@ -46,7 +45,7 @@ too much for one SDD run, so it is twelve.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 6 | `educator-interface-6-cohort-administration` | Cohort list and detail, create and edit, `is_active` on `Cohort`, deactivate and reactivate, delete only when empty, cohort course registration and unregistration. The courses section rebuilt read-only and organisation-scoped. | `educator-interface-2-panel-framework-tables`, `educator-interface-3-panel-framework-dialogs`, `educator-interface-5-permissions` | in progress |
-| 7 | `educator-interface-7-learner-administration` | Add a learner (new account with a setup email, or an existing user), list and detail, deactivate and reactivate, cohort membership add, remove and move, individual course registration and unregistration, resend the setup email. | `educator-interface-2-panel-framework-tables`, `educator-interface-3-panel-framework-dialogs`, `educator-interface-5-permissions` | next |
+| 7 | `educator-interface-7-learner-administration` | Add a learner (new account with a setup email, or an existing user), list and detail, deactivate and reactivate, cohort membership add, remove and move, individual course registration and unregistration, resend the setup email. | `educator-interface-2-panel-framework-tables`, `educator-interface-3-panel-framework-dialogs`, `educator-interface-5-permissions` | in progress |
 | 8 | `educator-interface-8-bulk-operations` | CSV import as a page flow with a preview and per-row outcome labels. Multi-select bulk actions on the learner and cohort tables. | `educator-interface-6-cohort-administration`, `educator-interface-7-learner-administration` | next |
 | 9 | `educator-interface-9-educator-administration` | An educators section. Add, remove and scope cohort admins and cohort viewers; add and remove organisation admins; role descriptions; confirmation on escalation and removal. | `educator-interface-5-permissions`, `educator-interface-7-learner-administration` | next |
 | 10 | `educator-interface-10-reporting-dashboards` | Organisation dashboard as a base view, the cohort report on screen from the existing gathered data, a learner drill-down that replaces the deleted matrix, PDF generation and download from the interface, roster CSV. | `educator-interface-2-panel-framework-tables`, `educator-interface-4-panel-framework-components` | next |
