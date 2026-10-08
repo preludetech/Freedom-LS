@@ -11,6 +11,9 @@ at one entry in each list and carries four start dates: when they started at the
 their job title, in their department and at their location. Each organisation has a switch for
 registration rules, off by default. All of it is managed in the Django admin.
 
+All of this is optional. It ships as its own app, and a project that leaves the app out of
+`INSTALLED_APPS` gets no tables, no admin screens and no fields on any existing screen.
+
 ## Why
 
 An organisation can tell FLS who a learner is at work, but FLS has nowhere to keep that. The
@@ -21,7 +24,23 @@ keep these fields without any rule acting on them.
 
 ## What is settled
 
-**Attributes on `Learner`**
+**A separate, optional app**
+- Many FLS projects will never need HR attributes, so they must cost those projects nothing. The
+  lists, the attributes and the switch all live in one new app (working name `hr_attributes`), not
+  in `learner_management`. A project opts in by adding it to `INSTALLED_APPS`, as it does for `blog`
+  and `course_applications`.
+- The new app depends on `learner_management` and `organisations`. Neither of them, nor any other
+  core app, imports it. The new app adds itself to the existing admin screens through the seams
+  those admins already offer, the way `learner_management/admin.py` appends inlines to
+  `OrganisationAdmin`.
+- `Learner` gains no columns. The attributes sit on a one-to-one row keyed on `Learner` (working
+  name `LearnerHRAttributes`), owned by the new app. No row means the learner has no attributes, so
+  nothing needs backfilling.
+- With the app left out, `learner_management` migrations, the Learner admin and the Organisation
+  admin are exactly as they are today.
+- FLS's own settings install the app, so its tests run and the demo shows the feature.
+
+**The attributes**
 - The fields are `job_title`, `department` and `location`, which point at list entries, plus
   `organisation_start_date`, `job_title_start_date`, `department_start_date` and
   `location_start_date`. They are fixed fields. Organisation-defined custom attributes are not part
@@ -32,7 +51,7 @@ keep these fields without any rule acting on them.
   or location leaves its start date untouched.
 - `organisation_start_date` is the hire date. It maps to Entra's `employeeHireDate`. SCIM and Entra
   have nothing that maps to the other three dates, so a later sync can't fill them.
-- One `Learner` row belongs to exactly one organisation, so a learner picks from
+- One `Learner` row belongs to exactly one organisation, so a learner's attributes row picks from
   `learner.organisation`'s lists. A user who is a learner in two organisations has two sets of
   attributes. The model refuses an entry from another organisation, the same way
   `CohortMembership.clean()` refuses a cross-organisation cohort, and the admin pickers offer only
@@ -43,7 +62,7 @@ keep these fields without any rule acting on them.
   course.
 
 **The three lists**
-- `JobTitle`, `Department` and `Location` are separate site-aware models in `learner_management`.
+- `JobTitle`, `Department` and `Location` are separate site-aware models in the new app.
   Each entry belongs to one organisation and has a `name`. One organisation never sees another
   organisation's entries.
 - The lists are flat. Matching is exact, so a tree would add nothing the rules need. A rule for
@@ -59,19 +78,22 @@ keep these fields without any rule acting on them.
   entries is out of scope.
 
 **The switch**
-- It is a one-to-one settings row per organisation in `learner_management`. No row means off. The
+- It is a one-to-one settings row per organisation in the new app. No row means off. The
   `organisations` app stays free of a feature it doesn't own, and the pattern follows
-  `SiteSignupPolicy`.
+  `SiteSignupPolicy`. With the app left out there is no switch, and no rule can be on.
 - It gates rules, not attributes. Attributes are stored and editable whether the switch is on or
   off. Nothing reads the switch until spec 2.
 
 **The Django admin**
 - Each list has its own admin, filterable by organisation, with deactivate offered where delete is
   refused.
-- The Learner admin shows the seven fields together, with pickers limited to the learner's
-  organisation's active entries plus the learner's current value.
-- The switch is a single-row inline on the Organisation change page, added from
-  `learner_management`'s admin the same way its cohort and learner inlines are.
+- The seven fields show together as a single-row inline on the Learner change page, appended to
+  `LearnerAdmin` from the new app's admin. Pickers are limited to the learner's organisation's
+  active entries plus the learner's current value.
+- `LearnerAdmin.get_inlines` already hides inlines on the add page, so attributes are set once the
+  `Learner` exists and its organisation is known.
+- The switch is a single-row inline on the Organisation change page, appended from the new app's
+  admin the same way `learner_management` appends its cohort and learner inlines.
 
 **What later specs inherit**
 - In spec 2, a rule that names a deactivated entry keeps matching the learners who hold it, and the
@@ -86,9 +108,6 @@ overlap with these fields.
 
 ## Open until the spec
 
-- **The add page.** A new `Learner` has no organisation until it is saved, so the pickers have
-  nothing to filter by. Either leave the attributes off the add form, as the change-page-only
-  inlines already do, or accept any entry and let `clean()` reject it.
 - **A start date without its attribute.** Whether a learner with no department may still have a
   department start date.
 
@@ -109,7 +128,8 @@ overlap with these fields.
 - `research_list_entry_lifecycle.md`: how other products retire lookup values, Django delete and
   picker patterns, and the consequences for specs 2, 4 and 5.
 - `research_organisation_switch_placement.md`: the app-boundary case for the settings row, and the
-  admin seam it uses.
+  admin seam it uses. It recommends `learner_management` as the home. That was before the feature
+  became optional; the same reasoning now points at the new app.
 - `../corporate-job-course-recommendations/research_fls_user_attributes_and_registrations.md`: the
   user and learner data FLS holds today and how registrations are created.
 - `../corporate-job-course-recommendations/research_fls_backends_and_toggles.md`: the levels at

@@ -360,12 +360,12 @@ have.
 The source idea is item 12 of `spec_dd/corporate-readiness/README.md`. Corporate admins write
 rules instead of registering people by hand: "everyone with job title Driver is registered for
 Road Safety", "everyone in Finance is recommended Budgeting Basics". FLS holds no HR attributes
-today, so the effort adds them to `Learner` first, then rules that register, then rules that
+today, so the effort adds them for each `Learner` first, in a separate optional app, then rules that register, then rules that
 recommend, then the educator-interface screens and a CSV import.
 
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
-| 1 | `corporate-job-course-recommendations-1-hr-attributes` | Per-organisation job title, department and location lists; those three and four start dates on `Learner`; the organisation-level switch, off by default; all in the Django admin. | none | in progress |
+| 1 | `corporate-job-course-recommendations-1-hr-attributes` | A new optional app holding per-organisation job title, department and location lists; those three and four start dates for each `Learner`; the organisation-level switch, off by default; all in the Django admin. | none | in progress |
 | 2 | `corporate-job-course-recommendations-2-registration-rules` | Registration rules with the `register` outcome in the Django admin: conditions, provenance, evaluation as a background task, preview list, retraction, the rule-kind seam. | `corporate-job-course-recommendations-1-hr-attributes` | next |
 | 3 | `corporate-job-course-recommendations-3-recommend-outcome` | The `recommend` outcome: `RecommendedCourse` gains provenance and uniqueness, rules create and retract recommendations, every registration path clears one. | `corporate-job-course-recommendations-2-registration-rules` | next |
 | 4 | `corporate-job-course-recommendations-4-educator-interface-screens` | Educator-interface screens for the attribute lists, a learner's attributes, registration rules and their preview. | `corporate-job-course-recommendations-3-recommend-outcome`, `educator-interface-7-learner-administration` | next |
@@ -388,10 +388,11 @@ External edges: 4 needs `educator-interface-7-learner-administration`; 5 needs
   second rebases.
 - Shortest path to something usable: 1 then 2. An organisation admin can then write "everyone in
   Finance is registered for Budgeting Basics" in the Django admin.
-- Cautions. Spec 1 adds fields to `Learner` while `educator-interface-7-learner-administration`,
+- Cautions. Spec 1 adds no columns or migrations to `learner_management`, but it appends an inline
+  to `LearnerAdmin` while `educator-interface-7-learner-administration`,
   `educator-interface-8-bulk-operations` and
   `test-organisation-and-hygene-8-learner-management-and-progress` also work in
-  `learner_management`, so migrations rebase on whichever lands first. Spec 2 adds provenance to
+  `learner_management`, so whoever lands second rebases. Spec 2 adds provenance to
   `LearnerCourseRegistration`, and educator-interface spec 7 shows a registration's source on the
   learner detail page: whichever lands second adds the rule as a source. Spec 3 edits the
   self-registration view in `learner_interface`.
@@ -400,9 +401,13 @@ External edges: 4 needs `educator-interface-7-learner-administration`; 5 needs
 
 These were settled with the product owner while cutting the specs. The ideas rely on them and do not reopen them.
 
-1. **HR attributes are fixed fields on `Learner`**: job title, department, location, and four
-   start dates: at the organisation (the hire date), in the job title, in the department and at the
-   location. FLS never infers a date. None is named "role". Organisation-defined custom attributes are out.
+1. **HR attributes are fixed fields, one set per `Learner`**: job title, department, location, and
+   four start dates: at the organisation (the hire date), in the job title, in the department and at
+   the location. FLS never infers a date. None is named "role". Organisation-defined custom
+   attributes are out.
+1a. **The whole effort is optional.** Many projects won't need it. The attributes, lists and switch
+   live in their own app, on a one-to-one row keyed on `Learner`, not as columns on `Learner`. A
+   project that leaves the app out of `INSTALLED_APPS` sees no change. Core apps never import it.
 2. **Job titles, departments and locations are their own models, one list per organisation.**
    `Learner` points at an entry in each list. Rules choose from the same lists, so matching is
    exact and a typo can't split a group.
@@ -440,7 +445,8 @@ Nobody asked about these; they were judgement calls. Say so in the spec if one t
 - **A recommendation raises no notification.** It shows on the dashboard, and the `notifications`
   skill defaults to no.
 - **Attributes are always stored and editable.** The switch gates rules, not attributes.
-- **Rules live in a new app**; attributes and their lists live in `learner_management`.
+- **Rules live in a new app**; attributes, their lists and the switch live in the separate,
+  optional attributes app from spec 1. The rules app depends on it.
 - **In the educator interface only `organisation_admin` and `site_admin`** manage lists and rules.
 - **CSV import updates `Learner` attributes only**, never `User` details, which keeps
   educator-interface spec 8's never-overwrite rule intact.
@@ -451,12 +457,12 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 
 | Unknown | Owner | Affects |
 |---|---|---|
-| Where the organisation switch lives. Settled in idea 1: a one-to-one settings row per organisation in `learner_management`, where no row means off. | 1 | 2, 4 |
+| Where the organisation switch lives. Settled in idea 1: a one-to-one settings row per organisation in the optional attributes app, where no row means off. | 1 | 2, 4 |
 | What happens to a list entry learners or rules still use. Settled in idea 1: it is deactivated with `is_active` and hidden from pickers, existing references stay and keep matching, and it can't be deleted while in use. | 1 | 2, 4, 5 |
 | Provenance shape on `LearnerCourseRegistration`: a nullable FK to the rule, or a source field. | 2 | 3, 4 |
 | How rule-made registrations fire `course.registered` when `fire_webhook_event` does nothing outside a request. | 2 | 3, 5 |
 | What "started" means for retraction. | 2 | 3 |
-| Whether the rules app is optional in `INSTALLED_APPS` as well as switched per organisation. | 2 | 3, 4 |
+| Whether the rules app is optional in `INSTALLED_APPS` as well as switched per organisation. It must at least require the attributes app, which is optional (decision 1a). | 2 | 3, 4 |
 | How organisation-owned rules scope `RecommendedCourse`, which is keyed on `User`, not `Learner`. | 3 | 4 |
 | What an import does with a value not in the organisation's list: error row (default) or create it on confirm. | 5 | none |
 
