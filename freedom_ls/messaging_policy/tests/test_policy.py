@@ -1157,3 +1157,89 @@ def test_closing_peer_configuration_on_both_learner_rows_refuses_the_reply(
     )
 
     assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_a_site_row_offering_organisation_admin_lets_an_opened_learner_reach_their_organisation_admin(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    SiteMessagingConfigFactory(
+        site=world.site,
+        learner_to_educator="open",
+        offered_educator_roles=["organisation_admin"],
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["o1_admin"],
+        site=world.site,
+    )
+
+    assert decision.allowed is True
+
+
+def test_a_site_row_offering_organisation_admin_replaces_the_offered_cohort_admin(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    SiteMessagingConfigFactory(
+        site=world.site,
+        learner_to_educator="open",
+        offered_educator_roles=["organisation_admin"],
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_a_site_row_offering_no_roles_offers_nobody(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    SiteMessagingConfigFactory(
+        site=world.site, learner_to_educator="open", offered_educator_roles=[]
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_a_site_row_with_no_offered_roles_value_uses_the_setting(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    SiteMessagingConfigFactory(
+        site=world.site, learner_to_educator="open", offered_educator_roles=None
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.allowed is True
+
+
+def test_a_stored_offered_role_unknown_to_the_site_is_ignored(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    SiteMessagingConfigFactory(
+        site=world.site,
+        learner_to_educator="open",
+        offered_educator_roles=["no_such_role"],
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION

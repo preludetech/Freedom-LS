@@ -12,7 +12,9 @@ from freedom_ls.learner_management.tests.scenario_world import custom_role_confi
 from freedom_ls.messaging_policy.checks import (
     check_default_flags,
     check_offered_roles_exist,
+    check_stored_offered_roles,
 )
+from freedom_ls.messaging_policy.factories import SiteMessagingConfigFactory
 
 VALID_FLAGS = {
     "learner_to_educator": "closed",
@@ -72,3 +74,38 @@ def test_an_offered_role_missing_from_a_site_role_config_produces_an_error(
         errors = check_offered_roles_exist(None)
 
     assert [error.id for error in errors] == ["freedom_ls_messaging_policy.E002"]
+
+
+@pytest.mark.django_db
+def test_a_stored_role_dropped_from_the_site_role_config_produces_a_warning(
+    mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    SiteMessagingConfigFactory(offered_educator_roles=["cohort_viewer"])
+
+    with custom_role_config(
+        mock_site_context, settings, without=frozenset({"cohort_viewer"})
+    ):
+        warnings = check_stored_offered_roles(None)
+
+    assert [warning.id for warning in warnings] == ["freedom_ls_messaging_policy.W001"]
+
+
+@pytest.mark.django_db
+def test_a_stored_role_that_no_longer_grants_view_learner_produces_a_warning(
+    mock_site_context: Site,
+) -> None:
+    SiteMessagingConfigFactory(offered_educator_roles=["system_admin"])
+
+    warnings = check_stored_offered_roles(None)
+
+    assert [warning.id for warning in warnings] == ["freedom_ls_messaging_policy.W001"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("value", [None, ["cohort_admin"]], ids=["none", "known_key"])
+def test_a_known_or_unset_stored_offered_roles_value_produces_no_warning(
+    mock_site_context: Site, value: list[str] | None
+) -> None:
+    SiteMessagingConfigFactory(offered_educator_roles=value)
+
+    assert check_stored_offered_roles(None) == []

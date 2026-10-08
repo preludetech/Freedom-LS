@@ -49,12 +49,14 @@ def offered_roles_for(
 ) -> frozenset[str]:
     """The role keys a learner may be offered as educators on this site.
 
-    The setting applies until the site row overrides it. Always intersected with
+    The setting applies until the site row sets its own list (an empty list offers nobody). Always intersected with
     the roles that grant VIEW_LEARNER, so every offered educator is an educator of
     the learner; a key the site's role config does not know is dropped here and
     reported by the system check instead.
     """
     chosen: list[str] = config.MESSAGING_OFFERED_EDUCATOR_ROLES
+    if site_config is not None and site_config.offered_educator_roles is not None:
+        chosen = site_config.offered_educator_roles
     return frozenset(chosen) & roles_granting(VIEW_LEARNER, site)
 
 

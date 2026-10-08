@@ -5,18 +5,21 @@ from collections.abc import Callable
 from typing import NamedTuple, cast
 
 import pytest
+from pytest_django.fixtures import SettingsWrapper
 
 from django.contrib.sites.models import Site
 from django.db.models import Model
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.tests.scenario_world import custom_role_config
 from freedom_ls.messaging_policy.factories import (
     CohortCourseRegistrationMessagingConfigFactory,
     CohortMessagingConfigFactory,
@@ -24,6 +27,10 @@ from freedom_ls.messaging_policy.factories import (
     LearnerMessagingConfigFactory,
     OrganisationMessagingConfigFactory,
     SiteMessagingConfigFactory,
+)
+from freedom_ls.messaging_policy.forms import (
+    USE_SETTINGS_DEFAULT,
+    SiteMessagingConfigForm,
 )
 from freedom_ls.messaging_policy.models import (
     FLAG_NAMES,
@@ -95,6 +102,98 @@ def test_a_second_post_for_the_site_is_a_form_error(staff_client: Client) -> Non
     assert response.status_code == 200
     assert response.context["adminform"].form.non_field_errors()
     assert SiteMessagingConfig.objects.count() == 1
+
+
+OFFERED_ROLE_KEYS = {
+    "site_admin",
+    "organisation_admin",
+    "cohort_admin",
+    "cohort_viewer",
+}
+
+
+def _choice_values(form: SiteMessagingConfigForm) -> set[str]:
+    return {
+        str(value) for value, _label in form.fields["offered_educator_roles"].choices
+    }
+
+
+def test_the_add_page_offers_the_settings_default_and_only_view_learner_roles(
+    staff_client: Client,
+) -> None:
+    response = staff_client.get(reverse(ADD_URL))
+
+    assert _choice_values(response.context["adminform"].form) == {
+        USE_SETTINGS_DEFAULT,
+        *OFFERED_ROLE_KEYS,
+    }
+
+
+@pytest.mark.parametrize(
+    ("posted", "stored"),
+    [
+        ([USE_SETTINGS_DEFAULT], None),
+        ([], []),
+        (["cohort_admin", "cohort_viewer"], ["cohort_admin", "cohort_viewer"]),
+    ],
+    ids=["settings_default", "nothing_ticked", "two_roles"],
+)
+def test_a_post_stores_the_chosen_offered_roles(
+    staff_client: Client, posted: list[str], stored: list[str] | None
+) -> None:
+    response = staff_client.post(
+        reverse(ADD_URL), {**POST_DATA, "offered_educator_roles": posted}
+    )
+
+    assert response.status_code == 302
+    assert SiteMessagingConfig.objects.get().offered_educator_roles == stored
+
+
+@pytest.mark.parametrize(
+    "posted",
+    [[USE_SETTINGS_DEFAULT, "cohort_admin"], ["no_such_role"], ["system_admin"]],
+    ids=["default_and_role", "unknown_key", "role_without_view_learner"],
+)
+def test_a_post_with_an_invalid_offered_roles_choice_is_a_form_error(
+    staff_client: Client, posted: list[str]
+) -> None:
+    response = staff_client.post(
+        reverse(ADD_URL), {**POST_DATA, "offered_educator_roles": posted}
+    )
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["offered_educator_roles"]
+    assert SiteMessagingConfig.objects.count() == 0
+
+
+def test_the_change_page_of_a_row_using_the_settings_default_ticks_that_option(
+    staff_client: Client,
+) -> None:
+    row = SiteMessagingConfigFactory(offered_educator_roles=None)
+
+    response = staff_client.get(
+        reverse(
+            "admin:freedom_ls_messaging_policy_sitemessagingconfig_change",
+            args=[row.pk],
+        )
+    )
+
+    form = response.context["adminform"].form
+    assert form.initial["offered_educator_roles"] == [USE_SETTINGS_DEFAULT]
+
+
+def test_forms_bound_to_two_sites_offer_each_sites_own_roles(
+    mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    other_site = SiteFactory(name="Other site", domain="other.example.com")
+    first = type("First", (SiteMessagingConfigForm,), {"site": mock_site_context})
+    second = type("Second", (SiteMessagingConfigForm,), {"site": other_site})
+
+    with custom_role_config(mock_site_context, settings):
+        first_choices = _choice_values(first())
+    second_choices = _choice_values(second())
+
+    assert first_choices - second_choices == {"custom_educator"}
 
 
 class OwnerLevel(NamedTuple):

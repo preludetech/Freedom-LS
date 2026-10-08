@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
+from freedom_ls.learner_management.capabilities import roles_granting
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     Learner,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.queries import VIEW_LEARNER
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
@@ -54,7 +58,17 @@ class MessagingFlags(models.Model):
         ]
 
 
+def unknown_offered_roles(value: list[str] | None, site: Site) -> set[str]:
+    """Keys in `value` that are not VIEW_LEARNER-granting roles on this site."""
+    if value is None:
+        return set()
+    return set(value) - roles_granting(VIEW_LEARNER, site)
+
+
 class SiteMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
+    # None inherits MESSAGING_OFFERED_EDUCATOR_ROLES; [] offers nobody.
+    offered_educator_roles = models.JSONField(null=True, blank=True)
+
     class Meta(MessagingFlags.Meta):
         constraints = [
             *MessagingFlags.Meta.constraints,
@@ -65,6 +79,16 @@ class SiteMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
 
     def __str__(self) -> str:
         return f"Messaging config for {self.site.name}"
+
+    def clean(self) -> None:
+        super().clean()
+        unknown = unknown_offered_roles(self.offered_educator_roles, self.site)
+        if unknown:
+            raise ValidationError(
+                {
+                    "offered_educator_roles": f"Unknown roles for this site: {sorted(unknown)}."
+                }
+            )
 
 
 class OrganisationMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):

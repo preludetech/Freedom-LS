@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from django.contrib.sites.models import Site
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
 from freedom_ls.messaging_policy.factories import (
@@ -216,3 +217,29 @@ def test_a_cohort_registration_reaches_its_row_through_messaging_config(
     config = CohortCourseRegistrationMessagingConfigFactory()
 
     assert config.registration.messaging_config == config
+
+
+@pytest.mark.django_db
+def test_full_clean_rejects_an_offered_role_the_site_does_not_know(
+    mock_site_context: Site,
+) -> None:
+    config = SiteMessagingConfigFactory.build(
+        offered_educator_roles=["cohort_admin", "no_such_role"]
+    )
+
+    with pytest.raises(ValidationError) as raised:
+        config.full_clean()
+
+    assert set(raised.value.message_dict) == {"offered_educator_roles"}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "value", [None, [], ["cohort_admin"]], ids=["none", "empty", "known_key"]
+)
+def test_full_clean_accepts_an_offered_roles_value_the_site_knows(
+    mock_site_context: Site, value: list[str] | None
+) -> None:
+    config = SiteMessagingConfigFactory.build(offered_educator_roles=value)
+
+    config.full_clean()

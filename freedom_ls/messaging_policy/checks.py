@@ -4,6 +4,8 @@ E001: MESSAGING_DEFAULT_FLAGS does not name exactly the flags, or holds a value
 other than "open" or "closed".
 E002: MESSAGING_OFFERED_EDUCATOR_ROLES names a role the base role config or a
 site's role config does not define.
+W001: a site's stored offered educator roles name a key that is not a
+VIEW_LEARNER-granting role in that site's role config.
 """
 
 from __future__ import annotations
@@ -11,7 +13,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from django.apps import AppConfig
-from django.core.checks import CheckMessage, Error, register
+from django.core.checks import CheckMessage, Error, Warning, register
+from django.db import DatabaseError, OperationalError, ProgrammingError
 
 from freedom_ls.messaging_policy.config import config
 from freedom_ls.messaging_policy.models import FLAG_NAMES, MessagingFlag
@@ -84,3 +87,34 @@ def check_offered_roles_exist(
                 )
             )
     return errors
+
+
+@register()
+def check_stored_offered_roles(
+    app_configs: Sequence[AppConfig] | None, **kwargs: object
+) -> list[CheckMessage]:
+    from freedom_ls.messaging_policy.models import (
+        SiteMessagingConfig,
+        unknown_offered_roles,
+    )
+
+    try:
+        rows = list(
+            SiteMessagingConfig.objects.all()
+            .filter(offered_educator_roles__isnull=False)
+            .select_related("site")
+        )
+    except (DatabaseError, OperationalError, ProgrammingError):
+        return []
+    warnings: list[CheckMessage] = []
+    for row in rows:
+        unknown = unknown_offered_roles(row.offered_educator_roles, row.site)
+        if unknown:
+            warnings.append(
+                Warning(
+                    f"{row} stores offered educator roles that its site no longer offers: {sorted(unknown)}.",
+                    hint="Edit the site messaging config and tick only roles that grant view_learner.",
+                    id="freedom_ls_messaging_policy.W001",
+                )
+            )
+    return warnings
