@@ -28,6 +28,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.views import (
     CohortCourseRegistrationDataTable,
     CourseCohortRegistrationDataTable,
@@ -295,6 +296,55 @@ class TestCrossOrganisationIsolation:
         content = response.content.decode()
         assert isolation.cohort_a.name in content
         assert isolation.cohort_b.name not in content
+
+    def test_hidden_course_registered_only_in_organisation_b_is_absent_from_as_list(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        hidden = CourseFactory(title="Hidden For B", visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(cohort=isolation.cohort_b, course=hidden)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "courses")
+        )
+
+        assert response.status_code == 200
+        assert isolation.course_a.title in response.content.decode()
+        assert hidden.title not in response.content.decode()
+
+    def test_hidden_course_registered_only_in_organisation_b_404s_on_as_detail(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        hidden = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(cohort=isolation.cohort_b, course=hidden)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, f"courses/{hidden.pk}")
+        )
+
+        assert response.status_code == 404
+
+    def test_course_list_and_detail_never_show_organisation_bs_people(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_a, course=isolation.course_a
+        )
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_b, course=isolation.course_a
+        )
+        LearnerCourseRegistrationFactory(
+            learner=isolation.learner_b, course=isolation.course_a
+        )
+
+        pages = [
+            isolation.client.get(
+                _interface_url(isolation.organisation_a.slug, path)
+            ).content.decode()
+            for path in ("courses", f"courses/{isolation.course_a.pk}")
+        ]
+
+        assert all(isolation.cohort_b.name not in page for page in pages)
+        assert all("MemberOfB" not in page for page in pages)
 
     @pytest.mark.parametrize(
         "data_table",

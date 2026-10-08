@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Callable
 
+import lxml.html
 import pytest
 import pytest_django.fixtures
 
@@ -126,6 +127,9 @@ def test_course_table_renders_visibility_and_interest_columns(
     organisation = OrganisationFactory()
     educator = UserFactory(staff=True)
     assign_object_role(educator, organisation, "organisation_admin")
+    CohortCourseRegistrationFactory(
+        cohort=CohortFactory(organisation=organisation), course=course
+    )
 
     html = (
         logged_in_client(educator)
@@ -187,6 +191,64 @@ class TestCourseTableTotalLearnerCountQueryCost:
             CourseDataTable.get_rows(
                 request, CourseDataTable.get_queryset(request), query
             )
+
+
+@pytest.mark.django_db
+class TestInactiveCohortsDoNotCountAsActive:
+    def test_active_cohorts_and_learners_skip_an_inactive_cohort(
+        self, mock_site_context: Site, site_aware_request: RequestFactory
+    ) -> None:
+        organisation = OrganisationFactory()
+        course = CourseFactory()
+        active = CohortFactory(organisation=organisation)
+        inactive = CohortFactory(organisation=organisation, is_active=False)
+        CohortMembershipFactory(cohort=active, learner__organisation=organisation)
+        CohortMembershipFactory(cohort=inactive, learner__organisation=organisation)
+        CohortCourseRegistrationFactory(cohort=active, course=course)
+        CohortCourseRegistrationFactory(cohort=inactive, course=course)
+        request = _organisation_request(site_aware_request, organisation)
+        query = CourseDataTable.parse_query(request, "courses")
+
+        page = CourseDataTable.get_rows(
+            request, CourseDataTable.get_queryset(request), query
+        )
+
+        row = _find_row(page, course)
+        assert row.cohort_count == 1
+        assert row.total_learner_count == 1
+
+
+@pytest.mark.django_db
+def test_course_page_cohort_table_shows_cohort_status_and_registration_status(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    organisation = OrganisationFactory()
+    educator = UserFactory(staff=True)
+    assign_object_role(educator, organisation, "organisation_admin")
+    course = CourseFactory()
+    cohort = CohortFactory(organisation=organisation, is_active=False)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
+
+    document = lxml.html.fromstring(
+        logged_in_client(educator)
+        .get(
+            reverse(
+                "educator_interface:interface",
+                kwargs={
+                    "organisation_slug": organisation.slug,
+                    "path_string": f"courses/{course.pk}",
+                },
+            )
+        )
+        .content.decode()
+    )
+
+    headers = [th.text_content().strip() for th in document.cssselect("th")]
+    badges = [b.text_content().strip() for b in document.cssselect("td span")]
+    assert "Cohort status" in headers
+    assert "Status" in headers
+    assert "Inactive" in badges
+    assert "Active" in badges
 
 
 # -- Task 5.3: visibility is content-file-only, not educator/admin editable --

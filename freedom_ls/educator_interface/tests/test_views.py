@@ -286,3 +286,18 @@ def test_renaming_a_cohort_onto_a_sibling_name_answers_422_and_keeps_the_name(
     assert response.status_code == 422
     assert "Another cohort already has this name." in response.content.decode()
     assert cohort.name == "Year 11 Science"
+
+
+@pytest.mark.django_db
+def test_course_page_renders_no_action_buttons(staff_client: Client):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"courses/{course.pk}")
+    )
+
+    (heading,) = document.cssselect("#instance-title")
+    header = heading.xpath("ancestor::*[contains(@class, 'justify-between')]")[0]
+    assert header.cssselect("button[hx-get]") == []
+    assert document.cssselect("section[data-panel] button[hx-get]") == []

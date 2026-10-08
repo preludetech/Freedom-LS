@@ -29,6 +29,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     active_organisation_admins,
     cohorts_visible_to,
+    courses_visible_to,
     learners_visible_to,
     organisations_accessible_to,
 )
@@ -170,11 +171,11 @@ def _interface_link(
 
 
 def _registration_columns() -> list[Column]:
-    """The Active/Registered columns the three registration tables share."""
+    """The Status/Registered columns the three registration tables share."""
     return [
         Column(
-            header="Active",
-            template="cotton/data-table-cells/boolean.html",
+            header="Status",
+            template="educator_interface/data-table-cells/active_status.html",
             attr="is_active",
         ),
         Column(
@@ -497,22 +498,21 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 class CourseDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Courses are shared across the Site (CourseConfig is exempt from
-        # organisation scoping), but the cohorts and learners counted and
-        # linked on each row belong to one organisation each. Both the
-        # annotations and the prefetches the Cohorts cell and
-        # _annotate_total_learner_count read are narrowed to what this
-        # educator may see in the organisation in view, so another
-        # organisation's cohorts never show through a shared course.
+        # Courses are shared across the site, so the list, the counts and the
+        # cells are all read through the organisation in view: the cohorts and
+        # learners counted and linked on each row are narrowed to what this
+        # educator may see, and another organisation's cohorts never show
+        # through a shared course.
         scoped = cast(OrganisationScopedRequest, request)
         visible_cohorts = cohorts_visible_to(scoped.user, scoped.organisation)
         visible_learners = learners_visible_to(scoped.user, scoped.organisation)
         qs: QuerySet = (
-            Course.objects.all()
+            courses_visible_to(scoped.user, scoped.organisation)
             .annotate(
                 cohort_count=Count(
                     "cohort_registrations",
                     filter=Q(cohort_registrations__is_active=True)
+                    & Q(cohort_registrations__cohort__is_active=True)
                     & Q(cohort_registrations__cohort__in=visible_cohorts),
                     distinct=True,
                 ),
@@ -528,7 +528,7 @@ class CourseDataTable(DataTable):
                 Prefetch(
                     "cohort_registrations",
                     queryset=CohortCourseRegistration.objects.filter(
-                        cohort__in=visible_cohorts
+                        cohort__in=visible_cohorts, cohort__is_active=True
                     ).prefetch_related("cohort__cohortmembership_set__learner"),
                 ),
                 Prefetch(
@@ -633,6 +633,11 @@ class CourseCohortRegistrationDataTable(DataTable):
             _interface_link(
                 "Cohort", "cohort.name", "cohorts/{cohort.pk}", card="primary"
             ),
+            Column(
+                header="Cohort status",
+                template="educator_interface/data-table-cells/active_status.html",
+                attr="cohort.is_active",
+            ),
             *_registration_columns(),
         ]
 
@@ -649,12 +654,7 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 class CourseLearnerRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Courses themselves are not organisation-scoped (CourseConfig is
-        # exempt), but the individual registrations rendered here belong to
-        # one organisation each and must not leak across them. Scoped through
-        # learners_visible_to, not a plain organisation filter, so a
-        # cohort-scoped educator sees only the learners in cohorts they hold
-        # a grant on, not the whole organisation's roster.
+        # Courses are shared across the site, so the registrations are scoped through the organisation's learners rather than through the course.
         organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             LearnerCourseRegistration.objects.select_related("learner__user", "course")
@@ -717,18 +717,15 @@ class CourseConfig(OrganisationSectionConfig, ListViewConfig):
     table_key = "courses"
     instance_view = CourseInstanceView
 
-    check_access_exempt_reason = (
-        "Courses are shared across the Site and are not organisation-scoped "
-        "in this cut. The list is also currently unguarded entirely."
-    )
-
-    # @claude: CourseDataTable.get_queryset returns Course.objects.all(), so every
-    # logged-in user sees every course on the Site with no permission check. The
-    # real check belongs to critical_security_fixes; this override keeps today's
-    # behaviour while making the gap declared and greppable rather than invisible.
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        return
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        if (
+            not courses_visible_to(request.user, organisation)
+            .filter(pk=instance.pk)
+            .exists()
+        ):
+            raise OrganisationScopeDenied
 
 
 class DashboardPanel(Panel):
