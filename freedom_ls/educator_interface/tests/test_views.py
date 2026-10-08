@@ -266,3 +266,23 @@ def test_learners_page_param_leaves_course_registrations_on_page_one(
     content = details_tab.content.decode()
     assert "Course 0" in content
     assert "Course 1" in content
+
+
+@pytest.mark.django_db
+def test_renaming_a_cohort_onto_a_sibling_name_answers_422_and_keeps_the_name(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation, name="Year 10 Science")
+    cohort = CohortFactory(organisation=organisation, name="Year 11 Science")
+
+    response = staff_client.post(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__actions/edit"),
+        {"name": "Year 10 Science"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    cohort.refresh_from_db()
+    assert response.status_code == 422
+    assert "Another cohort already has this name." in response.content.decode()
+    assert cohort.name == "Year 11 Science"

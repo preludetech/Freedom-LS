@@ -142,9 +142,7 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     cancel = dialog.get_by_role("button", name="Cancel")
     expect(name_field).to_be_in_viewport()
     expect(cancel).to_be_in_viewport()
-    expect(
-        dialog.get_by_role("button", name="Create Cohort", exact=True)
-    ).to_be_in_viewport()
+    expect(dialog.get_by_role("button", name="Save", exact=True)).to_be_in_viewport()
 
     # The sheet slides out over its closing transition, so its form stays
     # until the next open replaces it rather than sending an empty sheet down
