@@ -14,8 +14,4 @@ For the FLS resource detail, see `${CLAUDE_PLUGIN_ROOT}/resources/playwright-tes
 
 `@pytest.mark.playwright` (applied to every browser test, all under per-app `tests/playwright/` dirs) is the **browser set a downstream project excludes**. Mark every browser test, without exception — an unmarked one breaks a downstream's test run.
 
-The marker sits alongside the rest of FLS's taxonomy (`fls_internal` / `ci_only` / `weasyprint`) documented in `Skill(fls-dev:testing)`. A concrete downstream project selects the portable set with:
-
-```bash
-uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"
-```
+The marker sits alongside the rest of FLS's taxonomy (`fls_internal` / `ci_only` / `weasyprint`) documented in `Skill(fls-dev:testing)`. A concrete downstream project selects the portable set with the command in the marker section of `Skill(fls-dev:testing)`.

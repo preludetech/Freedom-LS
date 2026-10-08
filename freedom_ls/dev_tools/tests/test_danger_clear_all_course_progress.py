@@ -21,7 +21,7 @@ from freedom_ls.learner_progress.models import (
     TopicProgress,
 )
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.dev_tooling]
 
 
 def test_yes_flag_empties_all_five_progress_tables_and_leaves_content_intact(

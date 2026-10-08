@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.dev_tooling
+
 # Absolute path to the bundled validator script.
 VALIDATE_SCRIPT = Path(__file__).parent.parent / "validate.py"
 

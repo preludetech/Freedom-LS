@@ -12,6 +12,8 @@ import pytest
 
 from dev_db.stale_dbs import Worktree, classify, parse_stamp, parse_worktree_list
 
+pytestmark = pytest.mark.dev_tooling
+
 REPO = "/home/dev/.git/worktrees/common"
 WORKTREE = "/home/dev/lms/feature-x"
 

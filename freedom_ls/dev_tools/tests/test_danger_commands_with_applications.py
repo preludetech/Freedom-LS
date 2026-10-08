@@ -16,7 +16,7 @@ if app_not_installed("freedom_ls.course_applications"):
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.dev_tooling]
 
 
 @pytest.fixture

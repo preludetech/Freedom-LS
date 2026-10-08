@@ -4,11 +4,7 @@ This addendum extends the generic `ds` `playwright-testing.md` resource (pulled 
 
 ## Marker taxonomy / portability
 
-The `playwright` marker sits alongside FLS's `fls_internal`, `ci_only` and `weasyprint` markers (see `Skill(fls-dev:testing)` for the full taxonomy). A concrete downstream project excludes the browser set, the FLS-internal set, the slow set and the WeasyPrint set with:
-
-```bash
-uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"
-```
+The `playwright` marker sits alongside FLS's `fls_internal`, `ci_only` and `weasyprint` markers (see `Skill(fls-dev:testing)` for the full taxonomy). A concrete downstream project excludes the browser set, the FLS-internal set, the slow set, the WeasyPrint set and the developer-tooling set. The command is in the marker section of `Skill(fls-dev:testing)`.
 
 FLS's own `uv run pytest` exercises the `playwright` and `fls_internal` tests against FLS's own settings, since that is FLS regression testing.
 

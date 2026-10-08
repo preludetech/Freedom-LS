@@ -23,6 +23,8 @@ from dev_db.diagnose import (
     summarise,
 )
 
+pytestmark = pytest.mark.dev_tooling
+
 
 @pytest.mark.parametrize(
     "line",

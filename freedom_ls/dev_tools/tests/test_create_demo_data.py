@@ -9,7 +9,7 @@ import pytest
 from django.contrib.sites.models import Site
 from django.core.management import call_command
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.dev_tooling]
 
 
 def test_yes_flag_creates_demo_sites_without_prompting():

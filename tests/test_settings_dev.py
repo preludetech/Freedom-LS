@@ -18,11 +18,15 @@ import importlib.util
 from types import ModuleType
 from typing import cast
 
+import pytest
+
 from django.conf import settings
 
 from config import settings_dev
 from config.settings_dev import build_application_name
 from freedom_ls.base.git_utils import branch_to_db_name
+
+pytestmark = pytest.mark.dev_tooling
 
 
 def _load_pristine_settings_dev() -> ModuleType:

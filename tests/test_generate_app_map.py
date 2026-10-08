@@ -14,7 +14,11 @@ import sys
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from tests._script_trees import run_command, run_script, write_tree
+
+pytestmark = pytest.mark.dev_tooling
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = (

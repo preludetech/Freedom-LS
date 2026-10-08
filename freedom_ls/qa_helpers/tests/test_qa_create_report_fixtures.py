@@ -25,7 +25,7 @@ from freedom_ls.qa_helpers.management.commands.qa_create_report_fixtures import 
     _reset_fixtures,
 )
 
-pytestmark = pytest.mark.fls_internal
+pytestmark = [pytest.mark.fls_internal, pytest.mark.dev_tooling]
 
 
 def _fixture():

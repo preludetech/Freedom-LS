@@ -8,6 +8,8 @@ from freedom_ls.tests.playwright_fixtures import (
     close_db_connections_before_playwright_stops,
 )
 
+pytestmark = pytest.mark.dev_tooling
+
 
 @pytest.mark.django_db(transaction=True)
 def test_closes_connection_opened_while_playwright_loop_is_current() -> None:

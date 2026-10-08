@@ -13,7 +13,7 @@ if "freedom_ls.dev_tools" not in settings.INSTALLED_APPS:  # pragma: no cover
 
 from freedom_ls.dev_tools.guard import require_dev_tools_enabled
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.dev_tooling]
 
 GUARD_MESSAGE = "disabled outside development"
 

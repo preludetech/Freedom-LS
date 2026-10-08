@@ -12,6 +12,10 @@ import sys
 from pathlib import Path
 from types import ModuleType
 
+import pytest
+
+pytestmark = pytest.mark.dev_tooling
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "claude_plugins" / "sdd" / "scripts" / "design_screenshots.py"
 

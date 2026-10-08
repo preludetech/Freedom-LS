@@ -80,12 +80,13 @@ DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 env = ["DJANGO_ALLOW_ASYNC_UNSAFE = True"]
 testpaths = ["freedom_ls", "tests", "claude_plugins/fls-content"]
-addopts = "--strict-markers -m 'not ci_only and not weasyprint' --disable-socket --allow-hosts=127.0.0.1,::1 --tracing=retain-on-failure --screenshot=only-on-failure"
+addopts = "--strict-markers -m 'not ci_only and not weasyprint and not dev_tooling' --disable-socket --allow-hosts=127.0.0.1,::1 --tracing=retain-on-failure --screenshot=only-on-failure"
 markers = [
     "playwright: marks tests that use playwright for browser automation",
     "ci_only: marks slow tests that should only run in CI (e.g. real-time rate-limit windows)",
     "fls_internal: marks tests that only pass under FLS's own settings, theme, branding or demo content (not portable to a concrete downstream)",
     "weasyprint: marks tests that invoke WeasyPrint and need Pango/cairo/gdk-pixbuf/HarfBuzz",
+    "dev_tooling: tests of developer tooling (QA seeders, danger_ commands, dev scripts, the content validator); deselected by default, run with -m dev_tooling",
 ]
 timeout = 300
 

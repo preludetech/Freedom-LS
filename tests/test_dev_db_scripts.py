@@ -19,6 +19,8 @@ import yaml
 from dev_db import server
 from tests.stub_tools import StubTools, run_script, write_stub
 
+pytestmark = pytest.mark.dev_tooling
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DELETE_SCRIPT = (
     REPO_ROOT / "claude_plugins" / "fls-dev" / "scripts" / "dev_db_delete.sh"

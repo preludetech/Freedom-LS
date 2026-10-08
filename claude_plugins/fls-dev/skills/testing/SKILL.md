@@ -131,12 +131,13 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 - **`playwright`** — browser-dependent (see `Skill(fls-dev:playwright-tests)`); the browser set a downstream excludes.
 - **`fls_internal`** — only valid under FLS's own settings/theme/branding/demo content.
 - **`ci_only`** — existing slow / real-time tests (unchanged).
+- **`dev_tooling`** — tests of developer tooling: QA seeders, `danger_` commands, dev scripts and the content validator. Excluded by default locally; CI runs them in their own job. Run them with `uv run pytest -m dev_tooling`.
 - **`weasyprint`** — invokes WeasyPrint and needs Pango/cairo/gdk-pixbuf/HarfBuzz; excluded by default locally so contributors without those system libraries can still run the suite, but included in CI (where the libraries are installed) since CI's `-m "not playwright"` overrides the local `addopts` exclusion.
 
-FLS's own `uv run pytest` runs everything except `ci_only` and `weasyprint` (it *is* FLS regression testing, with CI supplying the system libraries needed to also run the `weasyprint` set). A concrete downstream project instead runs:
+FLS's own `uv run pytest` runs everything except `ci_only`, `weasyprint` and `dev_tooling` (it *is* FLS regression testing, with CI supplying the system libraries needed to also run the `weasyprint` set). A concrete downstream project instead runs:
 
 ```bash
-uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint"
+uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"
 ```
 
 **Reach for `fls_internal` last.** Every test that stays portable is real integration signal for a downstream. Before marking a test `fls_internal`, de-brand it first (pin the input or assert the contract). Only mark it when it genuinely depends on FLS's own repo/brand/demo state (e.g. it reads `demo_content/`). Prefer a file-level `pytestmark = pytest.mark.fls_internal` only for wholly brand-coupled files; mark individual tests in mixed files.

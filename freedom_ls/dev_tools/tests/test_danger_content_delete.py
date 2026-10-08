@@ -15,7 +15,7 @@ from freedom_ls.form_engine.models import FormQuestion, QuestionAnswer
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 
-pytestmark = pytest.mark.django_db
+pytestmark = [pytest.mark.django_db, pytest.mark.dev_tooling]
 
 
 def test_danger_content_delete_succeeds_with_progress_rows_present(mock_site_context):

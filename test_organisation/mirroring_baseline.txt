@@ -286,9 +286,6 @@ freedom_ls/panel_framework/tests/test_templates.py
 
 # qa_helpers
 freedom_ls/qa_helpers/tests/test_qa_create_application_review_accounts.py
-freedom_ls/qa_helpers/tests/test_qa_create_organisations.py
-freedom_ls/qa_helpers/tests/test_qa_create_report_brand_organisations.py
-freedom_ls/qa_helpers/tests/test_qa_create_report_cohort.py
 freedom_ls/qa_helpers/tests/test_qa_create_report_fixtures.py
 
 # referral_tracking

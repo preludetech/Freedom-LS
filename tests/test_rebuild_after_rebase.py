@@ -16,6 +16,8 @@ import pytest
 
 from tests.stub_tools import StubTools, run_script, write_stub
 
+pytestmark = pytest.mark.dev_tooling
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PLUGIN_SCRIPT = (
     REPO_ROOT / "claude_plugins" / "fls-dev" / "scripts" / "rebuild_after_rebase.sh"
