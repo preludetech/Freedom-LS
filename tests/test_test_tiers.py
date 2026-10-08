@@ -31,7 +31,6 @@ ALLOWED = frozenset(
         "claude_plugins/sdd/commands/protected/run_test_tier.md",
         # Still to convert:
         "claude_plugins/django-stack/commands/commit.md",
-        "claude_plugins/sdd/commands/implement_plan.md",
         "claude_plugins/sdd/commands/address_pr_review.md",
     }
 )

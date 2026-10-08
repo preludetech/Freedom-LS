@@ -46,7 +46,7 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 
 1. Implement each step in the batch exactly as written in the plan
 2. Run any verifications the plan specifies after each step
-3. After all steps are done, run `uv run pytest` with the Bash tool's `run_in_background: true` and wait for the completion notification — all tests must pass. Do not poll it with `ps` or `pgrep` loops, and do not start a second full run in this worktree while one is in flight. Do not wrap it in `timeout`. The suite can take more than 10 minutes.
+3. After all steps are done, read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `targeted` and `<diff>`: `--working-tree`. A failure follows "When a targeted run or full run fails" in the tier definition the helper names. Done when the helper reports a summary line with no failures.
 4. **As its final step, make the `[batch <id>] <summary>` git commit itself** with `uv run git commit` (it has `Bash`; the `uv run` prefix is required so the project's pre-commit hooks fire — see `CLAUDE.md`), then return a structured status (`status: ok|failed|blocked` · `reason:`).
 
 Every brief also carries this rule: comments, docstrings and test names state facts about the code and stand on their own. They never mention the spec, plan, research notes or QA plan, or their numbers: no `§4b`, `spec 6`, `this slice`, `batch 3`, `a later spec`, `Phase 2` or `spec_dd/` paths. Where the reasoning came from the spec, write the reasoning itself. If the project has a skill for writing code comments, the batch follows it.
@@ -65,7 +65,7 @@ After a batch returns, act on its status:
 - `failed` → reset any partial uncommitted work so the retry starts clean, then retry that batch (≤2 attempts) with the prior error included in the brief.
 - `blocked` → gather the listed `needs` via `AskUserQuestion` (legal at depth 0), then re-spawn the batch with the answers.
 
-**All tests must pass before moving to the next batch.**
+**The batch's tier must pass before moving to the next batch.** A fix batch is a batch, so it runs `targeted` the same way.
 
 ### Design check
 
@@ -88,9 +88,9 @@ If there is a QA file, do **not** run it, and ignore any plan step that says to 
 
 After all batches are complete:
 
-1. Run `uv run pytest` via `sdd:sdd-mechanic` to confirm everything passes. Brief it to run the full suite with the Bash tool's `run_in_background: true` and wait for the completion notification, not to poll it with `ps` or `pgrep` loops, not to start a second full run in this worktree while one is in flight, and not to wrap it in `timeout`. The suite can take more than 10 minutes.
+1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `full`, returning the summary line and any failing test names.
 2. Check each success criterion from the plan — is it met? List each Design check as passed (with its `fixes` count) or skipped.
-3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth), then repeat from step 1
+3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth). The fix sub-agent runs `targeted`, like any batch. Then repeat from step 1, so a fix is followed by another full run
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
 ## When to Stop and Ask
