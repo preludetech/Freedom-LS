@@ -12,11 +12,17 @@ from freedom_ls.learner_management.capabilities import (
     _site_grants,
     roles_granting,
 )
-from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortMembership,
+    Learner,
+    OrganisationMember,
+)
 from freedom_ls.organisations.models import Organisation
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+    from django.contrib.sites.models import Site
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
@@ -285,6 +291,23 @@ def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
     return all_cohorts_visible_to(user).filter(pk=cohort.pk).exists()
 
 
+def visible_learners_expression(user: User, roles: frozenset[str], site: Site) -> Q:
+    """Q on a Learner queryset: rows `user` reaches through an active grant of `roles`.
+
+    A site grant reaches every row on the site and is never gated; an organisation
+    or cohort grant counts only through an active OrganisationMember, which the
+    _granted_* builders already enforce. The cohort branch goes through pk__in on
+    CohortMembership rather than a join, so no caller needs distinct().
+    """
+    if _site_grants(user, roles, site).exists():
+        return Q(site=site)
+    return Q(organisation__in=_granted_organisations(user, roles)) | Q(
+        pk__in=CohortMembership.objects.filter(
+            site=site, cohort__in=_granted_cohorts(user, roles)
+        ).values("learner_id")
+    )
+
+
 def learners_visible_to(
     user: RequestUser, organisation: Organisation
 ) -> QuerySet[Learner]:
@@ -298,6 +321,9 @@ def learners_visible_to(
     cohort-scoped educator the whole organisation's roster; only a
     site/organisation-level grant sees both.
     """
+    # is_active sits outside the visibility Q: a removed learner must not
+    # reappear just because they still hold a membership in a granted cohort,
+    # or still belong to the organisation.
     within = Learner.objects.filter(organisation=organisation, is_active=True)
     resolved = _resolved_or_none(user, within)
     if resolved is not None:
@@ -305,20 +331,7 @@ def learners_visible_to(
     user = cast("User", user)
 
     roles = roles_granting(VIEW_LEARNER, organisation.site)
-    if (
-        _site_grants(user, roles, organisation.site).exists()
-        or _granted_organisations(user, roles).filter(pk=organisation.pk).exists()
-    ):
-        visible = Q(organisation=organisation)
-    else:
-        visible = Q(
-            organisation=organisation,
-            cohortmembership__cohort__in=_granted_cohorts(user, roles),
-        )
-    # is_active sits outside the Q(): a removed learner must not reappear
-    # just because they still hold a membership in a granted cohort, or still
-    # belong to the organisation.
-    return Learner.objects.filter(visible, is_active=True).distinct()
+    return within.filter(visible_learners_expression(user, roles, organisation.site))
 
 
 def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:

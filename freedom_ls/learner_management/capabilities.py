@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, cast
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
-from django.db.models import CharField, Exists, Model, OuterRef, QuerySet
+from django.db.models import CharField, Exists, Model, OuterRef, Q, QuerySet
 from django.db.models.functions import Cast
 
 from freedom_ls.learner_management.models import (
@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
+    type Holder = User | OuterRef
 
 
 def roles_granting(capability: str, site: Site) -> frozenset[str]:
@@ -93,7 +94,7 @@ def _organisation_of(scope: Model) -> Organisation | None:
 
 
 def _site_grants(
-    user: User, roles: frozenset[str], site: Site
+    user: Holder, roles: frozenset[str], site: Site
 ) -> QuerySet[SiteRoleAssignment]:
     """Active site-level grants of any of `roles` on `site`."""
     return SiteRoleAssignment.objects.filter(
@@ -115,7 +116,7 @@ def _active_role_assignments(
     )
 
 
-def _grant_exists(model: type[Model], user: User, roles: frozenset[str]) -> Exists:
+def _grant_exists(model: type[Model], user: Holder, roles: frozenset[str]) -> Exists:
     """An Exists() matching an active grant of `roles` on the outer row.
 
     `object_id` is a CharField and every target here has a UUID primary
@@ -126,12 +127,12 @@ def _grant_exists(model: type[Model], user: User, roles: frozenset[str]) -> Exis
     """
     return Exists(
         _active_role_assignments(model, roles).filter(
-            user=user, object_id=Cast(OuterRef("pk"), output_field=CharField())
+            Q(user=user), object_id=Cast(OuterRef("pk"), output_field=CharField())
         )
     )
 
 
-def _member_organisations(user: User) -> QuerySet:
+def _member_organisations(user: Holder) -> QuerySet:
     """The organisations `user` holds an active OrganisationMember row in.
 
     The gate every organisation or cohort grant is checked against: a role
@@ -145,7 +146,9 @@ def _member_organisations(user: User) -> QuerySet:
     )
 
 
-def _granted_organisations(user: User, roles: frozenset[str]) -> QuerySet[Organisation]:
+def _granted_organisations(
+    user: Holder, roles: frozenset[str]
+) -> QuerySet[Organisation]:
     """Organisations `user` holds an active grant of `roles` on, gated on an
     active OrganisationMember for each one."""
     return Organisation.objects.filter(
@@ -153,7 +156,7 @@ def _granted_organisations(user: User, roles: frozenset[str]) -> QuerySet[Organi
     )
 
 
-def _granted_cohorts(user: User, roles: frozenset[str]) -> QuerySet[Cohort]:
+def _granted_cohorts(user: Holder, roles: frozenset[str]) -> QuerySet[Cohort]:
     """Cohorts `user` holds an active grant of `roles` on, gated on an active
     OrganisationMember for the cohort's organisation."""
     return Cohort.objects.filter(
