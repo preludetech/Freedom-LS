@@ -85,7 +85,7 @@ jobs:
         run: npm run tailwind_build
 
       - name: Run unit tests
-        run: uv run pytest -m "not playwright"
+        run: uv run pytest -m "not playwright" --cov --cov-fail-under=73
 
   playwright-tests:
     runs-on: ubuntu-latest
@@ -134,7 +134,7 @@ jobs:
         run: uv run playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: uv run pytest -m playwright --no-cov
+        run: uv run pytest -m playwright
 
       - name: Upload Playwright traces
         uses: actions/upload-artifact@v7
