@@ -44,7 +44,6 @@ freedom_ls/base/tests/test_pagination_component.py
 freedom_ls/base/tests/test_premailer_templatetag.py
 freedom_ls/base/tests/test_settings_theme_wiring.py
 freedom_ls/base/tests/test_tailwind_components_headings.py
-freedom_ls/base/tests/test_theme_tokens.py
 
 # blog
 freedom_ls/blog/tests/test_seo_discoverability.py
@@ -86,7 +85,6 @@ freedom_ls/content_engine/tests/test_course_visibility.py
 freedom_ls/content_engine/tests/test_file_admin_form.py
 freedom_ls/content_engine/tests/test_form_save.py
 freedom_ls/content_engine/tests/test_iso_duration.py
-freedom_ls/content_engine/tests/test_katex_vendor_assets.py
 freedom_ls/content_engine/tests/test_optimise_image.py
 freedom_ls/content_engine/tests/test_tags.py
 freedom_ls/content_engine/tests/test_toc_in_development.py
@@ -157,13 +155,8 @@ freedom_ls/google_tag/tests/test_google_tag_tags.py
 freedom_ls/health/tests/test_health_endpoints.py
 
 # icons
-freedom_ls/icons/tests/test_check_all_semantic_name.py
-freedom_ls/icons/tests/test_cohort_semantic_name.py
-freedom_ls/icons/tests/test_course_semantic_name.py
-freedom_ls/icons/tests/test_edit_semantic_name.py
 freedom_ls/icons/tests/test_icon_cotton_component.py
 freedom_ls/icons/tests/test_no_font_awesome.py
-freedom_ls/icons/tests/test_panel_component_semantic_names.py
 freedom_ls/icons/tests/test_renderer.py
 
 # learner_interface
@@ -218,7 +211,6 @@ freedom_ls/learner_interface/tests/test_sequential_item_unlock.py
 freedom_ls/learner_interface/tests/test_view_course_item.py
 
 # learner_management
-freedom_ls/learner_management/tests/test_cohort_deadline.py
 freedom_ls/learner_management/tests/test_constraint_validation_forms.py
 freedom_ls/learner_management/tests/test_deadline_utils_bulk.py
 freedom_ls/learner_management/tests/test_deletion_semantics.py
@@ -227,8 +219,6 @@ freedom_ls/learner_management/tests/test_ensure_learner.py
 freedom_ls/learner_management/tests/test_ensure_organisation_member.py
 freedom_ls/learner_management/tests/test_learner.py
 freedom_ls/learner_management/tests/test_learner_admin.py
-freedom_ls/learner_management/tests/test_learner_cohort_deadline_override.py
-freedom_ls/learner_management/tests/test_learner_deadline.py
 freedom_ls/learner_management/tests/test_registration_webhook_events.py
 
 # learner_progress

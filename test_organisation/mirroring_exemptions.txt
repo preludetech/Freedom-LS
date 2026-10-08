@@ -8,3 +8,5 @@
 freedom_ls/content_engine/tests/demo_content/  # reads the shipped demo_content/ tree, which mirrors no module
 freedom_ls/blog/tests/demo_content/  # reads the shipped demo_content/ tree, which mirrors no module
 freedom_ls/learner_interface/tests/demo_content/  # reads the shipped demo_content/ tree, which mirrors no module
+freedom_ls/base/tests/invariants/  # repo-wide checks over templates, settings and theme files, which mirror no module
+freedom_ls/content_engine/tests/invariants/  # checks over vendored assets, which mirror no module
