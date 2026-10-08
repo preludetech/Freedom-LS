@@ -25,12 +25,13 @@ ALLOWED = frozenset(
         "claude_plugins/fls-dev/resources/playwright-testing.md",
         "claude_plugins/fls-dev/skills/playwright-tests/SKILL.md",
         "claude_plugins/fls-dev/commands/concrete/update_fls.md",
+        # The triage gate describes the full tier as the ordinary pytest suite.
+        "claude_plugins/fls-dev/commands/do_qa.md",
         # Still to convert:
         "claude_plugins/django-stack/commands/rebase_main.md",
         "claude_plugins/django-stack/commands/commit.md",
         "claude_plugins/sdd/commands/implement_plan.md",
         "claude_plugins/sdd/commands/address_pr_review.md",
-        "claude_plugins/fls-dev/commands/do_qa.md",
     }
 )
 

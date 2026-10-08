@@ -574,6 +574,20 @@ footer before the fix loop ran, so without this it contradicts the table below i
 Use `Edit` for both; do not re-render the whole report. If the Step 12 worker failed and there is no
 `qa_report.md`, skip this sub-step — the verdicts still reach Step 15.
 
+### Full run after the last fix
+
+When at least one bug is `FIXED` this run, spawn a **solo `sdd:sdd-mechanic`**. Brief it to read "The
+tiers", "How to run a tier" and "Reporting" in `claude_plugins/django-stack/resources/test_tiers.md`,
+run the `full` tier, and return the pytest summary line and the names of any failing tests inline. It
+changes nothing and writes no file, so Step 16's cleanup list stays as it is.
+
+When tests fail, add this row to `## Bug status` (skip the edit if there is no `qa_report.md`):
+
+`**UNRESOLVED** — full run after the fixes left tests failing (reason: <test names>)`
+
+Step 15 files the matching todo item. The fixes stay committed. The report and the todo carry the
+failure to the human.
+
 ---
 
 ## Step 14: Clean up the dev server
@@ -603,7 +617,7 @@ appears in the file. Do not reconstruct the wording from memory; it drifts betwe
 
 ### What may be added — this list is closed
 
-These four categories, and nothing else:
+These five categories, and nothing else:
 
 1. Each **UNRESOLVED** bug, design misses included, green-lane and red-lane alike:
    `add:"<section>|user + cmd|Fix QA bug: <short title> (TDD — failing test first, then fix)"`.
@@ -614,6 +628,8 @@ These four categories, and nothing else:
    `add:"<section>|user|Fix smoke gate failure: <short description> before re-running \`/fls-dev:do_qa\`"`.
 4. A product or UX decision a bug turns on:
    `add:"<section>|user|Decide <the question>, then <what follows from it>"`.
+5. A failure in the full run after the QA fixes:
+   `add:"<section>|user|Fix the tests the full run after the QA fixes left failing: <test names>"`.
 
 ### What must never be added
 
