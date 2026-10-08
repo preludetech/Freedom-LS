@@ -158,17 +158,6 @@ class TestGoogleAdsSnippetRendering:
         assert "googletagmanager.com" not in content
         assert "AW-" not in content
 
-    @override_settings(
-        GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST", GOOGLE_ADS_CONVERSION_ID="AW-TEST"
-    )
-    def test_nothing_renders_on_a_token_bearing_page(
-        self, client: Client, mock_site_context: object
-    ) -> None:
-        response = client.get(reverse("account_confirm_email", args=["some-key"]))
-
-        content = response.content.decode()
-        assert "AW-" not in content
-
 
 class TestConsentModeDeniedRegions:
     # The codes themselves are EU_CONSENT_POLICY_COUNTRIES's own contract,

@@ -248,31 +248,28 @@ class TestVisitorCountry:
 
 
 class TestAdPixelsAllowed:
+    @pytest.mark.parametrize(
+        ("country", "path", "expected"),
+        [
+            ("ZA", "/", True),
+            ("DE", "/", False),
+            ("GB", "/", False),
+            ("CH", "/", False),
+            ("NO", "/", False),
+            ("XX", "/", False),
+            (None, "/", False),
+            ("ZA", "/educator/organisations/some-org/cohorts", False),
+        ],
+    )
     @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
-    def test_a_south_african_visitor_is_allowed(self) -> None:
-        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="ZA")
+    def test_allowed_only_for_a_known_non_consent_policy_country_outside_educator_pages(
+        self, country: str | None, path: str, expected: bool
+    ) -> None:
+        headers = {} if country is None else {"HTTP_X_VISITOR_COUNTRY": country}
+        request = RequestFactory().get(path, **headers)
+        request.resolver_match = resolve(path)
 
-        assert ad_pixels_allowed(request) is True
-
-    @pytest.mark.parametrize("country", ["DE", "GB", "CH", "NO"])
-    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
-    def test_an_eu_consent_policy_country_is_refused(self, country: str) -> None:
-        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY=country)
-
-        assert ad_pixels_allowed(request) is False
-
-    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
-    def test_an_unknown_country_is_refused(self) -> None:
-        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="XX")
-
-        assert ad_pixels_allowed(request) is False
-
-    @override_settings(VISITOR_COUNTRY_HEADER="X-Visitor-Country")
-    def test_an_educator_interface_page_is_refused_even_for_south_africa(self) -> None:
-        request = RequestFactory().get("/", HTTP_X_VISITOR_COUNTRY="ZA")
-        request.resolver_match = resolve("/educator/organisations/some-org/cohorts")
-
-        assert ad_pixels_allowed(request) is False
+        assert ad_pixels_allowed(request) is expected
 
 
 class TestEuConsentPolicyCountries:

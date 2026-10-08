@@ -23,31 +23,24 @@ class TestMapping:
                 ),
             ),
             ("generate_lead", {}, PixelCall("track", "SubmitForm")),
-            ("sign_up", {"method": "email"}, PixelCall("track", "SignUp")),
-            ("course_completed", {}, PixelCall("track", "CourseCompleted")),
+            (
+                "sign_up",
+                {"method": "email"},
+                PixelCall("track", "SignUp"),
+            ),
+            (
+                "course_completed",
+                {},
+                PixelCall("track", "CourseCompleted"),
+            ),
+            ("course_access_requested", {"request_kind": "interest"}, None),
+            ("course_started", {}, None),
+            ("downstream_only", {}, None),
         ],
     )
-    def test_a_mapped_row_gives_its_method_and_name(
-        self, name: str, params: dict[str, str], expected: PixelCall
+    def test_event_maps_to_its_platform_call_or_none(
+        self, name: str, params: dict[str, str], expected: PixelCall | None
     ) -> None:
         event: AnalyticsEventPayload = {"name": name, "params": params}
 
         assert pixel_call(MAPPING, event) == expected
-
-    def test_an_interest_registration_gives_none(self) -> None:
-        event: AnalyticsEventPayload = {
-            "name": "course_access_requested",
-            "params": {"request_kind": "interest"},
-        }
-
-        assert pixel_call(MAPPING, event) is None
-
-    def test_course_started_gives_none(self) -> None:
-        event: AnalyticsEventPayload = {"name": "course_started", "params": {}}
-
-        assert pixel_call(MAPPING, event) is None
-
-    def test_an_unmapped_downstream_event_gives_none(self) -> None:
-        event: AnalyticsEventPayload = {"name": "downstream_only", "params": {}}
-
-        assert pixel_call(MAPPING, event) is None

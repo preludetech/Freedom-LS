@@ -227,8 +227,6 @@ flowchart TB
     meta_pixel -.-> accounts
     meta_pixel -.-> content_engine
     meta_pixel -.-> learner_management
-    meta_pixel -.-> organisations
-    meta_pixel -.-> role_based_permissions
     organisations -.-> accounts
     organisations -.-> role_based_permissions
     panel_framework -.-> site_aware_models
@@ -242,8 +240,6 @@ flowchart TB
     tiktok_pixel -.-> accounts
     tiktok_pixel -.-> content_engine
     tiktok_pixel -.-> learner_management
-    tiktok_pixel -.-> organisations
-    tiktok_pixel -.-> role_based_permissions
     webhooks -.-> accounts
 ```
 
@@ -275,7 +271,7 @@ flowchart TB
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
-| meta_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
+| meta_pixel | base | accounts, content_engine, learner_management |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | base | site_aware_models |
 | qa_helpers | accounts, comms, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, hr_attributes, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
@@ -283,7 +279,7 @@ flowchart TB
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |
 | role_based_permissions | accounts, base, site_aware_models | learner_management |
 | site_aware_models | base | accounts, content_engine, learner_management, learner_progress, organisations |
-| tiktok_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
+| tiktok_pixel | base | accounts, content_engine, learner_management |
 | webhooks | base, site_aware_models | accounts |
 | xapi_learning_record_store | site_aware_models | — |
 

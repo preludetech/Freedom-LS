@@ -389,8 +389,6 @@ ignore_imports = [
     "freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.accounts.models",
     "freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.content_engine.factories",
     "freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.learner_management.factories",
-    "freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.organisations.factories",
-    "freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.role_based_permissions.utils",
 ]
 
 [[tool.importlinter.contracts]]
@@ -507,8 +505,6 @@ ignore_imports = [
     "freedom_ls.tiktok_pixel.tests.test_context_processors -> freedom_ls.accounts.models",
     "freedom_ls.tiktok_pixel.tests.test_context_processors -> freedom_ls.content_engine.factories",
     "freedom_ls.tiktok_pixel.tests.test_context_processors -> freedom_ls.learner_management.factories",
-    "freedom_ls.tiktok_pixel.tests.test_context_processors -> freedom_ls.organisations.factories",
-    "freedom_ls.tiktok_pixel.tests.test_context_processors -> freedom_ls.role_based_permissions.utils",
 ]
 
 [[tool.importlinter.contracts]]
