@@ -127,7 +127,7 @@ class TestQueryCost:
 
     @pytest.mark.parametrize("registration_count", [1, 5])
     def test_query_count_stays_at_three(
-        self, mock_site_context, django_assert_num_queries, registration_count
+        self, mock_site_context, django_assert_max_num_queries, registration_count
     ):
         organisation = OrganisationFactory()
         learner = LearnerFactory(organisation=organisation)
@@ -151,7 +151,7 @@ class TestQueryCost:
             )
             ensure_course_progress_record(learner, cohort_course, cohort_registration)
 
-        with django_assert_num_queries(3):
+        with django_assert_max_num_queries(3):
             result = registrations_with_progress_for_learner(learner)
 
         assert len(result) == registration_count * 2

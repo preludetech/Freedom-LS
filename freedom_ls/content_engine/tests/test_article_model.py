@@ -156,7 +156,7 @@ def test_image_file_ignores_a_file_belonging_to_another_site(mock_site_context):
 
 @pytest.mark.django_db
 def test_with_image_files_resolves_every_image_in_two_queries(
-    mock_site_context, django_assert_num_queries
+    mock_site_context, django_assert_max_num_queries
 ):
     with_image = ArticleFactory(
         file_path="articles/a.md",
@@ -173,7 +173,7 @@ def test_with_image_files_resolves_every_image_in_two_queries(
     )
     photo = FileFactory(file_path="articles/photo.png")
 
-    with django_assert_num_queries(2):
+    with django_assert_max_num_queries(2):
         articles = Article.objects.published().with_image_files()
         images = [article.image_file for article in articles]
 

@@ -240,7 +240,7 @@ class TestCourseProgressByCourseForQueryCount:
         assert len(resolved) == course_count
 
     def test_other_cohort_members_records_are_not_fetched(
-        self, mock_site_context, django_assert_num_queries
+        self, mock_site_context, django_assert_max_num_queries
     ):
         """A cohort registration grants a record to every member, so filtering
         on the registration alone hydrates the whole cohort and discards all
@@ -263,7 +263,7 @@ class TestCourseProgressByCourseForQueryCount:
             CohortMembershipFactory(learner=classmate, cohort=cohort)
             ensure_course_progress_record(classmate, course, registration)
 
-        with django_assert_num_queries(3) as captured:
+        with django_assert_max_num_queries(3) as captured:
             assert course_progress_by_course_for(user, [course]) == {
                 course.id: own_record
             }

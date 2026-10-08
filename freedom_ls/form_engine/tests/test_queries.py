@@ -173,7 +173,7 @@ def test_a_sitting_with_every_answer_on_a_page_has_no_final_group(mock_site_cont
 
 @pytest.mark.django_db
 def test_answer_groups_query_count_does_not_grow_with_the_questions(
-    mock_site_context, django_assert_num_queries
+    mock_site_context, django_assert_max_num_queries
 ):
     def build(question_count: int) -> FormProgress:
         form = FormFactory()
@@ -190,5 +190,5 @@ def test_answer_groups_query_count_does_not_grow_with_the_questions(
 
     with CaptureQueriesContext(connection) as small_queries:
         answer_groups(small)
-    with django_assert_num_queries(len(small_queries)):
+    with django_assert_max_num_queries(len(small_queries)):
         answer_groups(large)

@@ -261,6 +261,8 @@ def test_concurrent_insert_of_the_same_key_recovers_without_raising(
 def test_a_novel_key_on_a_capped_out_day_costs_two_queries_and_no_count(
     mock_site_context, site, settings, django_assert_num_queries
 ) -> None:
+    """A capped-out day is reachable with random query strings, so a novel key
+    must fold into the overflow row with two UPDATEs and no COUNT."""
     settings.REFERRAL_TRACKING_FIRST_TOUCH_KEY_CAP = 1
     increment_first_touch(
         site=site,

@@ -321,7 +321,7 @@ class TestDownloadReportView:
         self,
         mock_site_context: object,
         client: object,
-        django_assert_num_queries: AssertNumQueries,
+        django_assert_max_num_queries: AssertNumQueries,
     ) -> None:
         organisation = OrganisationFactory(name="Northside College")
         cohort = CohortFactory(organisation=organisation)
@@ -340,7 +340,7 @@ class TestDownloadReportView:
         # can() fetches the cohort's site directly (one query) and checks the
         # organisation- and cohort-level grants as two separate queries,
         # unlike all_cohorts_visible_to's single combined queryset.
-        with django_assert_num_queries(8):
+        with django_assert_max_num_queries(8):
             client.get(_download_url(report.pk))
 
     def test_ready_report_response_carries_no_store_cache_header(

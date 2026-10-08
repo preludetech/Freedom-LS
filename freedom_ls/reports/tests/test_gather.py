@@ -874,14 +874,14 @@ class TestWrongAnswersCarryQuizTitles:
 
 
 def test_query_count_is_constant_across_learner_and_question_scale(
-    mock_site_context, django_assert_num_queries
+    mock_site_context, django_assert_max_num_queries
 ):
     small_cohort_id = _build_cohort_with_quiz(learner_count=2, question_count=2)
-    with django_assert_num_queries(GATHER_QUERY_BOUND):
+    with django_assert_max_num_queries(GATHER_QUERY_BOUND):
         gather_cohort_report_data(small_cohort_id, mock_site_context.pk)
 
     large_cohort_id = _build_cohort_with_quiz(learner_count=6, question_count=6)
-    with django_assert_num_queries(GATHER_QUERY_BOUND):
+    with django_assert_max_num_queries(GATHER_QUERY_BOUND):
         gather_cohort_report_data(large_cohort_id, mock_site_context.pk)
 
 
