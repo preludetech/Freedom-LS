@@ -51,6 +51,21 @@ def test_a_constant_above_the_settings_layer_cuts_the_expression_short() -> None
     assert expression.value == "open"
 
 
+@pytest.mark.parametrize(
+    ("site", "settings_value", "expected"),
+    [
+        (None, "open", ResolvedFlag("open", "settings")),
+        ("inherit", "closed", ResolvedFlag("closed", "settings")),
+        ("open", "closed", ResolvedFlag("open", "site")),
+        ("closed", "open", ResolvedFlag("closed", "site")),
+    ],
+)
+def test_the_site_layer_over_the_settings_layer(
+    site: str | None, settings_value: str, expected: ResolvedFlag
+) -> None:
+    assert resolve_flag({"site": site, "settings": settings_value}) == expected
+
+
 @pytest.mark.django_db
 def test_a_joined_layer_over_a_constant_falls_back_to_the_constant(
     mock_site_context: Site,

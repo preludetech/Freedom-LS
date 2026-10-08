@@ -141,6 +141,7 @@ flowchart TB
     messaging_policy --> comms
     messaging_policy --> learner_management
     messaging_policy --> role_based_permissions
+    messaging_policy --> site_aware_models
     meta_pixel --> base
     organisations --> base
     organisations --> site_aware_models
@@ -266,7 +267,7 @@ flowchart TB
 | learner_progress | accounts, comms, content_engine, form_engine, learner_management, site_aware_models, webhooks | organisations |
 | mail | base | deployment |
 | markdown_rendering | base | content_engine |
-| messaging_policy | accounts, base, comms, learner_management, role_based_permissions | — |
+| messaging_policy | accounts, base, comms, learner_management, role_based_permissions, site_aware_models | — |
 | meta_pixel | base | accounts, content_engine, learner_management, organisations, role_based_permissions |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
 | panel_framework | base | site_aware_models |

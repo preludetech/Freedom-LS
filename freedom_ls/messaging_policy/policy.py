@@ -29,7 +29,7 @@ from freedom_ls.learner_management.queries import (
     visible_learners_expression,
 )
 from freedom_ls.messaging_policy.config import config
-from freedom_ls.messaging_policy.models import MessagingFlag
+from freedom_ls.messaging_policy.models import MessagingFlag, SiteMessagingConfig
 from freedom_ls.messaging_policy.resolver import (
     resolve_flag,
     resolved_flag_expression,
@@ -40,7 +40,9 @@ if TYPE_CHECKING:
     from django.db.models import Model, QuerySet
 
 
-def offered_roles_for(site: Site, site_config: object | None) -> frozenset[str]:
+def offered_roles_for(
+    site: Site, site_config: SiteMessagingConfig | None
+) -> frozenset[str]:
     """The role keys a learner may be offered as educators on this site.
 
     The setting applies until the site row overrides it. Always intersected with
@@ -57,7 +59,7 @@ class _Resolution(NamedTuple):
 
     site: Site
     rows: list[Learner]  # the sender's active Learner rows on the site
-    site_config: object | None = None  # the site's override row, once one exists
+    site_config: SiteMessagingConfig | None = None  # the site's override row, if any
 
 
 class LayeredMessagingPolicy(MessagingPolicy):
@@ -106,7 +108,8 @@ class LayeredMessagingPolicy(MessagingPolicy):
                 user=sender, site=site, is_active=True
             ).select_related("organisation", "site")
         )
-        return _Resolution(site=site, rows=rows)
+        site_config = SiteMessagingConfig.objects.filter(site=site).first()
+        return _Resolution(site=site, rows=rows, site_config=site_config)
 
     def _related_users(
         self, sender: User, resolution: _Resolution, *, open_only: bool
@@ -184,7 +187,11 @@ class LayeredMessagingPolicy(MessagingPolicy):
         self, row: Learner, resolution: _Resolution, flag: str
     ) -> dict[str, str | None]:
         """The layers that depend only on the sender row, read in Python."""
-        return {"settings": config.MESSAGING_DEFAULT_FLAGS[flag]}
+        site_config = resolution.site_config
+        return {
+            "site": getattr(site_config, flag) if site_config else None,
+            "settings": config.MESSAGING_DEFAULT_FLAGS[flag],
+        }
 
     def _resolved_cohorts(
         self, row: Learner, resolution: _Resolution, flag: str, *, open_only: bool

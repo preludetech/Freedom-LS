@@ -35,6 +35,7 @@ from freedom_ls.learner_management.tests.scenario_world import (
     build_world,
     custom_role_config,
 )
+from freedom_ls.messaging_policy.factories import SiteMessagingConfigFactory
 from freedom_ls.messaging_policy.policy import LayeredMessagingPolicy
 from freedom_ls.messaging_policy.tests.messaging_world import (
     allowed_pairs,
@@ -69,10 +70,10 @@ def out_of_the_box_policy() -> LayeredMessagingPolicy:
     return LayeredMessagingPolicy()
 
 
-QUERIES_RECIPIENTS = 3
-QUERIES_ALLOWED = 3
-QUERIES_CLOSED = 5
-QUERIES_NO_RELATIONSHIP = 5
+QUERIES_RECIPIENTS = 4
+QUERIES_ALLOWED = 4
+QUERIES_CLOSED = 6
+QUERIES_NO_RELATIONSHIP = 6
 
 
 def open_course_peers(settings: SettingsWrapper) -> None:
@@ -800,3 +801,28 @@ def test_a_learner_reply_to_an_educator_whose_role_was_removed_has_no_relationsh
     )
 
     assert decision.reason == MessagingRefusal.NO_RELATIONSHIP
+
+
+def test_a_site_row_with_the_cohort_peer_flag_open_beats_a_closed_setting(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    SiteMessagingConfigFactory(site=world.site, learner_to_cohort_peer="open")
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.learners["in_c1_and_c2"].user,
+        site=world.site,
+    )
+
+    assert decision.allowed is True
+
+
+def test_an_all_inherit_site_row_gives_the_same_outcome_as_no_row(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_cohort_peers(settings)
+    without_row = allowed_pairs(world, policy)
+
+    SiteMessagingConfigFactory(site=world.site)
+
+    assert allowed_pairs(world, policy) == without_row
