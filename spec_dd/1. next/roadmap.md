@@ -371,7 +371,6 @@ Each of these is an open question in the idea that owns it. Resolve it there and
 | `compliance-form-randomization` | Authors randomise question order and draw a subset per attempt from a question bank for compliance and exam use. | none | in progress | See `form-engine-branch-logic` on the shared per-attempt record. |
 | `content_snapshots` | Immutable point-in-time snapshots of content_engine objects, so what a learner saw on the day is recorded. | none | in progress | |
 | `course-applications-admin` | Show what applicants answered in the application form in the Django admin. | none | in progress | |
-| `educator-interface-looks-good` | Restyle the educator interface to its Claude Design design using existing brand tokens, with no new scope. | none | in progress | |
 | `in-app-feedback` | Configurable feedback prompts at natural pause points, with a rating and free text. | none | in progress | Spec, plan and QA plan exist. |
 | `panel-framework-looks-good` | Make the panel framework's screens follow their design; the structure works but the look does not match. | none | in progress | |
 | `qa-boy-scout-throwaway` | Throwaway spec for QA of `test-organisation-and-hygene-2-sdd-review-and-boy-scout`: `page_count` on `health` and a `percent` filter on `form_engine`. | none | in progress | Local branch only, never merged. |
