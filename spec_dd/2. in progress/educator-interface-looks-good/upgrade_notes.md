@@ -65,11 +65,16 @@ with it. No models, settings or packages change.
   `border-t border-border px-6 py-4` footer row). A downstream action template that still writes a
   bare `<h2 id="app-modal-title">` renders with no close button and no padding. Below `sm` the
   dialog is now a bottom sheet.
-- **Page header has its own block.** `panel_framework/views/_main_base.html` now renders a
-  `page_header` block in a header band above the `main` block, which sits on the panel canvas.
-  A downstream view template that extends it and draws its heading inside `main` should move the
-  heading into `page_header`. The old `pl-2 sm:pl-6` on `#main-content` is gone; both regions pad
-  themselves.
+- **Page header has its own block, and carries the mobile navigation toggle.**
+  `panel_framework/views/_main_base.html` now renders a `page_header` block in a header band above
+  the `main` block, which sits on the panel canvas. A downstream view template that extends it and
+  draws its heading inside `main` should move the heading into `page_header`. The old
+  `pl-2 sm:pl-6` on `#main-content` is gone; both regions pad themselves. The shell no longer draws
+  the toggle that opens the navigation sheet below `lg`: a heading rendered through
+  `<c-panel-page-header>` must pass `panel_toggle="true"` (as the built-in view templates do), and
+  a `page_header` block with other markup must include
+  `panel_framework/partials/panel_toggle.html` itself. A template that leaves the block alone gets
+  the toggle on its own from the base.
 - **Sidebar menu items changed shape.** The dicts built for `sidebar_nav.html` drop `expanded`,
   `instance_label` and `instance_url` and gain `aria_current` (`"page"` on the section list,
   `"true"` on one of its instance pages, `""` otherwise). The sidebar no longer shows the current
@@ -81,8 +86,20 @@ with it. No models, settings or packages change.
 - **`DataTable.page_size` defaults to 10** (was 25). Set `page_size = 25` on a downstream
   `DataTable` subclass to keep the old page length.
 - **Instance page headings** use the new `SectionConfigBase.get_instance_label(instance)`
-  (default `str(instance)`) for the heading, the back link and the document title. Override it on
-  a section whose model's `str()` is not a readable name.
+  (default `str(instance)`) for the heading, the back link and the document title, and
+  `EditAction` sends the same label back after a save so the heading and the browser tab keep
+  their shape. `EditAction` reads the section from the context in `handle_submit()`, so a
+  downstream subclass that overrides `handle_submit()` must call `super().handle_submit(ctx)`
+  before `form_valid()` runs. Override `get_instance_label` on a section whose model's `str()` is
+  not a readable name.
+- **Mobile cards mark link columns only.** `Column` gains an `is_link` property (true when
+  `url_name` or `url_path_template` is set). The card below `md` ends its primary line with the
+  open-page icon only for such a column; a table whose primary column is a text or boolean cell
+  no longer shows the icon.
+- **The modal keeps its last fragment between opens.** `#app-modal-body` is emptied when the next
+  fragment is requested, not when the dialog closes, so the phone bottom sheet slides out with
+  its content. A downstream script that read `#app-modal-body` after `close` to find it empty
+  should check `#app-modal`'s `open` attribute instead.
 - **Educator cohort page.** Edit and Delete moved from `CohortDetailsPanel` to
   `CohortInstanceView.get_actions()`, so they sit in the page header. Learners moved out of
   `CohortDetailsStack` into its own tab on `CohortTabSet`. Downstream subclasses of these classes
