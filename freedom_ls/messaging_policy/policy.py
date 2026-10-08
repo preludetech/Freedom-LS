@@ -58,7 +58,7 @@ def offered_roles_for(
     return frozenset(chosen) & roles_granting(VIEW_LEARNER, site)
 
 
-def _flag_of(owner: Organisation | Cohort, flag: str) -> str | None:
+def _flag_of(owner: Learner | Organisation | Cohort, flag: str) -> str | None:
     """The stored flag on owner.messaging_config, or None when the row is missing."""
     try:
         return str(getattr(attrgetter("messaging_config")(owner), flag))
@@ -118,7 +118,9 @@ class LayeredMessagingPolicy(MessagingPolicy):
         rows = list(
             Learner.objects.filter(
                 user=sender, site=site, is_active=True
-            ).select_related("organisation__messaging_config", "site")
+            ).select_related(
+                "messaging_config", "organisation__messaging_config", "site"
+            )
         )
         site_config = SiteMessagingConfig.objects.filter(site=site).first()
         return _Resolution(site=site, rows=rows, site_config=site_config)
@@ -201,6 +203,7 @@ class LayeredMessagingPolicy(MessagingPolicy):
         """The layers that depend only on the sender row, read in Python."""
         site_config = resolution.site_config
         return {
+            "learner": _flag_of(row, flag),
             "organisation": _flag_of(row.organisation, flag),
             "site": getattr(site_config, flag) if site_config else None,
             "settings": config.MESSAGING_DEFAULT_FLAGS[flag],
@@ -232,13 +235,23 @@ class LayeredMessagingPolicy(MessagingPolicy):
         own, through_cohorts = registrations_of(row)
         flag = "learner_to_course_peer"
         return (
-            self._keep_open(own, row, resolution, flag, {}, open_only=open_only),
+            self._keep_open(
+                own,
+                row,
+                resolution,
+                flag,
+                {"registration": F(f"messaging_config__{flag}")},
+                open_only=open_only,
+            ),
             self._keep_open(
                 through_cohorts,
                 row,
                 resolution,
                 flag,
-                {"cohort": F(f"cohort__messaging_config__{flag}")},
+                {
+                    "registration": F(f"messaging_config__{flag}"),
+                    "cohort": F(f"cohort__messaging_config__{flag}"),
+                },
                 open_only=open_only,
             ),
         )

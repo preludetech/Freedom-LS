@@ -37,12 +37,16 @@ from freedom_ls.learner_management.tests.scenario_world import (
     custom_role_config,
 )
 from freedom_ls.messaging_policy.factories import (
+    CohortCourseRegistrationMessagingConfigFactory,
     CohortMessagingConfigFactory,
+    LearnerCourseRegistrationMessagingConfigFactory,
+    LearnerMessagingConfigFactory,
     OrganisationMessagingConfigFactory,
     SiteMessagingConfigFactory,
 )
 from freedom_ls.messaging_policy.policy import LayeredMessagingPolicy
 from freedom_ls.messaging_policy.tests.messaging_world import (
+    add_configuration_rows,
     allowed_pairs,
     recipients_pairs,
 )
@@ -400,6 +404,7 @@ def test_recipients_for_and_can_start_agree_on_every_pair(
     flag: str,
 ) -> None:
     settings.MESSAGING_DEFAULT_FLAGS = {**ALL_CLOSED, "learner_to_cohort_peer": flag}
+    add_configuration_rows(world)
 
     assert recipients_pairs(world, policy) == allowed_pairs(world, policy)
 
@@ -971,3 +976,184 @@ def test_all_inherit_cohort_rows_give_the_same_outcome_as_no_cohort_rows(
     _add_inherit_rows(world)
 
     assert allowed_pairs(world, policy) == without_rows
+
+
+PEER_FLAGS_CLOSED = {
+    "learner_to_cohort_peer": "closed",
+    "learner_to_course_peer": "closed",
+}
+
+
+@pytest.mark.parametrize("recipient", ["in_c1_and_c2", "no_cohort"])
+def test_a_closed_learner_level_stops_every_peer_candidate(
+    policy: LayeredMessagingPolicy,
+    world: World,
+    settings: SettingsWrapper,
+    recipient: str,
+) -> None:
+    settings.MESSAGING_DEFAULT_FLAGS = {
+        **ALL_CLOSED,
+        "learner_to_cohort_peer": "open",
+        "learner_to_course_peer": "open",
+    }
+    LearnerMessagingConfigFactory(learner=world.learners["in_c1"], **PEER_FLAGS_CLOSED)
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.learners[recipient].user,
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+@pytest.mark.parametrize(
+    ("holder", "reason"),
+    [("c1_admin", None), ("no_role", MessagingRefusal.NO_RELATIONSHIP)],
+)
+def test_the_paid_learner_reaches_an_offered_educator_and_not_a_stranger(
+    policy: LayeredMessagingPolicy,
+    world: World,
+    holder: str,
+    reason: MessagingRefusal | None,
+) -> None:
+    LearnerMessagingConfigFactory(
+        learner=world.learners["in_c1"], learner_to_educator="open"
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders[holder],
+        site=world.site,
+    )
+
+    assert decision.reason == reason
+
+
+def _course_peers_with_individual_sender_open_and_organisation_closed(
+    site: Site,
+) -> CoursePeers:
+    peers = _course_peers(site, "individually", "through_cohort")
+    LearnerCourseRegistrationMessagingConfigFactory(
+        registration=LearnerCourseRegistration.objects.get(learner=peers.sender),
+        learner_to_course_peer="open",
+    )
+    OrganisationMessagingConfigFactory(
+        organisation=peers.sender.organisation, learner_to_course_peer="closed"
+    )
+    return peers
+
+
+def test_a_course_opened_on_the_senders_registration_only_allows_the_sender(
+    policy: LayeredMessagingPolicy, mock_site_context: Site
+) -> None:
+    peers = _course_peers_with_individual_sender_open_and_organisation_closed(
+        mock_site_context
+    )
+
+    decision = policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+def test_a_course_opened_on_the_senders_registration_only_closes_the_recipients_reply(
+    policy: LayeredMessagingPolicy, mock_site_context: Site
+) -> None:
+    peers = _course_peers_with_individual_sender_open_and_organisation_closed(
+        mock_site_context
+    )
+
+    decision = policy.can_start(
+        sender=peers.recipient.user, recipient=peers.sender.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+@pytest.mark.parametrize(
+    ("individual", "through_cohort"), [("open", "closed"), ("closed", "open")]
+)
+def test_individual_and_cohort_registrations_for_one_course_are_separate_candidates(
+    policy: LayeredMessagingPolicy,
+    mock_site_context: Site,
+    individual: str,
+    through_cohort: str,
+) -> None:
+    organisation = _new_organisation()
+    course = _new_course(organisation)
+    sender = LearnerFactory(organisation=organisation)
+    recipient = LearnerFactory(organisation=organisation)
+    individual_registration = _register_individually(sender, course)
+    cohort_registration = _register_through_cohort(sender, course)
+    _register_individually(recipient, course)
+    LearnerCourseRegistrationMessagingConfigFactory(
+        registration=individual_registration, learner_to_course_peer=individual
+    )
+    CohortCourseRegistrationMessagingConfigFactory(
+        registration=cohort_registration, learner_to_course_peer=through_cohort
+    )
+
+    decision = policy.can_start(
+        sender=sender.user, recipient=recipient.user, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+def test_an_educator_with_roles_in_two_organisations_is_reached_through_the_open_one(
+    policy: LayeredMessagingPolicy, mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    settings.MESSAGING_OFFERED_EDUCATOR_ROLES = ["organisation_admin"]
+    closed_organisation = _new_organisation()
+    open_organisation = _new_organisation()
+    shared_user = UserFactory()
+    LearnerFactory(user=shared_user, organisation=closed_organisation)
+    LearnerFactory(user=shared_user, organisation=open_organisation)
+    educator = UserFactory()
+    assign_object_role(educator, closed_organisation, "organisation_admin")
+    assign_object_role(educator, open_organisation, "organisation_admin")
+    OrganisationMessagingConfigFactory(
+        organisation=closed_organisation, learner_to_educator="closed"
+    )
+    OrganisationMessagingConfigFactory(
+        organisation=open_organisation, learner_to_educator="open"
+    )
+
+    decision = policy.can_start(
+        sender=shared_user, recipient=educator, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+@pytest.mark.parametrize(
+    ("sender", "recipient"),
+    [("in_c1", "in_c1_and_c2"), ("in_c1_and_c2", "in_c1")],
+)
+def test_closing_peer_configuration_on_both_learner_rows_refuses_the_reply(
+    policy: LayeredMessagingPolicy,
+    world: World,
+    settings: SettingsWrapper,
+    sender: str,
+    recipient: str,
+) -> None:
+    settings.MESSAGING_DEFAULT_FLAGS = {
+        **ALL_CLOSED,
+        "learner_to_cohort_peer": "open",
+        "learner_to_course_peer": "open",
+    }
+    LearnerMessagingConfigFactory(learner=world.learners["in_c1"], **PEER_FLAGS_CLOSED)
+    LearnerMessagingConfigFactory(
+        learner=world.learners["in_c1_and_c2"], **PEER_FLAGS_CLOSED
+    )
+
+    decision = policy.can_reply(
+        sender=world.learners[sender].user,
+        recipient=world.learners[recipient].user,
+        site=world.site,
+        conversation=world.learners[sender],
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION

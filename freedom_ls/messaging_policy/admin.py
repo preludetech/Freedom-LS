@@ -5,7 +5,10 @@ from django.contrib import admin
 from freedom_ls.messaging_policy.forms import SiteMessagingConfigForm
 from freedom_ls.messaging_policy.models import (
     FLAG_NAMES,
+    CohortCourseRegistrationMessagingConfig,
     CohortMessagingConfig,
+    LearnerCourseRegistrationMessagingConfig,
+    LearnerMessagingConfig,
     OrganisationMessagingConfig,
     SiteMessagingConfig,
 )
@@ -33,3 +36,27 @@ class CohortMessagingConfigAdmin(SiteAwareModelAdmin):
     list_filter = list(FLAG_NAMES)
     autocomplete_fields = ["cohort"]
     search_fields = ["cohort__name"]
+
+
+@admin.register(LearnerMessagingConfig)
+class LearnerMessagingConfigAdmin(SiteAwareModelAdmin):
+    list_display = ["__str__", *FLAG_NAMES]
+    list_filter = list(FLAG_NAMES)
+    autocomplete_fields = ["learner"]
+    search_fields = ["learner__user__email"]
+
+
+@admin.register(LearnerCourseRegistrationMessagingConfig)
+class LearnerCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
+    list_display = ["__str__", "learner_to_course_peer"]
+    list_filter = ["learner_to_course_peer"]
+    autocomplete_fields = ["registration"]
+    search_fields = ["registration__learner__user__email"]
+
+
+@admin.register(CohortCourseRegistrationMessagingConfig)
+class CohortCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
+    list_display = ["__str__", "learner_to_course_peer"]
+    list_filter = ["learner_to_course_peer"]
+    autocomplete_fields = ["registration"]
+    search_fields = ["registration__cohort__name"]

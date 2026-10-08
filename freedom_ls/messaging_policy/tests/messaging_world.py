@@ -4,7 +4,18 @@ every user in a scenario world."""
 from __future__ import annotations
 
 from freedom_ls.accounts.models import User
+from freedom_ls.learner_management.models import (
+    CohortCourseRegistration,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.tests.scenario_world import World
+from freedom_ls.messaging_policy.factories import (
+    CohortCourseRegistrationMessagingConfigFactory,
+    CohortMessagingConfigFactory,
+    LearnerCourseRegistrationMessagingConfigFactory,
+    LearnerMessagingConfigFactory,
+    OrganisationMessagingConfigFactory,
+)
 from freedom_ls.messaging_policy.policy import LayeredMessagingPolicy
 
 
@@ -40,3 +51,34 @@ def allowed_pairs(world: World, policy: LayeredMessagingPolicy) -> set[tuple[str
         for recipient_name, recipient in users.items()
         if policy.can_start(sender=sender, recipient=recipient, site=world.site).allowed
     }
+
+
+def add_configuration_rows(world: World) -> None:
+    """One configuration row per level below the site: an open cohort, a closed
+    organisation, an open learner row, an open individual registration and a
+    closed cohort registration."""
+    every_flag_open = {
+        "learner_to_educator": "open",
+        "learner_to_cohort_peer": "open",
+        "learner_to_course_peer": "open",
+    }
+    CohortMessagingConfigFactory(cohort=world.cohorts["c1"], **every_flag_open)
+    OrganisationMessagingConfigFactory(
+        organisation=world.organisations["o2"],
+        learner_to_educator="closed",
+        learner_to_cohort_peer="closed",
+        learner_to_course_peer="closed",
+    )
+    LearnerMessagingConfigFactory(
+        learner=world.learners["in_c1_and_c2"], **every_flag_open
+    )
+    LearnerCourseRegistrationMessagingConfigFactory(
+        registration=LearnerCourseRegistration.objects.get(
+            learner=world.learners["no_cohort"]
+        ),
+        learner_to_course_peer="open",
+    )
+    CohortCourseRegistrationMessagingConfigFactory(
+        registration=CohortCourseRegistration.objects.get(cohort=world.cohorts["c1"]),
+        learner_to_course_peer="closed",
+    )

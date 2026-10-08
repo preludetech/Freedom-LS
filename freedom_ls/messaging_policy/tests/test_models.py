@@ -6,7 +6,10 @@ from django.contrib.sites.models import Site
 from django.db import IntegrityError, transaction
 
 from freedom_ls.messaging_policy.factories import (
+    CohortCourseRegistrationMessagingConfigFactory,
     CohortMessagingConfigFactory,
+    LearnerCourseRegistrationMessagingConfigFactory,
+    LearnerMessagingConfigFactory,
     OrganisationMessagingConfigFactory,
     SiteMessagingConfigFactory,
 )
@@ -114,3 +117,102 @@ def test_a_cohort_reaches_its_row_through_messaging_config(
     config = CohortMessagingConfigFactory()
 
     assert config.cohort.messaging_config == config
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("flag", FLAG_NAMES)
+def test_the_check_constraint_rejects_a_value_outside_the_choices_on_a_learner_row(
+    mock_site_context: Site, flag: str
+) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        LearnerMessagingConfigFactory(**{flag: "maybe"})
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "config_factory",
+    [
+        LearnerCourseRegistrationMessagingConfigFactory,
+        CohortCourseRegistrationMessagingConfigFactory,
+    ],
+)
+def test_the_check_constraint_rejects_a_value_outside_the_choices_on_a_registration_row(
+    mock_site_context: Site, config_factory: type[SiteAwareFactory]
+) -> None:
+    with pytest.raises(IntegrityError), transaction.atomic():
+        config_factory(learner_to_course_peer="maybe")
+
+
+@pytest.mark.django_db
+def test_a_second_row_for_the_same_learner_is_rejected(
+    mock_site_context: Site,
+) -> None:
+    existing = LearnerMessagingConfigFactory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        LearnerMessagingConfigFactory(learner=existing.learner)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "config_factory",
+    [
+        LearnerCourseRegistrationMessagingConfigFactory,
+        CohortCourseRegistrationMessagingConfigFactory,
+    ],
+)
+def test_a_second_row_for_the_same_registration_is_rejected(
+    mock_site_context: Site, config_factory: type[SiteAwareFactory]
+) -> None:
+    existing = config_factory()
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        config_factory(registration=existing.registration)
+
+
+@pytest.mark.django_db
+def test_str_names_the_learner(mock_site_context: Site) -> None:
+    config = LearnerMessagingConfigFactory()
+
+    assert str(config) == f"Messaging config for {config.learner}"
+
+
+@pytest.mark.django_db
+def test_str_names_the_learner_registration(mock_site_context: Site) -> None:
+    config = LearnerCourseRegistrationMessagingConfigFactory()
+
+    assert str(config) == f"Messaging config for {config.registration}"
+
+
+@pytest.mark.django_db
+def test_str_names_the_cohort_registration(mock_site_context: Site) -> None:
+    config = CohortCourseRegistrationMessagingConfigFactory()
+
+    assert str(config) == f"Messaging config for {config.registration}"
+
+
+@pytest.mark.django_db
+def test_a_learner_reaches_its_row_through_messaging_config(
+    mock_site_context: Site,
+) -> None:
+    config = LearnerMessagingConfigFactory()
+
+    assert config.learner.messaging_config == config
+
+
+@pytest.mark.django_db
+def test_a_learner_registration_reaches_its_row_through_messaging_config(
+    mock_site_context: Site,
+) -> None:
+    config = LearnerCourseRegistrationMessagingConfigFactory()
+
+    assert config.registration.messaging_config == config
+
+
+@pytest.mark.django_db
+def test_a_cohort_registration_reaches_its_row_through_messaging_config(
+    mock_site_context: Site,
+) -> None:
+    config = CohortCourseRegistrationMessagingConfigFactory()
+
+    assert config.registration.messaging_config == config

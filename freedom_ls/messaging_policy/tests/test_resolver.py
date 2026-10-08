@@ -11,14 +11,21 @@ from django.db.models.functions import Coalesce
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     Learner,
+    LearnerCourseRegistration,
 )
-from freedom_ls.messaging_policy.factories import CohortMessagingConfigFactory
+from freedom_ls.messaging_policy.factories import (
+    CohortCourseRegistrationMessagingConfigFactory,
+    CohortMessagingConfigFactory,
+    LearnerCourseRegistrationMessagingConfigFactory,
+    LearnerMessagingConfigFactory,
+)
 from freedom_ls.messaging_policy.resolver import (
     ResolvedFlag,
     resolve_flag,
@@ -228,3 +235,221 @@ def test_the_cohort_registration_chain_expression_agrees_with_the_python_resolve
     )
 
     assert resolved == expected.value
+
+
+# The layers each kind of candidate passes through, most specific first.
+CHAINS = {
+    "educator": ("learner", "organisation", "site", "settings"),
+    "cohort": ("learner", "cohort", "organisation", "site", "settings"),
+    "individual_registration": (
+        "learner",
+        "registration",
+        "organisation",
+        "site",
+        "settings",
+    ),
+    "cohort_registration": (
+        "learner",
+        "registration",
+        "cohort",
+        "organisation",
+        "site",
+        "settings",
+    ),
+}
+
+
+@pytest.mark.parametrize("chain", CHAINS)
+@pytest.mark.parametrize(
+    ("value", "opposite"), [("open", "closed"), ("closed", "open")]
+)
+def test_a_learner_layer_beats_every_lower_layer_set_to_the_opposite(
+    chain: str, value: str, opposite: str
+) -> None:
+    layers = dict.fromkeys(CHAINS[chain], opposite)
+    layers["learner"] = value
+
+    assert resolve_flag(layers) == ResolvedFlag(value, "learner")
+
+
+@pytest.mark.parametrize("chain", ["individual_registration", "cohort_registration"])
+def test_a_registration_layer_beats_the_layers_below_it(chain: str) -> None:
+    layers = dict.fromkeys(CHAINS[chain], "closed")
+    layers.update({"learner": "inherit", "registration": "open"})
+
+    assert resolve_flag(layers) == ResolvedFlag("open", "registration")
+
+
+@pytest.mark.parametrize(
+    ("registration", "cohort", "organisation", "expected"),
+    [
+        ("open", "closed", "closed", ResolvedFlag("open", "registration")),
+        ("closed", "open", "open", ResolvedFlag("closed", "registration")),
+        ("inherit", "open", "closed", ResolvedFlag("open", "cohort")),
+        (None, "closed", "open", ResolvedFlag("closed", "cohort")),
+        ("inherit", "inherit", "closed", ResolvedFlag("closed", "organisation")),
+        (None, None, "open", ResolvedFlag("open", "organisation")),
+    ],
+)
+def test_a_cohort_registration_chain_resolves_registration_then_cohort_then_organisation(
+    registration: str | None,
+    cohort: str | None,
+    organisation: str,
+    expected: ResolvedFlag,
+) -> None:
+    layers = {
+        "learner": None,
+        "registration": registration,
+        "cohort": cohort,
+        "organisation": organisation,
+        "settings": "open" if organisation == "closed" else "closed",
+    }
+
+    assert resolve_flag(layers) == expected
+
+
+# (leaf, organisation, site, settings) -> the resolved value
+LEAF_TABLE = [
+    ("open", "closed", "closed", "closed", "open"),
+    ("closed", "open", "open", "open", "closed"),
+    ("inherit", "open", "closed", "closed", "open"),
+    (None, "closed", "open", "open", "closed"),
+    ("inherit", "inherit", "open", "closed", "open"),
+    (None, None, None, "closed", "closed"),
+]
+
+
+def _learner_with(flag: str | None) -> Learner:
+    """A learner whose messaging row carries `flag`, or no row for None."""
+    if flag is None:
+        return cast(Learner, LearnerFactory())
+    return cast(
+        Learner, LearnerMessagingConfigFactory(learner_to_educator=flag).learner
+    )
+
+
+def _individual_registration_with(flag: str | None) -> LearnerCourseRegistration:
+    """A registration whose messaging row carries `flag`, or no row for None."""
+    if flag is None:
+        return cast(LearnerCourseRegistration, LearnerCourseRegistrationFactory())
+    row = LearnerCourseRegistrationMessagingConfigFactory(learner_to_course_peer=flag)
+    return cast(LearnerCourseRegistration, row.registration)
+
+
+def _cohort_registration_with(
+    flag: str | None, cohort: Cohort
+) -> CohortCourseRegistration:
+    """A registration of `cohort` whose messaging row carries `flag`, or no row for None."""
+    registration = cast(
+        CohortCourseRegistration, CohortCourseRegistrationFactory(cohort=cohort)
+    )
+    if flag is not None:
+        CohortCourseRegistrationMessagingConfigFactory(
+            registration=registration, learner_to_course_peer=flag
+        )
+    return registration
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("leaf", "organisation", "site_value", "settings_value", "expected"), LEAF_TABLE
+)
+def test_the_learner_chain_expression_agrees_with_the_python_resolver(
+    mock_site_context: Site,
+    leaf: str | None,
+    organisation: str | None,
+    site_value: str | None,
+    settings_value: str,
+    expected: str,
+) -> None:
+    _learner_with(leaf)
+    expression = resolved_flag_expression(
+        {
+            "learner": F("messaging_config__learner_to_educator"),
+            "organisation": organisation,
+            "site": site_value,
+            "settings": settings_value,
+        }
+    )
+
+    resolved = (
+        Learner.objects.annotate(resolved=expression)
+        .values_list("resolved", flat=True)
+        .get()
+    )
+
+    assert resolved == expected
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("leaf", "organisation", "site_value", "settings_value", "expected"), LEAF_TABLE
+)
+def test_the_individual_registration_chain_expression_agrees_with_the_python_resolver(
+    mock_site_context: Site,
+    leaf: str | None,
+    organisation: str | None,
+    site_value: str | None,
+    settings_value: str,
+    expected: str,
+) -> None:
+    _individual_registration_with(leaf)
+    expression = resolved_flag_expression(
+        {
+            "registration": F("messaging_config__learner_to_course_peer"),
+            "organisation": organisation,
+            "site": site_value,
+            "settings": settings_value,
+        }
+    )
+
+    resolved = (
+        LearnerCourseRegistration.objects.annotate(resolved=expression)
+        .values_list("resolved", flat=True)
+        .get()
+    )
+
+    assert resolved == expected
+
+
+# (registration, cohort, organisation, settings) -> the resolved value
+REGISTRATION_OVER_COHORT_TABLE = [
+    ("open", "closed", "closed", "closed", "open"),
+    ("closed", "open", "open", "open", "closed"),
+    ("inherit", "open", "closed", "closed", "open"),
+    (None, "closed", "open", "open", "closed"),
+    ("inherit", "inherit", "closed", "open", "closed"),
+    (None, None, None, "open", "open"),
+]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("registration", "cohort", "organisation", "settings_value", "expected"),
+    REGISTRATION_OVER_COHORT_TABLE,
+)
+def test_the_cohort_registration_chain_expression_resolves_registration_then_cohort(
+    mock_site_context: Site,
+    registration: str | None,
+    cohort: str | None,
+    organisation: str | None,
+    settings_value: str,
+    expected: str,
+) -> None:
+    _cohort_registration_with(registration, _cohort_with(cohort))
+    expression = resolved_flag_expression(
+        {
+            "registration": F("messaging_config__learner_to_course_peer"),
+            "cohort": F("cohort__messaging_config__learner_to_educator"),
+            "organisation": organisation,
+            "settings": settings_value,
+        }
+    )
+
+    resolved = (
+        CohortCourseRegistration.objects.annotate(resolved=expression)
+        .values_list("resolved", flat=True)
+        .get()
+    )
+
+    assert resolved == expected

@@ -3,7 +3,12 @@ from __future__ import annotations
 from django.db import models
 from django.db.models import Q
 
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
@@ -84,3 +89,57 @@ class CohortMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
 
     def __str__(self) -> str:
         return f"Messaging config for {self.cohort.name}"
+
+
+class LearnerMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
+    learner = models.OneToOneField(
+        Learner, on_delete=models.CASCADE, related_name="messaging_config"
+    )
+
+    class Meta(MessagingFlags.Meta):
+        pass
+
+    def __str__(self) -> str:
+        return f"Messaging config for {self.learner}"
+
+
+class LearnerCourseRegistrationMessagingConfig(SiteAwareModel, TimestampedModel):
+    # A registration carries only the course-peer flag: no role is scoped to a
+    # course, so no other candidate passes through it.
+    registration = models.OneToOneField(
+        LearnerCourseRegistration,
+        on_delete=models.CASCADE,
+        related_name="messaging_config",
+    )
+    learner_to_course_peer = _flag_field()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(learner_to_course_peer__in=MessagingFlag.values),
+                name="learner_course_registration_messaging_config_flag_is_a_messaging_flag",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Messaging config for {self.registration}"
+
+
+class CohortCourseRegistrationMessagingConfig(SiteAwareModel, TimestampedModel):
+    registration = models.OneToOneField(
+        CohortCourseRegistration,
+        on_delete=models.CASCADE,
+        related_name="messaging_config",
+    )
+    learner_to_course_peer = _flag_field()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(learner_to_course_peer__in=MessagingFlag.values),
+                name="cohort_course_registration_messaging_config_flag_is_a_messaging_flag",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Messaging config for {self.registration}"

@@ -11,15 +11,26 @@ from django.db.models import Model
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
+)
 from freedom_ls.messaging_policy.factories import (
+    CohortCourseRegistrationMessagingConfigFactory,
     CohortMessagingConfigFactory,
+    LearnerCourseRegistrationMessagingConfigFactory,
+    LearnerMessagingConfigFactory,
     OrganisationMessagingConfigFactory,
     SiteMessagingConfigFactory,
 )
 from freedom_ls.messaging_policy.models import (
     FLAG_NAMES,
+    CohortCourseRegistrationMessagingConfig,
     CohortMessagingConfig,
+    LearnerCourseRegistrationMessagingConfig,
+    LearnerMessagingConfig,
     OrganisationMessagingConfig,
     SiteMessagingConfig,
 )
@@ -108,6 +119,13 @@ OWNER_LEVELS = {
         CohortFactory,
         lambda owner: CohortMessagingConfigFactory(cohort=owner),
         CohortMessagingConfig,
+    ),
+    "learner": OwnerLevel(
+        "learnermessagingconfig",
+        "learner",
+        LearnerFactory,
+        lambda owner: LearnerMessagingConfigFactory(learner=owner),
+        LearnerMessagingConfig,
     ),
 }
 
@@ -218,3 +236,109 @@ def test_the_cohort_admin_page_carries_no_messaging_inline(
         "messagingconfig" in inline.opts.model._meta.model_name
         for inline in response.context["inline_admin_formsets"]
     )
+
+
+class RegistrationLevel(NamedTuple):
+    model_name: str
+    make_registration: Callable[[], Model]
+    make_row: Callable[[Model], object]
+    model: type[Model]
+
+
+REGISTRATION_LEVELS = {
+    "learner_registration": RegistrationLevel(
+        "learnercourseregistrationmessagingconfig",
+        LearnerCourseRegistrationFactory,
+        lambda registration: LearnerCourseRegistrationMessagingConfigFactory(
+            registration=registration
+        ),
+        LearnerCourseRegistrationMessagingConfig,
+    ),
+    "cohort_registration": RegistrationLevel(
+        "cohortcourseregistrationmessagingconfig",
+        CohortCourseRegistrationFactory,
+        lambda registration: CohortCourseRegistrationMessagingConfigFactory(
+            registration=registration
+        ),
+        CohortCourseRegistrationMessagingConfig,
+    ),
+}
+REGISTRATION_POST_DATA = {"learner_to_course_peer": "open"}
+
+
+def _registration_url(level: RegistrationLevel, action: str) -> str:
+    return reverse(f"admin:freedom_ls_messaging_policy_{level.model_name}_{action}")
+
+
+@pytest.fixture(
+    params=list(REGISTRATION_LEVELS.values()), ids=list(REGISTRATION_LEVELS)
+)
+def registration_level(request: pytest.FixtureRequest) -> RegistrationLevel:
+    return cast(RegistrationLevel, request.param)
+
+
+def test_a_registration_add_page_shows_only_the_course_peer_flag(
+    staff_client: Client, registration_level: RegistrationLevel
+) -> None:
+    response = staff_client.get(_registration_url(registration_level, "add"))
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert 'name="registration"' in content
+    assert 'name="learner_to_course_peer"' in content
+    assert 'name="learner_to_educator"' not in content
+    assert 'name="learner_to_cohort_peer"' not in content
+    assert 'name="site"' not in content
+
+
+def test_a_registration_add_page_shows_the_flag_help_text(
+    staff_client: Client, registration_level: RegistrationLevel
+) -> None:
+    response = staff_client.get(_registration_url(registration_level, "add"))
+
+    assert '"Inherit" uses the next level up.' in html.unescape(
+        response.content.decode()
+    )
+
+
+def test_a_registration_post_creates_the_row_for_the_registration(
+    staff_client: Client, mock_site_context: Site, registration_level: RegistrationLevel
+) -> None:
+    registration = registration_level.make_registration()
+
+    response = staff_client.post(
+        _registration_url(registration_level, "add"),
+        {**REGISTRATION_POST_DATA, "registration": registration.pk},
+    )
+
+    assert response.status_code == 302
+    row = registration_level.model.objects.get()
+    assert row.registration == registration
+    assert row.site == mock_site_context
+
+
+def test_a_registration_changelist_shows_the_course_peer_flag(
+    staff_client: Client, registration_level: RegistrationLevel
+) -> None:
+    registration_level.make_row(registration_level.make_registration())
+
+    response = staff_client.get(_registration_url(registration_level, "changelist"))
+
+    assert response.status_code == 200
+    assert "field-learner_to_course_peer" in response.content.decode()
+
+
+def test_a_second_registration_post_for_the_same_registration_is_a_form_error(
+    staff_client: Client, registration_level: RegistrationLevel
+) -> None:
+    registration = registration_level.make_registration()
+    registration_level.make_row(registration)
+
+    response = staff_client.post(
+        _registration_url(registration_level, "add"),
+        {**REGISTRATION_POST_DATA, "registration": registration.pk},
+    )
+
+    assert response.status_code == 200
+    assert response.context["adminform"].form.errors["registration"]
+    assert registration_level.model.objects.count() == 1
