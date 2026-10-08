@@ -592,6 +592,13 @@ def _organisation_payload(organisation: Organisation, **extra: str) -> dict[str,
         "learner_set-INITIAL_FORMS": "0",
         "learner_set-MIN_NUM_FORMS": "0",
         "learner_set-MAX_NUM_FORMS": "0",
+        # Inlines other installed apps add to this page need their management
+        # data too, or the whole submission is refused. Keys for an app that is
+        # not installed are ignored.
+        "hr_settings-TOTAL_FORMS": "0",
+        "hr_settings-INITIAL_FORMS": "0",
+        "hr_settings-MIN_NUM_FORMS": "0",
+        "hr_settings-MAX_NUM_FORMS": "1",
     }
     payload.update(extra)
     return payload

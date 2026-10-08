@@ -27,6 +27,7 @@ from freedom_ls.hr_attributes.models import (
     JobTitle,
     LearnerHRAttributes,
     Location,
+    OrganisationHRSettings,
 )
 
 LIST_FACTORIES = [JobTitleFactory, DepartmentFactory, LocationFactory]
@@ -276,3 +277,19 @@ def test_for_picker_without_a_held_entry_omits_inactive_entries(
 
     # Assert
     assert names == ["Alpha"]
+
+
+@pytest.mark.django_db
+def test_organisation_without_a_settings_row_has_registration_rules_off(
+    mock_site_context,
+):
+    # Arrange
+    organisation = OrganisationFactory()
+
+    # Act
+    enabled = OrganisationHRSettings.objects.filter(
+        organisation=organisation, registration_rules_enabled=True
+    ).exists()
+
+    # Assert
+    assert enabled is False

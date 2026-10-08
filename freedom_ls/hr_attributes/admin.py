@@ -1,4 +1,4 @@
-"""Admins for the three HR attribute lists."""
+"""Admins for the HR attribute lists and the inlines on learner and organisation."""
 
 from __future__ import annotations
 
@@ -20,9 +20,11 @@ from freedom_ls.hr_attributes.models import (
     JobTitle,
     LearnerHRAttributes,
     Location,
+    OrganisationHRSettings,
 )
 from freedom_ls.learner_management.admin import LearnerAdmin
 from freedom_ls.learner_management.models import Learner
+from freedom_ls.organisations.admin import OrganisationAdmin
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 
@@ -163,3 +165,18 @@ class LearnerHRAttributesInline(StackedInline):
 # cannot import LearnerHRAttributesInline. Adding rather than replacing keeps
 # every inline another app has already contributed.
 LearnerAdmin.inlines = [*LearnerAdmin.inlines, LearnerHRAttributesInline]
+
+
+class OrganisationHRSettingsInline(StackedInline):
+    model = OrganisationHRSettings
+    fields = ["registration_rules_enabled"]
+    max_num = 1
+    can_delete = False
+
+
+# The organisation's HR settings on its own change page, through the seam
+# OrganisationAdmin declares for it. The wiring runs from here rather than
+# from organisations, which must stay installable without this app and so
+# cannot import OrganisationHRSettingsInline. Adding rather than replacing
+# keeps every inline another app has already contributed.
+OrganisationAdmin.inlines = [*OrganisationAdmin.inlines, OrganisationHRSettingsInline]

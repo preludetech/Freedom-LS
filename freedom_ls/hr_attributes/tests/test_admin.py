@@ -23,7 +23,10 @@ from freedom_ls.hr_attributes.factories import (
     LearnerHRAttributesFactory,
     LocationFactory,
 )
-from freedom_ls.hr_attributes.models import LearnerHRAttributes
+from freedom_ls.hr_attributes.models import (
+    LearnerHRAttributes,
+    OrganisationHRSettings,
+)
 
 CASES = [
     pytest.param(JobTitleFactory, "jobtitle", "job_title", id="job_title"),
@@ -430,3 +433,78 @@ def test_the_picker_offers_nothing_without_a_valid_learner_id(
     # Assert
     assert formfield is not None
     assert list(formfield.queryset) == []
+
+
+ORGANISATION_CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"
+ORGANISATION_ADD_URL_NAME = "admin:freedom_ls_organisations_organisation_add"
+
+
+@pytest.mark.django_db
+def test_organisation_change_page_carries_the_hr_settings_inline(staff_client):
+    # Arrange
+    organisation = OrganisationFactory()
+
+    # Act
+    response = staff_client.get(
+        reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+    )
+
+    # Assert
+    assert OrganisationHRSettings in _inline_models(response)
+
+
+@pytest.mark.django_db
+def test_organisation_add_page_carries_no_inlines(staff_client):
+    # Act
+    response = staff_client.get(reverse(ORGANISATION_ADD_URL_NAME))
+
+    # Assert
+    assert list(response.context["inline_admin_formsets"]) == []
+
+
+@pytest.mark.django_db
+def test_ticking_registration_rules_creates_the_settings_row_switched_on(
+    staff_client,
+):
+    # Arrange
+    organisation = OrganisationFactory()
+    url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+    payload = _change_payload(
+        staff_client.get(url),
+        **{
+            "hr_settings-TOTAL_FORMS": "1",
+            "hr_settings-INITIAL_FORMS": "0",
+            "hr_settings-0-organisation": str(organisation.pk),
+            "hr_settings-0-registration_rules_enabled": "on",
+        },
+    )
+
+    # Act
+    response = staff_client.post(url, payload)
+
+    # Assert
+    settings_row = OrganisationHRSettings.objects.get(organisation=organisation)
+    assert response.status_code == 302
+    assert settings_row.registration_rules_enabled is True
+
+
+@pytest.mark.django_db
+def test_saving_organisation_with_the_switch_untouched_creates_no_row(staff_client):
+    # Arrange
+    organisation = OrganisationFactory()
+    url = reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+    payload = _change_payload(
+        staff_client.get(url),
+        **{
+            "hr_settings-TOTAL_FORMS": "1",
+            "hr_settings-INITIAL_FORMS": "0",
+            "hr_settings-0-organisation": str(organisation.pk),
+        },
+    )
+
+    # Act
+    response = staff_client.post(url, payload)
+
+    # Assert
+    assert response.status_code == 302
+    assert not OrganisationHRSettings.objects.filter(organisation=organisation).exists()

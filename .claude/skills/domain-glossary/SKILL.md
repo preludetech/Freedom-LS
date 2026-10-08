@@ -127,7 +127,7 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | Term | Defined at | Means |
 | --- | --- | --- |
 | `Site` | Django `Sites` | The tenant, and the isolation boundary. |
-| `Organisation` | `organisations/models.py:58` | A client or department **inside** a site. A grouping, **not** an isolation boundary — see `docs/product/multi-tenancy-and-isolation.md`. |
+| `Organisation` | `organisations/models.py:58` | A client **inside** a site. A grouping, **not** an isolation boundary — see `docs/product/multi-tenancy-and-isolation.md`. |
 | `SiteAwareModel` / `SiteAwareModelBase` / `SiteAwareManager` | `site_aware_models/models.py` | The base model and manager that apply the site filter. |
 
 ---
@@ -143,6 +143,18 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | **candidate** (coined) | `messaging_policy/policy.py` | A relationship that could let one user start a conversation with another, before the settings layers decide whether it is open. A candidate that resolves open allows the start; one that resolves closed is refused with `CLOSED_BY_CONFIGURATION`; no candidate at all is `NO_RELATIONSHIP`. Today every cohort the sender shares with another learner is one. |
 | **offered educator** (coined) | `messaging_policy/policy.py` `offered_roles_for` | An educator of a learner whose role is on the offered list (`MESSAGING_OFFERED_EDUCATOR_ROLES`), always narrowed to roles granting `VIEW_LEARNER`. Only an offered educator can resolve open as a candidate; an educator through any other role is still a candidate and resolves closed. |
 
+---
+
+## HR attributes — `freedom_ls/hr_attributes/models.py`
+
+| Term | Defined at | Means |
+| --- | --- | --- |
+| `JobTitle`, `Department`, `Location` | `models.py` | A per-organisation list entry. `is_active=False` retires one from every picker; it is never deleted, because a learner may still hold it. |
+| `LearnerHRAttributes` | `models.py` | The one-to-one on `Learner` (`learner.hr_attributes`). Holds one `job_title`, `department` and `location`, plus `organisation_start_date`, `job_title_start_date`, `department_start_date` and `location_start_date`. `organisation_start_date` is the hire date. |
+| `OrganisationHRSettings` | `models.py` | The one-to-one on `Organisation` (`organisation.hr_settings`). Holds `registration_rules_enabled`, the switch: off by default, and off when no row exists. |
+
+---
+
 ## Words that are already taken
 
 Do not give these a second meaning.
@@ -155,8 +167,10 @@ Do not give these a second meaning.
 | **slot** | `Course.accent_slot`, palette slots, cotton template slots. | Something else. |
 | **course item** | Positional content in a course — `view_course_item`, `_paginate_course_items` (the educator matrix columns), `docs/product/educator-interface.md`. Today it means the resolved `Topic`/`Form`. | Only reuse it deliberately, and say so. |
 | **collection** | `ContentCollectionItem.collection` only. | Keep it for that; don't widen it. |
-| **is_active** | Three different things on three models: removed-from-organisation (`Learner`), and registration in force (`LearnerCourseRegistration`, `CohortCourseRegistration`). | Fine to reuse — it is the house flag name. But a sentence naming two of them must name the model. |
+| **is_active** | Four different things across several models: removed-from-organisation (`Learner`), registration in force (`LearnerCourseRegistration`, `CohortCourseRegistration`), and a list entry retired from the pickers (`JobTitle`, `Department`, `Location`). | Fine to reuse — it is the house flag name. But a sentence naming two of them must name the model. |
 | **learner** | `Learner`, the `(user, organisation)` association row — and also the everyday English word for the person. | In prose either is fine. As an identifier, `learner` means the model; write `learner.user` / `learner__user` when you mean the account. |
+| **role**, bare **title** | Reserved, not in use. `role` is a permission role (`assign_object_role`), and a bare `title` is a content title. | `JobTitle` / `job_title` for what a learner does at work. |
+| **start date** | `organisation_start_date` is the hire date: when the learner started at the organisation, not at a course. | For a course, `started_at` on `CourseProgress`. |
 
 ---
 
