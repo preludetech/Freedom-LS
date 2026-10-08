@@ -12,8 +12,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
+- [ ] (user) Decide how to handle the defaults the review added to spec §8: the upload cap answering 422 in the widget, the start cap reusing `429.html`, a page-less form giving anonymous apply a 404, and a signed-in user reading a session-held unclaimed application
 
 ## 3. Threat model
 
