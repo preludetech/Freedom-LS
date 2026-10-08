@@ -71,3 +71,20 @@ First Class works around this in `config/urls.py` with two extra `re_path`s that
 `.../<code>/$` and call `follow_referral_code` directly. Tests are in
 `tests/test_referral_trailing_slash.py`. Remove both once the submodule includes this
 fix. The upgrade notes should tell downstreams to drop any similar shim.
+
+## Every other URL
+
+The same slip breaks any route whose pattern has no trailing slash: `/robots.txt/`,
+`/sitemap.xml/` and the learner form routes (`.../start_form/`, `.../complete/`,
+`.../submit-and-exit/`, `.../fill_form/<n>/`) all 404 today. The other direction is already
+covered: Django's `APPEND_SLASH` answers `/courses` with a 301 to `/courses/`.
+
+Add the mirror image, `RemoveSlashMiddleware` in `freedom_ls/base/middleware.py`, registered
+right after `CommonMiddleware`. When a response is a 404, the path ends in exactly one `/`,
+the path itself does not resolve and the path without its slash does, answer a 301 to the
+slashless form with the query string kept. Everything else passes through untouched: a 404
+raised by a view whose route did match (`/courses/no-such-course/`), the root `/`, a path
+ending in `//`, and any path whose slashless form does not resolve either.
+
+The referral routes keep their own `/?` so they answer the slashed form directly, with no hop.
+The middleware is the safety net for every other route, including ones added later.
