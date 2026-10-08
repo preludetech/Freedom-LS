@@ -49,6 +49,8 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_learner_management.LearnerCohortDeadlineOverride",
         "freedom_ls_learner_management.LearnerDeadline",
         "freedom_ls_learner_progress.CourseFormAttempt",
+        "freedom_ls_messaging_policy.CohortMessagingConfig",
+        "freedom_ls_messaging_policy.OrganisationMessagingConfig",
         "freedom_ls_messaging_policy.SiteMessagingConfig",
         "freedom_ls_organisations.Organisation",
     }

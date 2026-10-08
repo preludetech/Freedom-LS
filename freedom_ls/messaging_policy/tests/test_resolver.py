@@ -1,13 +1,24 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.contrib.sites.models import Site
 from django.db.models import CharField, F, Value
 from django.db.models.functions import Coalesce
 
-from freedom_ls.learner_management.factories import LearnerFactory
-from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+    LearnerFactory,
+)
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+)
+from freedom_ls.messaging_policy.factories import CohortMessagingConfigFactory
 from freedom_ls.messaging_policy.resolver import (
     ResolvedFlag,
     resolve_flag,
@@ -101,3 +112,119 @@ def test_an_inherit_value_in_a_joined_layer_falls_through(
 
     assert resolved == "open"
     assert expression.output_field.__class__ is CharField
+
+
+# (cohort, organisation, site, settings) -> the layer that wins
+CHAIN_TABLE = [
+    ("open", "closed", "closed", "closed", ResolvedFlag("open", "cohort")),
+    ("closed", "open", "open", "open", ResolvedFlag("closed", "cohort")),
+    ("inherit", "open", "closed", "closed", ResolvedFlag("open", "organisation")),
+    (None, "closed", "open", "open", ResolvedFlag("closed", "organisation")),
+    ("inherit", "inherit", "open", "closed", ResolvedFlag("open", "site")),
+    (None, None, "closed", "open", ResolvedFlag("closed", "site")),
+    ("inherit", "inherit", "inherit", "open", ResolvedFlag("open", "settings")),
+    (None, None, None, "closed", ResolvedFlag("closed", "settings")),
+]
+CHAIN_IDS = [expected.source + "-" + expected.value for *_, expected in CHAIN_TABLE]
+
+
+@pytest.mark.parametrize(
+    ("cohort", "organisation", "site_value", "settings_value", "expected"),
+    CHAIN_TABLE,
+    ids=CHAIN_IDS,
+)
+def test_the_cohort_chain_resolves_the_most_specific_layer(
+    cohort: str | None,
+    organisation: str | None,
+    site_value: str | None,
+    settings_value: str,
+    expected: ResolvedFlag,
+) -> None:
+    layers = {
+        "cohort": cohort,
+        "organisation": organisation,
+        "site": site_value,
+        "settings": settings_value,
+    }
+
+    assert resolve_flag(layers) == expected
+
+
+def _cohort_with(flag: str | None) -> Cohort:
+    """A cohort whose messaging row carries `flag`, or no row for None."""
+    if flag is None:
+        return cast(Cohort, CohortFactory())
+    row = CohortMessagingConfigFactory(learner_to_educator=flag)
+    return cast(Cohort, row.cohort)
+
+
+def _chain_without_cohort(
+    organisation: str | None, site_value: str | None, settings_value: str
+) -> dict[str, str | None]:
+    return {
+        "organisation": organisation,
+        "site": site_value,
+        "settings": settings_value,
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("cohort", "organisation", "site_value", "settings_value", "expected"),
+    CHAIN_TABLE,
+    ids=CHAIN_IDS,
+)
+def test_the_cohort_chain_expression_agrees_with_the_python_resolver(
+    mock_site_context: Site,
+    cohort: str | None,
+    organisation: str | None,
+    site_value: str | None,
+    settings_value: str,
+    expected: ResolvedFlag,
+) -> None:
+    _cohort_with(cohort)
+    expression = resolved_flag_expression(
+        {
+            **_chain_without_cohort(organisation, site_value, settings_value),
+            "cohort": F("messaging_config__learner_to_educator"),
+        }
+    )
+
+    resolved = (
+        Cohort.objects.annotate(resolved=expression)
+        .values_list("resolved", flat=True)
+        .get()
+    )
+
+    assert resolved == expected.value
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("cohort", "organisation", "site_value", "settings_value", "expected"),
+    CHAIN_TABLE,
+    ids=CHAIN_IDS,
+)
+def test_the_cohort_registration_chain_expression_agrees_with_the_python_resolver(
+    mock_site_context: Site,
+    cohort: str | None,
+    organisation: str | None,
+    site_value: str | None,
+    settings_value: str,
+    expected: ResolvedFlag,
+) -> None:
+    CohortCourseRegistrationFactory(cohort=_cohort_with(cohort))
+    expression = resolved_flag_expression(
+        {
+            **_chain_without_cohort(organisation, site_value, settings_value),
+            "cohort": F("cohort__messaging_config__learner_to_educator"),
+        }
+    )
+
+    resolved = (
+        CohortCourseRegistration.objects.annotate(resolved=expression)
+        .values_list("resolved", flat=True)
+        .get()
+    )
+
+    assert resolved == expected.value

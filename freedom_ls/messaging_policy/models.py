@@ -3,6 +3,8 @@ from __future__ import annotations
 from django.db import models
 from django.db.models import Q
 
+from freedom_ls.learner_management.models import Cohort
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
 
 
@@ -58,3 +60,27 @@ class SiteMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
 
     def __str__(self) -> str:
         return f"Messaging config for {self.site.name}"
+
+
+class OrganisationMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
+    organisation = models.OneToOneField(
+        Organisation, on_delete=models.CASCADE, related_name="messaging_config"
+    )
+
+    class Meta(MessagingFlags.Meta):
+        pass
+
+    def __str__(self) -> str:
+        return f"Messaging config for {self.organisation.name}"
+
+
+class CohortMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
+    cohort = models.OneToOneField(
+        Cohort, on_delete=models.CASCADE, related_name="messaging_config"
+    )
+
+    class Meta(MessagingFlags.Meta):
+        pass
+
+    def __str__(self) -> str:
+        return f"Messaging config for {self.cohort.name}"

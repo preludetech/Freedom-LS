@@ -25,6 +25,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
+    Cohort,
     CohortCourseRegistration,
     Learner,
     LearnerCourseRegistration,
@@ -35,7 +36,11 @@ from freedom_ls.learner_management.tests.scenario_world import (
     build_world,
     custom_role_config,
 )
-from freedom_ls.messaging_policy.factories import SiteMessagingConfigFactory
+from freedom_ls.messaging_policy.factories import (
+    CohortMessagingConfigFactory,
+    OrganisationMessagingConfigFactory,
+    SiteMessagingConfigFactory,
+)
 from freedom_ls.messaging_policy.policy import LayeredMessagingPolicy
 from freedom_ls.messaging_policy.tests.messaging_world import (
     allowed_pairs,
@@ -826,3 +831,143 @@ def test_an_all_inherit_site_row_gives_the_same_outcome_as_no_row(
     SiteMessagingConfigFactory(site=world.site)
 
     assert allowed_pairs(world, policy) == without_row
+
+
+def _put_in_cohorts(*cohorts: Cohort, learners: tuple[Learner, ...]) -> None:
+    for cohort in cohorts:
+        for learner in learners:
+            CohortMembershipFactory(cohort=cohort, learner=learner)
+
+
+def _add_inherit_rows(world: World) -> None:
+    for cohort in world.cohorts.values():
+        CohortMessagingConfigFactory(cohort=cohort)
+
+
+def test_one_shared_cohort_opened_on_the_cohort_allows_peers(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    CohortMessagingConfigFactory(
+        cohort=world.cohorts["c1"], learner_to_cohort_peer="open"
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.learners["in_c1_and_c2"].user,
+        site=world.site,
+    )
+
+    assert decision.allowed is True
+
+
+def test_two_shared_cohorts_one_open_one_closed_allows_through_the_open_one(
+    policy: LayeredMessagingPolicy, mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    open_cohort_peers(settings)
+    organisation = _new_organisation()
+    sender = LearnerFactory(organisation=organisation)
+    recipient = LearnerFactory(organisation=organisation)
+    open_cohort = CohortFactory(organisation=organisation)
+    closed_cohort = CohortFactory(organisation=organisation)
+    CohortMessagingConfigFactory(cohort=open_cohort, learner_to_cohort_peer="open")
+    CohortMessagingConfigFactory(cohort=closed_cohort, learner_to_cohort_peer="closed")
+    _put_in_cohorts(open_cohort, closed_cohort, learners=(sender, recipient))
+
+    decision = policy.can_start(
+        sender=sender.user, recipient=recipient.user, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+def test_a_closed_organisation_row_closes_a_cohort_left_on_inherit(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_cohort_peers(settings)
+    OrganisationMessagingConfigFactory(
+        organisation=world.organisations["o1"], learner_to_cohort_peer="closed"
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.learners["in_c1_and_c2"].user,
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_an_open_organisation_row_opens_a_cohort_left_on_inherit(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    OrganisationMessagingConfigFactory(
+        organisation=world.organisations["o1"], learner_to_cohort_peer="open"
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.learners["in_c1_and_c2"].user,
+        site=world.site,
+    )
+
+    assert decision.allowed is True
+
+
+def test_a_closed_cohort_row_beats_an_open_organisation_row(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    OrganisationMessagingConfigFactory(
+        organisation=world.organisations["o1"], learner_to_cohort_peer="open"
+    )
+    CohortMessagingConfigFactory(
+        cohort=world.cohorts["c1"], learner_to_cohort_peer="closed"
+    )
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.learners["in_c1_and_c2"].user,
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_a_cohort_registration_resolves_through_its_cohort_row(
+    policy: LayeredMessagingPolicy, mock_site_context: Site
+) -> None:
+    peers = _course_peers(mock_site_context, "through_cohort", "individually")
+    sender_cohort = Cohort.objects.get(cohortmembership__learner=peers.sender)
+    CohortMessagingConfigFactory(cohort=sender_cohort, learner_to_course_peer="open")
+
+    decision = policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.allowed is True
+
+
+def test_a_closed_organisation_row_closes_a_cohort_registration_left_on_inherit(
+    policy: LayeredMessagingPolicy, mock_site_context: Site, settings: SettingsWrapper
+) -> None:
+    open_course_peers(settings)
+    peers = _course_peers(mock_site_context, "through_cohort", "individually")
+    OrganisationMessagingConfigFactory(
+        organisation=peers.sender.organisation, learner_to_course_peer="closed"
+    )
+
+    decision = policy.can_start(
+        sender=peers.sender.user, recipient=peers.recipient.user, site=mock_site_context
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def test_all_inherit_cohort_rows_give_the_same_outcome_as_no_cohort_rows(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_cohort_peers(settings)
+    without_rows = allowed_pairs(world, policy)
+
+    _add_inherit_rows(world)
+
+    assert allowed_pairs(world, policy) == without_rows

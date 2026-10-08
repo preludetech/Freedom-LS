@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from operator import attrgetter
 from typing import TYPE_CHECKING, NamedTuple
 
-from django.db.models import Q, Value
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import F, Q, Value
 
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import (
@@ -34,6 +37,7 @@ from freedom_ls.messaging_policy.resolver import (
     resolve_flag,
     resolved_flag_expression,
 )
+from freedom_ls.organisations.models import Organisation
 
 if TYPE_CHECKING:
     from django.contrib.sites.models import Site
@@ -52,6 +56,14 @@ def offered_roles_for(
     """
     chosen: list[str] = config.MESSAGING_OFFERED_EDUCATOR_ROLES
     return frozenset(chosen) & roles_granting(VIEW_LEARNER, site)
+
+
+def _flag_of(owner: Organisation | Cohort, flag: str) -> str | None:
+    """The stored flag on owner.messaging_config, or None when the row is missing."""
+    try:
+        return str(getattr(attrgetter("messaging_config")(owner), flag))
+    except ObjectDoesNotExist:
+        return None
 
 
 class _Resolution(NamedTuple):
@@ -106,7 +118,7 @@ class LayeredMessagingPolicy(MessagingPolicy):
         rows = list(
             Learner.objects.filter(
                 user=sender, site=site, is_active=True
-            ).select_related("organisation", "site")
+            ).select_related("organisation__messaging_config", "site")
         )
         site_config = SiteMessagingConfig.objects.filter(site=site).first()
         return _Resolution(site=site, rows=rows, site_config=site_config)
@@ -189,6 +201,7 @@ class LayeredMessagingPolicy(MessagingPolicy):
         """The layers that depend only on the sender row, read in Python."""
         site_config = resolution.site_config
         return {
+            "organisation": _flag_of(row.organisation, flag),
             "site": getattr(site_config, flag) if site_config else None,
             "settings": config.MESSAGING_DEFAULT_FLAGS[flag],
         }
@@ -201,7 +214,14 @@ class LayeredMessagingPolicy(MessagingPolicy):
         cohorts = Cohort.objects.filter(
             site=resolution.site, cohortmembership__learner=row
         )
-        return self._keep_open(cohorts, row, resolution, flag, open_only=open_only)
+        return self._keep_open(
+            cohorts,
+            row,
+            resolution,
+            flag,
+            {"cohort": F(f"messaging_config__{flag}")},
+            open_only=open_only,
+        )
 
     def _resolved_registrations(
         self, row: Learner, resolution: _Resolution, *, open_only: bool
@@ -212,9 +232,14 @@ class LayeredMessagingPolicy(MessagingPolicy):
         own, through_cohorts = registrations_of(row)
         flag = "learner_to_course_peer"
         return (
-            self._keep_open(own, row, resolution, flag, open_only=open_only),
+            self._keep_open(own, row, resolution, flag, {}, open_only=open_only),
             self._keep_open(
-                through_cohorts, row, resolution, flag, open_only=open_only
+                through_cohorts,
+                row,
+                resolution,
+                flag,
+                {"cohort": F(f"cohort__messaging_config__{flag}")},
+                open_only=open_only,
             ),
         )
 
@@ -224,14 +249,18 @@ class LayeredMessagingPolicy(MessagingPolicy):
         row: Learner,
         resolution: _Resolution,
         flag: str,
+        candidate_layers: Mapping[str, F],
         *,
         open_only: bool,
     ) -> QuerySet[T]:
         """`candidates` unchanged, or with open_only only those whose chain resolves
-        open for `flag`."""
+        open for `flag`. `candidate_layers` are the layers a join from each candidate
+        supplies."""
         if not open_only:
             return candidates
-        expression = resolved_flag_expression(self._row_layers(row, resolution, flag))
+        expression = resolved_flag_expression(
+            {**self._row_layers(row, resolution, flag), **candidate_layers}
+        )
         if isinstance(expression, Value):
             # The chain is a constant for every candidate, so no join is needed.
             return (
