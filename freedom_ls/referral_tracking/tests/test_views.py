@@ -9,6 +9,7 @@ import pytest
 from django.contrib.sites.models import Site
 from django.db import DatabaseError
 from django.test import Client
+from django.urls import reverse
 
 from freedom_ls.referral_tracking.factories import ReferralCodeFactory
 from freedom_ls.referral_tracking.models import Door, ReferralCode, ReferralCodeHit
@@ -16,47 +17,110 @@ from freedom_ls.referral_tracking.models import Door, ReferralCode, ReferralCode
 pytestmark = pytest.mark.django_db
 
 
-def _spellings(code: str) -> tuple[str, str, str, str]:
-    return (f"/go/{code}", f"/GO/{code.upper()}", f"/d/{code}", f"/D/{code.upper()}")
-
-
-def test_all_four_url_spellings_redirect_to_the_same_target(mock_site_context) -> None:
-    ReferralCodeFactory(code="mrbeast", destination="/courses/")
-
-    targets = {Client().get(url).url for url in _spellings("mrbeast")}
-
-    assert len(targets) == 1
-
-
-def test_each_spelling_records_a_hit(mock_site_context) -> None:
-    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
-
-    for url in _spellings("mrbeast"):
-        Client().get(url)
-
-    assert ReferralCodeHit.objects.filter(referral_code=referral_code).count() == 4
-
-
-def test_each_spelling_records_its_own_door(mock_site_context) -> None:
-    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
-
-    for url in _spellings("mrbeast"):
-        Client().get(url)
-
-    doors = set(
-        ReferralCodeHit.objects.filter(referral_code=referral_code).values_list(
-            "door", flat=True
-        )
+def _spellings(code: str) -> tuple[str, ...]:
+    return (
+        f"/go/{code}",
+        f"/GO/{code.upper()}",
+        f"/d/{code}",
+        f"/D/{code.upper()}",
+        f"/go/{code}/",
+        f"/GO/{code.upper()}/",
+        f"/d/{code}/",
+        f"/D/{code.upper()}/",
     )
-    assert doors == {Door.GO, Door.D}
 
 
-def test_the_response_has_no_trailing_slash_redirect_hop(mock_site_context) -> None:
+def _reversed_url(name: str, code: str = "mrbeast") -> str:
+    return reverse(f"referral_tracking:{name}", kwargs={"code": code})
+
+
+@pytest.mark.parametrize("url", _spellings("mrbeast"))
+def test_every_spelling_redirects_to_the_same_target(
+    url: str, mock_site_context
+) -> None:
     ReferralCodeFactory(code="mrbeast", destination="/courses/")
 
-    response = Client().get("/go/mrbeast", follow=True)
+    target = urlsplit(Client().get(url).url)
+
+    assert (target.path, target.query) == ("/courses/", "ref=mrbeast")
+
+
+@pytest.mark.parametrize("url", _spellings("mrbeast"))
+def test_each_spelling_records_a_hit(url: str, mock_site_context) -> None:
+    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    Client().get(url)
+
+    assert ReferralCodeHit.objects.filter(referral_code=referral_code).count() == 1
+
+
+@pytest.mark.parametrize(
+    ("url", "door"),
+    [
+        ("/go/mrbeast", Door.GO),
+        ("/GO/MRBEAST", Door.GO),
+        ("/go/mrbeast/", Door.GO),
+        ("/GO/MRBEAST/", Door.GO),
+        ("/d/mrbeast", Door.D),
+        ("/D/MRBEAST", Door.D),
+        ("/d/mrbeast/", Door.D),
+        ("/D/MRBEAST/", Door.D),
+    ],
+)
+def test_each_spelling_records_its_own_door(
+    url: str, door: str, mock_site_context
+) -> None:
+    referral_code = ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    Client().get(url)
+
+    hit = ReferralCodeHit.objects.get(referral_code=referral_code)
+    assert hit.door == door
+
+
+@pytest.mark.parametrize("suffix", ["", "/"])
+@pytest.mark.parametrize("name", ["follow_go", "follow_d"])
+def test_the_response_has_no_trailing_slash_redirect_hop(
+    name: str, suffix: str, mock_site_context
+) -> None:
+    ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    response = Client().get(_reversed_url(name) + suffix, follow=True)
 
     assert len(response.redirect_chain) == 1
+
+
+@pytest.mark.parametrize("name", ["follow_go", "follow_d"])
+def test_the_slashed_form_keeps_the_query_string(name: str, mock_site_context) -> None:
+    ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    response = Client().get(_reversed_url(name) + "/?x=9")
+
+    assert urlsplit(response.url).query == "x=9&ref=mrbeast"
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [("follow_go", "/go/mrbeast"), ("follow_d", "/d/mrbeast")],
+)
+def test_reverse_gives_the_slashless_url(name: str, expected: str) -> None:
+    assert _reversed_url(name) == expected
+
+
+def test_referral_path_ending_in_double_slash_returns_404(mock_site_context) -> None:
+    ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    response = Client().get(_reversed_url("follow_go") + "//")
+
+    assert response.status_code == 404
+
+
+def test_referral_path_with_extra_segment_returns_404(mock_site_context) -> None:
+    ReferralCodeFactory(code="mrbeast", destination="/courses/")
+
+    response = Client().get(_reversed_url("follow_go") + "/extra")
+
+    assert response.status_code == 404
 
 
 def test_the_response_carries_private_no_store_and_noindex_headers(

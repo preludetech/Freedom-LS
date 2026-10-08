@@ -4,6 +4,10 @@ Case is spelled as character classes, not an inline `(?i:...)` flag: Django's
 `path()` enforces neither the case-insensitivity nor `CODE_PATTERN`, and an
 inline flag makes `reverse()` raise `ValueError: Non-reversible reg-exp
 portion`.
+
+The trailing slash is optional and served in place, not redirected: links get
+typed, pasted and autocompleted with one, and a 301 to the slashless form
+would add a hop to a response that is already `noindex` and `no-store`.
 """
 
 from __future__ import annotations
@@ -18,13 +22,13 @@ app_name = "referral_tracking"
 
 urlpatterns = [
     re_path(
-        rf"^[gG][oO]/(?P<code>{CODE_PATTERN.pattern})$",
+        rf"^[gG][oO]/(?P<code>{CODE_PATTERN.pattern})/?$",
         follow_referral_code,
         {"door": Door.GO},
         name="follow_go",
     ),
     re_path(
-        rf"^[dD]/(?P<code>{CODE_PATTERN.pattern})$",
+        rf"^[dD]/(?P<code>{CODE_PATTERN.pattern})/?$",
         follow_referral_code,
         {"door": Door.D},
         name="follow_d",
