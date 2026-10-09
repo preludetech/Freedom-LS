@@ -23,6 +23,7 @@ from freedom_ls.site_aware_models.models import get_cached_site
 class SiteMessagingConfigAdmin(SiteAwareModelAdmin):
     form = SiteMessagingConfigForm
     list_display = ["__str__", *FLAG_NAMES]
+    list_select_related = ["site"]
     list_filter = list(FLAG_NAMES)
 
     def get_form(
@@ -49,6 +50,7 @@ class SiteMessagingConfigAdmin(SiteAwareModelAdmin):
 @admin.register(OrganisationMessagingConfig)
 class OrganisationMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", *FLAG_NAMES]
+    list_select_related = ["organisation"]
     list_filter = list(FLAG_NAMES)
     autocomplete_fields = ["organisation"]
     search_fields = ["organisation__name"]
@@ -57,6 +59,7 @@ class OrganisationMessagingConfigAdmin(SiteAwareModelAdmin):
 @admin.register(CohortMessagingConfig)
 class CohortMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", *FLAG_NAMES]
+    list_select_related = ["cohort"]
     list_filter = list(FLAG_NAMES)
     autocomplete_fields = ["cohort"]
     search_fields = ["cohort__name"]
@@ -65,6 +68,7 @@ class CohortMessagingConfigAdmin(SiteAwareModelAdmin):
 @admin.register(LearnerMessagingConfig)
 class LearnerMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", *FLAG_NAMES]
+    list_select_related = ["learner__user", "learner__organisation"]
     list_filter = list(FLAG_NAMES)
     autocomplete_fields = ["learner"]
     search_fields = ["learner__user__email"]
@@ -73,6 +77,11 @@ class LearnerMessagingConfigAdmin(SiteAwareModelAdmin):
 @admin.register(LearnerCourseRegistrationMessagingConfig)
 class LearnerCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", "learner_to_course_peer"]
+    list_select_related = [
+        "registration__learner__user",
+        "registration__learner__organisation",
+        "registration__course",
+    ]
     list_filter = ["learner_to_course_peer"]
     autocomplete_fields = ["registration"]
     search_fields = ["registration__learner__user__email"]
@@ -81,6 +90,7 @@ class LearnerCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
 @admin.register(CohortCourseRegistrationMessagingConfig)
 class CohortCourseRegistrationMessagingConfigAdmin(SiteAwareModelAdmin):
     list_display = ["__str__", "learner_to_course_peer"]
+    list_select_related = ["registration__cohort", "registration__course"]
     list_filter = ["learner_to_course_peer"]
     autocomplete_fields = ["registration"]
     search_fields = ["registration__cohort__name"]

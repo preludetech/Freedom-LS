@@ -3,6 +3,7 @@
 E001 — Two registered notification categories share a key.
 E002 — A NOTIFICATION_DELIVERY_BACKENDS path that doesn't import.
 E003 — MESSAGING_POLICY doesn't import, or isn't a MessagingPolicy subclass.
+       A path into an FLS app that isn't installed is left to E004.
 E004 — MESSAGING_POLICY names an FLS app that isn't installed.
 """
 
@@ -11,7 +12,7 @@ from __future__ import annotations
 from collections import Counter
 from collections.abc import Sequence
 
-from django.apps import AppConfig
+from django.apps import AppConfig, apps
 from django.core.checks import CheckMessage, Error, register
 from django.utils.module_loading import import_string
 
@@ -57,20 +58,45 @@ def check_notification_delivery_backends_import(
     return errors
 
 
+def _comms_not_being_checked(app_configs: Sequence[AppConfig] | None) -> bool:
+    return app_configs is not None and not any(
+        c.label == "freedom_ls_comms" for c in app_configs
+    )
+
+
+def _names_an_uninstalled_fls_app(dotted: str) -> bool:
+    """Whether `dotted` points into a freedom_ls app that isn't installed.
+
+    A downstream's own policy lives outside any FLS app; whether it loads is
+    E003's question.
+    """
+    if not dotted.startswith("freedom_ls."):
+        return False
+    return apps.get_containing_app_config(dotted.rsplit(".", 1)[0]) is None
+
+
 @register()
 def check_messaging_policy_imports(
     app_configs: Sequence[AppConfig] | None, **kwargs: object
 ) -> list[CheckMessage]:
+    """E003: error when MESSAGING_POLICY isn't an importable MessagingPolicy subclass."""
+    if _comms_not_being_checked(app_configs):
+        return []
+    dotted = config.MESSAGING_POLICY
+    if _names_an_uninstalled_fls_app(dotted):
+        # E004 reports this. Importing the module would also load its models,
+        # which raises RuntimeError rather than ImportError when the app is
+        # not installed.
+        return []
     try:
-        policy_class = import_string(config.MESSAGING_POLICY)
+        policy_class = import_string(dotted)
     except ImportError:
         policy_class = None
     if isinstance(policy_class, type) and issubclass(policy_class, MessagingPolicy):
         return []
     return [
         Error(
-            f"MESSAGING_POLICY {config.MESSAGING_POLICY!r} is not an importable "
-            "MessagingPolicy subclass.",
+            f"MESSAGING_POLICY {dotted!r} is not an importable MessagingPolicy subclass.",
             hint="Check the dotted path names a subclass of "
             "freedom_ls.comms.messaging_policy.MessagingPolicy.",
             id="freedom_ls_comms.E003",
@@ -83,23 +109,15 @@ def check_messaging_policy_app_installed(
     app_configs: Sequence[AppConfig] | None, **kwargs: object
 ) -> list[CheckMessage]:
     """E004: error when MESSAGING_POLICY names an FLS app that isn't installed."""
-    from django.apps import apps
-
-    if app_configs is not None and not any(
-        c.label == "freedom_ls_comms" for c in app_configs
-    ):
+    if _comms_not_being_checked(app_configs):
         return []
     dotted = config.MESSAGING_POLICY
-    if not dotted.startswith("freedom_ls."):
-        # A downstream's own policy lives outside any FLS app; whether it loads
-        # is E003's question.
+    if not _names_an_uninstalled_fls_app(dotted):
         return []
-    if apps.get_containing_app_config(dotted.rsplit(".", 1)[0]) is None:
-        return [
-            Error(
-                f"MESSAGING_POLICY {dotted!r} is not provided by any installed app.",
-                hint="Add freedom_ls.messaging_policy to INSTALLED_APPS, or point MESSAGING_POLICY at a policy you have installed.",
-                id="freedom_ls_comms.E004",
-            )
-        ]
-    return []
+    return [
+        Error(
+            f"MESSAGING_POLICY {dotted!r} is not provided by any installed app.",
+            hint="Add freedom_ls.messaging_policy to INSTALLED_APPS, or point MESSAGING_POLICY at a policy you have installed.",
+            id="freedom_ls_comms.E004",
+        )
+    ]

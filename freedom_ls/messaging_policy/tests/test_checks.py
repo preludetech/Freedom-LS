@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from pytest_django.fixtures import SettingsWrapper
+from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.contrib.sites.models import Site
 from django.test import override_settings
@@ -85,7 +85,7 @@ def test_a_stored_role_dropped_from_the_site_role_config_produces_a_warning(
     with custom_role_config(
         mock_site_context, settings, without=frozenset({"cohort_viewer"})
     ):
-        warnings = check_stored_offered_roles(None)
+        warnings = check_stored_offered_roles(None, databases=["default"])
 
     assert [warning.id for warning in warnings] == ["freedom_ls_messaging_policy.W001"]
 
@@ -96,7 +96,7 @@ def test_a_stored_role_that_no_longer_grants_view_learner_produces_a_warning(
 ) -> None:
     SiteMessagingConfigFactory(offered_educator_roles=["system_admin"])
 
-    warnings = check_stored_offered_roles(None)
+    warnings = check_stored_offered_roles(None, databases=["default"])
 
     assert [warning.id for warning in warnings] == ["freedom_ls_messaging_policy.W001"]
 
@@ -108,4 +108,28 @@ def test_a_known_or_unset_stored_offered_roles_value_produces_no_warning(
 ) -> None:
     SiteMessagingConfigFactory(offered_educator_roles=value)
 
-    assert check_stored_offered_roles(None) == []
+    assert check_stored_offered_roles(None, databases=["default"]) == []
+
+
+@pytest.mark.django_db
+def test_a_stored_value_that_is_not_a_list_produces_a_warning(
+    mock_site_context: Site,
+) -> None:
+    SiteMessagingConfigFactory(offered_educator_roles="cohort_admin")
+
+    warnings = check_stored_offered_roles(None, databases=["default"])
+
+    assert [warning.id for warning in warnings] == ["freedom_ls_messaging_policy.W001"]
+    assert "'cohort_admin'" in warnings[0].msg
+
+
+@pytest.mark.django_db
+def test_the_stored_roles_check_does_not_query_without_a_database(
+    mock_site_context: Site, django_assert_num_queries: DjangoAssertNumQueries
+) -> None:
+    SiteMessagingConfigFactory(offered_educator_roles=["system_admin"])
+
+    with django_assert_num_queries(0):
+        warnings = check_stored_offered_roles(None)
+
+    assert warnings == []

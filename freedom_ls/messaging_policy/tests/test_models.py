@@ -14,7 +14,11 @@ from freedom_ls.messaging_policy.factories import (
     OrganisationMessagingConfigFactory,
     SiteMessagingConfigFactory,
 )
-from freedom_ls.messaging_policy.models import FLAG_NAMES, MessagingFlags
+from freedom_ls.messaging_policy.models import (
+    FLAG_NAMES,
+    MessagingFlags,
+    SiteMessagingConfig,
+)
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
@@ -243,3 +247,29 @@ def test_full_clean_accepts_an_offered_roles_value_the_site_knows(
     config = SiteMessagingConfigFactory.build(offered_educator_roles=value)
 
     config.full_clean()
+
+
+@pytest.mark.django_db
+def test_full_clean_without_a_site_reports_the_missing_site() -> None:
+    # No mock_site_context, so nothing fills site in: the field error must
+    # surface rather than a crash reading the unset relation.
+    config = SiteMessagingConfig(offered_educator_roles=["cohort_admin"])
+
+    with pytest.raises(ValidationError) as raised:
+        config.full_clean()
+
+    assert "site" in raised.value.message_dict
+
+
+@pytest.mark.django_db
+def test_full_clean_rejects_offered_roles_that_are_not_a_list(
+    mock_site_context: Site,
+) -> None:
+    config = SiteMessagingConfigFactory.build(offered_educator_roles="cohort_admin")
+
+    with pytest.raises(ValidationError) as raised:
+        config.full_clean()
+
+    assert raised.value.message_dict == {
+        "offered_educator_roles": ["Must be a list of role keys."]
+    }

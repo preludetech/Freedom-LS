@@ -81,8 +81,8 @@ def out_of_the_box_policy() -> LayeredMessagingPolicy:
 
 QUERIES_RECIPIENTS = 4
 QUERIES_ALLOWED = 4
-QUERIES_CLOSED = 6
-QUERIES_NO_RELATIONSHIP = 6
+QUERIES_CLOSED = 4
+QUERIES_NO_RELATIONSHIP = 4
 
 
 def open_course_peers(settings: SettingsWrapper) -> None:
@@ -768,6 +768,21 @@ def test_no_educator_is_open_when_no_role_is_offered(
     }
 
     assert decisions == {MessagingRefusal.CLOSED_BY_CONFIGURATION}
+
+
+def test_a_site_row_whose_offered_roles_are_not_a_list_offers_nobody(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, ["cohort_admin"])
+    SiteMessagingConfigFactory(offered_educator_roles="cohort_admin")
+
+    decision = policy.can_start(
+        sender=world.learners["in_c1"].user,
+        recipient=world.role_holders["c1_admin"],
+        site=world.site,
+    )
+
+    assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
 
 
 def test_a_role_that_does_not_grant_view_learner_is_never_offered(

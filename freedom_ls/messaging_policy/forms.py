@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import cast
+from typing import Any, cast
 
 from django import forms
 from django.contrib.sites.models import Site
@@ -62,7 +62,7 @@ class SiteMessagingConfigForm(ConstraintValidationFormMixin):
         model = SiteMessagingConfig
         fields = [*FLAG_NAMES, "offered_educator_roles"]
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         site = self.site or (self.instance.site if self.instance.site_id else None)
         # self.fields is this form's own copy; base_fields is shared process-wide.

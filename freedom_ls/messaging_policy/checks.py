@@ -4,8 +4,10 @@ E001: MESSAGING_DEFAULT_FLAGS does not name exactly the flags, or holds a value
 other than "open" or "closed".
 E002: MESSAGING_OFFERED_EDUCATOR_ROLES names a role the base role config or a
 site's role config does not define.
-W001: a site's stored offered educator roles name a key that is not a
-VIEW_LEARNER-granting role in that site's role config.
+W001: a site's stored offered educator roles are not a list of role keys, or
+name a key that is not a VIEW_LEARNER-granting role in that site's role config.
+It reads the database, so it runs only when a database is named: `migrate`
+and `check --database default`, not every management command.
 """
 
 from __future__ import annotations
@@ -13,8 +15,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from django.apps import AppConfig
-from django.core.checks import CheckMessage, Error, Warning, register
-from django.db import DatabaseError, OperationalError, ProgrammingError
+from django.core.checks import CheckMessage, Error, Tags, Warning, register
+from django.db import DatabaseError
 
 from freedom_ls.messaging_policy.config import config
 from freedom_ls.messaging_policy.models import FLAG_NAMES, MessagingFlag
@@ -89,31 +91,48 @@ def check_offered_roles_exist(
     return errors
 
 
-@register()
+@register(Tags.database)
 def check_stored_offered_roles(
-    app_configs: Sequence[AppConfig] | None, **kwargs: object
+    app_configs: Sequence[AppConfig] | None,
+    databases: Sequence[str] | None = None,
+    **kwargs: object,
 ) -> list[CheckMessage]:
     from freedom_ls.messaging_policy.models import (
         SiteMessagingConfig,
+        is_role_list,
         unknown_offered_roles,
     )
 
+    if not databases:
+        return []
     try:
         rows = list(
             SiteMessagingConfig.objects.all()
             .filter(offered_educator_roles__isnull=False)
             .select_related("site")
         )
-    except (DatabaseError, OperationalError, ProgrammingError):
+    except DatabaseError:
+        # migrate runs checks before the table exists.
         return []
+    hint = "Edit the site messaging config and tick only roles that grant view_learner."
     warnings: list[CheckMessage] = []
     for row in rows:
-        unknown = unknown_offered_roles(row.offered_educator_roles, row.site)
+        stored = row.offered_educator_roles
+        if not is_role_list(stored):
+            warnings.append(
+                Warning(
+                    f"{row} stores offered educator roles that are not a list of role keys: {stored!r}.",
+                    hint=hint,
+                    id="freedom_ls_messaging_policy.W001",
+                )
+            )
+            continue
+        unknown = unknown_offered_roles(stored, row.site)
         if unknown:
             warnings.append(
                 Warning(
                     f"{row} stores offered educator roles that its site no longer offers: {sorted(unknown)}.",
-                    hint="Edit the site messaging config and tick only roles that grant view_learner.",
+                    hint=hint,
                     id="freedom_ls_messaging_policy.W001",
                 )
             )

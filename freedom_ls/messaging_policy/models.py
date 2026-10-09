@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TypeGuard
+
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -58,6 +60,12 @@ class MessagingFlags(models.Model):
         ]
 
 
+def is_role_list(value: object) -> TypeGuard[list[str]]:
+    """Whether a stored offered_educator_roles value is a list of role keys. The
+    JSONField accepts any JSON, and iterating a string would yield characters."""
+    return isinstance(value, list) and all(isinstance(key, str) for key in value)
+
+
 def unknown_offered_roles(value: list[str] | None, site: Site) -> set[str]:
     """Keys in `value` that are not VIEW_LEARNER-granting roles on this site."""
     if value is None:
@@ -82,7 +90,16 @@ class SiteMessagingConfig(SiteAwareModel, TimestampedModel, MessagingFlags):
 
     def clean(self) -> None:
         super().clean()
-        unknown = unknown_offered_roles(self.offered_educator_roles, self.site)
+        if not self.site_id:
+            # clean_fields has already recorded the missing site; reading
+            # self.site here would raise instead of letting that error surface.
+            return
+        stored = self.offered_educator_roles
+        if stored is not None and not is_role_list(stored):
+            raise ValidationError(
+                {"offered_educator_roles": "Must be a list of role keys."}
+            )
+        unknown = unknown_offered_roles(stored, self.site)
         if unknown:
             raise ValidationError(
                 {

@@ -7,7 +7,7 @@ from operator import attrgetter
 from typing import TYPE_CHECKING, NamedTuple
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import F, Q, Value
+from django.db.models import BooleanField, ExpressionWrapper, F, Q, Value
 
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import (
@@ -26,13 +26,16 @@ from freedom_ls.learner_management.queries import (
     VIEW_LEARNER,
     colleagues_of,
     educators_of,
-    holds_registration_for_any_expression,
-    is_in_cohort_expression,
+    peers_through,
     registrations_of,
     visible_learners_expression,
 )
 from freedom_ls.messaging_policy.config import config
-from freedom_ls.messaging_policy.models import MessagingFlag, SiteMessagingConfig
+from freedom_ls.messaging_policy.models import (
+    MessagingFlag,
+    SiteMessagingConfig,
+    is_role_list,
+)
 from freedom_ls.messaging_policy.resolver import (
     resolve_flag,
     resolved_flag_expression,
@@ -49,20 +52,23 @@ def offered_roles_for(
 ) -> frozenset[str]:
     """The role keys a learner may be offered as educators on this site.
 
-    The setting applies until the site row sets its own list (an empty list offers nobody). Always intersected with
-    the roles that grant VIEW_LEARNER, so every offered educator is an educator of
-    the learner; a key the site's role config does not know is dropped here and
-    reported by the system check instead.
+    The setting applies until the site row sets its own list (an empty list offers
+    nobody). Always intersected with the roles that grant VIEW_LEARNER, so every
+    offered educator is an educator of the learner; a key the site's role config
+    does not know is dropped here and reported by the system check instead, as is
+    a stored value that is not a list at all.
     """
     chosen: list[str] = config.MESSAGING_OFFERED_EDUCATOR_ROLES
     if site_config is not None and site_config.offered_educator_roles is not None:
-        chosen = site_config.offered_educator_roles
+        stored = site_config.offered_educator_roles
+        chosen = stored if is_role_list(stored) else []
     return frozenset(chosen) & roles_granting(VIEW_LEARNER, site)
 
 
 def _flag_of(owner: Learner | Organisation | Cohort, flag: str) -> str | None:
     """The stored flag on owner.messaging_config, or None when the row is missing."""
     try:
+        # attrgetter because the reverse OneToOne is not on the owner's type.
         return str(getattr(attrgetter("messaging_config")(owner), flag))
     except ObjectDoesNotExist:
         return None
@@ -85,19 +91,27 @@ class LayeredMessagingPolicy(MessagingPolicy):
         if not (sender.is_active and recipient.is_active):
             return MessagingDecision.refuse(MessagingRefusal.INACTIVE_USER)
         resolution = self._resolve(sender, site)
-        if (
-            self._related_users(sender, resolution, open_only=True)
+        # One query answers both questions: the row is there when some candidate
+        # reaches the recipient whatever it resolves to, which is what separates
+        # "closed" from "no relationship", and is_open says whether one resolved open.
+        by_role = self._role_condition(sender, resolution)
+        reaches_open = by_role | self._candidate_condition(resolution, open_only=True)
+        reaches_any = by_role | self._candidate_condition(resolution, open_only=False)
+        is_open = (
+            self._users_on_site(sender, site)
             .filter(pk=recipient.pk)
-            .exists()
-        ):
+            .filter(reaches_any)
+            .annotate(
+                is_open=ExpressionWrapper(reaches_open, output_field=BooleanField())
+            )
+            .values_list("is_open", flat=True)
+            .first()
+        )
+        if is_open is None:
+            return MessagingDecision.refuse(MessagingRefusal.NO_RELATIONSHIP)
+        if is_open:
             return MessagingDecision.allow()
-        if (
-            self._related_users(sender, resolution, open_only=False)
-            .filter(pk=recipient.pk)
-            .exists()
-        ):
-            return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
-        return MessagingDecision.refuse(MessagingRefusal.NO_RELATIONSHIP)
+        return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
 
     def can_reply(
         self, *, sender: User, recipient: User, site: Site, conversation: Model
@@ -133,51 +147,59 @@ class LayeredMessagingPolicy(MessagingPolicy):
         """With open_only, the users the sender may start with: colleagues, learners
         the sender is an educator of, and users reached through a candidate that
         resolves open. Without it, every user any candidate reaches whatever it
-        resolves to, which is what separates "closed" from "no relationship".
+        resolves to.
 
         Built as one queryset of pk__in subqueries so it needs no distinct() and
         stays filterable.
         """
+        return self._users_on_site(sender, resolution.site).filter(
+            self._role_condition(sender, resolution)
+            | self._candidate_condition(resolution, open_only=open_only)
+        )
+
+    def _users_on_site(self, sender: User, site: Site) -> QuerySet[User]:
+        return User.objects.filter(site=site, is_active=True).exclude(pk=sender.pk)
+
+    def _role_condition(self, sender: User, resolution: _Resolution) -> Q:
+        """Q over User rows: colleagues of the sender and the users of learners the
+        sender is an educator of. Reads the sender's site grants once, so callers
+        that need it twice build it once."""
         site = resolution.site
         roles = roles_granting(VIEW_LEARNER, site)
         visible_learners = Learner.objects.filter(site=site, is_active=True).filter(
             visible_learners_expression(sender, roles, site)
         )
-        condition = Q(pk__in=visible_learners.values("user_id")) | Q(
+        return Q(pk__in=visible_learners.values("user_id")) | Q(
             pk__in=colleagues_of(sender, site).values("pk")
         )
+
+    def _candidate_condition(self, resolution: _Resolution, *, open_only: bool) -> Q:
+        """Q over User rows: everyone any of the sender's rows reaches through a
+        candidate. A sender with no rows gets an empty Q, which adds nothing when
+        OR'd with the role condition."""
+        condition = Q()
         for row in resolution.rows:
             condition |= self._candidate_users_expression(
                 row, resolution, open_only=open_only
             )
-        return (
-            User.objects.filter(site=site, is_active=True)
-            .exclude(pk=sender.pk)
-            .filter(condition)
-        )
+        return condition
 
     def _candidate_users_expression(
         self, row: Learner, resolution: _Resolution, *, open_only: bool
     ) -> Q:
         """One Q over User rows for every candidate this sender row produces."""
         site = resolution.site
-        peer_rows = Learner.objects.filter(
-            site=site, organisation_id=row.organisation_id, is_active=True
-        )
         cohorts = self._resolved_cohorts(
             row, resolution, "learner_to_cohort_peer", open_only=open_only
-        )
-        through_shared_cohorts = peer_rows.filter(
-            is_in_cohort_expression(site, cohorts.values("pk"))
         )
         own, through_cohorts = self._resolved_registrations(
             row, resolution, open_only=open_only
         )
-        own_courses = own.values("course_id")
-        cohort_courses = through_cohorts.values("course_id")
-        through_courses = peer_rows.filter(
-            holds_registration_for_any_expression(site, own_courses)
-            | holds_registration_for_any_expression(site, cohort_courses)
+        peers = peers_through(
+            row,
+            cohorts=cohorts.values("pk"),
+            own_courses=own.values("course_id"),
+            cohort_courses=through_cohorts.values("course_id"),
         )
         if open_only:
             layers = self._row_layers(row, resolution, "learner_to_educator")
@@ -193,11 +215,7 @@ class LayeredMessagingPolicy(MessagingPolicy):
             )
         else:
             educators = educators_of(row)
-        return (
-            Q(pk__in=through_shared_cohorts.values("user_id"))
-            | Q(pk__in=through_courses.values("user_id"))
-            | Q(pk__in=educators.values("pk"))
-        )
+        return Q(pk__in=peers.values("user_id")) | Q(pk__in=educators.values("pk"))
 
     def _row_layers(
         self, row: Learner, resolution: _Resolution, flag: str

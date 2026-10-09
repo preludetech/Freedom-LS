@@ -8,8 +8,10 @@ import pytest
 from pytest_django.fixtures import SettingsWrapper
 
 from django.contrib.sites.models import Site
+from django.db import connection
 from django.db.models import Model
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory
@@ -92,6 +94,24 @@ def test_the_changelist_shows_the_flags(staff_client: Client) -> None:
     content = response.content.decode()
     assert response.status_code == 200
     assert all(f"field-{flag}" in content for flag in FLAG_NAMES)
+
+
+def _changelist_queries(staff_client: Client, url: str) -> int:
+    """Queries one GET of the changelist runs, after a warm-up request has filled
+    the per-process caches the admin reads."""
+    staff_client.get(url)
+    with CaptureQueriesContext(connection) as context:
+        staff_client.get(url)
+    return len(context.captured_queries)
+
+
+def test_the_changelist_row_costs_no_extra_query(staff_client: Client) -> None:
+    # A site has at most one row, so the empty changelist is the baseline.
+    url = reverse(CHANGELIST_URL)
+    with_no_rows = _changelist_queries(staff_client, url)
+    SiteMessagingConfigFactory()
+
+    assert _changelist_queries(staff_client, url) == with_no_rows
 
 
 def test_a_second_post_for_the_site_is_a_form_error(staff_client: Client) -> None:
@@ -287,6 +307,18 @@ def test_an_owner_level_changelist_shows_the_flags(
     assert all(f"field-{flag}" in content for flag in FLAG_NAMES)
 
 
+def test_an_owner_level_changelist_query_count_does_not_grow_with_the_rows(
+    staff_client: Client, level: OwnerLevel
+) -> None:
+    url = _url(level, "changelist")
+    level.make_row(level.make_owner())
+    with_one_row = _changelist_queries(staff_client, url)
+    level.make_row(level.make_owner())
+    level.make_row(level.make_owner())
+
+    assert _changelist_queries(staff_client, url) == with_one_row
+
+
 def test_a_second_post_for_the_same_owner_is_a_form_error(
     staff_client: Client, level: OwnerLevel
 ) -> None:
@@ -425,6 +457,18 @@ def test_a_registration_changelist_shows_the_course_peer_flag(
 
     assert response.status_code == 200
     assert "field-learner_to_course_peer" in response.content.decode()
+
+
+def test_a_registration_changelist_query_count_does_not_grow_with_the_rows(
+    staff_client: Client, registration_level: RegistrationLevel
+) -> None:
+    url = _registration_url(registration_level, "changelist")
+    registration_level.make_row(registration_level.make_registration())
+    with_one_row = _changelist_queries(staff_client, url)
+    registration_level.make_row(registration_level.make_registration())
+    registration_level.make_row(registration_level.make_registration())
+
+    assert _changelist_queries(staff_client, url) == with_one_row
 
 
 def test_a_second_registration_post_for_the_same_registration_is_a_form_error(

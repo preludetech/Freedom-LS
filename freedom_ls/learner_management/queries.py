@@ -459,32 +459,52 @@ def registrations_of(
     )
 
 
-def peers_of(learner: Learner) -> QuerySet[Learner]:
-    """Other users' active Learner rows in this learner's organisation that share
-    a cohort with it, or share a course both hold an active registration for.
+def peers_through(
+    learner: Learner,
+    *,
+    cohorts: QuerySet,
+    own_courses: QuerySet,
+    cohort_courses: QuerySet,
+) -> QuerySet[Learner]:
+    """Other users' active Learner rows in this learner's organisation that are
+    members of one of `cohorts`, or hold an active registration for one of
+    `own_courses` or `cohort_courses` (each a values() queryset of ids).
 
-    Course peers are restricted to the organisation: a course is not owned by one,
-    so without this a client's learners would see another client's.
+    peers_of passes every cohort and course the learner has; a caller that has
+    filtered them, by configuration say, passes the survivors and gets the same
+    composition, so the two cannot drift. Course peers are restricted to the
+    organisation: a course is not owned by one, so without this a client's
+    learners would see another client's. All three conditions sit in one
+    filter() call, for the reason holds_registration_for_any_expression gives.
     """
-    if not learner.is_active:
-        return Learner.objects.none()
     site = learner.site
-    cohorts = CohortMembership.objects.filter(site=site, learner=learner).values(
-        "cohort_id"
-    )
-    own, through_cohorts = registrations_of(learner)
     return (
         Learner.objects.filter(
-            site=site, organisation=learner.organisation, is_active=True
+            site=site, organisation_id=learner.organisation_id, is_active=True
         )
         .exclude(user_id=learner.user_id)
         .filter(
             is_in_cohort_expression(site, cohorts)
-            | holds_registration_for_any_expression(site, own.values("course_id"))
-            | holds_registration_for_any_expression(
-                site, through_cohorts.values("course_id")
-            )
+            | holds_registration_for_any_expression(site, own_courses)
+            | holds_registration_for_any_expression(site, cohort_courses)
         )
+    )
+
+
+def peers_of(learner: Learner) -> QuerySet[Learner]:
+    """Other users' active Learner rows in this learner's organisation that share
+    a cohort with it, or share a course both hold an active registration for."""
+    if not learner.is_active:
+        return Learner.objects.none()
+    cohorts = CohortMembership.objects.filter(
+        site=learner.site, learner=learner
+    ).values("cohort_id")
+    own, through_cohorts = registrations_of(learner)
+    return peers_through(
+        learner,
+        cohorts=cohorts,
+        own_courses=own.values("course_id"),
+        cohort_courses=through_cohorts.values("course_id"),
     )
 
 
