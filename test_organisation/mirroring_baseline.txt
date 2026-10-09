@@ -159,9 +159,6 @@ freedom_ls/icons/tests/test_no_font_awesome.py
 freedom_ls/icons/tests/test_renderer.py
 
 # learner_interface
-freedom_ls/learner_interface/tests/test_course_completion_notifications.py
-freedom_ls/learner_interface/tests/test_course_completion_webhook_events.py
-freedom_ls/learner_interface/tests/test_self_registration_learner.py
 
 # learner_management
 freedom_ls/learner_management/tests/test_constraint_validation_forms.py

@@ -5,8 +5,10 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import TopicFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -21,9 +23,13 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import (
     CohortDeadline,
     CohortMembership,
+    Learner,
     LearnerCohortDeadlineOverride,
+    LearnerCourseRegistration,
     LearnerDeadline,
 )
+from freedom_ls.learner_management.utils import is_registered_for_course
+from freedom_ls.organisations.utils import get_default_organisation
 
 
 @pytest.mark.django_db
@@ -302,3 +308,126 @@ def test_clean_does_not_raise_when_the_registration_is_unset(mock_site_context):
     )
 
     override.clean()
+
+
+# Self-registration through initiate_course_access (the chokepoint for
+# self-service course access) keys on Learner: the Learner it creates, its
+# idempotence, and reactivation of a removed learner. The backend-branching
+# coverage (gated vs free, GET vs POST) is in learner_interface views.
+def _initiate_course_access_url(course_slug: str) -> str:
+    return reverse(
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course_slug}
+    )
+
+
+@pytest.mark.django_db
+def test_self_registering_creates_a_learner_on_the_default_organisation(
+    mock_site_context, site, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    client.post(_initiate_course_access_url(course.slug))
+
+    default_organisation = get_default_organisation(site)
+    learner = Learner.objects.get(user=user, organisation=default_organisation)
+    assert learner.is_active is True
+    assert LearnerCourseRegistration.objects.filter(
+        learner=learner, course=course, is_active=True
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_self_registering_twice_creates_one_learner_and_one_registration(
+    mock_site_context, site, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    client = logged_in_client(user)
+    url = _initiate_course_access_url(course.slug)
+
+    client.post(url)
+    client.post(url)
+
+    default_organisation = get_default_organisation(site)
+    assert (
+        Learner.objects.filter(user=user, organisation=default_organisation).count()
+        == 1
+    )
+    assert (
+        LearnerCourseRegistration.objects.filter(
+            learner__user=user, course=course
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db
+def test_self_registering_reactivates_a_removed_learner(
+    mock_site_context, site, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    default_organisation = get_default_organisation(site)
+    LearnerFactory(user=user, organisation=default_organisation, is_active=False)
+    client = logged_in_client(user)
+    assert is_registered_for_course(user, course) is False
+
+    client.post(_initiate_course_access_url(course.slug))
+
+    learner = Learner.objects.get(user=user, organisation=default_organisation)
+    assert learner.is_active is True
+    assert is_registered_for_course(user, course) is True
+
+
+@pytest.mark.django_db
+def test_self_registering_reactivates_a_deactivated_registration(
+    mock_site_context, site, logged_in_client, course_with_topic
+):
+    """An admin may deactivate the registration rather than the Learner.
+    Re-registering has to restore access: finding the row and leaving it
+    inactive dead-ends the learner, since course_home then bounces them
+    straight back to the course detail page."""
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    learner = LearnerFactory(user=user, organisation=get_default_organisation(site))
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=False)
+    client = logged_in_client(user)
+    assert is_registered_for_course(user, course) is False
+
+    client.post(_initiate_course_access_url(course.slug))
+
+    assert is_registered_for_course(user, course) is True
+
+
+@pytest.mark.django_db
+def test_self_registering_marks_a_new_registration_as_self_registered(
+    mock_site_context, logged_in_client, course_with_topic
+) -> None:
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    client.post(_initiate_course_access_url(course.slug))
+
+    assert LearnerCourseRegistration.objects.get(
+        learner__user=user, course=course
+    ).self_registered
+
+
+@pytest.mark.django_db
+def test_reactivating_an_admin_registration_leaves_it_marked_as_not_self_registered(
+    mock_site_context, site, logged_in_client, course_with_topic
+) -> None:
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    learner = LearnerFactory(user=user, organisation=get_default_organisation(site))
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=False)
+    client = logged_in_client(user)
+
+    client.post(_initiate_course_access_url(course.slug))
+
+    assert not LearnerCourseRegistration.objects.get(
+        learner=learner, course=course
+    ).self_registered

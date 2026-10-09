@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import re
 from datetime import timedelta
+from unittest.mock import patch
 
 import lxml.html
 import pytest
@@ -435,6 +436,228 @@ def test_revisiting_the_course_does_not_emit_the_event_again(
     response = authenticated_client.get(second_url)
 
     assert "gtag('event'" not in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# Course completion on the finish page: webhook and GA4 course_completed
+#
+# course_finish both records the completion and renders in the same response,
+# so the GA4 event shows up in that response's own HTML rather than surviving
+# in the session for a later page -- unlike a call site that redirects.
+# ---------------------------------------------------------------------------
+
+
+def _outstanding_course(slug: str) -> Course:
+    course: Course = CourseFactory(slug=slug)
+    topic = TopicFactory(title="Unread", slug=f"{slug}-topic", content="x")
+    course.items.create(child=topic, order=0)
+    return course
+
+
+@pytest.mark.django_db
+def test_completing_the_course_fires_the_course_completed_webhook_for_the_learner(
+    mock_site_context, client
+):
+    """Finishing a course for the first time fires course.completed."""
+    user = UserFactory(password="testpass")
+    course = CourseFactory(slug="test-course")
+    course_progress_record(course, user)
+
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+        _finish(client, user, course)
+
+    mock_fire.assert_called_once()
+    event_type, payload = mock_fire.call_args[0]
+    assert event_type == "course.completed"
+    assert payload["user_id"] == user.pk
+    assert payload["user_email"] == user.email
+    assert payload["course_id"] == str(course.id)
+    assert payload["course_title"] == course.title
+    assert "completed_time" in payload
+
+
+@pytest.mark.django_db
+def test_the_course_completed_payload_names_the_organisation_and_the_record(
+    mock_site_context, client
+):
+    """A consumer has to know which of a learner's records completed."""
+    user = UserFactory(password="testpass")
+    course = CourseFactory(slug="payload-course")
+    record = course_progress_record(course, user)
+
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+        _finish(client, user, course)
+
+    payload = mock_fire.call_args[0][1]
+    assert payload["organisation_id"] == str(record.learner.organisation_id)
+    assert payload["course_progress_id"] == str(record.id)
+
+
+@pytest.mark.django_db
+def test_revisiting_the_finish_page_fires_no_course_completed_webhook(
+    mock_site_context, client
+):
+    """If the course is already completed, no webhook event is fired."""
+    user = UserFactory(password="testpass")
+    course = CourseFactory(slug="test-course-2")
+    record = course_progress_record(course, user)
+    record.completed_time = timezone.now()
+    record.save(update_fields=["completed_time"])
+
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+        _finish(client, user, course)
+
+    mock_fire.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_an_outstanding_item_withholds_the_course_completed_webhook(
+    mock_site_context, client
+):
+    """A false completion cannot be taken back once integrators have heard it."""
+    user = UserFactory(password="testpass")
+    course = _outstanding_course("outstanding-course")
+    course_progress_record(course, user)
+
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+        _finish(client, user, course)
+
+    mock_fire.assert_not_called()
+
+
+@pytest.mark.django_db
+@override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+def test_completing_course_emits_the_course_completed_event(mock_site_context, client):
+    user = UserFactory(password="testpass")
+    course = CourseFactory(
+        slug="ga-complete-course", access_config={"access_type": "free"}
+    )
+    course_progress_record(course, user)
+
+    response = _finish(client, user, course)
+
+    assert (
+        """gtag('event', 'course_completed', {"course_slug": "ga-complete-course", """
+        f'"course_id": "{course.id}", "access_type": "free", '
+        '"registration_source": "individual"})'
+    ) in response.content.decode()
+
+
+@pytest.mark.django_db
+@override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+def test_a_cohort_learner_completing_reports_the_cohort_source(
+    mock_site_context, client
+):
+    user = UserFactory(password="testpass")
+    course = CourseFactory(slug="ga-cohort-course")
+    cohort = CohortFactory()
+    CohortMembershipFactory(learner__user=user, cohort=cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
+    course_progress_record(course, user)
+
+    response = _finish(client, user, course)
+
+    assert '"registration_source": "cohort"})' in response.content.decode()
+
+
+@pytest.mark.django_db
+@override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+def test_revisiting_the_finish_page_does_not_emit_the_course_completed_event_again(
+    mock_site_context, client
+):
+    user = UserFactory(password="testpass")
+    course = CourseFactory(slug="ga-complete-course-2")
+    record = course_progress_record(course, user)
+    record.completed_time = timezone.now()
+    record.save(update_fields=["completed_time"])
+
+    response = _finish(client, user, course)
+
+    assert "gtag('event'" not in response.content.decode()
+
+
+@pytest.mark.django_db
+@override_settings(GOOGLE_ANALYTICS_MEASUREMENT_ID="G-TEST")
+def test_an_outstanding_item_withholds_the_course_completed_event(
+    mock_site_context, client
+):
+    user = UserFactory(password="testpass")
+    course = _outstanding_course("ga-outstanding-course")
+    course_progress_record(course, user)
+
+    response = _finish(client, user, course)
+
+    assert "gtag('event'" not in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# GA4 course_registered event from initiate_course_access
+# ---------------------------------------------------------------------------
+
+
+def _initiate_url(course_slug: str) -> str:
+    return reverse(
+        "learner_interface:initiate_course_access", kwargs={"course_slug": course_slug}
+    )
+
+
+@pytest.mark.django_db
+def test_a_new_self_registration_records_the_course_registered_event(
+    mock_site_context, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free", slug="ga-register-course")
+    client = logged_in_client(UserFactory())
+
+    client.post(_initiate_url("ga-register-course"))
+
+    assert client.session["google_analytics_events"] == [
+        {
+            "name": "course_registered",
+            "params": {
+                "course_slug": "ga-register-course",
+                "course_id": str(course.id),
+                "access_type": "free",
+                "registration_method": "self_registration",
+            },
+        }
+    ]
+
+
+@pytest.mark.django_db
+def test_an_existing_registration_records_no_course_registered_event(
+    mock_site_context, site, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=get_default_organisation(site),
+        course=course,
+    )
+    client = logged_in_client(user)
+
+    client.post(_initiate_url(course.slug))
+
+    assert "google_analytics_events" not in client.session
+
+
+@pytest.mark.django_db
+def test_reactivating_a_deactivated_registration_records_no_course_registered_event(
+    mock_site_context, site, logged_in_client, course_with_topic
+):
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(
+        learner__user=user,
+        learner__organisation=get_default_organisation(site),
+        course=course,
+        is_active=False,
+    )
+    client = logged_in_client(user)
+
+    client.post(_initiate_url(course.slug))
+
+    assert "google_analytics_events" not in client.session
 
 
 # Tests for prev/next navigation in view_course_item under the viewable-only index scheme.

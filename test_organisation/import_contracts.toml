@@ -306,8 +306,6 @@ ignore_imports = [
     # baseline
     "freedom_ls.learner_interface.tests.views.test_course_access -> freedom_ls.course_applications.factories",
     "freedom_ls.learner_interface.tests.templatetags.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils",
-    "freedom_ls.learner_interface.tests.test_course_completion_notifications -> freedom_ls.comms.models",
-    "freedom_ls.learner_interface.tests.test_self_registration_learner -> freedom_ls.comms.models",
 ]
 
 [[tool.importlinter.contracts]]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from django.db import transaction
+from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
@@ -137,3 +138,53 @@ class TestRaiseNotificationWrite:
             )
 
         assert Notification._base_manager.filter(site_id=site.pk).exists()
+
+
+# Finishing a course raises no notification: the learner is on the completion page.
+@pytest.mark.django_db(transaction=True)
+def test_completing_a_course_notifies_nothing(
+    mock_site_context, logged_in_client
+) -> None:
+    user = UserFactory()
+    course = CourseFactory(access_config={"access_type": "free"})
+    client = logged_in_client(user)
+    client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    response = client.get(
+        reverse("learner_interface:course_finish", kwargs={"course_slug": course.slug})
+    )
+
+    assert response.context["course_progress"].completed_time is not None
+    assert not Notification._base_manager.filter(
+        user=user, category="course.completed"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_self_registering_for_a_course_notifies_nothing(
+    mock_site_context,
+    logged_in_client,
+    course_with_topic,
+    django_capture_on_commit_callbacks,
+) -> None:
+    course = course_with_topic(access_type="free")
+    user = UserFactory()
+    client = logged_in_client(user)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = client.post(
+            reverse(
+                "learner_interface:initiate_course_access",
+                kwargs={"course_slug": course.slug},
+            )
+        )
+
+    assert response["Location"] != reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+    assert not Notification._base_manager.filter(user=user).exists()
