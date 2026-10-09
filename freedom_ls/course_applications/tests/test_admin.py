@@ -73,6 +73,17 @@ def test_is_submitted_column(mock_site_context):
     assert model_admin.is_submitted(CourseApplicationFactory()) is True
 
 
+def test_claimed_column_directly_follows_applicant_column(mock_site_context):
+    """The Claimed column used to sit after Applicant name, not next to Applicant."""
+    model_admin = CourseApplicationAdmin(CourseApplication, None)
+
+    assert list(model_admin.list_display[:3]) == [
+        "applicant_email",
+        "is_claimed",
+        "applicant_name",
+    ]
+
+
 def test_submitted_time_is_sitting_completed_time(mock_site_context):
     model_admin = CourseApplicationAdmin(CourseApplication, None)
     submitted = _submitted()

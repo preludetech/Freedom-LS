@@ -90,8 +90,8 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
 
     list_display = [
         "applicant_email",
-        "applicant_name",
         "is_claimed",
+        "applicant_name",
         "course",
         "is_submitted",
         "submitted_time",
