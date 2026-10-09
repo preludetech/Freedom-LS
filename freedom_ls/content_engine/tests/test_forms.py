@@ -1,10 +1,4 @@
-"""Regression test for FileAdminForm.
-
-SiteAwareModelAdmin excludes ``site`` from every admin form, and
-UniqueConstraint.validate() abandons a constraint whose field sits in that
-exclusion set. FileAdminForm un-excludes ``site`` so a duplicate file path
-surfaces as an error on the File path field instead of an IntegrityError.
-"""
+"""Tests for the content_engine admin forms."""
 
 from __future__ import annotations
 
@@ -15,6 +9,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from freedom_ls.content_engine.factories import FileFactory
 from freedom_ls.content_engine.forms import FileAdminForm
+
+# Regression test for FileAdminForm.
+#
+# SiteAwareModelAdmin excludes ``site`` from every admin form, and
+# UniqueConstraint.validate() abandons a constraint whose field sits in that
+# exclusion set. FileAdminForm un-excludes ``site`` so a duplicate file path
+# surfaces as an error on the File path field instead of an IntegrityError.
 
 
 @pytest.mark.django_db

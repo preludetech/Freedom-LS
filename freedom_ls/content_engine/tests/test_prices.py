@@ -10,10 +10,11 @@ import pytest
 from django.db import models
 from django.test import override_settings
 
-from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.models import Course, PriceKind
 from freedom_ls.content_engine.prices import (
     AMOUNT_DECIMAL_PLACES,
     AMOUNT_MAX_DIGITS,
+    KIND_FIELDS,
     CoursePrice,
     price_errors,
     price_locale,
@@ -239,6 +240,10 @@ def test_low_amount_less_than_high_amount_is_accepted() -> None:
 
 
 # KIND_FIELDS
+
+
+def test_kind_fields_keys_match_price_kind_values() -> None:
+    assert set(KIND_FIELDS) == set(PriceKind.values)
 
 
 # price_locale

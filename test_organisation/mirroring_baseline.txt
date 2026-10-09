@@ -60,35 +60,6 @@ freedom_ls/comms/tests/test_views_panel.py
 freedom_ls/content_base/tests/test_schema_registry.py
 
 # content_engine
-freedom_ls/content_engine/tests/test_article_model.py
-freedom_ls/content_engine/tests/test_article_schema.py
-freedom_ls/content_engine/tests/test_article_widgets.py
-freedom_ls/content_engine/tests/test_calculate_path_from_root.py
-freedom_ls/content_engine/tests/test_content_save_articles.py
-freedom_ls/content_engine/tests/test_content_save_course.py
-freedom_ls/content_engine/tests/test_content_save_course_categories.py
-freedom_ls/content_engine/tests/test_content_save_course_price.py
-freedom_ls/content_engine/tests/test_content_save_image_output.py
-freedom_ls/content_engine/tests/test_content_save_save_with_uuid.py
-freedom_ls/content_engine/tests/test_content_tags.py
-freedom_ls/content_engine/tests/test_course_access_config.py
-freedom_ls/content_engine/tests/test_course_application_form.py
-freedom_ls/content_engine/tests/test_course_category_model.py
-freedom_ls/content_engine/tests/test_course_category_schema.py
-freedom_ls/content_engine/tests/test_course_collection_items.py
-freedom_ls/content_engine/tests/test_course_difficulty_duration_outcomes.py
-freedom_ls/content_engine/tests/test_course_price_model.py
-freedom_ls/content_engine/tests/test_course_price_schema.py
-freedom_ls/content_engine/tests/test_course_viewable_items.py
-freedom_ls/content_engine/tests/test_course_visibility.py
-freedom_ls/content_engine/tests/test_file_admin_form.py
-freedom_ls/content_engine/tests/test_form_save.py
-freedom_ls/content_engine/tests/test_iso_duration.py
-freedom_ls/content_engine/tests/test_optimise_image.py
-freedom_ls/content_engine/tests/test_tags.py
-freedom_ls/content_engine/tests/test_toc_in_development.py
-freedom_ls/content_engine/tests/test_validate_course_categories.py
-freedom_ls/content_engine/tests/test_validate_widget_references.py
 
 # course_access
 freedom_ls/course_access/tests/test_access_override.py

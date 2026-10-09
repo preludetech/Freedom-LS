@@ -1,4 +1,4 @@
-"""Unit tests for optimise_image: bytes in, bytes out, no database."""
+"""Tests for image optimisation."""
 
 from __future__ import annotations
 
@@ -34,6 +34,8 @@ from freedom_ls.tests.images import (
     screenshot_png_bytes,
     shorten_png_ihdr,
 )
+
+# Unit tests for optimise_image: bytes in, bytes out, no database.
 
 
 def _rgb_channel_bounds(img: Image.Image) -> tuple[tuple[int, int], ...]:

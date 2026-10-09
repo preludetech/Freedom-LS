@@ -1,11 +1,4 @@
-"""Tests for template tags in content_tags.py.
-
-Covers:
-- admonition_config: type→registry entry resolution
-- admonition_icon: renders SVG from a config dict
-- c-admonition component: renders label, icon, body via markdown pipeline
-- get_content_by_path: path→Topic, falling back to path→Form
-"""
+"""Tests for the content template tags."""
 
 from __future__ import annotations
 
@@ -27,9 +20,13 @@ from freedom_ls.form_engine.factories import FormFactory
 from freedom_ls.form_engine.models import Form
 from freedom_ls.markdown_rendering.markdown_utils import render_markdown
 
-# ---------------------------------------------------------------------------
-# admonition_config
-# ---------------------------------------------------------------------------
+# Tests for template tags in content_tags.py.
+#
+# Covers:
+# - admonition_config: type→registry entry resolution
+# - admonition_icon: renders SVG from a config dict
+# - c-admonition component: renders label, icon, body via markdown pipeline
+# - get_content_by_path: path→Topic, falling back to path→Form
 
 
 class TestAdmonitionConfig:
@@ -87,8 +84,9 @@ class TestAdmonitionConfig:
 
         assert isinstance(result, dict)
 
-    def test_all_builtin_types_resolve_without_error(self) -> None:
-        builtin_types = [
+    @pytest.mark.parametrize(
+        "admonition_type",
+        [
             "note",
             "tip",
             "important",
@@ -97,13 +95,14 @@ class TestAdmonitionConfig:
             "key_takeaways",
             "checklist",
             "default",
-        ]
-        for admonition_type in builtin_types:
-            result = admonition_config(admonition_type)
-            assert isinstance(result, dict)
-            assert "label" in result
-            assert "icon" in result
-            assert "color" in result
+        ],
+    )
+    def test_builtin_type_resolves_to_label_icon_and_color(
+        self, admonition_type: str
+    ) -> None:
+        result = admonition_config(admonition_type)
+
+        assert {"label", "icon", "color"} <= set(result)
 
 
 # ---------------------------------------------------------------------------
@@ -139,12 +138,6 @@ class TestAdmonitionIcon:
         result = admonition_icon(cfg)
 
         assert "<svg" in result
-        assert isinstance(result, SafeString)
-
-    def test_custom_css_class_is_accepted(self) -> None:
-        cfg = {"icon": "info"}
-        result = admonition_icon(cfg, css_class="size-6")
-
         assert isinstance(result, SafeString)
 
 
@@ -221,32 +214,20 @@ class TestAdmonitionComponent:
 
         assert "<c-admonition" not in result
 
-    def test_tip_type_renders_tip_label(self, request_) -> None:
-        """type="tip" renders the "Tip" label from the registry."""
+    @pytest.mark.parametrize(
+        ("admonition_type", "label"),
+        [("tip", "Tip"), ("warning", "Warning"), ("danger", "Danger")],
+    )
+    def test_type_renders_its_registry_label_and_body(
+        self, request_, admonition_type: str, label: str
+    ) -> None:
         result = render_markdown(
-            '<c-admonition type="tip">Tip content</c-admonition>', request_
+            f'<c-admonition type="{admonition_type}">Body here</c-admonition>',
+            request_,
         )
 
-        assert "Tip" in result
-        assert "Tip content" in result
-
-    def test_warning_type_renders_warning_label(self, request_) -> None:
-        """type="warning" renders the "Warning" label from the registry."""
-        result = render_markdown(
-            '<c-admonition type="warning">Warning content</c-admonition>', request_
-        )
-
-        assert "Warning" in result
-        assert "Warning content" in result
-
-    def test_danger_type_renders_danger_label(self, request_) -> None:
-        """type="danger" renders the "Danger" label from the registry."""
-        result = render_markdown(
-            '<c-admonition type="danger">Danger content</c-admonition>', request_
-        )
-
-        assert "Danger" in result
-        assert "Danger content" in result
+        assert label in result
+        assert "Body here" in result
 
     def test_admonition_has_role_note_for_accessibility(self, request_) -> None:
         """Admonition renders with role="note" for screen reader accessibility."""
