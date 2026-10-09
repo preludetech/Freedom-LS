@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import re
 from datetime import timedelta
 from decimal import Decimal
 from typing import cast
@@ -1302,3 +1303,88 @@ def test_course_part_holding_a_failed_quiz_reads_as_needing_a_retry(mock_site_co
     )
     assert part_dict["status"] == FAILED
     assert part_dict["url"] == expected_url
+
+
+# The outline's course-part rows are what a screen reader walks, so the
+# accessible text of each is asserted on the rendered markup.
+
+
+def _outline_part_buttons(logged_in_client, user, course) -> list[str]:
+    """The markup of every course-part toggle button in the player's outline."""
+    response = logged_in_client(user).get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    content = response.content.decode()
+    outline = content.split('<nav aria-label="Course outline">')[1].split("</nav>")[0]
+    return re.findall(
+        r'<button x-on:click="toggleExpanded".*?</button>', outline, re.DOTALL
+    )
+
+
+@pytest.mark.django_db
+def test_course_part_toggle_hides_its_chevron_from_assistive_technology(
+    mock_site_context, logged_in_client
+):
+    """State is conveyed by aria-expanded, so the expand/collapse icons never reach a screen reader."""
+    course: Course = CourseFactory(title="Chevron", slug="chevron")
+    part: CoursePart = CoursePartFactory(title="Chapter One", slug="chapter-one")
+    course.items.create(child=TopicFactory(title="Landing", slug="landing"), order=0)
+    course.items.create(child=part, order=1)
+    part.items.create(child=TopicFactory(title="Inner", slug="inner"), order=0)
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
+
+    (button,) = _outline_part_buttons(logged_in_client, user, course)
+
+    announced, chevron = button.split('aria-hidden="true"', 1)
+    assert "Chapter One" in announced
+    assert "x-bind:aria-expanded" in announced
+    announced_text = re.sub(r"<[^>]+>", " ", announced)
+    announced_labels = re.findall(r'aria-label="([^"]*)"', announced)
+    assert not re.search(r"expand|collapse", announced_text, re.IGNORECASE)
+    assert not re.search(r"expand|collapse", " ".join(announced_labels), re.IGNORECASE)
+    assert re.search(r"expand|collapse", chevron)
+
+
+@pytest.mark.django_db
+def test_course_part_row_announces_in_progress_over_completed_children(
+    mock_site_context, logged_in_client
+):
+    """A part with three finished children and one outstanding is announced "In progress"."""
+    course: Course = CourseFactory(title="Announce", slug="announce")
+    part: CoursePart = CoursePartFactory(title="Core Concepts", slug="core-concepts")
+    done = [
+        TopicFactory(title=f"Done {n}", slug=f"done-{n}", content="x") for n in range(3)
+    ]
+    outstanding = TopicFactory(title="Outstanding", slug="outstanding", content="x")
+    course.items.create(child=TopicFactory(title="Landing", slug="landing"), order=0)
+    course.items.create(child=part, order=1)
+    for order, topic in enumerate([*done, outstanding]):
+        part.items.create(child=topic, order=order)
+    user = UserFactory()
+    LearnerCourseRegistrationFactory(learner__user=user, course=course, is_active=True)
+    for topic in done:
+        topic_completion(course, user, topic, complete_time=timezone.now())
+
+    response = logged_in_client(user).get(
+        reverse(
+            "learner_interface:view_course_item",
+            kwargs={"course_slug": course.slug, "index": 1},
+        )
+    )
+    outline = (
+        response.content.decode()
+        .split('<nav aria-label="Course outline">')[1]
+        .split("</nav>")[0]
+    )
+    (button,) = re.findall(
+        r'<button x-on:click="toggleExpanded".*?</button>', outline, re.DOTALL
+    )
+    button_text = " ".join(re.sub(r"<[^>]+>", " ", button).split())
+
+    assert re.search(r"In progress.*Core Concepts", button_text)
+    assert "Not started" not in button_text
+    assert outline.count(">Completed<") == 3

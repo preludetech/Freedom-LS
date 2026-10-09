@@ -19,7 +19,12 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import Form, FormProgress, FormStrategy
+from freedom_ls.form_engine.models import (
+    Form,
+    FormProgress,
+    FormQuestion,
+    FormStrategy,
+)
 from freedom_ls.form_engine.queries import count_form_questions
 from freedom_ls.learner_interface.tests.helpers import course_with_form, form_attempt
 from freedom_ls.learner_interface.utils import form_start_page_buttons, get_course_index
@@ -2737,3 +2742,202 @@ def test_optional_question_left_blank_still_advances(mock_site_context, client):
     response = client.post(_page_url(course, 1), {})
 
     assert response.status_code == 302
+
+
+# ---------------------------------------------------------------------------
+# Server-rendered form landing and results pages
+# ---------------------------------------------------------------------------
+
+
+def _math_quiz(*, quiz_show_incorrect: bool = True):
+    """A two-page quiz: two questions on page one, one on page two, each with a wrong option."""
+    form = FormFactory(
+        title="Math Quiz",
+        subtitle="Test your math skills",
+        strategy=FormStrategy.QUIZ,
+        quiz_pass_percentage=70,
+        quiz_show_incorrect=quiz_show_incorrect,
+    )
+    page_one = FormPageFactory(form=form, title="Page 1", order=0)
+    page_two = FormPageFactory(form=form, title="Page 2", order=1)
+    questions: list[FormQuestion] = []
+    for order, (form_page, text, options, correct) in enumerate(
+        [
+            (page_one, "What is 5+3?", ["7", "8", "9"], "8"),
+            (page_one, "What is 10-4?", ["5", "6", "7"], "6"),
+            (page_two, "What is 3*4?", ["11", "12", "13"], "12"),
+        ]
+    ):
+        question = FormQuestionFactory(
+            form_page=form_page,
+            question=text,
+            type="multiple_choice",
+            order=order,
+            required=True,
+        )
+        for order, option_text in enumerate(options):
+            QuestionOptionFactory(
+                question=question,
+                text=option_text,
+                correct=option_text == correct,
+                order=order,
+            )
+        questions.append(question)
+    return form, questions
+
+
+def _sit_math_quiz(course, user, form, questions, chosen_texts):
+    """Complete an attempt at `form`, ticking the option whose text is in `chosen_texts`."""
+    attempt = form_attempt(course, user, form)
+    for question, chosen in zip(questions, chosen_texts, strict=True):
+        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+        answer.selected_options.add(question.options.get(text=chosen))
+    attempt.complete()
+    return attempt
+
+
+def _landing_url(course):
+    return reverse(
+        "learner_interface:view_course_item",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+def _complete_url(course):
+    return reverse(
+        "learner_interface:course_form_complete",
+        kwargs={"course_slug": course.slug, "index": 1},
+    )
+
+
+def _testid_text(content: str, testid: str) -> str:
+    """The whitespace-collapsed text of the element carrying `data-testid=testid`."""
+    match = re.search(
+        rf'data-testid="{re.escape(testid)}"[^>]*>(.*?)</(?:div|span|p)>',
+        content,
+        re.DOTALL,
+    )
+    assert match is not None, f"no element with data-testid={testid!r}"
+    return " ".join(html.unescape(match.group(1)).split())
+
+
+@pytest.mark.django_db
+def test_form_landing_page_before_starting(mock_site_context, client):
+    """A fresh form shows its title, subtitle and a Start button, and no earlier attempts."""
+    user = UserFactory()
+    form, _questions = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    client.force_login(user)
+
+    content = client.get(_landing_url(course)).content.decode()
+
+    assert re.search(r"<h1[^>]*>\s*Math Quiz\s*</h1>", content)
+    assert "Test your math skills" in content
+    assert 'data-testid="start-form-button"' in content
+    assert 'data-testid="continue-form-button"' not in content
+    assert "Previous attempts" not in content
+
+
+@pytest.mark.django_db
+def test_form_landing_page_lists_the_score_of_a_completed_attempt(
+    mock_site_context, client
+):
+    """A finished quiz attempt appears under "Previous attempts" with its percentage and fraction."""
+    user = UserFactory()
+    form, questions = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    _sit_math_quiz(course, user, form, questions, ["8", "6", "12"])
+    client.force_login(user)
+
+    content = client.get(_landing_url(course)).content.decode()
+
+    assert "Previous attempts" in content
+    attempts_section = content.split('data-testid="previous-submission-score"')[
+        1
+    ].split("</section>")[0]
+    attempts_text = " ".join(html.unescape(attempts_section).split())
+    assert "100%" in attempts_text
+    assert "(3 / 3)" in attempts_text
+
+
+@pytest.mark.django_db
+def test_form_landing_page_offers_to_continue_from_the_saved_page(
+    mock_site_context, client
+):
+    """With page one answered, Continue links to page two and Start is not offered."""
+    user = UserFactory()
+    form, questions = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    attempt = form_attempt(course, user, form)
+    for question in questions[:2]:
+        answer = QuestionAnswerFactory(form_progress=attempt, question=question)
+        answer.selected_options.add(question.options.get(correct=True))
+    client.force_login(user)
+
+    content = client.get(_landing_url(course)).content.decode()
+
+    assert 'data-testid="start-form-button"' not in content
+    assert 'data-testid="continue-form-button"' in content
+    assert f'href="{_page_url(course, 2)}"' in content
+
+
+@pytest.mark.django_db
+def test_quiz_results_page_shows_the_score_and_percentage(mock_site_context, client):
+    """A perfect attempt reads 3 of 3 and 100% on the results page."""
+    user = UserFactory()
+    form, questions = _math_quiz()
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    _sit_math_quiz(course, user, form, questions, ["8", "6", "12"])
+    client.force_login(user)
+
+    content = client.get(_complete_url(course)).content.decode()
+
+    assert _testid_text(content, "quiz-score") == "3 / 3"
+    assert _testid_text(content, "quiz-percentage") == "100%"
+
+
+@pytest.mark.django_db
+def test_quiz_results_page_reviews_only_the_incorrect_answers_when_enabled(
+    mock_site_context, client
+):
+    """Wrong answers are listed with the learner's choice and the right one; right answers are not."""
+    user = UserFactory()
+    form, (q1, q2, q3) = _math_quiz(quiz_show_incorrect=True)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    _sit_math_quiz(course, user, form, [q1, q2, q3], ["7", "6", "11"])
+    client.force_login(user)
+
+    content = client.get(_complete_url(course)).content.decode()
+
+    assert _testid_text(content, "quiz-score") == "1 / 3"
+    assert 'data-testid="incorrect-answers-section"' in content
+    assert f'data-testid="incorrect-question-{q1.id}"' in content
+    assert f'data-testid="incorrect-question-{q3.id}"' in content
+    assert f'data-testid="incorrect-question-{q2.id}"' not in content
+    assert "What is 5+3?" in content
+    assert "What is 3*4?" in content
+    assert _testid_text(content, f"learner-answer-{q1.id}").endswith("7")
+    assert _testid_text(content, f"correct-answer-{q1.id}").endswith("8")
+
+
+@pytest.mark.django_db
+def test_quiz_results_page_hides_incorrect_answers_when_disabled(
+    mock_site_context, client
+):
+    """With quiz_show_incorrect off the score still shows but no answer review is rendered."""
+    user = UserFactory()
+    form, questions = _math_quiz(quiz_show_incorrect=False)
+    course = course_with_form(form)
+    register_user_for_course(course, user)
+    _sit_math_quiz(course, user, form, questions, ["7", "6", "11"])
+    client.force_login(user)
+
+    content = client.get(_complete_url(course)).content.decode()
+
+    assert 'data-testid="quiz-score"' in content
+    assert 'data-testid="incorrect-answers-section"' not in content
