@@ -68,8 +68,10 @@ Place it in the correct test file for the affected app.
 
 Prefer a test that runs without a browser. When the defect only shows up in a real browser (JS,
 Alpine components, htmx swaps, `<dialog>` state, session history, a full page reload where an htmx
-swap was expected), write a `@pytest.mark.playwright` test instead. Put it in the app's
-`tests/playwright/` directory, reusing that directory's fixtures and helpers.
+swap was expected), extend the existing flow test for that page in the app's `tests/playwright/`, adding a step and its
+assertion. Write a new file only when no flow covers the page. A design miss is proven by an
+ordinary pytest test of the rendered markup where one can, never by a bounding-box or pixel
+assertion.
 
 ### Step 2 — Confirm RED
 

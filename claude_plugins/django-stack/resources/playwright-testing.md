@@ -25,7 +25,7 @@ For unit-level HTMX patterns (header simulation, `HX-Trigger` assertions, 422 va
 
 ## Portability: the `playwright` marker is the browser set a downstream excludes
 
-Every browser test is marked `@pytest.mark.playwright` and lives under `tests/playwright/`. Together these are the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The marker is the only thing a downstream needs in order to exclude it — so mark every browser test, without exception.
+Every browser test is marked `@pytest.mark.playwright` and lives under `<app>/tests/playwright/`. Together these are the browser-dependent set a concrete downstream project cannot run headless-plain (no `live_server` + real browser to drive, and `pytest-socket` blocks outbound sockets by default). The marker is the only thing a downstream needs in order to exclude it — so mark every browser test, without exception.
 
 For how the `playwright` marker sits alongside any other project-specific markers and the exact selection a downstream runs, see the `ds:testing` skill's marker guidance.
 
@@ -37,13 +37,13 @@ uv add --dev playwright
 playwright install
 
 # Run tests
-pytest tests/playwright/
-pytest tests/playwright/test_comment_flow.py
+pytest -m playwright
+pytest <app>/tests/playwright/test_comment_flow.py
 ```
 
 ## Test Structure
 
-**(currently available)** — Playwright's `expect()` API auto-waits for conditions to become true and produces clear failure messages. Use it instead of `wait_for_selector` / `is_visible`.
+Playwright's `expect()` API auto-waits for conditions to become true and produces clear failure messages. Use it instead of `wait_for_selector` / `is_visible`.
 
 ```python
 import pytest
@@ -68,14 +68,14 @@ def test_user_comment_flow(page, live_server):
 3. **Use `expect()` matchers** - `expect(locator).to_be_visible()` and similar matchers auto-wait, integrate with HTMX swaps, and produce better failure messages than `wait_for_selector` / `is_visible`.
 4. **Use semantic locators** - Prefer `get_by_role` / `get_by_label` / `get_by_text` over CSS selectors. See "Locator priority" below.
 5. **Test happy paths first** - Core user journeys
-6. **Keep tests independent** - Each test should setup/teardown its own data
+6. **Write flows** - One journey per test: one login, one data build, many assertions, layout checks looped over the project's viewports at the end. A case that needs its own browser context or a route interception is a separate function in the same file
 7. **Use live_server fixture** - Django test server integration
 8. **Use reverse() for URLs** - Never hardcode URLs: `reverse('app:view')` not `'/app/view/'`
 9. **Don't test what pytest can** - Avoid testing backend logic
 
 ## Locator priority
 
-**(currently available)** — pick the highest-priority locator that fits. Lower-priority locators are brittle to refactors and copy edits.
+Pick the highest-priority locator that fits. Lower-priority locators are brittle to refactors and copy edits.
 
 1. `page.get_by_role(...)` — survives copy refactors; mirrors how assistive tech sees the page.
 2. `page.get_by_label(...)` — for form fields; tied to the accessible label, so it follows the field through visual redesigns.
@@ -101,37 +101,23 @@ from playwright.sync_api import expect
 
 # Wait for HTMX swap via expect() — auto-waits, no explicit sleep
 page.get_by_role("button", name="Load more").click()
-expect(page.locator("#content .new-item")).to_be_visible()
+expect(page.get_by_test_id("new-item")).to_be_visible()
 
 # Assert resulting count
-expect(page.locator(".item")).to_have_count(5)
+expect(page.get_by_role("listitem")).to_have_count(5)
 ```
 
 For HTMX request / response patterns at the unit-test level (header simulation, `HX-Trigger` assertions, 422 validation responses) see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (HTMX test patterns section). For production-side HTMX conventions see the `ds:htmx` skill.
 
 ## Trace on failure
 
-**(planned for upcoming phase 2)**
-
-Playwright traces capture screenshots, DOM snapshots, network logs, and console output for failed tests; they are invaluable for debugging flaky / environment-dependent failures. Phase 2 will land the configuration that turns this on by default.
-
-```python
-# pytest configuration — to be enabled in phase 2
-# pyproject.toml [tool.pytest.ini_options]:
-#   playwright_browser_args = ["--trace=retain-on-failure"]
-# or via the playwright fixtures / conftest as appropriate for our setup
-```
+Traces are recorded on failure (`--tracing=retain-on-failure`) and written to `test-results/`. A trace holds screenshots, DOM snapshots, network logs and console output, which localises the failing step of a flow.
 
 > **Caveat — traces capture DOM state and may contain fixture credentials, session cookies, or PII baked into seeded test data. Treat trace artefacts as sensitive: do not attach them to public bug reports, third-party support tickets, or shared chat channels without first reviewing them. If a trace must be shared externally, scrub or regenerate against a clean fixture set.**
 
 ## Login fixture pattern
 
-**(currently available)** — a real browser login takes seconds; running it once per test makes the suite slow. Reuse the logged-in state instead.
-
-Two approaches:
-
-1. **`storage_state`** (preferred) — log in once in a session-scoped fixture, save the resulting `storage_state` JSON, reuse it across tests via `browser.new_context(storage_state=...)`. Cookies and `localStorage` are restored without re-running the login flow.
-2. **Programmatic login** — call the backend login endpoint directly via `page.request.post(...)` rather than driving the form UI. Faster than UI login but slower than `storage_state` reuse, and useful when individual tests need fresh sessions.
+Log in through the UI at the start of each flow, in a function-scoped fixture. Placeholders below stand for the project's real URL names.
 
 ```python
 import pytest
@@ -139,57 +125,25 @@ from django.urls import reverse
 from playwright.sync_api import expect
 
 
-# `live_server` from pytest-django defaults to function scope. To use it inside
-# a session-scoped fixture, widen it in conftest.py. `django_db_setup` and
-# `django_db_blocker` below are built-in pytest-django fixtures — no import
-# needed; they're auto-discovered once pytest-django is installed.
-#
-#     @pytest.fixture(scope="session")
-#     def live_server(request, django_db_setup, django_db_blocker):
-#         from pytest_django.live_server_helper import LiveServer
-#         with django_db_blocker.unblock():
-#             server = LiveServer("localhost")
-#             yield server
-#             server.stop()
-#
-# Without this override, the fixture below raises ScopeMismatch at collection.
-@pytest.fixture(scope="session")
-def authed_storage_state(live_server, browser):
-    """Log in once per session; reuse the resulting cookies + localStorage."""
-    context = browser.new_context()
-    try:
-        page = context.new_page()
-        page.goto(f"{live_server.url}{reverse('accounts:login')}")
-        page.get_by_label("Email").fill("user@example.test")
-        page.get_by_label("Password").fill("test-password-not-real")
-        page.get_by_role("button", name="Sign in").click()
-        expect(page).to_have_url(f"{live_server.url}{reverse('home')}")
-        state = context.storage_state()
-    finally:
-        context.close()
-    return state
-
-
 @pytest.fixture
-def authed_page(browser, authed_storage_state):
-    context = browser.new_context(storage_state=authed_storage_state)
-    try:
-        page = context.new_page()
-        yield page
-    finally:
-        context.close()
+def authed_page(page, live_server):
+    page.goto(f"{live_server.url}{reverse('<login url name>')}")
+    page.get_by_label("Email").fill("user@example.test")
+    page.get_by_label("Password").fill("test-password-not-real")
+    page.get_by_role("button", name="Sign in").click()
+    expect(page).to_have_url(f"{live_server.url}{reverse('<post-login url name>')}")
+    return page
 ```
 
-**Security caveat:** do not commit the resulting `storage_state` JSON to the repo; it contains session cookies. The fixture builds it at test time from synthetic credentials; never hard-code real credentials anywhere in the fixture. All examples here use the RFC 2606 reserved `.test` TLD and obviously-synthetic placeholder passwords.
+**Security caveat:** never commit session state (a `storage_state` JSON holds session cookies). Build credentials at test time from synthetic values; never hard-code real credentials. Examples here use the RFC 2606 reserved `.test` TLD and obviously synthetic passwords.
 
 ## Test Organization
 
 ```
-tests/
-└── playwright/
-    ├── conftest.py           # Playwright fixtures
-    ├── test_comment_flow.py  # Comment-posting flows
-    └── test_article_nav.py   # Article navigation
+<app>/tests/playwright/
+├── conftest.py           # Playwright fixtures
+├── test_comment_flow.py  # Comment-posting flow
+└── test_article_nav.py   # Article navigation flow
 ```
 
 ## Key Differences from Pytest

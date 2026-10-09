@@ -478,9 +478,8 @@ with "fix it" belongs in the green lane.
 1. The failure is a clear functional defect observed in this run. It does not matter whether the
    bug predates this branch: a bug that is also on `main` still gets fixed. A design miss meets
    this condition when the plan's design checklist names the expected treatment.
-2. A pytest test can prove the fix. That includes a `@pytest.mark.playwright` browser test (the
-   project's Playwright tests run in the ordinary `uv run pytest` suite), so a defect in JS, htmx
-   swaps, `<dialog>` or history behaviour qualifies. A design miss's failing test is a Playwright test.
+2. A pytest test can prove the fix. That includes a `@pytest.mark.playwright` browser test, so a defect in JS, htmx
+   swaps, `<dialog>` or history behaviour qualifies.
 3. No product or UX decision is required. When the spec, the test plan and the code disagree about
    the intended behaviour, choosing which one is right is a product decision, even when the code
    seems to work.
