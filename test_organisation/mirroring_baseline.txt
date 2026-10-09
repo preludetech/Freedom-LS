@@ -14,12 +14,6 @@ freedom_ls/blog/tests/test_seo_discoverability.py
 
 # comms
 freedom_ls/comms/tests/test_bell_tag.py
-freedom_ls/comms/tests/test_boundaries.py
-freedom_ls/comms/tests/test_rendering.py
-freedom_ls/comms/tests/test_views_badge.py
-freedom_ls/comms/tests/test_views_list.py
-freedom_ls/comms/tests/test_views_mark.py
-freedom_ls/comms/tests/test_views_panel.py
 
 # content_base
 freedom_ls/content_base/tests/test_schema_registry.py
@@ -70,9 +64,6 @@ freedom_ls/google_tag/tests/test_google_tag_tags.py
 freedom_ls/health/tests/test_health_endpoints.py
 
 # icons
-freedom_ls/icons/tests/test_icon_cotton_component.py
-freedom_ls/icons/tests/test_no_font_awesome.py
-freedom_ls/icons/tests/test_renderer.py
 
 # learner_interface
 
@@ -95,12 +86,6 @@ freedom_ls/referral_tracking/tests/test_prune_referral_code_hits.py
 freedom_ls/referral_tracking/tests/test_signup.py
 
 # reports
-freedom_ls/reports/tests/test_at_risk_rules.py
-freedom_ls/reports/tests/test_deletion_hygiene.py
-freedom_ls/reports/tests/test_gather_helpers.py
-freedom_ls/reports/tests/test_gather_indexes.py
-freedom_ls/reports/tests/test_partials.py
-freedom_ls/reports/tests/test_pdf_integration.py
 
 # role_based_permissions
 freedom_ls/role_based_permissions/tests/test_management_commands.py

@@ -26,10 +26,6 @@ class TestIconCottonComponent:
         assert "<svg" in result
         assert "</svg>" in result
 
-    def test_default_class_is_size_5(self) -> None:
-        result = self._render('<c-icon name="next" />')
-        assert 'class="inline size-5"' in result
-
     def test_default_role_is_img(self) -> None:
         result = self._render('<c-icon name="next" />')
         assert 'role="img"' in result

@@ -9,9 +9,9 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
+from freedom_ls.comms.factories import CourseFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.notify import raise_notification
-from freedom_ls.content_engine.factories import CourseFactory
 
 
 @pytest.mark.django_db

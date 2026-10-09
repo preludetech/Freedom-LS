@@ -1,10 +1,9 @@
-"""Hand-built `CohortReportData` builders shared by the render-layer test files.
+"""Hand-built `CohortReportData` builders shared by the render-layer tests.
 
-`test_render.py` (pure-Python HTML assertions) and `test_pdf_integration.py`
-(WeasyPrint/pypdf assertions, marked `weasyprint`) both drive
-`build_report_html()` / `render_report_pdf()` over the same small, structurally
-complete cohort, so the builders live here once rather than being copied
-between the two files.
+The pure-Python HTML assertions and the `weasyprint`-marked WeasyPrint/pypdf
+assertions in `test_render.py` both drive `build_report_html()` /
+`render_report_pdf()` over the same small, structurally complete cohort, so the
+builders live here once rather than being copied between the two sections.
 """
 
 from __future__ import annotations

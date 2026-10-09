@@ -41,6 +41,8 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.validators import MAX_BYTES, MAX_DIMENSION
 from freedom_ls.reports.gather import (
@@ -68,12 +70,7 @@ from freedom_ls.reports.indexes import (
     load_topic_progress_rows,
     resolve_site_name,
 )
-from freedom_ls.reports.tests.conftest import (
-    cohort_progress_record,
-    form_progress,
-    individual_progress_record,
-    topic_progress,
-)
+from freedom_ls.reports.tests.helpers import form_progress, topic_progress
 from freedom_ls.tests.images import (
     break_png_chunk_crc,
     gif_bytes,
@@ -106,14 +103,17 @@ def _cohort_registered_for(
     for _ in range(learner_count):
         user = UserFactory()
         CohortMembershipFactory(cohort=cohort, learner__user=user)
-        records.append(cohort_progress_record(registration, user))
+        records.append(course_progress_record(registration.course, user))
     return registration, records
 
 
 def _second_record_for(record: CourseProgress) -> CourseProgress:
     """The same learner's own registration for the same course, and its record."""
-    return individual_progress_record(
-        LearnerCourseRegistrationFactory(learner=record.learner, course=record.course)
+    registration = LearnerCourseRegistrationFactory(
+        learner=record.learner, course=record.course
+    )
+    return ensure_course_progress_record(
+        registration.learner, registration.course, registration
     )
 
 
@@ -503,7 +503,9 @@ class TestLoadFirstAttemptIds:
         second_registration: CohortCourseRegistration = CohortCourseRegistrationFactory(
             cohort=registration.cohort, course=second_course
         )
-        second_record = cohort_progress_record(second_registration, record.learner.user)
+        second_record = course_progress_record(
+            second_registration.course, record.learner.user
+        )
 
         with time_machine.travel("2026-01-01T00:00:00Z", tick=False):
             earliest = form_progress(

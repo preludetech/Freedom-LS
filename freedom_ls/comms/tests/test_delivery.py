@@ -18,11 +18,10 @@ import pytest
 from django.test import override_settings
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.comms.factories import NotificationFactory
+from freedom_ls.comms.factories import CourseFactory, NotificationFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.notify import raise_notification
 from freedom_ls.comms.tasks import deliver_notification
-from freedom_ls.content_engine.factories import CourseFactory
 
 
 @pytest.mark.django_db

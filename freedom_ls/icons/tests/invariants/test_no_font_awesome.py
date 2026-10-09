@@ -1,7 +1,7 @@
 import re
 from pathlib import Path
 
-TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent  # freedom_ls/
+TEMPLATE_DIR = Path(__file__).resolve().parent.parent.parent.parent  # freedom_ls/
 
 FA_PATTERNS = [
     (re.compile(r"\bfa-\w+"), "Font Awesome icon class"),

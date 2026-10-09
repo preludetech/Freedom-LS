@@ -65,10 +65,6 @@ ignore_imports = [
     "freedom_ls.comms.tests.test_bell_tag -> freedom_ls.learner_management.factories",
     "freedom_ls.comms.tests.test_bell_tag -> freedom_ls.organisations.factories",
     "freedom_ls.comms.tests.test_bell_tag -> freedom_ls.role_based_permissions.utils",
-    "freedom_ls.comms.tests.test_delivery -> freedom_ls.content_engine.factories",
-    "freedom_ls.comms.tests.test_notify -> freedom_ls.content_engine.factories",
-    "freedom_ls.comms.tests.test_rendering -> freedom_ls.content_engine.factories",
-    "freedom_ls.comms.tests.test_views_list -> freedom_ls.content_engine.factories",
 ]
 
 [[tool.importlinter.contracts]]
