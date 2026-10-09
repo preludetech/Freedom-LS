@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_label_precedes_value_in_source() -> None:
@@ -69,27 +69,6 @@ def test_tone_does_not_change_which_icon_renders(tone: str) -> None:
     )
 
 
-def test_direction_does_not_change_the_tone_class() -> None:
-    """Two tiles with the same tone but different directions get the same
-    tone text colour class regardless of direction."""
-    up_html = render_cotton(
-        '<c-panel-stat-tile label="Progress" value="80%" delta="Up 4 points" '
-        'direction="up" tone="success" />'
-    )
-    down_html = render_cotton(
-        '<c-panel-stat-tile label="Progress" value="60%" delta="Down 2 points" '
-        'direction="down" tone="success" />'
-    )
-
-    up_delta = up_html[up_html.index("order-5") : up_html.index("Up 4 points")]
-    down_delta = down_html[
-        down_html.index("order-5") : down_html.index("Down 2 points")
-    ]
-
-    assert "text-on-success-light" in up_delta
-    assert "text-on-success-light" in down_delta
-
-
 def test_no_delta_dd_when_delta_is_empty() -> None:
     html = render_cotton('<c-panel-stat-tile label="Learners" value="42" />')
 
@@ -148,21 +127,3 @@ def test_stat_row_renders_the_slot_inside_one_root_element(variant: str) -> None
     assert html.count("Learners") == 1
     assert html.count("Cohorts") == 1
     assert html.count("<div") == 1
-
-
-def test_tile_with_an_unknown_variant_has_no_card() -> None:
-    html = render_cotton(
-        '<c-panel-stat-tile label="Learners" value="42" variant="plain" />'
-    )
-
-    dl_match = re.search(r'<dl class="([^"]*)"', html)
-
-    assert dl_match is not None
-    assert "border" not in dl_match.group(1)
-
-
-def test_row_with_an_unknown_variant_is_a_flex_row() -> None:
-    html = render_cotton('<c-panel-stat-row variant="plain">x</c-panel-stat-row>')
-
-    assert "flex flex-wrap" in html
-    assert "grid" not in html

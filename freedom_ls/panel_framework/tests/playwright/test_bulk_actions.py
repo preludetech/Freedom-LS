@@ -12,7 +12,8 @@ from playwright.sync_api import Browser, Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import StubModel, _make_stub
+from ..helpers import make_stub
+from ..stub_models import StubModel
 
 
 @pytest.fixture
@@ -32,7 +33,7 @@ def test_header_checkbox_tristate(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -64,7 +65,7 @@ def test_selection_clears_on_sort(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -89,7 +90,7 @@ def test_stub_bulk_action_js_off(
 ) -> None:
     """Checking rows, submitting, confirming and landing back on the table
     all work as native form submissions with no JavaScript at all."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
     page = no_js_page
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
@@ -119,7 +120,7 @@ def test_stub_bulk_action_confirms_in_the_shared_modal(
 ) -> None:
     """With JavaScript on, the confirmation opens in #app-modal, Cancel
     closes it without acting, and confirming runs the action."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 

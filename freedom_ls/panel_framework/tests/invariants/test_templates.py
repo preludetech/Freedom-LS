@@ -20,11 +20,11 @@ from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.panels import Panel, TabSet
 from freedom_ls.panel_framework.views import SectionConfigBase
 
-from .conftest import _make_stub
-from .stub_panels import StubDetailsPanel, StubHiddenPanel
+from ..helpers import make_stub
+from ..stub_panels import StubDetailsPanel, StubHiddenPanel
 
-TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
-OVERRIDES_DIR = Path(__file__).resolve().parent / "template_overrides"
+TEMPLATES_DIR = Path(__file__).resolve().parents[2] / "templates"
+OVERRIDES_DIR = Path(__file__).resolve().parent.parent / "template_overrides"
 COMPONENTS_DIR = TEMPLATES_DIR / "cotton"
 TAILWIND_COMPONENTS_CSS = FREEDOM_LS_PACKAGE_DIR.parent / "tailwind.components.css"
 
@@ -111,7 +111,7 @@ def test_an_override_of_the_leaf_keeps_the_base_markup(mock_site_context: Site) 
 def test_a_panel_template_extending_the_framework_template_renders_both(
     mock_site_context: Site,
 ) -> None:
-    html = _render(_bind(StubDetailsPanel, _make_stub(name="Extended")))
+    html = _render(_bind(StubDetailsPanel, make_stub(name="Extended")))
 
     assert "<p data-stub-details>Extended</p>" in html
     assert ">Details</h2>" in html

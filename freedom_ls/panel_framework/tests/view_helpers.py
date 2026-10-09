@@ -7,7 +7,7 @@ from django.test import RequestFactory
 
 from freedom_ls.panel_framework.views import NavGroup, panel_framework_view
 
-from .conftest import make_staff_user
+from .helpers import make_staff_user
 from .stub_panels import STUB_CONFIG
 
 TEMPLATE = "panel_framework/test_interface.html"

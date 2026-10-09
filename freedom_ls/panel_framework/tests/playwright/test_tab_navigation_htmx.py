@@ -14,7 +14,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 from .assertions import expect_no_nested_panel
 
 
@@ -25,7 +25,7 @@ def test_tab_switch_back_and_forward_keep_url_and_tab_together(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Tabbed Stub")
+    stub = make_stub(name="Tabbed Stub")
     instance_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
     page.goto(instance_url)
     expect(page.locator("[data-panel='default']")).to_have_count(1)

@@ -14,7 +14,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 
 @pytest.mark.playwright
@@ -24,7 +24,7 @@ def test_instance_title_changed_event_updates_the_instance_heading(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Original Name")
+    stub = make_stub(name="Original Name")
     instance_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
     page.goto(instance_url)
     heading = page.locator("#instance-title")
@@ -49,7 +49,7 @@ def test_long_unbroken_instance_title_does_not_widen_the_page(
     page: Page,
 ) -> None:
     """A long title with no spaces used to push the page wider than the viewport."""
-    stub = _make_stub(name=_LONG_UNBROKEN_NAME)
+    stub = make_stub(name=_LONG_UNBROKEN_NAME)
     page.set_viewport_size({"width": 392, "height": 850})
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}")

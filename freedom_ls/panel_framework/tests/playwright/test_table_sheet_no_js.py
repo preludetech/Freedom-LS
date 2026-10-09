@@ -17,7 +17,7 @@ from playwright.sync_api import Browser, Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 _PHONE_VIEWPORT = {"width": 390, "height": 844}
 
@@ -39,7 +39,7 @@ def test_sheet_visible_on_phone_with_js_off(
     live_server_site: Site,
     no_js_page: Page,
 ) -> None:
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
     page = no_js_page
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")

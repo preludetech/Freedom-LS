@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_root_is_aria_hidden() -> None:

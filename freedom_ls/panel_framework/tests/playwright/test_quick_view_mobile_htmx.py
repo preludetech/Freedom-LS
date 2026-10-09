@@ -16,7 +16,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 _MOBILE_VIEWPORT = {"width": 375, "height": 750}
 _TABLET_VIEWPORT = {"width": 1024, "height": 800}
@@ -34,8 +34,8 @@ def test_the_open_quick_view_leaves_the_page_usable(
     page: Page,
     viewport: dict[str, int],
 ) -> None:
-    _make_stub(name="Alpha")
-    _make_stub(name="Beta")
+    make_stub(name="Alpha")
+    make_stub(name="Beta")
     page.set_viewport_size(viewport)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -67,7 +67,7 @@ def test_escape_closes_the_sheet_and_returns_focus_to_the_trigger(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     trigger = page.get_by_role("link", name="Quick view: Alpha")
@@ -88,7 +88,7 @@ def test_the_page_can_scroll_its_last_row_clear_of_the_phone_sheet(
     page: Page,
 ) -> None:
     for i in range(10):
-        _make_stub(name=f"row-{i:02d}")
+        make_stub(name=f"row-{i:02d}")
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("link", name="Quick view: row-00").click()
@@ -112,7 +112,7 @@ def test_crossing_the_breakpoint_while_open_keeps_the_content_with_no_new_reques
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("link", name="Quick view: Alpha").click()
@@ -143,7 +143,7 @@ def test_the_phone_sheet_has_a_rounded_bordered_top_edge(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("link", name="Quick view: Alpha").click()
@@ -162,7 +162,7 @@ def test_the_tablet_drawer_keeps_square_corners(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_TABLET_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("link", name="Quick view: Alpha").click()

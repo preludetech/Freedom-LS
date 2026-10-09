@@ -20,7 +20,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 from ..stub_panels import StubDataTable
 from .assertions import expect_no_nested_panel
 
@@ -89,7 +89,7 @@ def test_save_and_add_another_keeps_current_page(
     """A refresh after 'Save and add another' re-renders the page the reader
     is on, keeps it in the address bar, and adds no history entry."""
     page_size = StubDataTable.page_size
-    [_make_stub(name=f"row-{i:02d}") for i in range(page_size + 5)]
+    [make_stub(name=f"row-{i:02d}") for i in range(page_size + 5)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     table = page.locator("#stubs-table")

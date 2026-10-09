@@ -134,7 +134,6 @@ freedom_ls.meta_pixel.tests.test_context_processors -> freedom_ls.learner_manage
 freedom_ls.organisations.tests.test_models -> freedom_ls.role_based_permissions.utils
 
 # panel_framework
-freedom_ls.panel_framework.tests.test_export -> freedom_ls.site_aware_models.models
 
 # reports
 freedom_ls.reports.tests.test_admin -> freedom_ls.role_based_permissions.utils

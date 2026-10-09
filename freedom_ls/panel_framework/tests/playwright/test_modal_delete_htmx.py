@@ -8,7 +8,8 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import StubModel, _make_stub
+from ..helpers import make_stub
+from ..stub_models import StubModel
 
 
 @pytest.mark.playwright
@@ -18,7 +19,7 @@ def test_cancel_has_initial_focus(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Deletable")
+    stub = make_stub(name="Deletable")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
 
     page.get_by_role("button", name="Delete", exact=True).click()
@@ -33,7 +34,7 @@ def test_delete_closes_the_modal_and_navigates_to_the_list(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Deletable")
+    stub = make_stub(name="Deletable")
     list_url = f"{live_server.url}/test-panel/framework/stubs"
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
 

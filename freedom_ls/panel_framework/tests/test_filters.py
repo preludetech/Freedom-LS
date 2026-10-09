@@ -8,15 +8,15 @@ import pytest
 
 from django.test import RequestFactory
 
-from .conftest import _make_stub
+from .helpers import make_stub
 from .stub_panels import StubChildDataTable, StubDataTable
 
 pytestmark = pytest.mark.django_db
 
 
 def test_choice_filter_narrows_rows() -> None:
-    _make_stub(name="alpha-row", kind="a")
-    _make_stub(name="beta-row", kind="b")
+    make_stub(name="alpha-row", kind="a")
+    make_stub(name="beta-row", kind="b")
     request = RequestFactory().get("/", {"stub-kind": "a"})
 
     query = StubDataTable.parse_query(request, "stub")
@@ -28,8 +28,8 @@ def test_choice_filter_narrows_rows() -> None:
 
 
 def test_boolean_filter_narrows_only_when_1() -> None:
-    _make_stub(name="active-row", is_active=True)
-    _make_stub(name="inactive-row", is_active=False)
+    make_stub(name="active-row", is_active=True)
+    make_stub(name="inactive-row", is_active=False)
     request = RequestFactory().get("/", {"stub-active": "1"})
 
     query = StubDataTable.parse_query(request, "stub")
@@ -41,8 +41,8 @@ def test_boolean_filter_narrows_only_when_1() -> None:
 
 
 def test_boolean_filter_does_not_narrow_when_absent() -> None:
-    _make_stub(name="active-row", is_active=True)
-    _make_stub(name="inactive-row", is_active=False)
+    make_stub(name="active-row", is_active=True)
+    make_stub(name="inactive-row", is_active=False)
     request = RequestFactory().get("/")
 
     query = StubDataTable.parse_query(request, "stub")
@@ -54,8 +54,8 @@ def test_boolean_filter_does_not_narrow_when_absent() -> None:
 
 
 def test_related_choice_filter_choices_are_scoped() -> None:
-    in_scope = _make_stub(name="in-scope-parent")
-    _make_stub(name="out-of-scope-parent")
+    in_scope = make_stub(name="in-scope-parent")
+    make_stub(name="out-of-scope-parent")
     request = RequestFactory().get("/")
 
     (parent_filter,) = StubChildDataTable.get_filters()
@@ -64,8 +64,8 @@ def test_related_choice_filter_choices_are_scoped() -> None:
 
 
 def test_related_choice_filter_drops_pk_outside_scope() -> None:
-    in_scope = _make_stub(name="in-scope-parent")
-    out_of_scope = _make_stub(name="out-of-scope-parent")
+    in_scope = make_stub(name="in-scope-parent")
+    out_of_scope = make_stub(name="out-of-scope-parent")
     request = RequestFactory().get("/")
 
     (parent_filter,) = StubChildDataTable.get_filters()

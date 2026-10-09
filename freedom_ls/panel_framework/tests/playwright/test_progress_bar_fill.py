@@ -30,7 +30,7 @@ from django.conf import settings
 from django.contrib.sites.models import Site
 from django.test import Client
 
-from ..conftest import make_staff_user
+from ..helpers import make_staff_user
 
 _RGB_PATTERN = re.compile(r"rgb\((\d+), (\d+), (\d+)\)")
 

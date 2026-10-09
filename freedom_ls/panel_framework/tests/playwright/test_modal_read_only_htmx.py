@@ -8,7 +8,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 
 @pytest.mark.playwright
@@ -18,7 +18,7 @@ def test_opening_a_read_only_fragment_focuses_its_heading(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Read Only Target")
+    stub = make_stub(name="Read Only Target")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
 
     page.get_by_role("button", name="View Info").click()
@@ -33,7 +33,7 @@ def test_a_backdrop_click_closes_a_read_only_fragment(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Read Only Target")
+    stub = make_stub(name="Read Only Target")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
 
     page.get_by_role("button", name="View Info").click()
@@ -50,7 +50,7 @@ def test_a_click_in_the_dialogs_own_padding_leaves_a_read_only_fragment_open(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Read Only Target")
+    stub = make_stub(name="Read Only Target")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/details")
 
     page.get_by_role("button", name="View Info").click()

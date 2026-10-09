@@ -14,7 +14,7 @@ from playwright.sync_api import Page, Route, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 
 @pytest.mark.playwright
@@ -24,7 +24,7 @@ def test_clicking_a_row_opens_the_drawer_with_focus_on_the_link(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     trigger = page.get_by_role("link", name="Quick view: Alpha")
@@ -43,7 +43,7 @@ def test_the_title_is_blank_while_loading_and_comes_from_the_frame(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     held: list[Route] = []
     page.route("**/__quick-view", lambda route: held.append(route))
@@ -65,8 +65,8 @@ def test_clicking_a_second_row_repopulates_the_drawer_and_the_table_stays_clicka
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
-    _make_stub(name="Beta")
+    make_stub(name="Alpha")
+    make_stub(name="Beta")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     page.get_by_role("link", name="Quick view: Alpha").click()
@@ -90,7 +90,7 @@ def test_clicking_the_same_row_closes_and_reopens_the_drawer_with_no_second_requ
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     quick_view_requests: list[str] = []
     page.on(
@@ -122,7 +122,7 @@ def test_escape_closes_the_drawer_and_returns_focus_to_the_trigger(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     trigger = page.get_by_role("link", name="Quick view: Alpha")
     trigger.click()
@@ -141,7 +141,7 @@ def test_a_ctrl_click_opens_the_full_page_in_a_new_tab(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="Alpha")
+    stub = make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     with page.context.expect_page() as new_page_info:
@@ -162,7 +162,7 @@ def test_a_server_error_shows_retry_and_retry_loads_the_content(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     attempts = {"count": 0}
 
@@ -191,8 +191,8 @@ def test_clicking_back_to_a_shown_row_after_another_row_failed_loads_it_again(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
-    beta = _make_stub(name="Beta")
+    make_stub(name="Alpha")
+    beta = make_stub(name="Beta")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.route(
         f"**/{beta.pk}/__quick-view",
@@ -217,8 +217,8 @@ def test_reopening_a_row_after_closing_mid_load_of_another_shows_the_reopened_ro
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
-    beta = _make_stub(name="Beta")
+    make_stub(name="Alpha")
+    beta = make_stub(name="Beta")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     held: list[Route] = []
     page.route(f"**/{beta.pk}/__quick-view", lambda route: held.append(route))
@@ -245,7 +245,7 @@ def test_reopening_a_row_whose_load_failed_requests_it_again(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     attempts = {"count": 0}
 

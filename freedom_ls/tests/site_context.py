@@ -52,3 +52,13 @@ def site_context(site: Site) -> Iterator[Site]:
             _thread_locals.request = old_request
         elif hasattr(_thread_locals, "request"):
             delattr(_thread_locals, "request")
+
+
+def drop_ambient_request() -> None:
+    """Remove the thread-local request, as when a response is read after its view returned.
+
+    Whatever was scoped from `site_context` keeps its mocked site lookups; only
+    the request that SiteAwareModel reads goes away.
+    """
+    if hasattr(_thread_locals, "request"):
+        delattr(_thread_locals, "request")

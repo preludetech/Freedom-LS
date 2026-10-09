@@ -16,7 +16,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 _DESKTOP_VIEWPORT = {"width": 1280, "height": 800}
 _TABLET_VIEWPORT = {"width": 1024, "height": 800}
@@ -30,7 +30,7 @@ def test_the_docked_drawer_is_pinned_full_height_to_the_inline_end_edge(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -55,7 +55,7 @@ def test_the_page_content_makes_room_for_the_docked_drawer(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -82,7 +82,7 @@ def test_below_1280_the_drawer_lies_over_the_page_below_the_header(
     """Too narrow to dock beside the page, but wide enough to stay a side
     drawer rather than the phone's bottom sheet. It starts below the site
     header so the header stays usable, like the docked drawer."""
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_TABLET_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -110,7 +110,7 @@ def test_the_mobile_sheet_spans_the_full_width_anchored_to_the_bottom(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_MOBILE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -136,7 +136,7 @@ def test_the_drawer_is_not_displayed_under_print_media(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Alpha")
+    make_stub(name="Alpha")
     page.set_viewport_size(_DESKTOP_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 

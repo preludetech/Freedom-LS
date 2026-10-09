@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_renders_a_native_progress_element_with_an_aria_label() -> None:

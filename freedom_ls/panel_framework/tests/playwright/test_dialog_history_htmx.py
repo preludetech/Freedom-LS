@@ -19,7 +19,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 
 @pytest.mark.playwright
@@ -29,7 +29,7 @@ def test_back_after_navigating_away_with_the_modal_open_restores_no_dialog(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="History Target")
+    stub = make_stub(name="History Target")
     list_url = f"{live_server.url}/test-panel/framework/stubs/"
     detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
     page.goto(list_url)
@@ -56,7 +56,7 @@ def test_back_after_navigating_away_with_the_quick_view_open_restores_no_dialog(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    stub = _make_stub(name="History Target")
+    stub = make_stub(name="History Target")
     # No trailing slash: that's what the sidebar's own reverse()d link uses.
     list_url = f"{live_server.url}/test-panel/framework/stubs"
     detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
@@ -91,7 +91,7 @@ def test_reopening_a_quick_view_after_a_history_restore_refetches_it(
     outgoing component's document-level listeners have to be gone by the time
     that happens, or a later click on the same trigger is intercepted by the
     stale instance instead of reaching the fresh one."""
-    stub = _make_stub(name="History Target")
+    stub = make_stub(name="History Target")
     list_url = f"{live_server.url}/test-panel/framework/stubs"
     detail_url = f"{live_server.url}/test-panel/framework/stubs/{stub.pk}"
     page.goto(detail_url)

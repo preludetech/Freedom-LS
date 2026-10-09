@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_icon_is_decorative() -> None:

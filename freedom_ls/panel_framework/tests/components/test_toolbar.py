@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_toolbar_root_has_no_toolbar_role() -> None:

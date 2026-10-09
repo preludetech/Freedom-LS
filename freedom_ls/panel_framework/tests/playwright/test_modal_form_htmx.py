@@ -16,7 +16,8 @@ from playwright.sync_api import Page, Route, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import StubModel, _make_stub
+from ..helpers import make_stub
+from ..stub_models import StubModel
 
 
 def _open_create_modal_and_wait_for_settle(page: Page) -> None:
@@ -51,7 +52,7 @@ def test_a_duplicate_name_moves_focus_to_the_error_summary(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    _make_stub(name="Existing")
+    make_stub(name="Existing")
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
     page.get_by_role("button", name="Create Item").click()

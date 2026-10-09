@@ -16,7 +16,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 from ..stub_panels import StubDataTable
 from .assertions import expect_no_nested_panel
 
@@ -33,7 +33,7 @@ def test_data_table_sort_does_not_nest_panel_wrappers(
     """Clicking the sort header on a panel-rendered DataTable should swap the
     table contents without adding a second ``<section>`` wrapper inside the
     panel."""
-    rows = [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    rows = [make_stub(name=f"row-{i:02d}") for i in range(3)]
     pk = rows[0].pk
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{pk}/")
@@ -55,7 +55,7 @@ def test_data_table_pagination_does_not_nest_panel_wrappers(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    rows = [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
+    rows = [make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
     pk = rows[0].pk
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{pk}/")
@@ -81,7 +81,7 @@ def test_pagination_preserves_sort_param_through_clicks(
     """Sorting then paginating must keep ``stubs-sort=name`` in the request
     URL — proves sort state round-trips through pagination clicks under the
     list's own table key, alongside ``stubs-page``."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
+    [make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -104,7 +104,7 @@ def test_list_view_data_table_swaps_keep_single_container(
     page: Page,
 ) -> None:
     """The list page is a panel too, so its swaps keep one frame."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
+    [make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -132,8 +132,8 @@ def test_nested_table_pushes_page_url(
 ) -> None:
     """Clicking page 2 of a table nested two levels down (a tab holding a
     stack of two tables) pushes the tab's own URL, never the panel's."""
-    stub = _make_stub(name="row-00")
-    [_make_stub(name=f"row-{i:02d}") for i in range(1, PAGE_SIZE + 2)]
+    stub = make_stub(name="row-00")
+    [make_stub(name=f"row-{i:02d}") for i in range(1, PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stub.pk}/__tabs/pair")
 
@@ -153,7 +153,7 @@ def test_back_after_sort_restores_matching_table(
     """Sorting pushes ``stubs-sort`` into history; paging further pushes
     ``stubs-page`` too. Going back must restore the sorted-but-unpaged state,
     in both the address bar and the rendered table."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
+    [make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 2)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -179,7 +179,7 @@ def test_search_narrows_table_after_sort_is_active(
     """Once a sort is active, the sort's hidden input renders before the
     search box in the form. Typing into the search box must still fire the
     debounced htmx search request and narrow the table."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -207,7 +207,7 @@ def test_focus_moves_to_table_anchor_after_swap(
 ) -> None:
     """A sort click swaps the table region; the reader's focus should land on
     the table's own anchor, not stay behind on the removed sort link."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -227,7 +227,7 @@ def test_search_swap_keeps_focus_and_typing_in_search_box(
     """A reader who pauses mid-search and carries on typing must not lose
     characters: the search swap leaves focus in the search box instead of
     moving it to the table anchor."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -259,7 +259,7 @@ def test_filter_sort_sheet_stays_closed_on_desktop(
     """The mobile filter & sort sheet must not open as a docked panel on
     desktop, where opening it would pull focus into a hidden dialog on every
     table swap."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     sheet = page.locator("#stubs-sheet")
@@ -280,7 +280,7 @@ def test_paging_one_table_keeps_sibling_page_in_url(
 ) -> None:
     """Table a's links were rendered before table b was paged; paging a
     afterwards must keep b's page in the address bar and across a reload."""
-    stubs = [_make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 5)]
+    stubs = [make_stub(name=f"row-{i:02d}") for i in range(PAGE_SIZE + 5)]
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/{stubs[0].pk}/__tabs/pair")
 
@@ -305,7 +305,7 @@ def test_filter_sort_sheet_stays_hidden_on_phone_after_table_swap(
     """The no-JavaScript inline override for the sheet leaked into the page
     after an htmx swap (the swapped fragment parses <noscript> contents as
     real elements), so the closed sheet showed inline above the rows."""
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
     page.set_viewport_size({"width": 375, "height": 800})
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")

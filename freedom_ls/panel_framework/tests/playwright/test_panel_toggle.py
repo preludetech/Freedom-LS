@@ -13,7 +13,7 @@ from playwright.sync_api import Locator, Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 pytestmark = [pytest.mark.playwright, pytest.mark.django_db(transaction=True)]
 
@@ -38,7 +38,7 @@ def test_toggle_shares_the_heading_row_and_survives_navigation(
     page: Page,
 ) -> None:
     """On mobile the toggle used to take a row of its own above the heading."""
-    stub = _make_stub(name="row-01")
+    stub = make_stub(name="row-01")
     page.set_viewport_size(_MOBILE_VIEWPORT)
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")

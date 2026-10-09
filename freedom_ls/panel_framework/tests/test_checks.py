@@ -18,7 +18,7 @@ from freedom_ls.panel_framework.filters import BooleanFilter, TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel, Panel, PanelStack
 from freedom_ls.panel_framework.views import ListViewConfig
 
-from .conftest import StubChild, StubModel
+from .stub_models import StubChild, StubModel
 from .stub_panels import StubDataTable
 
 

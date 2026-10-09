@@ -158,34 +158,6 @@ freedom_ls/learner_progress/tests/test_registrations_with_progress_for_learner.p
 freedom_ls/meta_pixel/tests/test_meta_pixel_tags.py
 
 # panel_framework
-freedom_ls/panel_framework/tests/test_breadcrumbs.py
-freedom_ls/panel_framework/tests/test_check_access.py
-freedom_ls/panel_framework/tests/test_component_attention_list.py
-freedom_ls/panel_framework/tests/test_component_avatar_chip.py
-freedom_ls/panel_framework/tests/test_component_card.py
-freedom_ls/panel_framework/tests/test_component_definition_list.py
-freedom_ls/panel_framework/tests/test_component_empty_state.py
-freedom_ls/panel_framework/tests/test_component_page_header.py
-freedom_ls/panel_framework/tests/test_component_progress_bar.py
-freedom_ls/panel_framework/tests/test_component_skeleton.py
-freedom_ls/panel_framework/tests/test_component_stat_tile.py
-freedom_ls/panel_framework/tests/test_component_status_badge.py
-freedom_ls/panel_framework/tests/test_component_toolbar.py
-freedom_ls/panel_framework/tests/test_configs.py
-freedom_ls/panel_framework/tests/test_conftest.py
-freedom_ls/panel_framework/tests/test_data_table_panel.py
-freedom_ls/panel_framework/tests/test_document_title.py
-freedom_ls/panel_framework/tests/test_export.py
-freedom_ls/panel_framework/tests/test_htmx_navigation.py
-freedom_ls/panel_framework/tests/test_instance_details_panel.py
-freedom_ls/panel_framework/tests/test_link_cell.py
-freedom_ls/panel_framework/tests/test_list_view_refresh.py
-freedom_ls/panel_framework/tests/test_menu_items.py
-freedom_ls/panel_framework/tests/test_mobile_cards.py
-freedom_ls/panel_framework/tests/test_panel_actions.py
-freedom_ls/panel_framework/tests/test_panel_tags.py
-freedom_ls/panel_framework/tests/test_tab_panels.py
-freedom_ls/panel_framework/tests/test_templates.py
 
 # qa_helpers
 freedom_ls/qa_helpers/tests/test_qa_create_application_review_accounts.py

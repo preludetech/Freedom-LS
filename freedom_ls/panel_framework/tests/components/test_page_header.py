@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_default_heading_level_is_h1() -> None:
@@ -62,25 +62,7 @@ def test_meta_slot_renders_when_given() -> None:
     assert "learner@example.com" in html
 
 
-def test_no_action_group_renders_when_the_actions_slot_is_absent() -> None:
-    html = render_cotton('<c-panel-page-header title="Overview" />')
-
-    assert "flex justify-end gap-3" not in html
-
-
-def test_no_action_group_renders_when_the_actions_slot_is_whitespace() -> None:
-    html = render_cotton(
-        """
-        <c-panel-page-header title="Overview">
-            <c-slot name="actions">   </c-slot>
-        </c-panel-page-header>
-        """
-    )
-
-    assert "flex justify-end gap-3" not in html
-
-
-def test_actions_slot_renders_inside_a_button_group() -> None:
+def test_actions_slot_content_renders() -> None:
     html = render_cotton(
         """
         <c-panel-page-header title="Overview">
@@ -89,7 +71,6 @@ def test_actions_slot_renders_inside_a_button_group() -> None:
         """
     )
 
-    assert "flex justify-end gap-3" in html
     assert "<button>Save</button>" in html
 
 

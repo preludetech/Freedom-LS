@@ -13,7 +13,8 @@ from django.test import RequestFactory
 from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.views import InstanceView, ListViewConfig, NavGroup
 
-from .conftest import StubModel, _make_stub
+from .helpers import make_stub
+from .stub_models import StubModel
 from .stub_panels import StubDetailsPanel, StubQuickView
 from .view_helpers import call_view, fetch, make_request
 
@@ -86,7 +87,7 @@ def _view(path_string: str, **request_kwargs: object) -> HttpResponse:
 def test_an_htmx_get_of_quick_view_returns_the_frame_with_the_consumers_fields(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub(name="Ada")
+    stub = make_stub(name="Ada")
 
     response = _view(f"quick-view-stub/{stub.pk}/__quick-view", htmx=True)
 
@@ -101,7 +102,7 @@ def test_an_htmx_get_of_quick_view_returns_the_frame_with_the_consumers_fields(
 def test_quick_view_route_404s_when_the_config_declares_no_quick_view(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub()
+    stub = make_stub()
 
     with pytest.raises(Http404):
         _view(f"no-quick-view-stub/{stub.pk}/__quick-view", htmx=True)
@@ -110,7 +111,7 @@ def test_quick_view_route_404s_when_the_config_declares_no_quick_view(
 def test_quick_view_route_404s_when_authorise_instance_denies_the_stub(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub(name="secret-stub")
+    stub = make_stub(name="secret-stub")
 
     with pytest.raises(Http404):
         _view(f"denied-quick-view-stub/{stub.pk}/__quick-view", htmx=True)
@@ -119,7 +120,7 @@ def test_quick_view_route_404s_when_authorise_instance_denies_the_stub(
 def test_a_non_htmx_get_of_quick_view_redirects_to_the_instance_page(
     mock_site_context: Site,
 ) -> None:
-    stub = _make_stub()
+    stub = make_stub()
 
     response = _view(f"quick-view-stub/{stub.pk}/__quick-view")
 
@@ -128,14 +129,14 @@ def test_a_non_htmx_get_of_quick_view_redirects_to_the_instance_page(
 
 
 def test_quick_view_after_a_tabs_segment_404s(mock_site_context: Site) -> None:
-    stub = _make_stub()
+    stub = make_stub()
 
     with pytest.raises(Http404):
         fetch(f"stubs/{stub.pk}/__tabs/details/__quick-view", htmx=True)
 
 
 def test_quick_view_response_varies_on_hx_request(mock_site_context: Site) -> None:
-    stub = _make_stub()
+    stub = make_stub()
 
     response = _view(f"quick-view-stub/{stub.pk}/__quick-view", htmx=True)
 
@@ -143,7 +144,7 @@ def test_quick_view_response_varies_on_hx_request(mock_site_context: Site) -> No
 
 
 def test_the_frame_carries_the_consumers_subtitle(mock_site_context: Site) -> None:
-    stub = _make_stub(name="Ada")
+    stub = make_stub(name="Ada")
 
     response = _view(f"quick-view-stub/{stub.pk}/__quick-view", htmx=True)
 

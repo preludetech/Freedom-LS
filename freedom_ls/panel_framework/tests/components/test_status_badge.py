@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 @pytest.mark.parametrize("tone", ["success", "warning", "error", "info", "muted"])

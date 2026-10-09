@@ -12,7 +12,7 @@ from playwright.sync_api import Page, expect
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 _PHONE_VIEWPORT = {"width": 390, "height": 844}
 
@@ -24,7 +24,7 @@ def test_cards_visible_and_table_hidden_on_phone(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.set_viewport_size(_PHONE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
@@ -40,7 +40,7 @@ def test_sheet_applies_filter_and_sort(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    [_make_stub(name=f"row-{i:02d}", kind="a") for i in range(2)]
+    [make_stub(name=f"row-{i:02d}", kind="a") for i in range(2)]
 
     page.set_viewport_size(_PHONE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
@@ -65,7 +65,7 @@ def test_card_checkboxes_drive_the_bar(
     live_server_site: Site,
     page: Page,
 ) -> None:
-    [_make_stub(name=f"row-{i:02d}") for i in range(3)]
+    [make_stub(name=f"row-{i:02d}") for i in range(3)]
 
     page.set_viewport_size(_PHONE_VIEWPORT)
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")

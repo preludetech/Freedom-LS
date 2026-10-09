@@ -20,7 +20,8 @@ from freedom_ls.panel_framework.views import (
     _ResolvedAction,
 )
 
-from .conftest import StubModel, _make_stub, make_staff_user
+from .helpers import make_staff_user, make_stub
+from .stub_models import StubModel
 from .stub_panels import StubBulkAction, StubDataTablePanel
 from .view_helpers import call_view, fetch
 
@@ -46,8 +47,8 @@ class _NarrowedTablePanel(StubDataTablePanel):
 
 
 def test_keys_outside_scope_are_dropped(mock_site_context: Site) -> None:
-    kept = _make_stub(name="keep-me")
-    outside = _make_stub(name="drop-me")
+    kept = make_stub(name="keep-me")
+    outside = make_stub(name="drop-me")
     request = RequestFactory().post("/stubs")
     panel = _NarrowedTablePanel(
         PanelContext(
@@ -67,7 +68,7 @@ def test_keys_outside_scope_are_dropped(mock_site_context: Site) -> None:
 
 
 def test_malformed_keys_are_dropped(mock_site_context: Site) -> None:
-    kept = _make_stub(name="keep-me")
+    kept = make_stub(name="keep-me")
     request = RequestFactory().post("/stubs")
     panel = StubDataTablePanel(
         PanelContext(
@@ -90,7 +91,7 @@ def test_malformed_keys_are_dropped(mock_site_context: Site) -> None:
 
 
 def test_unpermitted_action_is_403(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     response = fetch(
         _action_path(stub.pk, "stub_forbidden_bulk"),
@@ -102,7 +103,7 @@ def test_unpermitted_action_is_403(mock_site_context: Site) -> None:
 
 
 def test_zero_rows_is_rejected_with_422(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     response = fetch(_action_path(stub.pk), method="post", data={"mode": "keys"})
 
@@ -111,7 +112,7 @@ def test_zero_rows_is_rejected_with_422(mock_site_context: Site) -> None:
 
 
 def test_all_matching_mode_is_422(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     response = fetch(
         _action_path(stub.pk), method="post", data={"mode": "all_matching"}
@@ -128,7 +129,7 @@ def test_over_max_rows_is_rejected_with_422(mock_site_context: Site) -> None:
     class _LowLimitBulkAction(StubBulkAction):
         max_rows = 2
 
-    stubs = [_make_stub(name=f"row-{i}") for i in range(3)]
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
     request = RequestFactory().post(
         "/stubs/__actions/stub_bulk",
         {"mode": "keys", "keys": [str(stub.pk) for stub in stubs]},
@@ -155,7 +156,7 @@ def test_over_max_rows_is_rejected_with_422(mock_site_context: Site) -> None:
 
 
 def test_confirmation_count_matches_execution(mock_site_context: Site) -> None:
-    stubs = [_make_stub(name=f"row-{i}") for i in range(3)]
+    stubs = [make_stub(name=f"row-{i}") for i in range(3)]
     keys = [str(stub.pk) for stub in stubs]
 
     confirm_response = fetch(
@@ -175,7 +176,7 @@ def test_confirmation_count_matches_execution(mock_site_context: Site) -> None:
 
 
 def test_redirect_keeps_table_state(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
     path = _action_path(stub.pk)
     expected_location = f"/test-panel/framework/{_panel_path(stub.pk)}?stub-sort=name"
     data = {"mode": "keys", "keys": [str(stub.pk)], "confirmed": "1"}
@@ -201,7 +202,7 @@ def test_redirect_keeps_table_state(mock_site_context: Site) -> None:
 def test_confirm_form_carries_table_state(mock_site_context: Site, htmx: bool) -> None:
     """The confirm POST must carry the table's query on to the redirect, so
     confirming doesn't reset the page, sort and filters."""
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
     path = _action_path(stub.pk)
     query = "?stub-page=1&stub-sort=-name"
     headers = {"HTTP_HX_REQUEST": "true"} if htmx else {}
@@ -230,7 +231,7 @@ def test_confirm_form_carries_table_state(mock_site_context: Site, htmx: bool) -
 
 
 def test_plain_post_renders_full_page_confirmation(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     response = fetch(
         _action_path(stub.pk),
@@ -245,7 +246,7 @@ def test_plain_post_renders_full_page_confirmation(mock_site_context: Site) -> N
 
 
 def test_plain_post_error_is_full_page_422(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     response = fetch(
         _action_path(stub.pk), method="post", data={"mode": "all_matching"}
@@ -258,7 +259,7 @@ def test_plain_post_error_is_full_page_422(mock_site_context: Site) -> None:
 
 
 def test_htmx_post_renders_modal_confirmation(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     response = fetch(
         _action_path(stub.pk),
@@ -277,7 +278,7 @@ def test_htmx_post_renders_modal_confirmation(mock_site_context: Site) -> None:
 
 
 def test_only_permitted_bulk_actions_render_in_the_bar(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     html = fetch(_panel_path(stub.pk)).content.decode()
 
@@ -287,7 +288,7 @@ def test_only_permitted_bulk_actions_render_in_the_bar(mock_site_context: Site) 
 
 
 def test_selection_ui_hidden_without_permitted_actions(mock_site_context: Site) -> None:
-    stub = _make_stub(name="row-x")
+    stub = make_stub(name="row-x")
 
     html = fetch(f"stubs/{stub.pk}/__tabs/pair").content.decode()
 

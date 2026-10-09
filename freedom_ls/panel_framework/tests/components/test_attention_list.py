@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_list_root_is_a_ul_holding_li_rows() -> None:

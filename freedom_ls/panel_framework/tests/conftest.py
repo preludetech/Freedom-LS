@@ -1,18 +1,18 @@
-"""Test fixtures for panel_framework - no cross-app imports."""
+"""Test fixtures for panel_framework - no cross-app imports.
+
+The stub models live in ``stub_models.py`` and their constructors in ``helpers.py``.
+"""
 
 from __future__ import annotations
 
 import copy
-import itertools
 from pathlib import Path
-from typing import cast
 
 import pytest
 import pytest_django.fixtures
 
 from django.apps import apps
-from django.contrib.auth import get_user_model
-from django.db import connection, models
+from django.db import connection
 
 # Relative, not the freedom_ls.-prefixed absolute form: this project's
 # namespace-package layout (no freedom_ls/__init__.py) makes pytest import
@@ -20,78 +20,12 @@ from django.db import connection, models
 # here would load stub_panels.py under a second module name and hand this
 # fixture a RecordingCapabilityConfig the test files never see -- the same
 # hazard stub_panels.py's own module docstring works around for StubModel.
+from .stub_models import StubChild, StubGrandchild, StubModel, StubProtectedChild
 from .stub_panels import RecordingCapabilityConfig
-
-# ---------------------------------------------------------------------------
-# Lightweight test-only models
-# ---------------------------------------------------------------------------
-
-
-class StubModel(models.Model):
-    name = models.CharField(max_length=120, unique=True)
-    kind = models.CharField(
-        max_length=8,
-        choices=[("a", "Alpha"), ("b", "Beta")],
-        default="a",
-    )
-    is_active = models.BooleanField(default=True)
-    sat_score = models.IntegerField(null=True, blank=True, verbose_name="SAT score")
-
-    class Meta:
-        app_label = "freedom_ls_panel_framework"
-
-    def __str__(self) -> str:
-        return self.name
-
-    @property
-    def display_name(self) -> str:
-        return self.name.upper()
-
-    def describe(self) -> str:
-        return f"{self.name} ({self.kind})"
-
-
-class StubChild(models.Model):
-    parent = models.ForeignKey(StubModel, on_delete=models.CASCADE)
-
-    class Meta:
-        app_label = "freedom_ls_panel_framework"
-
-    def __str__(self) -> str:
-        return f"StubChild({self.pk})"
-
-
-class StubGrandchild(models.Model):
-    """Exists so Django's Collector puts StubChild in data (not fast_deletes)."""
-
-    parent = models.ForeignKey(StubChild, on_delete=models.CASCADE)
-
-    class Meta:
-        app_label = "freedom_ls_panel_framework"
-
-    def __str__(self) -> str:
-        return f"StubGrandchild({self.pk})"
-
-
-class StubProtectedChild(models.Model):
-    """A child that refuses to let its parent go, so PROTECT can be exercised."""
-
-    parent = models.ForeignKey(StubModel, on_delete=models.PROTECT)
-
-    class Meta:
-        app_label = "freedom_ls_panel_framework"
-        verbose_name = "stub protected child"
-        verbose_name_plural = "stub protected children"
-
-    def __str__(self) -> str:
-        return f"StubProtectedChild({self.pk})"
-
 
 # ---------------------------------------------------------------------------
 # Session-scoped table creation + permission setup
 # ---------------------------------------------------------------------------
-
-_counter = itertools.count(1)
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -178,50 +112,3 @@ def _use_panel_test_urls(settings: pytest_django.fixtures.SettingsWrapper) -> No
     `root_urls.py`.
     """
     settings.ROOT_URLCONF = "freedom_ls.panel_framework.tests.root_urls"
-
-
-# ---------------------------------------------------------------------------
-# Helper: staff user without importing UserFactory
-# ---------------------------------------------------------------------------
-
-
-def make_staff_user() -> object:
-    """Create a staff user with a unique email. Requires mock_site_context active."""
-    User = get_user_model()
-    n = next(_counter)
-    return User.objects.create_user(
-        email=f"staff{n}@test.local",
-        password="testpass",  # pragma: allowlist secret
-        is_staff=True,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Helpers: stub-model construction
-#
-# StubModel/StubChild are test-only models defined inside this conftest via
-# editor.create_model(...). They are not real FLS models and therefore must
-# not get factory_boy factories in any app's factories.py — these colocated
-# helpers stand in for that role.
-# ---------------------------------------------------------------------------
-
-
-def _make_stub(name: str | None = None, **kwargs: object) -> StubModel:
-    """Create a StubModel for tests. ``name`` defaults to a unique value."""
-    if name is None:
-        name = f"stub-{next(_counter)}"
-    return cast(StubModel, StubModel.objects.create(name=name, **kwargs))
-
-
-def _make_stub_child(parent: StubModel, **kwargs: object) -> StubChild:
-    """Create a StubChild parented to ``parent``."""
-    return cast(StubChild, StubChild.objects.create(parent=parent, **kwargs))
-
-
-def _make_stub_protected_child(
-    parent: StubModel, **kwargs: object
-) -> StubProtectedChild:
-    """Create a StubProtectedChild, which blocks deletion of ``parent``."""
-    return cast(
-        StubProtectedChild, StubProtectedChild.objects.create(parent=parent, **kwargs)
-    )

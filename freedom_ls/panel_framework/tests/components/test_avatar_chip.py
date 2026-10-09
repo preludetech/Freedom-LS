@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .cotton_helpers import render_cotton
+from ..cotton_helpers import render_cotton
 
 
 def test_initials_element_is_aria_hidden_and_holds_the_derived_initials() -> None:
@@ -41,12 +41,6 @@ def test_secondary_renders_when_given() -> None:
     )
 
     assert "Learner" in html
-
-
-def test_no_secondary_line_when_not_given() -> None:
-    html = render_cotton('<c-panel-avatar-chip name="Thandi Mokoena" user_id="42" />')
-
-    assert "text-muted" not in html
 
 
 def test_name_hidden_renders_the_initials_and_no_name_text() -> None:

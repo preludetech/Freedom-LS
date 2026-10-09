@@ -226,7 +226,6 @@ flowchart TB
     meta_pixel -.-> learner_management
     organisations -.-> accounts
     organisations -.-> role_based_permissions
-    panel_framework -.-> site_aware_models
     reports -.-> role_based_permissions
     role_based_permissions -.-> learner_management
     site_aware_models -.-> accounts
@@ -270,7 +269,7 @@ flowchart TB
 | messaging_policy | accounts, base, comms, learner_management, organisations, role_based_permissions, site_aware_models | — |
 | meta_pixel | base | accounts, content_engine, learner_management |
 | organisations | base, site_aware_models | accounts, role_based_permissions |
-| panel_framework | base | site_aware_models |
+| panel_framework | base | — |
 | qa_helpers | accounts, comms, content_engine, course_applications, course_interest, course_recommendations, educator_interface, form_engine, hr_attributes, learner_interface, learner_management, learner_progress, organisations, reports, role_based_permissions, site_aware_models, webhooks | — |
 | referral_tracking | accounts, base, site_aware_models | — |
 | reports | accounts, base, content_engine, form_engine, learner_management, learner_progress, organisations, site_aware_models | role_based_permissions |

@@ -23,8 +23,8 @@ from freedom_ls.panel_framework.templatetags.panel_tags import (
 )
 from freedom_ls.panel_framework.views import SectionConfigBase
 
-from .conftest import _make_stub
-from .stub_panels import StubDetailsPanel
+from ..helpers import make_stub
+from ..stub_panels import StubDetailsPanel
 
 
 class _LinkAction(PanelAction):
@@ -84,7 +84,7 @@ def test_resolve_url_path_template_without_a_request_in_the_context(
 def test_render_panel_renders_the_panels_template_with_its_context(
     mock_site_context: None,
 ) -> None:
-    stub = _make_stub(name="Tagged Stub")
+    stub = make_stub(name="Tagged Stub")
     panel = StubDetailsPanel(
         PanelContext(
             request=RequestFactory().get("/"),

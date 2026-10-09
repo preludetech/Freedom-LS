@@ -6,14 +6,15 @@ the Django URL config under ``tests/urls.py``.
 
 Note on lazy ``StubModel`` lookup
 ---------------------------------
-``StubModel`` is defined in ``conftest.py`` and pytest auto-discovers that
-file. In this project's namespace-package layout (no ``freedom_ls/__init__.py``)
-pytest loads conftest under one module path while Django's URL resolver
-loads ``urls.py`` (and therefore this module) under another. A direct
-``from .conftest import StubModel`` here would create a second copy of the
-class and Django's app registry rejects the duplicate. We dodge that by
-fetching the model through the registry at call time, after conftest has
-registered it under the ``freedom_ls_panel_framework`` app label.
+``StubModel`` is defined in ``stub_models.py``, which pytest imports as
+``panel_framework.tests.stub_models`` (this project's namespace-package layout
+has no ``freedom_ls/__init__.py``), while Django's URL resolver loads
+``urls.py`` (and therefore this module) as
+``freedom_ls.panel_framework.tests.*``. A direct import of ``stub_models`` here
+would create a second copy of the class and Django's app registry rejects the
+duplicate. We dodge that by fetching the model through the registry at call
+time, after the ``_panel_test_tables`` fixture has registered it under the
+``freedom_ls_panel_framework`` app label.
 """
 
 from __future__ import annotations

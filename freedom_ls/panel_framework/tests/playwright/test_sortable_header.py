@@ -8,7 +8,7 @@ from playwright.sync_api import Page
 
 from django.contrib.sites.models import Site
 
-from ..conftest import _make_stub
+from ..helpers import make_stub
 
 
 @pytest.mark.playwright
@@ -20,7 +20,7 @@ def test_sortable_header_link_has_the_same_colour_as_its_header_cell(
 ) -> None:
     """A sortable header link used to render in the link colour while
     non-sortable header labels were muted."""
-    _make_stub(name="row-01")
+    make_stub(name="row-01")
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
@@ -44,7 +44,7 @@ def test_sort_icon_keeps_its_size_when_the_header_label_is_squeezed(
 ) -> None:
     """When a narrow column made the header label wrap, the flex link
     squeezed the sort icon down to a dot."""
-    _make_stub(name="row-01")
+    make_stub(name="row-01")
 
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
 
