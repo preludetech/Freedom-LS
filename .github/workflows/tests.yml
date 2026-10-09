@@ -85,7 +85,7 @@ jobs:
         run: npm run tailwind_build
 
       - name: Run unit tests
-        run: uv run pytest -m "not playwright and not dev_tooling" --cov --cov-fail-under=73
+        run: uv run pytest -m "not playwright and not dev_tooling" --cov --cov-fail-under=92
 
   dev-tooling-tests:
     runs-on: ubuntu-latest
