@@ -10,14 +10,13 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from freedom_ls.accounts.models import User
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     TopicFactory,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-
-from ..conftest import reverse_url
 
 MOBILE_VIEWPORT = {"width": 375, "height": 812}
 

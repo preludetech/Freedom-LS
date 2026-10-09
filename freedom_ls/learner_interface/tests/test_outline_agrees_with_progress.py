@@ -24,10 +24,10 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.learner_interface.tests.helpers import form_attempt, topic_completion
 from freedom_ls.learner_interface.utils import get_course_index, outstanding_items
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-
-from .conftest import course_progress_record, form_attempt, topic_completion
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 COURSE_SLUG = "retry-course"
 

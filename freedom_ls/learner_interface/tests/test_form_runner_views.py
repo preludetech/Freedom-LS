@@ -12,6 +12,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -21,19 +22,14 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import count_form_questions
+from freedom_ls.learner_interface.tests.helpers import course_with_form, form_attempt
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.learner_progress.attempts import (
     get_latest_incomplete,
     get_or_create_incomplete,
 )
 from freedom_ls.learner_progress.models import CourseFormAttempt
-
-from .conftest import (
-    collection_item_for,
-    course_progress_record,
-    course_with_form,
-    form_attempt,
-    register_user_for_course,
-)
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 # ---------------------------------------------------------------------------
 # Helpers

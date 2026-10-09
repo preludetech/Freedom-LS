@@ -9,6 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 
 from freedom_ls.accounts.models import User
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -18,10 +19,9 @@ from freedom_ls.content_engine.factories import (
 from freedom_ls.learner_interface.templatetags.course_storage_keys import (
     course_part_storage_key,
 )
+from freedom_ls.learner_interface.tests.helpers import topic_completion
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.organisations.factories import OrganisationFactory
-
-from ..conftest import reverse_url, topic_completion
 
 
 def _logo_upload(name: str = "logo.png") -> SimpleUploadedFile:

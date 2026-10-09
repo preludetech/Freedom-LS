@@ -247,7 +247,9 @@ def test_finish_page_names_an_unread_topic_and_links_to_it(mock_site_context, cl
 @pytest.mark.django_db
 def test_finish_page_offers_to_start_an_unfinished_survey(mock_site_context, client):
     """A form with no pass mark is started, not retried and not "passed"."""
-    from .conftest import course_with_single_question_form
+    from freedom_ls.learner_interface.tests.helpers import (
+        course_with_single_question_form,
+    )
 
     user = UserFactory()
     course = course_with_single_question_form("Survey", "finish-survey")

@@ -1,13 +1,12 @@
 import pytest
 from playwright.sync_api import Page, expect
 
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
     TopicFactory,
 )
-
-from ..conftest import reverse_url
 
 # Long enough that it cannot fit a 375px phone's content well, so the row has
 # to truncate rather than widen the page.

@@ -14,8 +14,8 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import Form, FormStrategy
-
-from .conftest import course_with_form, form_attempt, register_user_for_course
+from freedom_ls.learner_interface.tests.helpers import course_with_form, form_attempt
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 
 
 def _survey_with_an_optional_first_question(*, page_count: int) -> Form:

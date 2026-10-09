@@ -1,14 +1,15 @@
 import pytest
 from playwright.sync_api import Page
 
+from freedom_ls.conftest import reverse_url
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
     QuestionOptionFactory,
 )
-
-from ..conftest import course_with_form, register_user_for_course, reverse_url
+from freedom_ls.learner_interface.tests.helpers import course_with_form
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 
 # ============================================================================
 # HELPER FUNCTIONS

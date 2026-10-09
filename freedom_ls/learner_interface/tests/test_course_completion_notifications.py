@@ -10,8 +10,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import CourseFactory
-
-from .conftest import course_progress_record
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 @pytest.mark.django_db(transaction=True)

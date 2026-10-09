@@ -3,10 +3,9 @@ from decimal import Decimal
 import pytest
 from playwright.sync_api import Page, expect
 
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import PriceKind
-
-from ..conftest import reverse_url
 
 
 @pytest.mark.parametrize(

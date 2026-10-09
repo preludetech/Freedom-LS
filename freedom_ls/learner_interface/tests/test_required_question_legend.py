@@ -18,8 +18,8 @@ from freedom_ls.form_engine.factories import (
     FormPageFactory,
     FormQuestionFactory,
 )
-
-from .conftest import course_with_form, register_user_for_course
+from freedom_ls.learner_interface.tests.helpers import course_with_form
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 
 
 def _legend_html(client, question_text: str, *, required: bool = True) -> str:

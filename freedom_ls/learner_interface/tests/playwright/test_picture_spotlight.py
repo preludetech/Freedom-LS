@@ -11,6 +11,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from freedom_ls.accounts.models import User
+from freedom_ls.conftest import reverse_url
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
     CourseFactory,
@@ -18,8 +19,6 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-
-from ..conftest import reverse_url
 
 
 def _build_picture_page(

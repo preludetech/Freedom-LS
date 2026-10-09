@@ -18,6 +18,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import CourseVisibility, Topic
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -26,15 +27,10 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy, QuestionAnswer
+from freedom_ls.learner_interface.tests.helpers import form_attempt, topic_completion
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.models import CourseFormAttempt, TopicProgress
-
-from .conftest import (
-    collection_item_for,
-    course_progress_record,
-    form_attempt,
-    topic_completion,
-)
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 COURSE_SLUG = "gated-course"
 

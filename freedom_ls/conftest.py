@@ -2,6 +2,7 @@
 
 import base64
 import tempfile
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
@@ -28,6 +29,8 @@ _ONE_PIXEL_PNG = base64.b64decode(
 )
 
 if TYPE_CHECKING:
+    from pytest_django.live_server_helper import LiveServer
+
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
 
@@ -112,8 +115,17 @@ def _clear_messaging_policy_cache():
 
 
 def reverse_url(
-    live_server, viewname, urlconf=None, args=None, kwargs=None, current_app=None
-):
+    live_server: "LiveServer",
+    viewname: str,
+    urlconf: str | None = None,
+    args: Sequence[object] | None = None,
+    kwargs: Mapping[str, object] | None = None,
+    current_app: str | None = None,
+) -> str:
+    """Absolute URL of `viewname` on the live server.
+
+    A plain function, not a fixture: several apps' tests import it by hand.
+    """
     end = reverse(viewname, urlconf, args, kwargs, current_app)
     return f"{live_server.url}{end}"
 

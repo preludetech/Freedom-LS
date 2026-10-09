@@ -16,9 +16,8 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.learner_interface.tests.helpers import course_with_form, form_attempt
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-
-from .conftest import course_with_form, form_attempt
 
 
 def _checkbox_quiz(**form_kwargs):

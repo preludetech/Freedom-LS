@@ -14,8 +14,7 @@ from freedom_ls.learner_interface.utils import (
     get_current_courses,
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
-
-from .conftest import course_progress_record
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 # --- get_all_courses ---
 

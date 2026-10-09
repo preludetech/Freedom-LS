@@ -1,7 +1,8 @@
 import pytest
 from playwright.sync_api import Page
 
-from ..conftest import course_with_single_question_form, reverse_url
+from freedom_ls.conftest import reverse_url
+from freedom_ls.learner_interface.tests.helpers import course_with_single_question_form
 
 
 @pytest.mark.parametrize(

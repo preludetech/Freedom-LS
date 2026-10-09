@@ -14,6 +14,7 @@ from freedom_ls.content_engine.factories import (
     CoursePartFactory,
     TopicFactory,
 )
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -22,6 +23,7 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.learner_interface.tests.helpers import form_attempt, topic_completion
 from freedom_ls.learner_interface.utils import (
     current_entry_status,
     get_course_index,
@@ -30,14 +32,8 @@ from freedom_ls.learner_interface.utils import (
 )
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_progress.models import CourseFormAttempt
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.role_based_permissions.loader import clear_caches
-
-from .conftest import (
-    collection_item_for,
-    course_progress_record,
-    form_attempt,
-    topic_completion,
-)
 
 
 @pytest.fixture

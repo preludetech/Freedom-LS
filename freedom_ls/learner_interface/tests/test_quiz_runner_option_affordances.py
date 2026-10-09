@@ -17,8 +17,8 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
-
-from .conftest import course_with_form, register_user_for_course
+from freedom_ls.learner_interface.tests.helpers import course_with_form
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 
 
 def _runner_page(client, question_type):

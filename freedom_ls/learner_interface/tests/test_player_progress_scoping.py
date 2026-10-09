@@ -23,15 +23,18 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.course_access.backends import (
     CourseAccessDecision,
     FreeOnlyCourseAccessBackend,
 )
 from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.learner_interface.tests.helpers import learner_with_two_grants
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerDeadlineFactory,
 )
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.learner_progress.attempts import get_or_create_incomplete
 from freedom_ls.learner_progress.factories import TopicProgressFactory
 from freedom_ls.learner_progress.models import (
@@ -39,15 +42,9 @@ from freedom_ls.learner_progress.models import (
     CourseProgress,
     TopicProgress,
 )
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
-
-from .conftest import (
-    collection_item_for,
-    course_progress_record,
-    learner_with_two_grants,
-    register_user_for_course,
-)
 
 BACKEND_PATH = (
     "freedom_ls.learner_interface.tests.test_player_progress_scoping"

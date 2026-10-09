@@ -15,14 +15,10 @@ from freedom_ls.content_engine.factories import (
 )
 from freedom_ls.content_engine.models import Course, CoursePart
 from freedom_ls.form_engine.factories import FormFactory
+from freedom_ls.learner_interface.tests.helpers import form_attempt, topic_completion
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.learner_progress.models import TopicProgress
-
-from .conftest import (
-    course_progress_record,
-    form_attempt,
-    register_user_for_course,
-    topic_completion,
-)
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 @pytest.fixture

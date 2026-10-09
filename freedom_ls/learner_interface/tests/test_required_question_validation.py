@@ -10,6 +10,7 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -17,15 +18,11 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.learner_interface.tests.helpers import course_with_form
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 from freedom_ls.learner_progress.attempts import get_latest_incomplete
 from freedom_ls.learner_progress.models import CourseFormAttempt
-
-from .conftest import (
-    collection_item_for,
-    course_progress_record,
-    course_with_form,
-    register_user_for_course,
-)
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 def _question_with_options(page, *, question_type, order, required=True):

@@ -14,8 +14,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     CohortMembershipFactory,
 )
-
-from .conftest import course_progress_record
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 # transaction=True so that on_commit hooks for webhook event delivery fire under test

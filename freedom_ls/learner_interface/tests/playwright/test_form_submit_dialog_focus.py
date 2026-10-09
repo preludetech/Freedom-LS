@@ -1,11 +1,9 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from ..conftest import (
-    course_with_single_question_form,
-    register_user_for_course,
-    reverse_url,
-)
+from freedom_ls.conftest import reverse_url
+from freedom_ls.learner_interface.tests.helpers import course_with_single_question_form
+from freedom_ls.learner_management.tests.helpers import register_user_for_course
 
 # Returns whether the document's active element is inside the submit dialog
 # panel (identified by its aria-labelledby). Used to assert focus is moved into

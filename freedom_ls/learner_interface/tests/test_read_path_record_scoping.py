@@ -23,6 +23,7 @@ from freedom_ls.content_engine.factories import (
     TopicFactory,
 )
 from freedom_ls.content_engine.models import Course, Topic
+from freedom_ls.content_engine.tests.helpers import collection_item_for
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -30,6 +31,10 @@ from freedom_ls.form_engine.factories import (
     QuestionOptionFactory,
 )
 from freedom_ls.form_engine.models import Form, FormStrategy
+from freedom_ls.learner_interface.tests.helpers import (
+    form_attempt,
+    learner_with_two_grants,
+)
 from freedom_ls.learner_interface.utils import (
     CourseListingStatus,
     get_completed_courses,
@@ -47,13 +52,7 @@ from freedom_ls.learner_progress.factories import (
 )
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.queries import course_progress_for
-
-from .conftest import (
-    collection_item_for,
-    course_progress_record,
-    form_attempt,
-    learner_with_two_grants,
-)
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 
 def _course_with_topics(

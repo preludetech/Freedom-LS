@@ -30,14 +30,14 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.learner_interface.tests.helpers import rendered_section
 from freedom_ls.learner_interface.utils import BLOCKED
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import LearnerCourseRegistration
-
-from .conftest import course_progress_record, rendered_section
+from freedom_ls.learner_progress.tests.helpers import course_progress_record
 
 # ---------------------------------------------------------------------------
 # 1. Chokepoint gate — initiate_course_access
