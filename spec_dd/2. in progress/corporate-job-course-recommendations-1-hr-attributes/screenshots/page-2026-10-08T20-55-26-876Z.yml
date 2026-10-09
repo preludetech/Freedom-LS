@@ -1,0 +1,369 @@
+- generic [ref=f18e1]:
+  - generic [ref=f18e2]:
+    - navigation [ref=f18e5]:
+      - generic [ref=f18e7]:
+        - link "settings" [ref=f18e8] [cursor=pointer]:
+          - /url: /admin/
+        - link "Django administration" [ref=f18e13] [cursor=pointer]:
+          - /url: /admin/
+      - region "scrollable content" [ref=f18e17]:
+        - generic [ref=f18e18]:
+          - list [ref=f18e20]:
+            - listitem [ref=f18e21]:
+              - heading [level=2] [ref=f18e22]:
+                - link "Accounts" [ref=f18e23] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_accounts/
+              - list [ref=f18e24]:
+                - listitem [ref=f18e25]:
+                  - link "Legal consents" [ref=f18e26] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/legalconsent/
+                - listitem [ref=f18e27]:
+                  - link "Site signup policys" [ref=f18e28] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/sitesignuppolicy/
+                - listitem [ref=f18e29]:
+                  - link "Users" [ref=f18e30] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_accounts/user/
+          - list [ref=f18e32]:
+            - listitem [ref=f18e33]:
+              - heading [level=2] [ref=f18e34]:
+                - link "Accounts" [ref=f18e35] [cursor=pointer]:
+                  - /url: /admin/account/
+              - list [ref=f18e36]:
+                - listitem [ref=f18e37]:
+                  - link "Email addresses" [ref=f18e38] [cursor=pointer]:
+                    - /url: /admin/account/emailaddress/
+          - list [ref=f18e40]:
+            - listitem [ref=f18e41]:
+              - heading [level=2] [ref=f18e42]:
+                - link "Axes" [ref=f18e43] [cursor=pointer]:
+                  - /url: /admin/axes/
+              - list [ref=f18e44]:
+                - listitem [ref=f18e45]:
+                  - link "Access attempts" [ref=f18e46] [cursor=pointer]:
+                    - /url: /admin/axes/accessattempt/
+                - listitem [ref=f18e47]:
+                  - link "Access failures" [ref=f18e48] [cursor=pointer]:
+                    - /url: /admin/axes/accessfailurelog/
+                - listitem [ref=f18e49]:
+                  - link "Access logs" [ref=f18e50] [cursor=pointer]:
+                    - /url: /admin/axes/accesslog/
+          - list [ref=f18e52]:
+            - listitem [ref=f18e53]:
+              - heading [level=2] [ref=f18e54]:
+                - link "Content engine" [ref=f18e55] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_content_engine/
+              - list [ref=f18e56]:
+                - listitem [ref=f18e57]:
+                  - link "Activities" [ref=f18e58] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/activity/
+                - listitem [ref=f18e59]:
+                  - link "Articles" [ref=f18e60] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/article/
+                - listitem [ref=f18e61]:
+                  - link "Content collection items" [ref=f18e62] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/contentcollectionitem/
+                - listitem [ref=f18e63]:
+                  - link "Course categorys" [ref=f18e64] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursecategory/
+                - listitem [ref=f18e65]:
+                  - link "Course parts" [ref=f18e66] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/coursepart/
+                - listitem [ref=f18e67]:
+                  - link "Courses" [ref=f18e68] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/course/
+                - listitem [ref=f18e69]:
+                  - link "Files" [ref=f18e70] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/file/
+                - listitem [ref=f18e71]:
+                  - link "Topics" [ref=f18e72] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_content_engine/topic/
+          - list [ref=f18e74]:
+            - listitem [ref=f18e75]:
+              - heading [level=2] [ref=f18e76]:
+                - link "Course applications" [ref=f18e77] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_applications/
+              - list [ref=f18e78]:
+                - listitem [ref=f18e79]:
+                  - link "Course applications" [ref=f18e80] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_applications/courseapplication/
+          - list [ref=f18e82]:
+            - listitem [ref=f18e83]:
+              - heading [level=2] [ref=f18e84]:
+                - link "Course interest" [ref=f18e85] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_interest/
+              - list [ref=f18e86]:
+                - listitem [ref=f18e87]:
+                  - link "Course interests" [ref=f18e88] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_interest/courseinterest/
+          - list [ref=f18e90]:
+            - listitem [ref=f18e91]:
+              - heading [level=2] [ref=f18e92]:
+                - link "Course recommendations" [ref=f18e93] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_course_recommendations/
+              - list [ref=f18e94]:
+                - listitem [ref=f18e95]:
+                  - link "Recommended courses" [ref=f18e96] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_course_recommendations/recommendedcourse/
+          - list [ref=f18e98]:
+            - listitem [ref=f18e99]:
+              - heading [level=2] [ref=f18e100]:
+                - link "Form engine" [ref=f18e101] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_form_engine/
+              - list [ref=f18e102]:
+                - listitem [ref=f18e103]:
+                  - link "Form contents" [ref=f18e104] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formcontent/
+                - listitem [ref=f18e105]:
+                  - link "Form pages" [ref=f18e106] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formpage/
+                - listitem [ref=f18e107]:
+                  - link "Form progress records" [ref=f18e108] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formprogress/
+                - listitem [ref=f18e109]:
+                  - link "Form questions" [ref=f18e110] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/formquestion/
+                - listitem [ref=f18e111]:
+                  - link "Forms" [ref=f18e112] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/form/
+                - listitem [ref=f18e113]:
+                  - link "Question answer files" [ref=f18e114] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswerfile/
+                - listitem [ref=f18e115]:
+                  - link "Question answers" [ref=f18e116] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionanswer/
+                - listitem [ref=f18e117]:
+                  - link "Question options" [ref=f18e118] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_form_engine/questionoption/
+          - list [ref=f18e120]:
+            - listitem [ref=f18e121]:
+              - heading [level=2] [ref=f18e122]:
+                - link "HR attributes" [ref=f18e123] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_hr_attributes/
+              - list [ref=f18e124]:
+                - listitem [ref=f18e125]:
+                  - link "Departments" [ref=f18e126] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_hr_attributes/department/
+                - listitem [ref=f18e127]:
+                  - link "Job titles" [ref=f18e128] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_hr_attributes/jobtitle/
+                - listitem [ref=f18e129]:
+                  - link "Locations" [ref=f18e130] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_hr_attributes/location/
+          - list [ref=f18e132]:
+            - listitem [ref=f18e133]:
+              - heading [level=2] [ref=f18e134]:
+                - link "Learner management" [ref=f18e135] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_management/
+              - list [ref=f18e136]:
+                - listitem [ref=f18e137]:
+                  - link "Cohort course registrations" [ref=f18e138] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortcourseregistration/
+                - listitem [ref=f18e139]:
+                  - link "Cohort deadlines" [ref=f18e140] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohortdeadline/
+                - listitem [ref=f18e141]:
+                  - link "Cohorts" [ref=f18e142] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/cohort/
+                - listitem [ref=f18e143]:
+                  - link "Learner cohort deadline overrides" [ref=f18e144] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercohortdeadlineoverride/
+                - listitem [ref=f18e145]:
+                  - link "Learner course registrations" [ref=f18e146] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnercourseregistration/
+                - listitem [ref=f18e147]:
+                  - link "Learner deadlines" [ref=f18e148] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learnerdeadline/
+                - listitem [ref=f18e149]:
+                  - link "Learners" [ref=f18e150] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_management/learner/
+          - list [ref=f18e152]:
+            - listitem [ref=f18e153]:
+              - heading [level=2] [ref=f18e154]:
+                - link "Learner progress" [ref=f18e155] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_learner_progress/
+              - list [ref=f18e156]:
+                - listitem [ref=f18e157]:
+                  - link "Course form attempts" [ref=f18e158] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseformattempt/
+                - listitem [ref=f18e159]:
+                  - link "Course progress records" [ref=f18e160] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/courseprogress/
+                - listitem [ref=f18e161]:
+                  - link "Topic progress records" [ref=f18e162] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_learner_progress/topicprogress/
+          - list [ref=f18e164]:
+            - listitem [ref=f18e165]:
+              - heading [level=2] [ref=f18e166]:
+                - link "Organisations" [ref=f18e167] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_organisations/
+              - list [ref=f18e168]:
+                - listitem [ref=f18e169]:
+                  - link "Organisations" [ref=f18e170] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_organisations/organisation/
+          - list [ref=f18e172]:
+            - listitem [ref=f18e173]:
+              - heading [level=2] [ref=f18e174]:
+                - link "Referral tracking" [ref=f18e175] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_referral_tracking/
+              - list [ref=f18e176]:
+                - listitem [ref=f18e177]:
+                  - link "First touch counts" [ref=f18e178] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/firsttouchcount/
+                - listitem [ref=f18e179]:
+                  - link "Referral code hits" [ref=f18e180] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcodehit/
+                - listitem [ref=f18e181]:
+                  - link "Referral codes" [ref=f18e182] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/referralcode/
+                - listitem [ref=f18e183]:
+                  - link "Signup attributions" [ref=f18e184] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_referral_tracking/signupattribution/
+          - list [ref=f18e186]:
+            - listitem [ref=f18e187]:
+              - heading [level=2] [ref=f18e188]:
+                - link "Reports" [ref=f18e189] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_reports/
+              - list [ref=f18e190]:
+                - listitem [ref=f18e191]:
+                  - link "Generated reports" [ref=f18e192] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_reports/generatedreport/
+          - list [ref=f18e194]:
+            - listitem [ref=f18e195]:
+              - heading [level=2] [ref=f18e196]:
+                - link "Tasks Database Backend" [ref=f18e197] [cursor=pointer]:
+                  - /url: /admin/django_tasks_database/
+              - list [ref=f18e198]:
+                - listitem [ref=f18e199]:
+                  - link "Task Results" [ref=f18e200] [cursor=pointer]:
+                    - /url: /admin/django_tasks_database/dbtaskresult/
+          - list [ref=f18e202]:
+            - listitem [ref=f18e203]:
+              - heading [level=2] [ref=f18e204]:
+                - link "Webhooks" [ref=f18e205] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_webhooks/
+              - list [ref=f18e206]:
+                - listitem [ref=f18e207]:
+                  - link "Webhook deliveries" [ref=f18e208] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookdelivery/
+                - listitem [ref=f18e209]:
+                  - link "Webhook endpoints" [ref=f18e210] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookendpoint/
+                - listitem [ref=f18e211]:
+                  - link "Webhook events" [ref=f18e212] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhookevent/
+                - listitem [ref=f18e213]:
+                  - link "Webhook secrets" [ref=f18e214] [cursor=pointer]:
+                    - /url: /admin/freedom_ls_webhooks/webhooksecret/
+      - generic [ref=f18e216] [cursor=pointer]:
+        - generic [ref=f18e217]: D
+        - generic [ref=f18e218]:
+          - generic [ref=f18e219]: demodev@email.com
+          - generic [ref=f18e220]: demodev@email.com
+        - generic [ref=f18e221]: unfold_more
+    - generic [ref=f18e222]:
+      - generic [ref=f18e226]:
+        - generic [ref=f18e227]:
+          - generic [ref=f18e228] [cursor=pointer]: dock_to_right
+          - heading "HR attributes chevron_right Job titles" [level=1] [ref=f18e231]:
+            - link "HR attributes" [ref=f18e232] [cursor=pointer]:
+              - /url: /admin/freedom_ls_hr_attributes/
+            - generic [ref=f18e233]: chevron_right
+            - link "Job titles" [ref=f18e234] [cursor=pointer]:
+              - /url: /admin/freedom_ls_hr_attributes/jobtitle/
+        - link "add" [ref=f18e237] [cursor=pointer]:
+          - /url: /admin/freedom_ls_hr_attributes/jobtitle/add/
+      - generic [ref=f18e244]:
+        - generic [ref=f18e245]:
+          - search [ref=f18e247]:
+            - generic [ref=f18e248]:
+              - button "search" [ref=f18e249]
+              - textbox "Type to search" [ref=f18e251]
+              - generic [ref=f18e252]: /
+          - generic [ref=f18e253] [cursor=pointer]:
+            - text: Filters
+            - generic [ref=f18e254]: filter_list
+        - generic [ref=f18e255]:
+          - generic [ref=f18e345]:
+            - generic [ref=f18e346]:
+              - generic [ref=f18e347]:
+                - combobox "Select action to run" [ref=f18e348]:
+                  - option "Select action"
+                  - option "Delete selected job titles"
+                  - option "Deactivate selected entries" [selected]
+                  - option "Activate selected entries"
+                - generic: expand_more
+              - button "Run" [ref=f18e351] [cursor=pointer]
+            - generic [ref=f18e349]: 2 of 5 selected
+          - region "scrollable content" [ref=f18e260]:
+            - table [ref=f18e262]:
+              - rowgroup [ref=f18e263]:
+                - row [ref=f18e264]:
+                  - columnheader [ref=f18e265]:
+                    - checkbox "Select all objects on this page for an action" [ref=f18e269]: check_small
+                  - columnheader [ref=f18e270]:
+                    - generic [ref=f18e271]:
+                      - link "Name" [ref=f18e273] [cursor=pointer]:
+                        - /url: "?o=-1"
+                      - generic [ref=f18e274]:
+                        - link "arrow_circle_down" [ref=f18e275] [cursor=pointer]:
+                          - /url: "?o=-1"
+                        - link "cancel" [ref=f18e277] [cursor=pointer]:
+                          - /url: "?o="
+                  - columnheader [ref=f18e279]:
+                    - link "Organisation" [ref=f18e282] [cursor=pointer]:
+                      - /url: "?o=2.1"
+                  - columnheader [ref=f18e283]:
+                    - link "Is active" [ref=f18e286] [cursor=pointer]:
+                      - /url: "?o=3.1"
+              - rowgroup [ref=f18e287]:
+                - row [ref=f18e288]:
+                  - cell [ref=f18e289]:
+                    - checkbox "Select record" [checked] [ref=f18e290]: check_small
+                  - rowheader [ref=f18e291]:
+                    - link "Dispatcher" [ref=f18e292] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_hr_attributes/jobtitle/4364708e-2fa4-4491-b5db-5288b2357893/change/
+                  - cell "QA Org One" [ref=f18e293]
+                  - cell "check_small" [ref=f18e294]:
+                    - generic "True" [ref=f18e295]: check_small
+              - rowgroup [ref=f18e297]:
+                - row [ref=f18e298]:
+                  - cell [ref=f18e299]:
+                    - checkbox "Select record" [ref=f18e300]: check_small
+                  - rowheader [ref=f18e301]:
+                    - link "Driver" [ref=f18e302] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_hr_attributes/jobtitle/906fb030-5628-4736-a82d-22d277cfc7e2/change/
+                  - cell "QA Org Two" [ref=f18e303]
+                  - cell "check_small" [ref=f18e304]:
+                    - generic "True" [ref=f18e305]: check_small
+              - rowgroup [ref=f18e307]:
+                - row [ref=f18e308]:
+                  - cell [ref=f18e309]:
+                    - checkbox "Select record" [ref=f18e310]: check_small
+                  - rowheader [ref=f18e311]:
+                    - link "Driver" [ref=f18e312] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_hr_attributes/jobtitle/166d5cbb-99cc-4f95-965e-151cc998932e/change/
+                  - cell "QA Org One" [ref=f18e313]
+                  - cell "check_small" [ref=f18e314]:
+                    - generic "True" [ref=f18e315]: check_small
+              - rowgroup [ref=f18e317]:
+                - row [ref=f18e318]:
+                  - cell [ref=f18e319]:
+                    - checkbox "Select record" [ref=f18e320]: check_small
+                  - rowheader [ref=f18e321]:
+                    - link "Fleet Manager" [ref=f18e322] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_hr_attributes/jobtitle/3f411644-ca7e-435e-be4e-41f9e45832f4/change/
+                  - cell "QA Org One" [ref=f18e323]
+                  - cell "close_small" [ref=f18e324]:
+                    - generic "False" [ref=f18e325]: close_small
+              - rowgroup [ref=f18e327]:
+                - row [ref=f18e328]:
+                  - cell [ref=f18e329]:
+                    - checkbox "Select record" [checked] [active] [ref=f18e330]: check_small
+                  - rowheader [ref=f18e331]:
+                    - link "MECHANIC" [ref=f18e332] [cursor=pointer]:
+                      - /url: /admin/freedom_ls_hr_attributes/jobtitle/9afe3834-d892-4c0f-bd6a-11b0b8701c94/change/
+                  - cell "QA Org One" [ref=f18e333]
+                  - cell "check_small" [ref=f18e334]:
+                    - generic "True" [ref=f18e335]: check_small
+      - generic [ref=f18e337]: 5 job titles
+  - generic "Show toolbar" [ref=f18e341]: DJDT

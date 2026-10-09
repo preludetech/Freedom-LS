@@ -1,0 +1,85 @@
+- generic [active] [ref=f61e1]:
+  - generic [ref=f61e3]:
+    - generic [ref=f61e7]:
+      - generic [ref=f61e8]:
+        - generic [ref=f61e9] [cursor=pointer]: dock_to_right
+        - heading "HR attributes chevron_right Job titles" [level=1] [ref=f61e12]:
+          - link "HR attributes" [ref=f61e13] [cursor=pointer]:
+            - /url: /admin/freedom_ls_hr_attributes/
+          - generic [ref=f61e14]: chevron_right
+          - link "Job titles" [ref=f61e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_hr_attributes/jobtitle/
+      - link "add" [ref=f61e18] [cursor=pointer]:
+        - /url: /admin/freedom_ls_hr_attributes/jobtitle/add/
+    - generic [ref=f61e25]:
+      - generic [ref=f61e26]:
+        - search [ref=f61e28]:
+          - generic [ref=f61e29]:
+            - button "search" [ref=f61e30]
+            - textbox "Type to search" [ref=f61e32]
+            - generic [ref=f61e33]: /
+        - generic [ref=f61e34] [cursor=pointer]:
+          - text: Filters
+          - generic [ref=f61e35]: filter_list
+      - region "scrollable content" [ref=f61e41]:
+        - table [ref=f61e43]:
+          - rowgroup [ref=f61e44]:
+            - row [ref=f61e45]:
+              - columnheader "Select all objects on this page for an action Select all rows" [ref=f61e46]:
+                - generic [ref=f61e49]:
+                  - checkbox "Select all objects on this page for an action" [ref=f61e50]: check_small
+                  - generic [ref=f61e51]: Select all rows
+          - rowgroup [ref=f61e52]:
+            - row [ref=f61e53]:
+              - cell [ref=f61e54]:
+                - text: Select record
+                - checkbox "Select record" [ref=f61e55]: check_small
+              - rowheader [ref=f61e56]:
+                - text: name
+                - link "Dispatcher" [ref=f61e57] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_hr_attributes/jobtitle/4364708e-2fa4-4491-b5db-5288b2357893/change/
+              - cell "organisation QA Org One" [ref=f61e58]
+              - cell "is active check_small" [ref=f61e59]:
+                - text: is active
+                - generic "True" [ref=f61e60]: check_small
+          - rowgroup [ref=f61e62]:
+            - row [ref=f61e63]:
+              - cell [ref=f61e64]:
+                - text: Select record
+                - checkbox "Select record" [ref=f61e65]: check_small
+              - rowheader [ref=f61e66]:
+                - text: name
+                - link "Driver" [ref=f61e67] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_hr_attributes/jobtitle/906fb030-5628-4736-a82d-22d277cfc7e2/change/
+              - cell "organisation QA Org Two" [ref=f61e68]
+              - cell "is active check_small" [ref=f61e69]:
+                - text: is active
+                - generic "True" [ref=f61e70]: check_small
+          - rowgroup [ref=f61e72]:
+            - row [ref=f61e73]:
+              - cell [ref=f61e74]:
+                - text: Select record
+                - checkbox "Select record" [ref=f61e75]: check_small
+              - rowheader [ref=f61e76]:
+                - text: name
+                - link "Driver" [ref=f61e77] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_hr_attributes/jobtitle/166d5cbb-99cc-4f95-965e-151cc998932e/change/
+              - cell "organisation QA Org One" [ref=f61e78]
+              - cell "is active check_small" [ref=f61e79]:
+                - text: is active
+                - generic "True" [ref=f61e80]: check_small
+          - rowgroup [ref=f61e82]:
+            - row [ref=f61e83]:
+              - cell [ref=f61e84]:
+                - text: Select record
+                - checkbox "Select record" [ref=f61e85]: check_small
+              - rowheader [ref=f61e86]:
+                - text: name
+                - link "Fleet Manager" [ref=f61e87] [cursor=pointer]:
+                  - /url: /admin/freedom_ls_hr_attributes/jobtitle/3f411644-ca7e-435e-be4e-41f9e45832f4/change/
+              - cell "organisation QA Org One" [ref=f61e88]
+              - cell "is active close_small" [ref=f61e89]:
+                - text: is active
+                - generic "False" [ref=f61e90]: close_small
+    - generic [ref=f61e92]: 4 job titles
+  - generic "Show toolbar" [ref=f61e96]: DJDT

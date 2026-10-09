@@ -1,0 +1,150 @@
+- generic [active] [ref=f63e1]:
+  - generic [ref=f63e3]:
+    - generic [ref=f63e7]:
+      - generic [ref=f63e8]:
+        - generic [ref=f63e9] [cursor=pointer]: dock_to_right
+        - link "arrow_back" [ref=f63e12] [cursor=pointer]:
+          - /url: /admin/freedom_ls_learner_management/learner/
+        - heading "Learner management chevron_right Learners chevron_right Qa_hr_held@email.com - QA Org One" [level=1] [ref=f63e14]:
+          - link "Learner management" [ref=f63e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_learner_management/
+          - generic [ref=f63e16]: chevron_right
+          - link "Learners" [ref=f63e17] [cursor=pointer]:
+            - /url: /admin/freedom_ls_learner_management/learner/
+          - generic [ref=f63e18]: chevron_right
+          - link "Qa_hr_held@email.com - QA Org One" [ref=f63e19] [cursor=pointer]:
+            - /url: /admin/freedom_ls_learner_management/learner/99057562-80d8-4635-9316-d74c5cfe7ef9/change/
+      - generic [ref=f63e20]:
+        - link "more_horiz" [ref=f63e22] [cursor=pointer]:
+          - /url: "#"
+        - link "add" [ref=f63e25] [cursor=pointer]:
+          - /url: /admin/freedom_ls_learner_management/learner/add/
+    - generic [ref=f63e28]:
+      - navigation [ref=f63e31]:
+        - link "General" [ref=f63e32] [cursor=pointer]:
+          - /url: "#general"
+        - link "Cohorts 0" [ref=f63e33] [cursor=pointer]:
+          - /url: "#cohortmembership_set"
+          - text: Cohorts
+          - generic [ref=f63e34]: "0"
+        - link "Course Registrations 0" [ref=f63e35] [cursor=pointer]:
+          - /url: "#learnercourseregistration_set"
+          - text: Course Registrations
+          - generic [ref=f63e36]: "0"
+        - link "Course Progress 0" [ref=f63e37] [cursor=pointer]:
+          - /url: "#course_progress_records"
+          - text: Course Progress
+          - generic [ref=f63e38]: "0"
+      - generic [ref=f63e41]:
+        - group [ref=f63e42]:
+          - generic [ref=f63e43]:
+            - generic [ref=f63e45]:
+              - generic [ref=f63e46]: User*
+              - generic [ref=f63e50]:
+                - combobox [aria-hidden] [ref=f63e51]
+                - combobox [ref=f63e54] [cursor=pointer]:
+                  - textbox "qa_hr_held@email.com" [ref=f63e55]
+                  - text: expand_more
+                - generic [ref=f63e56]: more_vert
+            - generic [ref=f63e60]:
+              - generic [ref=f63e61]: Organisation*
+              - generic [ref=f63e65]:
+                - combobox [aria-hidden] [ref=f63e66]
+                - combobox [ref=f63e69] [cursor=pointer]:
+                  - textbox "QA Org One" [ref=f63e70]
+                  - text: expand_more
+                - generic [ref=f63e71]: more_vert
+            - generic [ref=f63e76]:
+              - checkbox "Is active" [checked] [ref=f63e77] [cursor=pointer]
+              - generic [ref=f63e78]: Is active
+            - generic [ref=f63e81]:
+              - generic [ref=f63e82]: Created at
+              - generic [ref=f63e84]: Oct. 8, 2026, 8:53 p.m.
+            - generic [ref=f63e87]:
+              - generic [ref=f63e88]: Related
+              - generic [ref=f63e90]: No progress recorded yet
+        - group [ref=f63e94]:
+          - heading "HR attributes" [level=2] [ref=f63e95]
+          - generic [ref=f63e98]:
+            - generic [ref=f63e100]:
+              - heading [level=3] [ref=f63e101]:
+                - strong [ref=f63e103]: HR attributes for qa_hr_held@email.com - QA Org One
+              - group [ref=f63e104]:
+                - generic [ref=f63e105]:
+                  - generic [ref=f63e107]:
+                    - generic [ref=f63e108]: Job title
+                    - generic [ref=f63e112]:
+                      - generic [ref=f63e113]:
+                        - combobox "Job title" [ref=f63e114]:
+                          - option "Select value" [selected]
+                          - option "Dispatcher"
+                          - option "Driver"
+                        - generic: expand_more
+                      - generic [ref=f63e115]: more_vert
+                  - generic [ref=f63e119]:
+                    - generic [ref=f63e120]: Department
+                    - generic [ref=f63e124]:
+                      - generic [ref=f63e125]:
+                        - combobox "Department" [ref=f63e126]:
+                          - option "Select value"
+                          - option "Finance"
+                          - option "Operations" [selected]
+                        - generic: expand_more
+                      - generic [ref=f63e127]: more_vert
+                  - generic [ref=f63e131]:
+                    - generic [ref=f63e132]: Location
+                    - generic [ref=f63e136]:
+                      - generic [ref=f63e137]:
+                        - combobox "Location" [ref=f63e138]:
+                          - option "Select value"
+                          - option "Cape Town" [selected]
+                          - option "Durban"
+                        - generic: expand_more
+                      - generic [ref=f63e139]: more_vert
+                  - generic [ref=f63e143]:
+                    - generic [ref=f63e144]: Organisation start date
+                    - generic [ref=f63e147]:
+                      - textbox "Organisation start date" [ref=f63e148]: 2019-03-01
+                      - generic [ref=f63e149]:
+                        - text: update |
+                        - link "calendar_today" [ref=f63e150] [cursor=pointer]:
+                          - /url: "#"
+                          - generic "Choose a Date" [ref=f63e151]: calendar_today
+                      - generic [ref=f63e152]: "warning Note: You are 2 hours ahead of server time."
+                  - generic [ref=f63e154]:
+                    - generic [ref=f63e155]: Job title start date
+                    - generic [ref=f63e158]:
+                      - textbox "Job title start date" [ref=f63e159]: 2030-06-01
+                      - generic [ref=f63e160]:
+                        - text: update |
+                        - link "calendar_today" [ref=f63e161] [cursor=pointer]:
+                          - /url: "#"
+                          - generic "Choose a Date" [ref=f63e162]: calendar_today
+                      - generic [ref=f63e163]: "warning Note: You are 2 hours ahead of server time."
+                  - generic [ref=f63e165]:
+                    - generic [ref=f63e166]: Department start date
+                    - generic [ref=f63e169]:
+                      - textbox "Department start date" [ref=f63e170]: 2010-01-01
+                      - generic [ref=f63e171]:
+                        - text: update |
+                        - link "calendar_today" [ref=f63e172] [cursor=pointer]:
+                          - /url: "#"
+                          - generic "Choose a Date" [ref=f63e173]: calendar_today
+                      - generic [ref=f63e174]: "warning Note: You are 2 hours ahead of server time."
+                  - generic [ref=f63e176]:
+                    - generic [ref=f63e177]: Location start date
+                    - generic [ref=f63e180]:
+                      - textbox "Location start date" [ref=f63e181]
+                      - generic [ref=f63e182]:
+                        - text: update |
+                        - link "calendar_today" [ref=f63e183] [cursor=pointer]:
+                          - /url: "#"
+                          - generic "Choose a Date" [ref=f63e184]: calendar_today
+                      - generic [ref=f63e185]: "warning Note: You are 2 hours ahead of server time."
+            - text: update calendar_today warning update calendar_today warning update calendar_today warning update calendar_today warning
+    - generic [ref=f63e188]:
+      - button "Save" [ref=f63e189] [cursor=pointer]
+      - button "Save and continue editing" [ref=f63e190] [cursor=pointer]
+      - button "Save and add another" [ref=f63e191] [cursor=pointer]
+  - generic "Show toolbar" [ref=f63e193]: DJDT
+  - text: navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next navigate_before navigate_next

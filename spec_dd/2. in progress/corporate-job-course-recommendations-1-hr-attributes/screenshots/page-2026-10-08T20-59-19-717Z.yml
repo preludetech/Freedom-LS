@@ -1,0 +1,83 @@
+- generic [active] [ref=f62e1]:
+  - generic [ref=f62e3]:
+    - generic [ref=f62e7]:
+      - generic [ref=f62e8]:
+        - generic [ref=f62e9] [cursor=pointer]: dock_to_right
+        - link "arrow_back" [ref=f62e12] [cursor=pointer]:
+          - /url: /admin/freedom_ls_organisations/organisation/
+        - heading "Organisations chevron_right Organisations chevron_right QA Org One" [level=1] [ref=f62e14]:
+          - link "Organisations" [ref=f62e15] [cursor=pointer]:
+            - /url: /admin/freedom_ls_organisations/
+          - generic [ref=f62e16]: chevron_right
+          - link "Organisations" [ref=f62e17] [cursor=pointer]:
+            - /url: /admin/freedom_ls_organisations/organisation/
+          - generic [ref=f62e18]: chevron_right
+          - link "QA Org One" [ref=f62e19] [cursor=pointer]:
+            - /url: /admin/freedom_ls_organisations/organisation/202f89b0-e6dd-4e82-947c-08a4cf675940/change/
+      - generic [ref=f62e20]:
+        - link "more_horiz" [ref=f62e22] [cursor=pointer]:
+          - /url: "#"
+        - link "add" [ref=f62e25] [cursor=pointer]:
+          - /url: /admin/freedom_ls_organisations/organisation/add/
+    - generic [ref=f62e28]:
+      - navigation [ref=f62e31]:
+        - link "General" [ref=f62e32] [cursor=pointer]:
+          - /url: "#general"
+        - link "Cohorts 0" [ref=f62e33] [cursor=pointer]:
+          - /url: "#cohort_set"
+          - text: Cohorts
+          - generic [ref=f62e34]: "0"
+        - link "Learners 2" [ref=f62e35] [cursor=pointer]:
+          - /url: "#learner_set"
+          - text: Learners
+          - generic [ref=f62e36]: "2"
+      - generic [ref=f62e39]:
+        - group [ref=f62e40]:
+          - generic [ref=f62e41]:
+            - generic [ref=f62e43]:
+              - generic [ref=f62e44]: Name*
+              - textbox "Name*" [ref=f62e48]: QA Org One
+            - generic [ref=f62e50]:
+              - generic [ref=f62e51]: Slug
+              - generic [ref=f62e53]: qa-org-one
+            - generic [ref=f62e56]:
+              - generic [ref=f62e57]: Logo (for light backgrounds)
+              - generic [ref=f62e59]:
+                - generic [ref=f62e60]:
+                  - generic [ref=f62e61]:
+                    - textbox "Choose file to upload" [disabled] [ref=f62e62]
+                    - generic [ref=f62e63] [cursor=pointer]
+                  - generic [ref=f62e64]:
+                    - button "Logo (for light backgrounds) Choose file to upload upload" [ref=f62e65]
+                    - generic [ref=f62e66] [cursor=pointer]: upload
+                - generic [ref=f62e68]: The full-colour mark, for white and near-white surfaces. Used on the report cover and anywhere the organisation appears on screen.
+            - generic [ref=f62e70]:
+              - generic [ref=f62e71]: Logo (for dark backgrounds)
+              - generic [ref=f62e73]:
+                - generic [ref=f62e74]:
+                  - generic [ref=f62e75]:
+                    - textbox "Choose file to upload" [disabled] [ref=f62e76]
+                    - generic [ref=f62e77] [cursor=pointer]
+                  - generic [ref=f62e78]:
+                    - button "Logo (for dark backgrounds) Choose file to upload upload" [ref=f62e79]
+                    - generic [ref=f62e80] [cursor=pointer]: upload
+                - generic [ref=f62e82]: The reversed mark, for surfaces painted in a strong colour. Optional — a surface with no dark variant to reach for falls back to the organisation's name.
+            - generic [ref=f62e84]:
+              - generic [ref=f62e85]: Related
+              - link "Search this organisation's 2 learners" [ref=f62e90] [cursor=pointer]:
+                - /url: /admin/freedom_ls_learner_management/learner/?organisation__id__exact=202f89b0-e6dd-4e82-947c-08a4cf675940
+        - text: Name Remove user is active created at user is active created at
+        - group [ref=f62e92]:
+          - heading "HR settings" [level=2] [ref=f62e93]
+          - generic [ref=f62e98]:
+            - heading [level=3] [ref=f62e99]:
+              - strong [ref=f62e101]: HR settings for QA Org One
+            - group [ref=f62e102]:
+              - generic [ref=f62e106]:
+                - checkbox "Registration rules enabled" [ref=f62e107] [cursor=pointer]
+                - generic [ref=f62e108]: Registration rules enabled
+    - generic [ref=f62e112]:
+      - button "Save" [ref=f62e113] [cursor=pointer]
+      - button "Save and continue editing" [ref=f62e114] [cursor=pointer]
+      - button "Save and add another" [ref=f62e115] [cursor=pointer]
+  - generic "Show toolbar" [ref=f62e117]: DJDT
