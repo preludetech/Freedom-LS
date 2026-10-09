@@ -48,10 +48,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: submitted anonymous application's read-only check-your-answers still shows 'Submit it to keep it' notice (TDD — failing test first, then fix)
+- [ ] (user) Decide what a submitted but unclaimed application's check-your-answers page should say instead of the browser-only 'Submit it to keep it' notice (hide it, or new wording), then update spec 5.9 and the template
+- [ ] (user + cmd) Fix QA bug: handoff toast says 'Create an account or log in' when signups are closed (TDD — failing test first, then fix)
+- [ ] (user) Decide the handoff toast wording when signups are closed and the visitor is sent to login, then update spec and the handoff message
 
 ## 10. Product documentation
 
