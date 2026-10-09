@@ -17,7 +17,10 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import LearnerFactory
-from freedom_ls.messaging_policy.factories import LearnerMessagingConfigFactory
+from freedom_ls.messaging_policy.factories import (
+    LearnerMessagingConfigFactory,
+    SiteMessagingConfigFactory,
+)
 from freedom_ls.tests.playwright_fixtures import _LOGGED_IN_PASSWORD, _login_via_ui
 
 # transaction=True so the live server's own DB connection sees the fixture
@@ -69,3 +72,22 @@ def test_changelist_card_cells_grow_to_fit_wrapped_values(
     expect(phone_admin_page.get_by_text(str(config), exact=True)).to_be_visible()
 
     assert phone_admin_page.evaluate(_CLIPPED_CELLS_JS) == []
+
+
+def test_offered_roles_options_are_comfortable_tap_targets(
+    live_server, phone_admin_page: Page
+) -> None:
+    """The offered-roles checkboxes were bare native inputs stacked 17px apart."""
+    config = SiteMessagingConfigFactory()
+
+    phone_admin_page.goto(
+        f"{live_server.url}"
+        f"{reverse('admin:freedom_ls_messaging_policy_sitemessagingconfig_change', args=[config.pk])}"
+    )
+
+    first = phone_admin_page.get_by_label("Use the settings default")
+    second = phone_admin_page.get_by_label("Cohort admin")
+    expect(first).to_be_visible()
+    first_top = first.evaluate("el => el.getBoundingClientRect().top")
+    second_top = second.evaluate("el => el.getBoundingClientRect().top")
+    assert second_top - first_top >= 24

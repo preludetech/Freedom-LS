@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from unfold.widgets import UnfoldAdminCheckboxSelectMultipleWidget
+
 from django import forms
 from django.contrib.sites.models import Site
 from django.core.exceptions import ValidationError
@@ -32,7 +34,7 @@ class OfferedEducatorRolesField(forms.MultipleChoiceField):
     """Checkboxes stored as a JSON list, with "use the settings default" (stored
     as None) kept distinct from an empty selection (stored as [])."""
 
-    widget = forms.CheckboxSelectMultiple
+    widget = UnfoldAdminCheckboxSelectMultipleWidget
 
     def clean(self, value: object) -> list[str] | None:
         chosen: list[str] = super().clean(value)
