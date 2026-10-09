@@ -1,9 +1,9 @@
-# ruff: noqa: T201
 #!/usr/bin/env python3
+# ruff: noqa: T201
 """Pick the pytest tier for a set of changed paths and print the paths to run.
 
 Usage:
-    python select_tests.py [--working-tree] [--range <rev>..<rev>]
+    python select_tests.py [--working-tree] [--range <rev>..<rev>]...
         [--tests-changed-in <rev>..<rev>] [<path>...]
 
 Prints `tier:`, one `why:` line per changed path and, for a targeted or full
@@ -115,7 +115,7 @@ def glob_list(
 def tooling_entries(
     table: dict[str, object],
 ) -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """The `tooling` array of tables: each entry maps a glob to test directories."""
+    """The `tooling` array of tables: each entry maps a glob to test directories or files."""
     value = table.get("tooling", [])
     if not isinstance(value, list):
         raise ConfigError("[tool.test_tiers] 'tooling' must be an array of tables")
@@ -154,15 +154,27 @@ def first_match(path: str, globs: tuple[str, ...]) -> str | None:
 
 
 def importers(app: App, edges: Edges) -> list[tuple[str, str]]:
-    """(importer short name, reason) for every app with a dep on `app` in the map."""
-    found = []
-    for pairs, dep in ((edges.runtime, "runtime dep"), (edges.test, "test-only dep")):
-        found += [
-            (src, f"{src} has a {dep} on {app.short_name}")
-            for src, dst in pairs
-            if dst == app.short_name
-        ]
-    return sorted(found)
+    """(importer short name, reason) for every app whose code or tests reach `app`.
+
+    Runtime deps chain: an app that imports an importer of `app` runs `app`'s code too.
+    A test-only dep is one hop, since only that app's tests reach `app`, not its code.
+    """
+    found: dict[str, str] = {}
+    queue = [app.short_name]
+    while queue:
+        target = queue.pop(0)
+        via = "" if target == app.short_name else f" through {target}"
+        for pairs, dep in (
+            (edges.runtime, "runtime dep"),
+            (edges.test, "test-only dep"),
+        ):
+            for src, dst in sorted(pairs):
+                if dst != target or src == app.short_name or src in found:
+                    continue
+                found[src] = f"{src} has a {dep} on {app.short_name}{via}"
+                if dep == "runtime dep":
+                    queue.append(src)
+    return sorted(found.items())
 
 
 def tests_dir_of(app: App, project_root: Path) -> str:
@@ -212,22 +224,36 @@ def decide_app_path(
     return decisions
 
 
+def is_test_target(target: Path) -> bool:
+    """A directory, or a file pytest collects."""
+    return target.is_dir() or (target.is_file() and is_collected(target.name))
+
+
+def playwright_tests_root(posix: PurePosixPath) -> str | None:
+    """The tests directory whose `playwright/` subdirectory holds `posix`, if any."""
+    parts = posix.parts
+    for index in range(1, len(parts) - 1):
+        if parts[index] == "playwright" and parts[index - 1] == "tests":
+            return "/".join(parts[:index])
+    return None
+
+
 def decide_tooling(
     path: str, config: TierConfig, project_root: Path
 ) -> list[Decision] | None:
-    """The test directories of the first tooling entry whose glob matches `path`.
+    """The test directories and files of the first tooling entry whose glob matches `path`.
 
-    Each listed directory that does not exist selects nothing and gets its own reason.
+    Each listed entry that does not exist selects nothing and gets its own reason.
     """
     posix = PurePosixPath(path)
-    for glob, directories in config.tooling:
+    for glob, targets in config.tooling:
         if not posix.full_match(glob):
             continue
-        present = tuple(d for d in directories if (project_root / d).is_dir())
+        present = tuple(t for t in targets if is_test_target(project_root / t))
         decisions = [
-            Decision(path, "none", (), f"tooling; {d} does not exist")
-            for d in directories
-            if d not in present
+            Decision(path, "none", (), f"tooling; {t} does not exist")
+            for t in targets
+            if t not in present
         ]
         if present:
             decisions.insert(0, Decision(path, "select", present, "tooling"))
@@ -241,30 +267,34 @@ def decide(
     config: TierConfig,
     edges: Edges | None,
     project_root: Path,
+    untracked: bool = False,
 ) -> list[Decision]:
-    """Apply the rules in order; the first one that matches `path` decides."""
+    """Apply the rules in order; the first one that matches `path` decides.
+
+    A path no rule knows is the whole suite, unless git does not know it either: a stray
+    untracked file is not a change that any test can see.
+    """
     none_glob = first_match(path, config.none)
     if none_glob is not None:
         return [Decision(path, "none", (), f"matches {none_glob}")]
 
     posix = PurePosixPath(path)
-    app = owning_app(apps, project_root, path)
     if is_collected(posix.name) and "tests" in posix.parts:
         if not (project_root / path).exists():
             return [Decision(path, "none", (), "deleted test file")]
         reason = "changed test file"
         touched: tuple[str, ...] = ()
-        if app is not None:
-            tests_dir = tests_dir_of(app, project_root)
-            if path.startswith(f"{tests_dir}/playwright/"):
-                reason += f"; playwright: {tests_dir}/playwright"
-                touched = (tests_dir,)
+        tests_root = playwright_tests_root(posix)
+        if tests_root is not None:
+            reason += f"; playwright: {tests_root}/playwright"
+            touched = (tests_root,)
         return [Decision(path, "select", (path,), reason, touched)]
 
     escalation_glob = first_match(path, config.escalation)
     if escalation_glob is not None:
         return [Decision(path, "full", (), f"matches {escalation_glob}")]
 
+    app = owning_app(apps, project_root, path)
     if app is not None:
         return decide_app_path(path, app, apps, edges, project_root)
 
@@ -272,14 +302,17 @@ def decide(
     if tooling is not None:
         return tooling
 
+    if untracked:
+        return [Decision(path, "none", (), "untracked and unmapped")]
     return [Decision(path, "full", (), "unmapped path")]
 
 
-def git_lines(argv: list[str]) -> list[str]:
+def git_paths(argv: list[str]) -> list[str]:
+    """The NUL-separated paths a git command prints, so no name is ever quoted."""
     result = subprocess.run(  # noqa: S603
         argv, check=True, capture_output=True, text=True
     )
-    return result.stdout.splitlines()
+    return [p for p in result.stdout.split("\0") if p]
 
 
 def range_type(value: str) -> str:
@@ -289,23 +322,39 @@ def range_type(value: str) -> str:
 
 
 def range_paths(revision_range: str) -> list[str]:
-    return git_lines(["git", "diff", "--name-only", "--end-of-options", revision_range])
+    """Both sides of a rename are changes: the old module's importers still name it."""
+    return git_paths(
+        [
+            "git",
+            "diff",
+            "-z",
+            "--name-only",
+            "--no-renames",
+            "--end-of-options",
+            revision_range,
+        ]
+    )
 
 
 def changed_paths(
-    paths: list[str], working_tree: bool, revision_range: str | None = None
-) -> list[str]:
-    """The given paths plus, with `working_tree`, uncommitted and untracked ones.
-
-    With `revision_range`, also the paths that range changed.
+    paths: list[str], working_tree: bool, revision_ranges: list[str]
+) -> tuple[list[str], set[str]]:
+    """The given paths, those each range changed and, with `working_tree`, uncommitted
+    and untracked ones. The second value is the untracked subset.
     """
     found = set(paths)
-    if revision_range is not None:
+    for revision_range in revision_ranges:
         found.update(range_paths(revision_range))
+    untracked: set[str] = set()
     if working_tree:
-        found.update(git_lines(["git", "diff", "--name-only", "HEAD"]))
-        found.update(git_lines(["git", "ls-files", "--others", "--exclude-standard"]))
-    return sorted(found)
+        found.update(
+            git_paths(["git", "diff", "-z", "--name-only", "--no-renames", "HEAD"])
+        )
+        untracked.update(
+            git_paths(["git", "ls-files", "-z", "--others", "--exclude-standard"])
+        )
+        found.update(untracked)
+    return sorted(found), untracked
 
 
 def branch_test_decisions(
@@ -362,7 +411,9 @@ def main() -> int:
     parser.add_argument(
         "--range",
         type=range_type,
-        help="also use the paths changed in <rev>..<rev>",
+        action="append",
+        default=[],
+        help="also use the paths changed in <rev>..<rev>; may be repeated",
     )
     parser.add_argument(
         "--tests-changed-in",
@@ -376,7 +427,7 @@ def main() -> int:
 
     project_root = Path.cwd()
     try:
-        paths = changed_paths(args.paths, args.working_tree, args.range)
+        paths, untracked = changed_paths(args.paths, args.working_tree, args.range)
     except (subprocess.CalledProcessError, FileNotFoundError) as exc:
         parser.error(f"git failed: {exc}")
     try:
@@ -386,7 +437,11 @@ def main() -> int:
 
     apps = find_apps(project_root)
     edges = parse_existing_edges(project_root / APP_MAP)
-    decisions = [d for p in paths for d in decide(p, apps, config, edges, project_root)]
+    decisions = [
+        d
+        for p in paths
+        for d in decide(p, apps, config, edges, project_root, p in untracked)
+    ]
     tier_decisions = decisions
     if args.tests_changed_in is not None:
         try:

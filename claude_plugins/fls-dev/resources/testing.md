@@ -58,9 +58,9 @@ to get only the portable contract set.
 
 `[tool.test_tiers]` in `pyproject.toml` extends the generic lists in `select_tests.py`:
 
-- `none`: `spec_dd/**` holds spec documents no test reads, and `claude_plugins/**/*.md` and `*.jsx` are plugin prompts and course-author components that no test executes.
+- `none`: `spec_dd/**` holds spec documents no test reads, and `claude_plugins/**/*.jsx` are course-author components that no test executes.
 - `escalation`: `config/**` is the settings package every test runs under. `site_aware_models` and `content_base` are the bases every model and content type builds on, so a change there reaches apps the dependency map shows only indirectly.
-- `tooling`: this repository hosts the plugins, so `claude_plugins/*/scripts/**` and `claude_plugins/*/templates/**` map to the top-level `tests/` directory where their tests live. `claude_plugins/fls-content/**` maps to its own tests and to `content_engine`'s validator tests, which exercise the content it ships.
+- `tooling`: this repository hosts the plugins, so `claude_plugins/*/scripts/**` and `claude_plugins/*/templates/**` map to the top-level `tests/` directory where their tests live. `claude_plugins/fls-content/**` maps to its own tests and to `content_engine`'s validator tests, which exercise the content it ships. `claude_plugins/*/**/*.md` maps to `tests/test_test_tiers.py`, the one test that reads the plugin prompts.
 
 ## Collection safety — FLS example
 

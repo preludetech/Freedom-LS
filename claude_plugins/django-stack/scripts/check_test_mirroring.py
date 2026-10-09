@@ -1,5 +1,5 @@
-# ruff: noqa: T201
 #!/usr/bin/env python3
+# ruff: noqa: T201
 """Check that every collected app test file mirrors a production module.
 
 Reads `[tool.test_organisation]` from `pyproject.toml` (see `generate_app_map.py`,

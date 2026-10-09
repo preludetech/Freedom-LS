@@ -98,11 +98,10 @@ mirroring_baseline = "test_organisation/mirroring_baseline.txt"
 mirroring_exemptions = "test_organisation/mirroring_exemptions.txt"
 
 [tool.test_tiers]
-# Paths whose change cannot alter a test result: the spec directories, and the plugin
-# markdown this repository hosts.
+# Paths whose change cannot alter a test result: the spec directories, and the course-author
+# components the content plugin ships.
 none = [
     "spec_dd/**",
-    "claude_plugins/**/*.md",
     "claude_plugins/**/*.jsx",
 ]
 # Fan-out the mirror and the app map cannot see: the settings package, and the two apps
@@ -127,6 +126,11 @@ tests = ["tests"]
 [[tool.test_tiers.tooling]]
 glob = "claude_plugins/fls-content/**"
 tests = ["claude_plugins/fls-content", "freedom_ls/content_engine/tests"]
+
+# Plugin prompts are read by one test: the one that keeps pytest flags out of them.
+[[tool.test_tiers.tooling]]
+glob = "claude_plugins/*/**/*.md"
+tests = ["tests/test_test_tiers.py"]
 
 [tool.coverage.run]
 branch = true

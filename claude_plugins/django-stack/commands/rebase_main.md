@@ -133,7 +133,11 @@ A few rules on top of that loop:
 
 ## Step 7: Lost-change check
 
+First record the replayed tip. Every commit this step adds (a restored hunk, one of main's changes
+put back, a renumbered migration) lands after it, and Step 9 re-tests exactly those:
+
 ```
+REPLAYED_TIP=$(git rev-parse HEAD)
 .claude/ds/scripts/rebase_lost_change_check.sh $OLD_BASE $OLD_TIP
 ```
 
@@ -195,12 +199,12 @@ Follow `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`; every command below is o
        .claude/ds/scripts/select_tests.sh --range origin/main..HEAD
 
    `tier: none` → the branch holds nothing a test can see. Report `tier: none`; go to Step 10.
-2. Main's diff, with the branch's own tests:
+2. Main's diff and the fix-ups committed since the replay, with the branch's own tests:
 
-       .claude/ds/scripts/select_tests.sh --range $OLD_BASE..origin/main --tests-changed-in origin/main..HEAD
+       .claude/ds/scripts/select_tests.sh --range $OLD_BASE..origin/main --range $REPLAYED_TIP..HEAD --tests-changed-in origin/main..HEAD
 
-   `tier: none` → main brought in nothing the branch's code can interact with. Report
-   `tier: none`. Otherwise run the printed command.
+   `tier: none` → main brought in nothing the branch's code can interact with, and Step 7 added
+   nothing a test can see. Report `tier: none`. Otherwise run the printed command.
 
 A failure is fixed on the branch, test first, following "When a targeted run or full run fails"
 in the tier definition, then committed:

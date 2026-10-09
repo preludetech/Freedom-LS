@@ -876,3 +876,223 @@ def test_range_value_that_is_not_a_plain_revision_range_exits_2(
 
     # Assert
     assert result.returncode == 2
+
+
+def test_two_range_values_union_their_paths(tmp_path: Path) -> None:
+    # Arrange
+    repo_with_two_commits(tmp_path, {"pkg/alpha/services.py": "x = 1\n"})
+    write_tree(tmp_path, {"docs/new.md": ""})
+    commit_all(tmp_path, "docs")
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, "--range", "HEAD~2..HEAD~1", "--range", "HEAD~1..HEAD"
+    )
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: docs/new.md -> none (matches docs/**)",
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)",
+    ]
+
+
+def test_range_lists_both_sides_of_a_rename(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, beta_gamma_apps())
+    run_command(["git", "init"], tmp_path)
+    commit_all(tmp_path, "init")
+    run_command(
+        ["git", "mv", "pkg/alpha/services.py", "pkg/beta/services.py"], tmp_path
+    )
+    commit_all(tmp_path, "move")
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--range", "HEAD~1..HEAD")
+
+    # Assert
+    why = lines(result.stdout, "why")
+    assert "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)" in why
+    assert "why: pkg/beta/services.py -> pkg/beta/tests (owning app beta)" in why
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov "
+        "pkg/alpha/tests pkg/beta/tests pkg/gamma/tests"
+    ]
+
+
+def git_repo(tmp_path: Path, files: dict[str, str]) -> None:
+    write_tree(tmp_path, files)
+    run_command(["git", "init"], tmp_path)
+    commit_all(tmp_path, "init")
+
+
+def test_untracked_file_no_rule_knows_is_none_and_does_not_raise_the_tier(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    git_repo(tmp_path, alpha_app())
+    write_tree(tmp_path, {"scratch.png": "", "docs/new.md": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: none"]
+    assert "why: scratch.png -> none (untracked and unmapped)" in lines(
+        result.stdout, "why"
+    )
+
+
+def test_tracked_file_no_rule_knows_is_still_full(tmp_path: Path) -> None:
+    # Arrange
+    git_repo(tmp_path, alpha_app() | {"scratch.py": ""})
+    write_tree(tmp_path, {"scratch.py": "x = 1\n"})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert lines(result.stdout, "tier") == ["tier: full"]
+    assert lines(result.stdout, "why") == ["why: scratch.py -> full (unmapped path)"]
+
+
+def test_non_ascii_path_is_matched_to_its_app_whatever_git_quotes(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    git_repo(tmp_path, alpha_app())
+    run_command(["git", "config", "core.quotePath", "true"], tmp_path)
+    write_tree(tmp_path, {"pkg/alpha/café.py": ""})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "--working-tree")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/café.py -> pkg/alpha/tests (owning app alpha)"
+    ]
+
+
+def test_changed_top_level_playwright_test_lifts_the_ignore(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(
+        tmp_path,
+        alpha_app() | {"tests/test_tool.py": "", "tests/playwright/test_x.py": ""},
+    )
+
+    # Act
+    result = run_script(
+        SCRIPT, tmp_path, "tests/playwright/test_x.py", "tests/_helper.py"
+    )
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov tests"
+    ]
+    assert (
+        "why: tests/playwright/test_x.py -> tests/playwright/test_x.py "
+        "(changed test file; playwright: tests/playwright)"
+    ) in lines(result.stdout, "why")
+
+
+FILE_TOOLING_TABLE = """
+[[tool.test_tiers.tooling]]
+glob = "plugins/**/*.md"
+tests = ["tests/test_prompts.py", "tests/test_missing.py"]
+"""
+
+
+def test_project_tooling_entry_selects_a_test_file_and_reports_a_missing_one(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(
+        tmp_path,
+        alpha_app()
+        | {"pyproject.toml": FILE_TOOLING_TABLE, "tests/test_prompts.py": ""},
+    )
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "plugins/p/commands/go.md")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: plugins/p/commands/go.md -> tests/test_prompts.py (tooling)",
+        "why: plugins/p/commands/go.md -> none "
+        "(tooling; tests/test_missing.py does not exist)",
+    ]
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov tests/test_prompts.py"
+    ]
+
+
+def chain_apps() -> dict[str, str]:
+    """`delta` imports `beta`, which imports `alpha`; `epsilon` imports test-only `gamma`."""
+    tree = beta_gamma_apps() | {
+        "docs/app_structure.md": app_map(
+            "alpha",
+            "beta",
+            "gamma",
+            "delta",
+            "epsilon",
+            "beta --> alpha",
+            "gamma -.-> alpha",
+            "delta --> beta",
+            "epsilon --> gamma",
+        )
+    }
+    for name in ("delta", "epsilon"):
+        tree |= {
+            f"pkg/{name}/__init__.py": "",
+            f"pkg/{name}/apps.py": apps_py(f"pkg.{name}", f"{name.title()}Config"),
+            f"pkg/{name}/tests/__init__.py": "",
+        }
+    return tree
+
+
+def test_change_selects_apps_that_reach_it_through_a_runtime_dep(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, chain_apps())
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)",
+        "why: pkg/alpha/services.py -> pkg/beta/tests (beta has a runtime dep on alpha)",
+        "why: pkg/alpha/services.py -> pkg/delta/tests "
+        "(delta has a runtime dep on alpha through beta)",
+        "why: pkg/alpha/services.py -> pkg/gamma/tests "
+        "(gamma has a test-only dep on alpha)",
+    ]
+
+
+def test_dependency_cycle_lists_each_importer_once(tmp_path: Path) -> None:
+    # Arrange
+    cycle = app_map("alpha", "beta", "alpha --> beta", "beta --> alpha")
+    write_tree(tmp_path, beta_gamma_apps() | {"docs/app_structure.md": cycle})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "why") == [
+        "why: pkg/alpha/services.py -> pkg/alpha/tests (owning app alpha)",
+        "why: pkg/alpha/services.py -> pkg/beta/tests (beta has a runtime dep on alpha)",
+    ]
+
+
+@pytest.mark.parametrize(
+    "name", ["select_tests.py", "check_test_mirroring.py", "generate_app_map.py"]
+)
+def test_plugin_script_starts_with_its_shebang(name: str) -> None:
+    # Arrange
+    script = SCRIPT.with_name(name)
+
+    # Act
+    first_line = script.read_text(encoding="utf-8").splitlines()[0]
+
+    # Assert
+    assert first_line == "#!/usr/bin/env python3"

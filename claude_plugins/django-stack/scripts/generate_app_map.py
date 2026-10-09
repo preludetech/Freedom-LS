@@ -1,5 +1,5 @@
-# ruff: noqa: T201
 #!/usr/bin/env python3
+# ruff: noqa: T201
 """Generate a mermaid dependency diagram of the project's Django apps.
 
 Walks each Django app (directory containing `apps.py`), collects cross-app

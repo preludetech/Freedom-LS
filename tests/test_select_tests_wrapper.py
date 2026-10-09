@@ -81,3 +81,20 @@ def test_template_differs_from_the_generated_wrapper_only_on_the_plugins_root_li
 
     # Assert
     assert differing == [('PLUGINS_ROOT="__PLUGINS_ROOT__"', 'PLUGINS_ROOT="."')]
+
+
+def test_wrapper_runs_the_plugin_script_from_the_project_root(
+    stub_tools: StubTools, tmp_path: Path
+) -> None:
+    # Arrange
+    (stub_tools.bin_dir / "uv").write_text(
+        '#!/bin/sh\nprintf \'%s\\n\' "$PWD" >> "$STUB_LOG_FILE"\n'
+    )
+    environment = stub_tools.env()
+
+    # Act
+    result = run_script(WRAPPER, tmp_path, environment)
+
+    # Assert
+    assert result.returncode == 0
+    assert stub_tools.log_lines() == [str(REPO_ROOT)]

@@ -11,6 +11,9 @@ PROJECT_ROOT="$SCRIPT_DIR/../../.."
 PLUGIN_DIR="$PROJECT_ROOT/$PLUGINS_ROOT/claude_plugins/django-stack"
 
 # === Base setup ===
+# git prints diff paths relative to the repository root and untracked paths relative to the
+# current directory, and the script reads pyproject.toml and the app map from there too.
+cd "$PROJECT_ROOT" || exit 1
 exec uv run python "$PLUGIN_DIR/scripts/select_tests.py" "$@"
 
 # === Project-specific setup ===
