@@ -128,7 +128,6 @@ freedom_ls.site_aware_models.tests.test_factories -> freedom_ls.accounts.models
 freedom_ls.site_aware_models.tests.test_forms -> freedom_ls.learner_management.factories
 freedom_ls.site_aware_models.tests.test_forms -> freedom_ls.learner_management.models
 freedom_ls.site_aware_models.tests.test_forms -> freedom_ls.organisations.factories
-freedom_ls.site_aware_models.tests.test_manager -> freedom_ls.accounts.models
 freedom_ls.site_aware_models.tests.test_slugs -> freedom_ls.content_engine.factories
 freedom_ls.site_aware_models.tests.test_slugs -> freedom_ls.content_engine.models
 

@@ -18,7 +18,7 @@ from freedom_ls.tests.images import png_bytes
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
-from ..conftest import gated_course_with_form
+from ..helpers import gated_course_with_form
 
 
 @pytest.mark.playwright

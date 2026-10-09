@@ -15,7 +15,7 @@ import pytest
 
 pytest_plugins = ["pytester"]
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def test_collection_survives_without_course_applications(

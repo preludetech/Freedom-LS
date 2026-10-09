@@ -10,13 +10,11 @@ freedom_ls/accounts/tests/test_legal_doc_view.py
 # base
 
 # blog
-freedom_ls/blog/tests/test_seo_discoverability.py
 
 # comms
 freedom_ls/comms/tests/test_bell_tag.py
 
 # content_base
-freedom_ls/content_base/tests/test_schema_registry.py
 
 # content_engine
 
@@ -24,10 +22,8 @@ freedom_ls/content_base/tests/test_schema_registry.py
 freedom_ls/course_access/tests/test_visibility_enforcing_backend.py
 
 # course_applications
-freedom_ls/course_applications/tests/test_collection_safety.py
 
 # course_interest
-freedom_ls/course_interest/tests/test_admin_form.py
 
 # deployment
 
@@ -52,10 +48,8 @@ freedom_ls/educator_interface/tests/test_sidebar.py
 # form_engine
 
 # google_tag
-freedom_ls/google_tag/tests/test_google_tag_tags.py
 
 # health
-freedom_ls/health/tests/test_health_endpoints.py
 
 # icons
 
@@ -66,7 +60,6 @@ freedom_ls/health/tests/test_health_endpoints.py
 # learner_progress
 
 # meta_pixel
-freedom_ls/meta_pixel/tests/test_meta_pixel_tags.py
 
 # panel_framework
 
@@ -82,10 +75,7 @@ freedom_ls/qa_helpers/tests/test_qa_create_report_fixtures.py
 freedom_ls/role_based_permissions/tests/test_management_commands.py
 
 # site_aware_models
-freedom_ls/site_aware_models/tests/test_get_cached_site.py
-freedom_ls/site_aware_models/tests/test_manager.py
 
 # tiktok_pixel
-freedom_ls/tiktok_pixel/tests/test_tiktok_pixel_tags.py
 
 # webhooks

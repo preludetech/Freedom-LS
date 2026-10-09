@@ -19,3 +19,4 @@ freedom_ls/educator_interface/tests/invariants/  # permission and isolation matr
 freedom_ls/icons/tests/components/  # tests of the icon Cotton component template, which has no Python module
 freedom_ls/icons/tests/invariants/  # repo-wide guard against a dropped icon dependency; mirrors no module
 freedom_ls/comms/tests/invariants/  # checks the app's import boundaries; mirrors no module
+freedom_ls/course_applications/tests/invariants/  # proves collection skips the app's tests when it is not installed; mirrors no module

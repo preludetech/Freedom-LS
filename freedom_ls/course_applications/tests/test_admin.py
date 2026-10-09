@@ -17,7 +17,7 @@ from freedom_ls.accounts.models import User
 from freedom_ls.course_applications.admin import CourseApplicationAdmin
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.course_applications.tests.conftest import gated_course_with_form
+from freedom_ls.course_applications.tests.helpers import gated_course_with_form
 from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,

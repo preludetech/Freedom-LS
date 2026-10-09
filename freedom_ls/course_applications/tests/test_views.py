@@ -32,7 +32,7 @@ from freedom_ls.learner_management.factories import LearnerCourseRegistrationFac
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.models import CourseFormAttempt
 
-from .conftest import gated_course_with_form
+from .helpers import gated_course_with_form
 
 # ---------------------------------------------------------------------------
 # apply view
