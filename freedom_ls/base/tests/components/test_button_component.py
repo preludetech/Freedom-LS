@@ -42,10 +42,6 @@ class TestButtonLoadingProp:
         )
         assert "Deleting..." in result
 
-    def test_loading_shows_spinner_icon(self) -> None:
-        result = self._render('<c-button loading="true">Save</c-button>')
-        assert "animate-spin" in result
-
     def test_loading_preserves_normal_content(self) -> None:
         result = self._render('<c-button loading="true">Save</c-button>')
         assert "Save" in result

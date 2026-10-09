@@ -1,73 +1,357 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
-from django.test import Client
+from django.contrib.messages import constants as message_constants
+from django.contrib.messages.storage.session import SessionStorage
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    JsonResponse,
+    StreamingHttpResponse,
+)
+from django.template.loader import render_to_string
+from django.test import Client, RequestFactory
 from django.urls import reverse
 
-pytestmark = pytest.mark.urls("freedom_ls.base.tests.remove_slash_urls")
+from freedom_ls.base.middleware import HtmxMessagesMiddleware
 
 
-def test_slashed_path_whose_slashless_form_resolves_redirects_to_it() -> None:
-    response = Client().get(reverse("plain") + "/")
+def _request_with_messages(
+    factory: RequestFactory,
+    *,
+    htmx: bool,
+    messages_to_queue: list[tuple[int, str]] | None = None,
+) -> HttpRequest:
+    """Build a request with a real session-backed message storage attached.
 
-    assert response.status_code == 301
-    assert response["Location"] == "/plain"
-
-
-def test_view_404_on_a_matched_route_stays_404() -> None:
-    response = Client().get(reverse("missing"))
-
-    assert response.status_code == 404
-
-
-def test_path_that_resolves_neither_way_stays_404() -> None:
-    response = Client().get("/nowhere/")
-
-    assert response.status_code == 404
-
-
-def test_redirect_keeps_the_query_string() -> None:
-    response = Client().get(reverse("plain") + "/?a=1&b=2")
-
-    assert response.status_code == 301
-    assert response["Location"] == "/plain?a=1&b=2"
+    `messages_to_queue` is a list of (level, text) tuples — those are added to
+    `request._messages` so the middleware can read them via get_messages.
+    """
+    headers: dict[str, str] = {}
+    if htmx:
+        headers["HTTP_HX_REQUEST"] = "true"
+    request = factory.get("/", **headers)
+    request.session = {}
+    storage = SessionStorage(request)
+    request._messages = storage
+    if messages_to_queue:
+        for level, text in messages_to_queue:
+            storage.add(level, text)
+    return request
 
 
-def test_slashed_path_ending_in_double_slash_stays_404() -> None:
-    response = Client().get(reverse("plain") + "//")
+def _make_get_response(
+    response: HttpResponse | StreamingHttpResponse | JsonResponse,
+) -> Callable[[HttpRequest], HttpResponse | StreamingHttpResponse | JsonResponse]:
+    def get_response(
+        request: HttpRequest,
+    ) -> HttpResponse | StreamingHttpResponse | JsonResponse:
+        return response
 
-    assert response.status_code == 404
-
-
-def test_root_path_requested_returns_200() -> None:
-    response = Client().get(reverse("root"))
-
-    assert response.status_code == 200
-
-
-def test_slashless_request_to_a_slashed_route_still_appends_a_slash() -> None:
-    response = Client().get(reverse("slashed")[:-1])
-
-    assert response.status_code == 301
-    assert response["Location"] == "/slashed/"
+    return get_response
 
 
-def test_head_to_a_slashed_path_redirects() -> None:
-    response = Client().head(reverse("plain") + "/")
+# Tests for HtmxMessagesMiddleware.
+#
+# Behaviour-only assertions. The middleware appends an OOB toast fragment to
+# HTMX HTML responses when there are queued Django messages, and otherwise
+# leaves the response untouched.
+@pytest.mark.django_db
+class TestHtmxMessagesMiddleware:
+    @pytest.fixture(autouse=True)
+    def _site_context(self, mock_site_context: object) -> None:
+        # The messages partial is rendered with `request=request`, which
+        # triggers context processors. The site-aware context processor
+        # needs a current Site, so install the standard test fixture.
+        return None
 
-    assert response.status_code == 301
-    assert response["Location"] == "/plain"
+    def test_non_htmx_request_response_unchanged(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=False,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved")],
+        )
+        original_body = b"<p>page</p>"
+        response = HttpResponse(original_body, content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert result.content == original_body
+
+    def test_htmx_request_no_messages_response_unchanged(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(factory, htmx=True)
+        original_body = b"<p>page</p>"
+        response = HttpResponse(original_body, content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert result.content == original_body
+
+    def test_htmx_request_with_success_message_appends_polite_oob(
+        self,
+    ) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved successfully")],
+        )
+        response = HttpResponse(b"<p>page</p>", content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        body = result.content.decode("utf-8")
+        assert 'hx-swap-oob="beforeend:#toast-region-polite"' in body
+        assert "Saved successfully" in body
+
+    def test_htmx_request_with_error_message_appends_assertive_oob(
+        self,
+    ) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.ERROR, "Boom")],
+        )
+        response = HttpResponse(b"<p>page</p>", content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        body = result.content.decode("utf-8")
+        assert 'hx-swap-oob="beforeend:#toast-region-assertive"' in body
+        assert "Boom" in body
+
+    def test_htmx_request_with_mixed_severities(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[
+                (message_constants.SUCCESS, "Saved"),
+                (message_constants.ERROR, "Boom"),
+            ],
+        )
+        response = HttpResponse(b"<p>page</p>", content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        body = result.content.decode("utf-8")
+        assert 'hx-swap-oob="beforeend:#toast-region-polite"' in body
+        assert 'hx-swap-oob="beforeend:#toast-region-assertive"' in body
+        assert "Saved" in body
+        assert "Boom" in body
+
+    def test_htmx_4xx_response_with_error_message_appends_fragment(
+        self,
+    ) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.ERROR, "Bad input")],
+        )
+        response = HttpResponse(
+            b"<p>error page</p>",
+            content_type="text/html",
+            status=500,
+        )
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        body = result.content.decode("utf-8")
+        assert "Bad input" in body
+        assert 'hx-swap-oob="beforeend:#toast-region-assertive"' in body
+
+    def test_htmx_3xx_response_fragment_not_appended(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved")],
+        )
+        response = HttpResponse(b"", content_type="text/html", status=302)
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert b"toast-region-" not in result.content
+
+    def test_htmx_json_response_fragment_not_appended(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved")],
+        )
+        response = JsonResponse({"ok": True})
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert b"toast-region-" not in result.content
+
+    def test_htmx_streaming_response_fragment_not_appended(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved")],
+        )
+        response = StreamingHttpResponse(
+            iter([b"<p>chunk</p>"]),
+            content_type="text/html",
+        )
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        # The result must remain a StreamingHttpResponse and we must not have
+        # tried to mutate `.content` (which would consume the iterator).
+        assert isinstance(result, StreamingHttpResponse)
+
+    def test_message_storage_is_marked_used_after_middleware(self) -> None:
+        """After the middleware runs, the storage is marked as `used` so the
+        downstream MessageMiddleware.process_response clears it; the messages
+        do not get re-rendered on the next request."""
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved")],
+        )
+        response = HttpResponse(b"<p>page</p>", content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        middleware(request)
+
+        # The storage is marked used by virtue of being iterated.
+        assert request._messages.used is True
+
+    def test_content_length_header_updated_when_present(self) -> None:
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved")],
+        )
+        body = b"<p>page</p>"
+        response = HttpResponse(body, content_type="text/html")
+        response["Content-Length"] = str(len(body))
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert result["Content-Length"] == str(len(result.content))
+
+    def test_view_already_rendered_messages_partial_no_double_emit(self) -> None:
+        """If a view rendered partials/messages.html itself, the middleware must
+        not append a second OOB fragment for the same message.
+
+        Django 6.x's BaseStorage.__iter__ does not drain _loaded_messages, so
+        a second iteration in the middleware would otherwise pick up the same
+        message and produce a duplicate toast in the response body.
+        """
+        factory = RequestFactory()
+        request = _request_with_messages(
+            factory,
+            htmx=True,
+            messages_to_queue=[(message_constants.SUCCESS, "Saved successfully")],
+        )
+
+        view_body = render_to_string(
+            "partials/messages.html",
+            {"messages": request._messages, "oob": True},
+            request=request,
+        ).encode("utf-8")
+        response = HttpResponse(view_body, content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        body = result.content.decode("utf-8")
+        assert body.count('hx-swap-oob="beforeend:#toast-region-polite"') == 1
+        assert body.count("Saved successfully") == 1
+
+    def test_view_consumed_empty_storage_response_unchanged(self) -> None:
+        """If a view iterated an empty message storage (used=True, no messages),
+        the middleware must leave the response body untouched."""
+        factory = RequestFactory()
+        request = _request_with_messages(factory, htmx=True)
+        # Simulate the view iterating the storage (empty list, but used=True).
+        list(request._messages)
+        original_body = b"<p>page</p>"
+        response = HttpResponse(original_body, content_type="text/html")
+        middleware = HtmxMessagesMiddleware(_make_get_response(response))
+
+        result = middleware(request)
+
+        assert result.content == original_body
 
 
-def test_post_to_a_slashed_path_stays_404() -> None:
-    response = Client().post(reverse("plain") + "/")
+@pytest.mark.urls("freedom_ls.base.tests.remove_slash_urls")
+class TestRemoveSlashMiddleware:
+    def test_slashed_path_whose_slashless_form_resolves_redirects_to_it(self) -> None:
+        response = Client().get(reverse("plain") + "/")
 
-    assert response.status_code == 404
+        assert response.status_code == 301
+        assert response["Location"] == "/plain"
 
+    def test_view_404_on_a_matched_route_stays_404(self) -> None:
+        response = Client().get(reverse("missing"))
 
-def test_redirect_escapes_a_leading_double_slash() -> None:
-    response = Client().get("/%2Fevil.com/x/")
+        assert response.status_code == 404
 
-    assert response.status_code == 301
-    assert response["Location"] == "/%2Fevil.com/x"
+    def test_path_that_resolves_neither_way_stays_404(self) -> None:
+        response = Client().get("/nowhere/")
+
+        assert response.status_code == 404
+
+    def test_redirect_keeps_the_query_string(self) -> None:
+        response = Client().get(reverse("plain") + "/?a=1&b=2")
+
+        assert response.status_code == 301
+        assert response["Location"] == "/plain?a=1&b=2"
+
+    def test_slashed_path_ending_in_double_slash_stays_404(self) -> None:
+        response = Client().get(reverse("plain") + "//")
+
+        assert response.status_code == 404
+
+    def test_root_path_requested_returns_200(self) -> None:
+        response = Client().get(reverse("root"))
+
+        assert response.status_code == 200
+
+    def test_slashless_request_to_a_slashed_route_still_appends_a_slash(self) -> None:
+        response = Client().get(reverse("slashed")[:-1])
+
+        assert response.status_code == 301
+        assert response["Location"] == "/slashed/"
+
+    def test_head_to_a_slashed_path_redirects(self) -> None:
+        response = Client().head(reverse("plain") + "/")
+
+        assert response.status_code == 301
+        assert response["Location"] == "/plain"
+
+    def test_post_to_a_slashed_path_stays_404(self) -> None:
+        response = Client().post(reverse("plain") + "/")
+
+        assert response.status_code == 404
+
+    def test_redirect_escapes_a_leading_double_slash(self) -> None:
+        response = Client().get("/%2Fevil.com/x/")
+
+        assert response.status_code == 301
+        assert response["Location"] == "/%2Fevil.com/x"

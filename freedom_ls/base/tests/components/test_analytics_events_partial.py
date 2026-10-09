@@ -5,11 +5,11 @@ import copy
 import pytest
 import pytest_django.fixtures
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.test import Client, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory, TopicFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
@@ -28,12 +28,14 @@ _ALL_PLATFORM_SETTINGS = {
 
 
 @pytest.fixture
-def course_player_url_and_learner(mock_site_context: object) -> tuple[str, User]:
+def course_player_url_and_learner(
+    mock_site_context: object,
+) -> tuple[str, AbstractBaseUser]:
     """A course-player URL (extends `_base_interface.html`) and its registered learner."""
     course = CourseFactory(slug="analytics-events-course")
     topic = TopicFactory(slug="analytics-events-topic")
     course.items.create(child=topic, order=0)
-    user: User = UserFactory()
+    user: AbstractBaseUser = UserFactory()
     LearnerCourseRegistrationFactory(learner__user=user, course=course)
     url = reverse(
         "learner_interface:view_course_item",
@@ -74,7 +76,7 @@ class TestAnalyticsEventsPartial:
     def test_a_boosted_request_keeps_the_emitted_script_inside_interface_main(
         self,
         client: Client,
-        course_player_url_and_learner: tuple[str, User],
+        course_player_url_and_learner: tuple[str, AbstractBaseUser],
     ) -> None:
         url, user = course_player_url_and_learner
         client.force_login(user)
@@ -116,7 +118,7 @@ class TestAnalyticsEventsPartial:
         self, client: Client, mock_site_context: object
     ) -> None:
         course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
-        user: User = UserFactory()
+        user: AbstractBaseUser = UserFactory()
         client.force_login(user)
         url = reverse(
             "course_interest:express_interest", kwargs={"course_slug": course.slug}
@@ -134,7 +136,7 @@ class TestAnalyticsEventsPartial:
         client: Client,
         settings: pytest_django.fixtures.SettingsWrapper,
         mock_site_context: object,
-        course_player_url_and_learner: tuple[str, User],
+        course_player_url_and_learner: tuple[str, AbstractBaseUser],
     ) -> None:
         url, user = course_player_url_and_learner
         client.force_login(user)
@@ -179,7 +181,7 @@ class TestAnalyticsEventsPartial:
         self,
         client: Client,
         settings: pytest_django.fixtures.SettingsWrapper,
-        course_player_url_and_learner: tuple[str, User],
+        course_player_url_and_learner: tuple[str, AbstractBaseUser],
         app_name: str,
         context_processor: str,
         absent_string: str,

@@ -11,12 +11,10 @@ freedom_ls.accounts.tests.test_legal_doc_view -> freedom_ls.icons.loader
 freedom_ls.accounts.tests.management.commands.test_setup_initial_prod_data -> freedom_ls.organisations.models
 
 # base
-freedom_ls.base.tests.test_analytics_events_partial -> freedom_ls.accounts.models
-freedom_ls.base.tests.test_analytics_events_partial -> freedom_ls.content_engine.factories
-freedom_ls.base.tests.test_analytics_events_partial -> freedom_ls.content_engine.models
-freedom_ls.base.tests.test_header_bar_user_menu -> freedom_ls.accounts.models
-freedom_ls.base.tests.test_header_bar_user_menu -> freedom_ls.organisations.factories
-freedom_ls.base.tests.test_header_bar_user_menu -> freedom_ls.role_based_permissions.utils
+freedom_ls.base.tests.components.test_analytics_events_partial -> freedom_ls.content_engine.factories
+freedom_ls.base.tests.components.test_analytics_events_partial -> freedom_ls.content_engine.models
+freedom_ls.base.tests.components.test_header_bar_user_menu -> freedom_ls.organisations.factories
+freedom_ls.base.tests.components.test_header_bar_user_menu -> freedom_ls.role_based_permissions.utils
 
 # comms
 freedom_ls.comms.factories -> freedom_ls.content_engine.factories

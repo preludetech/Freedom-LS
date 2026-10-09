@@ -11,13 +11,12 @@ from __future__ import annotations
 import pytest
 from allauth.core.context import request_context
 
-from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
 from django.template.loader import render_to_string
 from django.test import RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -26,13 +25,13 @@ EDUCATOR_LINK_TEXT = "Educator Interface"
 ADMIN_LINK_TEXT = "Admin Panel"
 
 
-def _render_menu(user: User) -> str:
+def _render_menu(user: AbstractBaseUser) -> str:
     request = RequestFactory().get("/")
     request.user = user
     return render_to_string("partials/header_bar_user_menu.html", request=request)
 
 
-def _render_header(user: User | AnonymousUser, next_url: str = "") -> str:
+def _render_header(user: AbstractBaseUser | AnonymousUser, next_url: str = "") -> str:
     request = RequestFactory().get("/", {"next": next_url} if next_url else {})
     request.user = user
     with request_context(request):

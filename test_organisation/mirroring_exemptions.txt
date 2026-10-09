@@ -13,3 +13,4 @@ freedom_ls/content_engine/tests/invariants/  # checks over vendored assets, whic
 freedom_ls/learner_interface/tests/views/  # tests of views.py, one module per page it renders
 freedom_ls/panel_framework/tests/components/  # tests of Cotton component templates, which have no Python module
 freedom_ls/panel_framework/tests/invariants/  # repo-wide checks over the app's templates, which mirror no module
+freedom_ls/base/tests/components/  # tests of Cotton component templates, which have no Python module
