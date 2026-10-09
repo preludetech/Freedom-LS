@@ -1,18 +1,31 @@
 """Tests for AccountAdapter."""
 
+from __future__ import annotations
+
 import email.policy
 from unittest.mock import MagicMock, patch
 
 import pytest
 from allauth.core.context import request_context
 
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.sites.models import Site
 from django.core import mail
-from django.test import RequestFactory
+from django.http import HttpRequest, HttpResponse
+from django.test import RequestFactory, override_settings
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
-from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.site_aware_models.models import SiteResolutionError
+from freedom_ls.accounts.factories import (
+    SiteFactory,
+    SiteSignupPolicyFactory,
+    UserFactory,
+)
+from freedom_ls.accounts.models import SiteSignupPolicy
+from freedom_ls.site_aware_models.models import (
+    _CACHED_SITE_ATTR,
+    SiteResolutionError,
+    _thread_locals,
+)
 
 
 @pytest.mark.django_db
@@ -365,3 +378,184 @@ class TestFormatEmailSubject:
             adapter.send_mail("account/email/password_reset_key", user.email, context)
 
         assert mail.outbox[0].subject == "[MyProduct] Reset your password"
+
+
+@pytest.mark.django_db
+def test_falls_back_to_global_setting_when_no_policy(mock_site_context, settings):
+    """If no SiteSignupPolicy exists for the current site, use settings.ALLOW_SIGN_UPS."""
+    settings.ALLOW_SIGN_UPS = True
+
+    request = RequestFactory().get("/")
+    assert AccountAdapter().is_open_for_signup(request) is True
+
+
+@pytest.mark.django_db
+def test_policy_overrides_global_setting(mock_site_context, settings, site):
+    """Per-site SiteSignupPolicy should override settings.ALLOW_SIGN_UPS."""
+    settings.ALLOW_SIGN_UPS = False  # global signups are not allowed
+
+    SiteSignupPolicy.objects.update_or_create(
+        site=site,
+        defaults={"allow_signups": True},  # per-site allows signups
+    )
+
+    request = RequestFactory().get("/")
+    assert AccountAdapter().is_open_for_signup(request) is True
+
+
+@pytest.mark.django_db
+def test_policy_can_disable_when_global_allows(mock_site_context, settings, site):
+    """Per-site SiteSignupPolicy can disable signups even if the global setting allows them."""
+    settings.ALLOW_SIGN_UPS = True  # global signups are allowed
+
+    SiteSignupPolicy.objects.update_or_create(
+        site=site,
+        defaults={"allow_signups": False},  # per-site signups are not allowed
+    )
+
+    request = RequestFactory().get("/")
+    assert AccountAdapter().is_open_for_signup(request) is False
+
+
+@pytest.mark.django_db
+def test_is_open_for_signup_respects_force_site_name(settings):
+    """is_open_for_signup should use the forced site's policy, not the request domain's."""
+    forced_site = SiteFactory(name="ForcedSite", domain="forced.example.com")
+    SiteFactory(name="DomainSite", domain="testserver")
+
+    SiteSignupPolicyFactory(site=forced_site, allow_signups=False)
+    settings.ALLOW_SIGN_UPS = True  # global default allows signups
+
+    request = RequestFactory().get("/")  # domain = testserver
+
+    with override_settings(FORCE_SITE_NAME="ForcedSite"):
+        if hasattr(request, _CACHED_SITE_ATTR):
+            delattr(request, _CACHED_SITE_ATTR)
+        result = AccountAdapter().is_open_for_signup(request)
+
+    assert result is False  # Should use ForcedSite's policy (disallow), not DomainSite
+
+
+@pytest.mark.django_db
+def test_is_open_for_signup_uses_the_request_site_when_another_site_is_ambient(
+    settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The request's own site decides, not whatever site the thread is holding.
+
+    The lookup already knows which site it wants, so a leftover thread-local
+    request pointing somewhere else must not be able to hide the policy row and
+    quietly demote the answer to the global default.
+    """
+    policy_site = SiteFactory(name="PolicySite", domain="policy.example.com")
+    ambient_site = SiteFactory(name="AmbientSite", domain="ambient.example.com")
+    SiteSignupPolicyFactory(site=policy_site, allow_signups=False)
+    settings.ALLOW_SIGN_UPS = True
+
+    ambient_request = RequestFactory().get("/")
+    setattr(ambient_request, _CACHED_SITE_ATTR, ambient_site)
+    monkeypatch.setattr(_thread_locals, "request", ambient_request, raising=False)
+
+    request = RequestFactory().get("/")
+    setattr(request, _CACHED_SITE_ATTR, policy_site)
+
+    assert AccountAdapter().is_open_for_signup(request) is False
+
+
+# Tests for webhook and analytics events fired from the accounts app.
+
+
+def _request_with_session() -> HttpRequest:
+    request = RequestFactory().post("/accounts/signup/")
+    SessionMiddleware(lambda r: HttpResponse()).process_request(request)
+    return request
+
+
+# transaction=True so that on_commit hooks for webhook event delivery fire under test
+@pytest.mark.django_db(transaction=True)
+class TestUserRegisteredWebhookEvent:
+    def test_save_user_fires_webhook_event_on_commit(
+        self, mock_site_context: object, mocker: object
+    ) -> None:
+        """When save_user is called with commit=True, fire_webhook_event is called."""
+        mock_fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event")
+        adapter = AccountAdapter()
+        user = UserFactory.build()
+
+        mock_form = mocker.Mock()
+
+        with patch(
+            "allauth.account.adapter.DefaultAccountAdapter.save_user",
+            return_value=user,
+        ) as mock_super_save:
+            result = adapter.save_user(
+                _request_with_session(), user, mock_form, commit=True
+            )
+
+        mock_super_save.assert_called_once()
+        mock_fire.assert_called_once_with(
+            "user.registered",
+            {
+                "user_id": user.pk,
+                "user_email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            },
+        )
+        assert result is user
+
+    def test_save_user_does_not_fire_webhook_without_commit(
+        self, mock_site_context: object, mocker: object
+    ) -> None:
+        """When save_user is called with commit=False, no webhook event is fired."""
+        mock_fire = mocker.patch("freedom_ls.webhooks.events.fire_webhook_event")
+        adapter = AccountAdapter()
+        user = UserFactory.build()
+
+        mock_form = mocker.Mock()
+
+        with patch(
+            "allauth.account.adapter.DefaultAccountAdapter.save_user",
+            return_value=user,
+        ):
+            adapter.save_user(_request_with_session(), user, mock_form, commit=False)
+
+        mock_fire.assert_not_called()
+
+
+@pytest.mark.django_db(transaction=True)
+class TestSignUpAnalyticsEvent:
+    def test_save_user_records_the_sign_up_event_on_commit(
+        self, mock_site_context: object, mocker: object
+    ) -> None:
+        mocker.patch("freedom_ls.webhooks.events.fire_webhook_event")
+        adapter = AccountAdapter()
+        user = UserFactory.build()
+        mock_form = mocker.Mock()
+        request = _request_with_session()
+
+        with patch(
+            "allauth.account.adapter.DefaultAccountAdapter.save_user",
+            return_value=user,
+        ):
+            adapter.save_user(request, user, mock_form, commit=True)
+
+        assert request.session["google_analytics_events"] == [
+            {"name": "sign_up", "params": {"method": "email"}}
+        ]
+
+    def test_save_user_does_not_record_the_event_without_commit(
+        self, mock_site_context: object, mocker: object
+    ) -> None:
+        mocker.patch("freedom_ls.webhooks.events.fire_webhook_event")
+        adapter = AccountAdapter()
+        user = UserFactory.build()
+        mock_form = mocker.Mock()
+        request = _request_with_session()
+
+        with patch(
+            "allauth.account.adapter.DefaultAccountAdapter.save_user",
+            return_value=user,
+        ):
+            adapter.save_user(request, user, mock_form, commit=False)
+
+        assert "google_analytics_events" not in request.session

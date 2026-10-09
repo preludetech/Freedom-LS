@@ -5,26 +5,7 @@
 # stale.
 
 # accounts
-freedom_ls/accounts/tests/test_account_webhook_events.py
-freedom_ls/accounts/tests/test_accounts_tags.py
-freedom_ls/accounts/tests/test_acquisition_login_required.py
-freedom_ls/accounts/tests/test_allauth_signup_policy.py
-freedom_ls/accounts/tests/test_complete_registration_view.py
-freedom_ls/accounts/tests/test_deferred_login.py
-freedom_ls/accounts/tests/test_email_templates.py
-freedom_ls/accounts/tests/test_header_auth_links_carry_next.py
 freedom_ls/accounts/tests/test_legal_doc_view.py
-freedom_ls/accounts/tests/test_lockout_page.py
-freedom_ls/accounts/tests/test_login_page.py
-freedom_ls/accounts/tests/test_login_rate_limit.py
-freedom_ls/accounts/tests/test_registration_completion_middleware.py
-freedom_ls/accounts/tests/test_setup_initial_prod_data.py
-freedom_ls/accounts/tests/test_signup_form.py
-freedom_ls/accounts/tests/test_signup_messages.py
-freedom_ls/accounts/tests/test_signup_page.py
-freedom_ls/accounts/tests/test_signup_rate_limit.py
-freedom_ls/accounts/tests/test_user_manager.py
-freedom_ls/accounts/tests/test_user_registration_webhook_integration.py
 
 # base
 freedom_ls/base/tests/test_analytics_events_partial.py

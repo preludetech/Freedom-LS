@@ -7,14 +7,8 @@
 # accounts
 freedom_ls.accounts.tests.test_admin -> freedom_ls.referral_tracking.factories
 freedom_ls.accounts.tests.test_admin -> freedom_ls.referral_tracking.models
-freedom_ls.accounts.tests.test_deferred_login -> freedom_ls.content_engine.factories
-freedom_ls.accounts.tests.test_deferred_login -> freedom_ls.content_engine.models
-freedom_ls.accounts.tests.test_deferred_login -> freedom_ls.course_applications.factories
-freedom_ls.accounts.tests.test_deferred_login -> freedom_ls.course_applications.models
-freedom_ls.accounts.tests.test_deferred_login -> freedom_ls.course_interest.models
-freedom_ls.accounts.tests.test_deferred_login -> freedom_ls.learner_management.models
 freedom_ls.accounts.tests.test_legal_doc_view -> freedom_ls.icons.loader
-freedom_ls.accounts.tests.test_setup_initial_prod_data -> freedom_ls.organisations.models
+freedom_ls.accounts.tests.management.commands.test_setup_initial_prod_data -> freedom_ls.organisations.models
 
 # base
 freedom_ls.base.tests.test_analytics_events_partial -> freedom_ls.accounts.models

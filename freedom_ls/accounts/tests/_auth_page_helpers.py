@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from html import unescape
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from django.urls import reverse
 
@@ -49,3 +49,9 @@ def _alert_html(html: str) -> str:
             return html[start : next_close + len("</div>")]
         depth -= 1
         index = next_close
+
+
+def _next_param(location: str) -> str | None:
+    """Return the single `next` query-param value from a redirect Location, if any."""
+    values = parse_qs(urlparse(location).query).get("next")
+    return values[0] if values else None
