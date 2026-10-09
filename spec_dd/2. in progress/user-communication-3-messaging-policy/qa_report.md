@@ -71,7 +71,7 @@ Actual: the first card row (long column label plus long "Messaging config for <o
 
 | Bug | Title | Status |
 |---|---|---|
-| B1 | Messaging config names clipped in mobile changelist cards | **UNRESOLVED** (reason: needs a UX decision: change the shared Unfold mobile card styling, which the existing Course changelist also clips under, or shorten the messaging configs' `__str__`/list columns) |
+| B1 | Messaging config names clipped in mobile changelist cards | **FIXED** (shared FLS admin stylesheet lets changelist card cells grow below lg; also fixes the Course changelist) |
 
 ## General notes
 

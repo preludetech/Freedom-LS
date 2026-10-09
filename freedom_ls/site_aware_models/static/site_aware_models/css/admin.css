@@ -10,3 +10,13 @@
 .answer-text {
     white-space: pre-line;
 }
+
+/* Below lg, unfold renders each changelist row as a card whose cells are fixed at
+   45px with overflow hidden, so a value that wraps past one line is cut off. */
+@media (max-width: 1023.98px) {
+    #result_list td,
+    #result_list th {
+        height: auto;
+        overflow-wrap: anywhere;
+    }
+}
