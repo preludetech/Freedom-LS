@@ -1,9 +1,3 @@
-"""Tests for ensure_course_progress_record and the cohort fan-out.
-
-Mirrors test_ensure_learner.py's shape: the idempotent get-or-create half and
-the site provenance it must not get from the ambient request.
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -22,8 +16,12 @@ from freedom_ls.learner_progress.utils import (
     ensure_course_progress_record,
     ensure_course_progress_records_for_cohort_registration,
 )
-from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.site_aware_models.models import _thread_locals
+
+# Tests for ensure_course_progress_record and the cohort fan-out.
+#
+# Mirrors the shape of the ensure_learner tests: the idempotent get-or-create half and
+# the site provenance it must not get from the ambient request.
 
 
 @pytest.mark.django_db
@@ -73,10 +71,9 @@ class TestEnsureCourseProgressRecord:
         learner already holding a cohort-granted record who is then
         registered individually gets a second record, because a second grant
         is a second enrolment."""
-        organisation = OrganisationFactory()
         course = CourseFactory()
-        cohort = CohortFactory(organisation=organisation)
-        learner = LearnerFactory(organisation=organisation)
+        learner = LearnerFactory()
+        cohort = CohortFactory(organisation=learner.organisation)
         CohortMembershipFactory(learner=learner, cohort=cohort)
         cohort_registration = CohortCourseRegistrationFactory(
             cohort=cohort, course=course
@@ -125,8 +122,7 @@ class TestEnsureCourseProgressRecord:
         would AND the ambient site onto the query, miss the row created
         below, and attempt a second INSERT -- raising IntegrityError on
         one_course_progress_per_learner_registration."""
-        organisation = OrganisationFactory(site=SiteFactory())
-        learner = LearnerFactory(organisation=organisation)
+        learner = LearnerFactory(organisation__site=SiteFactory())
         course = CourseFactory()
         registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
 
@@ -147,10 +143,10 @@ class TestEnsureCourseProgressRecord:
 @pytest.mark.django_db
 class TestEnsureCourseProgressRecordsForCohortRegistration:
     def test_covers_exactly_the_active_members(self, mock_site_context):
-        organisation = OrganisationFactory()
         course = CourseFactory()
+        active_learner = LearnerFactory()
+        organisation = active_learner.organisation
         cohort = CohortFactory(organisation=organisation)
-        active_learner = LearnerFactory(organisation=organisation)
         removed_learner = LearnerFactory(organisation=organisation, is_active=False)
         CohortMembershipFactory(learner=active_learner, cohort=cohort)
         CohortMembershipFactory(learner=removed_learner, cohort=cohort)
@@ -167,10 +163,9 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
         """The bulk_create bypasses save(), so it has no _set_site_from_request
         to fall back on either -- every record it mints must carry its own
         member's site, not whatever site the request happens to be for."""
-        organisation = OrganisationFactory(site=SiteFactory())
         course = CourseFactory()
-        cohort = CohortFactory(organisation=organisation)
-        learner = LearnerFactory(organisation=organisation)
+        learner = LearnerFactory(organisation__site=SiteFactory())
+        cohort = CohortFactory(organisation=learner.organisation)
         CohortMembershipFactory(learner=learner, cohort=cohort)
         registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
 
@@ -183,10 +178,10 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
         assert record.site_id != mock_site_context.id
 
     def test_a_member_added_later_gets_a_record_when_re_run(self, mock_site_context):
-        organisation = OrganisationFactory()
         course = CourseFactory()
+        first_learner = LearnerFactory()
+        organisation = first_learner.organisation
         cohort = CohortFactory(organisation=organisation)
-        first_learner = LearnerFactory(organisation=organisation)
         CohortMembershipFactory(learner=first_learner, cohort=cohort)
         registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
         ensure_course_progress_records_for_cohort_registration(registration)

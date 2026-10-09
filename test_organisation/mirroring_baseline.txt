@@ -77,27 +77,8 @@ freedom_ls/icons/tests/test_renderer.py
 # learner_interface
 
 # learner_management
-freedom_ls/learner_management/tests/test_constraint_validation_forms.py
-freedom_ls/learner_management/tests/test_deadline_utils_bulk.py
-freedom_ls/learner_management/tests/test_deletion_semantics.py
-freedom_ls/learner_management/tests/test_enrolment_models.py
-freedom_ls/learner_management/tests/test_ensure_learner.py
-freedom_ls/learner_management/tests/test_ensure_organisation_member.py
-freedom_ls/learner_management/tests/test_learner.py
-freedom_ls/learner_management/tests/test_learner_admin.py
-freedom_ls/learner_management/tests/test_registration_webhook_events.py
 
 # learner_progress
-freedom_ls/learner_progress/tests/test_completion_signal.py
-freedom_ls/learner_progress/tests/test_course_progress.py
-freedom_ls/learner_progress/tests/test_course_progress_by_course_for.py
-freedom_ls/learner_progress/tests/test_course_progress_calculation.py
-freedom_ls/learner_progress/tests/test_course_progress_constraints.py
-freedom_ls/learner_progress/tests/test_course_progress_for.py
-freedom_ls/learner_progress/tests/test_ensure_course_progress_record.py
-freedom_ls/learner_progress/tests/test_recalculate_progress_percentages.py
-freedom_ls/learner_progress/tests/test_registration_signals.py
-freedom_ls/learner_progress/tests/test_registrations_with_progress_for_learner.py
 
 # meta_pixel
 freedom_ls/meta_pixel/tests/test_meta_pixel_tags.py

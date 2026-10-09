@@ -6,8 +6,7 @@ registration, gated on an active Learner. One gates the player, the other
 gates catalogue listings, and a learner must never see a course in one and be
 refused by the other, so every scenario they share is asserted through both
 at once via ``_assert_both_agree``. Only the cases one function has and the
-other does not get their own test.
-"""
+other does not get their own test."""
 
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ import pytest
 
 from django.contrib.auth.models import AnonymousUser
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
@@ -29,9 +28,14 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_management.models import Cohort, Learner, OrganisationMember
 from freedom_ls.learner_management.queries import is_registered_for_course_expression
-from freedom_ls.learner_management.utils import is_registered_for_course
+from freedom_ls.learner_management.utils import (
+    ensure_learner,
+    ensure_organisation_member,
+    is_registered_for_course,
+)
+from freedom_ls.organisations.factories import OrganisationFactory
 
 
 def _register_via_cohort(learner: Learner, course: Course) -> Cohort:
@@ -165,3 +169,138 @@ class TestNoRegistration:
         course = CourseFactory()
 
         assert is_registered_for_course(AnonymousUser(), course) is False
+
+
+# Tests for ensure_learner, the idempotent get-or-reactivate helper.
+
+
+@pytest.mark.django_db
+class TestEnsureLearner:
+    """Arranged with Learner.objects.create, not LearnerFactory: the factory
+    delegates to ensure_learner, so building the starting state with it would
+    test the function against itself."""
+
+    def test_calling_twice_creates_one_row(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+
+        ensure_learner(user, organisation)
+        ensure_learner(user, organisation)
+
+        assert Learner.objects.filter(user=user, organisation=organisation).count() == 1
+
+    def test_calling_twice_returns_the_same_row(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+
+        first = ensure_learner(user, organisation)
+        second = ensure_learner(user, organisation)
+
+        assert first.pk == second.pk
+
+    def test_reactivates_a_removed_learner(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        learner = Learner.objects.create(
+            user=user, organisation=organisation, is_active=False
+        )
+
+        ensure_learner(user, organisation)
+
+        learner.refresh_from_db()
+        assert learner.is_active is True
+
+    def test_finds_the_existing_row_when_a_different_site_is_ambient(
+        self, mock_site_context
+    ):
+        """The organisation being handled is not always the site the current
+        request is for. Using the site-aware manager for the lookup half of
+        update_or_create would AND the ambient site onto the query, miss the
+        row created below, and attempt a second INSERT — raising
+        IntegrityError on unique_learner_per_organisation. A test that only
+        calls ensure_learner once passes against that broken version too."""
+        user = UserFactory()
+        organisation = OrganisationFactory(site=SiteFactory())
+
+        ensure_learner(user, organisation)
+        ensure_learner(user, organisation)
+
+        assert (
+            Learner._base_manager.filter(user=user, organisation=organisation).count()
+            == 1
+        )
+
+
+# Tests for ensure_organisation_member, the get-or-create gate helper.
+#
+# Unlike ensure_learner, this never reactivates an existing row: a deactivated
+# member must stay deactivated until someone explicitly reactivates them.
+
+
+@pytest.mark.django_db
+class TestEnsureOrganisationMember:
+    """Arranged with OrganisationMember.objects.create, not
+    OrganisationMemberFactory: the factory is a thin wrapper over the model,
+    but building starting state through the function under test would still
+    test it against itself, so a raw create keeps the arrangement independent."""
+
+    def test_creates_a_row(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+
+        member = ensure_organisation_member(user, organisation)
+
+        assert member.pk is not None
+        assert member.user == user
+        assert member.organisation == organisation
+        assert member.is_active is True
+
+    def test_returns_an_existing_active_row_unchanged(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        existing = OrganisationMember.objects.create(
+            user=user, organisation=organisation, is_active=True
+        )
+
+        returned = ensure_organisation_member(user, organisation)
+
+        assert returned.pk == existing.pk
+        assert (
+            OrganisationMember.objects.filter(
+                user=user, organisation=organisation
+            ).count()
+            == 1
+        )
+
+    def test_returns_an_inactive_row_still_inactive(self, mock_site_context):
+        user = UserFactory()
+        organisation = OrganisationFactory()
+        existing = OrganisationMember.objects.create(
+            user=user, organisation=organisation, is_active=False
+        )
+
+        returned = ensure_organisation_member(user, organisation)
+
+        assert returned.pk == existing.pk
+        assert returned.is_active is False
+
+    def test_finds_the_existing_row_when_a_different_site_is_ambient(
+        self, mock_site_context
+    ):
+        """Mirrors ensure_learner's own version of this test: the lookup must
+        use _base_manager, or an ambient site foreign to the organisation
+        being handled makes get_or_create miss the row below and attempt a
+        second INSERT, raising IntegrityError on
+        unique_member_per_organisation."""
+        user = UserFactory()
+        organisation = OrganisationFactory(site=SiteFactory())
+
+        ensure_organisation_member(user, organisation)
+        ensure_organisation_member(user, organisation)
+
+        assert (
+            OrganisationMember._base_manager.filter(
+                user=user, organisation=organisation
+            ).count()
+            == 1
+        )
