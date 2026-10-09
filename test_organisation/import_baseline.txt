@@ -103,11 +103,9 @@ freedom_ls.google_tag.tests.test_context_processors -> freedom_ls.content_engine
 freedom_ls.google_tag.tests.test_context_processors -> freedom_ls.learner_management.factories
 
 # learner_interface
-freedom_ls.learner_interface.tests.test_course_access_integration -> freedom_ls.course_applications.factories
-freedom_ls.learner_interface.tests.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils
+freedom_ls.learner_interface.tests.views.test_course_access -> freedom_ls.course_applications.factories
+freedom_ls.learner_interface.tests.templatetags.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils
 freedom_ls.learner_interface.tests.test_course_completion_notifications -> freedom_ls.comms.models
-freedom_ls.learner_interface.tests.test_course_player_shell -> freedom_ls.base.theming
-freedom_ls.learner_interface.tests.test_resume_and_redirect -> freedom_ls.role_based_permissions.loader
 freedom_ls.learner_interface.tests.test_self_registration_learner -> freedom_ls.comms.models
 
 # learner_management

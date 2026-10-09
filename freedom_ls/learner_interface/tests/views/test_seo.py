@@ -1,16 +1,3 @@
-"""Tests for basic SEO / discoverability.
-
-Covers:
-- Per-page <title> and <meta name="description"> on catalogue and detail pages
-- JSON-LD (schema.org/Course) on course detail
-- JSON-LD (schema.org/ItemList) on catalogue
-- sitemap.xml (per-site)
-- robots.txt
-
-The catalogue and course-detail pages are public, so these tests use an
-anonymous client — the same view a search-engine crawler sees.
-"""
-
 from __future__ import annotations
 
 import json
@@ -25,8 +12,22 @@ from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
+
+# Tests for basic SEO / discoverability.
+#
+# Covers:
+# - Per-page <title> and <meta name="description"> on catalogue and detail pages
+# - JSON-LD (schema.org/Course) on course detail
+# - JSON-LD (schema.org/ItemList) on catalogue
+# - sitemap.xml (per-site)
+# - robots.txt
+#
+# The catalogue and course-detail pages are public, so these tests use an
+# anonymous client — the same view a search-engine crawler sees.
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -48,14 +49,6 @@ def _extract_meta_description(body: str) -> str:
         match = re.search(r'<meta\s+content="([^"]*)"\s+name="description"', body)
     assert match, "no <meta name='description'> tag found in response"
     return match.group(1)
-
-
-def _extract_title(body: str) -> str:
-    start = body.find("<title>")
-    assert start != -1, "no opening <title> tag"
-    end = body.find("</title>", start)
-    assert end != -1, "no closing </title> tag"
-    return body[start + len("<title>") : end].strip()
 
 
 def _extract_json_ld(body: str, script_id: str) -> dict:
@@ -418,13 +411,6 @@ def test_catalogue_json_ld_contains_course_detail_urls(
 
 
 @pytest.mark.django_db
-def test_sitemap_returns_200(mock_site_context):
-    """GET /sitemap.xml returns 200."""
-    response = Client().get("/sitemap.xml")
-    assert response.status_code == 200
-
-
-@pytest.mark.django_db
 def test_sitemap_contains_catalogue_url(mock_site_context):
     """sitemap.xml includes the all-courses page."""
     response = Client().get("/sitemap.xml")
@@ -501,3 +487,59 @@ def test_robots_txt_references_sitemap(mock_site_context):
     content = Client().get("/robots.txt").content.decode()
     assert "Sitemap:" in content
     assert "sitemap.xml" in content
+
+
+# Tests for the browser-tab <title> tags across the learner-facing pages.
+#
+# Covers the dashboard, all-courses, and course-detail pages.
+
+
+def _extract_title(body: str) -> str:
+    """Pull the trimmed text inside the first <title>...</title> tag."""
+    start = body.find("<title>")
+    assert start != -1, "no opening <title> tag in response"
+    end = body.find("</title>", start)
+    assert end != -1, "no closing </title> tag in response"
+    return body[start + len("<title>") : end].strip()
+
+
+@pytest.mark.django_db
+def test_dashboard_title_tag_says_dashboard(
+    mock_site_context, courses, logged_in_client
+):
+    """The dashboard's browser-tab title is 'Dashboard'."""
+    user = UserFactory()
+    client = logged_in_client(user)
+    response = client.get(reverse("learner_interface:dashboard"))
+    assert response.status_code == 200
+    assert _extract_title(response.content.decode()) == "Dashboard"
+
+
+@pytest.mark.django_db
+def test_all_courses_title_tag_says_all_courses(
+    mock_site_context, courses, logged_in_client
+):
+    """The all-courses page title includes 'All Courses' and the site name."""
+    user = UserFactory()
+    client = logged_in_client(user)
+    response = client.get(reverse("learner_interface:courses"))
+    assert response.status_code == 200
+    title = _extract_title(response.content.decode())
+    assert "All Courses" in title
+    assert mock_site_context.name in title
+
+
+@pytest.mark.django_db
+def test_course_detail_title_tag_uses_course_title(
+    mock_site_context, courses, logged_in_client
+):
+    """The course-detail page's browser-tab title matches the course title."""
+    user = UserFactory()
+    client = logged_in_client(user)
+    response = client.get(
+        reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": courses[0].slug}
+        )
+    )
+    assert response.status_code == 200
+    assert _extract_title(response.content.decode()) == courses[0].title

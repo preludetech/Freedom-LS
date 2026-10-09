@@ -2,7 +2,7 @@
 default organisation.
 
 initiate_course_access is the chokepoint for self-service course access --
-see test_course_access_integration.py for the backend-branching coverage
+see views/test_course_access.py for the backend-branching coverage
 (gated vs free, GET vs POST). These tests cover only what changed when
 self-registration started keying on Learner instead of User: the Learner it
 creates, its idempotence, and reactivation of a removed learner.

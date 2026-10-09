@@ -304,11 +304,9 @@ source_modules = ["freedom_ls.learner_interface.tests"]
 forbidden_modules = ["freedom_ls.base", "freedom_ls.blog", "freedom_ls.comms", "freedom_ls.course_applications", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.educator_interface", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.panel_framework", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.tiktok_pixel", "freedom_ls.xapi_learning_record_store"]
 ignore_imports = [
     # baseline
-    "freedom_ls.learner_interface.tests.test_course_access_integration -> freedom_ls.course_applications.factories",
-    "freedom_ls.learner_interface.tests.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils",
+    "freedom_ls.learner_interface.tests.views.test_course_access -> freedom_ls.course_applications.factories",
+    "freedom_ls.learner_interface.tests.templatetags.test_course_card_tags -> freedom_ls.markdown_rendering.markdown_utils",
     "freedom_ls.learner_interface.tests.test_course_completion_notifications -> freedom_ls.comms.models",
-    "freedom_ls.learner_interface.tests.test_course_player_shell -> freedom_ls.base.theming",
-    "freedom_ls.learner_interface.tests.test_resume_and_redirect -> freedom_ls.role_based_permissions.loader",
     "freedom_ls.learner_interface.tests.test_self_registration_learner -> freedom_ls.comms.models",
 ]
 
