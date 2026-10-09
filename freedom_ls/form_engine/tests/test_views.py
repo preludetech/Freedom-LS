@@ -1,9 +1,3 @@
-"""The three file endpoints an applicant reaches: attach, remove, download.
-
-Every one of them is scoped to the owner of the sitting. A file answer is a scan
-of someone's ID, so "the URL is unguessable" is not the control -- ownership is.
-"""
-
 from __future__ import annotations
 
 import re
@@ -16,6 +10,7 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
+    FormContentFactory,
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
@@ -23,12 +18,18 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFileFactory,
 )
 from freedom_ls.form_engine.models import (
+    FormPage,
     FormProgress,
     FormQuestion,
     FormStrategy,
     QuestionAnswerFile,
 )
 from freedom_ls.tests.images import png_bytes
+
+# The three file endpoints an applicant reaches: attach, remove, download.
+#
+# Every one of them is scoped to the owner of the sitting. A file answer is a scan
+# of someone's ID, so "the URL is unguessable" is not the control -- ownership is.
 
 
 @pytest.fixture
@@ -476,3 +477,95 @@ def test_the_replace_picker_sits_level_with_the_remove_button(
     label = markup[markup.index("<label") : markup.index("</label>")]
     assert "Replace" in label
     assert "mb-0" in label
+
+
+# The two fragments a form page is built from, shared by the exam runner and
+# the application shell: the page's own children, and why a submission was
+# refused. They live here so the two shells cannot drift apart on either.
+
+
+def _render_errors(required: str = "", rejected: str = "") -> str:
+    return render_to_string(
+        "form_engine/partials/answer_errors.html",
+        {"required_answers_error": required, "rejected_answers_error": rejected},
+    )
+
+
+def _render_children(form_page: FormPage) -> str:
+    return render_to_string(
+        "form_engine/partials/page_children.html",
+        {
+            "form_page": form_page,
+            "existing_answers": {},
+            "rejected_answers": {},
+            "read_only": False,
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_no_errors_renders_nothing(mock_site_context):
+    assert _render_errors().strip() == ""
+
+
+@pytest.mark.django_db
+def test_a_missing_required_answer_is_announced(mock_site_context):
+    markup = _render_errors(required="Question 1 needs an answer.")
+
+    assert 'data-testid="required-answers-error"' in markup
+    assert 'role="alert"' in markup
+    assert "Missing answers" in markup
+    assert "Question 1 needs an answer." in markup
+
+
+@pytest.mark.django_db
+def test_an_invalid_answer_is_announced(mock_site_context):
+    markup = _render_errors(rejected="Question 2 needs a valid answer.")
+
+    assert 'data-testid="rejected-answers-error"' in markup
+    assert "Invalid answers" in markup
+    assert "Question 2 needs a valid answer." in markup
+
+
+@pytest.mark.django_db
+def test_one_error_does_not_draw_the_other(mock_site_context):
+    markup = _render_errors(required="Question 1 needs an answer.")
+
+    assert 'data-testid="rejected-answers-error"' not in markup
+
+
+@pytest.mark.django_db
+def test_both_errors_are_reported_together(mock_site_context):
+    markup = _render_errors(required="Needs an answer.", rejected="Needs a valid one.")
+
+    assert 'data-testid="required-answers-error"' in markup
+    assert 'data-testid="rejected-answers-error"' in markup
+
+
+@pytest.mark.django_db
+def test_children_render_in_the_order_the_page_lays_them_out(mock_site_context):
+    page: FormPage = FormPageFactory(order=0)
+    FormContentFactory(form_page=page, content="Read this first.", order=0)
+    question = FormQuestionFactory(
+        form_page=page, type="short_text", order=1, question="Then answer this."
+    )
+
+    markup = _render_children(page)
+
+    assert markup.index("Read this first.") < markup.index("Then answer this.")
+    assert f'name="question_{question.id}"' in markup
+
+
+@pytest.mark.django_db
+def test_a_question_renders_as_a_fieldset(mock_site_context):
+    page: FormPage = FormPageFactory(order=0)
+    FormQuestionFactory(form_page=page, type="short_text", order=0)
+
+    assert "<fieldset" in _render_children(page)
+
+
+@pytest.mark.django_db
+def test_a_page_with_no_children_renders_nothing(mock_site_context):
+    page: FormPage = FormPageFactory(order=0)
+
+    assert _render_children(page).strip() == ""

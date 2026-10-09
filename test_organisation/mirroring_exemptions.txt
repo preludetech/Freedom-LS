@@ -14,3 +14,5 @@ freedom_ls/learner_interface/tests/views/  # tests of views.py, one module per p
 freedom_ls/panel_framework/tests/components/  # tests of Cotton component templates, which have no Python module
 freedom_ls/panel_framework/tests/invariants/  # repo-wide checks over the app's templates, which mirror no module
 freedom_ls/base/tests/components/  # tests of Cotton component templates, which have no Python module
+freedom_ls/form_engine/tests/invariants/  # proves the app imports without optional apps; mirrors no module
+freedom_ls/educator_interface/tests/invariants/  # permission and isolation matrices walked over every interface URL, and the project-wide system check; mirror no module

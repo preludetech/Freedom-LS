@@ -1,10 +1,3 @@
-"""Tests for the `form_attempt_completed` signal fired by `FormProgress.complete()`.
-
-Course-progress recalculation triggered by this signal is asserted elsewhere, in
-the tests owned by the app that defines `CourseProgress`, so this module stays
-free of that app's imports.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -16,6 +9,12 @@ from freedom_ls.accounts.models import User
 from freedom_ls.form_engine.factories import FormFactory, FormProgressFactory
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.form_engine.signals import form_attempt_completed
+
+# Tests for the `form_attempt_completed` signal fired by `FormProgress.complete()`.
+#
+# Course-progress recalculation triggered by this signal is asserted elsewhere, in
+# the tests owned by the app that defines `CourseProgress`, so this module stays
+# free of that app's imports.
 
 
 @pytest.fixture

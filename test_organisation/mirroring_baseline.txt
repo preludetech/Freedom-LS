@@ -51,8 +51,6 @@ freedom_ls/dev_tools/tests/test_danger_content_delete.py
 
 # educator_interface
 freedom_ls/educator_interface/tests/test_cohort_delete_action.py
-freedom_ls/educator_interface/tests/test_cohort_details_pagination.py
-freedom_ls/educator_interface/tests/test_config_authorisation.py
 freedom_ls/educator_interface/tests/test_course_visibility_and_interest.py
 freedom_ls/educator_interface/tests/test_create_cohort_action.py
 freedom_ls/educator_interface/tests/test_dashboard.py
@@ -60,28 +58,10 @@ freedom_ls/educator_interface/tests/test_denied_experience.py
 freedom_ls/educator_interface/tests/test_document_title.py
 freedom_ls/educator_interface/tests/test_interface_urls.py
 freedom_ls/educator_interface/tests/test_learner_section.py
-freedom_ls/educator_interface/tests/test_organisation_isolation.py
 freedom_ls/educator_interface/tests/test_organisation_switcher.py
-freedom_ls/educator_interface/tests/test_permission_matrix.py
 freedom_ls/educator_interface/tests/test_sidebar.py
-freedom_ls/educator_interface/tests/test_system_checks.py
 
 # form_engine
-freedom_ls/form_engine/tests/test_deletion_semantics.py
-freedom_ls/form_engine/tests/test_file_views.py
-freedom_ls/form_engine/tests/test_form_attempt_completed_signal.py
-freedom_ls/form_engine/tests/test_form_engine_tags.py
-freedom_ls/form_engine/tests/test_form_progress.py
-freedom_ls/form_engine/tests/test_form_progress_complete_idempotent.py
-freedom_ls/form_engine/tests/test_form_progress_score_category_value_sum.py
-freedom_ls/form_engine/tests/test_form_progress_score_quiz.py
-freedom_ls/form_engine/tests/test_form_progress_score_unscored.py
-freedom_ls/form_engine/tests/test_import_independence.py
-freedom_ls/form_engine/tests/test_page_partials.py
-freedom_ls/form_engine/tests/test_question_answer_file.py
-freedom_ls/form_engine/tests/test_question_template.py
-freedom_ls/form_engine/tests/test_quiz_free_text_questions.py
-freedom_ls/form_engine/tests/test_save_answers.py
 
 # google_tag
 freedom_ls/google_tag/tests/test_google_tag_tags.py

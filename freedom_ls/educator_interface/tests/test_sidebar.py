@@ -7,19 +7,19 @@ from collections.abc import Callable
 import lxml.html
 import pytest
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture
 def sidebar(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> tuple[lxml.html.HtmlElement, str]:
     """The rendered #sidebar-nav and the whole page, for a logged-in educator."""
     organisation = OrganisationFactory()
@@ -165,7 +165,7 @@ def test_the_rule_above_the_user_block_runs_the_full_sidebar_width(
 
 @pytest.mark.django_db
 def test_a_user_with_no_name_shows_their_email_once(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     organisation = OrganisationFactory()
     user = UserFactory(

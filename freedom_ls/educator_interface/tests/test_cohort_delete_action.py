@@ -20,12 +20,12 @@ from collections.abc import Callable
 import lxml.html
 import pytest
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -75,7 +75,7 @@ def _delete_url(client: Client, cohort: Cohort) -> str:
 
 @pytest.mark.django_db
 def test_an_empty_cohort_is_deleted_from_its_details_panel(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     cohort_pk = cohort.pk
@@ -95,7 +95,7 @@ def test_an_empty_cohort_is_deleted_from_its_details_panel(
 
 @pytest.mark.django_db
 def test_the_cohort_pages_panels_refresh_on_cohort_changed(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Watched Cohort")
     client = logged_in_client(UserFactory(superuser=True))
@@ -109,7 +109,7 @@ def test_the_cohort_pages_panels_refresh_on_cohort_changed(
 
 @pytest.mark.django_db
 def test_the_cohort_page_renders_the_delete_trigger(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))
@@ -147,7 +147,7 @@ def test_the_delete_dialog_says_why_the_cohort_cannot_go(
 
 @pytest.mark.django_db
 def test_the_delete_dialog_has_a_heading_naming_the_cohort_and_cancel_then_delete(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))
@@ -167,7 +167,8 @@ def test_the_delete_dialog_has_a_heading_naming_the_cohort_and_cancel_then_delet
 
 @pytest.mark.django_db
 def test_submitting_the_blocked_delete_answers_instead_of_erroring(
-    cohort_with_granted_progress: Cohort, logged_in_client: Callable[[User], Client]
+    cohort_with_granted_progress: Cohort,
+    logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     client = logged_in_client(UserFactory(superuser=True))
     url = _delete_url(client, cohort_with_granted_progress)
@@ -183,7 +184,7 @@ def test_submitting_the_blocked_delete_answers_instead_of_erroring(
 
 @pytest.mark.django_db
 def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     """A cohort viewer can open the cohort but not delete it. Pasting the
     action URL gets the site's own 403 page, not an empty 403 body."""
@@ -203,7 +204,7 @@ def test_a_pasted_delete_url_shows_the_site_403_page_to_an_educator(
 
 @pytest.mark.django_db
 def test_the_delete_dialog_body_says_the_delete_cannot_be_undone(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     cohort = CohortFactory(organisation=OrganisationFactory(), name="Empty Cohort")
     client = logged_in_client(UserFactory(superuser=True))

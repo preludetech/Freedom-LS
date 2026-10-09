@@ -17,11 +17,11 @@ from typing import NamedTuple, cast
 import pytest
 from guardian.shortcuts import get_perms
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.db.models import Model
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedAction,
     walk_interface,
@@ -332,7 +332,7 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
 class World(NamedTuple):
     """One grant holder per role, and one scope object per (kind, relation)."""
 
-    users: dict[str, User]
+    users: dict[str, AbstractBaseUser]
     scopes: dict[tuple[str, str], Model]
 
 
@@ -376,10 +376,10 @@ def _build_world(site_a: Site) -> World:
     # function.
     return World(
         users={
-            "site_admin": cast(User, site_admin_user),
-            "organisation_admin": cast(User, organisation_admin_user),
-            "cohort_admin": cast(User, cohort_admin_user),
-            "cohort_viewer": cast(User, cohort_viewer_user),
+            "site_admin": cast(AbstractBaseUser, site_admin_user),
+            "organisation_admin": cast(AbstractBaseUser, organisation_admin_user),
+            "cohort_admin": cast(AbstractBaseUser, cohort_admin_user),
+            "cohort_viewer": cast(AbstractBaseUser, cohort_viewer_user),
         },
         scopes={
             ("site", OWN): cast(Model, site_a),

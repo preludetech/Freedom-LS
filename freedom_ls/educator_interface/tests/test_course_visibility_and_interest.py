@@ -6,12 +6,12 @@ from collections.abc import Callable
 import pytest
 import pytest_django.fixtures
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_interest.factories import CourseInterestFactory
@@ -116,7 +116,7 @@ def test_course_table_interest_count_is_site_scoped(
 
 @pytest.mark.django_db
 def test_course_table_renders_visibility_and_interest_columns(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     """The rendered table shows the visibility label and interest count."""
     course = CourseFactory(

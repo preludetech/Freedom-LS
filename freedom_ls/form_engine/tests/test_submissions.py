@@ -1,9 +1,3 @@
-"""``FormProgress.save_answers`` stores a row only for questions the learner
-actually answered. A blank row would count toward the answered tally shown in
-the runner, so an unanswered question must leave no row behind — and removing a
-previously given answer must take its row with it.
-"""
-
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -24,6 +18,11 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import FormQuestion
 from freedom_ls.form_engine.typed_answers import RejectedAnswer
+
+# ``FormProgress.save_answers`` stores a row only for questions the learner
+# actually answered. A blank row would count toward the answered tally shown in
+# the runner, so an unanswered question must leave no row behind — and removing a
+# previously given answer must take its row with it.
 
 
 def _post_data(pairs: dict[str, list[str]]) -> QueryDict:

@@ -6,28 +6,29 @@ from collections.abc import Callable
 
 import pytest
 
+from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
-from freedom_ls.accounts.models import User
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
 
 @pytest.fixture
-def educator(mock_site_context: Site) -> tuple[Organisation, User]:
+def educator(mock_site_context: Site) -> tuple[Organisation, AbstractBaseUser]:
     organisation: Organisation = OrganisationFactory(name="Northside Academy")
-    user: User = UserFactory(staff=True)
+    user: AbstractBaseUser = UserFactory(staff=True)
     assign_object_role(user, organisation, "organisation_admin")
     return organisation, user
 
 
 @pytest.mark.django_db
 def test_dashboard_renders_the_reporting_placeholder(
-    educator: tuple[Organisation, User], logged_in_client: Callable[[User], Client]
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
 
@@ -46,7 +47,8 @@ def test_dashboard_renders_the_reporting_placeholder(
 
 @pytest.mark.django_db
 def test_the_bare_root_redirects_to_the_dashboard(
-    educator: tuple[Organisation, User], logged_in_client: Callable[[User], Client]
+    educator: tuple[Organisation, AbstractBaseUser],
+    logged_in_client: Callable[[AbstractBaseUser], Client],
 ) -> None:
     organisation, user = educator
 
