@@ -8,8 +8,13 @@
             <h1>Link your application</h1>
 
             <c-callout level="warning">
-                <p>This account's email address is not the one on your application to {{ course.title }} ({{ application.email }}).</p>
-                <p>Add and verify that address on <a href="{% url 'account_email' %}">your account email page</a>. Once it is verified, press Link my application. Stay signed in: logging out discards the browser session that holds the application.</p>
+                {% if address_unverified %}
+                    <p>The address on your application to {{ course.title }} ({{ application.email }}) has not been verified on this account yet.</p>
+                    <p>Verify it on <a href="{% url 'account_email' %}">your account email page</a>, then press Link my application. Stay signed in: logging out discards the browser session that holds the application.</p>
+                {% else %}
+                    <p>This account's email address is not the one on your application to {{ course.title }} ({{ application.email }}).</p>
+                    <p>Add and verify that address on <a href="{% url 'account_email' %}">your account email page</a>. Once it is verified, press Link my application. Stay signed in: logging out discards the browser session that holds the application.</p>
+                {% endif %}
             </c-callout>
 
             <div class="flex flex-wrap gap-3">

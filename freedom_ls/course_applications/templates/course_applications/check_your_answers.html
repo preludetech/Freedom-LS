@@ -1,14 +1,14 @@
 {% extends "_base.html" %}
-{% load form_engine_tags %}
+{% load form_engine_tags fls_base_filters %}
 
 {% block head_title %}Check your answers — {{ course.title }}{% endblock %}
 
 {% block content %}
     <c-page width="narrow">
         <div class="space-y-6">
-            {% if is_unclaimed %}
+            {% if is_unclaimed and not submitted %}
                 <c-callout level="info">
-                    This application is saved in this browser only, for up to {{ session_days }} days. Submit it to keep it.
+                    This application is saved in this browser only, {% if session_lifetime %}for up to {{ session_lifetime|duration }}{% else %}until you close your browser{% endif %}. Submit it to keep it.
                 </c-callout>
             {% endif %}
 

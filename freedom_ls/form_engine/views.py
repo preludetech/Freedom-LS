@@ -6,13 +6,16 @@ unguessability of a URL. A file answer is a scan of someone's identity document.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.utils.text import slugify
+from django.utils.timesince import timesince
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.decorators import never_cache_same_origin
@@ -87,6 +90,14 @@ def _attached_file(
     ).first()
 
 
+def _upload_cap_wait() -> str:
+    """The upload cap's window as words, e.g. "1 hour": the longest a refused client waits."""
+    now = timezone.now()
+    return timesince(
+        now, now + timedelta(seconds=config.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS)
+    )
+
+
 @never_cache_same_origin
 @require_POST
 def partial_question_file_upload(
@@ -109,7 +120,10 @@ def partial_question_file_upload(
             form_progress,
             question,
             _attached_file(form_progress, question),
-            error="Too many uploads from your network. Try again in a few minutes.",
+            error=(
+                "Too many uploads from your network. "
+                f"Try again in about {_upload_cap_wait()}."
+            ),
             status=422,
         )
 

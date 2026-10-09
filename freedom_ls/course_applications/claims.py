@@ -17,7 +17,11 @@ from django.http import HttpRequest
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.form_engine.anonymous_sittings import forget_anonymous_sitting
+from freedom_ls.form_engine.anonymous_sittings import (
+    forget_anonymous_sitting,
+    held_ids,
+    remember_held_id,
+)
 from freedom_ls.learner_management.utils import is_registered_for_course
 
 UNCLAIMED_APPLICATIONS_SESSION_KEY = "course_applications_unclaimed_ids"
@@ -27,22 +31,14 @@ ClaimOutcome = Literal["claimed", "collided", "mismatched", "dropped"]
 
 
 def unclaimed_application_ids(request: HttpRequest) -> list[str]:
-    """The ids this browser may still claim. Strings, because the session is JSON."""
-    ids: list[str] = request.session.get(UNCLAIMED_APPLICATIONS_SESSION_KEY, [])
-    return list(ids)
+    """The ids this browser may still claim."""
+    return held_ids(request, UNCLAIMED_APPLICATIONS_SESSION_KEY)
 
 
 def remember_unclaimed_application(
     request: HttpRequest, application: CourseApplication
 ) -> None:
-    # Reassigned rather than appended in place: the session only notices a
-    # change when the key is set.
-    ids = unclaimed_application_ids(request)
-    if str(application.pk) not in ids:
-        request.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] = [
-            *ids,
-            str(application.pk),
-        ]
+    remember_held_id(request, UNCLAIMED_APPLICATIONS_SESSION_KEY, str(application.pk))
 
 
 def unclaimed_application_for_course(
@@ -196,6 +192,18 @@ def _has_verified_address(user: User, email: str) -> bool:
         user=user, verified=True, email__iexact=email
     ).exists()
     return verified
+
+
+def has_unverified_address(user: User, email: str) -> bool:
+    """Whether the address is on the account but still awaiting verification.
+
+    Tells a mismatch that verifying will fix apart from one that needs the
+    address added first.
+    """
+    unverified: bool = EmailAddress.objects.filter(
+        user=user, verified=False, email__iexact=email
+    ).exists()
+    return unverified
 
 
 def _attach(application: CourseApplication, user: User) -> tuple[ClaimOutcome, str]:

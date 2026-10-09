@@ -16,31 +16,39 @@ from .models import FormProgress
 ANONYMOUS_SITTINGS_SESSION_KEY = "form_engine_anonymous_sitting_ids"
 
 
-def held_sitting_ids(request: HttpRequest) -> list[str]:
-    """The sitting ids this browser holds. Strings, because the session is JSON."""
-    ids: list[str] = request.session.get(ANONYMOUS_SITTINGS_SESSION_KEY, [])
+def held_ids(request: HttpRequest, session_key: str) -> list[str]:
+    """The ids the session holds under `session_key`. Strings, because the session is JSON."""
+    ids: list[str] = request.session.get(session_key, [])
     return list(ids)
+
+
+def remember_held_id(request: HttpRequest, session_key: str, pk: str) -> None:
+    # Reassigned rather than appended in place: the session only notices a
+    # change when the key is set.
+    ids = held_ids(request, session_key)
+    if pk not in ids:
+        request.session[session_key] = [*ids, pk]
+
+
+def forget_held_id(request: HttpRequest, session_key: str, pk: str) -> None:
+    ids = held_ids(request, session_key)
+    if pk in ids:
+        request.session[session_key] = [held for held in ids if held != pk]
+
+
+def held_sitting_ids(request: HttpRequest) -> list[str]:
+    """The sitting ids this browser holds."""
+    return held_ids(request, ANONYMOUS_SITTINGS_SESSION_KEY)
 
 
 def remember_anonymous_sitting(
     request: HttpRequest, form_progress: FormProgress
 ) -> None:
-    # Reassigned rather than appended in place: the session only notices a
-    # change when the key is set.
-    ids = held_sitting_ids(request)
-    if str(form_progress.pk) not in ids:
-        request.session[ANONYMOUS_SITTINGS_SESSION_KEY] = [
-            *ids,
-            str(form_progress.pk),
-        ]
+    remember_held_id(request, ANONYMOUS_SITTINGS_SESSION_KEY, str(form_progress.pk))
 
 
 def forget_anonymous_sitting(request: HttpRequest, form_progress_pk: str) -> None:
-    ids = held_sitting_ids(request)
-    if form_progress_pk in ids:
-        request.session[ANONYMOUS_SITTINGS_SESSION_KEY] = [
-            pk for pk in ids if pk != form_progress_pk
-        ]
+    forget_held_id(request, ANONYMOUS_SITTINGS_SESSION_KEY, form_progress_pk)
 
 
 def owned_or_held_q(

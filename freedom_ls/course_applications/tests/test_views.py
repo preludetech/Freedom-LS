@@ -1791,6 +1791,32 @@ class TestClaimLanding:
         assert "pat@example.com" in response.content.decode()
         assert "Link your application" in response.content.decode()
 
+    def test_a_mismatch_on_an_unverified_own_address_says_to_verify_it(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        EmailAddressFactory(user=user, email="pat@example.com", verified=False)
+        client.force_login(user)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        html = client.get(_claim_url()).content.decode()
+
+        assert "has not been verified on this account yet" in html
+        assert "Add and verify" not in html
+
+    def test_a_mismatch_on_a_different_address_says_to_add_it(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        html = client.get(_claim_url()).content.decode()
+
+        assert "Add and verify" in html
+        assert "has not been verified" not in html
+
     def test_a_mismatch_leaves_the_application_unclaimed(
         self, client, mock_site_context
     ):
@@ -2120,6 +2146,21 @@ class TestAnonymousFormJourney:
 
         assert "You can now attach your file." in response.content.decode()
 
+    def test_a_refused_resubmission_does_not_repeat_the_saved_callout(
+        self, client, mock_site_context
+    ):
+        course, form = _course_with_file_on_page_one(required=False)
+        name = _questions_on(form, 1)[0]
+        client.post(_apply_url(course), {f"question_{name.id}": "Ada"})
+        app = CourseApplication.objects.get(course=course)
+
+        response = client.post(
+            f"{_page_url(app, 1)}?saved=1", {f"question_{name.id}": ""}
+        )
+
+        assert response.status_code == 422
+        assert "Your answers are saved" not in response.content.decode()
+
     def test_anonymous_page_one_post_advances_to_page_two(
         self, client, mock_site_context
     ):
@@ -2365,6 +2406,41 @@ class TestAnonymousFormJourney:
             "saved in this browser only" not in r.content.decode() for r in pages
         )
 
+    def test_submitted_unclaimed_pages_no_longer_ask_to_submit(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {"email": "pat@example.com"})
+
+        pages = [client.get(_page_url(app, 1)), client.get(_check_url(app))]
+
+        assert all("Submit it to keep it" not in r.content.decode() for r in pages)
+
+    def test_browser_only_notice_names_the_session_lifetime(
+        self, client, mock_site_context, settings
+    ):
+        settings.SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+        settings.SESSION_COOKIE_AGE = 8 * 3600
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_page_url(app, 1)).content.decode()
+
+        assert "for up to 8\xa0hours" in html
+
+    def test_browser_only_notice_for_a_session_that_ends_with_the_browser(
+        self, client, mock_site_context, settings
+    ):
+        settings.SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert "until you close your browser" in html
+        assert "for up to" not in html
+
 
 @pytest.mark.django_db
 class TestClaimLandingResumesDraft:
@@ -2379,6 +2455,42 @@ class TestClaimLandingResumesDraft:
         response = client.get(_claim_url())
 
         assert response["Location"] == _page_url(app, 2)
+
+
+@pytest.mark.django_db
+class TestSignedInApplyWithAHeldApplication:
+    """Apply never starts a second application while the browser holds one."""
+
+    def test_a_mismatched_submitted_application_sends_apply_to_the_claim_landing(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {"email": "pat@example.com"})
+        _signed_in_with_verified(client, email="other@example.com")
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == _claim_url()
+        assert CourseApplication.objects.filter(course=course).count() == 1
+
+    def test_a_held_draft_is_claimed_and_resumed(self, client, mock_site_context):
+        from freedom_ls.form_engine.factories import FormProgressFactory
+
+        course, form = gated_course_with_form()
+        sitting = FormProgressFactory(user=None, form=form)
+        app = CourseApplicationFactory(
+            unclaimed=True, email="", course=course, form_progress=sitting
+        )
+        client.force_login(UserFactory())
+        _hold(client, app)
+
+        response = client.get(_apply_url(course), follow=True)
+
+        app.refresh_from_db()
+        assert app.user is not None
+        assert response.redirect_chain[-1][0] == _page_url(app, 1)
+        assert CourseApplication.objects.filter(course=course).count() == 1
 
 
 # ---------------------------------------------------------------------------
@@ -2485,6 +2597,36 @@ class TestAnonymousStartCap:
         _post_application(course, "b@example.com")
 
         assert CourseApplication.objects.count() == 1
+
+    def test_a_refused_email_post_does_not_count_against_the_cap(self):
+        course = CourseFactory()
+        browser = Client()
+        browser.post(_apply_url(course), {"email": "not-an-address"})
+
+        response = browser.post(_apply_url(course), {"email": "a@example.com"})
+
+        assert response.status_code == 302
+        assert CourseApplication.objects.count() == 1
+
+    def test_a_refused_page_one_post_does_not_count_against_the_cap(self):
+        course, form = gated_course_with_form()
+        browser = Client()
+        browser.post(_apply_url(course), _page_one_post(form, name=""))
+
+        response = browser.post(_apply_url(course), _page_one_post(form))
+
+        assert response.status_code == 302
+        assert CourseApplication.objects.count() == 1
+
+    def test_the_start_cap_refuses_a_valid_page_one_post(self):
+        course, form = gated_course_with_form()
+        Client().post(_apply_url(course), _page_one_post(form))
+
+        response = Client().post(_apply_url(course), _page_one_post(form))
+
+        assert response.status_code == 429
+        assert CourseApplication.objects.count() == 1
+        assert FormProgress.objects.count() == 1
 
 
 @pytest.mark.django_db

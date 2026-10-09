@@ -77,6 +77,16 @@ def test_is_ip_throttled_broken_cache_reports(rf, settings, mocker) -> None:
     sentry.capture_exception.assert_called_once()
 
 
+def test_is_ip_throttled_programming_error_propagates(rf, settings, mocker) -> None:
+    settings.TRUSTED_PROXY_IP_HEADER = None
+    mocker.patch(
+        "freedom_ls.accounts.throttling.cache.add", side_effect=TypeError("bad key")
+    )
+
+    with pytest.raises(TypeError):
+        _throttled(rf, limit=1)
+
+
 def test_is_ip_throttled_missing_proxy_header_propagates(rf, settings) -> None:
     settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
 

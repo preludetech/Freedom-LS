@@ -425,12 +425,14 @@ class TestUnclaimedAdmin:
         claimed = CourseApplicationFactory()
         unclaimed = CourseApplicationFactory(unclaimed=True)
 
-        def listed(value: str) -> set[int]:
-            response = staff_client.get(reverse(CHANGELIST), {"claimed": value})
+        def listed(user_is_empty: str) -> set[int]:
+            response = staff_client.get(
+                reverse(CHANGELIST), {"user__isempty": user_is_empty}
+            )
             return {row.pk for row in response.context["cl"].result_list}
 
-        assert listed("claimed") == {claimed.pk}
-        assert listed("unclaimed") == {unclaimed.pk}
+        assert listed("0") == {claimed.pk}
+        assert listed("1") == {unclaimed.pk}
 
     def test_search_by_typed_email(self, staff_client):
         wanted = CourseApplicationFactory(unclaimed=True, email="needle@example.com")

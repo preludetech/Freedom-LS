@@ -57,27 +57,6 @@ class CourseApplicationSubmittedFilter(admin.SimpleListFilter):
         return queryset
 
 
-class CourseApplicationClaimedFilter(admin.SimpleListFilter):
-    """Claimed (owned by an account) or unclaimed (only a typed email)."""
-
-    title = "claimed"
-    parameter_name = "claimed"
-
-    def lookups(
-        self, request: HttpRequest, model_admin: admin.ModelAdmin
-    ) -> list[tuple[str, str]]:
-        return [("claimed", "Claimed"), ("unclaimed", "Unclaimed")]
-
-    def queryset(
-        self, request: HttpRequest, queryset: QuerySet[CourseApplication]
-    ) -> QuerySet[CourseApplication]:
-        if self.value() == "claimed":
-            return queryset.filter(user__isnull=False)
-        if self.value() == "unclaimed":
-            return queryset.filter(user__isnull=True)
-        return queryset
-
-
 @admin.register(CourseApplication)
 class CourseApplicationAdmin(SiteAwareModelAdmin):
     """Find an application and read it. Nothing here writes.
@@ -103,7 +82,8 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ordering = ["-created_at"]
     list_filter = [
         CourseApplicationSubmittedFilter,
-        CourseApplicationClaimedFilter,
+        # Empty / Not empty on the owner: an unclaimed application has none.
+        ("user", admin.EmptyFieldListFilter),
         ("course", AutocompleteSelectFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
     ]

@@ -743,6 +743,19 @@ def test_upload_cap_fires_with_the_widget_error_state(
 
 
 @pytest.mark.django_db
+def test_upload_cap_message_names_the_configured_window(
+    mock_site_context, client, capped_uploads, settings
+):
+    settings.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS = 2 * 3600
+    form_progress, question = _held_empty_sitting(client)
+    _anonymous_upload(client, form_progress, question)
+
+    response = _anonymous_upload(client, form_progress, question)
+
+    assert "Try again in about 2\xa0hours." in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_upload_cap_zero_disables(mock_site_context, client, capped_uploads, settings):
     settings.FORM_ENGINE_ANONYMOUS_UPLOAD_LIMIT = 0
     form_progress, question = _held_empty_sitting(client)

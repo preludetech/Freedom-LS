@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import cast
 from urllib.parse import urlencode
 from uuid import UUID
@@ -29,6 +30,7 @@ from freedom_ls.course_applications.claims import (
     CLAIM_REPORT_SESSION_KEY,
     ClaimReport,
     claim_unclaimed_applications,
+    has_unverified_address,
     remember_unclaimed_application,
     unclaimed_application_for_course,
     unclaimed_application_ids,
@@ -123,6 +125,11 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     existing_app = get_application_for_course(user=user, course=course)
     if existing_app is not None:
         return redirect("course_applications:status", pk=existing_app.pk)
+    # A browser that still holds an unclaimed application to this course does
+    # not start a second one; the claim landing attaches the held one or says
+    # why it cannot.
+    if unclaimed_application_for_course(request, course) is not None:
+        return redirect("course_applications:claim")
 
     # Coming-soon courses are not enrollable — route to the detail page's
     # express-interest CTA instead of creating an application.
@@ -156,7 +163,11 @@ def _privacy_url(request: HttpRequest) -> str | None:
 
 
 def _start_cap_response(request: HttpRequest) -> HttpResponse | None:
-    """The 429 page when this address has started too many applications, else None."""
+    """The 429 page when this address has started too many applications, else None.
+
+    Called only where a row is about to be created, so a refused post costs
+    nothing against the cap.
+    """
     if not is_ip_throttled(
         request,
         namespace="course_applications.anonymous_start",
@@ -180,10 +191,6 @@ def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
         if held.form_progress is None:
             raise Http404
         return redirect(_resume_url(held, held.form_progress))
-    if request.method == "POST":
-        capped = _start_cap_response(request)
-        if capped is not None:
-            return capped
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     if course.application_form is not None:
@@ -191,9 +198,15 @@ def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
     return _apply_anonymous_no_form_course(request, course)
 
 
-def _session_days() -> int:
-    """How many whole days a browser session, and so an unclaimed draft, lasts."""
-    return int(settings.SESSION_COOKIE_AGE) // 86400
+def _session_lifetime() -> timedelta | None:
+    """How long a browser session, and so an unclaimed draft, lasts.
+
+    None when the session ends with the browser, so the page can say that
+    rather than name a span that does not apply.
+    """
+    if settings.SESSION_EXPIRE_AT_BROWSER_CLOSE:
+        return None
+    return timedelta(seconds=int(settings.SESSION_COOKIE_AGE))
 
 
 def _apply_anonymous_form_course(request: HttpRequest, course: Course) -> HttpResponse:
@@ -226,6 +239,11 @@ def _apply_anonymous_form_course(request: HttpRequest, course: Course) -> HttpRe
                 answers = form_progress.existing_answers_dict(current.questions)
                 prefetch_related_objects(list(answers.values()), "selected_options")
                 transaction.set_rollback(True)
+            else:
+                capped = _start_cap_response(request)
+                if capped is not None:
+                    transaction.set_rollback(True)
+                    return capped
         if submission.accepted:
             remember_anonymous_sitting(request, form_progress)
             remember_unclaimed_application(request, app)
@@ -245,7 +263,7 @@ def _apply_anonymous_form_course(request: HttpRequest, course: Course) -> HttpRe
         "return_to_check": False,
         "check_answers_url": "",
         "is_unclaimed": True,
-        "session_days": _session_days(),
+        "session_lifetime": _session_lifetime(),
     }
     return render_form_page(
         request, "course_applications/form_page.html", context, submission
@@ -257,6 +275,9 @@ def _apply_anonymous_no_form_course(
 ) -> HttpResponse:
     email_form = ApplicantEmailForm(request.POST or None)
     if request.method == "POST" and email_form.is_valid():
+        capped = _start_cap_response(request)
+        if capped is not None:
+            return capped
         app = CourseApplication.objects.create(
             course=course, email=email_form.cleaned_data["email"]
         )
@@ -344,7 +365,13 @@ def claim_landing(request: HttpRequest) -> HttpResponse:
         return render(
             request,
             "course_applications/claim_mismatch.html",
-            {"application": mismatched, "course": mismatched.course},
+            {
+                "application": mismatched,
+                "course": mismatched.course,
+                "address_unverified": has_unverified_address(
+                    cast(User, request.user), mismatched.email
+                ),
+            },
         )
     if len(claimed) == 1:
         return _landing_for(claimed[0])
@@ -478,9 +505,12 @@ def application_form_page(
         "check_answers_url": reverse(
             "course_applications:check_answers", kwargs={"pk": app.pk}
         ),
-        "saved_for_file": request.GET.get(SAVED_FOR_FILE) == "1",
+        # The form posts back to its own URL, marker included, so a refused
+        # re-submission must not repeat the "saved" notice.
+        "saved_for_file": request.method == "GET"
+        and request.GET.get(SAVED_FOR_FILE) == "1",
         "is_unclaimed": not app.is_claimed,
-        "session_days": _session_days(),
+        "session_lifetime": _session_lifetime(),
     }
     return render_form_page(
         request, "course_applications/form_page.html", context, submission
@@ -574,7 +604,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             "privacy_url": _privacy_url(request),
             "show_email_form": not app.is_claimed,
             "is_unclaimed": not app.is_claimed,
-            "session_days": _session_days(),
+            "session_lifetime": _session_lifetime(),
         },
         status=422 if refused else 200,
     )
