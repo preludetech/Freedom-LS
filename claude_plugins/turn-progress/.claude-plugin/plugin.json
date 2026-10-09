@@ -1,0 +1,6 @@
+{
+  "name": "turn-progress",
+  "version": "0.1.0",
+  "description": "Live view of the running turn: elapsed time, model steps, tools, shell commands, subagents and the task checklist",
+  "types": "./types/index.d.ts"
+}
