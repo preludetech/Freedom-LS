@@ -1,20 +1,31 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from botocore.config import Config
 
+from django.apps import apps
+from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.files.base import ContentFile
+from django.core.files.storage import storages
+from django.db.models import FileField
 
+from config.settings_base import MEDIA_ROOT as WORKING_TREE_MEDIA_ROOT
+from freedom_ls.content_engine.factories import FileFactory
 from freedom_ls.deployment.storage import (
     bucket_name_for,
     build_s3_media_storage,
     build_storages,
 )
-from freedom_ls.deployment.tests.conftest import (
+from freedom_ls.deployment.tests.helpers import (
     EXPECTED_ALIASES,
     PRODUCTION_ENV,
     set_env,
 )
+from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.reports.factories import GeneratedReportFactory
 
 
 def _build_options(**overrides: object) -> dict[str, object]:
@@ -460,3 +471,111 @@ def test_renamed_logo_alias_keeps_the_public_purpose_and_its_overwrite_rule(
     assert options["bucket_name"] == "fls-prod-public"
     assert options["file_overwrite"] is True
     assert options["object_parameters"] == {"CacheControl": "public, max-age=86400"}
+
+
+# No FileField or ImageField on a freedom_ls model may resolve to the
+# default storage alias — each one belongs to a dedicated media alias, and a
+# field that fell back to `default` would put learner uploads or reports in
+# the general-purpose bucket instead of the alias meant for them.
+
+
+def _freedom_ls_file_fields() -> list[tuple[str, FileField]]:
+    """Every FileField and ImageField declared on a freedom_ls model."""
+    fields: list[tuple[str, FileField]] = []
+    for model in apps.get_models():
+        if not model._meta.app_config.name.startswith("freedom_ls."):
+            continue
+        for field in model._meta.get_fields():
+            if isinstance(field, FileField):
+                label = f"{model._meta.app_label}.{model.__name__}.{field.name}"
+                fields.append((label, field))
+    return fields
+
+
+def test_no_file_field_resolves_to_default_storage() -> None:
+    fields = _freedom_ls_file_fields()
+
+    # Not an assertion about how many file fields there are: it only stops the
+    # one below passing vacuously if the discovery above ever finds nothing.
+    assert fields
+
+    on_default = [
+        label for label, field in fields if field.storage is storages["default"]
+    ]
+    assert on_default == []
+
+
+# Every FileSystemStorage-backed alias must follow MEDIA_ROOT into the
+# per-test tmp dir, never the working tree's real media/ directory.
+#
+# _isolate_media_root (freedom_ls/conftest.py) redirects MEDIA_ROOT for every
+# test, and each alias in settings.STORAGES tracks MEDIA_ROOT because it
+# declares no OPTIONS["location"]. These tests exercise the three model
+# fields that actually write through that mechanism.
+
+
+@pytest.mark.django_db
+def test_content_engine_file_saves_under_tmp_media_root(
+    tmp_path: Path, mock_site_context: object
+) -> None:
+    file_obj = FileFactory()
+
+    saved_path = Path(file_obj.file.path)
+
+    assert saved_path.is_relative_to(tmp_path)
+    assert not saved_path.is_relative_to(WORKING_TREE_MEDIA_ROOT)
+
+
+@pytest.mark.django_db
+def test_organisation_logo_saves_under_tmp_media_root(
+    tmp_path: Path, mock_site_context: object
+) -> None:
+    organisation = OrganisationFactory()
+    organisation.logo.save("logo.png", ContentFile(b"fake-logo-bytes"), save=True)
+
+    saved_path = Path(organisation.logo.path)
+
+    assert saved_path.is_relative_to(tmp_path)
+    assert not saved_path.is_relative_to(WORKING_TREE_MEDIA_ROOT)
+
+
+@pytest.mark.django_db
+def test_generated_report_file_saves_under_tmp_media_root(
+    tmp_path: Path, mock_site_context: object
+) -> None:
+    report = GeneratedReportFactory()
+    report.file.save("cohort-report.pdf", ContentFile(b"%PDF-1.4"), save=True)
+
+    saved_path = Path(report.file.path)
+
+    assert saved_path.is_relative_to(tmp_path)
+    assert not saved_path.is_relative_to(WORKING_TREE_MEDIA_ROOT)
+
+
+#: Every alias that writes to disk uses the stock backend; the one that overwrites
+#: differs only in an OPTIONS flag, so the location invariant below covers it too.
+FILESYSTEM_BACKENDS = {"django.core.files.storage.FileSystemStorage"}
+
+
+def test_storages_declares_all_seven_aliases() -> None:
+    assert set(settings.STORAGES.keys()) == EXPECTED_ALIASES
+
+
+def _filesystem_alias_locations() -> dict[str, object]:
+    """Every FileSystemStorage-backed alias mapped to its declared OPTIONS location."""
+    locations: dict[str, object] = {}
+    for alias, entry in settings.STORAGES.items():
+        if entry["BACKEND"] not in FILESYSTEM_BACKENDS:
+            continue
+        options = entry.get("OPTIONS")
+        locations[alias] = (
+            options.get("location") if isinstance(options, dict) else None
+        )
+    return locations
+
+
+def test_no_filesystem_backed_alias_pins_a_location() -> None:
+    locations = _filesystem_alias_locations()
+
+    assert locations
+    assert set(locations.values()) == {None}

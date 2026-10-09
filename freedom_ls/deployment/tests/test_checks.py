@@ -15,7 +15,7 @@ from freedom_ls.deployment.checks import (
     check_sentry_release_set_when_dsn_set,
 )
 from freedom_ls.deployment.storage import build_storages
-from freedom_ls.deployment.tests.conftest import LEGACY_SHARED_BUCKET_ENV, set_env
+from freedom_ls.deployment.tests.helpers import LEGACY_SHARED_BUCKET_ENV, set_env
 
 
 def test_check_is_registered_via_app_ready() -> None:

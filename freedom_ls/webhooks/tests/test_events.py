@@ -5,6 +5,10 @@ import pytest
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.base.webhook_event_types import (
+    FLS_WEBHOOK_EVENT_TYPES,
+    WEBHOOK_EVENT_TYPE_SAMPLES,
+)
 from freedom_ls.webhooks.factories import (
     WebhookEndpointFactory,
     WebhookEventFactory,
@@ -239,3 +243,29 @@ def test_signup_creates_user_registered_webhook_event(mock_site_context) -> None
     event = events[0]
     assert event.payload["user_email"] == "integration-test@example.com"
     assert event.site_id == mock_site_context.pk
+
+
+class TestWebhookEventTypeSamples:
+    def test_every_event_type_has_a_sample(self) -> None:
+        """Every event type in FLS_WEBHOOK_EVENT_TYPES must have a corresponding sample."""
+        event_type_keys = {et[0] for et in FLS_WEBHOOK_EVENT_TYPES}
+        sample_keys = set(WEBHOOK_EVENT_TYPE_SAMPLES.keys())
+        missing = event_type_keys - sample_keys
+        assert not missing, f"Event types missing samples: {missing}"
+
+    def test_no_extra_samples_without_event_types(self) -> None:
+        """Samples should not exist for event types that are not registered."""
+        event_type_keys = {et[0] for et in FLS_WEBHOOK_EVENT_TYPES}
+        sample_keys = set(WEBHOOK_EVENT_TYPE_SAMPLES.keys())
+        extra = sample_keys - event_type_keys
+        assert not extra, f"Samples without matching event types: {extra}"
+
+    @pytest.mark.parametrize(
+        ("event_type", "sample"), list(WEBHOOK_EVENT_TYPE_SAMPLES.items())
+    )
+    def test_samples_are_non_empty_dicts(
+        self, event_type: str, sample: dict[str, object]
+    ) -> None:
+        """Each sample must be a non-empty dict."""
+        assert isinstance(sample, dict), f"Sample for {event_type} is not a dict"
+        assert len(sample) > 0, f"Sample for {event_type} is empty"

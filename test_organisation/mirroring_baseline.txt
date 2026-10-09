@@ -21,10 +21,7 @@ freedom_ls/content_base/tests/test_schema_registry.py
 # content_engine
 
 # course_access
-freedom_ls/course_access/tests/test_access_override.py
-freedom_ls/course_access/tests/test_load_time_validation.py
 freedom_ls/course_access/tests/test_visibility_enforcing_backend.py
-freedom_ls/course_access/tests/test_visibility_override.py
 
 # course_applications
 freedom_ls/course_applications/tests/test_collection_safety.py
@@ -33,9 +30,6 @@ freedom_ls/course_applications/tests/test_collection_safety.py
 freedom_ls/course_interest/tests/test_admin_form.py
 
 # deployment
-freedom_ls/deployment/tests/test_file_field_storage.py
-freedom_ls/deployment/tests/test_media_isolation.py
-freedom_ls/deployment/tests/test_storage_settings.py
 
 # dev_tools
 freedom_ls/dev_tools/tests/test_create_demo_data.py
@@ -81,9 +75,6 @@ freedom_ls/qa_helpers/tests/test_qa_create_application_review_accounts.py
 freedom_ls/qa_helpers/tests/test_qa_create_report_fixtures.py
 
 # referral_tracking
-freedom_ls/referral_tracking/tests/test_exports.py
-freedom_ls/referral_tracking/tests/test_prune_referral_code_hits.py
-freedom_ls/referral_tracking/tests/test_signup.py
 
 # reports
 
@@ -98,6 +89,3 @@ freedom_ls/site_aware_models/tests/test_manager.py
 freedom_ls/tiktok_pixel/tests/test_tiktok_pixel_tags.py
 
 # webhooks
-freedom_ls/webhooks/tests/test_event_samples.py
-freedom_ls/webhooks/tests/test_integration.py
-freedom_ls/webhooks/tests/test_send_test_views.py

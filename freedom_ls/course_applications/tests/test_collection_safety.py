@@ -73,7 +73,11 @@ def test_appconfig_path_install_is_recognised_by_guards(
     # A guarded module outside course_applications/tests (so the conftest
     # collect_ignore_glob is not what keeps it — only its own app-installed guard).
     guarded_module = (
-        REPO_ROOT / "freedom_ls" / "course_access" / "tests" / "test_access_override.py"
+        REPO_ROOT
+        / "freedom_ls"
+        / "course_access"
+        / "tests"
+        / "test_visibility_enforcing_backend.py"
     )
     result = pytester.runpytest_subprocess(
         "--co",

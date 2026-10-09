@@ -6,7 +6,7 @@ import pytest
 
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpRequest, HttpResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
@@ -17,6 +17,12 @@ from freedom_ls.course_access.analytics_events import (
     record_course_self_registered,
     record_course_started,
     record_interest_expressed,
+)
+from freedom_ls.course_access.loader import get_course_access_backend
+from freedom_ls.tests.app_guards import app_not_installed
+
+APPLICATION_BACKEND = (
+    "freedom_ls.course_applications.backends.ApplicationCourseAccessBackend"
 )
 
 
@@ -94,3 +100,27 @@ def test_course_progress_event_names_the_registration_source(
             | {"registration_source": registration_source},
         }
     ]
+
+
+@pytest.mark.skipif(
+    app_not_installed("freedom_ls.course_applications"),
+    reason="course_applications not installed",
+)
+@pytest.mark.django_db
+class TestCourseEventParams:
+    def test_params_name_the_course_and_its_access_type(self, mock_site_context):
+        course = CourseFactory(
+            slug="intro-to-botany", access_config={"access_type": "application_gated"}
+        )
+        with override_settings(
+            COURSE_ACCESS_BACKEND=APPLICATION_BACKEND,
+            OVERRIDE_COURSE_ACCESS_TO_FREE=False,
+        ):
+            get_course_access_backend.cache_clear()
+            params = course_event_params(course)
+
+        assert params == {
+            "course_slug": "intro-to-botany",
+            "course_id": str(course.id),
+            "access_type": "application_gated",
+        }

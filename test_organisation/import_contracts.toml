@@ -475,7 +475,7 @@ source_modules = ["freedom_ls.webhooks.factories", "freedom_ls.webhooks.tests"]
 forbidden_modules = ["freedom_ls.accounts", "freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_base", "freedom_ls.content_engine", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.educator_interface", "freedom_ls.form_engine", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.icons", "freedom_ls.learner_interface", "freedom_ls.learner_management", "freedom_ls.learner_progress", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.organisations", "freedom_ls.panel_framework", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.tiktok_pixel", "freedom_ls.xapi_learning_record_store"]
 ignore_imports = [
     # allowance: the user-model app's factories
+    "freedom_ls.webhooks.tests.test_delivery -> freedom_ls.accounts.factories",
     "freedom_ls.webhooks.tests.test_events -> freedom_ls.accounts.factories",
-    "freedom_ls.webhooks.tests.test_integration -> freedom_ls.accounts.factories",
-    "freedom_ls.webhooks.tests.test_send_test_views -> freedom_ls.accounts.factories",
+    "freedom_ls.webhooks.tests.test_views -> freedom_ls.accounts.factories",
 ]
