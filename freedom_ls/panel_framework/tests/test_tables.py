@@ -12,7 +12,7 @@ import pytest
 from django.contrib.sites.models import Site
 from django.http import Http404, HttpResponse, QueryDict, StreamingHttpResponse
 from django.template.loader import render_to_string
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.utils import timezone
 
 from freedom_ls.panel_framework.context import PanelContext
@@ -334,6 +334,28 @@ def test_search_trigger_sets_replace_url(mock_site_context: Site) -> None:
         response["HX-Replace-Url"]
         == f"/test-panel/framework/{_panel_path(stub.pk)}?stub-q=row"
     )
+
+
+def test_pagination_links_in_a_sorted_region_response_keep_the_sort(
+    client: Client, mock_site_context: Site
+) -> None:
+    for i in range(StubDataTable.page_size + 2):
+        make_stub(name=f"row-{i:02d}")
+
+    response = client.get(
+        "/test-panel/framework/stubs/",
+        {"stubs-sort": "name"},
+        headers={"HX-Request": "true", "HX-Target": "stubs-table"},
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (page_two_link,) = [
+        link
+        for link in document.cssselect("#stubs-table a[href]")
+        if link.text_content().strip() == "2"
+    ]
+    assert "stubs-sort=name" in page_two_link.get("href")
+    assert "stubs-page=2" in page_two_link.get("href")
 
 
 def test_sort_link_resets_page(mock_site_context: Site) -> None:
