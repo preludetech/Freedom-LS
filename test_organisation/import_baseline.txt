@@ -42,24 +42,8 @@ freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.
 
 # educator_interface
 freedom_ls.educator_interface.tests.playwright.conftest -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_delete_modal -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_delete_modal -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_denied_experience -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_denied_experience -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_edit_modal -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_edit_modal -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_learner_quick_view -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_learner_quick_view -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_learners_mobile -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_learners_mobile -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_organisation_switcher -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_organisation_switcher -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_organisation_switcher_mobile -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_organisation_switcher_mobile -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_quick_view_layout -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_quick_view_layout -> freedom_ls.role_based_permissions.utils
-freedom_ls.educator_interface.tests.playwright.test_sidebar_sheet_dialog_binding -> freedom_ls.accounts.models
-freedom_ls.educator_interface.tests.playwright.test_sidebar_sheet_dialog_binding -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.playwright.test_cohort_management_flow -> freedom_ls.role_based_permissions.utils
+freedom_ls.educator_interface.tests.playwright.test_mobile_navigation_flow -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.invariants.test_config_authorisation -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.course_interest.factories
