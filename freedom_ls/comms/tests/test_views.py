@@ -175,6 +175,29 @@ class TestPanelContent:
 
         assert "3 unread" in response.content.decode()
 
+    def test_shows_the_registration_message_for_the_course(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        NotificationFactory(user=user, target__title="Playwright Fundamentals")
+        client = logged_in_client(user)
+
+        response = client.get(reverse(PANEL_URL_NAME))
+
+        assert (
+            "You&#x27;ve been registered for Playwright Fundamentals"
+            in response.content.decode()
+        )
+
+    def test_shows_nothing_yet_with_no_rows(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        client = logged_in_client(UserFactory())
+
+        response = client.get(reverse(PANEL_URL_NAME))
+
+        assert "Nothing yet." in response.content.decode()
+
 
 @pytest.mark.django_db
 class TestOpeningMarksSeen:

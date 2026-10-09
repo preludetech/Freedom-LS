@@ -13,7 +13,7 @@ Covers two toast defects:
   the most recently appended DOM child (the newest toast) rendered at
   the top of the column.
 
-Both tests inject toast markup directly into the live ARIA regions —
+The test injects toast markup directly into the live ARIA regions —
 this isolates the Alpine `toast` component's behaviour from any
 particular server flow and matches how a manual check would drive them.
 """
@@ -57,26 +57,25 @@ def _inject_toast(page: Page, region_id: str, toast_id: str, severity: str) -> N
 
 @pytest.mark.playwright
 @pytest.mark.django_db(transaction=True)
-def test_close_button_removes_toast_from_dom(logged_in_page: Page) -> None:
-    """Clicking the close button removes the toast element from the DOM.
+def test_toast_dismissal_and_stack_order(logged_in_page: Page) -> None:
+    """Dismissing a toast removes its root from the DOM, then new toasts stack newest-lowest.
 
-    The toast root used to stay attached
-    after the close-button click (only the button itself was removed),
-    which broke `_enforceCap`'s child-count accounting and leaked
-    window blur/focus listeners.
+    The toast root used to stay attached after the close-button click (only the
+    button itself was removed), which broke `_enforceCap`'s child-count
+    accounting and leaked window blur/focus listeners. The newest toast must
+    sit closest to the viewport edge: older toasts are pushed up, so the most
+    recently inserted toast has the largest y-coordinate of the stack.
     """
     page = logged_in_page
 
-    # Inject an error toast so it's persistent — no auto-dismiss timer
-    # racing with the click.
+    # An error toast is persistent: no auto-dismiss timer races the click.
     _inject_toast(
         page,
         region_id="toast-region-assertive",
-        toast_id="toast-bug1",
+        toast_id="toast-dismissed",
         severity="error",
     )
-
-    toast = page.locator("#toast-bug1")
+    toast = page.locator("#toast-dismissed")
     expect(toast).to_be_visible()
 
     toast.get_by_role("button", name="Dismiss notification").click()
@@ -86,19 +85,6 @@ def test_close_button_removes_toast_from_dom(logged_in_page: Page) -> None:
     # `to_have_count(0)` covers the timing.
     expect(toast).to_have_count(0)
 
-
-@pytest.mark.playwright
-@pytest.mark.django_db(transaction=True)
-def test_newest_toast_renders_at_bottom_of_stack(logged_in_page: Page) -> None:
-    """The newest toast must sit closest to the viewport edge.
-
-    Older toasts are pushed up, so the most recently inserted toast
-    should have the largest y-coordinate of the stack on a bottom-
-    anchored layout.
-    """
-    page = logged_in_page
-
-    # Three error toasts so they're all persistent and visible together.
     for i in (1, 2, 3):
         _inject_toast(
             page,
@@ -106,21 +92,14 @@ def test_newest_toast_renders_at_bottom_of_stack(logged_in_page: Page) -> None:
             toast_id=f"toast-stack-{i}",
             severity="error",
         )
+    for i in (1, 2, 3):
+        expect(page.locator(f"#toast-stack-{i}")).to_be_visible()
 
-    expect(page.locator("#toast-stack-1")).to_be_visible()
-    expect(page.locator("#toast-stack-2")).to_be_visible()
-    expect(page.locator("#toast-stack-3")).to_be_visible()
-
-    box1 = page.locator("#toast-stack-1").bounding_box()
-    box2 = page.locator("#toast-stack-2").bounding_box()
-    box3 = page.locator("#toast-stack-3").bounding_box()
-    assert box1 is not None
-    assert box2 is not None
-    assert box3 is not None
-
-    # Newest (#3) closest to viewport edge → largest y. Oldest (#1)
-    # pushed furthest up → smallest y.
-    assert box1["y"] < box2["y"] < box3["y"], (
-        f"Expected newest toast at bottom of stack; "
-        f"got y={box1['y']}, {box2['y']}, {box3['y']}"
+    boxes = [page.locator(f"#toast-stack-{i}").bounding_box() for i in (1, 2, 3)]
+    ys = []
+    for box in boxes:
+        assert box is not None
+        ys.append(box["y"])
+    assert ys[0] < ys[1] < ys[2], (
+        f"Expected newest toast at bottom of stack; got y={ys}"
     )

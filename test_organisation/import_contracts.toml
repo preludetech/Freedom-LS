@@ -59,7 +59,6 @@ forbidden_modules = ["freedom_ls.blog", "freedom_ls.content_base", "freedom_ls.c
 ignore_imports = [
     # baseline
     "freedom_ls.comms.factories -> freedom_ls.content_engine.factories",
-    "freedom_ls.comms.tests.playwright.test_notification_bell -> freedom_ls.learner_management.factories",
     "freedom_ls.comms.tests.test_bell_tag -> freedom_ls.content_engine.factories",
     "freedom_ls.comms.tests.test_bell_tag -> freedom_ls.learner_management.factories",
     "freedom_ls.comms.tests.test_bell_tag -> freedom_ls.organisations.factories",

@@ -18,7 +18,6 @@ freedom_ls.base.tests.components.test_header_bar_user_menu -> freedom_ls.role_ba
 
 # comms
 freedom_ls.comms.factories -> freedom_ls.content_engine.factories
-freedom_ls.comms.tests.playwright.test_notification_bell -> freedom_ls.learner_management.factories
 freedom_ls.comms.tests.test_bell_tag -> freedom_ls.content_engine.factories
 freedom_ls.comms.tests.test_bell_tag -> freedom_ls.learner_management.factories
 freedom_ls.comms.tests.test_bell_tag -> freedom_ls.organisations.factories
