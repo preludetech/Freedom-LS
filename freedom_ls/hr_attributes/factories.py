@@ -14,31 +14,33 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
 
 
-class JobTitleFactory(SiteAwareFactory):
+class ListEntryFactory(SiteAwareFactory):
+    class Meta:
+        abstract = True
+
+    organisation = factory.SubFactory(OrganisationFactory)
+    is_active = True
+
+
+class JobTitleFactory(ListEntryFactory):
     class Meta:
         model = JobTitle
 
-    organisation = factory.SubFactory(OrganisationFactory)
     name = factory.Sequence(lambda n: f"Job title {n}")
-    is_active = True
 
 
-class DepartmentFactory(SiteAwareFactory):
+class DepartmentFactory(ListEntryFactory):
     class Meta:
         model = Department
 
-    organisation = factory.SubFactory(OrganisationFactory)
     name = factory.Sequence(lambda n: f"Department {n}")
-    is_active = True
 
 
-class LocationFactory(SiteAwareFactory):
+class LocationFactory(ListEntryFactory):
     class Meta:
         model = Location
 
-    organisation = factory.SubFactory(OrganisationFactory)
     name = factory.Sequence(lambda n: f"Location {n}")
-    is_active = True
 
 
 class LearnerHRAttributesFactory(SiteAwareFactory):

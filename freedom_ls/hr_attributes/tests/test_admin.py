@@ -7,16 +7,16 @@ import pytest
 from django.contrib import admin
 from django.test import RequestFactory
 from django.urls import reverse
-from django.urls.resolvers import ResolverMatch
 
 from freedom_ls.learner_management.factories import LearnerFactory
+from freedom_ls.learner_management.models import Learner
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.hr_attributes"):
     pytest.skip("hr_attributes not installed", allow_module_level=True)
 
-from freedom_ls.hr_attributes.admin import LearnerHRAttributesInline, _picker_scope
+from freedom_ls.hr_attributes.admin import LearnerHRAttributesInline
 from freedom_ls.hr_attributes.factories import (
     DepartmentFactory,
     JobTitleFactory,
@@ -191,6 +191,51 @@ def test_add_form_with_a_case_variant_duplicate_creates_no_row(
     # Assert
     assert response.status_code == 200
     assert type(existing).objects.count() == 1
+    assert "An entry with this name already exists" in response.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("factory_class", "model_name", "field"), CASES)
+def test_change_page_keeps_the_organisation_of_an_existing_entry(
+    staff_client, factory_class, model_name, field
+):
+    # Arrange
+    entry = factory_class(name="Finance")
+    original_organisation = entry.organisation
+    LearnerHRAttributesFactory(**{field: entry})
+    other_organisation = OrganisationFactory()
+
+    # Act
+    response = staff_client.post(
+        _url(model_name, "change", entry.pk),
+        {"organisation": other_organisation.pk, "name": "Finance", "is_active": "on"},
+    )
+
+    # Assert
+    assert response.status_code == 302
+    entry.refresh_from_db()
+    assert entry.organisation == original_organisation
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(("factory_class", "model_name", "field"), CASES)
+def test_change_page_refuses_renaming_to_a_case_variant_duplicate(
+    staff_client, factory_class, model_name, field
+):
+    # Arrange
+    existing = factory_class(name="Finance")
+    entry = factory_class(organisation=existing.organisation, name="Operations")
+
+    # Act
+    response = staff_client.post(
+        _url(model_name, "change", entry.pk),
+        {"name": "FINANCE", "is_active": "on"},
+    )
+
+    # Assert
+    assert response.status_code == 200
+    entry.refresh_from_db()
+    assert entry.name == "Operations"
     assert "An entry with this name already exists" in response.content.decode()
 
 
@@ -405,34 +450,45 @@ def test_moving_a_learner_with_the_entries_cleared_succeeds(staff_client):
     assert attributes.location is None
 
 
-@pytest.mark.parametrize("learner_id", ["not-a-uuid", None, ""])
-def test_picker_scope_is_none_without_a_valid_learner_id(learner_id):
-    # Act / Assert
-    assert _picker_scope(learner_id, "job_title") is None
+def _superuser_request(learner):
+    """A request get_formset can check permissions against without a query."""
+    request = RequestFactory().get("/")
+    request.user = learner.user
+    request.user.is_superuser = True
+    return request
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("object_id", ["not-a-uuid", None])
-def test_the_picker_offers_nothing_without_a_valid_learner_id(
-    mock_site_context, object_id
-):
+def test_the_picker_offers_nothing_on_the_add_page(mock_site_context):
     # Arrange
     JobTitleFactory()
-    request = RequestFactory().get("/")
-    request.resolver_match = ResolverMatch(
-        func=lambda *args, **kwargs: None,
-        args=(),
-        kwargs={} if object_id is None else {"object_id": object_id},
-    )
-    inline = LearnerHRAttributesInline(LearnerHRAttributes, admin.site)
-    db_field = LearnerHRAttributes._meta.get_field("job_title")
+    inline = LearnerHRAttributesInline(Learner, admin.site)
 
     # Act
-    formfield = inline.formfield_for_foreignkey(db_field, request)
+    formset_class = inline.get_formset(_superuser_request(LearnerFactory()), None)
 
     # Assert
-    assert formfield is not None
-    assert list(formfield.queryset) == []
+    assert list(formset_class.form.base_fields["job_title"].queryset) == []
+
+
+@pytest.mark.django_db
+def test_the_three_pickers_are_scoped_with_one_query(
+    mock_site_context, django_assert_num_queries
+):
+    # Arrange
+    attributes = LearnerHRAttributesFactory()
+    inline = LearnerHRAttributesInline(Learner, admin.site)
+    request = _superuser_request(attributes.learner)
+
+    # Act
+    with django_assert_num_queries(1):
+        formset_class = inline.get_formset(request, attributes.learner)
+
+    # Assert
+    fields = formset_class.form.base_fields
+    assert list(fields["job_title"].queryset) == [attributes.job_title]
+    assert list(fields["department"].queryset) == [attributes.department]
+    assert list(fields["location"].queryset) == [attributes.location]
 
 
 ORGANISATION_CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"

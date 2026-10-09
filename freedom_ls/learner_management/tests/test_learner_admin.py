@@ -15,7 +15,7 @@ from django.core.paginator import UnorderedObjectListWarning
 from django.db.models import Model, QuerySet
 from django.forms import ModelChoiceField
 from django.http import HttpRequest
-from django.test import RequestFactory
+from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.urls.resolvers import ResolverMatch
 
@@ -580,26 +580,24 @@ class TestDeadlineOverrideChangePageWithAnOutOfCohortLearner:
 ORGANISATION_CHANGE_URL_NAME = "admin:freedom_ls_organisations_organisation_change"
 
 
-def _organisation_payload(organisation: Organisation, **extra: str) -> dict[str, str]:
-    """A change-page submission that leaves both contributed formsets empty."""
-    payload = {
-        "name": organisation.name,
-        "cohort_set-TOTAL_FORMS": "0",
-        "cohort_set-INITIAL_FORMS": "0",
-        "cohort_set-MIN_NUM_FORMS": "0",
-        "cohort_set-MAX_NUM_FORMS": "1000",
-        "learner_set-TOTAL_FORMS": "0",
-        "learner_set-INITIAL_FORMS": "0",
-        "learner_set-MIN_NUM_FORMS": "0",
-        "learner_set-MAX_NUM_FORMS": "0",
-        # Inlines other installed apps add to this page need their management
-        # data too, or the whole submission is refused. Keys for an app that is
-        # not installed are ignored.
-        "hr_settings-TOTAL_FORMS": "0",
-        "hr_settings-INITIAL_FORMS": "0",
-        "hr_settings-MIN_NUM_FORMS": "0",
-        "hr_settings-MAX_NUM_FORMS": "1",
-    }
+def _organisation_payload(
+    staff_client: Client, organisation: Organisation, **extra: str
+) -> dict[str, str]:
+    """A change-page submission that leaves every inline formset empty.
+
+    The prefixes come from the page itself, so inlines other installed apps
+    add to it are covered without naming them here.
+    """
+    response = staff_client.get(
+        reverse(ORGANISATION_CHANGE_URL_NAME, args=[organisation.pk])
+    )
+    payload = {"name": organisation.name}
+    for inline in response.context["inline_admin_formsets"]:
+        prefix = inline.formset.prefix
+        payload[f"{prefix}-TOTAL_FORMS"] = "0"
+        payload[f"{prefix}-INITIAL_FORMS"] = "0"
+        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
+        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
     payload.update(extra)
     return payload
 
@@ -615,6 +613,7 @@ class TestOrganisationCohortInline:
         response = staff_client.post(
             url,
             _organisation_payload(
+                staff_client,
                 organisation,
                 **{
                     "cohort_set-TOTAL_FORMS": "1",

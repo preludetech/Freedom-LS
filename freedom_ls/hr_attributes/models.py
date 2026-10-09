@@ -6,7 +6,7 @@ is empty, lie in the future, or fall before another, because rehires and
 acquisitions produce real data any ordering rule would reject.
 """
 
-from typing import Self, cast
+from typing import TYPE_CHECKING, Self, cast
 from uuid import UUID
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -42,7 +42,46 @@ class ListEntryManager(SiteAwareManager):
         )
 
 
-class JobTitle(SiteAwareModel):
+def _unique_name_per_organisation(name: str) -> models.UniqueConstraint:
+    # Trimmed and case-folded, so "Finance" and " finance " are one entry. Trim
+    # removes spaces only; the form and clean() strip all surrounding
+    # whitespace before a name gets this far.
+    return models.UniqueConstraint(
+        Lower(Trim("name")), "site", "organisation", name=name
+    )
+
+
+if TYPE_CHECKING:
+    # The type checker is handed Model as the base so super().clean()
+    # resolves. At runtime the base is object, and the concrete model's MRO
+    # carries super() on to Model.
+    _ListEntryBase = models.Model
+else:
+    _ListEntryBase = object
+
+
+class ListEntryMixin(_ListEntryBase):
+    """Behaviour shared by JobTitle, Department and Location.
+
+    A plain class rather than an abstract model: each list declares its own
+    fields, and this only supplies the methods that read them.
+    """
+
+    name: str
+    is_active: bool
+
+    def clean(self) -> None:
+        super().clean()
+        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
+        self.name = self.name.strip()
+
+    def __str__(self) -> str:
+        # The suffix is what tells a reader of the learner page that a held
+        # entry has since been deactivated.
+        return self.name if self.is_active else f"{self.name} (inactive)"
+
+
+class JobTitle(ListEntryMixin, SiteAwareModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
         on_delete=models.PROTECT,
@@ -58,29 +97,11 @@ class JobTitle(SiteAwareModel):
     class Meta:
         ordering = ["name"]
         constraints = [
-            # Trimmed and case-folded, so "Finance" and " finance " are one
-            # entry. Trim removes spaces only; the form and clean() strip all
-            # surrounding whitespace before a name gets this far.
-            models.UniqueConstraint(
-                Lower(Trim("name")),
-                "site",
-                "organisation",
-                name="unique_job_title_name_per_organisation",
-            )
+            _unique_name_per_organisation("unique_job_title_name_per_organisation")
         ]
 
-    def clean(self) -> None:
-        super().clean()
-        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
-        self.name = self.name.strip()
 
-    def __str__(self) -> str:
-        # The suffix is what tells a reader of the learner page that a held
-        # entry has since been deactivated.
-        return self.name if self.is_active else f"{self.name} (inactive)"
-
-
-class Department(SiteAwareModel):
+class Department(ListEntryMixin, SiteAwareModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
         on_delete=models.PROTECT,
@@ -96,29 +117,11 @@ class Department(SiteAwareModel):
     class Meta:
         ordering = ["name"]
         constraints = [
-            # Trimmed and case-folded, so "Finance" and " finance " are one
-            # entry. Trim removes spaces only; the form and clean() strip all
-            # surrounding whitespace before a name gets this far.
-            models.UniqueConstraint(
-                Lower(Trim("name")),
-                "site",
-                "organisation",
-                name="unique_department_name_per_organisation",
-            )
+            _unique_name_per_organisation("unique_department_name_per_organisation")
         ]
 
-    def clean(self) -> None:
-        super().clean()
-        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
-        self.name = self.name.strip()
 
-    def __str__(self) -> str:
-        # The suffix is what tells a reader of the learner page that a held
-        # entry has since been deactivated.
-        return self.name if self.is_active else f"{self.name} (inactive)"
-
-
-class Location(SiteAwareModel):
+class Location(ListEntryMixin, SiteAwareModel):
     organisation = models.ForeignKey(
         "freedom_ls_organisations.Organisation",
         on_delete=models.PROTECT,
@@ -134,26 +137,8 @@ class Location(SiteAwareModel):
     class Meta:
         ordering = ["name"]
         constraints = [
-            # Trimmed and case-folded, so "Finance" and " finance " are one
-            # entry. Trim removes spaces only; the form and clean() strip all
-            # surrounding whitespace before a name gets this far.
-            models.UniqueConstraint(
-                Lower(Trim("name")),
-                "site",
-                "organisation",
-                name="unique_location_name_per_organisation",
-            )
+            _unique_name_per_organisation("unique_location_name_per_organisation")
         ]
-
-    def clean(self) -> None:
-        super().clean()
-        # Surrounding whitespace goes; the case stays as typed, so "IT" is not "It".
-        self.name = self.name.strip()
-
-    def __str__(self) -> str:
-        # The suffix is what tells a reader of the learner page that a held
-        # entry has since been deactivated.
-        return self.name if self.is_active else f"{self.name} (inactive)"
 
 
 class LearnerHRAttributes(SiteAwareModel):

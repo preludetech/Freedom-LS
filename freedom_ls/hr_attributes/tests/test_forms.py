@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from django.forms import modelform_factory
+
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
@@ -15,12 +17,21 @@ from freedom_ls.hr_attributes.factories import (
     JobTitleFactory,
     LocationFactory,
 )
-from freedom_ls.hr_attributes.forms import DepartmentForm, JobTitleForm, LocationForm
+from freedom_ls.hr_attributes.forms import ListEntryForm
+
+
+def _form_class(factory_class):
+    return modelform_factory(
+        factory_class._meta.model,
+        form=ListEntryForm,
+        fields=["organisation", "name", "is_active"],
+    )
+
 
 CASES = [
-    (JobTitleFactory, JobTitleForm),
-    (DepartmentFactory, DepartmentForm),
-    (LocationFactory, LocationForm),
+    (JobTitleFactory, _form_class(JobTitleFactory)),
+    (DepartmentFactory, _form_class(DepartmentFactory)),
+    (LocationFactory, _form_class(LocationFactory)),
 ]
 DUPLICATE_MESSAGE = "An entry with this name already exists in this organisation."
 

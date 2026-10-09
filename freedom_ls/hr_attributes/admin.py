@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import cast
-from uuid import UUID
 
 from unfold.admin import StackedInline
 
@@ -14,7 +13,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils.translation import ngettext
 
-from freedom_ls.hr_attributes.forms import DepartmentForm, JobTitleForm, LocationForm
+from freedom_ls.hr_attributes.forms import ListEntryForm
 from freedom_ls.hr_attributes.models import (
     Department,
     JobTitle,
@@ -28,9 +27,13 @@ from freedom_ls.organisations.admin import OrganisationAdmin
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
 
 
+@admin.register(JobTitle, Department, Location)
 class ListEntryAdmin(SiteAwareModelAdmin):
-    """What the three list admins share. Each registered subclass names its form."""
+    """One admin for all three lists; ModelAdmin builds each list's form from ListEntryForm."""
 
+    form = ListEntryForm
+    # organisation first, so ListEntryForm.clean_name can read it.
+    fields = ["organisation", "name", "is_active"]
     list_display = ["name", "organisation", "is_active"]
     list_filter = ["organisation", "is_active"]
     search_fields = ["name"]
@@ -39,6 +42,17 @@ class ListEntryAdmin(SiteAwareModelAdmin):
     # Stock delete stays. PROTECT on the learner side makes it refuse an entry
     # in use and allow an unused one.
     actions = ["deactivate_selected", "activate_selected"]
+
+    def get_readonly_fields(
+        self, request: HttpRequest, obj: JobTitle | Department | Location | None = None
+    ) -> list[str] | tuple[str, ...]:
+        # Learners may hold the entry, and LearnerHRAttributes.clean() only
+        # holds an entry to the learner's organisation when that row is saved.
+        # An entry made in the wrong organisation is deleted and made again.
+        readonly = cast(
+            "list[str] | tuple[str, ...]", super().get_readonly_fields(request, obj)
+        )
+        return readonly if obj is None else [*readonly, "organisation"]
 
     @admin.action(description="Deactivate selected entries")
     def deactivate_selected(
@@ -71,21 +85,6 @@ class ListEntryAdmin(SiteAwareModelAdmin):
         )
 
 
-@admin.register(JobTitle)
-class JobTitleAdmin(ListEntryAdmin):
-    form = JobTitleForm
-
-
-@admin.register(Department)
-class DepartmentAdmin(ListEntryAdmin):
-    form = DepartmentForm
-
-
-@admin.register(Location)
-class LocationAdmin(ListEntryAdmin):
-    form = LocationForm
-
-
 #: Each picker's model, so the narrowed queryset is built from the field name alone.
 _PICKER_MODELS: dict[str, type[JobTitle | Department | Location]] = {
     "job_title": JobTitle,
@@ -94,26 +93,36 @@ _PICKER_MODELS: dict[str, type[JobTitle | Department | Location]] = {
 }
 
 
-def _picker_scope(
-    learner_id: str | None, field_name: str
-) -> tuple[UUID, UUID | None] | None:
-    """The edited learner's organisation and the entry they hold in ``field_name``.
+def _picker_querysets(
+    learner: Learner | None,
+) -> dict[str, QuerySet[JobTitle | Department | Location]]:
+    """What each picker offers the learner being edited, from one query.
 
-    None when the id is absent or not a UUID, which is the add page or a
-    hand-edited URL; the picker then offers nothing, and the change view 404s
-    moments later anyway. One query covers both values.
+    Each queryset is both what the plain select offers and what validates the
+    entry that comes back. It is scoped to the learner's stored organisation,
+    read afresh because the posted form has already changed the instance, so a
+    learner moved to another organisation while holding this one's entries is
+    refused by the model until those entries are cleared. limit_choices_to
+    would also reject a deactivated entry the learner already holds, which
+    for_picker keeps. The add page has no learner and offers nothing.
     """
-    if not learner_id:
-        return None
-    try:
-        pk = UUID(learner_id)
-    except ValueError:
-        return None
-    return (
-        Learner.objects.filter(pk=pk)
-        .values_list("organisation_id", f"hr_attributes__{field_name}_id")
+    stored = (
+        Learner.objects.filter(pk=learner.pk)
+        .values_list(
+            "organisation_id",
+            *(f"hr_attributes__{field_name}_id" for field_name in _PICKER_MODELS),
+        )
         .first()
+        if learner is not None
+        else None
     )
+    if stored is None:
+        return {name: model.objects.none() for name, model in _PICKER_MODELS.items()}
+    organisation_id, *held_pks = stored
+    return {
+        name: model.objects.for_picker(organisation_id, held_pk)
+        for (name, model), held_pk in zip(_PICKER_MODELS.items(), held_pks, strict=True)
+    }
 
 
 class LearnerHRAttributesInline(StackedInline):
@@ -130,29 +139,30 @@ class LearnerHRAttributesInline(StackedInline):
     max_num = 1
     can_delete = False
 
+    # Set by get_formset for the learner being edited, before the form's
+    # fields are built. The admin makes a fresh inline per request.
+    _picker_querysets: dict[str, QuerySet[JobTitle | Department | Location]]
+
+    def get_formset(
+        self,
+        request: HttpRequest,
+        obj: Learner | None = None,
+        **kwargs: object,
+    ) -> type[forms.BaseInlineFormSet]:
+        self._picker_querysets = _picker_querysets(obj)
+        return cast(
+            "type[forms.BaseInlineFormSet]",
+            super().get_formset(request, obj, **kwargs),
+        )
+
     def formfield_for_foreignkey(
         self,
         db_field: models.ForeignKey,
         request: HttpRequest,
         **kwargs: object,
     ) -> forms.ModelChoiceField | None:
-        # This queryset is both what the plain select offers and what validates
-        # the entry that comes back. It is scoped to the learner's stored
-        # organisation, not the one posted with the page, so a learner moved to
-        # another organisation while holding this one's entries is refused by
-        # the model until those entries are cleared. limit_choices_to would
-        # also reject a deactivated entry the learner already holds, which
-        # for_picker keeps.
-        if db_field.name in _PICKER_MODELS and request.resolver_match:
-            model = _PICKER_MODELS[db_field.name]
-            scope = _picker_scope(
-                request.resolver_match.kwargs.get("object_id"), db_field.name
-            )
-            if scope is None:
-                kwargs["queryset"] = model.objects.none()
-            else:
-                organisation_id, held_pk = scope
-                kwargs["queryset"] = model.objects.for_picker(organisation_id, held_pk)
+        if db_field.name in _PICKER_MODELS:
+            kwargs["queryset"] = self._picker_querysets[db_field.name]
         return cast(
             "forms.ModelChoiceField | None",
             super().formfield_for_foreignkey(db_field, request, **kwargs),

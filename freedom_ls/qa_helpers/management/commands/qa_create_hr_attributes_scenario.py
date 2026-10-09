@@ -28,7 +28,8 @@ from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
 from django.db import transaction
-from django.db.models import ProtectedError
+from django.db.models import ProtectedError, Value
+from django.db.models.functions import Lower, Trim
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
@@ -97,9 +98,15 @@ def _ensure_list(
     """Bring one organisation's list to exactly ``wanted``; return entries by name."""
     entries: dict[str, ListEntry] = {}
     for name, is_active in wanted:
-        entry = model._base_manager.filter(
-            site=site, organisation=organisation, name__iexact=name.strip()
-        ).first()
+        # Matched the way the unique constraint compares names, so an entry
+        # stored with surrounding spaces is found rather than clashed with.
+        entry = cast(
+            "ListEntry | None",
+            model._base_manager.filter(site=site, organisation=organisation)
+            .alias(normalised_name=Lower(Trim("name")))
+            .filter(normalised_name=Lower(Value(name.strip())))
+            .first(),
+        )
         if entry is None:
             entry = cast(
                 ListEntry,
