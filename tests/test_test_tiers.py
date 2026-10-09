@@ -21,12 +21,8 @@ ALLOWED = frozenset(
     {
         "claude_plugins/django-stack/resources/test_tiers.md",
         "claude_plugins/fls-dev/skills/testing/SKILL.md",
-        "claude_plugins/fls-dev/resources/testing.md",
         "claude_plugins/fls-dev/resources/playwright-testing.md",
-        "claude_plugins/fls-dev/skills/playwright-tests/SKILL.md",
         "claude_plugins/fls-dev/commands/concrete/update_fls.md",
-        # The triage gate describes the full tier as the ordinary pytest suite.
-        "claude_plugins/fls-dev/commands/do_qa.md",
         # The fallback for a project with no tier definition.
         "claude_plugins/sdd/commands/protected/run_test_tier.md",
     }
