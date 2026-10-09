@@ -1,6 +1,6 @@
 ---
 name: testing
-description: FreedomLS-specific extension of the ds:testing skill. Adds the FLS instances of the test organisation and hygiene rules (mirroring, dependency direction, and the conftest/fixture/factory layering), the site-aware mock_site_context fixture rule, the fls_internal/playwright/ci_only/weasyprint marker taxonomy for downstream distribution, and FLS collection-safety. Use alongside ds:testing when writing pytest tests in the FreedomLS repo.
+description: FreedomLS test organisation, site-aware fixtures and marker taxonomy. Use alongside ds:testing when writing, moving or marking a test in the FreedomLS repo.
 allowed-tools: Read, Grep, Glob
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Glob
 
 Read `Skill(ds:testing)` first for the generic pytest/TDD/AAA methodology. This overlay adds **only** the FreedomLS specifics; it does not repeat the generic body.
 
-For full FLS patterns and worked de-branding examples, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (the FLS addendum to the `ds` testing resource) and `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
+For full FLS patterns and the de-branding techniques, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (the FLS addendum to the `ds` testing resource) and `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
 
 ## Test organisation and hygiene
 
@@ -18,17 +18,15 @@ FreedomLS tests live at `freedom_ls/<app_name>/tests/test_<module>.py`.
 
 ### Mirroring
 
-No FLS app mirrors a subpackage yet: templatetag and management-command tests sit flat in `tests/` until they are moved.
-
 Test-only helper and URLconf modules that sit correctly beside their tests: `panel_framework/tests/root_urls.py`, `panel_framework/tests/stub_panels.py`, `health/tests/root_urls.py`, `reports/tests/gather_input_builders.py` and `reports/tests/report_data_builders.py`.
 
 ### Cross-cutting tests
 
-`form_engine/tests/test_import_independence.py`, and `content_engine`'s `test_demo_content_*.py` and `test_katex_vendor_assets.py`, are not yet grouped in a subpackage.
-
-To exempt a cross-cutting subpackage once its files are grouped: add `<app>/tests/<subpackage>/  # <reason>` to `mirroring_exemptions.txt`, then delete each of those files' lines from `mirroring_baseline.txt`. The exemption is permanent; it isn't debt to pay off later.
+A test that exercises no single module lives in a subpackage of `<app>/tests/` (`components/`, `invariants/`, `demo_content/`). `test_organisation/mirroring_exemptions.txt` lists the current exemptions with a reason for each. To add one, append `<app>/tests/<subpackage>/  # <reason>` to that file and delete the covered files' lines from `mirroring_baseline.txt`. The exemption is permanent; it isn't debt to pay off later. Every new test directory needs an empty `__init__.py`, because pytest runs in `prepend` import mode and same-named modules in different directories collide without it.
 
 ### Named exceptions
+
+`learner_interface/tests/views/`: page-grouped tests of the one `learner_interface/views.py`, one module per page it renders. The exemption line gives the reason.
 
 `contrib/conformance/`: its root-level `test_*.py` files are both collected tests and importable probes, imported under aliases by `contrib/conformance/tests/test_conformance_meta.py`. It looks like a mirroring violation but is deliberate; the module docstrings say why.
 
@@ -48,15 +46,15 @@ FLS's baselines and exemptions live in `test_organisation/`: `declared_edges.tom
 
 Use `guardian.shortcuts.assign_perm(codename, user, obj)`, not `role_based_permissions`' `assign_object_role`. The role layer is transparent at check time: its README says the role system manages what permissions a user should have, and guardian enforces them.
 
-`reports`, `educator_interface`, `learner_management`, `base` and `organisations` check only `has_perm` and `get_objects_for_user`, so an `assign_object_role` call in their tests is a stand-in for a guardian grant. `reports/tests/test_admin.py` already uses `assign_perm` next to one.
+Where access resolves through role assignments, `assign_perm` grants nothing and the test uses `assign_object_role`. `learner_management.queries.organisations_accessible_to` is the case: it reads role assignments through `roles_granting`, and every `educator_interface` view and the base header-bar menu go through it.
 
-Whether a role maps to the right permissions is `role_based_permissions`' own concern, tested in its own suite.
+`reports/tests/test_admin.py` uses `assign_perm` next to an `assign_object_role` call. Whether a role maps to the right permissions is `role_based_permissions`' own concern, tested in its own suite.
 
 ### `conftest.py` vs. plain module
 
 Pattern to follow: `accounts/tests/conftest.py`, two fixtures plus the private `_seed_default_legal_docs`.
 
-Pattern to avoid: `learner_interface/tests/conftest.py`, plain functions for manual import plus a `reverse_url` re-export from the root conftest. `panel_framework/tests/conftest.py` has the same problem: test files import its stub models, its `_make_stub*` helpers and the public `make_staff_user` by hand.
+A helper that tests import by hand goes in `helpers.py` beside the tests: `content_engine/tests/helpers.py`, `learner_progress/tests/helpers.py` and `panel_framework/tests/helpers.py` are examples. `panel_framework/tests/stub_models.py` holds that foundational app's stub models. Shared modules for the whole suite live in `freedom_ls/tests/`: `site_context.py` (`site_context`, `drop_ambient_request`), `demo_content_fixtures.py` (module-scoped fixtures that import the shipped `demo_content/` tree) and `app_guards.py`.
 
 ### Fixture placement
 
@@ -64,7 +62,7 @@ Pattern to avoid: `learner_interface/tests/conftest.py`, plain functions for man
 
 ### Stub-model technique
 
-The FLS instance is `panel_framework/tests/conftest.py`: `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), with `_make_stub`, `_make_stub_child` and `_make_stub_protected_child`. Copy its fixtures, `_panel_test_tables` and `_panel_test_permissions`. Don't copy where it puts the models and helpers. It predates the conftest rule, so they sit in `conftest.py` and test files import them by hand. New stub models go in a plain `stub_models.py`, and moving `panel_framework`'s ones there is test-code cleanup for a later spec.
+The FLS instance is `panel_framework/tests/`. `stub_models.py` holds `StubModel`, `StubChild`, `StubProtectedChild` and `StubGrandchild` (whose docstring says why it exists), `helpers.py` their `_make_stub*` constructors, and `conftest.py` the fixtures that create their tables. A new foundational app's stub models go in a plain `stub_models.py` the same way.
 
 `panel_framework/tests/stub_panels.py` shows the double-import hazard. Django's URL resolver loads it under a different module path from the one pytest gives the conftest, so it fetches `StubModel` with `apps.get_model` at call time. Its docstring explains why.
 
@@ -72,33 +70,7 @@ The FLS instance is `panel_framework/tests/conftest.py`: `StubModel`, `StubChild
 
 ### Fixture scope and idempotent reset
 
-The FLS worked example is `panel_framework/tests/conftest.py`, quoted near-verbatim below and trimmed to the two fixture signatures, the unblock/schema-editor lines and `_panel_test_permissions`'s docstring:
-
-```python
-@pytest.fixture(autouse=True, scope="session")
-def _panel_test_tables(django_db_setup, django_db_blocker):
-    """Create stub tables once per test session."""
-    ...
-    with django_db_blocker.unblock(), connection.schema_editor() as editor:
-        editor.create_model(StubModel)
-        ...
-    yield
-    with django_db_blocker.unblock(), connection.schema_editor() as editor:
-        ...
-
-
-@pytest.fixture(autouse=True)
-def _panel_test_permissions(db):
-    """Ensure stub-model ContentType and Permissions exist before every test.
-
-    Function-scoped because tests using ``@pytest.mark.django_db(transaction=True)``
-    elsewhere in the suite flush the DB between tests, wiping any session-scoped
-    setup. The ContentType in-memory cache must also be cleared so that
-    ``get_for_model(StubModel)`` does not return a stale PK from a prior
-    rolled-back transaction. Idempotent via ``get_or_create``.
-    """
-    ...
-```
+The FLS worked example is `_panel_test_tables` in `panel_framework/tests/conftest.py`: session-scoped table creation that unblocks the database only around the schema work on either side of the `yield`. Holding the unblock open across the `yield` would let an unmarked test write rows outside a transaction.
 
 ### The thin-wrapper rule
 
@@ -106,7 +78,7 @@ Root-conftest fixtures that are correctly not thin: `course_with_topic` (two fac
 
 ### Factory cross-app direction
 
-No FLS factory breaks the direction rule today, and none uses the dotted-string form yet, so this is new guidance rather than a description of existing code. The caller-side guard in FLS is `app_not_installed(...)`, already shown in "Collection safety for optional apps — FLS example" below.
+No FLS factory breaks the direction rule today, and none uses the dotted-string form yet, so this is new guidance rather than a description of existing code. The caller-side guard in FLS is `app_not_installed(...)`, shown in "Collection safety for optional apps — FLS example" below.
 
 ## `mock_site_context` fixture (mandatory for site-aware models)
 
@@ -125,16 +97,20 @@ def test_registered_learner_appears_in_cohort_roster(mock_site_context):
 
 ## Marker taxonomy (downstream-distribution semantics)
 
-FreedomLS ships to downstream projects, so markers control which tests are *portable*:
+FreedomLS ships to downstream projects, so markers control which tests are *portable*. `pyproject.toml` registers them:
 
 - **Unmarked (default) = portable** — contract/unit tests; the downstream-valuable set.
 - **`playwright`** — browser-dependent (see `Skill(fls-dev:playwright-tests)`); the browser set a downstream excludes.
 - **`fls_internal`** — only valid under FLS's own settings/theme/branding/demo content.
-- **`ci_only`** — existing slow / real-time tests (unchanged).
-- **`dev_tooling`** — tests of developer tooling: QA seeders, `danger_` commands, dev scripts and the content validator. Excluded by default locally; CI runs them in their own job. Run them with `uv run pytest -m dev_tooling`.
-- **`weasyprint`** — invokes WeasyPrint and needs Pango/cairo/gdk-pixbuf/HarfBuzz; excluded by default locally so contributors without those system libraries can still run the suite, but included in CI (where the libraries are installed) since CI's `-m "not playwright"` overrides the local `addopts` exclusion.
+- **`ci_only`** — slow / real-time tests.
+- **`dev_tooling`** — tests of developer tooling: QA seeders, `danger_` commands, dev scripts and the content validator.
+- **`weasyprint`** — invokes WeasyPrint and needs Pango/cairo/gdk-pixbuf/HarfBuzz.
 
-FLS's own `uv run pytest` runs everything except `ci_only`, `weasyprint` and `dev_tooling` (it *is* FLS regression testing, with CI supplying the system libraries needed to also run the `weasyprint` set). A concrete downstream project instead runs:
+What runs where:
+
+- `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`, since that *is* FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
+- CI runs three jobs. The unit job runs `-m "not playwright and not dev_tooling" --cov` with the coverage gate, and includes `weasyprint` because CI has the system libraries. The developer-tooling job runs `-m "dev_tooling and not playwright"`. The Playwright job runs `-m playwright -n auto`, which the root conftest caps at four workers.
+- A concrete downstream project runs:
 
 ```bash
 uv run pytest -m "not playwright and not fls_internal and not ci_only and not weasyprint and not dev_tooling"

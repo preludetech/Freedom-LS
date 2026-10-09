@@ -217,7 +217,7 @@ def test_endpoint(client):
     client.force_login(user)
     response = client.get(reverse('app:endpoint'))
     assert response.status_code == 200
-    assert response.context['key'] == expected_data
+    assert "expected heading" in response.content.decode()
 ```
 
 ### Utility Tests
@@ -232,11 +232,11 @@ def test_utility_function():
 ### Error Tests
 
 ```python
-@pytest.mark.django_db
-def test_requires_field():
-    """Test that field is required."""
-    with pytest.raises(IntegrityError):
-        MyModelFactory(required_field=None)
+def test_end_date_before_start_date_is_rejected():
+    """The project's own clean() rule rejects an inverted date range."""
+    booking = BookingFactory.build(start=date(2026, 5, 2), end=date(2026, 5, 1))
+    with pytest.raises(ValidationError):
+        booking.full_clean()
 ```
 
 ## HTMX test patterns
@@ -444,6 +444,7 @@ Register every custom marker in `pyproject.toml`'s `[tool.pytest.ini_options]` `
 
 - **Unmarked (default) = portable.** Contract/unit tests that pass under any settings or installed-app list. Most tests belong here. When the project ships reusable apps, this is the set a downstream consumer can run.
 - **`playwright`** — browser-dependent; needs a running server (`live_server`) and a real browser. See the `ds:playwright-tests` skill. Lives under per-app `tests/playwright/` dirs.
+- **A developer-tooling marker** — tests of QA seeders, dev scripts and one-off management commands are not product tests. A project registers its own marker for them and deselects it in `addopts`, so the default run skips them and `-m <marker>` runs them on request.
 
 When a test genuinely depends on repo-only, non-distributed fixture data (something excluded from the packaged distribution), mark it with a project-specific marker so a downstream consumer can exclude it — and prefer decoupling the test from that data first (pin the input or assert the contract; see "Don't assert hardcoded config values" below).
 
@@ -567,15 +568,15 @@ Four techniques for decoupling a test from ambient config:
 ### Writing Tests
 
 1. Use descriptive names explaining what's tested
-2. Include docstrings
+2. Name tests after behaviour
 3. Use `@pytest.mark.django_db` for database tests
 4. Write one test at a time
-5. No conditionals in tests - test one path at a time
+5. No conditionals in tests that run without a browser. Test one path at a time
 
 ### Assertions
 
 - Be explicit: `assert result == []` NOT `assert type(result) is list`
-- No if statements in tests
+- No `if` statements in tests that run without a browser
 - Use `pytest.raises` for exceptions
 - Assert exact values, not types
 
@@ -623,27 +624,11 @@ IMPORTANT: Do not forget the refactor step. All tests should be clean and DRY!
 4. Write tests one at a time
 5. Run each test
 
-## Test Coverage
-
-Cover these for each feature:
-- Happy path
-- Edge cases (empty, None, boundaries)
-- Error cases (invalid inputs)
-- Business logic (custom methods)
-- Relationships (ForeignKey, M2M)
-- Permissions (if applicable)
-
-When testing validation logic: test the happy and unhappy path. Don't just test things that will pass; assert that validation FAILS when it is supposed to.
-
 ## No unexpected network sockets
 
 Once `pytest-socket` is installed, all sockets are blocked by default during the test run (only `127.0.0.1` / `::1` allowed).
 
 The fix when a test needs to call out is **not** to whitelist sockets. Mock at the boundary instead — the `requests.post` call, the SDK client, the email backend — so the test exercises the real production code up to the boundary and replaces only the outbound side. See "Mock only at system boundaries" in the `ds:testing` skill for the underlying rule.
-
-## Branch coverage
-
-When a test exercises a branch (`if x:` vs. `else:`, `try:` vs. `except:`, presence vs. absence of an HTMX header), make sure both sides have a test. Don't write only the happy path.
 
 ## Key Rules
 

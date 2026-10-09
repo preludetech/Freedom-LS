@@ -17,38 +17,29 @@ This skill helps implement features and fix bugs using Test-Driven Development, 
 
 ## Key rules
 
-- Tests mirror the app, subpackages included: `<app>/<module>.py` →
-  `<app>/tests/test_<module>.py`. See "Mirroring" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
-- An app's tests import only apps the app depends on at runtime. A test that spans several apps
-  belongs in the lowest app that depends on every app it touches. See "Test organisation and
-  hygiene" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
-- `conftest.py` holds fixtures only; a helper that tests import by hand goes in a plain module
-  beside them. See "`conftest.py` vs. plain module" and "Fixture placement" in
-  `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
-- A foundational app proves genericity with a stub model in its own `tests/conftest.py`, never by
-  importing a downstream app's model. See "Stub-model technique" in
-  `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
-- Fixtures are function-scoped unless profiling justifies wider, and a wide-scoped fixture never
-  hands back state a test mutates. See "Fixture scope and idempotent reset" in
-  `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
-- A factory imports another app's factory only in the runtime dependency direction; a cycle
-  between peers uses the dotted-string form. See "Factory cross-app direction" in
-  `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
-- Use `@pytest.mark.django_db` for database tests
-- Use factory_boy factories for all test data creation — never use `.objects.create()` directly
-- Use `reverse()` for URLs, never hardcode
-- No conditionals or loops in test bodies — one behaviour per test
-- TDD cycle: RED (failing test) → GREEN (minimal code) → REFACTOR → REPEAT
-- Tests must pass in any order. `pytest-randomly` randomises order on every run — do **not** add `@pytest.mark.order` to paper over ordering bugs; fix the test instead.
-- Do not open network sockets in tests; `pytest-socket` blocks outbound sockets and only allows `127.0.0.1` / `::1`. Mock at the boundary, or add `@pytest.mark.allow_hosts(["host"])` for a genuine integration test (never `["*"]`).
-- Use `time-machine` for time-shaped code (deadlines, expiry windows, scheduled jobs) — prefer `time_machine.travel(...)` over manual `datetime.now()` patching.
+Each pointer names a section of `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` unless stated otherwise.
+
+- Tests mirror the app, subpackages included: `<app>/<module>.py` → `<app>/tests/test_<module>.py`. See "Mirroring".
+- An app's tests import only apps the app depends on at runtime. A test that spans several apps belongs in the lowest app that depends on every app it touches. See "Test organisation and hygiene".
+- `conftest.py` holds fixtures only; a helper that tests import by hand goes in a plain module beside them. See "`conftest.py` vs. plain module" and "Fixture placement".
+- A foundational app proves genericity with a stub model in its own tests, never by importing a downstream app's model. See "Stub-model technique".
+- Fixtures are function-scoped unless profiling justifies wider, and a wide-scoped fixture never hands back state a test mutates. See "Fixture scope and idempotent reset".
+- A factory imports another app's factory only in the runtime dependency direction. See "Factory cross-app direction" in `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md`.
+- Use `@pytest.mark.django_db` for database tests.
+- Use factory_boy factories for all test data. Never use `.objects.create()` directly.
+- Use `reverse()` for URLs, never hardcode.
+- Tests that run without a browser have no conditionals or loops and test one behaviour each. Flows that need a real browser follow `ds:playwright-tests` instead.
+- TDD cycle: RED (failing test) → GREEN (minimal code) → REFACTOR → REPEAT.
+- Tests must pass in any order. `pytest-randomly` shuffles on every run; fix an ordering bug instead of adding `@pytest.mark.order`. See "Test order independence".
+- `pytest-socket` blocks outbound sockets except `127.0.0.1` and `::1`. Mock at the boundary. See "No unexpected network sockets".
+- Use `time-machine` (`time_machine.travel(...)`) for deadlines, expiry windows and scheduled jobs. See "Time-shaped code".
 - pytest: before running it, read `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md`. It holds `-n auto`, `--no-cov`, the background rule and the tier to run.
 
 See:
 - `${CLAUDE_PLUGIN_ROOT}/resources/test_tiers.md` — the tiers, their commands and how to run them
 - `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` — full patterns, examples, TDD workflow, red flags
 - `${CLAUDE_PLUGIN_ROOT}/resources/factory_boy.md` — factory patterns
-- The `ds:playwright-tests` skill for browser tests
+- The `ds:playwright-tests` skill for browser tests (slow; reach for it only when a real browser is needed, marked `@pytest.mark.playwright`)
 - The `ds:htmx` skill for production-side HTMX rules
 
 ## Best practices
@@ -66,27 +57,15 @@ def test_is_valid_email():
 # GOOD — asserts the observable contract
 def test_valid_email_passes():
     assert is_valid_email("test@example.com") is True
-
-def test_email_missing_at_fails():
-    assert is_valid_email("not-an-email") is False
 ```
 
-If you find yourself asserting call counts on internal helpers, reading private attributes, or matching exact SQL — stop. Test the output.
+If you find yourself asserting call counts on internal helpers, reading private attributes, or matching exact SQL, stop and test the output.
 
 ### Don't assert the absence of arbitrary things
 
-A negative-existence assertion (`assert not hasattr(obj, "x")`, `assert "x" not in context`) only means something when `x` is a thing the code could *realistically* produce **and** its absence is the observable contract. Asserting the absence of a name the code was never asked to produce passes for any name you invent — it tests nothing.
+A negative-existence assertion (`assert not hasattr(obj, "x")`, `assert "x" not in context`) only means something when `x` is a thing the code could *realistically* produce **and** its absence is the observable contract. Asserting the absence of a name the code was never asked to produce passes for any name you invent.
 
-```python
-# BAD — proves nothing; passes for any made-up name
-assert not hasattr(article, "preview_start_url")
-assert not hasattr(article, "squirrels")  # ...exactly as meaningful
-
-# GOOD — assert the positive behaviour the code now exhibits
-assert article.detail_url == reverse("blog:article_detail", args=[article.slug])
-```
-
-This bites most often during a refactor that *removes* an internal attribute. Don't write a test to "prove it's gone" — the deleted internal was never part of the contract, and the attribute is absent by construction. Assert the new observable behaviour instead, and delete any leftover absence-check during the REFACTOR step.
+When a refactor removes an internal attribute, assert the new observable behaviour and delete any leftover absence-check during REFACTOR.
 
 ### Don't write tautological tests
 
@@ -94,165 +73,72 @@ A tautological test re-derives the expected value from the input using the same 
 
 ```python
 # BAD — the test is the implementation, run twice
-def test_discount():
-    price, rate = 100, 0.2
-    expected = price * (1 - rate)
-    assert apply_discount(price, rate) == expected
+expected = price * (1 - rate)
+assert apply_discount(price, rate) == expected
 
 # GOOD — independent oracle; hard-coded answer for hard-coded input
-def test_20_percent_off_100_is_80():
-    assert apply_discount(100, 0.2) == 80
-
-def test_discount_cannot_exceed_price():
-    assert apply_discount(100, rate=1.5) == 0
+assert apply_discount(100, 0.2) == 80
 ```
 
-The test must be an **independent source of truth**. If the code is wrong and the test repeats the same wrong logic, the bug is invisible.
-
-This is the single most common failure mode. Watch for it in yourself: any time the "expected" value is computed with arithmetic, string-building, or a loop over the same input the code sees, you're writing a tautology.
+Any time the expected value is computed with arithmetic, string-building, or a loop over the input the code sees, you are writing a tautology. See "Tautology guidance" in the resource.
 
 ### Name tests after behaviour
 
-Good test names describe what is being verified, not which function is being called. They read like a spec.
-
-```python
-# BAD — tells you nothing
-def test_user(): ...
-def test_calculate(): ...
-def test_1(): ...
-
-# GOOD — subject, condition, expected outcome
-def test_inactive_users_excluded_from_report(): ...
-def test_discount_rounds_down_not_up(): ...
-def test_missing_required_field_raises_validation_error(): ...
-```
-
-Format: `test_<subject>_<condition>_<expected>`. If the name needs "and", split the test.
+Format: `test_<subject>_<condition>_<expected>`, for example `test_inactive_users_excluded_from_report`. If the name needs "and", split the test.
 
 ### Arrange / Act / Assert
 
-Keep the three phases visible, in order, with one of each:
-
-```python
-def test_registered_member_appears_in_group_roster():
-    # Arrange
-    group = GroupFactory()
-    member = MemberFactory()
-
-    # Act
-    group.register(member)
-
-    # Assert
-    assert member in group.roster()
-```
-
-No multi-act tests. If you need to call the code twice, that's two tests.
+Keep the three phases visible and in order. In a test that runs without a browser, call the code once; a second call is a second test.
 
 ### Mock only at system boundaries
 
-Boundaries = network, external APIs, filesystem, clock, randomness, subprocess. **Do not** mock code you own: internal helpers, ORM calls, your own service classes. Mocking internals locks the test to the current implementation and the mock will happily lie when the real code breaks.
-
-```python
-# BAD — mocks an internal helper; the real bug could live inside it
-with mock.patch("myapp.billing.services._apply_tax") as m:
-    m.return_value = 110
-    assert charge(100) == 110
-
-# GOOD — mock the outbound HTTP call, let the real code run
-with mock.patch("myapp.billing.services.requests.post") as m:
-    m.return_value.status_code = 200
-    assert charge(100).succeeded
-```
-
-Rule of thumb: if a test needs more than two mocks, the unit under test has too many dependencies — refactor instead of piling on mocks.
+Boundaries are network, external APIs, filesystem, clock, randomness and subprocess. Do not mock code you own: internal helpers, ORM calls, your own service classes. A test that needs more than two mocks means the unit has too many dependencies, so refactor it.
 
 ### Parametrize for inputs, separate tests for behaviours
 
-Use `@pytest.mark.parametrize` when the assertion shape is identical and only the input varies:
-
-```python
-@pytest.mark.parametrize("email,expected", [
-    ("a@b.co", True),
-    ("no-at-sign", False),
-    ("double@@at.com", False),
-    ("", False),
-])
-def test_email_validity(email, expected):
-    assert is_valid_email(email) is expected
-```
-
-Use **separate tests** when the paths differ — success vs. raises, happy path vs. permission denied, create vs. update. Separate tests fail one at a time and read like documentation.
+Use `@pytest.mark.parametrize` when the assertion shape is identical and only the input varies. A per-instance copy of one generic check (the same test repeated for each model, view or field) is one parametrised test. Use separate tests when the paths differ: success vs. raises, happy path vs. permission denied, create vs. update.
 
 ### Test validation both ways
 
-For anything with a validation rule, test that invalid input is **rejected**, not only that valid input is accepted. A validator that accepts everything will pass a "happy path" test silently.
+For validation the project wrote, test that invalid input is **rejected**, not only that valid input is accepted. A validator that accepts everything passes a happy-path test silently. Validation Django or a library already provides is not yours to test.
 
 ### Test hygiene
 
-- No `if`, `for`, `try` in test bodies. Tests are linear.
-- No shared mutable state between tests — use factories or fixtures; tests must pass in any order. See "Fixture scope and idempotent reset" in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` for the case of a wide-scoped fixture handing back state a test mutates.
-- Delete flaky tests. A flaky test is worse than no test. Fix the flakiness or remove it.
+- In tests that run without a browser, no `if`, `for` or `try` in the body.
+- No shared mutable state between tests. Use factories or fixtures.
+- Delete flaky tests, or fix the flakiness.
 - Keep tests fast. A unit test taking >100ms is probably hitting real I/O.
 - Coverage is a signal, not a goal. High coverage with weak assertions is worse than moderate coverage with strong ones.
-- Don't assert on styling (CSS classes, colours, font sizes) — only on functionality.
-- Don't assert hardcoded config values (`assert settings.TIMEOUT == 30`) — you're testing the config file, not behaviour. This includes the subtler variant: feeding **live** configuration (a settings value, a theme `.css`, any file that exists to be edited) *through* the code under test and asserting the **derived** result against a hardcoded expected (`assert resolve_color(load_theme("first_class")) == "#283593"`). Configuration is meant to change — such a test breaks the moment someone re-skins a theme or edits a setting, while testing nothing the controlled-input tests don't already cover. Instead, test the function with an **explicit input** (`assert resolve_color({"color-primary": "#283593"}) == "#283593"`), and let a system check or smoke test guard that the *real* config still resolves without error.
-  - Four techniques for decoupling a test from ambient config:
-    1. **Assert the structure, not the config-driven value.** Match a pattern the output must always have, not a literal the config happens to produce (regex `viewBox="0 0 \d+ \d+"`, not the ambient-default `24 24`).
-    2. **Pin the config when it's genuinely the subject.** If a test exists to verify behaviour *for one specific config*, set that config explicitly (`@override_settings(...)`) and assert against it — that's controlled input, not coupling. Leave those literals as-is.
-    3. **Supply controlled inputs; compute the expected by hand.** Feed a fixed input and assert a value you worked out yourself; never re-derive the expected from the same live asset the code reads (`monkeypatch` a native size and assert a hand-computed width, rather than reading a shipped image).
-    4. **Mark tests that depend on non-distributed fixtures.** When a test genuinely can't be decoupled (e.g. it reads a fixture only present in this repo), mark it so downstream consumers can exclude it.
-  - Full examples in `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+- Don't assert on styling (CSS classes, colours, font sizes). Assert the contract attributes instead: `aria-*`, `role`, `href`, `hx-*`, `data-*`.
+- Don't assert hardcoded config values (`assert settings.TIMEOUT == 30`). A string in a shipped CSS or JS file is the same ban. Feeding live configuration through the code and asserting a derived result against a hardcoded expected is the subtler variant. See "Decoupling tests from ambient config".
+- Don't assert a long copy literal. Assert a stable hook (`data-testid`, `role`, a URL), unless the copy is the feature.
+- Don't write a render-only admin test. Test permissions, validation and read-only behaviour instead.
+- An N+1 guard asserts an upper bound on queries (`django_assert_max_num_queries`), never an exact count.
+- Tests of developer tooling (QA seeders, dev scripts) stay out of the default run under the project's own marker. See "Markers".
 
 ### Testing HTMX views
 
-For HTMX-aware views at the unit-test level:
-
-- Pass `HTTP_HX_REQUEST="true"` to the Django test client to exercise the partial-response branch.
-- Assert on `HX-Trigger` response headers when the view emits client-side events (`assert "HX-Trigger" in response.headers`).
-- Expect HTTP `422` on validation errors so HTMX swaps the form fragment instead of redirecting.
-
-See `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` (HTMX test patterns section) for full examples.
+Pass `HTTP_HX_REQUEST="true"` to the test client for the partial-response branch, assert `HX-Trigger` headers when the view emits client-side events, and expect HTTP `422` on validation errors. See "HTMX test patterns".
 
 ### Auth in tests
 
-Use `client.force_login(user)` to authenticate. Do **not** patch `request.user` — that bypasses the real permission decorators (`@login_required`, role checks) and produces tests that pass while production breaks. See the resource file for the full anti-pattern example.
-
-### Playwright tests
-
-Playwright is slow; prefer pytest. Reach for Playwright only when testing interactivity that requires a real browser (HTMX swaps, Alpine-driven behaviour, JS-rendered UI). Mark those tests `@pytest.mark.playwright`. See the `ds:playwright-tests` skill for details.
+Use `client.force_login(user)`. Patching `request.user` bypasses the real permission decorators and produces tests that pass while production breaks. See "Auth-bypass anti-pattern".
 
 ### Collection safety for optional apps
 
-A module that imports an optional app's factory/model at module scope raises Django's model-registry `RuntimeError` at **collection** time when a downstream hasn't installed that app — aborting the whole session, not just that module. Guard it immediately above the import:
-
-```python
-import pytest
-from django.apps import apps
-
-if not apps.is_installed("myproject.optional_feature"):
-    pytest.skip("optional_feature not installed", allow_module_level=True)
-
-from myproject.optional_feature.factories import WidgetFactory  # now safe
-```
-
-`pytest.importorskip(...)` doesn't work here (the package *is* importable — it's the model-registry `RuntimeError` that fires); `@pytest.mark.skipif` doesn't either (the module-scope import raises before the decorator is ever reached). Belt-and-braces: colocate a `conftest.py` that sets `collect_ignore_glob` under the same condition so the offending files are never even imported — see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md` for the full pattern.
+A module that imports an optional app's factory or model at module scope aborts the whole session at collection time when a downstream hasn't installed that app. Guard the import with `pytest.skip(..., allow_module_level=True)` under `apps.is_installed(...)`. See "Collection safety for optional apps" for the guard and the `collect_ignore_glob` conftest.
 
 ## Anti-pattern cheatsheet
 
 | Pattern | Issue | Fix |
 |---|---|---|
-| Test re-computes the expected value from the input | Tautology — passes by coincidence | Assert against a hard-coded known-good value |
-| Test name describes the function, not the behaviour | Couples to internals; breaks on rename | Name after subject/condition/expected outcome |
-| Mocks an internal helper or ORM call | Brittle; hides real bugs | Mock at system boundaries only |
-| Test has no assertion (or only `status_code == 200`) | False confidence | Assert on the behaviour the code actually produces |
-| Asserts the absence of an attribute/key the code never sets (`assert not hasattr(obj, "x")`) | Passes for any invented name; tests nothing; couples to removed internals | Assert the positive observable behaviour instead; delete the check during REFACTOR |
-| More than 2 mocks in one test | Unit has too many dependencies | Refactor the code; don't pile on mocks |
+| Test re-computes the expected value from the input | Tautology | Assert against a hard-coded known-good value |
+| Mocks an internal helper or ORM call | Hides real bugs | Mock at system boundaries only |
+| No assertion, or only `status_code == 200` | False confidence | Assert on the behaviour the code produces |
+| Asserts the absence of an attribute the code never sets | Passes for any invented name | Assert the positive behaviour |
 | Test catches and swallows the exception | Hides failures | Let it propagate, or use `pytest.raises()` |
-| Commented-out test | Dead test hiding a real failure | Delete it or fix it — never both |
-| Multiple assertions on unrelated behaviours | "and" test; unclear failure signal | Split into separate tests |
-| Patches `request.user` to skip auth | Bypasses real permission code | Use `client.force_login(user)` |
-| Asserts a hardcoded value derived from live config (a settings value, a theme `.css`) | Breaks when config legitimately changes; duplicates the controlled-input tests | Test the function with explicit inputs; guard real config with a system check |
-| Test imports an app its own app does not depend on | Hides a real dependency, couples unrelated apps | Move the test to the lowest app that depends on everything it touches, or replace the import with a local stub or fixture |
-| A session-scoped fixture returns rows a test mutates | Order-dependent failures under `pytest-randomly`, wiped by `transaction=True` | Build the read-only part at wide scope, reset the mutable part per test |
+| Asserts a hardcoded value derived from live config | Breaks when config changes | Explicit inputs; a system check for real config |
+| Test imports an app its own app does not depend on | Hides a real dependency | Move to the lowest app that depends on everything it touches |
+| Session-scoped fixture returns rows a test mutates | Order-dependent failures | Reset the mutable part per test |
 
-For the longer list of red flags, see `${CLAUDE_PLUGIN_ROOT}/resources/testing.md`.
+For the longer list of red flags, see "Red flags in tests" in the resource.

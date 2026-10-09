@@ -28,16 +28,9 @@ Where the generic resource uses `myapp` / `articles` / `subscriptions`, FLS's co
 - Auth-bypass example: `from freedom_ls.educator_interface.views import cohort_detail`, using `educator_interface:cohort_detail` and `cohort_pk`.
 - time-machine example: `CohortFactory(deadline_at=...)` / `cohort.is_overdue()`.
 
-## Marker taxonomy — full FLS version
+## Markers
 
-- **Unmarked (default) = portable** — the downstream-valuable contract/unit set.
-- **`playwright`** — browser-dependent; the browser set a downstream excludes. Lives under per-app `tests/playwright/` dirs. See `Skill(fls-dev:playwright-tests)`.
-- **`fls_internal`** — only valid under FLS's own settings, theme, branding, or demo content. Reach for it when a test's assertion is inherently tied to FLS's own repo state (e.g. a shipped `demo_content/` file excluded from the packaged distribution) — not merely because the test asserts an FLS-default value it could instead assert as a contract.
-- **`ci_only`** — existing slow / real-time tests, excluded from FLS's own default run too.
-- **`dev_tooling`** — tests of developer tooling (QA seeders, `danger_` commands, dev scripts, the content validator). Excluded from FLS's own default run too; run with `-m dev_tooling`.
-- **`weasyprint`** — tests that invoke WeasyPrint and need Pango/cairo/gdk-pixbuf/HarfBuzz present. Excluded from FLS's own default run too, since those system libraries are not assumed locally.
-
-FLS's own `uv run pytest` runs everything except `ci_only`, `weasyprint` and `dev_tooling` — the three the `addopts` `-m` in `pyproject.toml` deselects. It must exercise `fls_internal` and `playwright` tests against FLS's own settings, since that *is* FLS regression testing. To exercise the WeasyPrint tests, opt back in explicitly with `-m weasyprint` on a machine that has the system libraries. A concrete downstream project runs the portable contract set; the command is in the marker section of `Skill(fls-dev:testing)`.
+The taxonomy (`playwright`, `fls_internal`, `ci_only`, `weasyprint`, `dev_tooling`), what the default run and each CI job select, and the downstream filter string are in the marker section of `Skill(fls-dev:testing)`.
 
 **Reach-for-`fls_internal`-last rule:** every test that stays portable is real integration signal for a downstream. Before marking a test `fls_internal`, ask whether it genuinely depends on FLS's own repo/brand/demo state, or whether it's a contract test wearing a brand-literal disguise.
 
@@ -45,9 +38,9 @@ FLS's own `uv run pytest` runs everything except `ci_only`, `weasyprint` and `de
 
 ## Test organisation — FLS specifics
 
-- **Granting permissions:** the higher-level layer the generic "Granting permissions in tests" rule names is `role_based_permissions`. An app that checks permissions through guardian grants them with `assign_perm` in its tests, never by assigning an FLS role, unless the app depends on `role_based_permissions` at runtime.
+- **Granting permissions:** `Skill(fls-dev:testing)` has the rule, including where `assign_object_role` is the only grant that works.
 - **Stub models:** "some object with an assignable role" is the common FLS case for the stub-model technique, in `role_based_permissions`' own tests.
-- **Cross-cutting tests:** checks over the shipped `demo_content/` belong in a `content_engine/tests/demo_content/` subpackage and carry `fls_internal` (see the marker taxonomy below). Today they sit flat in `content_engine/tests/` as `test_demo_content_*.py`, listed in the mirroring baseline.
+- **Cross-cutting tests:** checks over the shipped `demo_content/` live in a `tests/demo_content/` subpackage and carry `fls_internal`. `test_organisation/mirroring_exemptions.txt` lists every cross-cutting subpackage.
 
 ## Test tiers — FLS specifics
 
@@ -61,11 +54,11 @@ FLS's own `uv run pytest` runs everything except `ci_only`, `weasyprint` and `de
 
 Where the generic resource uses `myproject.optional_feature` / `WidgetFactory`, FLS's concrete target is `freedom_ls.course_applications` / `CourseApplicationFactory`, with the conftest at `freedom_ls/course_applications/tests/conftest.py`.
 
-## FLS de-branding worked examples
+## De-branding techniques
 
-- **Ambient-default icon viewBox** — `icons/tests/test_renderer.py::test_returns_svg_with_viewbox` hardcoded `viewBox="0 0 24 24"` on the *ambient* default icon set. Rewrite to `assert re.search(r'viewBox="0 0 \d+ \d+"', result)`, proven to flex by a second case that stubs a non-`24 24` glyph set.
-- **Pinned icon set — leave as-is.** `icons/tests/test_renderer.py::test_lucide_icon_set` asserts the literal `viewBox="0 0 24 24"` under `@override_settings(FREEDOM_LS_ICON_SET="lucide")`. Where a test stubs one specific icon set (e.g. `icons/tests/test_render.py::test_literal_glyph_in_active_set`) without pinning `FREEDOM_LS_ICON_SET`, pin it with `@override_settings(FREEDOM_LS_ICON_SET="heroicons")`.
-- **Theme values read through the code** — tests that loaded a real theme `.css` and asserted `resolve_color(load_theme("first_class")) == "#283593"` or `email_safe_font_stack(theme["font-sans"]) == "sans-serif"` break the day someone re-skins `first_class`. Feed an explicit token dict instead (`resolve_color({"color-primary": "#283593"})`), and cover the shipped themes with a check that resolution succeeds.
-- **Logo scaling with an independent oracle** — `accounts/tests/test_email_utils.py::test_email_logo_dimensions_scales_to_display_height` used to hardcode the shipped `512x248` logo; monkeypatch `email_utils.image_dimensions` to `(300,100)` and assert hand-computed `(144, EMAIL_LOGO_DISPLAY_HEIGHT)` from `email_logo_dimensions("images/any.png")`.
-- **Shadowed partial → assert the contract, not the copy** — `learner_interface/tests/views/test_course_listing.py` pinned the hero's marketing headline, which a downstream replaces wholesale. Assert the partial's template name (`[t.name for t in response.templates]` reports the lookup name, so a shadow still matches) or a documented structural hook. Note that `html.split("Some Heading")` is the same bug wearing a different hat: under a shadow it raises `IndexError` rather than failing.
-- **Demo content → `fls_internal`** — `content_engine/tests/test_demo_content_picture_titles.py` reads a `demo_content/` file excluded from the packaged distribution; the whole file gets `pytestmark = pytest.mark.fls_internal`.
+- **Ambient-default config.** Assert the structure, not the value the ambient icon set happens to produce: `re.search(r'viewBox="0 0 \d+ \d+"', result)`, not `viewBox="0 0 24 24"`. Prove it flexes with a second case that stubs a glyph set of a different size.
+- **Pinned config stays as-is.** A test whose subject is one specific icon set pins it with `@override_settings(FREEDOM_LS_ICON_SET="lucide")` and may assert that set's literals. A test that stubs one set without pinning `FREEDOM_LS_ICON_SET` gets the pin added.
+- **Theme values read through the code.** A test that loads a real theme `.css` and asserts a derived colour or font stack breaks the day someone re-skins the theme. Feed an explicit token dict instead (`resolve_color({"color-primary": "#283593"})`) and cover the shipped themes with a check that resolution succeeds.
+- **Independent oracle for shipped assets.** Monkeypatch the image-dimension reader to a fixed size and assert a hand-computed result, never one derived from the shipped logo.
+- **Shadowed partial.** A downstream replaces marketing copy wholesale, so assert the partial's template name (`[t.name for t in response.templates]` reports the lookup name, so a shadow still matches) or a documented structural hook. `html.split("Some Heading")` is the same bug: under a shadow it raises `IndexError` rather than failing.
+- **Demo content.** A file that reads `demo_content/`, which the packaged distribution excludes, gets `pytestmark = pytest.mark.fls_internal`.
