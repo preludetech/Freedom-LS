@@ -96,7 +96,7 @@ Sections 10 to 14 above run once, after part 2 is implemented.
 - [ ] (user) Review both plans and edit where needed
 - [ ] (cmd) Run `/fls-dev:plan_security_review` on `2b. plan.md`
 - [ ] (cmd) Run `/fls-dev:plan_structure_review` on `2b. plan.md`
-- [ ] (cmd) Run `/sdd:implement_plan` on `2b. plan.md`
+- [x] (cmd) Run `/sdd:implement_plan` on `2b. plan.md`
 - [ ] (user) Spot-check the changes
 - [ ] (cmd) Run `/ds:security-review` on the pending changes
 - [ ] (cmd) Run `/fls-dev:do_qa` with `3b. frontend_qa.md`
