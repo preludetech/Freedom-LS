@@ -115,8 +115,10 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     # the sheet is briefly hidden in between: settle on non-modal first.
     expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(0)
     expect(sheet).to_be_visible()
+    main = page.locator("#main-content")
+    expect(main).to_be_visible()
     sidebar_box = sheet.bounding_box()
-    main_box = page.locator("#main-content").bounding_box()
+    main_box = main.bounding_box()
     assert sidebar_box is not None
     assert main_box is not None
     assert sidebar_box["width"] >= 200
