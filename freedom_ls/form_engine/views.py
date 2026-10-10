@@ -108,10 +108,12 @@ def partial_question_file_upload(
     if form_progress.completed_time is not None:
         return HttpResponse(status=409)
 
+    # Counted per site, as the referral hit log is: one address shared by a
+    # school or an office is a different crowd on each tenant.
     if not request.user.is_authenticated and is_ip_throttled(
         request,
         namespace="form_engine.anonymous_upload",
-        scope="upload",
+        scope=str(form_progress.site_id),
         limit=config.FORM_ENGINE_ANONYMOUS_UPLOAD_LIMIT,
         window_seconds=config.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS,
     ):

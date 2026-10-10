@@ -1650,6 +1650,23 @@ class TestAnonymousApply:
         ]
         assert CourseApplication.objects.count() == 1
 
+    def test_returning_to_a_sent_application_does_not_say_sent_again(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+        list(get_messages(client.get(_apply_url(course), follow=True).wsgi_request))
+
+        response = client.get(_apply_url(course), follow=True)
+
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        assert texts == [
+            "Create an account or log in with pat@example.com to see the "
+            f"progress of your application for {course.title}."
+        ]
+
     def test_handoff_carries_first_and_last_name(self, client, mock_site_context):
         course = CourseFactory()
         client.post(
@@ -2337,6 +2354,18 @@ class TestAnonymousFormJourney:
 
         assert response["Location"].startswith(reverse("account_signup"))
 
+    def test_signed_in_holder_of_a_submitted_unclaimed_application_is_sent_to_claim(
+        self, client, mock_site_context
+    ):
+        _course, form = gated_course_with_form()
+        app = _signed_in_holding_unclaimed_draft(client, form)
+        app.form_progress.complete()
+
+        response = client.post(_check_url(app))
+
+        assert response["Location"] == _claim_url()
+        assert list(get_messages(response.wsgi_request)) == []
+
     def test_submitted_unclaimed_check_answers_links_back_to_the_handoff(
         self, client, mock_site_context
     ):
@@ -2787,6 +2816,15 @@ class TestAnonymousStartCap:
 
         assert cache._cache
         assert not [key for key in cache._cache if "203.0.113.7" in key]
+
+    def test_start_cap_counts_per_site(self):
+        from django.core.cache import cache
+
+        course = CourseFactory()
+
+        _post_application(course, "a@example.com")
+
+        assert [key for key in cache._cache if f":{course.site_id}:" in key]
 
     def test_start_cap_broken_cache_fails_open(self, mocker):
         mocker.patch(

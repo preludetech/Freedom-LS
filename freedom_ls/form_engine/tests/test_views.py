@@ -784,6 +784,17 @@ def test_upload_cap_key_holds_no_raw_ip(mock_site_context, client, capped_upload
 
 
 @pytest.mark.django_db
+def test_upload_cap_counts_per_site(mock_site_context, client, capped_uploads):
+    from django.core.cache import cache
+
+    form_progress, question = _held_empty_sitting(client)
+
+    _anonymous_upload(client, form_progress, question)
+
+    assert [key for key in cache._cache if f":{form_progress.site_id}:" in key]
+
+
+@pytest.mark.django_db
 def test_upload_cap_broken_cache_fails_open(
     mock_site_context, client, capped_uploads, mocker
 ):

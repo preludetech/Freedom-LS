@@ -155,7 +155,6 @@ def page_context(
     only asks whether there is more to come should not have to hold a URL to
     find out.
     """
-    existing_answers = form_progress.existing_answers_dict(current.questions)
     next_page_url = None if current.is_last else url_for_page(current.number + 1)
     return {
         "form": form,
@@ -169,7 +168,7 @@ def page_context(
         "next_page_url": next_page_url,
         "has_next_page": next_page_url is not None,
         "read_only": read_only,
-        "existing_answers": existing_answers,
+        "existing_answers": form_progress.existing_answers_dict(current.questions),
         "page_links": build_page_links(
             form, form_progress, current.number, url_for_page
         ),

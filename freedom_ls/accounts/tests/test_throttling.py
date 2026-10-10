@@ -77,14 +77,24 @@ def test_is_ip_throttled_broken_cache_reports(rf, settings, mocker) -> None:
     sentry.capture_exception.assert_called_once()
 
 
-def test_is_ip_throttled_programming_error_propagates(rf, settings, mocker) -> None:
+class _ClientLibraryError(Exception):
+    """Stands in for a cache client's own error class, such as redis.RedisError."""
+
+
+def test_is_ip_throttled_client_library_error_fails_open_and_reports(
+    rf, settings, mocker
+) -> None:
     settings.TRUSTED_PROXY_IP_HEADER = None
     mocker.patch(
-        "freedom_ls.accounts.throttling.cache.add", side_effect=TypeError("bad key")
+        "freedom_ls.accounts.throttling.cache.add",
+        side_effect=_ClientLibraryError("connection refused"),
     )
+    sentry = mocker.patch("freedom_ls.accounts.throttling.sentry_sdk")
 
-    with pytest.raises(TypeError):
-        _throttled(rf, limit=1)
+    throttled = _throttled(rf, limit=1)
+
+    assert throttled is False
+    sentry.capture_exception.assert_called_once()
 
 
 def test_is_ip_throttled_missing_proxy_header_propagates(rf, settings) -> None:

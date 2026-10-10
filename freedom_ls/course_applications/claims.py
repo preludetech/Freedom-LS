@@ -15,14 +15,14 @@ from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 
 from freedom_ls.accounts.models import User
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course
+from freedom_ls.course_access.visibility import is_hidden_from
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.form_engine.anonymous_sittings import (
     forget_anonymous_sitting,
     held_ids,
     remember_held_id,
 )
-from freedom_ls.learner_management.utils import is_registered_for_course
 
 UNCLAIMED_APPLICATIONS_SESSION_KEY = "course_applications_unclaimed_ids"
 CLAIM_REPORT_SESSION_KEY = "course_applications_claim_report"
@@ -171,9 +171,7 @@ def _claim_one(pk: str, user: User) -> tuple[ClaimOutcome, str, str | None]:
             )
             return outcome, pk, sitting_pk
         course = application.course
-        if course.visibility == CourseVisibility.HIDDEN and not (
-            is_registered_for_course(user, course)
-        ):
+        if is_hidden_from(user, course):
             return "dropped", pk, sitting_pk
         existing = _existing_application(user, course)
         if existing is not None:
@@ -213,9 +211,14 @@ def has_unverified_address(user: User, email: str) -> bool:
 
 
 def _take_account_details(application: CourseApplication, user: User) -> None:
+    """The account's address always; its names only where it has them.
+
+    An account with a blank name has nothing to put in place of the name the
+    applicant typed, so the typed one stays rather than being blanked.
+    """
     application.email = user.email
-    application.first_name = user.first_name
-    application.last_name = user.last_name
+    application.first_name = user.first_name or application.first_name
+    application.last_name = user.last_name or application.last_name
 
 
 def _attach(application: CourseApplication, user: User) -> tuple[ClaimOutcome, str]:

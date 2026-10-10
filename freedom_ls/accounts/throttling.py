@@ -6,7 +6,6 @@ import sentry_sdk
 
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
-from django.db import DatabaseError
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
@@ -27,9 +26,8 @@ def is_ip_throttled(
     limit or window <= 0 disables. PermissionDenied from get_client_ip
     propagates: a missing proxy header means the edge was bypassed, and the
     caller decides whether that refuses the request. A cache backend failure
-    (a database error from the database cache, a socket error from a cache
-    server) reports to Sentry and returns False: a broken cache costs the cap,
-    not the request.
+    reports to Sentry and returns False: a broken cache costs the cap, not the
+    request.
     """
     if limit <= 0 or window_seconds <= 0:
         return False
@@ -55,10 +53,13 @@ def is_ip_throttled(
     except ValueError:
         # The bucket expired between the add and the incr.
         return False
-    except (DatabaseError, OSError) as exc:
-        # The backend being down is the backend's problem: a cap must never
-        # take the request down with it. Reported rather than swallowed. A
-        # programming error still raises.
+    except Exception as exc:
+        # The cache backend is the deployment's own choice, so what it raises
+        # when it is down is open-ended: a DatabaseError from the database
+        # cache, an OSError from a socket, a RedisError or MemcacheError from
+        # their clients, neither of which is an OSError. A cap must never take
+        # the request down with it, so every one of them is reported to Sentry
+        # and costs the cap, not the request.
         sentry_sdk.capture_exception(exc)
         return False
     return bool(count > limit)

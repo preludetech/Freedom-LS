@@ -209,16 +209,17 @@ def _privacy_url(request: HttpRequest) -> str | None:
     return None
 
 
-def _start_cap_response(request: HttpRequest) -> HttpResponse | None:
+def _start_cap_response(request: HttpRequest, course: Course) -> HttpResponse | None:
     """The 429 page when this address has started too many applications, else None.
 
     Called only where a row is about to be created, so a refused post costs
-    nothing against the cap.
+    nothing against the cap. Counted per site, as the referral hit log is: one
+    address shared by a school or an office is a different crowd on each tenant.
     """
     if not is_ip_throttled(
         request,
         namespace="course_applications.anonymous_start",
-        scope="start",
+        scope=str(course.site_id),
         limit=config.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT,
         window_seconds=config.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS,
     ):
@@ -233,10 +234,10 @@ def _start_cap_response(request: HttpRequest) -> HttpResponse | None:
 def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
     held = unclaimed_application_for_course(request, course)
     if held is not None:
-        if held.is_submitted:
-            return _redirect_to_handoff(request, held)
-        if held.form_progress is None:
-            raise Http404
+        # An application with no sitting was sent the moment it was created,
+        # so it has nowhere to resume to.
+        if held.form_progress is None or held.is_submitted:
+            return _redirect_to_handoff(request, held, just_sent=False)
         return redirect(_resume_url(held, held.form_progress))
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
@@ -356,7 +357,7 @@ def _apply_anonymous_about_you(request: HttpRequest, course: Course) -> HttpResp
         request.POST if request.method == "POST" else None
     )
     if request.method == "POST" and details_form.is_valid():
-        capped = _start_cap_response(request)
+        capped = _start_cap_response(request, course)
         if capped is not None:
             return capped
         with transaction.atomic():
@@ -373,7 +374,7 @@ def _apply_anonymous_about_you(request: HttpRequest, course: Course) -> HttpResp
             remember_anonymous_sitting(request, form_progress)
             return redirect(_resume_url(app, form_progress))
         record_application_submitted(request, course)
-        return _redirect_to_handoff(request, app)
+        return _redirect_to_handoff(request, app, just_sent=True)
     return _render_about_you(
         request, course, details_form, application=None, form_progress=None
     )
@@ -421,21 +422,36 @@ def application_about_you(request: HttpRequest, pk: UUID) -> HttpResponse:
     )
 
 
-def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpResponse:
+def _redirect_to_handoff(
+    request: HttpRequest, app: CourseApplication, *, just_sent: bool
+) -> HttpResponse:
     """Send an anonymous applicant to create or enter the account that will own this application.
 
     The typed address and names prefill signup. The response is the same for a
     registered and an unregistered address: nothing here looks an account up.
     When signups are closed the visitor lands on login, so the toast only
-    offers that.
+    offers that. "Has been sent" is said once, at the submission; coming back
+    to a sent application repeats the next step, not the sending.
+
+    A signed-in visitor already has the account, so they go straight to the
+    claim landing, which attaches the application or says why it cannot.
     """
+    if request.user.is_authenticated:
+        return redirect("course_applications:claim")
     auth_url = acquisition_auth_url(request)
     next_step = "Create an account or log in" if auth_url is not None else "Log in"
-    messages.success(
-        request,
-        f"Your application for {app.course.title} has been sent. "
-        f"{next_step} with {app.email} to see its progress.",
-    )
+    if just_sent:
+        messages.success(
+            request,
+            f"Your application for {app.course.title} has been sent. "
+            f"{next_step} with {app.email} to see its progress.",
+        )
+    else:
+        messages.info(
+            request,
+            f"{next_step} with {app.email} to see the progress of your "
+            f"application for {app.course.title}.",
+        )
     if auth_url is not None:
         prefill = {
             name: value
@@ -673,7 +689,7 @@ def _redirect_after_submission(
     """
     if app.is_claimed:
         return redirect("course_applications:status", pk=app.pk)
-    return _redirect_to_handoff(request, app)
+    return _redirect_to_handoff(request, app, just_sent=False)
 
 
 @never_cache_same_origin
@@ -694,19 +710,17 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         if unanswered:
             required_answers_error = unanswered_required_message(unanswered)
             refused = True
-        elif app.is_claimed:
+        else:
             form_progress.complete()
             record_application_submitted(request, app.course)
+            if not app.is_claimed:
+                return _redirect_to_handoff(request, app, just_sent=True)
             messages.success(
                 request,
                 f"Your application for {app.course.title} has been submitted "
                 "and is pending review.",
             )
             return redirect("learner_interface:dashboard")
-        else:
-            form_progress.complete()
-            record_application_submitted(request, app.course)
-            return _redirect_to_handoff(request, app)
     elif request.method == "POST":
         return _redirect_after_submission(request, app)
 

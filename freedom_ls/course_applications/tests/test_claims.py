@@ -251,6 +251,20 @@ class TestClaimUnclaimedApplications:
         app.refresh_from_db()
         assert (app.user, report.is_empty()) == (None, True)
 
+    def test_claim_honours_the_visibility_preview_override(
+        self, mock_site_context, settings
+    ):
+        settings.OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE = True
+        user = UserFactory()
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        app = CourseApplicationFactory(unclaimed=True, course=course, email=user.email)
+        EmailAddressFactory(user=user)
+
+        report = claim_unclaimed_applications(_request_holding(app), user)
+
+        app.refresh_from_db()
+        assert (app.user, report.claimed) == (user, [str(app.pk)])
+
     def test_claim_report_merges_receiver_and_landing_results(self, mock_site_context):
         user = UserFactory()
         EmailAddressFactory(user=user, email="a@example.com")
@@ -408,6 +422,23 @@ class TestClaimTheSitting:
             "me@example.com",
             "Sam",
             "Account",
+        )
+
+    def test_unsubmitted_draft_claim_keeps_typed_names_the_account_lacks(
+        self, mock_site_context
+    ):
+        user = UserFactory(email="me@example.com", first_name="", last_name="")
+        app = _unclaimed_with_sitting(
+            email="typed@example.com", first_name="Typed", last_name="Name"
+        )
+
+        claim_unclaimed_applications(_request_holding_sitting(app), user)
+
+        app.refresh_from_db()
+        assert (app.email, app.first_name, app.last_name) == (
+            "me@example.com",
+            "Typed",
+            "Name",
         )
 
     def test_submitted_claim_keeps_typed_details(self, mock_site_context):
