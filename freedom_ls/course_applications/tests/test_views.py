@@ -2014,7 +2014,8 @@ class TestClaimLanding:
         )
 
         assert (
-            f"Your application for {course.title} has been sent."
+            f"Your application for {course.title} has been sent. "
+            "Create an account or log in with pat@example.com to see its progress."
             in response.content.decode()
         )
 
@@ -2453,6 +2454,23 @@ class TestAnonymousFormJourney:
             reverse("account_signup"),
             ["ada@example.com"],
         )
+
+    def test_handoff_after_signups_close_sends_to_login_and_says_log_in(
+        self, client, mock_site_context, settings
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        settings.ALLOW_SIGN_UPS = False
+
+        response = client.post(_check_url(app), {}, follow=True)
+
+        html = response.content.decode()
+        assert response.redirect_chain[0][0].startswith(reverse("account_login"))
+        assert (
+            f"Your application for {course.title} has been sent. "
+            "Log in with ada@example.com to see its progress." in html
+        )
+        assert "Create an account or log in" not in html
 
     def test_signed_in_check_answers_shows_about_you_card_without_edit_link(
         self, client, mock_site_context

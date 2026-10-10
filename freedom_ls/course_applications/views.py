@@ -426,13 +426,16 @@ def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpRe
 
     The typed address and names prefill signup. The response is the same for a
     registered and an unregistered address: nothing here looks an account up.
+    When signups are closed the visitor lands on login, so the toast only
+    offers that.
     """
+    auth_url = acquisition_auth_url(request)
+    next_step = "Create an account or log in" if auth_url is not None else "Log in"
     messages.success(
         request,
         f"Your application for {app.course.title} has been sent. "
-        f"Create an account or log in with {app.email} to see its progress.",
+        f"{next_step} with {app.email} to see its progress.",
     )
-    auth_url = acquisition_auth_url(request)
     if auth_url is not None:
         prefill = {
             name: value
