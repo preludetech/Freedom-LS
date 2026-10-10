@@ -1,6 +1,6 @@
 # Configuration and Extension
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-10_
 
 ## Summary
 
@@ -8,6 +8,7 @@ _Last updated: 2026-10-01_
 - Theming works at three increasing depths: override CSS tokens, fill slots inside components, or replace whole template files.
 - Two themes ship (`default`, `first_class`), selected by `FLS_THEME`. Four icon sets are available, selected by `FREEDOM_LS_ICON_SET`.
 - Course access is a pluggable backend, so a deployment can offer free enrolment, application-gated courses, or a model of its own.
+- Who may message whom is decided by a swappable messaging policy that keeps learner-initiated messages closed by default. No messaging screen ships yet.
 - FLS is designed to be installed into a host Django project, which retains override priority at every layer.
 - An opt-in conformance suite lets a downstream project verify it has wired FLS up correctly.
 - Common wiring mistakes are reported by Django's configuration checks at boot, rather than as a runtime error on a learner's first request.
@@ -72,6 +73,10 @@ Access configuration is authored per course — see [content editing workflow](.
 Course **visibility** (published, coming soon, or hidden) is orthogonal to access: the two compose freely, so an application-gated course can also be coming soon. Visibility is enforced uniformly across every backend — including any custom one a deployment adds — with no per-backend configuration and no way to opt out. It is also outside access-configuration validation entirely, so the two remain separate pipelines.
 
 See [learner experience](./learner-experience.md) for the learner-facing effect of each state, and [content editing workflow](./content-editing-workflow.md) for how visibility is authored.
+
+## Messaging Policy
+
+FLS ships the rules for who may message whom, but no messaging screen yet: there is no inbox or composer, so nothing a learner or educator sees changes today. The rules come from `MESSAGING_POLICY`, which a deployment can point at a policy of its own. The shipped policy keeps every conversation a learner starts **closed by default**. `MESSAGING_DEFAULT_FLAGS` sets the deployment-wide defaults, and `MESSAGING_OFFERED_EDUCATOR_ROLES` names the educator roles learners are offered (cohort admins by default). Site admins override both in the admin; see [admin interface](./admin-interface.md#messaging-configuration).
 
 ## Preview Overrides (Dev and Staging Only)
 
@@ -152,6 +157,9 @@ A deployment that has a good reason to accept one of these can silence it indivi
 | `REFERRAL_TRACKING_HIT_LOG_WINDOW_SECONDS` | The window that limit is counted over; defaults to 3600 seconds. See [referral codes](./referral-codes.md). |
 | `NOTIFICATIONS_ENABLED` | Shows the notification bell to signed-in users; off by default. See [notifications](./notifications.md). |
 | `NOTIFICATION_CATEGORIES` | The kinds of notification FLS can raise; a project can add its own. See [notifications](./notifications.md). |
+| `MESSAGING_POLICY` | Selects the policy that decides who may message whom; the shipped policy is used unless set. |
+| `MESSAGING_DEFAULT_FLAGS` | Deployment-wide defaults for learner-to-educator, learner-to-cohort-peer and learner-to-course-peer messaging; all closed by default. |
+| `MESSAGING_OFFERED_EDUCATOR_ROLES` | Educator roles a learner may be offered to message; defaults to cohort admins. |
 | `DJANGO_ADMIN_URL` | Path the Django admin is mounted at. See [admin interface](./admin-interface.md). |
 | `EMAIL_UPSTREAM_BACKEND` | The email backend the worker sends through once a message is queued — read only when `EMAIL_BACKEND` names the queue. See [deployment](./deployment.md). |
 | `EMAIL_TIMEOUT` | Socket timeout for outgoing SMTP, recommended whether or not email is queued; left unset, a stalled mail host can hang the request or worker indefinitely. See [deployment](./deployment.md). |

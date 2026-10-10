@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-10-08_
+_Last updated: 2026-10-10_
 
 ## Summary
 
@@ -14,6 +14,7 @@ _Last updated: 2026-10-08_
 - Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
 - Course applications are read in the admin: a list to find one by applicant, course, submitted or draft, and created date, and a page that shows the applicant's answers read-only, with any attached file downloadable. Staff granted the standard view permissions can read them; nobody can add, edit or delete an application there. There is no review workflow yet.
+- Messaging configuration sets whether learners may start conversations with their educators, cohort peers and course peers, and which educator roles learners are offered. No messaging screen exists yet, so these settings have no visible effect until messaging ships.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
 - Signup attribution records and the daily first-touch tally are read-only too, filterable by source, medium and campaign, and exportable to CSV.
@@ -70,6 +71,15 @@ A staff user generates a cohort's progress report from the admin: they pick a co
 - The finished PDF is fetched through a permission-checked download link in the list, never a public media URL. See [security and data handling](./security-and-data-handling.md) for the access posture behind that link.
 - Reports are produced by the system, not authored by hand: they cannot be added or edited from the admin, only viewed, downloaded, and deleted. Deleting a report also deletes its stored PDF.
 - Cohort names are unique per organisation rather than per site, so both the list and the generation dropdown name each cohort's organisation alongside the cohort.
+
+## Messaging Configuration
+
+A site admin decides whether learners may start conversations with their **educators**, their **cohort peers** and their **course peers**. Each is open or closed, and can be set for the site, an organisation, a cohort or an individual learner, and course peers also for a single course registration. A level left to inherit defers to the next one up.
+
+**No messaging screen exists yet** (no inbox, no way to write a message), so none of these settings has a visible effect today.
+
+- **Out of the box:** educators may message the learners they teach, and learners may reply. Colleagues may message each other. A learner cannot start a conversation with an educator or a peer until an admin opens it. Educators and colleagues cannot be closed from here; to stop an educator, remove their role. The deployment-wide defaults are described in [configuration and extension](./configuration-and-extension.md#messaging-policy).
+- **Offered educators:** the site's messaging configuration chooses which educator roles a learner may message, which can be none. A superuser is an educator only through a role assignment.
 
 ## Configurable Admin URL
 

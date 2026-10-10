@@ -56,8 +56,9 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 10. Product documentation
 
-- [ ] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
+- [x] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
 - [ ] (user) Review the updated documentation
+- [ ] (user) Write docs/product/messaging.md (deferred from spec 3 until the messaging inbox ships in spec 4)
 
 ## 11. Upgrade notes
 
