@@ -115,15 +115,19 @@ def test_educator_navigates_and_creates_a_cohort_on_a_phone(
     # the sheet is briefly hidden in between: settle on non-modal first.
     expect(page.locator("dialog[aria-label='Navigation']:modal")).to_have_count(0)
     expect(sheet).to_be_visible()
-    main = page.locator("#main-content")
-    expect(main).to_be_visible()
-    sidebar_box = sheet.bounding_box()
-    main_box = main.bounding_box()
-    assert sidebar_box is not None
-    assert main_box is not None
-    assert sidebar_box["width"] >= 200
-    assert main_box["width"] >= 800
-    assert main_box["x"] >= sidebar_box["x"] + sidebar_box["width"]
+    # The docked column and the content settle over a few frames, so the
+    # geometry is waited for rather than read once: a sidebar at least 200px
+    # wide with the content, at least 800px wide, laid out to its right.
+    page.wait_for_function(
+        """() => {
+            const sidebar = document.querySelector("dialog[aria-label='Navigation']");
+            const main = document.getElementById("main-content");
+            if (!sidebar || !main) return false;
+            const s = sidebar.getBoundingClientRect();
+            const m = main.getBoundingClientRect();
+            return s.width >= 200 && m.width >= 800 && m.x >= s.x + s.width;
+        }"""
+    )
 
     # The create-cohort bottom sheet shows its field and both buttons without
     # scrolling, and Cancel dismisses it.
