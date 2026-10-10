@@ -21,7 +21,6 @@ Status `next`, every dependency done, and nothing to do on main first. Regenerat
 - `retry-sent-emails`
 - `server-side-conversion-tracking`
 - `test-organisation-and-hygene-4-shared-test-infrastructure`
-- `user-communication-4-direct-messaging`
 
 ## Needs work on main first
 
@@ -164,7 +163,7 @@ to do with messaging. Specs 2 to 8 below cover them.
 | # | Directory | Scope | Depends on | Status |
 |---|---|---|---|---|
 | 2 | `user-communication-2-notification-email` | Email as a second delivery backend. Per-category immediate-or-off preferences page, per-site defaults, one-click unsubscribe, templates on the themed `base_email.html`. | `user-communication-1-notifications-core`, `retry-sent-emails` | next |
-| 4 | `user-communication-4-direct-messaging` | One-to-one conversations with read state. Learner inbox and thread, a composer offering only permitted recipients with a "who will see this" line, polling, one rolled-up notification per unread conversation. | `user-communication-1-notifications-core`, `user-communication-3-messaging-policy` | next |
+| 4 | `user-communication-4-direct-messaging` | One-to-one conversations with read state. Learner inbox and thread, a composer offering only permitted recipients with a "who will see this" line, polling, one rolled-up notification per unread conversation. | `user-communication-1-notifications-core`, `user-communication-3-messaging-policy` | in progress |
 | 5 | `user-communication-5-educator-messaging` | An organisation-scoped inbox section in the educator interface, and a message tab in the learner quick view that opens or continues the conversation. | `user-communication-4-direct-messaging`, `educator-interface-3-panel-framework-dialogs` | next |
 | 6 | `user-communication-6-moderation` | Report a message, block a user, and a report queue where site admins hide messages. Nothing is hard deleted. | `user-communication-4-direct-messaging` | next |
 | 7 | `user-communication-7-email-digests` | Daily and weekly digests and timezone-aware quiet hours for notification email, sent by a new `fls_run_housekeeping` sweep with its cadence documented. | `user-communication-2-notification-email` | next |
