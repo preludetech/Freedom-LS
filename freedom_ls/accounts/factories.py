@@ -40,6 +40,7 @@ class UserFactory(SiteAwareFactory):
         skip_postgeneration_save = True
 
     email = factory.Sequence(lambda n: f"user{n}@example.com")
+    first_name = "Test"
     is_active = True
     is_staff = False
 

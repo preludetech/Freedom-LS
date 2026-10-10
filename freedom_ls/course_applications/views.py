@@ -23,7 +23,12 @@ from freedom_ls.accounts.decorators import never_cache_same_origin
 from freedom_ls.accounts.legal_docs import has_legal_doc
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.throttling import is_ip_throttled
-from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
+from freedom_ls.accounts.utils import (
+    acquisition_auth_url,
+    get_effective_require_name,
+    get_signup_policy_for_request,
+    redirect_to_auth,
+)
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
@@ -144,6 +149,24 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
 
+    if _account_lacks_required_name(request, user):
+        return _signed_in_about_you(request, user, course)
+    return _apply_signed_in(request, user, course)
+
+
+def _account_lacks_required_name(request: HttpRequest, user: User) -> bool:
+    """Whether About you has to ask a signed-in applicant for a first name.
+
+    Only a required field is asked for: a blank optional name never is, and
+    the account always has an email.
+    """
+    return (
+        get_effective_require_name(get_signup_policy_for_request(request))
+        and not user.first_name
+    )
+
+
+def _apply_signed_in(request: HttpRequest, user: User, course: Course) -> HttpResponse:
     if course.application_form is not None or request.method == "POST":
         app = _start_application(user, course)
         if app.form_progress is not None:
@@ -155,6 +178,27 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
         request,
         "course_applications/apply.html",
         {"course": course},
+    )
+
+
+def _signed_in_about_you(
+    request: HttpRequest, user: User, course: Course
+) -> HttpResponse:
+    """About you for a signed-in applicant, asking only for the first name the account lacks."""
+    details_form = ApplicantDetailsForm(
+        request.POST if request.method == "POST" else None, ask_for=("first_name",)
+    )
+    if request.method == "POST" and details_form.is_valid():
+        user.first_name = details_form.details["first_name"]
+        user.save(update_fields=["first_name"])
+        return _apply_signed_in(request, user, course)
+    return _render_about_you(
+        request,
+        course,
+        details_form,
+        application=None,
+        form_progress=None,
+        is_unclaimed=False,
     )
 
 

@@ -2633,6 +2633,82 @@ class TestSignedInApplyWithAHeldApplication:
         assert CourseApplication.objects.filter(course=course).count() == 1
 
 
+@pytest.mark.django_db
+class TestSignedInAboutYou:
+    """A signed-in applicant is asked only for what the account lacks."""
+
+    def test_signed_in_applicant_with_complete_account_never_sees_about_you(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course, _form = gated_course_with_form()
+        client.force_login(UserFactory(first_name="Ada"))
+
+        response = client.get(_apply_url(course))
+
+        app = CourseApplication.objects.get(course=course)
+        assert response["Location"] == _page_url(app, 1)
+        page = client.get(response["Location"])
+        assert _about_you_url(app) not in page.content.decode()
+
+    def test_signed_in_applicant_missing_required_first_name_is_asked_only_for_it(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course, _form = gated_course_with_form()
+        client.force_login(UserFactory(first_name=""))
+
+        response = client.get(_apply_url(course))
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert 'name="first_name"' in content
+        assert 'name="last_name"' not in content
+        assert 'name="email"' not in content
+        assert CourseApplication.objects.count() == 0
+
+    def test_signed_in_about_you_saves_to_account_and_application(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course, _form = gated_course_with_form()
+        user = UserFactory(first_name="")
+        client.force_login(user)
+
+        response = client.post(_apply_url(course), {"first_name": "Ada"})
+
+        user.refresh_from_db()
+        app = CourseApplication.objects.get(course=course)
+        assert user.first_name == "Ada"
+        assert app.first_name == "Ada"
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_signed_in_applicant_with_blank_optional_first_name_goes_straight_to_the_form(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=False)
+        course, _form = gated_course_with_form()
+        client.force_login(UserFactory(first_name=""))
+
+        response = client.get(_apply_url(course))
+
+        app = CourseApplication.objects.get(course=course)
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_signed_in_applicant_to_a_coming_soon_course_is_redirected_before_about_you(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(UserFactory(first_name=""))
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+
+
 # ---------------------------------------------------------------------------
 # Per-address caps and the honeypot on the anonymous apply
 # ---------------------------------------------------------------------------
