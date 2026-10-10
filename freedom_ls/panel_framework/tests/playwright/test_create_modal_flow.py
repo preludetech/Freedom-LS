@@ -245,12 +245,13 @@ def test_save_disables_every_submit_while_pending(
     live_server_site: Site,
     mock_site_context: None,
 ) -> None:
+    # The handler only parks the route: a handler that blocks also blocks the
+    # assertions below, which then run after the response has arrived.
+    held: list[Route] = []
+
     page.goto(f"{live_server.url}{_LIST_PATH}")
     name_field = _open_create_modal(page)
     name_field.fill("Beta")
-    # Hold the route without blocking: sync route handlers share the test's
-    # event loop, so waiting inside one would stall the expects below.
-    held: list[Route] = []
     page.route("**/__actions/create_item", lambda route: held.append(route))
 
     # Located by CSS, not accessible name: the clicked button's own label
