@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<script src="_ds/first-class-design-system-3-019df673-15ac-7db6-b79d-fb4cdad66aad/_ds_bundle.js"></script>
+<style>
+  body { background: #E9ECF3; }
+  a { color: var(--color-primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--color-primary-900); }
+</style>
+</helmet>
+<div style="padding:56px 56px 96px;display:flex;flex-direction:column;gap:48px;font-family:var(--font-body)">
+
+  <div style="display:flex;flex-direction:column;gap:14px;max-width:1440px">
+    <div style="font-family:var(--font-heading);font-weight:700;font-size:28px;color:var(--fg-1);letter-spacing:-0.02em">Direct messaging — educator</div>
+    <div style="font-size:14px;color:var(--fg-2);max-width:78ch;line-height:1.55">Spec 4 of 8. One-to-one conversations between an educator and the learners they can see. Desktop at 1440 × 900, states as pane crops, mobile at 375 × 812.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:6px">
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px"><div class="fc-overline">Organisation context</div><div style="font-size:13px;color:var(--fg-2);line-height:1.5">Assumed: a conversation records the organisation it started in, so a pair holds one conversation per organisation. The thread header names it.</div></div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px"><div class="fc-overline">Message body</div><div style="font-size:13px;color:var(--fg-2);line-height:1.5">Assumed: plain text, line breaks kept, URLs linked. 2,000 character limit, counter shown from 1,800.</div></div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px"><div class="fc-overline">Recipients at scale</div><div style="font-size:13px;color:var(--fg-2);line-height:1.5">Search first, results grouped by cohort. Picking someone you already talk to opens that thread.</div></div>
+      <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px"><div class="fc-overline">Policy stops a pair</div><div style="font-size:13px;color:var(--fg-2);line-height:1.5">History stays readable. The composer is replaced by a one-line reason. See <a href="#s3">states</a>.</div></div>
+    </div>
+  </div>
+
+  <div id="s1" style="display:flex;flex-direction:column;gap:14px" data-screen-label="01 Inbox and thread">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">01</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">Inbox and open thread — new messages arrived while reading</div>
+    </div>
+    <div style="width:1440px;height:900px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;box-shadow:var(--shadow-sm)">
+      <dc-import name="Sidebar" active="Messages" hint-size="264px,100%"></dc-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:10px">
+          <div style="font-size:13px;color:var(--fg-3)">Skyward Aviation Academy</div>
+          <i class="ph ph-caret-right" style="font-size:12px;color:var(--fg-4)"></i>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">Messages</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+            <div style="position:relative;width:40px;height:40px;border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)"><i class="ph ph-bell" style="font-size:18px"></i><span style="position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:999px;background:var(--color-accent);border:2px solid #fff"></span></div>
+            <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 16px;border-radius:8px;background:var(--color-primary);color:#fff;font-size:13.5px;font-weight:600"><i class="ph ph-note-pencil" style="font-size:16px"></i>New message</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex">
+
+          <div style="width:380px;flex:0 0 380px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column">
+            <div style="padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid var(--border)">
+              <div style="height:40px;border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:13.5px;color:var(--fg-4)"><i class="ph ph-magnifying-glass" style="font-size:16px;color:var(--fg-3)"></i>Search conversations</div>
+              <div style="display:flex;gap:6px">
+                <div style="height:32px;padding:0 12px;border-radius:6px;background:var(--grey-100);color:var(--color-primary);font-size:13px;font-weight:600;display:flex;align-items:center">All</div>
+                <div style="height:32px;padding:0 12px;border-radius:6px;color:var(--fg-2);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px">Unread<span style="font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3)">2</span></div>
+              </div>
+            </div>
+            <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+              <sc-for list="{{ inboxA }}" as="c" hint-placeholder-count="7">
+                <div style="{{ c.rowStyle }}">
+                  <div style="width:36px;height:36px;flex:0 0 36px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ c.initials }}</div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <div style="display:flex;align-items:baseline;gap:8px"><span style="{{ c.nameStyle }}">{{ c.name }}</span><span style="margin-left:auto;font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3);white-space:nowrap">{{ c.time }}</span></div>
+                    <div style="font-size:12px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.cohort }}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                      <span style="{{ c.previewStyle }}">{{ c.preview }}</span>
+                      <sc-if value="{{ c.isUnread }}" hint-placeholder-val="{{ false }}">
+                        <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:var(--color-primary);color:#fff;font-size:11px;font-weight:600"><i class="ph ph-envelope-simple" style="font-size:12px"></i>{{ c.unreadLabel }}</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <div style="height:72px;flex:0 0 72px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:0 24px">
+              <div style="width:40px;height:40px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600">TM</div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">Thabo Molefe</div>
+                <div style="font-size:12.5px;color:var(--fg-3)">Learner · RPAS Basic — Lagos · Skyward Aviation Academy</div>
+              </div>
+              <div style="margin-left:auto;height:36px;display:flex;align-items:center;gap:7px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;font-weight:600;color:var(--fg-2)"><i class="ph ph-user" style="font-size:15px"></i>Learner record</div>
+            </div>
+            <div style="flex:1;min-height:0;overflow:hidden;padding:20px 32px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+              <div style="align-self:center;height:32px;padding:0 14px;border:1px solid var(--border-strong);border-radius:8px;background:#fff;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--fg-2)"><i class="ph ph-arrow-up" style="font-size:13px"></i>Load earlier messages</div>
+              <sc-for list="{{ thread }}" as="m" hint-placeholder-count="6">
+                <sc-if value="{{ m.isDay }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;height:1px;background:var(--border)"></div><div style="font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3)">{{ m.day }}</div><div style="flex:1;height:1px;background:var(--border)"></div></div>
+                </sc-if>
+                <sc-if value="{{ m.isNew }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:1px;background:var(--color-accent)"></div><div style="font-size:11.5px;font-weight:600;color:#B5461B;display:flex;align-items:center;gap:5px"><i class="ph ph-arrow-down" style="font-size:12px"></i>2 new messages</div><div style="flex:1;height:1px;background:var(--color-accent)"></div></div>
+                </sc-if>
+                <sc-if value="{{ m.mine }}" hint-placeholder-val="{{ false }}">
+                  <div style="align-self:flex-end;max-width:560px;display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+                    <div style="background:var(--color-primary);color:#fff;border-radius:12px 12px 4px 12px;padding:11px 14px;font-size:14px;line-height:1.55;text-wrap:pretty">{{ m.text }}</div>
+                    <div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">You · {{ m.time }}</div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ m.theirs }}" hint-placeholder-val="{{ false }}">
+                  <div style="align-self:flex-start;max-width:560px;display:flex;flex-direction:column;gap:4px">
+                    <div style="background:#fff;border:1px solid var(--border);color:var(--fg-1);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:14px;line-height:1.55;text-wrap:pretty">{{ m.text }}<sc-if value="{{ m.link }}" hint-placeholder-val="{{ false }}"> <a href="#s1">{{ m.link }}</a>{{ m.after }}</sc-if></div>
+                    <div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · {{ m.time }}</div>
+                  </div>
+                </sc-if>
+              </sc-for>
+            </div>
+            <div style="background:#fff;border-top:1px solid var(--border);padding:16px 24px;display:flex;flex-direction:column;gap:10px">
+              <div style="min-height:72px;border:1px solid var(--color-primary);box-shadow:0 0 0 3px rgba(40,53,147,0.2);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--fg-1);line-height:1.55">It's the one in lesson 3.4 — the download is the same worksheet as a PDF. Bring your NOTAM answers on Thursday<span style="display:inline-block;width:1px;height:16px;background:var(--color-primary);vertical-align:-3px;margin-left:1px"></span></div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <i class="ph ph-lock-simple" style="font-size:15px;color:var(--fg-3)"></i>
+                <div style="font-size:12.5px;color:var(--fg-2)">To <span style="font-weight:600;color:var(--fg-1)">Thabo Molefe</span>. Only you and Thabo can read this conversation.</div>
+                <div style="margin-left:auto;font-size:12px;color:var(--fg-3)">Shift + Enter for a new line</div>
+                <div style="height:40px;padding:0 18px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600"><i class="ph ph-paper-plane-tilt" style="font-size:15px"></i>Send</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="s2" style="display:flex;flex-direction:column;gap:14px" data-screen-label="02 New message">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">02</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">New message — recipient picker lists only learners you may message</div>
+    </div>
+    <div style="width:1440px;height:900px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;box-shadow:var(--shadow-sm)">
+      <dc-import name="Sidebar" active="Messages" hint-size="264px,100%"></dc-import>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:10px">
+          <div style="font-size:13px;color:var(--fg-3)">Skyward Aviation Academy</div>
+          <i class="ph ph-caret-right" style="font-size:12px;color:var(--fg-4)"></i>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">Messages</div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+            <div style="position:relative;width:40px;height:40px;border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)"><i class="ph ph-bell" style="font-size:18px"></i></div>
+            <div style="height:38px;display:flex;align-items:center;gap:7px;padding:0 16px;border-radius:8px;background:var(--grey-100);color:var(--color-primary);font-size:13.5px;font-weight:600"><i class="ph ph-note-pencil" style="font-size:16px"></i>New message</div>
+          </div>
+        </div>
+        <div style="flex:1;min-height:0;display:flex">
+          <div style="width:380px;flex:0 0 380px;background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column">
+            <div style="padding:16px 16px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid var(--border)">
+              <div style="height:40px;border:1px solid var(--border-strong);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:13.5px;color:var(--fg-4)"><i class="ph ph-magnifying-glass" style="font-size:16px;color:var(--fg-3)"></i>Search conversations</div>
+              <div style="display:flex;gap:6px">
+                <div style="height:32px;padding:0 12px;border-radius:6px;background:var(--grey-100);color:var(--color-primary);font-size:13px;font-weight:600;display:flex;align-items:center">All</div>
+                <div style="height:32px;padding:0 12px;border-radius:6px;color:var(--fg-2);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px">Unread<span style="font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3)">2</span></div>
+              </div>
+            </div>
+            <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+              <div style="display:flex;gap:12px;padding:14px 16px;border-bottom:1px solid var(--grey-100);background:var(--grey-100);box-shadow:inset 2px 0 0 var(--color-primary)">
+                <div style="width:36px;height:36px;flex:0 0 36px;border-radius:999px;background:#fff;color:var(--color-primary);display:flex;align-items:center;justify-content:center"><i class="ph ph-note-pencil" style="font-size:16px"></i></div>
+                <div style="display:flex;flex-direction:column;gap:2px;justify-content:center"><div style="font-size:14px;font-weight:600;color:var(--fg-1)">New message</div><div style="font-size:12px;color:var(--fg-3)">Draft</div></div>
+              </div>
+              <sc-for list="{{ inboxB }}" as="c" hint-placeholder-count="6">
+                <div style="{{ c.rowStyle }}">
+                  <div style="width:36px;height:36px;flex:0 0 36px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ c.initials }}</div>
+                  <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                    <div style="display:flex;align-items:baseline;gap:8px"><span style="{{ c.nameStyle }}">{{ c.name }}</span><span style="margin-left:auto;font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3);white-space:nowrap">{{ c.time }}</span></div>
+                    <div style="font-size:12px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.cohort }}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+                      <span style="{{ c.previewStyle }}">{{ c.preview }}</span>
+                      <sc-if value="{{ c.isUnread }}" hint-placeholder-val="{{ false }}">
+                        <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:var(--color-primary);color:#fff;font-size:11px;font-weight:600"><i class="ph ph-envelope-simple" style="font-size:12px"></i>{{ c.unreadLabel }}</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;background:#fff">
+            <div style="height:72px;flex:0 0 72px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px">
+              <div style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--fg-1)">New message</div>
+              <i class="ph ph-x" style="margin-left:auto;font-size:18px;color:var(--fg-3)"></i>
+            </div>
+            <div style="padding:20px 24px 0;display:flex;flex-direction:column;gap:8px;position:relative">
+              <label style="font-size:13px;font-weight:600;color:var(--fg-1)">To</label>
+              <div style="height:44px;border:1px solid var(--color-primary);box-shadow:0 0 0 3px rgba(40,53,147,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:14px;color:var(--fg-1)"><i class="ph ph-magnifying-glass" style="font-size:16px;color:var(--fg-3)"></i>ka<span style="width:1px;height:17px;background:var(--color-primary)"></span></div>
+              <div style="font-size:12.5px;color:var(--fg-3)">You can message learners in the 4 cohorts you teach at Skyward Aviation Academy.</div>
+              <div style="border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-md);background:#fff;overflow:hidden;margin-top:2px">
+                <div style="padding:10px 16px 6px;display:flex;align-items:center"><div class="fc-overline">RPAS Basic — Lagos</div><div style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--fg-4)">2 matches</div></div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--grey-100)">
+                  <div style="width:32px;height:32px;border-radius:999px;background:#fff;color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">KA</div>
+                  <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)"><span style="font-weight:700">Ka</span>wame Asante</div><div style="font-size:12px;color:var(--fg-3)">k.asante@skyward.gh</div></div>
+                  <span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--color-primary)"><i class="ph ph-chat-circle-text" style="font-size:14px"></i>Open existing conversation</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px">
+                  <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">KO</div>
+                  <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)"><span style="font-weight:700">Ka</span>ren Obi</div><div style="font-size:12px;color:var(--fg-3)">k.obi@skyward.ng</div></div>
+                </div>
+                <div style="padding:12px 16px 6px;border-top:1px solid var(--grey-100);display:flex;align-items:center"><div class="fc-overline">Advanced BVLOS Operations</div><div style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--fg-4)">1 match</div></div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px">
+                  <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">KN</div>
+                  <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)"><span style="font-weight:700">Ka</span>tlego Nkosi</div><div style="font-size:12px;color:var(--fg-3)">k.nkosi@skyward.co.za</div></div>
+                </div>
+                <div style="padding:12px 16px 6px;border-top:1px solid var(--grey-100);display:flex;align-items:center"><div class="fc-overline">Thermal Survey Methods</div><div style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--fg-4)">1 match</div></div>
+                <div style="display:flex;align-items:center;gap:12px;padding:10px 16px 12px">
+                  <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">AK</div>
+                  <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)">Amara <span style="font-weight:700">Ka</span>malu</div><div style="font-size:12px;color:var(--fg-3)">a.kamalu@skyward.ng</div></div>
+                </div>
+                <div style="padding:10px 16px;border-top:1px solid var(--border);background:var(--grey-50);font-size:12px;color:var(--fg-3);display:flex;gap:14px"><span><span style="font-family:var(--font-mono)">↑ ↓</span> to move</span><span><span style="font-family:var(--font-mono)">Enter</span> to choose</span><span><span style="font-family:var(--font-mono)">Esc</span> to close</span></div>
+              </div>
+            </div>
+            <div style="flex:1"></div>
+            <div style="border-top:1px solid var(--border);padding:16px 24px;display:flex;flex-direction:column;gap:10px">
+              <div style="min-height:72px;border:1px solid var(--border-strong);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--fg-4)">Choose a recipient first</div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <i class="ph ph-lock-simple" style="font-size:15px;color:var(--fg-3)"></i>
+                <div style="font-size:12.5px;color:var(--fg-3)">Only you and the person you choose can read this conversation.</div>
+                <div style="margin-left:auto;height:40px;padding:0 18px;border-radius:8px;background:var(--grey-200);color:var(--grey-400);display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;cursor:not-allowed"><i class="ph ph-paper-plane-tilt" style="font-size:15px"></i>Send</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="s3" style="display:flex;flex-direction:column;gap:14px" data-screen-label="03 States">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">03</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">States — sending, failures, policy, empty</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,620px);gap:24px">
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-2)">A · Sending — button locks, message marked pending</div>
+        <div style="height:420px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+            <div style="align-self:flex-start;max-width:420px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:14px;line-height:1.55;color:var(--fg-1)">I'll join Thursday's clinic.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 09:40</div></div>
+            <div style="align-self:flex-end;max-width:420px;display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="background:var(--grey-100);border:1px dashed var(--color-primary);color:var(--fg-1);border-radius:12px 12px 4px 12px;padding:11px 14px;font-size:14px;line-height:1.55">See you there. Bring your NOTAM answers.</div><div style="font-size:11.5px;color:var(--fg-3);display:flex;align-items:center;gap:5px"><i class="ph ph-clock" style="font-size:13px"></i>Sending…</div></div>
+          </div>
+          <div style="background:#fff;border-top:1px solid var(--border);padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+            <div style="height:52px;border:1px solid var(--border-strong);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--fg-4)">Write a reply</div>
+            <div style="display:flex;align-items:center;gap:10px"><i class="ph ph-lock-simple" style="font-size:15px;color:var(--fg-3)"></i><div style="font-size:12.5px;color:var(--fg-2)">Only you and Thabo can read this conversation.</div><div style="margin-left:auto;height:40px;padding:0 16px;border-radius:8px;background:var(--grey-200);color:var(--grey-400);display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600"><i class="ph ph-circle-notch" style="font-size:15px"></i>Sending</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-2)">B · Not sent — connection; draft kept, safe to retry</div>
+        <div style="height:420px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+            <div style="align-self:flex-start;max-width:420px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:14px;line-height:1.55;color:var(--fg-1)">I'll join Thursday's clinic.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 09:40</div></div>
+          </div>
+          <div style="background:#fff;border-top:1px solid var(--border);padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+            <div role="alert" style="display:flex;gap:10px;align-items:flex-start;background:var(--color-error-light);border-radius:8px;padding:10px 12px"><i class="ph ph-warning-circle" style="font-size:17px;color:#a52a2a;margin-top:1px"></i><div style="font-size:13px;color:#a52a2a;line-height:1.5"><span style="font-weight:600">Your message wasn't sent.</span> We couldn't reach the server. Check your connection and send again — it won't be posted twice.</div></div>
+            <div style="height:52px;border:1px solid var(--color-error);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--fg-1)">See you there. Bring your NOTAM answers.</div>
+            <div style="display:flex;align-items:center;gap:10px"><i class="ph ph-lock-simple" style="font-size:15px;color:var(--fg-3)"></i><div style="font-size:12.5px;color:var(--fg-2)">Only you and Thabo can read this conversation.</div><div style="margin-left:auto;height:40px;padding:0 16px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600"><i class="ph ph-arrow-clockwise" style="font-size:15px"></i>Send again</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-2)">C · Refused on send — policy changed after the thread opened</div>
+        <div style="height:420px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+            <div style="align-self:flex-start;max-width:420px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:14px;line-height:1.55;color:var(--fg-1)">I'll join Thursday's clinic.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 09:40</div></div>
+          </div>
+          <div style="background:#fff;border-top:1px solid var(--border);padding:14px 20px;display:flex;flex-direction:column;gap:10px">
+            <div role="alert" style="display:flex;gap:10px;align-items:flex-start;background:var(--color-error-light);border-radius:8px;padding:10px 12px"><i class="ph ph-prohibit" style="font-size:17px;color:#a52a2a;margin-top:1px"></i><div style="font-size:13px;color:#a52a2a;line-height:1.5"><span style="font-weight:600">This message wasn't sent.</span> You can no longer message Thabo Molefe — his registration for RPAS Basic — Lagos ended today. Copy your text if you need it.</div></div>
+            <div style="height:52px;border:1px solid var(--border-strong);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--fg-2);background:var(--grey-50)">See you there. Bring your NOTAM answers.</div>
+            <div style="display:flex;align-items:center;gap:10px"><div style="font-size:12.5px;color:var(--fg-3)">Replies are closed for this conversation.</div><div style="margin-left:auto;height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--border-strong);color:var(--fg-2);display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600"><i class="ph ph-copy" style="font-size:15px"></i>Copy text</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-2)">D · Replies closed — history readable, composer replaced</div>
+        <div style="height:420px;background:var(--color-surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column">
+          <div style="flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:14px;justify-content:flex-end">
+            <div style="align-self:flex-end;max-width:420px;display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="background:var(--color-primary);color:#fff;border-radius:12px 12px 4px 12px;padding:11px 14px;font-size:14px;line-height:1.55">That's the most common one. Section 3.4 has a worked example.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">You · 6 Oct, 18:50</div></div>
+            <div style="align-self:flex-start;max-width:420px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:11px 14px;font-size:14px;line-height:1.55;color:var(--fg-1)">I'll join Thursday's clinic.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 8 Oct, 09:40</div></div>
+          </div>
+          <div style="background:var(--grey-50);border-top:1px solid var(--border);padding:18px 20px;display:flex;gap:12px;align-items:flex-start">
+            <i class="ph ph-lock-simple" style="font-size:18px;color:var(--fg-2);margin-top:1px"></i>
+            <div style="display:flex;flex-direction:column;gap:3px"><div style="font-size:13.5px;font-weight:600;color:var(--fg-1)">Replies are closed</div><div style="font-size:13px;color:var(--fg-2);line-height:1.5">Thabo Molefe's registration for RPAS Basic — Lagos ended on 9 Oct 2026. You can both still read this conversation.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-2)">E · Empty inbox</div>
+        <div style="height:420px;background:#fff;border:1px solid var(--border);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center">
+          <div style="width:52px;height:52px;border-radius:999px;background:var(--grey-100);color:var(--color-primary);display:flex;align-items:center;justify-content:center"><i class="ph ph-chat-circle-text" style="font-size:24px"></i></div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;color:var(--fg-1)">No conversations yet</div>
+          <div style="font-size:13.5px;color:var(--fg-2);max-width:40ch;line-height:1.55">Message any learner in a cohort you teach. They'll see it in their inbox and can reply.</div>
+          <div style="height:40px;padding:0 16px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;margin-top:4px"><i class="ph ph-note-pencil" style="font-size:16px"></i>New message</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:13px;font-weight:600;color:var(--fg-2)">F · Picker — no permitted match</div>
+        <div style="height:420px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:24px;display:flex;flex-direction:column;gap:8px">
+          <label style="font-size:13px;font-weight:600;color:var(--fg-1)">To</label>
+          <div style="height:44px;border:1px solid var(--color-primary);box-shadow:0 0 0 3px rgba(40,53,147,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:14px;color:var(--fg-1)"><i class="ph ph-magnifying-glass" style="font-size:16px;color:var(--fg-3)"></i>Peter van Wyk</div>
+          <div style="border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-md);padding:18px;display:flex;gap:12px;align-items:flex-start;margin-top:2px">
+            <i class="ph ph-info" style="font-size:18px;color:var(--fg-2);margin-top:1px"></i>
+            <div style="display:flex;flex-direction:column;gap:4px"><div style="font-size:13.5px;font-weight:600;color:var(--fg-1)">No learners match “Peter van Wyk”</div><div style="font-size:13px;color:var(--fg-2);line-height:1.5">You can message learners in the cohorts you teach. If Peter is in another cohort, ask its educator or an administrator.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="s4" style="display:flex;flex-direction:column;gap:14px" data-screen-label="04 Mobile">
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--fg-3)">04</div>
+      <div style="font-family:var(--font-heading);font-weight:600;font-size:20px;color:var(--fg-1)">Mobile 375 — inbox, thread, new message</div>
+    </div>
+    <div style="display:flex;gap:32px;align-items:flex-start">
+
+      <div style="width:375px;height:812px;background:#fff;border:1px solid var(--border);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm)">
+        <div style="height:44px;flex:0 0 44px"></div>
+        <div style="height:56px;flex:0 0 56px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;padding:0 8px 0 4px">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)"><i class="ph ph-list" style="font-size:22px"></i></div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;color:var(--fg-1)">Messages</div>
+          <div style="margin-left:auto;position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)"><i class="ph ph-bell" style="font-size:21px"></i><span style="position:absolute;top:11px;right:11px;width:8px;height:8px;border-radius:999px;background:var(--color-accent);border:2px solid #fff"></span></div>
+          <div style="width:44px;height:44px;border-radius:8px;background:var(--color-primary);color:#fff;display:flex;align-items:center;justify-content:center" aria-label="New message"><i class="ph ph-note-pencil" style="font-size:20px"></i></div>
+        </div>
+        <div style="padding:12px 16px;display:flex;gap:6px;border-bottom:1px solid var(--border)">
+          <div style="height:36px;padding:0 14px;border-radius:6px;background:var(--grey-100);color:var(--color-primary);font-size:13.5px;font-weight:600;display:flex;align-items:center">All</div>
+          <div style="height:36px;padding:0 14px;border-radius:6px;color:var(--fg-2);font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:6px">Unread<span style="font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3)">3</span></div>
+          <div style="margin-left:auto;width:36px;height:36px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)"><i class="ph ph-magnifying-glass" style="font-size:19px"></i></div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+          <sc-for list="{{ inboxM }}" as="c" hint-placeholder-count="7">
+            <div style="{{ c.rowStyle }}">
+              <div style="width:36px;height:36px;flex:0 0 36px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600">{{ c.initials }}</div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;align-items:baseline;gap:8px"><span style="{{ c.nameStyle }}">{{ c.name }}</span><span style="margin-left:auto;font-family:var(--font-mono);font-size:11.5px;color:var(--fg-3);white-space:nowrap">{{ c.time }}</span></div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="{{ c.previewStyle }}">{{ c.preview }}</span>
+                  <sc-if value="{{ c.isUnread }}" hint-placeholder-val="{{ false }}">
+                    <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:999px;background:var(--color-primary);color:#fff;font-size:11px;font-weight:600"><i class="ph ph-envelope-simple" style="font-size:12px"></i>{{ c.unreadLabel }}</span>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="width:375px;height:812px;background:var(--color-surface);border:1px solid var(--border);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm)">
+        <div style="height:44px;flex:0 0 44px;background:#fff"></div>
+        <div style="height:64px;flex:0 0 64px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 8px 0 4px">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--color-primary)" aria-label="Back to messages"><i class="ph ph-arrow-left" style="font-size:21px"></i></div>
+          <div style="min-width:0;display:flex;flex-direction:column;gap:1px"><div style="font-family:var(--font-heading);font-weight:600;font-size:16px;color:var(--fg-1)">Thabo Molefe</div><div style="font-size:12px;color:var(--fg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Learner · RPAS Basic — Lagos</div></div>
+          <div style="margin-left:auto;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)" aria-label="Learner record"><i class="ph ph-user" style="font-size:20px"></i></div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:hidden;padding:16px;display:flex;flex-direction:column;gap:12px;justify-content:flex-end">
+          <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:1px;background:var(--border)"></div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Tue 6 Oct</div><div style="flex:1;height:1px;background:var(--border)"></div></div>
+          <div style="align-self:flex-start;max-width:290px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:14px;line-height:1.5;color:var(--fg-1)">It is the flight-planning section — I keep getting the NOTAM questions wrong.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 18:32</div></div>
+          <div style="align-self:flex-end;max-width:290px;display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div style="background:var(--color-primary);color:#fff;border-radius:12px 12px 4px 12px;padding:10px 12px;font-size:14px;line-height:1.5">That's the most common one. Section 3.4 has a worked example; try it before Thursday.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">You · 18:50</div></div>
+          <div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:1px;background:var(--color-accent)"></div><div style="font-size:11.5px;font-weight:600;color:#B5461B">2 new messages</div><div style="flex:1;height:1px;background:var(--color-accent)"></div></div>
+          <div style="align-self:flex-start;max-width:290px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:14px;line-height:1.5;color:var(--fg-1)">I'll join Thursday's clinic.</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 09:40</div></div>
+          <div style="align-self:flex-start;max-width:290px;display:flex;flex-direction:column;gap:4px"><div style="background:#fff;border:1px solid var(--border);border-radius:12px 12px 12px 4px;padding:10px 12px;font-size:14px;line-height:1.5;color:var(--fg-1)">Is the worksheet the one in lesson 3.4, or the download?</div><div style="font-family:var(--font-mono);font-size:11px;color:var(--fg-3)">Thabo · 09:42</div></div>
+        </div>
+        <div style="background:#fff;border-top:1px solid var(--border);padding:12px 12px 28px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1;min-height:44px;border:1px solid var(--border-strong);border-radius:8px;padding:11px 12px;font-size:14px;color:var(--fg-4)">Reply to Thabo</div>
+            <div style="width:44px;height:44px;border-radius:8px;background:var(--grey-200);color:var(--grey-400);display:flex;align-items:center;justify-content:center" aria-label="Send"><i class="ph ph-paper-plane-tilt" style="font-size:19px"></i></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-2)"><i class="ph ph-lock-simple" style="font-size:13px;color:var(--fg-3)"></i>Only you and Thabo can read this conversation.</div>
+        </div>
+      </div>
+
+      <div style="width:375px;height:812px;background:#fff;border:1px solid var(--border);border-radius:28px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-sm)">
+        <div style="height:44px;flex:0 0 44px"></div>
+        <div style="height:56px;flex:0 0 56px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 8px 0 4px">
+          <div style="width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--fg-2)" aria-label="Close"><i class="ph ph-x" style="font-size:21px"></i></div>
+          <div style="font-family:var(--font-heading);font-weight:600;font-size:18px;color:var(--fg-1)">New message</div>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:8px">
+          <label style="font-size:13px;font-weight:600;color:var(--fg-1)">To</label>
+          <div style="height:44px;border:1px solid var(--color-primary);box-shadow:0 0 0 3px rgba(40,53,147,0.2);border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:14px;color:var(--fg-1)"><i class="ph ph-magnifying-glass" style="font-size:16px;color:var(--fg-3)"></i>ka<span style="width:1px;height:17px;background:var(--color-primary)"></span></div>
+          <div style="font-size:12px;color:var(--fg-3)">Learners in the 4 cohorts you teach.</div>
+        </div>
+        <div style="flex:1;min-height:0;overflow:hidden;border-top:1px solid var(--border)">
+          <div style="padding:12px 16px 4px" class="fc-overline">RPAS Basic — Lagos</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:0 16px;min-height:60px">
+            <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">KA</div>
+            <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)"><span style="font-weight:700">Ka</span>wame Asante</div><div style="font-size:12px;color:var(--color-primary);font-weight:600;display:flex;align-items:center;gap:4px"><i class="ph ph-chat-circle-text" style="font-size:13px"></i>Existing conversation</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:0 16px;min-height:60px">
+            <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">KO</div>
+            <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)"><span style="font-weight:700">Ka</span>ren Obi</div><div style="font-size:12px;color:var(--fg-3)">k.obi@skyward.ng</div></div>
+          </div>
+          <div style="padding:12px 16px 4px;border-top:1px solid var(--grey-100)" class="fc-overline">Advanced BVLOS Operations</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:0 16px;min-height:60px">
+            <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">KN</div>
+            <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)"><span style="font-weight:700">Ka</span>tlego Nkosi</div><div style="font-size:12px;color:var(--fg-3)">k.nkosi@skyward.co.za</div></div>
+          </div>
+          <div style="padding:12px 16px 4px;border-top:1px solid var(--grey-100)" class="fc-overline">Thermal Survey Methods</div>
+          <div style="display:flex;align-items:center;gap:12px;padding:0 16px;min-height:60px">
+            <div style="width:32px;height:32px;border-radius:999px;background:var(--grey-100);color:var(--fg-2);display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:600">AK</div>
+            <div style="flex:1"><div style="font-size:14px;color:var(--fg-1)">Amara <span style="font-weight:700">Ka</span>malu</div><div style="font-size:12px;color:var(--fg-3)">a.kamalu@skyward.ng</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  convos() {
+    return [
+      { id: "tm", initials: "TM", name: "Thabo Molefe", cohort: "RPAS Basic — Lagos", preview: "Is the worksheet the one in lesson 3.4, or the download?", time: "09:42", unread: 2 },
+      { id: "nk", initials: "NK", name: "Naledi Kwena", cohort: "Advanced BVLOS Operations", preview: "Could you look at my SORA worksheet before the retake?", time: "08:15", unread: 1 },
+      { id: "ib", initials: "IB", name: "Ibrahim Bello", cohort: "RPAS Basic — Lagos", preview: "Is the module 3 quiz open-book?", time: "Yesterday", unread: 1 },
+      { id: "lm", initials: "LM", name: "Lerato Mahlangu", cohort: "Airspace & Regulation", preview: "You: Your submission is in — feedback by Friday.", time: "Yesterday", unread: 0 },
+      { id: "cm", initials: "CM", name: "Chipo Mwangi", cohort: "Thermal Survey Methods", preview: "You: Congratulations on completing the course.", time: "Mon", unread: 0 },
+      { id: "sd", initials: "SD", name: "Sofia Duarte", cohort: "Advanced BVLOS Operations", preview: "Got it, thanks.", time: "2 Oct", unread: 0 },
+      { id: "ka", initials: "KA", name: "Kwame Asante", cohort: "RPAS Basic — Lagos", preview: "You: Hi Kwame — checking in on module 2.", time: "28 Sep", unread: 0 }
+    ];
+  }
+  rows(activeId, readIds, mobile) {
+    return this.convos().map(c => {
+      const unread = readIds.includes(c.id) ? 0 : c.unread;
+      const on = c.id === activeId;
+      return {
+        ...c,
+        isUnread: unread > 0,
+        unreadLabel: unread + " new",
+        rowStyle: "display:flex;gap:12px;padding:" + (mobile ? "12px 16px" : "14px 16px") + ";border-bottom:1px solid var(--grey-100);cursor:pointer;"
+          + (on ? "background:var(--grey-100);box-shadow:inset 2px 0 0 var(--color-primary);" : ""),
+        nameStyle: "font-size:14px;color:var(--fg-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:" + (unread ? 700 : 500),
+        previewStyle: "flex:1;min-width:0;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" + (unread ? "color:var(--fg-1);font-weight:500" : "color:var(--fg-3)")
+      };
+    });
+  }
+  renderVals() {
+    return {
+      inboxA: this.rows("tm", ["tm"], false),
+      inboxB: this.rows(null, ["tm"], false).slice(0, 6),
+      inboxM: this.rows(null, [], true),
+      thread: [
+        { isDay: true, day: "Tue 6 Oct" },
+        { mine: true, time: "14:10", text: "Hi Thabo — you're three quarters of the way through module 3 and it's been a couple of weeks. If the flight-planning section is the sticking point, I run a live clinic on Thursdays at 16:00 and you're welcome to join." },
+        { theirs: true, time: "18:32", text: "Thanks Adaeze. It is the flight-planning section — I keep getting the NOTAM questions wrong." },
+        { mine: true, time: "18:50", text: "That's the most common one. Section 3.4 has a worked example; try it before Thursday and bring your answers." },
+        { isDay: true, day: "Today" },
+        { isNew: true },
+        { theirs: true, time: "09:40", text: "I'll join Thursday's clinic." },
+        { theirs: true, time: "09:42", text: "Is the worksheet the one in lesson 3.4, or the download at", link: "skyward.firstclass.aero/c/rpas-basic/3-4", after: "?" }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
