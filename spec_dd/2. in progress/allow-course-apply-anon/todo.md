@@ -82,3 +82,22 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
+
+## Part 2: the About you page
+
+Spec `1b. spec.md`. Plan and QA files take the `2b` suffix: `2b. plan.md`, `3b. frontend_qa.md`.
+Sections 10 to 14 above run once, after part 2 is implemented.
+
+- [x] (user) Write the part 2 spec (`1b. spec.md`)
+- [ ] (user) Review the part 2 spec and edit where needed
+- [ ] (cmd) Run `/sdd:spec_review` on `1b. spec.md`
+- [ ] (user) Address any issues raised by the review
+- [x] (cmd) Run `/sdd:plan_from_spec` on `1b. spec.md` with suffix `2b`
+- [ ] (user) Review both plans and edit where needed
+- [ ] (cmd) Run `/fls-dev:plan_security_review` on `2b. plan.md`
+- [ ] (cmd) Run `/fls-dev:plan_structure_review` on `2b. plan.md`
+- [ ] (cmd) Run `/sdd:implement_plan` on `2b. plan.md`
+- [ ] (user) Spot-check the changes
+- [ ] (cmd) Run `/ds:security-review` on the pending changes
+- [ ] (cmd) Run `/fls-dev:do_qa` with `3b. frontend_qa.md`
+- [ ] (user) Review the QA report and fix any bugs with TDD
