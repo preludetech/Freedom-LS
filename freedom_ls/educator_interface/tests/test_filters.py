@@ -12,6 +12,7 @@ from freedom_ls.educator_interface.filters import (
     ShowInactiveFilter,
     VisibleCourseFilter,
 )
+from freedom_ls.educator_interface.views import CohortDataTable
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -20,6 +21,8 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.tables import TableQuery
 
 
 @pytest.fixture(autouse=True)
@@ -93,3 +96,75 @@ def test_visible_course_filter_drops_a_cohort_whose_registration_is_inactive():
     ).apply(Cohort.objects.all(), [str(course.pk)])
 
     assert list(result) == []
+
+
+# the table hides inactive cohorts only while it offers the toggle
+
+
+def _cohort_rows(table: type[CohortDataTable], request) -> list[Cohort]:
+    query = TableQuery(key="cohorts")
+    return list(table.filter_queryset(request, table.get_queryset(request), query))
+
+
+@pytest.mark.django_db
+def test_the_cohort_table_hides_inactive_cohorts_while_its_toggle_is_unset(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    active = CohortFactory(organisation=organisation)
+    CohortFactory(organisation=organisation, is_active=False)
+
+    assert _cohort_rows(CohortDataTable, request) == [active]
+
+
+@pytest.mark.django_db
+def test_a_cohort_table_without_the_toggle_keeps_inactive_cohorts(
+    site_aware_request: RequestFactory,
+):
+    """Only ShowInactiveFilter narrows the table: another filter list, with
+    nothing on the page to widen it again, must not hide rows."""
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    active = CohortFactory(organisation=organisation, name="A")
+    inactive = CohortFactory(organisation=organisation, name="B", is_active=False)
+
+    class CourseOnlyCohortDataTable(CohortDataTable):
+        @classmethod
+        def get_filters(cls) -> list[TableFilter]:
+            return [
+                VisibleCourseFilter(
+                    "course", "Course", lookup="course_registrations__course"
+                )
+            ]
+
+    assert _cohort_rows(CourseOnlyCohortDataTable, request) == [active, inactive]
+
+
+@pytest.mark.django_db
+def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
+    site_aware_request: RequestFactory,
+):
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    active = CohortFactory(organisation=organisation, name="A")
+    inactive = CohortFactory(organisation=organisation, name="B", is_active=False)
+
+    class RenamedToggleCohortDataTable(CohortDataTable):
+        @classmethod
+        def get_filters(cls) -> list[TableFilter]:
+            return [ShowInactiveFilter("all", "Show all")]
+
+    unset = TableQuery(key="cohorts")
+    on = TableQuery(key="cohorts", filters={"all": ["1"]})
+    queryset = RenamedToggleCohortDataTable.get_queryset(request)
+
+    assert list(
+        RenamedToggleCohortDataTable.filter_queryset(request, queryset, unset)
+    ) == [active]
+    assert list(
+        RenamedToggleCohortDataTable.filter_queryset(request, queryset, on)
+    ) == [
+        active,
+        inactive,
+    ]

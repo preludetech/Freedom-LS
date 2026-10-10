@@ -141,6 +141,53 @@ def test_an_action_that_is_not_offered_is_left_out_of_the_panel_actions(
     assert [action.action_name for action in actions] == ["do_thing"]
 
 
+class StubRowAction(StubAction):
+    action_name = "per_row"
+    label = "Per Row"
+    renders_in_footer = False
+
+
+@pytest.mark.django_db
+def test_a_row_action_is_kept_out_of_the_footer_and_exposed_by_url(
+    mock_site_context: Site,
+) -> None:
+    """A row-scoped action resolves on the panel like any other, but the
+    panel hands its URL to the cell templates instead of rendering it."""
+    item = _make_stub(name="rows")
+
+    class PanelWithRowAction(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [StubAction(), StubRowAction()]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    context = PanelWithRowAction(_ctx(request, item)).get_context_data()
+
+    assert [action.action_name for action in context["actions"]] == ["do_thing"]
+    assert context["row_action_urls"] == {"per_row": "/test/__actions/per_row"}
+
+
+@pytest.mark.django_db
+def test_an_unavailable_row_action_has_no_url(mock_site_context: Site) -> None:
+    item = _make_stub(name="rows")
+
+    class StubUnofferedRowAction(StubRowAction):
+        def is_offered(self, ctx: PanelContext) -> bool:
+            return False
+
+    class PanelWithRowAction(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [StubUnofferedRowAction()]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    assert (
+        PanelWithRowAction(_ctx(request, item)).get_context_data()["row_action_urls"]
+        == {}
+    )
+
+
 def test_navigation_response_closes_the_modal_and_relocates_the_main_content() -> None:
     response = navigation_response("/items/1")
 

@@ -45,10 +45,8 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     active_organisation_admins,
-    cohort_course_count,
+    cohort_counts,
     cohort_educators,
-    cohort_is_empty,
-    cohort_learner_count,
     cohorts_visible_to,
     courses_visible_to,
     learners_visible_to,
@@ -285,14 +283,12 @@ class CohortDataTable(DataTable):
     ) -> QuerySet:
         # The toggle can only widen, so the table excludes inactive cohorts
         # itself whenever it offers the toggle and the toggle is unset.
-        if cls.get_filters() and "inactive" not in query.filters:
+        toggle = next(
+            (f for f in cls.get_filters() if isinstance(f, ShowInactiveFilter)), None
+        )
+        if toggle is not None and toggle.key not in query.filters:
             queryset = queryset.filter(is_active=True)
-        queryset = super().filter_queryset(request, queryset, query)
-        if query.sort:
-            # Keep the default tie-breaker under a sort, or pages repeat and
-            # skip rows when several cohorts share a value.
-            queryset = queryset.order_by(query.sort, "name", "pk")
-        return queryset
+        return super().filter_queryset(request, queryset, query)
 
 
 class LearnerCohortDataTable(CohortDataTable):
@@ -431,8 +427,9 @@ class CohortDetailsPanel(Panel):
         cohort = cast(Cohort, self.instance)
         context = super().get_context_data()
         context["cohort"] = cohort
-        context["cohort_learner_count"] = cohort_learner_count(cohort)
-        context["cohort_course_count"] = cohort_course_count(cohort)
+        counts = cohort_counts(cohort)
+        context["cohort_learner_count"] = counts.learners
+        context["cohort_course_count"] = counts.courses
         return context
 
 
@@ -487,22 +484,9 @@ class CohortCoursesPanel(DataTablePanel):
         return super().get_queryset(request).filter(cohort=self.instance)
 
     def get_actions(self) -> list[PanelAction]:
-        # The unregister action is listed so the action route can find it,
-        # then dropped from the footer: it needs a registration to act on and
-        # renders per row instead.
+        # Unregister renders per row, not in the footer: the unregister cell
+        # reads its URL from row_action_urls.
         return [RegisterCohortForCourseAction(), UnregisterCohortFromCourseAction()]
-
-    def get_context_data(self) -> dict[str, object]:
-        context = super().get_context_data()
-        context["actions"] = [
-            action
-            for action in cast(list[PanelAction], context["actions"])
-            if not isinstance(action, UnregisterCohortFromCourseAction)
-        ]
-        context["can_unregister"] = UnregisterCohortFromCourseAction().is_available(
-            self.ctx
-        )
-        return context
 
     def get_tab_count(self) -> int | None:
         return self.get_queryset(self.request).filter(is_active=True).count()
@@ -609,10 +593,8 @@ class CohortSettingsPanel(Panel):
         cohort = cast(Cohort, self.instance)
         context = super().get_context_data()
         context["cohort"] = cohort
-        context["is_empty"] = cohort_is_empty(cohort)
-        context["not_empty_sentence"] = (
-            "" if context["is_empty"] else cohort_not_empty_sentence(cohort)
-        )
+        context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
+        context["is_empty"] = not context["not_empty_sentence"]
         return context
 
 
@@ -644,10 +626,10 @@ class CohortInstanceView(InstanceView):
         return active_status_badge(cast(Cohort, self.instance).is_active)
 
     def get_stats(self) -> list[HeaderStat]:
-        cohort = cast(Cohort, self.instance)
+        counts = cohort_counts(cast(Cohort, self.instance))
         return [
-            HeaderStat("Learners", str(cohort_learner_count(cohort))),
-            HeaderStat("Courses", str(cohort_course_count(cohort))),
+            HeaderStat("Learners", str(counts.learners)),
+            HeaderStat("Courses", str(counts.courses)),
         ]
 
     def get_actions(self) -> list[PanelAction]:

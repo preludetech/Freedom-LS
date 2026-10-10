@@ -73,6 +73,10 @@ class PanelAction:
     #: mutation touches an entity other than its own instance overrides
     #: get_success_events instead of relying on the default mapping.
     success_events: tuple[str, ...] = ()
+    #: False for a row-scoped action: it still resolves on its panel's URL,
+    #: but its trigger renders per row (the panel exposes its URL through
+    #: `row_action_urls`) rather than in the panel's footer.
+    renders_in_footer: bool = True
 
     def get_capability(self, ctx: PanelContext) -> str | None:
         return self.capability

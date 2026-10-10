@@ -13,6 +13,7 @@ from typing import cast
 
 import pytest
 from guardian.shortcuts import assign_perm
+from pytest_mock import MockerFixture
 
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
@@ -37,11 +38,16 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
+    CohortCounts,
     ResolvedRegistration,
     active_organisation_admins,
     all_cohorts_visible_to,
     can_view_cohort,
+    cohort_counts,
+    cohort_course_count,
     cohort_educators,
+    cohort_is_empty,
+    cohort_learner_count,
     cohorts_visible_to,
     colleagues_of,
     educators_of,
@@ -66,6 +72,8 @@ from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
+from freedom_ls.role_based_permissions.roles import BASE_ROLES
+from freedom_ls.role_based_permissions.types import SCOPE_OBJECT, Role, SiteRolesConfig
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
@@ -672,6 +680,101 @@ class TestCohortEducators:
         assign_object_role(educator, sibling, "cohort_admin")
 
         assert cohort_educators(cohort) == []
+
+    def test_a_configured_role_granting_view_cohort_is_listed(
+        self, mock_site_context, mocker: MockerFixture
+    ):
+        """The roles come from the site config, not a hard-coded pair."""
+        tutor = Role(
+            display_name="Cohort tutor",
+            assignment_scope=SCOPE_OBJECT,
+            permissions=frozenset({"freedom_ls_learner_management.view_cohort"}),
+        )
+        mocker.patch(
+            "freedom_ls.role_based_permissions.loader._get_role_config_cached",
+            return_value=BASE_ROLES.extend({"cohort_tutor": tutor}),
+        )
+        cohort = _make_cohort()
+        educator = UserFactory()
+        assign_object_role(educator, cohort, "cohort_tutor")
+
+        assert cohort_educators(cohort) == [(educator, "Cohort tutor")]
+
+    def test_an_assignment_of_a_role_the_config_lacks_is_left_out(
+        self, mock_site_context, mocker: MockerFixture
+    ):
+        cohort = _make_cohort()
+        educator = UserFactory()
+        assign_object_role(educator, cohort, "cohort_viewer")
+        without_viewer = SiteRolesConfig(
+            {key: role for key, role in BASE_ROLES.items() if key != "cohort_viewer"}
+        )
+        mocker.patch(
+            "freedom_ls.role_based_permissions.loader._get_role_config_cached",
+            return_value=without_viewer,
+        )
+
+        assert cohort_educators(cohort) == []
+
+
+@pytest.mark.django_db
+class TestCohortCounts:
+    def test_counts_active_members_and_active_registrations(self, mock_site_context):
+        cohort = _make_cohort()
+        CohortMembershipFactory(
+            cohort=cohort, learner=LearnerFactory(organisation=cohort.organisation)
+        )
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(organisation=cohort.organisation, is_active=False),
+        )
+        CohortCourseRegistrationFactory(cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort)
+        CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+
+        assert cohort_counts(cohort) == CohortCounts(learners=1, courses=2)
+        assert cohort_learner_count(cohort) == 1
+        assert cohort_course_count(cohort) == 2
+
+    def test_both_counts_cost_one_query(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        cohort = _make_cohort()
+
+        with django_assert_num_queries(1):
+            cohort_counts(cohort)
+
+    def test_an_empty_cohort_counts_zero(self, mock_site_context):
+        assert cohort_counts(_make_cohort()) == CohortCounts(learners=0, courses=0)
+
+
+@pytest.mark.django_db
+class TestCohortIsEmpty:
+    def test_a_cohort_with_nothing_is_empty(self, mock_site_context):
+        assert cohort_is_empty(_make_cohort()) is True
+
+    def test_a_removed_learners_membership_counts(self, mock_site_context):
+        cohort = _make_cohort()
+        CohortMembershipFactory(
+            cohort=cohort,
+            learner=LearnerFactory(organisation=cohort.organisation, is_active=False),
+        )
+
+        assert cohort_is_empty(cohort) is False
+
+    def test_an_inactive_registration_counts(self, mock_site_context):
+        cohort = _make_cohort()
+        CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+
+        assert cohort_is_empty(cohort) is False
+
+    def test_the_check_costs_one_query(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        cohort = _make_cohort()
+
+        with django_assert_num_queries(1):
+            cohort_is_empty(cohort)
 
 
 @pytest.mark.django_db

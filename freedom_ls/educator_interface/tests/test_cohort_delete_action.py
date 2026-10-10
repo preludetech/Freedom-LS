@@ -23,12 +23,17 @@ import pytest
 
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.sites.models import Site
+from django.http import Http404
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
+from freedom_ls.educator_interface.actions import (
+    DeleteEmptyCohortAction,
+    cohort_not_empty_sentence,
+)
+from freedom_ls.educator_interface.views import CohortConfig
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -39,6 +44,7 @@ from freedom_ls.learner_management.models import Cohort, CohortMembership
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.role_based_permissions.utils import assign_object_role
 
@@ -284,3 +290,28 @@ def test_a_delete_of_a_cohort_that_gained_a_member_answers_422_and_keeps_it(
     assert cohort_not_empty_sentence(cohort) in html.unescape(response.content.decode())
     assert Cohort.objects.filter(pk=cohort.pk).exists()
     assert CohortMembership.objects.filter(pk=membership.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_delete_of_a_cohort_already_deleted_answers_the_unavailable_fragment(
+    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+) -> None:
+    """Two admins confirm Delete together: the second finds no row and gets
+    the modal's "no longer available" copy, not a server error."""
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Going twice")
+    client = logged_in_client(UserFactory(superuser=True))
+    url = _delete_url(client, cohort)
+    assert client.get(url).status_code == 200
+    action = DeleteEmptyCohortAction()
+    ctx = PanelContext(
+        request=client.get(url, HTTP_HX_REQUEST="true").wsgi_request,
+        instance=cohort,
+        base_url=f"{_panel_url(cohort)}/__tabs/settings",
+        name="settings",
+        config=CohortConfig,
+    )
+    Cohort.objects.filter(pk=cohort.pk).delete()
+
+    with pytest.raises(Http404):
+        action.handle_submit(ctx)
