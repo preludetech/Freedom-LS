@@ -19,6 +19,8 @@ from types import ModuleType
 
 import pytest
 
+pytestmark = pytest.mark.dev_tooling
+
 
 def _load_root_conftest() -> ModuleType:
     spec = importlib.util.spec_from_file_location(
