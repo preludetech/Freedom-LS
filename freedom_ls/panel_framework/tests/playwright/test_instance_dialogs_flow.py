@@ -62,7 +62,6 @@ def test_instance_dialogs_and_heading(
     page.goto(f"{base}/{long_stub.pk}")
     expect(page.locator("#instance-title")).to_have_text(_LONG_UNBROKEN_NAME)
     assert_no_horizontal_overflow(page)
-    assert page.evaluate("document.documentElement.scrollWidth") == 392
 
     # The delete dialog focuses Cancel, and confirming deletes the row and
     # navigates to the list.

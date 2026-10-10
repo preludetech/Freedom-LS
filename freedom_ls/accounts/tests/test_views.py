@@ -246,7 +246,7 @@ def test_switch_to_signup_is_a_link_labelled_create_an_account(login_page):
 
     assert len(switch_hrefs) == 1
     assert "Create an account" in non_header_html
-    assert parse_qs(urlparse(switch_hrefs[0]).query).get("next") == [apply_url]
+    assert _next_param(switch_hrefs[0]) == apply_url
 
 
 @pytest.mark.django_db
@@ -503,7 +503,7 @@ def test_switch_to_login_is_a_link_labelled_log_in(signup_page):
 
     assert len(switch_hrefs) == 1
     assert "Log in" in non_header_html
-    assert parse_qs(urlparse(switch_hrefs[0]).query).get("next") == [apply_url]
+    assert _next_param(switch_hrefs[0]) == apply_url
 
 
 @pytest.mark.django_db
@@ -675,11 +675,10 @@ def test_every_signup_link_on_login_page_carries_next(login_page_for_apply):
     _, apply_url, html = login_page_for_apply
 
     next_per_link = {
-        href: parse_qs(urlparse(href).query).get("next")
-        for href in _hrefs_to(html, "account_signup")
+        href: _next_param(href) for href in _hrefs_to(html, "account_signup")
     }
 
-    assert all(v == [apply_url] for v in next_per_link.values()), next_per_link
+    assert all(v == apply_url for v in next_per_link.values()), next_per_link
 
 
 @pytest.mark.django_db
@@ -687,11 +686,10 @@ def test_every_login_link_on_signup_page_carries_next(signup_page_for_apply):
     apply_url, html = signup_page_for_apply
 
     next_per_link = {
-        href: parse_qs(urlparse(href).query).get("next")
-        for href in _hrefs_to(html, "account_login")
+        href: _next_param(href) for href in _hrefs_to(html, "account_login")
     }
 
-    assert all(v == [apply_url] for v in next_per_link.values()), next_per_link
+    assert all(v == apply_url for v in next_per_link.values()), next_per_link
 
 
 @pytest.mark.django_db(transaction=True)

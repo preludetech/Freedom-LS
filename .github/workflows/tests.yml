@@ -49,7 +49,7 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: pguser
+          POSTGRES_USER: fls_dev
           POSTGRES_PASSWORD: password
           POSTGRES_DB: db
         ports:
@@ -95,7 +95,7 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: pguser
+          POSTGRES_USER: fls_dev
           POSTGRES_PASSWORD: password
           POSTGRES_DB: db
         ports:
@@ -141,7 +141,7 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_USER: pguser
+          POSTGRES_USER: fls_dev
           POSTGRES_PASSWORD: password
           POSTGRES_DB: test_db
         ports:
