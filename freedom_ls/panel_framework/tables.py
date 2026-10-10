@@ -418,10 +418,17 @@ def _toolbar_entry(
     values = query.filters.get(table_filter.key, [])
     choices = table_filter.get_choices(request)
     labels = [label for value, label in choices if value in values]
+    joined_labels = ", ".join(labels)
+    chip_text = (
+        table_filter.label
+        if joined_labels == table_filter.label
+        else f"{table_filter.label}: {joined_labels}"
+    )
     return {
         "filter": table_filter,
         "values": values,
         "labels": labels,
+        "chip_text": chip_text,
         "shown": table_filter.always_shown or bool(values),
         "choices": [
             {

@@ -55,7 +55,7 @@ off.
                     <summary class="list-none">
                         {% if entry.values %}
                             <c-chip variant="secondary" class="cursor-pointer">
-                                {{ entry.filter.label }}: {{ entry.labels|join:", " }}
+                                {{ entry.chip_text }}
                                 {% querystring request.GET entry.remove_changes as remove_qs %}
                                 <a href="{{ page_url }}{{ remove_qs }}"
                                    hx-get="{{ base_url }}{{ remove_qs }}"
@@ -128,7 +128,7 @@ off.
             {% for entry in toolbar %}
                 {% if entry.values %}
                     <c-chip variant="secondary">
-                        {{ entry.filter.label }}: {{ entry.labels|join:", " }}
+                        {{ entry.chip_text }}
                         {% querystring request.GET entry.remove_changes as remove_qs %}
                         <a href="{{ page_url }}{{ remove_qs }}"
                            hx-get="{{ base_url }}{{ remove_qs }}"

@@ -502,6 +502,23 @@ def test_cohort_list_omits_an_inactive_cohort_by_default(staff_client):
 
 
 @pytest.mark.django_db
+def test_cohort_list_show_inactive_chip_reads_the_label_once(staff_client):
+    """The applied toggle chip used to read "Show inactive: Show inactive"."""
+    organisation = OrganisationFactory()
+
+    response = staff_client.get(
+        _interface_url(organisation.slug, "cohorts") + "?cohorts-inactive=1"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    remove_links = document.xpath("//a[@aria-label='Remove Show inactive filter']")
+    chip_texts = {
+        " ".join(link.getparent().text_content().split()) for link in remove_links
+    }
+    assert chip_texts == {"Show inactive"}
+
+
+@pytest.mark.django_db
 def test_cohort_list_includes_an_inactive_cohort_with_a_badge_when_asked(
     staff_client,
 ):
