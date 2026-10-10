@@ -34,6 +34,7 @@ from freedom_ls.educator_interface.views import CohortConfig, CreateCohortAction
 from freedom_ls.learner_management.factories import CohortFactory
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -244,13 +245,8 @@ def test_the_create_form_fragment_lists_cancel_before_submit_inside_the_form(
     assert buttons[-1].get("type") == "submit"
 
 
-@pytest.mark.django_db
-def test_the_create_form_footer_offers_cancel_then_create_cohort_only(
-    mock_site_context: Site, logged_in_client: Callable[..., Client]
-) -> None:
-    organisation = OrganisationFactory()
-    client = logged_in_client(UserFactory(superuser=True))
-    url = reverse(
+def _create_url(organisation: Organisation) -> str:
+    return reverse(
         "educator_interface:interface",
         kwargs={
             "organisation_slug": organisation.slug,
@@ -258,7 +254,15 @@ def test_the_create_form_footer_offers_cancel_then_create_cohort_only(
         },
     )
 
-    response = client.get(url)
+
+@pytest.mark.django_db
+def test_the_create_form_footer_offers_cancel_then_save_and_add_another_then_save(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.get(_create_url(organisation))
 
     document = lxml.html.fromstring(response.content.decode())
     (form,) = document.cssselect("form")
@@ -269,5 +273,82 @@ def test_the_create_form_footer_offers_cancel_then_create_cohort_only(
         for button in form.cssselect("button")
         if button.text_content().strip()
     ]
-    assert labels == ["Cancel", "Create Cohort"]
-    assert "Save and add another" not in response.content.decode()
+    assert labels == ["Cancel", "Save and add another", "Save"]
+
+
+@pytest.mark.django_db
+def test_save_and_add_another_answers_200_with_an_empty_form_and_the_cohort_changed_trigger(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(
+        _create_url(organisation),
+        {"name": "First Cohort", "action": "save_and_add"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    cohort = Cohort.objects.get(name="First Cohort")
+    document = lxml.html.fromstring(response.content.decode())
+    assert response.status_code == 200
+    assert document.cssselect("input[name=name]")[0].get("value") in (None, "")
+    assert response["HX-Trigger"] == build_hx_trigger(
+        {COHORT_CHANGED: [str(cohort.pk)]}
+    )
+
+
+@pytest.mark.django_db
+def test_save_and_add_another_creates_the_cohort(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    client = logged_in_client(UserFactory(superuser=True))
+
+    client.post(
+        _create_url(organisation),
+        {"name": "First Cohort", "action": "save_and_add"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert Cohort.objects.filter(
+        organisation=organisation, name="First Cohort"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_plain_save_answers_204_with_hx_location_to_the_new_cohort(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(
+        _create_url(organisation), {"name": "Only Cohort"}, HTTP_HX_REQUEST="true"
+    )
+
+    cohort = Cohort.objects.get(name="Only Cohort")
+    assert response.status_code == 204
+    assert json.loads(response["HX-Location"])["path"] == reverse(
+        "educator_interface:interface",
+        kwargs={
+            "organisation_slug": organisation.slug,
+            "path_string": f"cohorts/{cohort.pk}",
+        },
+    )
+
+
+@pytest.mark.django_db
+def test_creating_a_cohort_named_after_an_inactive_sibling_answers_422_with_the_clash_message(
+    mock_site_context: Site, logged_in_client: Callable[..., Client]
+) -> None:
+    organisation = OrganisationFactory()
+    CohortFactory(organisation=organisation, name="Year 10 Science", is_active=False)
+    client = logged_in_client(UserFactory(superuser=True))
+
+    response = client.post(
+        _create_url(organisation), {"name": "Year 10 Science"}, HTTP_HX_REQUEST="true"
+    )
+
+    assert response.status_code == 422
+    assert "Another cohort already has this name." in response.content.decode()

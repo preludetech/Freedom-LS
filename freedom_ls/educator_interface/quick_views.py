@@ -13,7 +13,10 @@ from django.db.models import Max
 
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
-from freedom_ls.learner_management.queries import cohorts_visible_to
+from freedom_ls.learner_management.queries import (
+    cohort_learner_count,
+    cohorts_visible_to,
+)
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.queries import registrations_with_progress_for_learner
 from freedom_ls.panel_framework.quick_view import QuickView
@@ -72,9 +75,11 @@ class CohortQuickView(QuickView):
         cohort = cast(Cohort, self.instance)
         return {
             "cohort": cohort,
-            "learner_count": cohort.cohortmembership_set.count(),
+            "learner_count": cohort_learner_count(cohort),
             "courses": [
                 registration.course
-                for registration in cohort.course_registrations.select_related("course")
+                for registration in cohort.course_registrations.filter(
+                    is_active=True
+                ).select_related("course")
             ],
         }

@@ -16,7 +16,10 @@ from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.educator_interface.views import OrganisationSectionConfig
-from freedom_ls.learner_management.factories import CohortFactory
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
+)
 from freedom_ls.learner_management.models import Cohort, OrganisationMember
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -186,7 +189,7 @@ def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragme
     client = logged_in_client(user)
     delete_url = _interface_url(
         organisation.slug,
-        f"cohorts/{cohort.pk}/__actions/delete",
+        f"cohorts/{cohort.pk}/__tabs/settings/__actions/delete",
     )
     assert client.get(delete_url, HTTP_HX_REQUEST="true").status_code == 200
 
@@ -200,3 +203,64 @@ def test_stale_delete_on_a_cohort_that_left_scope_answers_the_unavailable_fragme
     assert "This is no longer available" in html
     assert cohort.name not in html
     assert Cohort.objects.filter(pk=cohort.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_pasted_deactivate_url_answers_403(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    assign_object_role(user, cohort, "cohort_viewer")
+    client = logged_in_client(user)
+
+    response = client.get(
+        _interface_url(organisation.slug, f"cohorts/{cohort.pk}/__actions/deactivate"),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_pasted_register_url_answers_403(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory()
+    assign_object_role(user, cohort, "cohort_viewer")
+    client = logged_in_client(user)
+
+    response = client.get(
+        _interface_url(
+            organisation.slug, f"cohorts/{cohort.pk}/__tabs/courses/__actions/register"
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_pasted_unregister_url_answers_403(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    registration = CohortCourseRegistrationFactory(cohort=cohort)
+    user = UserFactory()
+    assign_object_role(user, cohort, "cohort_viewer")
+    client = logged_in_client(user)
+
+    response = client.get(
+        _interface_url(
+            organisation.slug,
+            f"cohorts/{cohort.pk}/__tabs/courses/__actions/unregister",
+        ),
+        {"registration": str(registration.pk)},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 403

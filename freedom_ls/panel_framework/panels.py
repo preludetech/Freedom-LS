@@ -146,10 +146,12 @@ class Panel:
         """The context `template_name` renders with.
 
         Subclasses call `super()` and add keys. Actions the request may not
-        use are already filtered out.
+        use are already filtered out. `actions` holds the footer's triggers;
+        `row_action_urls` maps each row-scoped action's name to its URL, for
+        the cell template that renders its trigger per row.
         """
-        actions = [
-            action for action in self.get_actions() if action.has_permission(self.ctx)
+        available = [
+            action for action in self.get_actions() if action.is_available(self.ctx)
         ]
         return {
             "panel": self,
@@ -157,7 +159,12 @@ class Panel:
             "name": self.ctx.name,
             "base_url": self.ctx.base_url,
             "title": self.title,
-            "actions": actions,
+            "actions": [action for action in available if action.renders_in_footer],
+            "row_action_urls": {
+                action.action_name: action.get_action_url(self.ctx)
+                for action in available
+                if not action.renders_in_footer
+            },
             "region_id": self.region_id,
             "region_template_name": self.region_template_name,
             "refresh_events": self.refresh_events,

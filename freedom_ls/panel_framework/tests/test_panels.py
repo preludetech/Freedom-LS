@@ -26,11 +26,13 @@ from freedom_ls.panel_framework.panels import (
 )
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
+    HeaderStat,
     InstanceView,
     ListViewConfig,
     NavGroup,
     ObjectViewConfig,
     SectionConfigBase,
+    StatusBadge,
     _build_menu_items,
     sections_by_url_name,
 )
@@ -254,6 +256,16 @@ class _ObjectInstanceView(InstanceView):
     panel = _PanelsWithAHiddenOne
 
 
+class _BadgedInstanceView(InstanceView):
+    panel = _PanelsWithAHiddenOne
+
+    def get_status_badge(self) -> StatusBadge | None:
+        return StatusBadge("success", "Live now")
+
+    def get_stats(self) -> list[HeaderStat]:
+        return [HeaderStat("Seats", "12"), HeaderStat("Waiting", "3")]
+
+
 class _FirstStubConfig(RecordingCapabilityConfig, ObjectViewConfig):
     """Shows whichever stub sorts first by name."""
 
@@ -270,6 +282,21 @@ class _FirstStubConfig(RecordingCapabilityConfig, ObjectViewConfig):
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         if instance.name.startswith("secret"):
             raise Http404
+
+
+class _BadgedStubConfig(RecordingCapabilityConfig, ObjectViewConfig):
+    url_name = "badged-stub"
+    menu_label = "Badged stub"
+    instance_view = _BadgedInstanceView
+
+    @classmethod
+    def get_object(cls, request: HttpRequest) -> Model:
+        first: Model = StubModel.objects.order_by("name")[0]
+        return first
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        return None
 
 
 class _TenantBaseConfig(BaseViewConfig):
@@ -301,7 +328,13 @@ DELETE_URL = "/test-panel/framework/first-stub/__panels/deletable/__actions/dele
 SECTIONS_CONFIG = [
     NavGroup(
         "Configs",
-        [_FirstStubConfig, StubBaseConfig, _TenantBaseConfig, _TenantObjectConfig],
+        [
+            _FirstStubConfig,
+            _BadgedStubConfig,
+            StubBaseConfig,
+            _TenantBaseConfig,
+            _TenantObjectConfig,
+        ],
     )
 ]
 
@@ -323,6 +356,29 @@ def test_an_object_view_renders_its_object_at_the_section_url(
 
     assert '<h1 id="instance-title">alpha</h1>' in html
     assert ">Deletable</h2>" in html
+
+
+def test_an_instance_view_renders_its_badge_and_stats_in_the_header(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="alpha")
+
+    html = _view("badged-stub").content.decode()
+
+    assert "Live now" in html
+    assert "Seats" in html
+    assert "Waiting" in html
+
+
+def test_an_instance_view_without_a_badge_or_stats_renders_neither(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="alpha")
+
+    html = _view("first-stub").content.decode()
+
+    assert "Live now" not in html
+    assert "<dl" not in html
 
 
 def test_an_object_view_runs_check_access_on_its_object(

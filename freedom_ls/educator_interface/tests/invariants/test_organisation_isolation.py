@@ -26,8 +26,9 @@ import pytest
 from django.test import Client, RequestFactory
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.views import (
     CohortCourseRegistrationDataTable,
     CourseCohortRegistrationDataTable,
@@ -40,6 +41,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.models import CohortCourseRegistration
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -219,7 +221,110 @@ class TestCrossOrganisationIsolation:
         response = isolation.client.get(
             _interface_url(
                 isolation.organisation_a.slug,
-                f"cohorts/{isolation.cohort_b.pk}/__tabs/details/__panels/details",
+                f"cohorts/{isolation.cohort_b.pk}/__tabs/overview/__panels/details",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "suffix",
+        [
+            "__tabs/settings",
+            "__actions/deactivate",
+            "__actions/reactivate",
+            "__tabs/settings/__actions/delete",
+        ],
+    )
+    def test_cohort_settings_surfaces_404_for_a_cohort_outside_organisation_a(
+        self, isolation, suffix: str
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/{suffix}",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    @pytest.mark.parametrize(
+        "suffix", ["__tabs/courses", "__tabs/courses/__actions/register"]
+    )
+    def test_cohort_courses_surfaces_404_for_a_cohort_outside_organisation_a(
+        self, isolation, suffix: str
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/{suffix}",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_register_post_naming_a_coming_soon_course_answers_422_with_no_row(
+        self, isolation
+    ):
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        response = isolation.client.post(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/register",
+            ),
+            {"course": str(course.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert not isolation.cohort_a.course_registrations.filter(
+            course=course
+        ).exists()
+
+    def test_register_post_naming_another_sites_course_answers_422_with_no_row(
+        self, isolation
+    ):
+        course = CourseFactory(site=SiteFactory())
+
+        response = isolation.client.post(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/register",
+            ),
+            {"course": str(course.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert not CohortCourseRegistration.objects.filter(course=course).exists()
+
+    def test_unregister_naming_another_organisations_registration_answers_404(
+        self, isolation
+    ):
+        foreign = CohortCourseRegistrationFactory(cohort=isolation.cohort_b)
+
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_a.pk}/__tabs/courses/__actions/unregister",
+            ),
+            {"registration": str(foreign.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_cohort_educators_panel_fetch_404s_for_a_cohort_outside_organisation_a(
+        self, isolation
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"cohorts/{isolation.cohort_b.pk}/__tabs/overview/__panels/educators",
             ),
             HTTP_HX_REQUEST="true",
         )
@@ -295,6 +400,71 @@ class TestCrossOrganisationIsolation:
         content = response.content.decode()
         assert isolation.cohort_a.name in content
         assert isolation.cohort_b.name not in content
+
+    def test_hidden_course_registered_only_in_organisation_b_is_absent_from_as_list(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        hidden = CourseFactory(title="Hidden For B", visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(cohort=isolation.cohort_b, course=hidden)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "courses")
+        )
+
+        assert response.status_code == 200
+        assert isolation.course_a.title in response.content.decode()
+        assert hidden.title not in response.content.decode()
+
+    def test_hidden_course_registered_only_in_organisation_b_404s_on_as_detail(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        hidden = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(cohort=isolation.cohort_b, course=hidden)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, f"courses/{hidden.pk}")
+        )
+
+        assert response.status_code == 404
+
+    def test_cohort_list_ignores_a_course_filter_outside_the_visible_courses(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        """A dropped filter leaves the list unfiltered, so A's cohort still
+        shows, rather than the filter narrowing it to nothing."""
+        hidden = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(cohort=isolation.cohort_b, course=hidden)
+
+        response = isolation.client.get(
+            _interface_url(isolation.organisation_a.slug, "cohorts")
+            + f"?cohorts-course={hidden.pk}"
+        )
+
+        assert response.status_code == 200
+        assert isolation.cohort_a.name in response.content.decode()
+
+    def test_course_list_and_detail_never_show_organisation_bs_people(
+        self, isolation: SimpleNamespace
+    ) -> None:
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_a, course=isolation.course_a
+        )
+        CohortCourseRegistrationFactory(
+            cohort=isolation.cohort_b, course=isolation.course_a
+        )
+        LearnerCourseRegistrationFactory(
+            learner=isolation.learner_b, course=isolation.course_a
+        )
+
+        pages = [
+            isolation.client.get(
+                _interface_url(isolation.organisation_a.slug, path)
+            ).content.decode()
+            for path in ("courses", f"courses/{isolation.course_a.pk}")
+        ]
+
+        assert all(isolation.cohort_b.name not in page for page in pages)
+        assert all("MemberOfB" not in page for page in pages)
 
     @pytest.mark.parametrize(
         "data_table",

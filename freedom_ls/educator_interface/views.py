@@ -8,14 +8,31 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Page
-from django.db.models import Count, Model, Prefetch, Q, QuerySet
+from django.db.models import Count, F, Model, Prefetch, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
-from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.actions import (
+    DeleteEmptyCohortAction,
+    EditCohortAction,
+    RegisterCohortForCourseAction,
+    UnregisterCohortFromCourseAction,
+    cohort_not_empty_sentence,
+    cohort_state_actions,
+)
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    EDUCATOR_CHANGED,
+    LEARNER_CHANGED,
+    REGISTRATION_CHANGED,
+)
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
+from freedom_ls.educator_interface.filters import (
+    ShowInactiveFilter,
+    VisibleCourseFilter,
+)
 from freedom_ls.educator_interface.forms import CohortForm
 from freedom_ls.educator_interface.quick_views import CohortQuickView, LearnerQuickView
 from freedom_ls.learner_management.capabilities import can
@@ -28,17 +45,19 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     active_organisation_admins,
+    cohort_counts,
+    cohort_educators,
     cohorts_visible_to,
+    courses_visible_to,
     learners_visible_to,
     organisations_accessible_to,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
-    DeleteAction,
-    EditAction,
     PanelAction,
 )
+from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
     InstanceDetailsPanel,
@@ -49,10 +68,12 @@ from freedom_ls.panel_framework.panels import (
 from freedom_ls.panel_framework.tables import Column, DataTable, TableQuery
 from freedom_ls.panel_framework.views import (
     BaseViewConfig,
+    HeaderStat,
     InstanceView,
     ListViewConfig,
     NavGroup,
     SectionConfigBase,
+    StatusBadge,
     panel_framework_view,
     sections_by_url_name,
 )
@@ -170,11 +191,11 @@ def _interface_link(
 
 
 def _registration_columns() -> list[Column]:
-    """The Active/Registered columns the three registration tables share."""
+    """The Status/Registered columns the three registration tables share."""
     return [
         Column(
-            header="Active",
-            template="cotton/data-table-cells/boolean.html",
+            header="Status",
+            template="educator_interface/data-table-cells/active_status.html",
             attr="is_active",
         ),
         Column(
@@ -187,34 +208,96 @@ def _registration_columns() -> list[Column]:
 
 
 class CohortDataTable(DataTable):
+    search_fields = ["name"]
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         request = cast(OrganisationScopedRequest, request)
         return (
             cohorts_visible_to(request.user, request.organisation)
             .annotate(
-                learner_count=Count("cohortmembership", distinct=True),
+                learner_count=Count(
+                    "cohortmembership",
+                    filter=Q(cohortmembership__learner__is_active=True),
+                    distinct=True,
+                ),
             )
-            .prefetch_related("course_registrations__course")
-            .order_by("name")
+            .prefetch_related(
+                Prefetch(
+                    "course_registrations",
+                    queryset=CohortCourseRegistration.objects.filter(
+                        is_active=True
+                    ).select_related("course"),
+                )
+            )
+            .order_by("name", "pk")
         )
 
     @staticmethod
     def get_columns() -> list[Column]:
         return [
             _interface_link(
-                "Cohort Name", "name", "cohorts/{pk}", card="primary", quick_view=True
+                "Name",
+                "name",
+                "cohorts/{pk}",
+                sortable=True,
+                card="primary",
+                quick_view=True,
             ),
             Column(
-                header="Active Learners",
-                template="cotton/data-table-cells/text.html",
+                header="Status",
+                template="educator_interface/data-table-cells/active_status.html",
+                attr="is_active",
+            ),
+            Column(
+                header="Learners",
+                template="educator_interface/data-table-cells/learner_count.html",
                 attr="learner_count",
+                sortable=True,
             ),
             Column(
-                header="Registered Courses",
+                header="Courses",
                 template="educator_interface/data-table-cells/cohort_courses.html",
             ),
+            Column(
+                header="Created",
+                template="cotton/data-table-cells/text.html",
+                attr="created_at",
+                sortable=True,
+                card="md_only",
+            ),
         ]
+
+    @classmethod
+    def get_filters(cls) -> list[TableFilter]:
+        return [
+            ShowInactiveFilter("inactive", "Show inactive"),
+            VisibleCourseFilter(
+                "course", "Course", lookup="course_registrations__course"
+            ),
+        ]
+
+    @classmethod
+    def filter_queryset(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> QuerySet:
+        # The toggle can only widen, so the table excludes inactive cohorts
+        # itself whenever it offers the toggle and the toggle is unset.
+        toggle = next(
+            (f for f in cls.get_filters() if isinstance(f, ShowInactiveFilter)), None
+        )
+        if toggle is not None and toggle.key not in query.filters:
+            queryset = queryset.filter(is_active=True)
+        return super().filter_queryset(request, queryset, query)
+
+
+class LearnerCohortDataTable(CohortDataTable):
+    """The learner page's cohorts: every cohort the learner belongs to, active
+    or not, with search, sort and pagination but no filters."""
+
+    @classmethod
+    def get_filters(cls) -> list[TableFilter]:
+        return []
 
 
 class LearnerDataTable(DataTable):
@@ -297,7 +380,7 @@ class LearnerDetailsPanel(InstanceDetailsPanel):
 
 class LearnerCohortsPanel(DataTablePanel):
     title = "Cohorts"
-    data_table = CohortDataTable
+    data_table = LearnerCohortDataTable
     table_key = "cohorts"
     refresh_events = (LEARNER_CHANGED,)
 
@@ -320,19 +403,44 @@ class LearnerInstanceView(InstanceView):
     panel = LearnerPanelStack
 
 
-class CohortDetailsPanel(InstanceDetailsPanel):
+def _interface_path(organisation: Organisation, path_string: str) -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
+    )
+
+
+def active_status_badge(is_active: bool) -> StatusBadge:
+    """The badge for an `is_active` flag, matching `<c-active-status-badge>`."""
+    if is_active:
+        return StatusBadge("success", "Active")
+    return StatusBadge("muted", "Inactive")
+
+
+class CohortDetailsPanel(Panel):
     model = Cohort
-    fields = ["name"]
+    title = "Details"
+    template_name = "educator_interface/panels/cohort_details.html"
     refresh_events = (COHORT_CHANGED,)
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        context = super().get_context_data()
+        context["cohort"] = cohort
+        counts = cohort_counts(cohort)
+        context["cohort_learner_count"] = counts.learners
+        context["cohort_course_count"] = counts.courses
+        return context
 
 
 class CohortCourseRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        organisation = cast(OrganisationScopedRequest, request).organisation
+        request = cast(OrganisationScopedRequest, request)
+        visible_cohorts = cohorts_visible_to(request.user, request.organisation)
         return (
-            CohortCourseRegistration.objects.select_related("course")
-            .filter(cohort__organisation=organisation)
+            CohortCourseRegistration.objects.select_related("course", "cohort")
+            .filter(cohort__in=visible_cohorts)
             .order_by("course__title")
         )
 
@@ -343,6 +451,11 @@ class CohortCourseRegistrationDataTable(DataTable):
                 "Course", "course.title", "courses/{course.pk}", card="primary"
             ),
             *_registration_columns(),
+            Column(
+                header="",
+                template="educator_interface/data-table-cells/unregister.html",
+                card="secondary",
+            ),
         ]
 
 
@@ -361,52 +474,176 @@ class CohortLearnersPanel(DataTablePanel):
         return self.get_queryset(self.request).count()
 
 
-class CourseRegistrationsPanel(DataTablePanel):
-    title = "Course Registrations"
+class CohortCoursesPanel(DataTablePanel):
+    title = "Courses"
     data_table = CohortCourseRegistrationDataTable
-    table_key = "course_registrations"
-    refresh_events = (COHORT_CHANGED,)
+    table_key = "cohort_courses"
+    refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return super().get_queryset(request).filter(cohort=self.instance)
 
+    def get_actions(self) -> list[PanelAction]:
+        # Unregister renders per row, not in the footer: the unregister cell
+        # reads its URL from row_action_urls.
+        return [RegisterCohortForCourseAction(), UnregisterCohortFromCourseAction()]
 
-class CohortDetailsStack(PanelStack):
-    title = "Details"
+    def get_tab_count(self) -> int | None:
+        return self.get_queryset(self.request).filter(is_active=True).count()
+
+
+@dataclass(frozen=True)
+class CourseCompletion:
+    """How far one course registration's current members have got."""
+
+    course: Course
+    completed_count: int
+    record_count: int
+    percentage: int
+
+
+class CohortCourseCompletionPanel(Panel):
+    model = Cohort
+    title = "Course completion"
+    template_name = "educator_interface/panels/cohort_course_completion.html"
+    refresh_events = (COHORT_CHANGED, REGISTRATION_CHANGED)
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        # Course progress records minted for members who have since been
+        # removed or have left the cohort are kept for ever, so the counts are
+        # narrowed to current, active members or they would disagree with the
+        # Learners tab.
+        current_member = Q(
+            course_progress_records__learner__is_active=True,
+            course_progress_records__learner__cohortmembership__cohort_id=F(
+                "cohort_id"
+            ),
+        )
+        registrations = (
+            cohort.course_registrations.filter(is_active=True)
+            .select_related("course")
+            .annotate(
+                record_count=Count(
+                    "course_progress_records", filter=current_member, distinct=True
+                ),
+                completed_count=Count(
+                    "course_progress_records",
+                    filter=current_member
+                    & Q(course_progress_records__completed_time__isnull=False),
+                    distinct=True,
+                ),
+            )
+            .order_by("course__title")
+        )
+        context = super().get_context_data()
+        context["completions"] = [
+            CourseCompletion(
+                course=registration.course,
+                completed_count=registration.completed_count,
+                record_count=registration.record_count,
+                percentage=(
+                    registration.completed_count * 100 // registration.record_count
+                    if registration.record_count
+                    else 0
+                ),
+            )
+            for registration in registrations
+        ]
+        return context
+
+
+class CohortNeedsAttentionPanel(Panel):
+    title = "Needs attention"
+    template_name = "educator_interface/panels/cohort_needs_attention.html"
+    refresh_events = (COHORT_CHANGED,)
+
+
+class CohortEducatorsPanel(Panel):
+    title = "Educators"
+    capability = "freedom_ls_learner_management.view_organisationmember"
+    template_name = "educator_interface/panels/cohort_educators.html"
+    refresh_events = (COHORT_CHANGED, EDUCATOR_CHANGED)
+
+    def get_actions(self) -> list[PanelAction]:
+        return []
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["educators"] = cohort_educators(cast(Cohort, self.instance))
+        return context
+
+
+class CohortSettingsPanel(Panel):
+    title = "Settings"
+    capability = "freedom_ls_learner_management.change_cohort"
+    template_name = "educator_interface/panels/cohort_settings.html"
+    refresh_events = (COHORT_CHANGED,)
+
+    def get_actions(self) -> list[PanelAction]:
+        cohort = cast(Cohort, self.instance)
+        return [
+            *cohort_state_actions(),
+            DeleteEmptyCohortAction(
+                success_url=_interface_path(cohort.organisation, "cohorts"),
+            ),
+        ]
+
+    def get_context_data(self) -> dict[str, object]:
+        cohort = cast(Cohort, self.instance)
+        context = super().get_context_data()
+        context["cohort"] = cohort
+        context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
+        context["is_empty"] = not context["not_empty_sentence"]
+        return context
+
+
+class CohortOverviewStack(PanelStack):
+    title = "Overview"
+    refresh_events = (COHORT_CHANGED,)
     children = {
         "details": CohortDetailsPanel,
-        "courses": CourseRegistrationsPanel,
+        "completion": CohortCourseCompletionPanel,
+        "attention": CohortNeedsAttentionPanel,
+        "educators": CohortEducatorsPanel,
     }
 
 
 class CohortTabSet(TabSet):
     title = "Cohort sections"
-    children = {"details": CohortDetailsStack, "learners": CohortLearnersPanel}
+    children = {
+        "overview": CohortOverviewStack,
+        "learners": CohortLearnersPanel,
+        "courses": CohortCoursesPanel,
+        "settings": CohortSettingsPanel,
+    }
 
 
 class CohortInstanceView(InstanceView):
     panel = CohortTabSet
+
+    def get_status_badge(self) -> StatusBadge:
+        return active_status_badge(cast(Cohort, self.instance).is_active)
+
+    def get_stats(self) -> list[HeaderStat]:
+        counts = cohort_counts(cast(Cohort, self.instance))
+        return [
+            HeaderStat("Learners", str(counts.learners)),
+            HeaderStat("Courses", str(counts.courses)),
+        ]
 
     def get_actions(self) -> list[PanelAction]:
         # The instance already carries its own organisation, so the success
         # URL needs nothing from the request.
         cohort = cast(Cohort, self.instance)
         return [
-            EditAction(
+            EditCohortAction(
                 form_class=CohortForm,
                 form_title=f"Edit {cohort}",
                 instance=cohort,
                 success_events=(COHORT_CHANGED,),
             ),
-            DeleteAction(
-                success_url=reverse(
-                    "educator_interface:interface",
-                    kwargs={
-                        "organisation_slug": cohort.organisation.slug,
-                        "path_string": "cohorts",
-                    },
-                ),
-            ),
+            *cohort_state_actions(),
         ]
 
 
@@ -416,9 +653,6 @@ class CreateCohortAction(CreateInstanceAction):
     form_title = "Create Cohort"
     action_name = "create_cohort"
     success_events = (COHORT_CHANGED,)
-    # One cohort at a time: a new cohort is opened straight away to register
-    # courses and learners, so there is no "save and add another".
-    submit_buttons = [{"label": "Create Cohort", "variant": "primary"}]
 
     def get_form(
         self, request: HttpRequest, instance: Model | None = None
@@ -432,17 +666,11 @@ class CreateCohortAction(CreateInstanceAction):
         form = super().get_form(request, instance)
         organisation = cast(OrganisationScopedRequest, request).organisation
         cast(Cohort, form.instance).organisation = organisation
-        self._organisation_slug = organisation.slug
+        self._organisation = organisation
         return form
 
     def get_success_url(self, instance: Model) -> str:
-        return reverse(
-            "educator_interface:interface",
-            kwargs={
-                "organisation_slug": self._organisation_slug,
-                "path_string": f"cohorts/{instance.pk}",
-            },
-        )
+        return _interface_path(self._organisation, f"cohorts/{instance.pk}")
 
 
 class CohortConfig(OrganisationSectionConfig, ListViewConfig):
@@ -500,22 +728,21 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
 class CourseDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Courses are shared across the Site (CourseConfig is exempt from
-        # organisation scoping), but the cohorts and learners counted and
-        # linked on each row belong to one organisation each. Both the
-        # annotations and the prefetches the Cohorts cell and
-        # _annotate_total_learner_count read are narrowed to what this
-        # educator may see in the organisation in view, so another
-        # organisation's cohorts never show through a shared course.
+        # Courses are shared across the site, so the list, the counts and the
+        # cells are all read through the organisation in view: the cohorts and
+        # learners counted and linked on each row are narrowed to what this
+        # educator may see, and another organisation's cohorts never show
+        # through a shared course.
         scoped = cast(OrganisationScopedRequest, request)
         visible_cohorts = cohorts_visible_to(scoped.user, scoped.organisation)
         visible_learners = learners_visible_to(scoped.user, scoped.organisation)
         qs: QuerySet = (
-            Course.objects.all()
+            courses_visible_to(scoped.user, scoped.organisation)
             .annotate(
                 cohort_count=Count(
                     "cohort_registrations",
                     filter=Q(cohort_registrations__is_active=True)
+                    & Q(cohort_registrations__cohort__is_active=True)
                     & Q(cohort_registrations__cohort__in=visible_cohorts),
                     distinct=True,
                 ),
@@ -531,7 +758,7 @@ class CourseDataTable(DataTable):
                 Prefetch(
                     "cohort_registrations",
                     queryset=CohortCourseRegistration.objects.filter(
-                        cohort__in=visible_cohorts
+                        cohort__in=visible_cohorts, cohort__is_active=True
                     ).prefetch_related("cohort__cohortmembership_set__learner"),
                 ),
                 Prefetch(
@@ -636,6 +863,11 @@ class CourseCohortRegistrationDataTable(DataTable):
             _interface_link(
                 "Cohort", "cohort.name", "cohorts/{cohort.pk}", card="primary"
             ),
+            Column(
+                header="Cohort status",
+                template="educator_interface/data-table-cells/active_status.html",
+                attr="cohort.is_active",
+            ),
             *_registration_columns(),
         ]
 
@@ -652,12 +884,7 @@ class CourseCohortRegistrationsPanel(DataTablePanel):
 class CourseLearnerRegistrationDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
-        # Courses themselves are not organisation-scoped (CourseConfig is
-        # exempt), but the individual registrations rendered here belong to
-        # one organisation each and must not leak across them. Scoped through
-        # learners_visible_to, not a plain organisation filter, so a
-        # cohort-scoped educator sees only the learners in cohorts they hold
-        # a grant on, not the whole organisation's roster.
+        # Courses are shared across the site, so the registrations are scoped through the organisation's learners rather than through the course.
         organisation = cast(OrganisationScopedRequest, request).organisation
         return (
             LearnerCourseRegistration.objects.select_related("learner__user", "course")
@@ -720,18 +947,15 @@ class CourseConfig(OrganisationSectionConfig, ListViewConfig):
     table_key = "courses"
     instance_view = CourseInstanceView
 
-    check_access_exempt_reason = (
-        "Courses are shared across the Site and are not organisation-scoped "
-        "in this cut. The list is also currently unguarded entirely."
-    )
-
-    # @claude: CourseDataTable.get_queryset returns Course.objects.all(), so every
-    # logged-in user sees every course on the Site with no permission check. The
-    # real check belongs to critical_security_fixes; this override keeps today's
-    # behaviour while making the gap declared and greppable rather than invisible.
     @classmethod
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
-        return
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        if (
+            not courses_visible_to(request.user, organisation)
+            .filter(pk=instance.pk)
+            .exists()
+        ):
+            raise OrganisationScopeDenied
 
 
 class DashboardPanel(Panel):

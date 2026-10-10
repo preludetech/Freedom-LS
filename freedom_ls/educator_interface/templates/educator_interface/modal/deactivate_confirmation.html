@@ -1,0 +1,30 @@
+{% comment %}
+The modal fragment a DeactivateCohortAction's GET returns. Context: cohort,
+cohort_course_count, is_empty, not_empty_sentence, action_url.
+{% endcomment %}
+<c-modal-header>Deactivate {{ cohort }}</c-modal-header>
+
+<div class="space-y-3 px-6 py-4 text-sm">
+    <p>Learners stay in the cohort and keep their progress.</p>
+    <p>
+        While the cohort is inactive, its registrations stop giving access to its
+        {{ cohort_course_count }} course{{ cohort_course_count|pluralize }}.
+        Learners with another registration for a course keep access to it.
+    </p>
+    <p>You can reactivate the cohort at any time.</p>
+    {% if not is_empty %}
+        <p>{{ not_empty_sentence }}</p>
+    {% endif %}
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <form hx-post="{{ action_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <c-button type="submit" variant="secondary" loading="true" loading_text="Deactivating...">
+            Deactivate
+        </c-button>
+    </form>
+</c-button-group>

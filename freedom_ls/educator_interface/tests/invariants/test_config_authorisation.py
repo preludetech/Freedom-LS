@@ -21,9 +21,15 @@ import pytest
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.tests.interface_walk import (
     SECTIONS,
     config_path_strings,
+)
+from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
+    CohortFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.views import BaseViewConfig, SectionConfig
@@ -109,3 +115,48 @@ class TestProductionConfigsDeclareAuthorisation:
             "required_request_attrs — its detail views would be served "
             "without a resolved organisation"
         )
+
+
+@pytest.mark.django_db
+class TestCourseDetailIsScopedToTheOrganisation:
+    @pytest.fixture(autouse=True)
+    def _site_context(self, mock_site_context):
+        """Every test here builds site-aware objects and assigns roles."""
+
+    def _course_url(self, organisation, course) -> str:
+        return reverse(
+            "educator_interface:interface",
+            kwargs={
+                "organisation_slug": organisation.slug,
+                "path_string": f"courses/{course.pk}",
+            },
+        )
+
+    def test_hidden_course_with_no_registration_in_the_organisation_404s(
+        self, logged_in_client
+    ):
+        organisation = OrganisationFactory()
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_admin")
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+        response = logged_in_client(educator).get(
+            self._course_url(organisation, course)
+        )
+
+        assert response.status_code == 404
+
+    def test_hidden_course_registered_to_a_visible_cohort_opens(self, logged_in_client):
+        organisation = OrganisationFactory()
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_admin")
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+        CohortCourseRegistrationFactory(
+            cohort=CohortFactory(organisation=organisation), course=course
+        )
+
+        response = logged_in_client(educator).get(
+            self._course_url(organisation, course)
+        )
+
+        assert response.status_code == 200

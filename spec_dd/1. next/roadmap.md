@@ -66,6 +66,7 @@ too much for one SDD run, so it is twelve.
 - **Spec 1 runs alone and first.** Everything else builds on its API. It is also the spec that throws away the current educator interface, so nothing downstream has to keep old code alive.
 - **Specs 2, 3, 4 and 5 run in parallel** once 1 has landed. They touch different files. Two cautions. Specs 2 and 3 both add Alpine components next to the framework's existing ones, so whoever lands second rebases onto the other's JS file. Spec 5 changes the role definitions and the framework's permission hook contract, so 2 and 3 should not invent their own permission checks.
 - **Specs 6, 7 and 10 run in parallel** after their dependencies. 6 and 7 both add panels to the cohort detail view. 6 owns the view, its overview, courses and settings tabs. 7 owns the learners tab and every membership action, from either side. 10 needs only 2 and 4, so it can start before 5 is done; it links to learner and cohort pages but does not change them.
+- **Specs 6 and 7 run in parallel, and whichever lands second does the joining work.** If 7 lands first, 6 wires `announce_cohort_registration_change` to the events 7 named and excludes inactive cohorts from 7's membership add and move destinations. If 6 lands first, 7 does both.
 - **Specs 8 and 9 run in parallel.** Both reuse the account-creation path that 7 builds (match an existing user by email, or create one and send the setup email). Neither should write its own.
 - **Spec 11 after 6, 7 and 9**, because it records their actions. **Spec 12 last.**
 

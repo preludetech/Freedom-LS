@@ -109,7 +109,7 @@ def test_educator_manages_cohorts_and_learners(
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
     announcer = page.locator("#scope-announcer")
     expect(announcer).to_have_count(1)
-    page.get_by_role("link", name="Learners").click()
+    page.locator('a[href$="/learners"]').click()
     expect(page).to_have_url(
         interface_url(live_server, organisation_a.slug, "learners")
     )
@@ -134,7 +134,7 @@ def test_educator_manages_cohorts_and_learners(
     page.get_by_role("button", name="Create Cohort").click()
     modal = page.locator("#app-modal")
     modal.get_by_label("Name").fill("Old Name")
-    modal.get_by_role("button", name="Create Cohort").click()
+    modal.get_by_role("button", name="Save", exact=True).click()
     expect(modal).to_be_hidden()
     created = Cohort.objects.get(name="Old Name")
     assign_perm("freedom_ls_learner_management.change_cohort", educator_user, created)
@@ -205,15 +205,20 @@ def test_educator_manages_cohorts_and_learners(
         interface_url(live_server, organisation_a.slug, f"learners/{ada.pk}")
     )
 
-    # Delete the cohort from its own page without a failing request: the page
-    # being left must not refetch panels for the cohort that no longer exists.
+    # Delete the cohort from its settings tab without a failing request: the
+    # page being left must not refetch panels for the cohort that no longer
+    # exists.
     failed: list[str] = []
 
     def record_failure(response: Response) -> None:
         if response.status >= 400:
             failed.append(f"{response.status} {response.url}")
 
-    page.goto(interface_url(live_server, organisation_a.slug, f"cohorts/{created.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation_a.slug, f"cohorts/{created.pk}/__tabs/settings"
+        )
+    )
     page.on("response", record_failure)
     page.get_by_role("button", name="Delete", exact=True).click()
     # Scoped: the trigger with the same name sits behind the dialog.
@@ -230,15 +235,15 @@ def test_educator_manages_cohorts_and_learners(
     assign_object_role(educator_user, year_nine, "cohort_viewer")
     page.goto(interface_url(live_server, organisation_a.slug, "cohorts"))
     page.get_by_role("button", name="Create Cohort").click()
-    page.get_by_label("Name").fill("Should never exist")
+    page.locator("#app-modal").get_by_label("Name").fill("Should never exist")
     remove_object_role(educator_user, organisation_a, "organisation_admin")
-    modal.get_by_role("button", name="Create Cohort").click()
+    modal.get_by_role("button", name="Save", exact=True).click()
     heading = page.get_by_role(
         "heading", name="You can't use “Create Cohort” here any more"
     )
     expect(heading).to_be_visible()
     expect(page.get_by_text("Your role doesn't allow it.")).to_be_visible()
-    expect(page.get_by_label("Name")).to_have_count(0)
+    expect(page.locator("#app-modal").get_by_label("Name")).to_have_count(0)
     close_button = page.get_by_role("button", name="Close").last
     expect(close_button).to_be_visible()
     close_button.click()
@@ -249,7 +254,11 @@ def test_educator_manages_cohorts_and_learners(
     # one carries no cohort grant, so it leaves with organisation_admin.
     assign_object_role(educator_user, organisation_a, "organisation_admin")
     leaving = CohortFactory(organisation=organisation_a, name="Leaving Scope")
-    page.goto(interface_url(live_server, organisation_a.slug, f"cohorts/{leaving.pk}"))
+    page.goto(
+        interface_url(
+            live_server, organisation_a.slug, f"cohorts/{leaving.pk}/__tabs/settings"
+        )
+    )
     page.get_by_role("button", name="Delete").first.click()
     dialog_delete = page.get_by_role("dialog").get_by_role("button", name="Delete")
     expect(dialog_delete).to_be_visible()

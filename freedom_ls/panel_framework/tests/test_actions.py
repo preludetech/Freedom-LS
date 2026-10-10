@@ -21,6 +21,9 @@ from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
     PanelAction,
+    count_noun,
+    join_prose,
+    navigation_response,
 )
 from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.events import build_hx_trigger
@@ -98,6 +101,118 @@ def _render_panel(panel: Panel) -> str:
 
 
 # -- PanelAction base class tests ----------------------------------------
+
+
+class StubUnofferedAction(StubAction):
+    action_name = "unoffered"
+    label = "Hidden Thing"
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return False
+
+
+def test_an_action_is_offered_by_default() -> None:
+    assert StubAction().is_offered(_ctx(RequestFactory().get("/"))) is True
+
+
+def test_an_action_that_is_permitted_but_not_offered_is_not_available() -> None:
+    ctx = _ctx(RequestFactory().get("/"))
+
+    assert StubUnofferedAction().has_permission(ctx) is True
+    assert StubUnofferedAction().is_available(ctx) is False
+
+
+@pytest.mark.django_db
+def test_an_action_that_is_not_offered_is_left_out_of_the_panel_actions(
+    mock_site_context: Site,
+) -> None:
+    item = make_stub(name="unoffered")
+
+    class PanelWithActions(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [StubAction(), StubUnofferedAction()]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    panel = PanelWithActions(_ctx(request, item))
+
+    actions = panel.get_context_data()["actions"]
+
+    assert [action.action_name for action in actions] == ["do_thing"]
+
+
+class StubRowAction(StubAction):
+    action_name = "per_row"
+    label = "Per Row"
+    renders_in_footer = False
+
+
+@pytest.mark.django_db
+def test_a_row_action_is_kept_out_of_the_footer_and_exposed_by_url(
+    mock_site_context: Site,
+) -> None:
+    """A row-scoped action resolves on the panel like any other, but the
+    panel hands its URL to the cell templates instead of rendering it."""
+    item = make_stub(name="rows")
+
+    class PanelWithRowAction(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [StubAction(), StubRowAction()]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+    context = PanelWithRowAction(_ctx(request, item)).get_context_data()
+
+    assert [action.action_name for action in context["actions"]] == ["do_thing"]
+    assert context["row_action_urls"] == {"per_row": "/test/__actions/per_row"}
+
+
+@pytest.mark.django_db
+def test_an_unavailable_row_action_has_no_url(mock_site_context: Site) -> None:
+    item = make_stub(name="rows")
+
+    class StubUnofferedRowAction(StubRowAction):
+        def is_offered(self, ctx: PanelContext) -> bool:
+            return False
+
+    class PanelWithRowAction(StubPanel):
+        def get_actions(self) -> list[PanelAction]:
+            return [StubUnofferedRowAction()]
+
+    request = RequestFactory().get("/")
+    request.user = make_staff_user()
+
+    assert (
+        PanelWithRowAction(_ctx(request, item)).get_context_data()["row_action_urls"]
+        == {}
+    )
+
+
+def test_navigation_response_closes_the_modal_and_relocates_the_main_content() -> None:
+    response = navigation_response("/items/1")
+
+    assert response.status_code == 204
+    assert response["HX-Trigger"] == build_hx_trigger({}, close_modal=True)
+    assert json.loads(response["HX-Location"]) == {
+        "path": "/items/1",
+        "target": "#main-content",
+        "swap": "outerHTML",
+    }
+
+
+@pytest.mark.django_db
+def test_count_noun_uses_the_singular_for_one_and_the_plural_otherwise(
+    mock_site_context: Site,
+) -> None:
+    assert count_noun(StubModel, 1) == "1 stub model"
+    assert count_noun(StubModel, 3) == "3 stub models"
+
+
+def test_join_prose_runs_parts_into_a_sentence() -> None:
+    assert join_prose([]) == ""
+    assert join_prose(["a"]) == "a"
+    assert join_prose(["a", "b"]) == "a and b"
+    assert join_prose(["a", "b", "c"]) == "a, b and c"
 
 
 @pytest.mark.django_db

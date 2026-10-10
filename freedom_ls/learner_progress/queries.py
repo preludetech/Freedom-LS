@@ -174,9 +174,9 @@ def course_progress_by_course_for(
     Courses with no registration, or with a registration that has not minted a
     record, are simply absent from the result.
     """
-    from freedom_ls.learner_management.models import (
-        CohortCourseRegistration,
-        LearnerCourseRegistration,
+    from freedom_ls.learner_management.models import LearnerCourseRegistration
+    from freedom_ls.learner_management.queries import (
+        access_granting_cohort_registrations,
     )
 
     course_ids = {course.pk for course in courses}
@@ -190,11 +190,11 @@ def course_progress_by_course_for(
     winning_grant: dict[UUID, tuple[str, UUID, UUID]] = {}
 
     cohort_rows = (
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations()
+        .filter(
             course_id__in=course_ids,
             cohort__cohortmembership__learner__user=user,
             cohort__cohortmembership__learner__is_active=True,
-            is_active=True,
         )
         # Annotating after the filter reuses the filter's join, so the learner
         # this membership names comes back on the same row rather than costing
@@ -290,9 +290,9 @@ def registrations_with_progress_for_learner(
     registration reads, then the progress records themselves, matched up in
     Python rather than with a query per registration.
     """
-    from freedom_ls.learner_management.models import (
-        CohortCourseRegistration,
-        LearnerCourseRegistration,
+    from freedom_ls.learner_management.models import LearnerCourseRegistration
+    from freedom_ls.learner_management.queries import (
+        access_granting_cohort_registrations,
     )
 
     individual_registrations = list(
@@ -301,9 +301,9 @@ def registrations_with_progress_for_learner(
         ).select_related("course")
     )
     cohort_registrations = list(
-        CohortCourseRegistration.objects.filter(
-            cohort__cohortmembership__learner=learner, is_active=True
-        ).select_related("cohort", "course")
+        access_granting_cohort_registrations()
+        .filter(cohort__cohortmembership__learner=learner)
+        .select_related("cohort", "course")
     )
     records = CourseProgress.objects.filter(learner=learner)
     record_by_individual_registration = {

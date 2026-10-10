@@ -41,6 +41,22 @@ from freedom_ls.panel_framework.quick_view import QuickView
 from freedom_ls.panel_framework.tables import DataTable
 
 
+@dataclass(frozen=True)
+class StatusBadge:
+    """A status chip: a `panel-status-badge` tone and its label."""
+
+    tone: str
+    label: str
+
+
+@dataclass(frozen=True)
+class HeaderStat:
+    """One labelled figure shown inline under an instance heading."""
+
+    label: str
+    value: str
+
+
 class InstanceView:
     """Used for displaying specific instances. For example one User, Cohort, etc.
 
@@ -55,6 +71,14 @@ class InstanceView:
         self.instance = instance
 
     def get_actions(self) -> list[PanelAction]:
+        return []
+
+    def get_status_badge(self) -> StatusBadge | None:
+        """A badge beside the heading, or None for none."""
+        return None
+
+    def get_stats(self) -> list[HeaderStat]:
+        """Inline figures under the heading, in order. Empty for none."""
         return []
 
     def get_action(self, action_name: str) -> PanelAction | None:
@@ -667,7 +691,7 @@ def _main_for(
         actions = [
             action
             for action in resolved.instance_view.get_actions()
-            if action.has_permission(root.ctx)
+            if action.is_available(root.ctx)
         ]
         if resolved.instance is None:
             raise ValueError("An instance view must resolve with its instance")
@@ -678,6 +702,8 @@ def _main_for(
                 "title": section.get_instance_label(resolved.instance),
                 "panel": root,
                 "actions": actions,
+                "status_badge": resolved.instance_view.get_status_badge(),
+                "stats": resolved.instance_view.get_stats(),
                 "ctx": root.ctx,
             },
             section.get_instance_label(resolved.instance),
@@ -686,7 +712,7 @@ def _main_for(
         list_actions = [
             action
             for action in section.get_actions(request)
-            if action.has_permission(root.ctx)
+            if action.is_available(root.ctx)
         ]
         return (
             "panel_framework/views/list_view.html",
@@ -986,11 +1012,24 @@ def panel_framework_view(
         section_url = reverse(
             url_name, kwargs={"path_string": parts[0], **extra_url_kwargs}
         )
+        result: HttpResponse | _BulkConfirmation | None = None
         try:
             resolved = _resolve_path(parts, sections, request, section_url)
+            if resolved.quick_view:
+                return _vary_on_htmx(
+                    _handle_quick_view(
+                        request,
+                        resolved.section,
+                        resolved.instance,
+                        resolved.root.ctx.base_url,
+                    )
+                )
+            if resolved.action is not None:
+                result = _handle_action(request, resolved.action, resolved.panel)
         except Http404:
             # htmx drops a bare 404, so an action the page offered would
-            # silently do nothing once its object left the user's scope.
+            # silently do nothing once its object left the user's scope, or
+            # when it 404s while rendering or submitting.
             if _is_htmx_action_request(request, parts):
                 return _vary_on_htmx(
                     render(
@@ -1000,17 +1039,7 @@ def panel_framework_view(
                     )
                 )
             raise
-        if resolved.quick_view:
-            return _vary_on_htmx(
-                _handle_quick_view(
-                    request,
-                    resolved.section,
-                    resolved.instance,
-                    resolved.root.ctx.base_url,
-                )
-            )
-        if resolved.action is not None:
-            result = _handle_action(request, resolved.action, resolved.panel)
+        if result is not None:
             if not isinstance(result, _BulkConfirmation):
                 return _vary_on_htmx(result)
             # A JavaScript-off bulk-action POST: render its message and

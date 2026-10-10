@@ -315,6 +315,43 @@ class TestCohortQuickView:
         assert response.status_code == 200
         assert "Year 9 Maths" in response.content.decode()
 
+    def test_shows_the_learner_count(self, educator_client):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+        CohortMembershipFactory(
+            cohort=cohort, learner=LearnerFactory(organisation=organisation)
+        )
+        CohortMembershipFactory(
+            cohort=cohort, learner=LearnerFactory(organisation=organisation)
+        )
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"cohorts/{cohort.pk}"
+        )
+
+        assert "2" in response.content.decode()
+
+    def test_reads_active_from_an_active_cohort(self, educator_client):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation)
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"cohorts/{cohort.pk}"
+        )
+
+        assert "Inactive" not in response.content.decode()
+        assert "Active" in response.content.decode()
+
+    def test_reads_inactive_from_an_inactive_cohort(self, educator_client):
+        organisation = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation, is_active=False)
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"cohorts/{cohort.pk}"
+        )
+
+        assert "Inactive" in response.content.decode()
+
     def test_lists_its_registered_courses(self, educator_client):
         organisation = OrganisationFactory()
         cohort = CohortFactory(organisation=organisation)

@@ -1,0 +1,11 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    <c-panel-definition-list>
+        <c-panel-definition-row label="Name">{{ cohort.name }}</c-panel-definition-row>
+        <c-panel-definition-row label="Status"><c-active-status-badge :active="cohort.is_active" /></c-panel-definition-row>
+        <c-panel-definition-row label="Created">{{ cohort.created_at|date:"j M Y" }}</c-panel-definition-row>
+        <c-panel-definition-row label="Learners">{{ cohort_learner_count }}</c-panel-definition-row>
+        <c-panel-definition-row label="Courses">{{ cohort_course_count }}</c-panel-definition-row>
+    </c-panel-definition-list>
+{% endblock panel_body %}

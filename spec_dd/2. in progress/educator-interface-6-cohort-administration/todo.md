@@ -5,14 +5,15 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
+- [x] (user) Decide what to change after reading upstream_change_review.md, then edit the idea, spec or plan it names
 - [ ] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
 
 ## 3. Threat model
@@ -22,7 +23,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -37,7 +38,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -47,10 +48,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user) Decide what a learner with no first or last name shows as the link in learner lists and quick-view triggers (e.g. their email or "Unnamed learner"), keeping the accessible-name fix from commit 2a51c992, then fix the bug below
+- [ ] (user + cmd) Fix QA bug: learners with no first or last name cannot be opened from learner lists (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

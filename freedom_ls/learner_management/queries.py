@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-from django.db.models import Exists, Model, OuterRef, Q
+from django.db.models import Count, Exists, Model, OuterRef, Q, QuerySet
 
+from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.capabilities import (
     _active_role_assignments,
     _current_site,
@@ -21,6 +22,7 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
@@ -28,7 +30,6 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from freedom_ls.accounts.models import User
-    from freedom_ls.content_engine.models import Course
 
     type RequestUser = User | AnonymousUser | AbstractBaseUser
 
@@ -46,6 +47,21 @@ class ResolvedRegistration(NamedTuple):
 
     learner: Learner
     registration: LearnerCourseRegistration | CohortCourseRegistration
+
+
+def access_granting_cohort_registrations() -> QuerySet[CohortCourseRegistration]:
+    """Cohort registrations that give their members course access.
+
+    Every access read and every course-peer read goes through this, so no read
+    site can honour CohortCourseRegistration.is_active and forget
+    Cohort.is_active. The course progress fan-out in learner_progress
+    deliberately does not: it reads the registration's flag alone, so an
+    inactive cohort's members keep their records and reports, and
+    reactivating needs no catch-up.
+    """
+    return CohortCourseRegistration.objects.filter(
+        is_active=True, cohort__is_active=True
+    )
 
 
 def is_registered_for_course_expression(user: RequestUser) -> Q:
@@ -67,10 +83,7 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
     """
     # Lazy import inside the body — mirrors is_registered_for_course (utils.py),
     # which imports these models locally to avoid a module-load import cycle.
-    from freedom_ls.learner_management.models import (
-        CohortCourseRegistration,
-        LearnerCourseRegistration,
-    )
+    from freedom_ls.learner_management.models import LearnerCourseRegistration
 
     return Exists(
         LearnerCourseRegistration.objects.filter(
@@ -84,11 +97,10 @@ def is_registered_for_course_expression(user: RequestUser) -> Q:
         # is_registered_for_course (utils.py) for why a split would leak
         # access through a cohort holding both a removed and an active
         # Learner for this user.
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations().filter(
             course=OuterRef("pk"),
-            cohort__cohortmembership__learner__user=user,
+            cohort__cohortmembership__learner__user=cast("User", user),
             cohort__cohortmembership__learner__is_active=True,
-            is_active=True,
         )
     )
 
@@ -132,14 +144,12 @@ def learner_for_course(user: User, course: Course) -> ResolvedRegistration | Non
     an active registration for this course would land on whichever record
     the query planner happened to return.
     """
-    from freedom_ls.learner_management.models import CohortCourseRegistration, Learner
-
     cohort_registration = (
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations()
+        .filter(
             course=course,
             cohort__cohortmembership__learner__user=user,
             cohort__cohortmembership__learner__is_active=True,
-            is_active=True,
         )
         .select_related("cohort__organisation")
         .order_by("-is_active", "-registered_at")
@@ -279,6 +289,133 @@ def all_cohorts_visible_to(user: RequestUser) -> QuerySet[Cohort]:
     )
 
 
+def courses_visible_to(
+    user: RequestUser, organisation: Organisation
+) -> QuerySet[Course]:
+    """Courses this user may see in this organisation: every published
+    course, plus any course a visible cohort or learner holds a
+    registration for, active or not. A hidden or coming-soon course
+    shows only through such a registration."""
+    everything = Course.objects.all()
+    resolved = _resolved_or_none(user, everything)
+    if resolved is not None:
+        return resolved
+    # Subqueries, not joins: CourseDataTable annotates Count() over the same
+    # relations, and a filter join would narrow those counts.
+    through_cohorts = CohortCourseRegistration.objects.filter(
+        cohort__in=cohorts_visible_to(user, organisation)
+    ).values("course_id")
+    through_learners = LearnerCourseRegistration.objects.filter(
+        learner__in=learners_visible_to(user, organisation)
+    ).values("course_id")
+    return everything.filter(
+        Q(visibility=CourseVisibility.PUBLISHED)
+        | Q(pk__in=through_cohorts)
+        | Q(pk__in=through_learners)
+    )
+
+
+def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
+    """Published and hidden courses the cohort holds no active
+    registration for. A course with an inactive registration is
+    offered, and registering it reactivates that row."""
+    return (
+        Course.objects.exclude(visibility=CourseVisibility.COMING_SOON)
+        .exclude(
+            cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
+        )
+        .order_by("title")
+    )
+
+
+def members_keeping_access(
+    registration: CohortCourseRegistration,
+) -> QuerySet[Learner]:
+    """Active members of the registration's cohort who still reach its
+    course once the registration is withdrawn: through an active individual
+    registration, or through another cohort whose registration grants
+    access."""
+    other_cohorts = (
+        access_granting_cohort_registrations()
+        .filter(course_id=registration.course_id)
+        .exclude(pk=registration.pk)
+        .values("cohort_id")
+    )
+    # Both learnercourseregistration conditions sit in one Q so they bind to
+    # the same registration row.
+    return (
+        Learner.objects.filter(
+            is_active=True, cohortmembership__cohort_id=registration.cohort_id
+        )
+        .filter(
+            Q(
+                learnercourseregistration__course_id=registration.course_id,
+                learnercourseregistration__is_active=True,
+            )
+            | Q(cohortmembership__cohort_id__in=other_cohorts)
+        )
+        .select_related("user")
+        .distinct()
+        .order_by("user__first_name", "user__last_name")
+    )
+
+
+class CohortCounts(NamedTuple):
+    """The two figures every cohort surface shows side by side."""
+
+    learners: int
+    courses: int
+
+
+def cohort_counts(cohort: Cohort) -> CohortCounts:
+    """Members whose Learner is still active in the organisation, and
+    courses the cohort holds an active registration for, in one query.
+    Every surface showing a cohort's counts reads this."""
+    learners, courses = (
+        Cohort.objects.filter(pk=cohort.pk)
+        .annotate(
+            active_learners=Count(
+                "cohortmembership",
+                filter=Q(cohortmembership__learner__is_active=True),
+                distinct=True,
+            ),
+            active_courses=Count(
+                "course_registrations",
+                filter=Q(course_registrations__is_active=True),
+                distinct=True,
+            ),
+        )
+        .values_list("active_learners", "active_courses")
+        .get()
+    )
+    return CohortCounts(learners=learners, courses=courses)
+
+
+def cohort_learner_count(cohort: Cohort) -> int:
+    """Members of this cohort whose Learner is still active in the
+    organisation."""
+    return cohort_counts(cohort).learners
+
+
+def cohort_course_count(cohort: Cohort) -> int:
+    """Courses this cohort holds an active registration for."""
+    return cohort_counts(cohort).courses
+
+
+def cohort_is_empty(cohort: Cohort) -> bool:
+    """No memberships and no registrations at all. A membership whose
+    Learner.is_active is False and a registration whose
+    CohortCourseRegistration.is_active is False both count, because
+    deleting the cohort would cascade them away."""
+    return (
+        not Cohort.objects.filter(pk=cohort.pk)
+        .filter(
+            Q(cohortmembership__isnull=False) | Q(course_registrations__isnull=False)
+        )
+        .exists()
+    )
+
+
 def can_view_cohort(user: RequestUser, cohort: Cohort) -> bool:
     """Whether this user may see one cohort, by either path.
 
@@ -411,18 +548,22 @@ def colleagues_of(user: User, site: Site) -> QuerySet[User]:
 
 def is_in_cohort_expression(site: Site, cohorts: QuerySet) -> Exists:
     """Exists() for a Learner queryset: the outer row is a member of one of `cohorts`
-    (a values() queryset of cohort ids)."""
+    (a values() queryset of cohort ids) that is active. An inactive cohort links
+    no peers, whichever cohorts the caller passes."""
     return Exists(
         CohortMembership.objects.filter(
-            site=site, learner=OuterRef("pk"), cohort__in=cohorts
+            site=site,
+            learner=OuterRef("pk"),
+            cohort__in=cohorts,
+            cohort__is_active=True,
         )
     )
 
 
 def holds_registration_for_any_expression(site: Site, courses: QuerySet) -> Q:
     """Q for a Learner queryset: the outer row holds an active registration for one
-    of `courses` (a values() queryset of course ids), individually or through a
-    cohort it belongs to.
+    of `courses` (a values() queryset of course ids), individually or through an
+    active cohort it belongs to.
 
     Both cohort conditions sit in one filter() call, for the reason
     is_registered_for_course_expression gives: split across two calls, the
@@ -433,11 +574,10 @@ def holds_registration_for_any_expression(site: Site, courses: QuerySet) -> Q:
             site=site, learner=OuterRef("pk"), course__in=courses, is_active=True
         )
     ) | Exists(
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations().filter(
             site=site,
             course__in=courses,
             cohort__cohortmembership__learner=OuterRef("pk"),
-            is_active=True,
         )
     )
 
@@ -446,15 +586,15 @@ def registrations_of(
     learner: Learner,
 ) -> tuple[QuerySet[LearnerCourseRegistration], QuerySet[CohortCourseRegistration]]:
     """This learner's active registrations by each path: its own, and those of the
-    cohorts it is a member of. Returned separately because each kind carries its
+    active cohorts it is a member of. Returned separately because each kind carries its
     own configuration."""
     site = learner.site
     return (
         LearnerCourseRegistration.objects.filter(
             site=site, learner=learner, is_active=True
         ),
-        CohortCourseRegistration.objects.filter(
-            site=site, cohort__cohortmembership__learner=learner, is_active=True
+        access_granting_cohort_registrations().filter(
+            site=site, cohort__cohortmembership__learner=learner
         ),
     )
 
@@ -493,7 +633,8 @@ def peers_through(
 
 def peers_of(learner: Learner) -> QuerySet[Learner]:
     """Other users' active Learner rows in this learner's organisation that share
-    a cohort with it, or share a course both hold an active registration for."""
+    an active cohort with it, or share a course both hold an active registration
+    for."""
     if not learner.is_active:
         return Learner.objects.none()
     cohorts = CohortMembership.objects.filter(
@@ -531,3 +672,40 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
         .filter(pk__in=members.values("user_id"))
         .order_by("first_name", "last_name")
     )
+
+
+def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
+    """Active users holding an active assignment on this cohort of any role
+    granting view_cohort, each with the role's display name, gated on an
+    active OrganisationMember the same way can() gates every cohort-level
+    grant. Ordered by name, then role.
+
+    The roles come from the site's config, as every other grant lookup
+    reads them, so a downstream role that grants view_cohort is listed and
+    an assignment of a role the config no longer names is left out."""
+    roles = get_role_config(cohort.site.name)
+    assignments = list(
+        _active_role_assignments(Cohort, roles_granting(VIEW_COHORT, cohort.site))
+        .filter(object_id=str(cohort.pk))
+        .select_related("user")
+    )
+    member_user_ids = set(
+        OrganisationMember.objects.filter(
+            organisation=cohort.organisation,
+            is_active=True,
+            user_id__in=[assignment.user_id for assignment in assignments],
+        ).values_list("user_id", flat=True)
+    )
+    educators = [
+        (assignment.user, roles[assignment.role].display_name, assignment.role)
+        for assignment in assignments
+        if assignment.user.is_active and assignment.user_id in member_user_ids
+    ]
+    educators.sort(
+        key=lambda educator: (
+            educator[0].first_name,
+            educator[0].last_name,
+            educator[2],
+        )
+    )
+    return [(user, display_name) for user, display_name, _ in educators]

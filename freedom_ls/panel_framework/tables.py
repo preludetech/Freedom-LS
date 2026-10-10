@@ -272,7 +272,16 @@ class DataTable:
                 queryset = table_filter.apply(queryset, values)
 
         if query.sort:
-            queryset = queryset.order_by(query.sort)
+            # The queryset's own ordering stays behind the sort, and pk ends
+            # it, or pages repeat and skip rows when several share a value.
+            sort_field = query.sort.lstrip("-")
+            tail = [
+                ordering
+                for ordering in queryset.query.order_by
+                if not isinstance(ordering, str)
+                or ordering.lstrip("-") not in (sort_field, "pk")
+            ]
+            queryset = queryset.order_by(query.sort, *tail, "pk")
         return queryset
 
     @classmethod
@@ -409,10 +418,17 @@ def _toolbar_entry(
     values = query.filters.get(table_filter.key, [])
     choices = table_filter.get_choices(request)
     labels = [label for value, label in choices if value in values]
+    joined_labels = ", ".join(labels)
+    chip_text = (
+        table_filter.label
+        if joined_labels == table_filter.label
+        else f"{table_filter.label}: {joined_labels}"
+    )
     return {
         "filter": table_filter,
         "values": values,
         "labels": labels,
+        "chip_text": chip_text,
         "shown": table_filter.always_shown or bool(values),
         "choices": [
             {

@@ -56,8 +56,8 @@ type Walked = WalkedPanel | WalkedAction
 
 def _seed_instance(model: type[Model] | None, organisation: Organisation) -> Model:
     """One instance of the model, living inside `organisation` where the
-    model supports that (Course does not -- it is organisation-exempt, per
-    CourseConfig.check_access_exempt_reason).
+    model supports that. A Course does not: a published course is visible in
+    every organisation, so it needs no organisation of its own.
 
     factory_boy's metaclass makes mypy see these factories as returning the
     factory class rather than the model, per pyproject's mypy override --
