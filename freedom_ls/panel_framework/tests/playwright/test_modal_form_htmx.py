@@ -9,7 +9,6 @@ buttons being disabled together to prevent a double submit.
 from __future__ import annotations
 
 import re
-import threading
 
 import pytest
 import pytest_django.live_server_helper
@@ -275,16 +274,13 @@ def test_clicking_save_disables_every_submit_button_while_the_request_is_pending
     live_server_site: Site,
     page: Page,
 ) -> None:
-    hold_response = threading.Event()
-
-    def _hold_then_continue(route: Route) -> None:
-        hold_response.wait(timeout=5)
-        route.continue_()
-
     page.goto(f"{live_server.url}/test-panel/framework/stubs/")
     page.get_by_role("button", name="Create Item").click()
     page.locator("#app-modal").get_by_label("Name").fill("Beta")
-    page.route("**/__actions/create_item", _hold_then_continue)
+    # Hold the route without blocking: sync route handlers share the test's
+    # event loop, so waiting inside one would stall the expects below.
+    held: list[Route] = []
+    page.route("**/__actions/create_item", lambda route: held.append(route))
 
     # Located by CSS, not accessible name: the clicked button's own label
     # swaps to its loading text once the request is in flight.
@@ -296,7 +292,11 @@ def test_clicking_save_disables_every_submit_button_while_the_request_is_pending
     expect(save_and_add_button).to_be_disabled()
     expect(save_button).to_be_disabled()
 
-    hold_response.set()
+    for _ in range(100):
+        if held:
+            break
+        page.wait_for_timeout(50)
+    held[0].continue_()
     expect(page.locator("#app-modal")).to_be_hidden()
 
 
