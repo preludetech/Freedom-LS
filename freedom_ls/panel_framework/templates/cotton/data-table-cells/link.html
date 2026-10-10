@@ -7,8 +7,10 @@ and the triggers line up down the column whatever each name's length. The
 trigger is labelled by the name it sits beside, and is at least 44px square
 below md, where it sits on a card tapped with a finger.
 {% endcomment %}
-{% with attr_text=object|getattr_str:column.text_attr %}
-{% if attr_text|is_blank %}{% firstof "-" as cell_text %}{% else %}{% firstof attr_text as cell_text %}{% endif %}
+{% with cell_text=object|getattr_str:column.text_attr %}
+{% if cell_text|is_blank %}
+    -
+{% else %}
     {% resolve_url_path_template object column.url_name column.url_path_template as resolved_url %}
     {% if column.quick_view %}<span class="flex items-center justify-between gap-2">{% endif %}
     <a href="{{ resolved_url }}"
@@ -24,4 +26,5 @@ below md, where it sits on a card tapped with a finger.
                           class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8">
         <c-icon name="quick_view" class="size-4" />
     </c-quick-view-trigger></span>{% endif %}
+{% endif %}
 {% endwith %}

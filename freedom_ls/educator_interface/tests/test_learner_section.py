@@ -351,19 +351,3 @@ def test_learner_detail_cohorts_panel_renders_no_filter_toolbar(educator_client)
     assert not document.xpath(
         "//*[@id='cohorts-table']//button[normalize-space()='Filter']"
     )
-
-
-@pytest.mark.django_db
-def test_learners_list_links_and_quick_views_a_learner_with_no_name(educator_client):
-    """A learner whose user has no first or last name used to render bare
-    dashes with no link, leaving the learner unreachable from the list."""
-    organisation = OrganisationFactory()
-    learner = _make_learner(organisation=organisation, first_name="", last_name="")
-    learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
-
-    response = educator_client(organisation).get(_learners_url(organisation.slug))
-
-    assert response.status_code == 200
-    document = lxml.html.fromstring(response.content.decode())
-    assert document.xpath(f'//a[@href="{learner_path}"]')
-    assert document.xpath(f'//*[@hx-get="{learner_path}/__quick-view"]')

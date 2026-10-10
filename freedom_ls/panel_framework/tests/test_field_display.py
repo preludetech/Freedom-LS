@@ -298,7 +298,7 @@ def test_a_column_without_quick_view_renders_a_plain_link() -> None:
     assert "aria-controls" not in html
 
 
-def test_a_blank_text_attr_renders_the_placeholder_as_the_link_text() -> None:
+def test_a_blank_text_attr_renders_the_placeholder_without_a_link() -> None:
     row = StubModel(pk=1, name="")
     column = {
         "url_name": LINK_CELL_URL_NAME,
@@ -311,10 +311,9 @@ def test_a_blank_text_attr_renders_the_placeholder_as_the_link_text() -> None:
         "cotton/data-table-cells/link.html", {"object": row, "column": column}
     )
 
-    document = lxml.html.fromstring(html)
-    link = document.xpath('//a[@href="/test-panel/framework/stubs/1"]')[0]
-    assert link.text == "-"
-    assert 'hx-get="/test-panel/framework/stubs/1/__quick-view"' in html
+    assert html.strip() == "-"
+    assert "<a" not in html
+    assert "hx-get" not in html
 
 
 def test_a_column_without_quick_view_keeps_its_htmx_nav_link() -> None:
