@@ -1,0 +1,37 @@
+<c-vars legend="" number="" testid_key="" :required="False" error="" error_id="" class="" />
+{% comment %}
+The fieldset every form field sits in: legend with an optional number, the
+required marker, the input, and the error line. A field with no number is one
+that is not a form question, so it never claims a question number. The `hint`
+slot sits between the legend and the input; `after_error` sits after the error
+line, for a message a script reveals.
+{% endcomment %}
+<fieldset class="space-y-3 border-0 p-0 {{ class }}" {{ attrs }}>
+    {% comment %}
+    Only the last rendered paragraph goes inline. That is what keeps the
+    asterisk on the question's last word. Earlier paragraphs stay blocks, so
+    a two-paragraph question reads as two paragraphs instead of running
+    together. The number floats because of those blocks: a block sibling
+    would otherwise strand it on a line of its own above the question.
+    {% endcomment %}
+    <legend class="font-semibold text-on-surface w-full float-left px-0 [&>p:last-of-type]:inline">
+        {% if number %}
+            <span class="float-left mr-1" data-testid="question-number-{{ testid_key }}">{{ number }}.</span>
+        {% endif %}
+        {% comment %}
+        The `&nbsp;` keeps the asterisk attached to the last word of the
+        question so it can never wrap onto a line of its own.
+        {% endcomment %}
+        {{ legend }}{% if required %}&nbsp;<span class="text-error" data-testid="required-indicator-{{ testid_key }}" aria-hidden="true">*</span><span class="sr-only">(required)</span>{% endif %}
+    </legend>
+    {% if hint %}{{ hint }}{% endif %}
+    <div class="space-y-2 clear-both">
+        {{ slot }}
+    </div>
+    {% if error %}
+        <p class="text-sm text-error" id="{{ error_id }}">
+            <span class="sr-only">Error: </span>{{ error }}
+        </p>
+    {% endif %}
+    {% if after_error %}{{ after_error }}{% endif %}
+</fieldset>

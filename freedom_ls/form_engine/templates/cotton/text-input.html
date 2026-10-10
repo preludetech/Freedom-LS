@@ -1,0 +1,18 @@
+<c-vars type="text" inputmode="" id="" name="" label="" value="" autocomplete="" error_id=""
+        min="" max="" step="" :required="False" :disabled="False" :invalid="False" class="" />
+<label class="sr-only" for="{{ id }}">{{ label }}</label>
+<input type="{{ type }}"
+       {% if inputmode %}inputmode="{{ inputmode }}"{% endif %}
+       id="{{ id }}"
+       name="{{ name }}"
+       class="w-full rounded-md border border-border bg-white px-3 py-2 text-on-surface
+              focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary {{ class }}"
+       {% if min %}min="{{ min }}"{% endif %}
+       {% if max %}max="{{ max }}"{% endif %}
+       {% if step %}step="{{ step }}"{% endif %}
+       {% if required %}required{% endif %}
+       {% if disabled %}disabled{% endif %}
+       {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+       {% if invalid %}aria-invalid="true" aria-describedby="{{ error_id }}"{% endif %}
+       {% if value %}value="{{ value }}"{% endif %}
+       {{ attrs }} />

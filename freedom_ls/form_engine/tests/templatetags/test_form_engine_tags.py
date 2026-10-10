@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from django.template import Context, Template
@@ -278,3 +280,116 @@ def test_no_error_rendered_when_rejected_answers_is_empty(mock_site_context):
 
     assert "aria-invalid" not in markup
     assert f"question_{question.id}_error" not in markup
+
+
+@pytest.mark.django_db
+def test_question_number_is_rendered_in_the_legend(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0
+    )
+
+    markup = _render(question)
+
+    assert f'data-testid="question-number-{question.question_number()}"' in markup
+
+
+@pytest.mark.django_db
+def test_required_question_legend_carries_the_required_indicator(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0, required=True
+    )
+
+    markup = _render(question)
+
+    assert f'data-testid="required-indicator-{question.question_number()}"' in markup
+    assert "(required)" in markup
+
+
+@pytest.mark.django_db
+def test_optional_question_legend_carries_no_required_indicator(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0, required=False
+    )
+
+    markup = _render(question)
+
+    assert "required-indicator" not in markup
+    assert "(required)" not in markup
+
+
+@pytest.mark.django_db
+def test_rejected_answer_marks_the_input_invalid(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, type="email", order=0)
+    rejected = RejectedAnswer(text="nope", message="Enter a valid email address.")
+
+    markup = _render(question, rejected_answers={question.id: rejected})
+
+    assert 'aria-invalid="true"' in markup
+
+
+@pytest.mark.django_db
+def test_rejected_answer_input_is_described_by_its_error_line(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(form_page=page, type="email", order=0)
+    rejected = RejectedAnswer(text="nope", message="Enter a valid email address.")
+
+    markup = _render(question, rejected_answers={question.id: rejected})
+
+    error_paragraph = re.search(
+        r'<p[^>]*id="([^"]+)"[^>]*>\s*<span class="sr-only">Error', markup
+    )
+    assert error_paragraph is not None
+    assert f'aria-describedby="{error_paragraph.group(1)}"' in markup
+
+
+@pytest.mark.django_db
+def test_rejected_answer_text_is_kept_in_the_input(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0
+    )
+    rejected = RejectedAnswer(text="typed by hand", message="Too short.")
+
+    markup = _render(question, rejected_answers={question.id: rejected})
+
+    assert 'value="typed by hand"' in markup
+
+
+@pytest.mark.django_db
+def test_required_checkbox_question_carries_the_hidden_required_message(
+    mock_site_context,
+):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="checkboxes", order=0, required=True
+    )
+    QuestionOptionFactory(question=question, text="Alpha", order=0)
+
+    markup = _render(question)
+
+    assert "data-checkbox-required-message" in markup
+    assert "Select at least one option." in markup
+
+
+@pytest.mark.django_db
+def test_short_text_input_is_disabled_when_read_only(mock_site_context):
+    page = FormPageFactory(order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="short_text", order=0
+    )
+
+    markup = render_to_string(
+        "form_engine/question.html",
+        {
+            "question": question,
+            "existing_answers": {},
+            "rejected_answers": {},
+            "read_only": True,
+        },
+    )
+
+    assert "disabled" in markup

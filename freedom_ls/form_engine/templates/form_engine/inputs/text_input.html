@@ -1,15 +1,14 @@
 {% load fls_base_filters %}
-<label class="sr-only" for="question_{{ question.id }}">{{ question.rendered_question }}</label>
-<input type="{{ input_type }}"
-       {% if input_mode %}inputmode="{{ input_mode }}"{% endif %}
-       id="question_{{ question.id }}"
-       name="question_{{ question.id }}"
-       class="w-full rounded-md border border-border bg-white px-3 py-2 text-on-surface
-              focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-       {% if question.min %}min="{{ question.min }}"{% endif %}
-       {% if question.max %}max="{{ question.max }}"{% endif %}
-       {% if question.number_step %}step="{{ question.number_step }}"{% endif %}
-       {% if question.required %}required{% endif %}
-       {% if read_only %}disabled{% endif %}
-       {% if rejected %}aria-invalid="true" aria-describedby="question_{{ question.id }}_error"{% endif %}
-       {% if rejected %}value="{{ rejected.text }}"{% elif existing_answers|length > 0 %}{% with answer=existing_answers|get_dict_item:question.id %}{% if answer %}value="{{ answer.text_answer }}"{% endif %}{% endwith %}{% endif %} />
+{% with answer=existing_answers|get_dict_item:question.id %}
+<c-text-input type="{{ input_type }}"
+              inputmode="{{ input_mode }}"
+              id="question_{{ question.id }}"
+              name="question_{{ question.id }}"
+              :label="question.rendered_question"
+              value="{% if rejected %}{{ rejected.text }}{% else %}{{ answer.text_answer }}{% endif %}"
+              :required="question.required"
+              :disabled="read_only"
+              :invalid="rejected"
+              :min="question.min" :max="question.max" :step="question.number_step"
+              error_id="question_{{ question.id }}_error" />
+{% endwith %}
