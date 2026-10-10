@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-10_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (decides educator-interface and report access; no screen to assign roles or manage organisation members), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (decides educator-interface and report access; no screen to assign roles or manage organisation members), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
 - **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked, though the registration lists on them are now filtered. Cohort and learner detail pages are checked.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
@@ -55,6 +55,21 @@ What remains missing:
 - **Some question-authoring options** — no conditional questions, no dropdown or boolean question type, no per-question upload limit, and no numeric range validation.
 
 The review workflow attaches to seams already in place; it will not require rearchitecting the access backend, the apply flow, or the form.
+
+## Registration Rules
+
+**Status: HR attributes built; registration rules not built.**
+
+Registration rules would let an organisation register learners automatically, for example "everyone with job title Driver is registered for Road Safety". The first part is built: an optional app that records each learner's job title, department, location and start dates in the Django admin; see [HR attributes](./hr-attributes.md). Each organisation also has a "Registration rules enabled" switch in the admin, off by default. Nothing uses it yet.
+
+Not built:
+
+- **The rules themselves**, including a record of how a learner came to be registered by a rule and undoing it when they stop matching.
+- **Rules that recommend** a course rather than register for it.
+- **Educator-interface screens** for the attribute lists, a learner's attributes and the rules.
+- **CSV import** of attributes.
+
+Not planned: syncing attributes from SSO or SCIM, line managers, relative due dates, recertification, and organisation-defined custom attributes.
 
 ## Course Visibility & Express Interest
 

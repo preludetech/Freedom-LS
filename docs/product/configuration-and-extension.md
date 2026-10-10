@@ -95,6 +95,7 @@ FLS is designed to be installed into an existing Django project as a git submodu
 - **Template priority.** The host project's template directories are searched first, so any FLS template can be replaced by providing a file at the same path.
 - **Content widget registration.** A downstream project can register additional content widgets by adding them to the markdown tag allowlist, making them available in that installation's authored content. See the [custom content widgets how-to](../how%20tos/custom-content-widgets.md).
 - **The public blog is optional.** An installation that does not want a public article blog can leave that app out. Article links in content then show as plain text and article cards show nothing, rather than breaking.
+- **HR attributes are optional.** An installation that does not need to record a learner's job title, department, location and start dates in the admin can leave that app out; nothing else in FLS changes. See [HR attributes](./hr-attributes.md).
 
 FLS is not a black box; the host project has override capability at every layer.
 

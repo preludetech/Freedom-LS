@@ -19,6 +19,7 @@ _Last updated: 2026-10-10_
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
 - Signup attribution records and the daily first-touch tally are read-only too, filterable by source, medium and campaign, and exportable to CSV.
 - Referral codes are managed in the admin: created and deactivated, but never deleted, with the code text locked once saved. Visits to a code are logged in a separate read-only list, and both lists export to CSV. See [referral codes](./referral-codes.md).
+- HR attributes are an optional extra. When that app is installed, the admin lists each organisation's job titles, departments and locations, which can be deactivated rather than deleted, and a learner's page records their job title, department, location and four start dates from their own organisation's entries. An entry a learner holds cannot be deleted. See [HR attributes](./hr-attributes.md).
 - Webhook endpoints have a test-send action for verifying configuration without waiting for a real event.
 
 ## Unfold
@@ -33,7 +34,7 @@ Each cohort's and organisation's admin page carries a permissions tab. It govern
 
 ## Organisation Management
 
-Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
+Organisations are managed entirely through the Django admin: an administrator creates an organisation, renames it, and uploads a logo. The same page also lists the organisation's cohorts — addable and renamable right there — and its learners, each row linking through to its own page. An organisation can also supply a second, reversed logo for use on a strong colour fill; both are optional, and today only the first is drawn anywhere. What an organisation is, and where it sits relative to a site, is described in [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations). When the optional HR attributes app is installed, the page also carries an "HR settings" panel with one "Registration rules enabled" switch, off by default; nothing reads it yet. See [HR attributes](./hr-attributes.md).
 
 There is no delete and no merge — both are refused outright. This is a deliberate limit for this release, not an oversight. There is also no bulk import, and no way to manage organisations outside the admin.
 
@@ -43,7 +44,7 @@ Logo uploads accept PNG, JPEG, and WebP; SVG is rejected deliberately. A maximum
 
 An organisation's roster — who belongs to it, independently of any enrolment — is curated in the Django admin, and only there; the educator interface's [Learners section](./educator-interface.md#learners) is read-only. An administrator associates an existing user with an organisation as one of its learners, and the same person can be a learner of more than one organisation on a site. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is.
 
-Removing a learner is soft: it suspends their access to courses held through that organisation, but never deletes or alters their cohort memberships, course registrations, or progress history, and leaves their standing in any other organisation untouched. Reactivating them restores access with nothing to rebuild. A learner cannot be deleted outright.
+Removing a learner is soft: it suspends their access to courses held through that organisation, but never deletes or alters their cohort memberships, course registrations, or progress history, and leaves their standing in any other organisation untouched. Reactivating them restores access with nothing to rebuild. A learner cannot be deleted outright. With the optional HR attributes app installed, moving a learner to another organisation is refused until the job title, department and location they hold from the old organisation are cleared; see [HR attributes](./hr-attributes.md).
 
 The same restraint extends to course registrations: once a registration has recorded [progress](./learner-tracking.md), the admin refuses to delete it and lists the progress standing in the way. Deleting a cohort cascades to its registrations, so that delete is blocked too, and a course cannot be deleted here at all. Deactivating a registration, removing a cohort member, or marking a learner removed all stay available and leave the recorded progress intact.
 
