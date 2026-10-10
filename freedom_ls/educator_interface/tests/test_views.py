@@ -1032,3 +1032,22 @@ def test_a_cohort_viewers_courses_tab_renders_no_action_buttons(
 
     (region,) = document.cssselect("[data-tab-set]")
     assert region.cssselect("button[hx-get]") == []
+
+
+@pytest.mark.django_db
+def test_cohort_list_learners_cell_reads_zero_for_a_cohort_with_no_active_learners(
+    staff_client,
+):
+    """The Learners cell showed the empty-value dash instead of 0."""
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation, name="Empty group")
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(organisation=organisation, is_active=False),
+    )
+
+    document = _get_document(staff_client, _interface_url(organisation.slug, "cohorts"))
+
+    (row,) = document.xpath("//tr[contains(., 'Empty group')]")
+    cells = [" ".join(td.text_content().split()) for td in row.xpath("./td")]
+    assert "0" in cells

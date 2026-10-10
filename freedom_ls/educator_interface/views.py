@@ -251,7 +251,7 @@ class CohortDataTable(DataTable):
             ),
             Column(
                 header="Learners",
-                template="cotton/data-table-cells/text.html",
+                template="educator_interface/data-table-cells/learner_count.html",
                 attr="learner_count",
                 sortable=True,
             ),
