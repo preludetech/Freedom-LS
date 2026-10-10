@@ -52,6 +52,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user) Decide what a learner with no first or last name shows as the link in learner lists and quick-view triggers (e.g. their email or "Unnamed learner"), keeping the accessible-name fix from commit 2a51c992, then fix the bug below
+- [ ] (user + cmd) Fix QA bug: learners with no first or last name cannot be opened from learner lists (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

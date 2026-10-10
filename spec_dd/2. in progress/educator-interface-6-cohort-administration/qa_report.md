@@ -1,188 +1,207 @@
-# Frontend QA report: educator-interface-6-cohort-administration
+# Frontend QA report: cohort administration
 
 ## Methodology
 
-Manual walk of the test plan (`3. frontend_qa.md`) with Playwright MCP at three viewports: desktop 1920x1080, mobile 375x812 and tablet 768x1024. Screenshots were collected into `screenshots/` beside this report. Every image linked below was checked against that directory and exists there.
-
-Personas used: org.admin, cohort.admin, cohort.viewer, south.admin, demodev (superuser), and learners a1, a2, a3 and old.
+- Manual Playwright MCP walk of the test plan (`3. frontend_qa.md`) at desktop 1920x1080, mobile 375x812 and tablet 768x1024.
+- Dev server on port 8671 for branch `educator-interface-6-cohort-administration`.
+- Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists there, and the screenshots were checked for compression (none over 1MB).
+- Learner-persona and other-role checks (§6 access, §9 roles, §10 admin, §11.1 reports) ran in separate Playwright browser contexts, so the `org.admin` session stayed logged in.
+- Data setup: `qa_create_cohort_administration_scenario` plus the qa-data-helper agent. The helper:
+  - cleared residue from earlier runs (two inactive Cohort A registrations, QA One/QA Two cohorts);
+  - deleted the extra registration created in §4.3;
+  - added and removed 11 extra learners for §5.4;
+  - added a3 to QA One for §7.3.
 
 ## Diff scoping
 
-Class: **FULL**. Templates changed (for example files under `freedom_ls/educator_interface/templates/` and `freedom_ls/panel_framework/templates/`), alongside model, migration, query, view and panel-framework changes. Desktop, mobile and tablet all ran; nothing was skipped by scoping.
+- Class: **FULL**, triggered by template changes (`educator_interface/templates/**`, `panel_framework` table toolbar and instance view base) plus `.py` changes in educator_interface, learner_management (including migration `0005_cohort_is_active`), learner_progress, panel_framework and qa_helpers.
+- Skipped: nothing. Desktop, mobile and tablet all ran.
 
 ## Smoke gate
 
-**Pass.** Pages loaded: `http://127.0.0.1:8547/` and `http://127.0.0.1:8547/educator/organisations/northside/cohorts`.
+Pass. Pages checked:
 
-## Results by section
+- `http://127.0.0.1:8671/`
+- `http://127.0.0.1:8671/educator/organisations/northside/cohorts`
 
-### §1 Cohorts list
+## Results
 
-| Test | Viewport | Status | Screenshot | Note |
+### §1 Cohort list
+
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 1.1 | desktop | fail | ![](screenshots/page-2026-10-10T11-59-51-585Z.png) | Columns and rows correct, Old absent. Cohort Removed and Cohort Empty Learners show "-" instead of 0 (B1). |
-| 1.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-00-11-817Z.png) | Learners/Created/Name sort asc and desc; toolbar text correct. |
-| 1.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-00-16-756Z.png) | Search "Emp" leaves only Cohort Empty. |
-| 1.4 | desktop | fail | ![](screenshots/page-2026-10-10T12-00-34-188Z.png) | Show inactive reveals Cohort Old with Inactive badge. Chip reads "Show inactive: Show inactive" (B2). |
-| 1.5 | desktop | pass | ![](screenshots/page-2026-10-10T12-01-05-433Z.png) | Course filter options and results correct, combines with Show inactive, Clear all resets. |
-| 1.6 | desktop | pass | ![](screenshots/page-2026-10-10T12-01-11-235Z.png) | Out-of-organisation course pk ignored; list unchanged, no chip. |
-| 1.7 | mobile | fail | ![](screenshots/page-2026-10-10T12-13-48-032Z.png) | "Filter & sort" sheet works; same chip defect (B2). |
-| 1.8 | desktop | pass | ![](screenshots/page-2026-10-10T12-01-26-759Z.png) | Cohort Old and Cohort A drawers show correct status, learners, courses. |
-| 1.1 | mobile | fail | ![](screenshots/page-2026-10-10T12-13-26-642Z.png) | Card layout fine, no horizontal scroll; Learners "-" for zero-count cohorts (B1). |
-| 1.1 | tablet | fail | ![](screenshots/page-2026-10-10T12-14-37-963Z.png) | Hamburger nav, table fits; same Learners "-" (B1). |
-| 1.8 | tablet | pass | ![](screenshots/page-2026-10-10T12-14-43-888Z.png) | Quick-view drawer overlays right side, readable. |
+| 1.1 | desktop | pass | Columns Name/Status/Learners/Courses/Created; 5 active cohorts in name order, Cohort Old absent; Cohort A 3 learners, Pub+Hid one per line; Removed 0; Stale dash. | ![](screenshots/page-2026-10-10T14-51-15-218Z.png) |
+| 1.2 | desktop | pass | Learners/Created/Name sort asc then desc; toolbar reads "Sorted by <col>". Sort icons expose accessible names like "sort_neutral". | ![](screenshots/page-2026-10-10T14-51-39-773Z.png) |
+| 1.3 | desktop | pass | Search "Emp" leaves Cohort Empty only; clearing restores all. | none |
+| 1.4 | desktop | pass | Show inactive adds Cohort Old with Inactive badge; chip reads "Show inactive"; removing chip hides Cohort Old. | ![](screenshots/page-2026-10-10T14-51-56-735Z.png) |
+| 1.5 | desktop | pass | Course Hid -> A,B; Course Pub alone -> A; + Show inactive -> A, Old. Course filter is multi-select. Course Other/Soon not offered. Clear all works. | ![](screenshots/page-2026-10-10T14-52-49-418Z.png) |
+| 1.6 | desktop | pass | `?cohorts-course=<Course Other pk>` ignored: full list, no chip, no Clear all. | none |
+| 1.7 | mobile | pass | Filter/Sort open the "Filter & sort" sheet listing Show inactive and Course; ticking Show inactive adds Cohort Old; no horizontal scroll. Filter/Sort buttons 35px tall. Course filter also lists Course Other (see general notes). | ![](screenshots/page-2026-10-10T15-07-31-849Z.png) |
+| 1.1 | mobile | pass | List renders as cards (Status, Learners, Courses); quick-view and open icons; no horizontal scroll. | ![](screenshots/page-2026-10-10T15-07-00-010Z.png) |
+| 1.1 | tablet | pass | Full table, all 5 columns fit; desktop Add filter toolbar; navigation collapses to hamburger; no horizontal scroll. | ![](screenshots/page-2026-10-10T15-08-24-787Z.png) |
+| 1.8 | desktop | pass | Cohort Old drawer: Inactive, Learners 1, Courses Pub; Cohort A drawer: Active, 3, Pub+Hid. | ![](screenshots/page-2026-10-10T14-52-11-159Z.png) |
 
-### §2 Create and edit cohort
+### §2 Create
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 2.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-01-39-176Z.png) | Footer: Cancel, Save and add another, Save. |
-| 2.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-01-49-403Z.png) | Dialog stays open, empty, focus on name; QA One in list behind. |
-| 2.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-01-57-353Z.png) | Save lands on QA Two's page. |
-| 2.4 | desktop | pass | ![](screenshots/page-2026-10-10T12-02-02-765Z.png) | Inactive-name clash: 422, "1 field to fix.", clash message; Cancel opens discard confirmation. |
-| 2.5 | desktop | pass | ![](screenshots/page-2026-10-10T12-02-15-279Z.png) | Rename clash message in dialog; title unchanged. |
+| 2.1 | desktop | pass | Footer: Cancel, Save and add another, Save. | ![](screenshots/page-2026-10-10T14-53-20-444Z.png) |
+| 2.2 | desktop | pass | Dialog stays open, name empty, focus in name; QA One appears in list behind. | ![](screenshots/page-2026-10-10T14-53-20-444Z.png) |
+| 2.3 | desktop | pass | Save lands on QA Two's page. | none |
+| 2.4 | desktop | pass | "Cohort Old": dialog stays open with "1 field to fix." and "Another cohort already has this name." (422). | ![](screenshots/page-2026-10-10T14-53-54-769Z.png) |
+| 2.5 | desktop | pass | Edit QA Two -> "QA One" shows same clash message in dialog (422). | ![](screenshots/page-2026-10-10T14-53-44-279Z.png) |
 
 ### §3 Cohort page
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 3.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-02-23-478Z.png) | Header, badge, stats, Edit + Deactivate, no Delete; tabs correct. |
-| 3.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-02-23-478Z.png) | Cards and Educators correct (lapsed.viewer absent). Course Pub reads "1 of 3 completed" (a3 also in Cohort A); plan said 1 of 2. |
-| 3.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-02-43-367Z.png) | Learners tab lists a1, a2, a3. |
-| 3.4 | desktop | pass | ![](screenshots/page-2026-10-10T12-02-49-750Z.png) | Rename updates heading and tab title without reload; badge stays. |
-| 3.5 | mobile | pass | ![](screenshots/page-2026-10-10T12-13-59-618Z.png) | Header stacks, tab row scrolls, no page horizontal scroll, all tabs render. |
-| 3.1 | tablet | pass | ![](screenshots/page-2026-10-10T12-14-46-054Z.png) | Header on one row, tabs fit, cards full width. |
+| 3.1 | desktop | pass | Header: Cohort A, Active badge, 3 Learners / 2 Courses, Edit + Deactivate, no Delete. Tabs Overview, Learners 3, Courses 2, Settings. | ![](screenshots/page-2026-10-10T14-54-05-853Z.png) |
+| 3.2 | desktop | pass | Cards in order Details/Course completion/Needs attention/Educators; lapsed.viewer absent. Course Pub reads "1 of 3 completed, 33%" (plan said 1 of 2, 50%; see general notes). Educators card uppercases emails. | ![](screenshots/page-2026-10-10T14-54-05-853Z.png) |
+| 3.3 | desktop | pass | Learners tab lists a1, a2, a3. | ![](screenshots/page-2026-10-10T14-54-24-937Z.png) |
+| 3.4 | desktop | pass | Rename to Cohort A1 updates heading and title without reload, badge stays; renamed back. | ![](screenshots/page-2026-10-10T14-54-32-322Z.png) |
+| 3.5 | mobile | pass | Header stacks; tab row fits; scrollWidth 375 on Overview/Courses/Settings. Educators card labels run to card edge. | ![](screenshots/page-2026-10-10T15-07-35-936Z.png) |
+| 3.1 | tablet | pass | Header on one row; tabs fit; overview cards use 3-column details grid; no horizontal scroll. | ![](screenshots/page-2026-10-10T15-08-30-682Z.png) |
 
-### §4 Register for a course
+### §4 Courses tab: Register
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 4.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-03-03-064Z.png) | Courses tab rows, Active badges, dates, Unregister, links to course page. |
-| 4.1 | mobile | pass | ![](screenshots/page-2026-10-10T12-14-13-921Z.png) | Cards with badges and Unregister; Register at foot; no horizontal scroll. |
-| 4.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-03-08-771Z.png) | Register dialog options exclude Pub, Hid, Soon. |
-| 4.2 | tablet | pass | ![](screenshots/page-2026-10-10T12-14-54-466Z.png) | Dialog centred, 512px wide, no horizontal scroll. |
-| 4.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-03-16-745Z.png) | Registration appears; tab count, header stat and Details card update to 3. |
-| 4.4 | desktop | pass | ![](screenshots/page-2026-10-10T12-03-43-594Z.png) | Cohort Stale inactive row has no Unregister; registering flips same row to Active. |
+| 4.1 | desktop | pass | Rows Course Hid, Course Pub: Active badge, registered date, Unregister; course links go to educator course pages. | ![](screenshots/page-2026-10-10T14-54-43-713Z.png) |
+| 4.2 | desktop | pass | Dialog "Register Cohort A for a course"; options include Course Other + published demo courses; exclude Pub, Hid, Soon. | ![](screenshots/page-2026-10-10T14-54-48-302Z.png) |
+| 4.3 | desktop | pass | Registered Standard Markdown - Demo Finance: dialog closes, Active row, tab count 3, header "3 Courses", Overview card 3. | ![](screenshots/page-2026-10-10T14-54-54-537Z.png) |
+| 4.4 | desktop | pass | Cohort Stale: Course Pub Inactive, no Unregister; Register offers Course Pub; registering flips same row to Active (one row). Unregistered afterwards ("0 learners lose access"). | ![](screenshots/page-2026-10-10T14-55-11-051Z.png) |
+| 4.1 | mobile | pass | Courses tab as cards with status badge, Unregister (38px tall) and Register; registered date not shown in card view. | ![](screenshots/page-2026-10-10T15-07-45-176Z.png) |
+| 4.1 | tablet | pass | Courses tab renders at 768px with no horizontal scroll. | ![](screenshots/page-2026-10-10T15-08-32-847Z.png) |
 
-### §5 Unregister
+### §5 Courses tab: Unregister
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 5.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-04-05-399Z.png) | Dialog text, keepers named, btn-secondary confirm. Keepers shown without their route. |
-| 5.1 | mobile | pass | ![](screenshots/page-2026-10-10T12-14-19-815Z.png) | Bottom sheet; text and buttons fit at 375px. |
-| 5.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-04-17-641Z.png) | Cancel no-op; confirm marks row Inactive, counts drop (2 to 1 from the post-4.3 baseline). |
-| 5.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-04-25-031Z.png) | Register offers the course again; same row returns to Active. |
-| 5.4 | desktop | pass | ![](screenshots/page-2026-10-10T12-07-12-128Z.png) | 3 learners lose access; keepers list ten names then "and 1 more"; names in no stable order. |
+| 5.1 | desktop | pass | "Unregister Cohort A from Course Hid"; "1 learner loses access"; keepers a3 and a1 named; progress kept; can register again; confirm is btn-secondary (not red). | ![](screenshots/page-2026-10-10T14-55-40-530Z.png) |
+| 5.1 | mobile | pass | Dialog renders as a bottom sheet, text wraps, Cancel/Unregister reachable. | ![](screenshots/page-2026-10-10T15-07-55-318Z.png) |
+| 5.2 | desktop | pass | Cancel changes nothing; confirm -> Course Hid Inactive, no Unregister on row, counts drop by 1; Register offers Course Hid again. | ![](screenshots/page-2026-10-10T14-55-52-583Z.png) |
+| 5.3 | desktop | pass | Re-registering Course Hid returns same row to Active. | none |
+| 5.4 | desktop | pass | Plan setup adapted (see general notes). Hid dialog shows 10 names then "and 3 more", losing count 1 correct. Keeper names in no stable order. | ![](screenshots/page-2026-10-10T14-58-37-876Z.png) |
 
-### §6 Deactivate and reactivate
+### §6 Settings: deactivate and reactivate
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 6.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-08-23-433Z.png) | Deactivate offered, no Delete; sentence counts 3 learners, 3 registrations. |
-| 6.1 | mobile | pass | ![](screenshots/page-2026-10-10T12-14-27-124Z.png) | Settings tab fits; tap targets >= 42px. |
-| 6.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-08-30-050Z.png) | Header and tab Deactivate open the same dialog; btn-secondary. |
-| 6.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-08-40-896Z.png) | Same URL re-renders with Inactive badge, Reactivate, no Edit; Courses tab has no actions. |
-| 6.4 | desktop | pass | ![](screenshots/page-2026-10-10T12-10-06-791Z.png) | Access through other routes preserved (a1 via Cohort B, a3 individual); a2 gets 404; old@qa.test not registered through Cohort Old. |
-| 6.5 | desktop | pass | no screenshot | Cohorts list hides Cohort A; returns with Show inactive. |
-| 6.6 | desktop | pass | ![](screenshots/page-2026-10-10T12-09-10-851Z.png) | a2's learner page Cohorts card lists Cohort A with Inactive badge. |
-| 6.7 | desktop | pass | ![](screenshots/page-2026-10-10T12-10-25-332Z.png) | Reactivate restores Active, Edit, access for a2. |
+| 6.0 | desktop | pass | a1 opens Course Hid (200). old@qa.test opens Course Pub (200, public page of a published course); dashboard lists no registration through Cohort Old. | none |
+| 6.1 | desktop | pass | Settings offers Deactivate; "can't be deleted while it has 3 learners and 2 course registrations, counting removed learners and inactive registrations"; no Delete. | ![](screenshots/page-2026-10-10T14-59-41-403Z.png) |
+| 6.2 | desktop | pass | Header and tab Deactivate open same dialog with all five statements; confirm btn-secondary (not red). | ![](screenshots/page-2026-10-10T14-59-46-645Z.png) |
+| 6.3 | desktop | pass | Same URL re-renders: Inactive badge, header Reactivate only (no Edit), settings Reactivate; Overview keeps completion; Courses tab has no Register/Unregister. | ![](screenshots/page-2026-10-10T15-00-01-005Z.png) |
+| 6.4 | desktop | pass | a1 Course Hid 200 (Cohort B); a2 404 and no In progress courses; a3 200 (individual). | none |
+| 6.5 | desktop | pass | Cohorts list without Show inactive omits Cohort A. | none |
+| 6.6 | desktop | pass | a2 learner page Cohorts card lists Cohort A with Inactive badge; search box only, no filter chips. Reached by URL (see 6.6-link). | ![](screenshots/page-2026-10-10T15-00-45-607Z.png) |
+| 6.6-link | desktop | **fail** | a2 (no first/last name): both link columns render a bare "-" with no link and no quick-view trigger. See B1. | ![](screenshots/page-2026-10-10T15-00-45-607Z.png) |
+| 6.6-link | mobile | **fail** | Learner cards for nameless learners: title "-", no email, no link, no quick view. See B1. | ![](screenshots/page-2026-10-10T15-08-09-486Z.png) |
+| 6.7 | desktop | pass | Reactivate dialog: "registrations give access to its 2 courses again." Confirm: Active, Edit back, Learners 3; a2 opens Course Hid (200). | ![](screenshots/page-2026-10-10T15-01-00-933Z.png) |
 
-### §7 Delete cohort
+### §7 Delete
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 7.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-04-46-015Z.png) | Delete on empty cohort; confirm lands on list, cohort gone. |
-| 7.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-04-56-145Z.png) | Removed and Stale show no Delete and a not-empty sentence. Zero counts omitted by design (`cohort_not_empty_sentence`). |
-| 7.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-08-11-574Z.png) | Member added behind open dialog; confirm re-renders not-empty dialog with only Cancel. |
+| 7.1 | desktop | pass | Cohort Empty offers Delete; dialog "Delete Cohort Empty" / "cannot be undone", no cascade list; confirm lands on list without Cohort Empty. | ![](screenshots/page-2026-10-10T14-56-30-223Z.png) |
+| 7.2 | desktop | pass | No Delete on Removed or Stale. Sentences name only the non-zero count (see general notes). | ![](screenshots/page-2026-10-10T14-56-40-546Z.png) |
+| 7.3 | desktop | pass | Dialog re-renders after a3 added: "QA One can't be deleted while it has 1 learner, ..." with only Cancel; QA One still exists. | ![](screenshots/page-2026-10-10T15-02-39-287Z.png) |
 
-### §8 Concurrent / stale dialogs
+### §8 Stale pages on an inactive cohort
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 8.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-05-35-299Z.png) | Deactivated from settings; same URL, Inactive badge, Reactivate only. |
-| 8.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-05-45-358Z.png) | Stale Edit save answered with "Cohort B is inactive" dialog; name unchanged. |
-| 8.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-05-59-379Z.png) | Stale Register and Unregister rejected; state unchanged. |
-| 8.4 | desktop | pass | no screenshot | Reactivate dialog and confirm work. From the Courses tab URL it navigates to the Overview URL. |
+| 8.1-8.2 | desktop | pass | Save in stale tab answers "Cohort B is inactive / The change was not made. Reactivate the cohort from its Settings tab to edit it."; name unchanged; reload shows no Edit. | ![](screenshots/page-2026-10-10T15-03-28-512Z.png) |
+| 8.3 | desktop | pass | Register and Unregister both answer with the inactive fragment; Course Hid stays Active, no Course Pub row added. | ![](screenshots/page-2026-10-10T15-04-10-890Z.png) |
+| 8.4 | desktop | pass | Cohort B reactivated: Active, Edit + Deactivate back. | none |
 
-### §9 Permissions and organisation isolation
+### §9 Roles and isolation
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 9.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-11-02-913Z.png) | cohort.admin: only Cohort A, no Settings tab, Register/Unregister work; settings tab 404, deactivate 403 ([403](screenshots/page-2026-10-10T12-11-21-070Z.png)), Cohort B 404. |
-| 9.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-11-33-750Z.png) | cohort.viewer: no edit actions; register endpoint 403. |
-| 9.3.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-06-43-200Z.png) | Cross-organisation cohort pages and registration 404. |
-| 9.3.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-06-46-361Z.png) | Northside courses list scoped; Course Other/Soon absent; Active Cohorts for Pub = 1. |
-| 9.3.3 | desktop | pass | no screenshot | Course Other detail in Northside answers 404. |
-| 9.3.4 | desktop | pass | ![](screenshots/page-2026-10-10T12-11-48-263Z.png) | south.admin sees Southside courses and Cohort S only. |
-| 9.3.5 | desktop | pass | ![](screenshots/page-2026-10-10T12-10-44-579Z.png) | Course Pub detail lists Cohort A, Old, Stale with correct badges; no actions. |
+| 9.1 | desktop | pass | cohort.admin: only Cohort A listed; no Edit/Deactivate; no Settings tab; no Educators card; Register + Unregister work; `__tabs/settings` 404; `__actions/deactivate` 403; Cohort B 404. | ![](screenshots/page-2026-10-10T15-01-40-000Z.png) |
+| 9.2 | desktop | pass | cohort.viewer: no Edit/Deactivate/Settings; Courses rows without Register/Unregister; courses tab/register action 403. | ![](screenshots/page-2026-10-10T15-01-41-000Z.png) |
+| 9.3.1 | desktop | pass | Cohort S page, its courses tab and the Cohort S registration unregister URL all 404. | ![](screenshots/page-2026-10-10T14-58-19-511Z.png) |
+| 9.3.2 | desktop | pass | Northside courses: Pub, Hid, published demo courses; Other and Soon absent. Cohorts column names only Northside cohorts; Course Pub Active Cohorts 1. | ![](screenshots/page-2026-10-10T14-58-50-338Z.png) |
+| 9.3.3 | desktop | pass | Northside course page for Course Other: 404. | none |
+| 9.3.4 | desktop | pass | south.admin: Southside lists Course Other, not Course Hid; Course Other page shows Cohort S with two status badges, no Northside names, no buttons. | ![](screenshots/page-2026-10-10T15-04-30-000Z.png) |
+| 9.3.5 | desktop | pass | Course Pub page: A Active/Active, Old Inactive/Active, Stale Active/Inactive; Course Hid lists a3 direct registration; no buttons. | ![](screenshots/page-2026-10-10T14-59-05-149Z.png) |
 
 ### §10 Admin
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 10.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-12-01-244Z.png) | Active column and "By active" filter. |
-| 10.2 | desktop | pass | ![](screenshots/page-2026-10-10T12-12-08-000Z.png) | Active checkbox on change form; toggling reflected in educator list. |
+| 10.1 | desktop | pass | Cohort changelist has Active column and "By active" filter; "No" lists Cohort Old only. | ![](screenshots/page-2026-10-10T15-05-00-000Z.png) |
+| 10.2 | desktop | pass | Active checkbox on change form; ticking shows Cohort Old on educator list without Show inactive; unticked again. | ![](screenshots/page-2026-10-10T15-05-10-000Z.png) |
 
-### §11 Other surfaces
+### §11 Side-effects
 
-| Test | Viewport | Status | Screenshot | Note |
+| Test | Viewport | Status | Notes | Screenshot |
 |---|---|---|---|---|
-| 11.1 | desktop | pass | ![](screenshots/page-2026-10-10T12-12-54-269Z.png) | Cohort report offers inactive Cohort Old; PDF generated and downloaded. |
-| 11.2 | desktop | pass | no screenshot | With Cohort A inactive, Cohort A routes absent from quick views. |
-| 11.3 | desktop | pass | ![](screenshots/page-2026-10-10T12-13-03-248Z.png) | Dashboard renders; organisation switcher works. |
-| 11.4 | desktop | skip | no screenshot | Messaging peers have no browser surface; covered by TestPeersOf. |
+| 11.1 | desktop | pass | Admin "Generate cohort report" offers Cohort Old (inactive); report reaches Ready with a Download link. | ![](screenshots/page-2026-10-10T15-06-30-000Z.png) |
+| 11.2 | desktop | pass | Quick view while Cohort A inactive: a2 no registrations; a1 Course Hid via Cohort B; a3 individual. After reactivation a2 shows Pub and Hid through Cohort A again. | none |
+| 11.3 | desktop | pass | `/educator/` redirects to Northside dashboard; single-organisation user sees static organisation label as before. | ![](screenshots/page-2026-10-10T15-06-43-980Z.png) |
+
+### Navigation
+
+| Test | Viewport | Status | Notes | Screenshot |
+|---|---|---|---|---|
+| nav | mobile | pass | Hamburger opens bottom navigation drawer with organisation, Dashboard/Cohorts/Learners/Courses, account. | ![](screenshots/page-2026-10-10T15-08-02-037Z.png) |
 
 ## Design check
 
 No design states tested.
 
-## B1: Cohort list shows "-" instead of 0 for a cohort with no active learners
+## B1: Learners with no first or last name cannot be opened from learner lists
 
-Manifestations:
-- 1.1, desktop
-- 1.1, mobile
-- 1.1, tablet
+**Manifestations:**
 
-![](screenshots/page-2026-10-10T11-59-51-585Z.png)
-![](screenshots/page-2026-10-10T12-13-26-642Z.png)
-![](screenshots/page-2026-10-10T12-14-37-963Z.png)
+- 6.6-link, desktop
+- 6.6-link, mobile
 
-**Expected:** The Learners column reads 0 for Cohort Removed (its only learner is removed), Cohort Stale and other cohorts with no active learners, matching the cohort header and Details card, which both show 0.
+**Screenshots:**
 
-**Actual:** The Learners cell renders "-" (the empty-value placeholder) whenever the count is 0, so the list disagrees with the header ("Learners 0") for the same cohort.
+![](screenshots/page-2026-10-10T15-00-45-607Z.png)
+![](screenshots/page-2026-10-10T15-08-09-486Z.png)
 
-## B2: Applied "Show inactive" filter chip reads "Show inactive: Show inactive"
+**Expected:** Every row/card in the Learners section list (and the cohort Learners tab, which uses the same columns) links to the learner's page and offers the quick-view trigger, whatever the learner's name. On mobile the card identifies the learner.
 
-Manifestations:
-- 1.4, desktop
-- 1.7, mobile
+**Actual:** `LearnerDataTable` puts the link and quick-view trigger only on the First Name and Last Name columns via `_interface_link`. When both are blank each renders a bare "-" with no `<a>` and no quick-view button.
 
-![](screenshots/page-2026-10-10T12-00-34-188Z.png)
-![](screenshots/page-2026-10-10T12-13-48-032Z.png)
-
-**Expected:** With Show inactive set, the applied chip reads "Show inactive".
-
-**Actual:** The chip repeats the label as "Show inactive: Show inactive" (label: value format with the value text equal to the label).
+- Desktop: the learner page and quick view are unreachable from the list (only the email text is shown).
+- Mobile: every such card is titled "-", shows no email and has no link, so learners are indistinguishable and unreachable.
+- Every QA scenario learner (a1, a2, a3, old, removed, s1) has no name, so this affects real data shapes (users who sign up with email only).
 
 ## Bug status
 
-- **FIXED** (commit: c1dd8112) — B1: Cohort list shows "-" instead of 0 for a cohort with no active learners. Re-verified at desktop: Cohort Removed, Cohort Stale and QA Two read 0; the Courses column still shows "-".
-- **FIXED** (commit: 2ff70dcf) — B2: Applied "Show inactive" filter chip reads "Show inactive: Show inactive". Re-verified: chips read "Show inactive" and "Course: Course Pub"; learners and courses lists still load.
+- **UNRESOLVED** — Learners with no first or last name cannot be opened from learner lists (reason: needs a product/UX decision. Commit 2a51c992 deliberately dropped the link from blank link cells as an accessibility fix, because a blank link was focusable with no accessible name. Restoring reachability means choosing what a nameless learner's link and quick-view trigger say, e.g. the email or "Unnamed learner". An auto-fix (28d2b0f8) that made "-" the link text was reverted in 7452168c because it overrode that decision.)
 
 ## General notes
 
-- Pre-QA rebase: main gained a test-suite reorganisation; branch tests were ported into main's new layout, and the full suite passed before QA. An earlier rebase surfaced that an inactive cohort still made its members messaging peers; the user decided it must not, and that was fixed (commit "an inactive cohort makes no peers") before this run. Peers have no browser surface, so §11.4 was skipped and is covered by TestPeersOf.
-- Test-plan corrections found during the run:
-  - URLs needed `/educator/organisations/<slug>/` (already fixed before the run).
-  - §3.2 Course Pub reads "1 of 3 completed" because a3 is also a Cohort A member (plan said 1 of 2).
-  - §5.4 setup needed the 11 extra members to hold another route to Course Pub to appear as keepers.
-  - §7.2's "and 0 course registrations": the sentence omits zero counts by design (`cohort_not_empty_sentence`), which the spec allows.
-  - §5.2 tab count went 2 to 1 because the §4.3 test registration had been unregistered first.
-- The unregister dialog's keeper names appear in no stable order.
-- Reactivating from the Courses tab URL navigates to the cohort's base (Overview) URL rather than staying on the tab; deactivate stays on the same URL.
-- On the courses list, the Cohorts cell omits inactive cohorts (Cohort Old) while listing inactive registrations (Cohort Stale), because the prefetch filters `cohort__is_active=True`; the spec only requires the cell to stay organisation-scoped.
-- Learners list rows whose users have no first/last name render "-" with no link to the learner page (all QA learners lack names); this predates the branch.
-- The Django debug toolbar was hidden for screenshots.
+Plan figures stale or inconsistent with spec/data:
 
+- 3.2: Course Pub completion reads "1 of 3 completed, 33%", not the plan's "1 of 2, 50%". The spec defines the denominator as members with a CourseProgress record on the registration, and the registration signal gives every member (including a3) a record, so 1 of 3 is correct for this data. The plan figure is stale.
+- 5.4: the plan setup is self-contradictory. The 11 extras with no other access lose access (the Pub dialog says "14 learners lose access", no keepers line), so they can never fill the keepers line. Adapted by giving the 11 extras a second route (Cohort B membership): the Hid dialog then shows 10 names then "and 3 more", with losing count 1 (a2) correct. Extras were removed afterwards.
+- 7.2: the zero count is omitted from the delete sentence ("Cohort Removed can't be deleted while it has 1 learner, ..." rather than "1 learner and 0 course registrations"). The spec only requires counting every membership and registration, so this reads as acceptable.
+- 1.5: the Course filter is multi-select (a second course adds with OR semantics), so "pick Pub instead" needs deselecting Hid first.
+
+Cosmetic and UX observations:
+
+- The Educators card renders emails in uppercase (label styling applied to the email key), and on mobile the labels crowd the card edge.
+- Sort icons expose accessible names like "sort_neutral".
+- Keeper names in the unregister dialog have no stable order (neither alphabetical nor by email).
+- Destructive-ish confirm buttons (Unregister, Deactivate) are btn-secondary, the same weight as Cancel.
+- Touch targets under 44px on mobile: Filter/Sort 35px, Unregister 38px.
+- The inactive-cohort fragment says "to edit it" even for register and unregister.
+- The header Reactivate clicked on the Courses tab lands on Overview rather than staying on the tab.
+- Course Pub's Cohorts cell lists Cohort Stale (inactive registration) but not Cohort Old (inactive cohort). The spec says the cohort cell is unchanged, so noted only.
+- `courses_visible_to` includes hidden courses with only inactive registrations, so Course Other appears in Northside's course filter after §9.1 (Cohort A holds an inactive Course Other registration).
+- 9.3.1: the full-page GET shows the Django debug 404, while the HX request shows the "no longer available" dialog.
+
+Environment and residue:
+
+- The debug toolbar intercepted clicks in fresh browser contexts and had to be removed from the DOM.
+- Residue left in dev data by this run: Cohort A holds an inactive Course Other registration from §9.1.3; QA One and QA Two exist, with a3 in QA One; two Cohort Old reports were generated.
+
+---
 status: ok
-reason: 2 bugs — 2 fixed, 0 unresolved; report rendered, screenshots verified
+reason: 1 bug — 0 fixed, 1 unresolved; report rendered, screenshots verified
