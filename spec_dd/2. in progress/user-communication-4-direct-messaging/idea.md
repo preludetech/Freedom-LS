@@ -64,8 +64,8 @@ message. This spec avoids each of those.
   screen. Unread state is conveyed by text and icon, not colour alone. Unread counts and newly
   arrived messages are announced politely to screen readers.
 - **The design comes from Claude Design.** The inbox, thread and composer, with their empty,
-  unread and error states, follow the design registered in `user-communication/design.md`, drawn
-  from `design_brief.md` in the parent directory.
+  unread and error states, follow the design registered in `design.md` in this directory, for both
+  the learner and the educator side.
 
 ## Open until the spec
 
@@ -94,6 +94,13 @@ message. This spec avoids each of those.
 - WebSocket delivery (spec 8).
 
 ## Resources
+
+Design in this directory:
+
+- `spec_dd/2. in progress/user-communication-4-direct-messaging/design.md`: the Claude Design
+  design for the learner inbox, thread, composer, send and policy states and recipient picker, and
+  for the educator inbox, thread, new message picker, states and mobile screens, a visual reference
+  only. Read it as that file says.
 
 Research in this directory:
 
