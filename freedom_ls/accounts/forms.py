@@ -48,20 +48,22 @@ class HoneypotInput(forms.TextInput):
         return True
 
 
-class SiteAwareSignupForm(SignupForm):
-    """allauth signup form extended for FLS:
+class HoneypotFormMixin(forms.Form):
+    """A field people never see and bots fill in.
 
-    - Adjusts whether ``first_name`` is required based on the site's policy.
-    - Adds T&C and Privacy Policy clickwrap checkboxes when the site requires
-      explicit consent and the relevant docs resolve.
-    - Records LegalConsent rows in ``custom_signup``.
+    The name must not be one that browsers or password managers autofill, or
+    real people get rejected. A trip logs the site and client IP, never the
+    submitted values, and the error names no check: it only gives a person a
+    way forward. The log reads allauth's request context, which
+    AccountMiddleware sets for every view.
     """
 
-    first_name = forms.CharField(max_length=200, required=True)
-    last_name = forms.CharField(max_length=200, required=False)
+    honeypot_context_label = "Signup"
+    honeypot_error_message = _(
+        "We couldn't process this sign-up. If you used autofill or a password "
+        "manager, please try typing your details in by hand."
+    )
 
-    # Honeypot: bots fill it, people never see it. The name must not be one
-    # that browsers or password managers autofill, or real people get rejected.
     fax_number = forms.CharField(
         required=False,
         widget=HoneypotInput(
@@ -73,6 +75,45 @@ class SiteAwareSignupForm(SignupForm):
         ),
         label=_("Leave this field empty"),
     )
+
+    def clean(self) -> dict[str, object]:
+        super().clean()
+        if self.cleaned_data.get("fax_number"):
+            self._log_honeypot_trip()
+            self.add_error(None, self.honeypot_error_message)
+        return self.cleaned_data
+
+    def _log_honeypot_trip(self) -> None:
+        """Log the site and client IP, never the submitted values."""
+        from .utils import get_client_ip
+
+        request = _get_request_or_none()
+        if request is None:
+            logger.warning(
+                "%s honeypot tripped outside a request", self.honeypot_context_label
+            )
+            return
+        site_obj = get_cached_site(request)
+        domain = site_obj.domain if isinstance(site_obj, Site) else "unknown"
+        logger.warning(
+            "%s honeypot tripped on site %s from IP %s",
+            self.honeypot_context_label,
+            domain,
+            get_client_ip(request),
+        )
+
+
+class SiteAwareSignupForm(HoneypotFormMixin, SignupForm):
+    """allauth signup form extended for FLS:
+
+    - Adjusts whether ``first_name`` is required based on the site's policy.
+    - Adds T&C and Privacy Policy clickwrap checkboxes when the site requires
+      explicit consent and the relevant docs resolve.
+    - Records LegalConsent rows in ``custom_signup``.
+    """
+
+    first_name = forms.CharField(max_length=200, required=True)
+    last_name = forms.CharField(max_length=200, required=False)
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -97,6 +138,17 @@ class SiteAwareSignupForm(SignupForm):
         if not get_effective_require_name(policy):
             self.fields["first_name"].required = False
             self.fields["first_name"].label = _("First name (optional)")
+
+        # allauth prefills the email from the query string; the handoff from an
+        # application also carries the typed names.
+        if request is not None and not self.is_bound:
+            for name in ("first_name", "last_name"):
+                field = self.fields[name]
+                if not isinstance(field, forms.CharField):
+                    continue
+                typed = request.GET.get(name, "")[: field.max_length]
+                if typed:
+                    self.initial.setdefault(name, typed)
 
         # Terms / Privacy clickwrap. Per-site policy takes precedence; without
         # one, fall back to config.REQUIRE_TERMS_ACCEPTANCE so operators can
@@ -135,36 +187,6 @@ class SiteAwareSignupForm(SignupForm):
                 "outside of a request when require_terms_acceptance is in play. "
                 "This form is only intended for use from the signup HTTP view."
             )
-
-    def clean(self) -> dict[str, object]:
-        cleaned_data: dict[str, object] = super().clean()
-        if cleaned_data.get("fax_number"):
-            self._log_honeypot_trip()
-            # Don't say which check failed, but give a person a way forward.
-            self.add_error(
-                None,
-                _(
-                    "We couldn't process this sign-up. If you used autofill or a "
-                    "password manager, please try typing your details in by hand."
-                ),
-            )
-        return cleaned_data
-
-    def _log_honeypot_trip(self) -> None:
-        """Log the site and client IP, never the submitted values."""
-        from .utils import get_client_ip
-
-        request = _get_request_or_none()
-        if request is None:
-            logger.warning("Signup honeypot tripped outside a request")
-            return
-        site_obj = get_cached_site(request)
-        domain = site_obj.domain if isinstance(site_obj, Site) else "unknown"
-        logger.warning(
-            "Signup honeypot tripped on site %s from IP %s",
-            domain,
-            get_client_ip(request),
-        )
 
     def custom_signup(self, request, user) -> None:
         """allauth hook called after the user is created.

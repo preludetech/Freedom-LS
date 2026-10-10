@@ -261,7 +261,7 @@ class FormProgressCompletionFilter(CompletionListFilter):
 @admin.register(FormProgress)
 class FormProgressAdmin(SiteAwareModelAdmin):
     list_display = [
-        "user",
+        "user_or_unclaimed",
         "form",
         "in_course",
         "start_time",
@@ -316,6 +316,10 @@ class FormProgressAdmin(SiteAwareModelAdmin):
             },
         ),
     )
+
+    @admin.display(description="User", ordering="user__email")
+    def user_or_unclaimed(self, obj: FormProgress) -> str:
+        return "Unclaimed" if obj.user is None else str(obj.user)
 
     def get_readonly_fields(
         self, request: HttpRequest, obj: FormProgress | None = None
@@ -443,7 +447,8 @@ class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Applicant", ordering="answer__form_progress__user")
     def applicant(self, obj: QuestionAnswerFile) -> str:
-        return str(obj.answer.form_progress.user)
+        user = obj.answer.form_progress.user
+        return "Unclaimed" if user is None else str(user)
 
     @admin.display(description="Question", ordering="answer__question")
     def question(self, obj: QuestionAnswerFile) -> str:

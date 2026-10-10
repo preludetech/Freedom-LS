@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
+
 import pytest
 
 from django.contrib.messages import get_messages
@@ -9,7 +12,11 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.factories import (
+    EmailAddressFactory,
+    SiteSignupPolicyFactory,
+    UserFactory,
+)
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
@@ -19,14 +26,16 @@ from freedom_ls.tests.images import png_bytes
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
+from freedom_ls.course_applications.claims import UNCLAIMED_APPLICATIONS_SESSION_KEY
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.form_engine.anonymous_sittings import ANONYMOUS_SITTINGS_SESSION_KEY
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormQuestionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
@@ -66,15 +75,6 @@ class TestApplyViewGet:
         response = client.get(url)
 
         assert course.title in response.content.decode()
-
-    def test_get_unauthenticated_redirects_to_signup(self, client, mock_site_context):
-        """GET apply without login redirects to signup with next set to the apply URL."""
-        course = CourseFactory()
-        url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
-        response = client.get(url)
-
-        assert response.status_code == 302
-        assert response["Location"] == f"{reverse('account_signup')}?next={url}"
 
     def test_get_nonexistent_course_returns_404(self, client, mock_site_context):
         """GET apply for a non-existent course slug returns 404."""
@@ -342,6 +342,10 @@ def _edit_url(app, page_number):
     return f"{_page_url(app, page_number)}?return=check"
 
 
+def _about_you_url(app):
+    return reverse("course_applications:about_you", kwargs={"pk": app.pk})
+
+
 def _check_url(app):
     return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
 
@@ -529,7 +533,7 @@ class TestApplicationFormPage:
 
         response = client.get(_page_url(app, 1))
 
-        assert response.get("Cache-Control") == "no-store"
+        assert "no-store" in response["Cache-Control"]
 
     def test_a_non_owner_gets_404(self, client, mock_site_context):
         course, _form = gated_course_with_form()
@@ -559,7 +563,7 @@ class TestApplicationFormPage:
 
         response = client.get(_page_url(app, 1))
 
-        accessible = [link["is_accessible"] for link in response.context["page_links"]]
+        accessible = [link.is_accessible for link in response.context["page_links"]]
         assert accessible == [True, True]
 
     def test_answering_a_page_advances_to_the_next(self, client, mock_site_context):
@@ -723,7 +727,7 @@ class TestCheckYourAnswers:
 
         body = client.get(_check_url(app)).content.decode()
 
-        assert "About you" in body
+        assert "Your background" in body
         assert "Supporting documents" in body
 
     def test_an_edit_link_carries_the_return_marker(self, client, mock_site_context):
@@ -970,7 +974,7 @@ def _course_with_single_question(question_type: str, *, required: bool = False):
     so a rejected answer's effect on paging and completion is unambiguous.
     """
     form = FormFactory(strategy=FormStrategy.UNSCORED)
-    page = FormPageFactory(form=form, order=0, title="About you")
+    page = FormPageFactory(form=form, order=0, title="Your background")
     question = FormQuestionFactory(
         form_page=page,
         type=question_type,
@@ -1233,20 +1237,19 @@ def test_deferred_login_free_course_enrolls_and_redirects(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_apply_redirects_to_signup_with_next(
-    mock_site_context, course_with_topic
+def test_anonymous_access_to_apply_on_closed_site_redirects_to_login_with_next(
+    mock_site_context, course_with_topic, settings
 ):
-    """Anonymous GET of apply → 302 to signup?next=<apply-url>."""
+    """Anonymous GET of apply on a site closed for signups goes to login?next=<apply-url>."""
+    settings.ALLOW_SIGN_UPS = False
     course = course_with_topic(access_type="application_gated")
-    client = Client()
     apply_url = reverse(
         "course_applications:apply", kwargs={"course_slug": course.slug}
     )
-    response = client.get(apply_url, follow=False)
+    response = Client().get(apply_url, follow=False)
 
     assert response.status_code == 302
-    signup_url = reverse("account_signup")
-    assert response["Location"].startswith(signup_url)
+    assert response["Location"].startswith(reverse("account_login"))
     assert _next_param(response["Location"]) == apply_url
 
 
@@ -1278,15 +1281,15 @@ def test_deferred_login_gated_course_lands_on_apply_page(
 
 @pytest.mark.django_db
 def test_deferred_login_apply_round_trip_creates_no_application(
-    mock_site_context, client
+    mock_site_context, client, settings
 ):
-    """An anonymous apply click survives sign-in without auto-submitting.
+    """An anonymous apply GET creates nothing; only the POST does.
 
-    The anonymous POST redirects to login with next set to the apply URL
-    itself. Following that next after signing in lands on the GET
-    confirmation page, not an auto-created application — apply's GET and
-    POST share one URL, so `next` alone can't force the POST branch.
+    On a closed site the anonymous POST redirects to login with next set to
+    the apply URL itself. Following that next after signing in lands on the GET
+    confirmation page, not an auto-created application.
     """
+    settings.ALLOW_SIGN_UPS = False
     course = CourseFactory()
     user = UserFactory()
 
@@ -1300,7 +1303,25 @@ def test_deferred_login_apply_round_trip_creates_no_application(
     followed = client.get(next_url)
 
     assert followed.status_code == 200
-    assert not CourseApplication.objects.filter(user=user, course=course).exists()
+    assert not CourseApplication.objects.filter(course=course).exists()
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_post_creates_an_unclaimed_application(
+    mock_site_context, client
+):
+    course = CourseFactory()
+    apply_url = reverse(
+        "course_applications:apply", kwargs={"course_slug": course.slug}
+    )
+
+    client.get(apply_url)
+    assert not CourseApplication.objects.exists()
+    client.post(apply_url, {"first_name": "Pat", "email": "pat@example.com"})
+
+    assert CourseApplication.objects.filter(
+        course=course, user__isnull=True, email="pat@example.com"
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -1407,21 +1428,32 @@ def test_deferred_login_application_status_non_owner_gets_404(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_hidden_course_apply_redirects_to_signup_not_404(
+def test_anonymous_access_to_hidden_course_apply_is_404_on_open_site(
     mock_site_context,
 ):
-    """acquisition_login_required runs before any visibility check, so an
-    anonymous visitor to a hidden course's apply URL gets a signup redirect
-    rather than the 404 that confirms a registered learner would eventually
-    see."""
+    """On a site open for signups, apply serves anonymous visitors itself, so a
+    hidden course answers 404 like any unknown slug."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
-    client = Client()
 
     url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
-    response = client.get(url, follow=False)
+    response = Client().get(url, follow=False)
 
-    assert response.status_code == 302
-    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_anonymous_access_to_hidden_course_apply_redirects_to_login_on_closed_site(
+    mock_site_context, settings
+):
+    """With signups closed the login redirect comes before any course lookup,
+    so it reveals nothing about which slugs exist."""
+    settings.ALLOW_SIGN_UPS = False
+    course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+    url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+    response = Client().get(url, follow=False)
+
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 @pytest.mark.django_db
@@ -1459,3 +1491,1383 @@ def test_anonymous_access_to_status_for_hidden_course_application_redirects_to_l
 
     assert response.status_code == 302
     assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+
+# ---------------------------------------------------------------------------
+# anonymous apply
+# ---------------------------------------------------------------------------
+
+
+def _apply_url(course):
+    return reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+
+
+@pytest.mark.django_db
+class TestAnonymousApply:
+    def test_anonymous_apply_on_closed_signup_site_redirects_to_login_with_next(
+        self, client, mock_site_context, settings
+    ):
+        settings.ALLOW_SIGN_UPS = False
+        course = CourseFactory()
+        url = _apply_url(course)
+
+        response = client.get(url)
+
+        assert response.status_code == 302
+        assert response["Location"] == f"{reverse('account_login')}?next={url}"
+
+    def test_anonymous_apply_to_hidden_course_is_404(self, client, mock_site_context):
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+        response = client.get(_apply_url(course))
+
+        assert response.status_code == 404
+
+    def test_anonymous_apply_to_coming_soon_course_redirects_to_detail(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+
+    def test_anonymous_no_form_get_shows_about_you_with_a_submit_button(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        response = client.get(_apply_url(course))
+
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert "<h1>About you</h1>" in body
+        assert 'name="email"' in body
+        assert "Submit application" in body
+
+    def test_anonymous_no_form_get_creates_nothing(self, client, mock_site_context):
+        course = CourseFactory()
+
+        client.get(_apply_url(course))
+
+        assert not CourseApplication.objects.exists()
+
+    def test_about_you_post_for_no_form_course_submits_and_hands_off(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        with patch(
+            "freedom_ls.course_applications.views.record_application_submitted"
+        ) as record:
+            response = client.post(
+                _apply_url(course), {**ABOUT_YOU_DETAILS, "email": "Ada@Example.com"}
+            )
+
+        app = CourseApplication.objects.get(course=course)
+        location = response["Location"]
+        assert (app.user, app.first_name, app.last_name, app.email) == (
+            None,
+            "Ada",
+            "Lovelace",
+            "ada@example.com",
+        )
+        assert (app.form_progress, FormProgress.objects.count()) == (None, 0)
+        assert client.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] == [str(app.pk)]
+        record.assert_called_once()
+        assert location.startswith(reverse("account_signup"))
+        assert parse_qs(urlparse(location).query)["email"] == ["ada@example.com"]
+
+    def test_anonymous_submit_redirects_to_signup_with_the_email_prefilled(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        response = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+
+        location = response["Location"]
+        assert location.startswith(reverse("account_signup"))
+        assert parse_qs(urlparse(location).query)["email"] == ["pat@example.com"]
+
+    def test_anonymous_submit_carries_next(self, client, mock_site_context):
+        course = CourseFactory()
+
+        response = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+
+        assert parse_qs(urlparse(response["Location"]).query)["next"] == [
+            reverse("course_applications:claim")
+        ]
+
+    def test_anonymous_submit_on_closed_signup_site_redirects_to_login(
+        self, client, mock_site_context, settings
+    ):
+        settings.ALLOW_SIGN_UPS = False
+        course = CourseFactory()
+
+        response = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+
+        assert response["Location"].startswith(reverse("account_login"))
+
+    def test_anonymous_submit_response_is_identical_for_registered_and_unregistered_email(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        UserFactory(email="known@example.com")
+
+        known = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "known@example.com"}
+        )
+        unknown = Client().post(
+            _apply_url(course), {"first_name": "Pat", "email": "stranger@example.com"}
+        )
+
+        assert known.status_code == unknown.status_code
+        assert known["Location"].replace("known", "x") == unknown["Location"].replace(
+            "stranger", "x"
+        )
+
+    def test_anonymous_apply_after_submit_redirects_to_handoff(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+
+        response = client.get(_apply_url(course))
+
+        assert response.status_code == 302
+        assert parse_qs(urlparse(response["Location"]).query)["email"] == [
+            "pat@example.com"
+        ]
+        assert CourseApplication.objects.count() == 1
+
+    def test_returning_to_a_sent_application_does_not_say_sent_again(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+        client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+        list(get_messages(client.get(_apply_url(course), follow=True).wsgi_request))
+
+        response = client.get(_apply_url(course), follow=True)
+
+        texts = [str(m) for m in get_messages(response.wsgi_request)]
+        assert texts == [
+            "Create an account or log in with pat@example.com to see the "
+            f"progress of your application for {course.title}."
+        ]
+
+    def test_handoff_carries_first_and_last_name(self, client, mock_site_context):
+        course = CourseFactory()
+        client.post(
+            _apply_url(course),
+            {
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "email": "ada@example.com",
+            },
+        )
+        blank_last = Client()
+        blank_last.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+
+        both = parse_qs(urlparse(client.get(_apply_url(course))["Location"]).query)
+        first_only = parse_qs(
+            urlparse(blank_last.get(_apply_url(course))["Location"]).query
+        )
+
+        assert both["first_name"] == ["Ada"]
+        assert both["last_name"] == ["Lovelace"]
+        assert first_only["first_name"] == ["Pat"]
+        assert "last_name" not in first_only
+
+    def test_signed_in_apply_shows_the_account_email_read_only(
+        self, client, mock_site_context
+    ):
+        user = UserFactory(email="me@example.com")
+        client.force_login(user)
+        course = CourseFactory()
+
+        response = client.get(_apply_url(course))
+
+        html = response.content.decode()
+        assert "me@example.com" in html
+        assert 'name="email"' not in html
+
+    def test_signed_in_application_is_created_with_account_email(
+        self, client, mock_site_context
+    ):
+        user = UserFactory(email="me@example.com")
+        client.force_login(user)
+        course = CourseFactory()
+
+        client.post(_apply_url(course))
+
+        assert CourseApplication.objects.get(user=user).email == "me@example.com"
+
+    def test_signed_in_application_copies_account_names(
+        self, client, mock_site_context
+    ):
+        user = UserFactory(first_name="Ada", last_name="Lovelace")
+        client.force_login(user)
+        course = CourseFactory()
+
+        client.post(_apply_url(course))
+
+        application = CourseApplication.objects.get(user=user)
+        assert (application.first_name, application.last_name) == ("Ada", "Lovelace")
+
+    @pytest.mark.parametrize(
+        "view_name", ["apply", "about_you", "form_page", "check_answers"]
+    )
+    def test_every_unclaimed_application_view_sends_no_store_and_same_origin_referrer(
+        self, client, mock_site_context, view_name
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        urls = {
+            "apply": _apply_url(course),
+            "about_you": _about_you_url(app),
+            "form_page": _page_url(app, 1),
+            "check_answers": _check_url(app),
+        }
+
+        response = client.get(urls[view_name])
+
+        assert "no-store" in response["Cache-Control"]
+        assert response["Referrer-Policy"] == "same-origin"
+
+
+def _hold(client, *applications):
+    session = client.session
+    session[UNCLAIMED_APPLICATIONS_SESSION_KEY] = [str(a.pk) for a in applications]
+    session.save()
+
+
+def _claim_url():
+    return reverse("course_applications:claim")
+
+
+def _signed_in_with_verified(client, email="pat@example.com"):
+    user = UserFactory()
+    EmailAddressFactory(user=user, email=email)
+    client.force_login(user)
+    return user
+
+
+@pytest.mark.django_db
+class TestClaimLanding:
+    def test_one_claimed_submitted_application_lands_on_its_status_page(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        response = client.get(_claim_url())
+
+        app.refresh_from_db()
+        assert app.user == user
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": app.pk}
+        )
+
+    def test_claiming_says_the_application_is_on_the_dashboard(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        response = client.get(_claim_url())
+
+        assert [str(m) for m in get_messages(response.wsgi_request)] == [
+            f"Your application for {app.course.title} is now on your dashboard."
+        ]
+
+    def test_several_claimed_applications_land_on_the_dashboard(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        first = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        second = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, first, second)
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_a_collision_alone_lands_on_the_existing_application(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        course = CourseFactory()
+        existing = CourseApplicationFactory(user=user, course=course)
+        held = CourseApplicationFactory(
+            unclaimed=True, course=course, email="pat@example.com"
+        )
+        _hold(client, held)
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse(
+            "course_applications:status", kwargs={"pk": existing.pk}
+        )
+
+    def test_a_collision_says_the_user_had_already_applied(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+        held = CourseApplicationFactory(
+            unclaimed=True, course=course, email="pat@example.com"
+        )
+        _hold(client, held)
+
+        response = client.get(_claim_url())
+
+        assert [str(m) for m in get_messages(response.wsgi_request)] == [
+            f"You had already applied to {course.title}. This is your application."
+        ]
+
+    def test_a_mismatch_shows_the_mismatch_page(self, client, mock_site_context):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        response = client.get(_claim_url())
+
+        assert response.status_code == 200
+        assert "pat@example.com" in response.content.decode()
+        assert "Link your application" in response.content.decode()
+
+    def test_a_mismatch_on_an_unverified_own_address_says_to_verify_it(
+        self, client, mock_site_context
+    ):
+        user = UserFactory()
+        EmailAddressFactory(user=user, email="pat@example.com", verified=False)
+        client.force_login(user)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        html = client.get(_claim_url()).content.decode()
+
+        assert "has not been verified on this account yet" in html
+        assert "Add and verify" not in html
+
+    def test_a_mismatch_on_a_different_address_says_to_add_it(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        html = client.get(_claim_url()).content.decode()
+
+        assert "Add and verify" in html
+        assert "has not been verified" not in html
+
+    def test_a_mismatch_leaves_the_application_unclaimed(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        client.get(_claim_url())
+
+        app.refresh_from_db()
+        assert app.user is None
+
+    def test_nothing_held_says_no_application_was_found(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+
+        response = client.get(_claim_url())
+
+        assert (
+            response["Location"],
+            [str(m) for m in get_messages(response.wsgi_request)],
+        ) == (
+            reverse("learner_interface:dashboard"),
+            ["We couldn't find an application in this browser."],
+        )
+
+    def test_a_mismatch_mixed_with_a_claim_shows_the_mismatch_page(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        claimable = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        mismatched = CourseApplicationFactory(unclaimed=True, email="else@example.com")
+        _hold(client, claimable, mismatched)
+
+        response = client.get(_claim_url())
+
+        assert response.status_code == 200
+        assert "else@example.com" in response.content.decode()
+
+    def test_a_mixed_run_still_claims_the_matching_application(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client)
+        claimable = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        mismatched = CourseApplicationFactory(unclaimed=True, email="else@example.com")
+        _hold(client, claimable, mismatched)
+
+        client.get(_claim_url())
+
+        claimable.refresh_from_db()
+        assert claimable.user == user
+
+    def test_claim_landing_with_a_deleted_mismatched_application_finds_nothing(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+        app.delete()
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_claim_landing_links_a_mismatched_application_once_the_address_is_verified(
+        self, client, mock_site_context
+    ):
+        user = _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+        EmailAddressFactory(user=user, email="pat@example.com", primary=False)
+
+        response = client.get(_claim_url())
+
+        app.refresh_from_db()
+        assert (app.user, response["Location"]) == (
+            user,
+            reverse("course_applications:status", kwargs={"pk": app.pk}),
+        )
+
+    def test_mismatch_page_offers_the_link_my_application_button(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client, email="other@example.com")
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+
+        html = client.get(_claim_url()).content.decode()
+
+        assert "Link my application" in html
+        assert f'href="{_claim_url()}"' in html
+
+    def test_claim_landing_is_login_required(self, client, mock_site_context):
+        response = client.get(_claim_url())
+
+        assert response.status_code == 302
+        assert reverse("account_login") in response["Location"]
+
+    def test_claim_landing_is_get_only(self, client, mock_site_context):
+        _signed_in_with_verified(client)
+
+        response = client.post(_claim_url())
+
+        assert response.status_code == 405
+
+    def test_claim_landing_revisit_finds_nothing(self, client, mock_site_context):
+        _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == reverse("learner_interface:dashboard")
+
+    def test_claim_landing_sends_no_store_and_same_origin_referrer(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+
+        response = client.get(_claim_url())
+
+        assert "no-store" in response["Cache-Control"]
+        assert response["Referrer-Policy"] == "same-origin"
+
+    def test_claimed_application_appears_on_the_dashboard(
+        self, client, mock_site_context
+    ):
+        _signed_in_with_verified(client)
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+        _hold(client, app)
+        client.get(_claim_url())
+
+        response = client.get(reverse("learner_interface:dashboard"))
+
+        assert app.course.title in response.content.decode()
+
+    def test_handoff_message_is_shown_on_the_signup_page(
+        self, client, mock_site_context
+    ):
+        course = CourseFactory()
+
+        response = client.post(
+            _apply_url(course),
+            {"first_name": "Pat", "email": "pat@example.com"},
+            follow=True,
+        )
+
+        assert (
+            f"Your application for {course.title} has been sent. "
+            "Create an account or log in with pat@example.com to see its progress."
+            in response.content.decode()
+        )
+
+
+# ---------------------------------------------------------------------------
+# The anonymous form journey
+# ---------------------------------------------------------------------------
+
+
+def _page_one_post(form, name="Ada"):
+    """A valid page-1 POST body for the shared two-page form."""
+    required = _questions_on(form, 1)[0]
+    return {f"question_{required.id}": name}
+
+
+ABOUT_YOU_DETAILS = {
+    "first_name": "Ada",
+    "last_name": "Lovelace",
+    "email": "ada@example.com",
+}
+
+
+def _start_anonymous_application(client, course, form):
+    """Take an anonymous visitor through About you and a valid page-1 save."""
+    client.post(_apply_url(course), ABOUT_YOU_DETAILS)
+    app = CourseApplication.objects.get(course=course)
+    client.post(_page_url(app, 1), _page_one_post(form))
+    return app
+
+
+def _signed_in_holding_unclaimed_draft(client, form):
+    """A signed-in browser whose session holds an unclaimed draft.
+
+    Built directly because logging in claims an unsubmitted draft; what is
+    left holding one is a submitted application whose address did not match.
+    """
+    from freedom_ls.form_engine.factories import FormProgressFactory
+
+    sitting = FormProgressFactory(user=None, form=form)
+    app = CourseApplicationFactory(
+        unclaimed=True, form_progress=sitting, email="other@example.com"
+    )
+    client.force_login(UserFactory())
+    session = client.session
+    session[UNCLAIMED_APPLICATIONS_SESSION_KEY] = [str(app.pk)]
+    session[ANONYMOUS_SITTINGS_SESSION_KEY] = [str(sitting.pk)]
+    session.save()
+    return app
+
+
+def _complete_anonymous_application(client, course, form):
+    """An anonymous applicant with page 1 saved, ready to submit from page 2."""
+    app = _start_anonymous_application(client, course, form)
+    client.post(_page_url(app, 2), {})
+    return app
+
+
+def _form_course():
+    return gated_course_with_form()[0]
+
+
+COURSE_KINDS = pytest.mark.parametrize(
+    "make_course",
+    [_form_course, CourseFactory],
+    ids=["form_course", "no_form_course"],
+)
+
+
+def _course_with_file_on_page_one(*, required: bool):
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    FormQuestionFactory(
+        form_page=page, type="short_text", order=0, question="Name", required=True
+    )
+    FormQuestionFactory(
+        form_page=page, type="file_upload", order=1, question="ID", required=required
+    )
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+    return course, form
+
+
+@pytest.mark.django_db
+class TestAnonymousFormJourney:
+    def test_anonymous_apply_renders_about_you_without_creating_rows(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+
+        response = client.get(_apply_url(course))
+
+        body = response.content.decode()
+        assert response.status_code == 200
+        assert "<h1>About you</h1>" in body
+        assert "kept until an administrator removes it" in body
+        assert (CourseApplication.objects.count(), FormProgress.objects.count()) == (
+            0,
+            0,
+        )
+
+    def test_about_you_post_creates_application_and_sitting_and_remembers_them(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+
+        response = client.post(
+            _apply_url(course), {**ABOUT_YOU_DETAILS, "email": "Ada@Example.com"}
+        )
+
+        app = CourseApplication.objects.get(course=course)
+        assert (app.user, app.first_name, app.last_name, app.email) == (
+            None,
+            "Ada",
+            "Lovelace",
+            "ada@example.com",
+        )
+        assert (app.form_progress.user, FormProgress.objects.count()) == (None, 1)
+        assert client.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] == [str(app.pk)]
+        assert client.session[ANONYMOUS_SITTINGS_SESSION_KEY] == [
+            str(app.form_progress_id)
+        ]
+        assert response["Location"] == _page_url(app, 1)
+
+    @COURSE_KINDS
+    def test_about_you_post_with_errors_creates_nothing_and_keeps_typed_values(
+        self, client, mock_site_context, make_course
+    ):
+        course = make_course()
+
+        response = client.post(
+            _apply_url(course), {"first_name": "Ada", "last_name": "Lovelace"}
+        )
+
+        assert response.status_code == 422
+        assert "Lovelace" in response.content.decode()
+        assert (CourseApplication.objects.count(), FormProgress.objects.count()) == (
+            0,
+            0,
+        )
+
+    @pytest.mark.parametrize(
+        ("require_name", "status", "label"),
+        [(True, 422, "First name"), (False, 302, "First name (optional)")],
+    )
+    def test_about_you_first_name_required_follows_signup_policy(
+        self, client, mock_site_context, require_name, status, label
+    ):
+        SiteSignupPolicyFactory(require_name=require_name)
+        course, _form = gated_course_with_form()
+
+        response = client.post(
+            _apply_url(course), {"first_name": "", "email": "ada@example.com"}
+        )
+        page = Client().get(_apply_url(course))
+
+        assert response.status_code == status
+        assert f">{label}" in page.content.decode()
+
+    def test_about_you_on_a_form_with_no_pages_leads_to_check_answers(
+        self, client, mock_site_context
+    ):
+        course = _gated_course_with_a_page_less_form()
+
+        response = client.post(_apply_url(course), ABOUT_YOU_DETAILS)
+
+        app = CourseApplication.objects.get(course=course)
+        assert response["Location"] == _check_url(app)
+
+    @COURSE_KINDS
+    def test_start_cap_counts_only_valid_about_you_posts(
+        self, settings, mock_site_context, make_course
+    ):
+        settings.TRUSTED_PROXY_IP_HEADER = None
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 1
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS = 600
+        course = make_course()
+        refused = Client().post(_apply_url(course), {"first_name": "Ada"})
+        accepted = Client().post(_apply_url(course), ABOUT_YOU_DETAILS)
+
+        capped = Client().post(_apply_url(course), ABOUT_YOU_DETAILS)
+
+        assert (refused.status_code, accepted.status_code) == (422, 302)
+        assert capped.status_code == 429
+        assert CourseApplication.objects.count() == 1
+
+    @COURSE_KINDS
+    def test_honeypot_on_about_you_creates_nothing(
+        self, client, mock_site_context, make_course
+    ):
+        course = make_course()
+
+        response = client.post(
+            _apply_url(course), {**ABOUT_YOU_DETAILS, "fax_number": "bot"}
+        )
+
+        assert response.status_code == 422
+        assert "We couldn&#x27;t process this application" in response.content.decode()
+        assert not CourseApplication.objects.exists()
+
+    def test_about_you_fields_use_the_question_field_markup(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+
+        html = client.post(_apply_url(course), {"first_name": "Ada"}).content.decode()
+
+        assert html.count("<fieldset") >= 3
+        assert html.count("<legend") >= 3
+        assert 'aria-invalid="true"' in html
+        assert 'aria-describedby="id_email_error"' in html
+        assert 'id="id_email_error"' in html
+
+    def test_about_you_nav_lists_about_you_first_and_numbers_pages_from_two(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+
+        before = client.get(_apply_url(course)).context["page_links"]
+        app = _start_anonymous_application(client, course, form)
+        after = client.get(_page_url(app, 1)).context["page_links"]
+
+        assert [
+            (link.number, link.title, link.is_current, link.is_accessible)
+            for link in before
+        ] == [
+            (1, "About you", True, True),
+            (2, "Your background", False, False),
+            (3, "Supporting documents", False, False),
+        ]
+        assert [
+            (link.number, link.is_current, link.is_accessible) for link in after[:2]
+        ] == [
+            (1, False, True),
+            (2, True, True),
+        ]
+
+    def test_form_page_one_previous_links_to_about_you_for_an_unclaimed_application(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.context["previous_page_url"] == _about_you_url(app)
+
+    def test_anonymous_apply_resumes_the_session_draft(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        client.get(_page_url(app, 2))
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == _page_url(app, 2)
+
+    def test_anonymous_apply_get_does_not_write_the_session(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+
+        client.get(_apply_url(course))
+
+        assert ANONYMOUS_SITTINGS_SESSION_KEY not in client.session
+
+    def test_foreign_application_id_is_404_for_anonymous_request(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = Client().get(_page_url(app, 1))
+
+        assert response.status_code == 404
+
+    def test_expired_session_is_404(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        client.cookies.clear()
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 404
+
+    def test_session_held_id_from_another_site_is_404(self, client, mock_site_context):
+        from freedom_ls.accounts.factories import SiteFactory
+        from freedom_ls.form_engine.factories import FormProgressFactory
+
+        sitting = FormProgressFactory(user=None, site=SiteFactory())
+        app = CourseApplicationFactory(
+            unclaimed=True, form_progress=sitting, site=sitting.site
+        )
+        _hold(client, app)
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 404
+
+    def test_session_held_id_of_a_claimed_application_is_404(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        app.user = UserFactory()
+        app.save(update_fields=["user"])
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 404
+
+    def test_submitted_unclaimed_check_answers_post_redirects_to_handoff(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {})
+
+        response = client.post(_check_url(app))
+
+        assert response["Location"].startswith(reverse("account_signup"))
+
+    def test_signed_in_holder_of_a_submitted_unclaimed_application_is_sent_to_claim(
+        self, client, mock_site_context
+    ):
+        _course, form = gated_course_with_form()
+        app = _signed_in_holding_unclaimed_draft(client, form)
+        app.form_progress.complete()
+
+        response = client.post(_check_url(app))
+
+        assert response["Location"] == _claim_url()
+        assert list(get_messages(response.wsgi_request)) == []
+
+    def test_submitted_unclaimed_check_answers_links_back_to_the_handoff(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {})
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert f'href="{_apply_url(course)}"' in html
+        assert reverse("course_applications:status", kwargs={"pk": app.pk}) not in html
+
+    def test_signed_in_user_reads_a_session_held_unclaimed_application(
+        self, client, mock_site_context
+    ):
+        _course, form = gated_course_with_form()
+        app = _signed_in_holding_unclaimed_draft(client, form)
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.status_code == 200
+
+    def test_signed_in_user_on_a_session_held_draft_sees_the_about_you_card(
+        self, client, mock_site_context
+    ):
+        _course, form = gated_course_with_form()
+        app = _signed_in_holding_unclaimed_draft(client, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert "other@example.com" in html
+
+    def test_check_answers_shows_about_you_card(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert "Ada Lovelace" in html
+        assert "ada@example.com" in html
+        assert f"{_about_you_url(app)}?return=check" in html
+
+    def test_check_answers_has_no_email_field(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert 'name="email"' not in html
+
+    def test_anonymous_submit_hands_off_without_reading_an_email(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+
+        with patch(
+            "freedom_ls.course_applications.views.record_application_submitted"
+        ) as record:
+            response = client.post(_check_url(app), {})
+
+        app.form_progress.refresh_from_db()
+        query = parse_qs(urlparse(response["Location"]).query)
+        assert app.form_progress.completed_time is not None
+        record.assert_called_once()
+        assert (urlparse(response["Location"]).path, query["email"]) == (
+            reverse("account_signup"),
+            ["ada@example.com"],
+        )
+
+    def test_anonymous_submit_runs_the_whole_form_check(
+        self, client, mock_site_context
+    ):
+        course, form = _course_with_file_on_page_one(required=True)
+        client.post(_apply_url(course), ABOUT_YOU_DETAILS)
+        app = CourseApplication.objects.get(course=course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
+
+        response = client.post(_check_url(app), {})
+
+        assert response.status_code == 422
+        assert "needs an answer" in response.content.decode()
+
+    def test_anonymous_submit_completes_the_sitting(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+
+        client.post(_check_url(app), {})
+
+        app.form_progress.refresh_from_db()
+        assert app.form_progress.completed_time is not None
+
+    def test_anonymous_submit_records_the_event(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+
+        with patch(
+            "freedom_ls.course_applications.views.record_application_submitted"
+        ) as record:
+            client.post(_check_url(app), {})
+
+        record.assert_called_once()
+
+    def test_anonymous_submit_from_check_answers_hands_off(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+
+        response = client.post(_check_url(app), {})
+
+        query = parse_qs(urlparse(response["Location"]).query)
+        assert (urlparse(response["Location"]).path, query["email"]) == (
+            reverse("account_signup"),
+            ["ada@example.com"],
+        )
+
+    def test_handoff_after_signups_close_sends_to_login_and_says_log_in(
+        self, client, mock_site_context, settings
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        settings.ALLOW_SIGN_UPS = False
+
+        response = client.post(_check_url(app), {}, follow=True)
+
+        html = response.content.decode()
+        assert response.redirect_chain[0][0].startswith(reverse("account_login"))
+        assert (
+            f"Your application for {course.title} has been sent. "
+            "Log in with ada@example.com to see its progress." in html
+        )
+        assert "Create an account or log in" not in html
+
+    def test_signed_in_check_answers_shows_about_you_card_without_edit_link(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert app.user.email in html
+        assert _about_you_url(app) not in html
+
+    def test_unclaimed_form_pages_carry_the_browser_only_notice(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        pages = [client.get(_page_url(app, 1)), client.get(_check_url(app))]
+
+        assert all("saved in this browser only" in r.content.decode() for r in pages)
+
+    def test_claimed_form_pages_carry_no_browser_only_notice(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+        app = _applied(client, course)
+
+        pages = [client.get(_page_url(app, 1)), client.get(_check_url(app))]
+
+        assert all(
+            "saved in this browser only" not in r.content.decode() for r in pages
+        )
+
+    def test_submitted_unclaimed_pages_no_longer_ask_to_submit(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {})
+
+        pages = [client.get(_page_url(app, 1)), client.get(_check_url(app))]
+
+        assert all("Submit it to keep it" not in r.content.decode() for r in pages)
+
+    def test_browser_only_notice_names_the_session_lifetime(
+        self, client, mock_site_context, settings
+    ):
+        settings.SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+        settings.SESSION_COOKIE_AGE = 8 * 3600
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_page_url(app, 1)).content.decode()
+
+        assert "for up to 8\xa0hours" in html
+
+    def test_browser_only_notice_for_a_session_that_ends_with_the_browser(
+        self, client, mock_site_context, settings
+    ):
+        settings.SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert "until you close your browser" in html
+        assert "for up to" not in html
+
+
+@pytest.mark.django_db
+class TestAboutYouRevisit:
+    def test_about_you_edit_saves_and_returns_to_page_one(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = client.post(
+            _about_you_url(app), {**ABOUT_YOU_DETAILS, "first_name": "Augusta"}
+        )
+
+        app.refresh_from_db()
+        assert app.first_name == "Augusta"
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_about_you_edit_with_return_marker_goes_to_check_answers(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = client.post(f"{_about_you_url(app)}?return=check", ABOUT_YOU_DETAILS)
+
+        assert response["Location"] == _check_url(app)
+
+    def test_about_you_is_read_only_once_submitted(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {})
+
+        html = client.get(_about_you_url(app)).content.decode()
+
+        assert 'id="id_email"' in html
+        assert "disabled" in html
+        assert 'type="submit"' not in html
+
+    def test_about_you_redirects_once_claimed(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        app.user = UserFactory()
+        app.save(update_fields=["user"])
+        client.force_login(app.user)
+
+        response = client.get(_about_you_url(app))
+
+        assert response.status_code == 302
+
+    def test_about_you_without_the_application_in_session_is_404(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = Client().get(_about_you_url(app))
+
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestClaimLandingResumesDraft:
+    def test_claim_landing_with_one_claimed_draft_resumes_it(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        client.get(_page_url(app, 2))
+        client.force_login(UserFactory())
+
+        response = client.get(_claim_url())
+
+        assert response["Location"] == _page_url(app, 2)
+
+
+@pytest.mark.django_db
+class TestSignedInApplyWithAHeldApplication:
+    """Apply never starts a second application while the browser holds one."""
+
+    def test_a_mismatched_submitted_application_sends_apply_to_the_claim_landing(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {})
+        _signed_in_with_verified(client, email="other@example.com")
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == _claim_url()
+        assert CourseApplication.objects.filter(course=course).count() == 1
+
+    def test_a_held_draft_is_claimed_and_resumed(self, client, mock_site_context):
+        from freedom_ls.form_engine.factories import FormProgressFactory
+
+        course, form = gated_course_with_form()
+        sitting = FormProgressFactory(user=None, form=form)
+        app = CourseApplicationFactory(
+            unclaimed=True, email="", course=course, form_progress=sitting
+        )
+        client.force_login(UserFactory())
+        _hold(client, app)
+
+        response = client.get(_apply_url(course), follow=True)
+
+        app.refresh_from_db()
+        assert app.user is not None
+        assert response.redirect_chain[-1][0] == _page_url(app, 1)
+        assert CourseApplication.objects.filter(course=course).count() == 1
+
+
+@pytest.mark.django_db
+class TestSignedInAboutYou:
+    """A signed-in applicant is asked only for what the account lacks."""
+
+    def test_signed_in_applicant_with_complete_account_never_sees_about_you(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course, _form = gated_course_with_form()
+        client.force_login(UserFactory(first_name="Ada"))
+
+        response = client.get(_apply_url(course))
+
+        app = CourseApplication.objects.get(course=course)
+        assert response["Location"] == _page_url(app, 1)
+        page = client.get(response["Location"])
+        assert _about_you_url(app) not in page.content.decode()
+
+    def test_signed_in_applicant_missing_required_first_name_is_asked_only_for_it(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course, _form = gated_course_with_form()
+        client.force_login(UserFactory(first_name=""))
+
+        response = client.get(_apply_url(course))
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert 'name="first_name"' in content
+        assert 'name="last_name"' not in content
+        assert 'name="email"' not in content
+        assert CourseApplication.objects.count() == 0
+
+    def test_signed_in_about_you_saves_to_account_and_application(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course, _form = gated_course_with_form()
+        user = UserFactory(first_name="")
+        client.force_login(user)
+
+        response = client.post(_apply_url(course), {"first_name": "Ada"})
+
+        user.refresh_from_db()
+        app = CourseApplication.objects.get(course=course)
+        assert user.first_name == "Ada"
+        assert app.first_name == "Ada"
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_signed_in_applicant_with_blank_optional_first_name_goes_straight_to_the_form(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=False)
+        course, _form = gated_course_with_form()
+        client.force_login(UserFactory(first_name=""))
+
+        response = client.get(_apply_url(course))
+
+        app = CourseApplication.objects.get(course=course)
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_signed_in_applicant_to_a_coming_soon_course_is_redirected_before_about_you(
+        self, client, mock_site_context
+    ):
+        SiteSignupPolicyFactory(require_name=True)
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+        client.force_login(UserFactory(first_name=""))
+
+        response = client.get(_apply_url(course))
+
+        assert response["Location"] == reverse(
+            "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+        )
+
+
+# ---------------------------------------------------------------------------
+# Per-address caps and the honeypot on the anonymous apply
+# ---------------------------------------------------------------------------
+
+
+def _post_application(course, email: str = "pat@example.com", **extra: str):
+    """One anonymous no-form application POST from a browser of its own."""
+    return Client().post(
+        _apply_url(course), {"first_name": "Pat", "email": email, **extra}
+    )
+
+
+@pytest.mark.django_db
+class TestAnonymousStartCap:
+    @pytest.fixture(autouse=True)
+    def _capped(self, settings, mock_site_context) -> None:
+        settings.TRUSTED_PROXY_IP_HEADER = None
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 1
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS = 600
+
+    def test_start_cap_fires_with_429(self):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response.status_code == 429
+
+    def test_start_cap_sets_retry_after(self, settings):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response["Retry-After"] == str(
+            settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS
+        )
+
+    def test_start_cap_zero_disables(self, settings):
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 0
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response.status_code == 302
+
+    def test_start_cap_key_holds_no_raw_ip(self):
+        from django.core.cache import cache
+
+        course = CourseFactory()
+
+        Client().post(
+            _apply_url(course),
+            {"first_name": "Pat", "email": "a@example.com"},
+            REMOTE_ADDR="203.0.113.7",
+        )
+
+        assert cache._cache
+        assert not [key for key in cache._cache if "203.0.113.7" in key]
+
+    def test_start_cap_counts_per_site(self):
+        from django.core.cache import cache
+
+        course = CourseFactory()
+
+        _post_application(course, "a@example.com")
+
+        assert [key for key in cache._cache if f":{course.site_id}:" in key]
+
+    def test_start_cap_broken_cache_fails_open(self, mocker):
+        mocker.patch(
+            "freedom_ls.accounts.throttling.cache.add",
+            side_effect=ConnectionError("no cache"),
+        )
+        mocker.patch("freedom_ls.accounts.throttling.sentry_sdk")
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = _post_application(course, "b@example.com")
+
+        assert response.status_code == 302
+
+    def test_start_cap_missing_proxy_header_is_forbidden(self, settings):
+        settings.TRUSTED_PROXY_IP_HEADER = "X-Real-IP"
+        course = CourseFactory()
+
+        response = _post_application(course)
+
+        assert response.status_code == 403
+
+    def test_start_cap_ignores_signed_in_requests(self, client):
+        course = CourseFactory()
+        client.force_login(UserFactory())
+        _post_application(course, "a@example.com")
+
+        response = client.post(_apply_url(course))
+
+        assert response.status_code != 429
+
+    def test_start_cap_ignores_gets(self):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        response = Client().get(_apply_url(course))
+
+        assert response.status_code == 200
+
+    def test_start_cap_creates_nothing_when_it_fires(self):
+        course = CourseFactory()
+        _post_application(course, "a@example.com")
+
+        _post_application(course, "b@example.com")
+
+        assert CourseApplication.objects.count() == 1

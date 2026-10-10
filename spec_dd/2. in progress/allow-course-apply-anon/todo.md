@@ -5,15 +5,16 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
+- [x] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
 ## 2. Spec
 
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
+- [x] (cmd) Run `/sdd:spec_from_idea` to generate the spec
 - [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
+- [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
+- [ ] (user) Decide how to handle the defaults the review added to spec §8: the upload cap answering 422 in the widget, the start cap reusing `429.html`, a page-less form giving anonymous apply a 404, and a signed-in user reading a session-held unclaimed application
 
 ## 3. Threat model
 
@@ -22,7 +23,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 4. Plan
 
-- [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
+- [x] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
 ## 5. Plan security review
@@ -37,7 +38,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 7. Implementation
 
-- [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
+- [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
 - [ ] (user) Spot-check the changes
 
 ## 8. Code security review
@@ -47,10 +48,14 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [x] (user + cmd) Fix QA bug: submitted anonymous application's read-only check-your-answers still shows 'Submit it to keep it' notice (TDD — failing test first, then fix)
+- [x] (user) Decide what a submitted but unclaimed application's check-your-answers page should say instead of the browser-only 'Submit it to keep it' notice (hide it, or new wording), then update spec 5.9 and the template
+- [x] (user + cmd) Fix QA bug: handoff toast says 'Create an account or log in' when signups are closed (TDD — failing test first, then fix)
+- [x] (user) Decide the handoff toast wording when signups are closed and the visitor is sent to login, then update spec and the handoff message
 
 ## 10. Product documentation
 
@@ -77,3 +82,24 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
+
+## Part 2: the About you page
+
+Spec `1b. spec.md`. Plan and QA files take the `2b` suffix: `2b. plan.md`, `3b. frontend_qa.md`.
+Sections 10 to 14 above run once, after part 2 is implemented.
+
+- [x] (user) Write the part 2 spec (`1b. spec.md`)
+- [ ] (user) Review the part 2 spec and edit where needed
+- [ ] (cmd) Run `/sdd:spec_review` on `1b. spec.md`
+- [ ] (user) Address any issues raised by the review
+- [x] (cmd) Run `/sdd:plan_from_spec` on `1b. spec.md` with suffix `2b`
+- [ ] (user) Review both plans and edit where needed
+- [ ] (cmd) Run `/fls-dev:plan_security_review` on `2b. plan.md`
+- [ ] (cmd) Run `/fls-dev:plan_structure_review` on `2b. plan.md`
+- [x] (cmd) Run `/sdd:implement_plan` on `2b. plan.md`
+- [ ] (user) Spot-check the changes
+- [ ] (cmd) Run `/ds:security-review` on the pending changes
+- [x] (cmd) Run `/fls-dev:do_qa` with `3b. frontend_qa.md`
+- [ ] (user) Review the QA report and fix any bugs with TDD
+- [ ] (user) Decide whether an unreachable page pill in the application nav shows its page title on hover (the 3b test plan expects it, the spec is silent, the shared base form-page-link component gives a title only to reachable pills), then either fix the component or correct the test plan
+- [ ] (user + cmd) Fix QA bug: unreachable application nav pills have no hover title (TDD — failing test first, then fix)

@@ -20,6 +20,7 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import Form, FormProgress, FormQuestion
 from freedom_ls.form_engine.paging import (
+    PageLink,
     answered_counts,
     build_page_links,
     page_accessibility_limit,
@@ -160,34 +161,10 @@ def test_build_page_links_marks_the_current_page_and_the_reachable_ones(
     )
 
     assert links == [
-        {
-            "number": 1,
-            "title": "Page 1",
-            "url": "/page/1/",
-            "is_current": False,
-            "is_accessible": True,
-        },
-        {
-            "number": 2,
-            "title": "Page 2",
-            "url": "/page/2/",
-            "is_current": True,
-            "is_accessible": True,
-        },
-        {
-            "number": 3,
-            "title": "Page 3",
-            "url": "/page/3/",
-            "is_current": False,
-            "is_accessible": False,
-        },
-        {
-            "number": 4,
-            "title": "Page 4",
-            "url": "/page/4/",
-            "is_current": False,
-            "is_accessible": False,
-        },
+        PageLink(1, "Page 1", "/page/1/", False, True),
+        PageLink(2, "Page 2", "/page/2/", True, True),
+        PageLink(3, "Page 3", "/page/3/", False, False),
+        PageLink(4, "Page 4", "/page/4/", False, False),
     ]
 
 
@@ -312,7 +289,7 @@ def test_page_links_keep_a_reached_page_clickable_after_stepping_back(
         four_page_form, form_progress, current_page_number=1, url_for_page=str
     )
 
-    assert [link["is_accessible"] for link in links] == [True, True, False, False]
+    assert [link.is_accessible for link in links] == [True, True, False, False]
 
 
 @pytest.mark.django_db
@@ -329,4 +306,4 @@ def test_resume_page_is_clamped_to_the_pages_the_form_still_has(
     links = build_page_links(
         four_page_form, form_progress, current_page_number=1, url_for_page=str
     )
-    assert [link["is_accessible"] for link in links] == [True, True]
+    assert [link.is_accessible for link in links] == [True, True]

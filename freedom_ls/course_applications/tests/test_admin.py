@@ -23,7 +23,11 @@ from freedom_ls.form_engine.factories import (
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormQuestion
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    FormQuestion,
+    QuestionAnswerFile,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -57,8 +61,8 @@ def test_changelist_lists_drafts_and_submitted(staff_client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert draft.user.email in content
-    assert submitted.user.email in content
+    assert draft.email in content
+    assert submitted.email in content
 
 
 def test_is_submitted_column(mock_site_context):
@@ -67,6 +71,17 @@ def test_is_submitted_column(mock_site_context):
     assert model_admin.is_submitted(_draft()) is False
     assert model_admin.is_submitted(_submitted()) is True
     assert model_admin.is_submitted(CourseApplicationFactory()) is True
+
+
+def test_claimed_column_directly_follows_applicant_column(mock_site_context):
+    """The Claimed column used to sit after Applicant name, not next to Applicant."""
+    model_admin = CourseApplicationAdmin(CourseApplication, None)
+
+    assert list(model_admin.list_display[:3]) == [
+        "applicant_email",
+        "is_claimed",
+        "applicant_name",
+    ]
 
 
 def test_submitted_time_is_sitting_completed_time(mock_site_context):
@@ -87,7 +102,9 @@ def test_add_view_is_forbidden(staff_client):
 
 
 def test_delete_view_is_forbidden_and_row_remains(staff_client):
-    application = _submitted()
+    application = CourseApplicationFactory(
+        form_progress=FormProgressFactory(completed_time=timezone.now())
+    )
     url = reverse(DELETE, args=[application.pk])
 
     assert staff_client.get(url).status_code == 403
@@ -177,7 +194,7 @@ def test_change_page_shows_the_answers_document(staff_client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "About you" in content
+    assert "Your background" in content
     assert "Supporting documents" in content
     assert "Ada Lovelace" in content
     assert "Not answered" in content
@@ -195,6 +212,7 @@ def test_change_page_summary_links_to_user_course_and_sitting(staff_client):
         ("freedom_ls_content_engine_course_change", application.course),
         ("freedom_ls_form_engine_formprogress_change", application.form_progress),
     ]:
+        assert obj is not None
         assert f'href="{reverse(f"admin:{name}", args=[obj.pk])}"' in content
 
 
@@ -212,7 +230,7 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
 
     content = client.get(reverse(CHANGE, args=[application.pk])).content.decode()
 
-    assert application.user.email in content
+    assert application.email in content
     assert application.course.title in content
     assert str(application.form_progress) in content
     for name, obj in [
@@ -220,6 +238,7 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
         ("freedom_ls_content_engine_course_change", application.course),
         ("freedom_ls_form_engine_formprogress_change", application.form_progress),
     ]:
+        assert obj is not None
         assert reverse(f"admin:{name}", args=[obj.pk]) not in content
     assert "id-scan.png" in content
     assert download_url not in content
@@ -352,3 +371,157 @@ def test_created_date_range_with_blank_times_shows_no_time_errors(staff_client):
     )
 
     assert "Enter a valid time." not in response.content.decode()
+
+
+class TestUnclaimedRows:
+    def test_unclaimed_row_lists_its_email(self, mock_site_context):
+        app = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+
+        assert CourseApplicationAdmin.applicant_email(None, app) == "pat@example.com"
+
+    def test_unclaimed_row_shows_a_dash_for_the_name(self, mock_site_context):
+        app = CourseApplicationFactory(unclaimed=True, first_name="", last_name="")
+
+        assert CourseApplicationAdmin.applicant_name(None, app) == "-"
+
+    def test_admin_applicant_name_shows_typed_name_for_unclaimed_row(
+        self, mock_site_context
+    ):
+        app = CourseApplicationFactory(
+            unclaimed=True, first_name="Pat", last_name="Typed"
+        )
+
+        assert CourseApplicationAdmin.applicant_name(None, app) == "Pat Typed"
+
+
+def _unclaimed_with_answers() -> tuple[CourseApplication, FormProgress, str]:
+    """An unclaimed application whose sitting holds an answer and a stored file;
+    returns it, the sitting and the stored file's name."""
+    course, form = gated_course_with_form()
+    progress = cast(FormProgress, FormProgressFactory(form=form, user=None))
+    application = cast(
+        CourseApplication,
+        CourseApplicationFactory(unclaimed=True, course=course, form_progress=progress),
+    )
+    upload = FormQuestion.objects.get(form_page__form=form, type="file_upload")
+    answer_file = QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=progress, question=upload)
+    )
+    return application, progress, answer_file.file.name
+
+
+def _staff_without_delete_permission() -> Client:
+    staff = UserFactory(is_staff=True)
+    staff.user_permissions.add(
+        Permission.objects.get(codename="view_courseapplication")
+    )
+    client = Client()
+    client.force_login(staff)
+    return client
+
+
+class TestUnclaimedAdmin:
+    def test_unclaimed_row_is_listed_as_not_claimed(self, staff_client):
+        application = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+
+        response = staff_client.get(reverse(CHANGELIST))
+
+        content = response.content.decode()
+        assert "pat@example.com" in content
+        assert CourseApplicationAdmin.is_claimed(None, application) is False
+
+    def test_claimed_filter_separates_the_rows(self, staff_client):
+        claimed = CourseApplicationFactory()
+        unclaimed = CourseApplicationFactory(unclaimed=True)
+
+        def listed(user_is_empty: str) -> set[int]:
+            response = staff_client.get(
+                reverse(CHANGELIST), {"user__isempty": user_is_empty}
+            )
+            return {row.pk for row in response.context["cl"].result_list}
+
+        assert listed("0") == {claimed.pk}
+        assert listed("1") == {unclaimed.pk}
+
+    def test_search_by_typed_email(self, staff_client):
+        wanted = CourseApplicationFactory(unclaimed=True, email="needle@example.com")
+        CourseApplicationFactory(unclaimed=True, email="other@example.com")
+
+        response = staff_client.get(reverse(CHANGELIST), {"q": "needle@example.com"})
+
+        assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+    def test_admin_search_by_typed_name(self, staff_client):
+        wanted = CourseApplicationFactory(
+            unclaimed=True, first_name="Zebulon", last_name="Typed"
+        )
+        CourseApplicationFactory(unclaimed=True, first_name="Other", last_name="Name")
+
+        response = staff_client.get(reverse(CHANGELIST), {"q": "Zebulon"})
+
+        assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+    def test_change_page_of_an_unclaimed_row_says_email_unverified(self, staff_client):
+        application = CourseApplicationFactory(unclaimed=True, email="pat@example.com")
+
+        content = staff_client.get(
+            reverse(CHANGE, args=[application.pk])
+        ).content.decode()
+
+        assert "Unclaimed: email unverified" in content
+        assert "pat@example.com" in content
+
+    def test_delete_is_allowed_only_for_unclaimed(self, staff_client):
+        unclaimed = CourseApplicationFactory(unclaimed=True)
+        claimed = CourseApplicationFactory()
+
+        assert staff_client.get(reverse(DELETE, args=[unclaimed.pk])).status_code == 200
+        assert staff_client.get(reverse(DELETE, args=[claimed.pk])).status_code == 403
+
+    def test_delete_is_refused_to_staff_without_the_delete_permission(
+        self, mock_site_context
+    ):
+        application = CourseApplicationFactory(unclaimed=True)
+        client = _staff_without_delete_permission()
+
+        response = client.post(reverse(DELETE, args=[application.pk]), {"post": "yes"})
+
+        assert response.status_code == 403
+        assert CourseApplication.objects.filter(pk=application.pk).exists()
+
+    def test_deleting_an_unclaimed_row_removes_its_sitting(self, staff_client):
+        application, progress, _ = _unclaimed_with_answers()
+
+        response = staff_client.post(
+            reverse(DELETE, args=[application.pk]), {"post": "yes"}
+        )
+
+        assert response.status_code == 302
+        assert not CourseApplication.objects.filter(pk=application.pk).exists()
+        assert not FormProgress.objects.filter(pk=progress.pk).exists()
+
+    def test_deleting_an_unclaimed_row_removes_its_stored_files(self, staff_client):
+        application, _, file_name = _unclaimed_with_answers()
+        storage = QuestionAnswerFile._meta.get_field("file").storage
+        assert storage.exists(file_name)
+
+        staff_client.post(reverse(DELETE, args=[application.pk]), {"post": "yes"})
+
+        assert not storage.exists(file_name)
+
+    def test_delete_confirmation_lists_the_sitting(self, staff_client):
+        application, progress, _ = _unclaimed_with_answers()
+
+        content = staff_client.get(
+            reverse(DELETE, args=[application.pk])
+        ).content.decode()
+
+        assert "Form progress" in content
+        assert str(progress) in content
+
+    def test_delete_selected_action_is_absent(self, staff_client):
+        CourseApplicationFactory(unclaimed=True)
+
+        response = staff_client.get(reverse(CHANGELIST))
+
+        assert "delete_selected" not in response.content.decode()

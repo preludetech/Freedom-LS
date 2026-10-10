@@ -39,7 +39,7 @@ out of the user-data bucket is what leaves that decision open.
 | `certificates` | Public | `certificates/` | None yet |
 | `course_media` | Course media | none, the bucket is its own namespace | `content_engine.File.file` |
 | `reports` | User data | `cohort_reports/` | `GeneratedReport.file` |
-| `user_uploads` | User data | `user_uploads/` | None yet |
+| `user_uploads` | User data | `user_uploads/` | `QuestionAnswerFile.file` |
 | `default` | Reserved, no bucket created behind it | none | Nothing, deliberately |
 
 `default` is not an option for a file field. Nothing is created behind that name and no credential
@@ -114,5 +114,8 @@ Two rules apply to features that do not exist yet but will use these aliases:
 - **Certificates.** In the public bucket, the object key is the whole access control. A
   certificate's object key must be derived from a uuid, never from anything guessable such as a
   learner id or sequence number.
-- **User uploads.** Every object under `user_uploads/` must be prefixed by the uploading user, so a
-  right-to-erasure request becomes a scoped delete rather than a bucket-wide scan.
+- **User uploads.** Answer files are keyed by sitting
+  (`user_uploads/form_answers/{form_progress_pk}/{file_pk}{ext}`), not by user, because a sitting
+  can exist before any account owns it. Serve an erasure request by deleting the applicant's
+  `QuestionAnswerFile` rows; the `post_delete` receiver removes each stored object. Do not list a
+  prefix to find an applicant's files: the key does not hold the user.

@@ -14,7 +14,8 @@
 
             <form method="post">
                 {% csrf_token %}
-                <div class="flex gap-4">
+                <p class="text-muted">Your decision will be sent to {{ request.user.email }}.</p>
+                <div class="flex gap-4 mt-6">
                     <c-button type="submit">
                         Submit application
                     </c-button>

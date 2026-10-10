@@ -7,6 +7,8 @@ from datetime import datetime
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
 from django.contrib import admin
+from django.contrib.admin.utils import get_deleted_objects
+from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.utils import formats, timezone
@@ -67,6 +69,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
 
     list_display = [
         "applicant_email",
+        "is_claimed",
         "applicant_name",
         "course",
         "is_submitted",
@@ -79,6 +82,8 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ordering = ["-created_at"]
     list_filter = [
         CourseApplicationSubmittedFilter,
+        # Empty / Not empty on the owner: an unclaimed application has none.
+        ("user", admin.EmptyFieldListFilter),
         ("course", AutocompleteSelectFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
     ]
@@ -86,12 +91,22 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     # dates rather than refreshing the list after each box.
     list_filter_submit = True
     search_fields = [
+        "email",
+        "first_name",
+        "last_name",
         "user__email",
         "user__first_name",
         "user__last_name",
         "course__title",
     ]
-    fields = ["is_submitted", "submitted_time_display", "created_at"]
+    fields = [
+        "is_submitted",
+        "first_name",
+        "last_name",
+        "email",
+        "submitted_time_display",
+        "created_at",
+    ]
     readonly_fields = fields
     change_form_template = "admin/form_engine/answers_change_form.html"
 
@@ -115,7 +130,12 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         if obj is not None:
             form_progress = obj.form_progress
             context["summary_rows"] = [
-                ("Applicant", admin_change_link(request, obj.user)),
+                (
+                    "Applicant",
+                    admin_change_link(request, obj.user)
+                    if obj.user is not None
+                    else "Unclaimed: email unverified",
+                ),
                 ("Course", admin_change_link(request, obj.course)),
                 (
                     "Form progress record",
@@ -142,15 +162,65 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     def has_delete_permission(
         self, request: HttpRequest, obj: CourseApplication | None = None
     ) -> bool:
-        return False
+        # The obj-is-None case stays False, so the bulk delete action is never
+        # offered and a mixed selection can never remove a claimed application.
+        return (
+            obj is not None
+            and obj.user_id is None
+            and super().has_delete_permission(request, obj)
+        )
 
-    @admin.display(description="Applicant", ordering="user__email")
+    def delete_model(self, request: HttpRequest, obj: CourseApplication) -> None:
+        # The application goes first because its sitting is RESTRICT-protected
+        # while the application points at it; the sitting's answers and stored
+        # files cascade from the sitting.
+        with transaction.atomic():
+            sitting = obj.form_progress
+            obj.delete()
+            if sitting is not None:
+                sitting.delete()
+
+    def get_deleted_objects(
+        self,
+        objs: QuerySet[CourseApplication] | list[CourseApplication],
+        request: HttpRequest,
+    ) -> tuple[list[object], dict[str, int], set[str], list[object]]:
+        # The sitting is deleted after the application, so the collector never
+        # sees it; it is listed here so the confirmation page says what really goes.
+        deleted, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        sittings = [
+            application.form_progress
+            for application in objs
+            if application.form_progress is not None
+        ]
+        if sittings:
+            sitting_deleted, sitting_count, sitting_perms, _ = get_deleted_objects(
+                sittings, request, self.admin_site
+            )
+            deleted = [*deleted, *sitting_deleted]
+            for name, count in sitting_count.items():
+                model_count[name] = model_count.get(name, 0) + count
+            perms_needed = perms_needed | sitting_perms
+        return deleted, model_count, perms_needed, protected
+
+    @admin.display(boolean=True, description="Claimed")
+    def is_claimed(self, obj: CourseApplication) -> bool:
+        return obj.is_claimed
+
+    @admin.display(description="Applicant", ordering="email")
     def applicant_email(self, obj: CourseApplication) -> str:
-        return obj.user.email
+        if obj.user is None:
+            return obj.email
+        return obj.email or obj.user.email
 
-    @admin.display(description="Applicant name", ordering="user__last_name")
+    @admin.display(description="Applicant name", ordering="last_name")
     def applicant_name(self, obj: CourseApplication) -> str:
-        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        if obj.full_name or obj.user is None:
+            return obj.full_name or "-"
+        # A claimed row with no name of its own shows its owner's name.
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or "-"
 
     @admin.display(boolean=True, description="Submitted")
     def is_submitted(self, obj: CourseApplication) -> bool:

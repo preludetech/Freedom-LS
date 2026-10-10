@@ -17,11 +17,11 @@ if TYPE_CHECKING:
     from freedom_ls.learner_management.utils import RequestUser
 
 
-def raise_404_if_hidden_unregistered(user: RequestUser, course: Course) -> None:
-    """Raise Http404 if the course is hidden and the user is not registered for it.
+def is_hidden_from(user: RequestUser, course: Course) -> bool:
+    """Whether the course is hidden and the user is not registered for it.
 
     A registered learner keeps access to a hidden course (mirrors filter_visible
-    and get_access), so only unregistered users get the 404.
+    and get_access), and the preview override shows every course to everyone.
     """
     # Lazy imports mirror backends.py — avoid a module-load import cycle.
     from freedom_ls.content_engine.models import CourseVisibility
@@ -29,9 +29,13 @@ def raise_404_if_hidden_unregistered(user: RequestUser, course: Course) -> None:
     from freedom_ls.learner_management.utils import is_registered_for_course
 
     if override_visibility_to_visible():
-        return
+        return False
+    return course.visibility == CourseVisibility.HIDDEN and not (
+        is_registered_for_course(user, course)
+    )
 
-    if course.visibility == CourseVisibility.HIDDEN and not is_registered_for_course(
-        user, course
-    ):
+
+def raise_404_if_hidden_unregistered(user: RequestUser, course: Course) -> None:
+    """Raise Http404 if the course is hidden from this user."""
+    if is_hidden_from(user, course):
         raise Http404

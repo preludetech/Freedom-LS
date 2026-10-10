@@ -32,13 +32,24 @@ class CourseApplication(SiteAwareModel):
     when they applied, null when the course asks for no form. The form is read
     back off that sitting, so it survives the course being re-pointed at another
     one.
+
+    An unclaimed application is a draft-state row with no owner. An anonymous
+    applicant types their name and email before any other row exists, so every
+    application carries an address, and a claimed application carries the
+    account's details. When application review lands, the partial unique index it adds must carry `user IS NOT NULL`
+    in its condition, and its `submit` transition must accept a missing actor.
     """
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="course_applications",
     )
+    email = models.EmailField(blank=True)
+    first_name = models.CharField(max_length=200, blank=True)
+    last_name = models.CharField(max_length=200, blank=True)
     course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
@@ -67,7 +78,17 @@ class CourseApplication(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
+        if self.user_id is None:
+            return f"CourseApplication({self.email}, {self.course_id})"
         return f"CourseApplication({self.user_id}, {self.course_id})"
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}".strip()
+
+    @property
+    def is_claimed(self) -> bool:
+        return self.user_id is not None
 
     @property
     def is_submitted(self) -> bool:

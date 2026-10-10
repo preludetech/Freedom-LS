@@ -1,0 +1,22 @@
+{% extends "course_applications/application_page.html" %}
+{% comment %}
+The About you page: the fixed first page of an application, asking for the
+applicant's name and email. It is not a form page, so no author writes it and
+its answers are fields on the application rather than question answers. Its
+fields are drawn through the same components as a form question, so the two
+pages cannot drift apart.
+{% endcomment %}
+
+{% block page_body %}
+    <div hidden>{% for field in details_form.hidden_fields %}{{ field }}{% endfor %}</div>
+    {% for field in details_form.visible_fields %}
+        {% include "course_applications/partials/applicant_detail_field.html" %}
+        {% if field.name == "email" %}
+            <p class="text-sm text-muted">
+                We use this address to link your application to your account and to send your decision.
+                An application that is never linked to an account is kept until an administrator removes it.
+                {% if privacy_url %}<a href="{{ privacy_url }}" class="text-primary underline">Read our privacy policy.</a>{% endif %}
+            </p>
+        {% endif %}
+    {% endfor %}
+{% endblock page_body %}

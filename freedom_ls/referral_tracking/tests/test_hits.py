@@ -241,10 +241,10 @@ def test_a_broken_cache_leaves_the_hit_logged(mock_site_context, mocker) -> None
     cap is worth less than the link.
     """
     mocker.patch(
-        "freedom_ls.referral_tracking.hits.cache.add",
+        "freedom_ls.accounts.throttling.cache.add",
         side_effect=ConnectionError("no cache"),
     )
-    sentry = mocker.patch("freedom_ls.referral_tracking.hits.sentry_sdk")
+    sentry = mocker.patch("freedom_ls.accounts.throttling.sentry_sdk")
     referral_code = ReferralCodeFactory()
     request = rf.get("/", HTTP_USER_AGENT=REAL_BROWSER_USER_AGENTS[0])
 

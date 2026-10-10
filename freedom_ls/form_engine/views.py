@@ -1,22 +1,31 @@
 """The applicant's file endpoints: attach, remove, download.
 
-Every lookup is scoped to the signed-in owner of the sitting. A file answer is a
-scan of someone's identity document, so ownership is the control -- never the
-unguessability of a URL.
+Ownership or session possession is the whole control, never the
+unguessability of a URL. A file answer is a scan of someone's identity document.
 """
 
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
+from django.utils import timezone
 from django.utils.text import slugify
+from django.utils.timesince import timesince
 from django.views.decorators.http import require_POST
 
+from freedom_ls.accounts.decorators import never_cache_same_origin
+from freedom_ls.accounts.throttling import is_ip_throttled
+from freedom_ls.form_engine.anonymous_sittings import (
+    held_sitting_ids,
+    owned_or_held_q,
+    sitting_for_request,
+)
+from freedom_ls.form_engine.config import config
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.models import (
     FormProgress,
@@ -38,11 +47,7 @@ def _owned_file_question(
     The question is matched against the sitting's own form, so a question id
     lifted from another form reaches nothing.
     """
-    form_progress = get_object_or_404(
-        FormProgress.objects.select_related("form"),
-        pk=progress_pk,
-        user=request.user,
-    )
+    form_progress = sitting_for_request(request, progress_pk)
     question = get_object_or_404(
         FormQuestion,
         pk=question_pk,
@@ -76,7 +81,24 @@ def _render_file_widget(
     )
 
 
-@login_required
+def _attached_file(
+    form_progress: FormProgress, question: FormQuestion
+) -> QuestionAnswerFile | None:
+    """The file currently attached to this question, so an error draws over it."""
+    return QuestionAnswerFile.objects.filter(
+        answer__form_progress=form_progress, answer__question=question
+    ).first()
+
+
+def _upload_cap_wait() -> str:
+    """The upload cap's window as words, e.g. "1 hour": the longest a refused client waits."""
+    now = timezone.now()
+    return timesince(
+        now, now + timedelta(seconds=config.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS)
+    )
+
+
+@never_cache_same_origin
 @require_POST
 def partial_question_file_upload(
     request: HttpRequest, progress_pk: str, question_pk: str
@@ -85,6 +107,27 @@ def partial_question_file_upload(
     form_progress, question = _owned_file_question(request, progress_pk, question_pk)
     if form_progress.completed_time is not None:
         return HttpResponse(status=409)
+
+    # Counted per site, as the referral hit log is: one address shared by a
+    # school or an office is a different crowd on each tenant.
+    if not request.user.is_authenticated and is_ip_throttled(
+        request,
+        namespace="form_engine.anonymous_upload",
+        scope=str(form_progress.site_id),
+        limit=config.FORM_ENGINE_ANONYMOUS_UPLOAD_LIMIT,
+        window_seconds=config.FORM_ENGINE_ANONYMOUS_UPLOAD_WINDOW_SECONDS,
+    ):
+        return _render_file_widget(
+            request,
+            form_progress,
+            question,
+            _attached_file(form_progress, question),
+            error=(
+                "Too many uploads from your network. "
+                f"Try again in about {_upload_cap_wait()}."
+            ),
+            status=422,
+        )
 
     uploaded = request.FILES.get("file")
     # Read before validating, and truncated rather than rejected: the name is
@@ -95,7 +138,12 @@ def partial_question_file_upload(
         content, extension = validate_and_sanitise(uploaded)
     except ValidationError as err:
         return _render_file_widget(
-            request, form_progress, question, None, error=err.messages[0], status=422
+            request,
+            form_progress,
+            question,
+            _attached_file(form_progress, question),
+            error=err.messages[0],
+            status=422,
         )
 
     with transaction.atomic():
@@ -112,7 +160,7 @@ def partial_question_file_upload(
     return _render_file_widget(request, form_progress, question, answer_file)
 
 
-@login_required
+@never_cache_same_origin
 @require_POST
 def partial_question_file_remove(
     request: HttpRequest, progress_pk: str, question_pk: str
@@ -159,17 +207,20 @@ def stream_question_answer_file(answer_file: QuestionAnswerFile) -> FileResponse
     return response
 
 
-@login_required
+@never_cache_same_origin
 def own_question_answer_file(request: HttpRequest, file_pk: str) -> FileResponse:
-    """Serve an applicant back the file they attached.
-
-    Ownership is the whole control: the lookup is scoped to the signed-in owner
-    of the sitting, never to the unguessability of the URL.
-    """
+    """Serve an applicant back the file they attached."""
+    allowed = owned_or_held_q(
+        request,
+        user_path="answer__form_progress__user",
+        pk_path="answer__form_progress__pk",
+        held_ids=held_sitting_ids(request),
+    )
     answer_file = get_object_or_404(
-        QuestionAnswerFile.objects.select_related("answer__form_progress"),
+        QuestionAnswerFile.objects.select_related("answer__form_progress").filter(
+            allowed
+        ),
         pk=file_pk,
-        answer__form_progress__user=request.user,
     )
     return stream_question_answer_file(answer_file)
 

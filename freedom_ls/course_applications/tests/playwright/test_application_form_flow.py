@@ -7,9 +7,12 @@ client test can prove work.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from playwright.sync_api import Page, expect
 
+from freedom_ls.accounts.factories import SiteSignupPolicyFactory
 from freedom_ls.conftest import reverse_url
 from freedom_ls.form_engine.uploads import MAX_UPLOAD_BYTES
 from freedom_ls.tests.app_guards import app_not_installed
@@ -73,7 +76,7 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
 
     # Edit the first page from the check page, and land straight back on it
     # with the new value showing.
-    logged_in_page.get_by_role("link", name="Edit About you").click()
+    logged_in_page.get_by_role("link", name="Edit Your background").click()
     logged_in_page.get_by_label("Your name").fill("Grace Hopper")
     logged_in_page.get_by_role("button", name="Save and return to your answers").click()
     expect(logged_in_page.get_by_text("Grace Hopper")).to_be_visible()
@@ -114,6 +117,7 @@ def _upload_requests(page: Page) -> list[str]:
 
 
 @pytest.mark.playwright
+# transaction=True so the live server, on another connection, sees committed data
 @pytest.mark.django_db(transaction=True)
 def test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded(
     live_server, logged_in_page: Page, logged_in_user, tmp_path
@@ -142,3 +146,56 @@ def test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded(
     assert uploads == []
     expect(logged_in_page.get_by_text("Choose a smaller one")).to_be_visible()
     expect(logged_in_page.get_by_label("Upload your ID")).to_have_value("")
+
+
+@pytest.mark.playwright
+# transaction=True so the live server, on another connection, sees committed data
+@pytest.mark.django_db(transaction=True)
+def test_an_anonymous_visitor_can_apply_and_is_handed_off_to_signup(
+    live_server, page: Page, mock_site_context, tmp_path
+):
+    """Without an account, the applicant fills in the form, attaches a file,
+    gives an email address, and arrives at signup with that address prefilled."""
+    SiteSignupPolicyFactory(allow_signups=True)
+    course, _form = gated_course_with_form()
+    scan = tmp_path / "id-scan.png"
+    scan.write_bytes(png_bytes())
+
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    # About you comes first, and says the answers live in this browser.
+    expect(page.get_by_role("heading", name="About you")).to_be_visible()
+    expect(page.get_by_text("saved in this browser only")).to_be_visible()
+    page.get_by_label("First name", exact=True).fill("Ada")
+    page.get_by_label("Last name (optional)").fill("Lovelace")
+    page.get_by_label("Email address").fill("ada@example.com")
+    page.get_by_role("button", name="Next").click()
+
+    # Page 1 has no file question.
+    expect(page.locator("input[type=file]")).to_have_count(0)
+    page.get_by_label("Your name").fill("Ada Lovelace")
+    page.get_by_role("button", name="Next").click()
+
+    # Page 2: the sitting already exists, so the file can be attached at once.
+    page.get_by_label("Upload your ID").set_input_files(str(scan))
+    expect(page.get_by_text("id-scan.png")).to_be_visible()
+    page.get_by_role("button", name="Next").click()
+
+    # The About you card on the check page carries what was typed.
+    about_you_card = page.get_by_role("region", name="About you")
+    expect(about_you_card.get_by_text("Ada Lovelace")).to_be_visible()
+    expect(about_you_card.get_by_text("ada@example.com")).to_be_visible()
+    page.get_by_role("button", name="Submit application").click()
+
+    expect(page).to_have_url(re.compile(r"email=ada%40example\.com"))
+    expect(page).to_have_url(re.compile(r"first_name=Ada"))
+    expect(page).to_have_url(re.compile(r"next="))
+    expect(page.get_by_label("Email")).to_have_value("ada@example.com")
+    expect(page.get_by_label("First name")).to_have_value("Ada")
+    expect(page.get_by_text("Your application for")).to_be_visible()

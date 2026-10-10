@@ -1,11 +1,17 @@
 {% extends "_base.html" %}
-{% load form_engine_tags %}
+{% load form_engine_tags fls_base_filters %}
 
 {% block head_title %}Check your answers — {{ course.title }}{% endblock %}
 
 {% block content %}
     <c-page width="narrow">
         <div class="space-y-6">
+            {% if is_unclaimed and not submitted %}
+                <c-callout level="info">
+                    This application is saved in this browser only, {% if session_lifetime %}for up to {{ session_lifetime|duration }}{% else %}until you close your browser{% endif %}. Submit it to keep it.
+                </c-callout>
+            {% endif %}
+
             <div class="space-y-2">
                 <p class="text-muted">Application for {{ course.title }}</p>
                 <h1>Check your answers</h1>
@@ -27,13 +33,13 @@
                 The dl inside each card is switched back to block for the same
                 reason, and each question/answer pair is its own small grid.
                 {% endcomment %}
-                <section aria-labelledby="section-{{ section.number }}-title"
+                <section aria-labelledby="section-{{ forloop.counter }}-title"
                          class="border border-border rounded-md overflow-hidden bg-surface">
                     <div class="flex items-center justify-between gap-4 bg-surface-2 border-b border-border px-4 py-3 sm:px-6">
-                        <h2 id="section-{{ section.number }}-title" class="text-base font-semibold">
+                        <h2 id="section-{{ forloop.counter }}-title" class="text-base font-semibold">
                             {% if section.title %}{{ section.title }}{% else %}Page {{ section.number }}{% endif %}
                         </h2>
-                        {% if not submitted %}
+                        {% if not submitted and section.edit_url %}
                             <c-button href="{{ section.edit_url }}" variant="ghost" size="small" icon_left="edit">
                                 Edit<span class="sr-only"> {% if section.title %}{{ section.title }}{% else %}page {{ section.number }}{% endif %}</span>
                             </c-button>
@@ -44,10 +50,12 @@
                         {% for row in section.rows %}
                             <div class="py-3 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-x-6 gap-y-1">
                                 <dt class="text-sm font-normal font-sans text-muted [&_p]:text-muted [&_p]:text-sm">
-                                    {{ row.question.rendered_question }}
+                                    {{ row.label }}
                                 </dt>
                                 <dd class="text-on-surface">
-                                    {% if row.answer.answer_file %}
+                                    {% if row.text %}
+                                        {{ row.text }}
+                                    {% elif row.answer.answer_file %}
                                         <span class="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
                                             <span>{{ row.answer.answer_file.original_filename }}</span>
                                             <span class="text-sm text-muted">({{ row.answer.answer_file.file.size|filesizeformat }})</span>
@@ -74,13 +82,19 @@
                 <c-callout level="success">
                     Your application has been submitted. You will hear back once it has been reviewed.
                 </c-callout>
-                <c-button href="{% url 'course_applications:status' pk=application.pk %}">
-                    Your application
-                </c-button>
+                {% if is_unclaimed %}
+                    <c-button href="{% url 'course_applications:apply' course_slug=course.slug %}">
+                        Your application
+                    </c-button>
+                {% else %}
+                    <c-button href="{% url 'course_applications:status' pk=application.pk %}">
+                        Your application
+                    </c-button>
+                {% endif %}
             {% else %}
                 <form method="post">
                     {% csrf_token %}
-                    <c-button type="submit">Submit application</c-button>
+                    <c-button type="submit" class="mt-6">Submit application</c-button>
                 </form>
             {% endif %}
         </div>

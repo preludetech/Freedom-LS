@@ -256,3 +256,26 @@ def test_context_carries_the_submission_errors(two_page_form, sitting):
     assert context["required_answers_error"] == submission.required_answers_error
     assert context["rejected_answers"] == submission.rejected_answers
     assert context["rejected_answers_error"] == submission.rejected_answers_error
+
+
+@pytest.fixture
+def file_question_form(mock_site_context) -> Form:
+    """One page: a required short-text question and a required file question."""
+    form: Form = FormFactory()
+    page = FormPageFactory(form=form, order=0)
+    FormQuestionFactory(form_page=page, type="short_text", order=0, required=True)
+    FormQuestionFactory(form_page=page, type="file_upload", order=1, required=True)
+    return form
+
+
+@pytest.mark.django_db
+def test_submit_page_measures_a_required_file_question_by_default(file_question_form):
+    sitting = FormProgressFactory(user=None, form=file_question_form)
+    current = resolve_page(file_question_form, 1)
+    short_text = current.questions[0]
+
+    submission = submit_page(
+        current, _post_data({f"question_{short_text.id}": ["Ada"]}), sitting
+    )
+
+    assert submission.accepted is False

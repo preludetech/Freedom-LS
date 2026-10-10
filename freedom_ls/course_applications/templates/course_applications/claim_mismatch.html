@@ -1,0 +1,26 @@
+{% extends "_base.html" %}
+
+{% block head_title %}Link your application{% endblock %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            <h1>Link your application</h1>
+
+            <c-callout level="warning">
+                {% if address_unverified %}
+                    <p>The address on your application to {{ course.title }} ({{ application.email }}) has not been verified on this account yet.</p>
+                    <p>Verify it on <a href="{% url 'account_email' %}">your account email page</a>, then press Link my application. Stay signed in: logging out discards the browser session that holds the application.</p>
+                {% else %}
+                    <p>This account's email address is not the one on your application to {{ course.title }} ({{ application.email }}).</p>
+                    <p>Add and verify that address on <a href="{% url 'account_email' %}">your account email page</a>. Once it is verified, press Link my application. Stay signed in: logging out discards the browser session that holds the application.</p>
+                {% endif %}
+            </c-callout>
+
+            <div class="flex flex-wrap gap-3">
+                <c-button href="{% url 'course_applications:claim' %}">Link my application</c-button>
+                <c-button href="{% url 'learner_interface:course_detail' course_slug=course.slug %}" variant="secondary">Back to the course</c-button>
+            </div>
+        </div>
+    </c-page>
+{% endblock content %}
