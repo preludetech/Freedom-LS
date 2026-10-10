@@ -2,184 +2,83 @@
 
 ## Methodology
 
-- Manual walk of the plan (`3. frontend_qa.md`) with the Playwright MCP.
-- Viewports: desktop 1920x1080, mobile 375x812 (plus 390 wide for the 429 page), tablet 768x1024.
-- A second browser context held the superuser admin. "Fresh browser" means cleared cookies or a new context.
-- Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists there.
-- The run did not abort.
+- Run on branch `allow-course-apply-anon` via Playwright MCP against a dev server on port 8698 (branch badge confirmed).
+- Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there.
+- Viewports: desktop at 1920x1080 for sections 1-4, 6 and 7; section 5 parity at the plan's 1280/768/390 widths; mobile 375x812; tablet 768x1024.
+- Pre-step: a rebase onto main ran first (25 commits replayed, one `import_contracts.toml` conflict resolved by keeping both sides, full suite 7451 passed, pushed). The post-rebase front-end check was folded into this run because main brought no front-end changes.
+- Test plan: `3b. frontend_qa.md` in this directory.
 
 ## Diff scoping
 
-- Class: FULL (75 files changed; `templates/` paths triggered FULL).
-- Triggering template files:
-  - `freedom_ls/course_applications/templates/course_applications/apply.html`
-  - `freedom_ls/course_applications/templates/course_applications/check_your_answers.html`
-  - `freedom_ls/course_applications/templates/course_applications/claim_mismatch.html`
-  - `freedom_ls/course_applications/templates/course_applications/form_page.html`
-  - `freedom_ls/course_applications/templates/course_applications/partials/applicant_email_fields.html`
-  - `freedom_ls/form_engine/templates/form_engine/question.html`
-- Skipped: nothing.
+Class: **FULL**. Triggering files include the templates `course_applications/about_you.html`, `application_page.html`, `apply.html`, `check_your_answers.html`, `claim_mismatch.html`, `form_page.html`, `partials/applicant_detail_field.html`, and the form_engine templates `cotton/field-shell.html`, `cotton/text-input.html`, `form_engine/inputs/text_input.html` and `form_engine/question.html`, plus about 60 Python files in accounts, course_applications, form_engine and referral_tracking.
+
+Skipped: nothing.
 
 ## Smoke gate
 
-Pass. Pages checked: `/`, `/courses/`, `/admin/freedom_ls_course_applications/courseapplication/`. No failure URL.
-
-## Results
-
-### 1. Anonymous form journey (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 1.1 | desktop | pass | Apply URL `/applications/apply/<slug>/`, heading "About you", callout text exact (14 days). Page nav: 1 current (not a link), 2 and 3 not links. All blank. No new admin row. | ![](screenshots/page-2026-10-09T05-08-30-801Z.png) |
-| 1.2 | desktop | pass | Browser native `required` validation blocks the submit first. With it bypassed, server returns 422 at the apply URL: "Questions 1, 2, 3, 6 and 7 need answers". Long answer and tick kept. No admin row. | ![](screenshots/page-2026-10-09T05-10-05-190Z.png) |
-| 1.3 | desktop | pass | Next goes to `/applications/application/<uuid>/page/2/` "Supporting documents", callout still shown. Admin row unclaimed and unsubmitted with empty Applicant. Page 1 link shows all answers kept. | none |
-| 1.4 | desktop | pass | Upload swaps widget in place (no navigation) to id-scan.png (13.5 KB; source PNG 67 KB) with Download/Replace/Remove. Download returns 200 attachment. Remove shows the exact removed message. Next without a file: 422 "Question 10 needs an answer". Re-attach goes to page 3 Availability. | ![](screenshots/page-2026-10-09T05-10-42-050Z.png) |
-| 1.5 | desktop | pass | Check-your-answers lists 3 sections, file Download and callout. Email label and statement exact, with "Read our privacy policy." link. Blank submit: 422 "This field is required.", row unsubmitted. Mixed-case email goes to `/accounts/signup/?email=qa-anon-1%40example.com&next=/applications/claim/`, email prefilled lowercase, toast exact. Admin: email in Applicant, Submitted ticked, Claimed unticked, "Unclaimed: email unverified", answers and file. Mailpit: 0 messages. | ![](screenshots/page-2026-10-09T05-11-03-939Z.png) |
-| 1.5-signup | desktop | pass | Signup handoff page with prefilled email (toast had auto-dismissed by screenshot time). | ![](screenshots/page-2026-10-09T05-11-23-510Z.png) |
-| 1.6 | desktop | pass | Apply now again goes to the same signup handoff plus toast, no second row. Check-your-answers renders read-only with submitted callout; "Your application" button goes to the signup handoff. The read-only submitted page still shows the "saved in this browser only... Submit it to keep it." callout (see B1). | none |
-| 1.7 | desktop | pass | Signup, then confirm-email page. Confirm link from Mailpit in the same browser goes to `/applications/status/<uuid>/` with "is now on your dashboard" toast. Dashboard "Your applications" lists the course as Pending review. Admin: Applicant email, Claimed ticked, change page links to user 79; Form progress records names the user. Owner download 200 attachment. | ![](screenshots/page-2026-10-09T05-12-19-265Z.png) |
-| 1.8 | desktop | pass | Signed-in GET `/applications/claim/` goes to dashboard with "We couldn't find an application in this browser."; POST 405; signed out gives 302 to `/accounts/login/?next=/applications/claim/`. | none |
-
-### 2. Course without a form (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 2.1 | desktop | pass | Apply now shows "Apply to Advanced Product Analytics Masterclass" confirmation with email field, statement, privacy link, Submit application and Cancel. No row created. Blank submit: 422 "This field is required.", no row. | ![](screenshots/page-2026-10-09T05-13-00-752Z.png) |
-| 2.2 | desktop | pass | Submit qa-anon-2 goes to signup handoff with email/next and toast naming the no-form course. One unclaimed submitted row. Apply now again goes to the handoff, no second row. | none |
-| 2.3 | desktop | pass | "Log in" switch goes to `/accounts/login/?next=%2Fapplications%2Fclaim%2F`. Login goes to status page with "is now on your dashboard" toast. Admin row claimed. | none |
-
-### 3. Claiming and mismatches (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 3.1 | desktop | pass | Login as qa.anon.a shows "Link your application" mismatch page: warning callout naming course and qa-anon-3, account email link, stay-signed-in instruction, "Link my application" and "Back to the course". Pressing Link immediately gives the same page, still unclaimed. Add and verify qa-anon-3 in the same browser, then `/applications/claim/`, gives status page and toast; admin change page links user qa.anon.a. After sign out/in: dashboard lists it; apply URL and "View my application" go to its status page. | ![](screenshots/page-2026-10-09T05-13-37-627Z.png) |
-| 3.2 | desktop | pass | Browser B signup and confirm qa-anon-4 goes to dashboard, no applications panel, row unclaimed; B `/applications/claim/` gives "couldn't find". Browser A login with `next=/applications/claim/` claims it: status page and toast. | none |
-| 3.3 | desktop | pass | qa.anon.b signed-in applies (read-only "Your decision will be sent to qa.anon.b@email.com."). Then anonymous apply with same email and login gives status of the FIRST application with "You had already applied to ... This is your application." Anonymous row still unclaimed; `/applications/claim/` again gives "couldn't find". | none |
-
-### 4. Access to unclaimed applications (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 4 | desktop | pass | Unclaimed application 33c5553a (qa-anon-6, with file bc4f3979): page/1, check-your-answers and `/forms/answer-file/<uuid>/` all 404 (stock DEBUG 404 page, no login redirect), from a sessionless context and from a context signed in as qa.anon.b. `Cache-Control` contains `no-store` and `Referrer-Policy: same-origin` on page 2, check-your-answers and the download. | none |
-
-### 5. Edge courses (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 5.1 | desktop | pass | Page 1 shows "Save this page to attach a file." with no picker. Next goes to `/applications/application/<uuid>/page/1/?saved=1` with "Your answers are saved. You can now attach your file." above questions, picker present, name kept. Reload without query: no callout. Next without a file: 422 "Question 2 needs an answer". Attach and Next goes to check-your-answers. | ![](screenshots/page-2026-10-09T05-16-59-504Z.png) |
-| 5.2 | desktop | pass | Anonymous apply URL for page-less course gives 404; signed in as qa.anon.a, Apply now goes to check-your-answers. | none |
-| 5.3 | desktop | pass | Hidden course apply URL 404, detail URL 404 (course home `/courses/<slug>/` redirects to login, pre-existing). | none |
-| 5.4 | desktop | pass | Form course set coming soon via data helper; anonymous apply URL 302 to course detail (shows Coming soon). Visibility restored to published. | none |
-
-### 6. Signed-in applicant (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 6 | desktop | pass | Used fresh clean applicant qa.anon.c. Apply now gives page URL of a new draft; no browser-only callout on page 1, 2 or check-your-answers; file widget works. Check-your-answers has no email field, line "Your decision will be sent to qa.anon.c@email.com."; submit goes to dashboard with "... has been submitted and is pending review." toast. No-form confirmation shows the same line; submit goes to status page. Admin rows show qa.anon.c with Claimed ticked. | none |
-
-### 7. Signups closed (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 7 | desktop | pass | Anonymous apply URL goes to `/accounts/login/?next=/applications/apply/<slug>/`. Signups closed between check-your-answers and submit goes to `/accounts/login/?next=/applications/claim/` with handoff toast, no email in URL. `allow_signups` set back on. Toast still says "Create an account or log in" while signups are closed (see B3). | none |
-
-### 8. Throttles and honeypot (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 8.1 | desktop | pass | After server restart: 10 anonymous no-form submits from fresh contexts gave signup handoff; 11th gave 429 "You have made too many attempts" with `Retry-After: 3600`. Admin has 10 qa-cap rows. Signed-in qa.anon.b can open a new draft on another gated course straight away. | ![](screenshots/page-2026-10-09T05-30-00-000Z.png) |
-| 8.2 | desktop | pass | After another restart: 30 uploads 200, 31st 422. Widget swaps in place to "Too many uploads from your network. Try again in a few minutes." with the previously attached id-scan.png and Download still listed. | ![](screenshots/page-2026-10-09T05-22-37-813Z.png) |
-| 8.3 | desktop | pass | `fax_number` honeypot (hidden div, tabindex -1, aria-hidden) revealed and filled: submit gives 422 with exact "We couldn't process this application..." form error. Admin row still Submitted unticked, Email "-". | none |
-
-### 9. Admin (desktop)
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 9.1 | desktop | fail | Columns render as Applicant, Applicant name, Claimed, Course, Submitted, Submitted time, Created at; spec 5.7, plan slice 4 and test plan put Claimed directly after Applicant (B2). Otherwise pass: unclaimed rows show typed email and "-" name; claimed rows show application email and user name; "By claimed" filter (Claimed/Unclaimed) beside "By submitted" partitions correctly (7/3); search for qa-anon-3 finds the row (now claimed by qa.anon.a per 3.1); qa-anon-6 found unclaimed; no actions dropdown, so no bulk delete. | none |
-| 9.2 | desktop | pass | Claimed row: no Delete link, `/delete/` 403. Unclaimed qa-anon-6 row with file: "Delete course application" link, `/delete/` 200. qa_reviewer (view-only staff): no Delete link, `/delete/` 403. | ![](screenshots/page-2026-10-09T05-32-00-000Z.png) |
-| 9.3 | desktop | pass | Confirmation lists application, form progress (unclaimed sitting 52b75c2b), 8 question answers, 2 option links, 1 answer file. After confirm: application, sitting and answer-file rows gone (DB and admin); stored object gone from `media/user_uploads/form_answers/52b75c2b.../` (empty folder remains). Post-delete redirect lands on `/admin/` index rather than the changelist. | ![](screenshots/page-2026-10-09T05-33-00-000Z.png) |
-| 9.4 | desktop | pass | Form progress records and Question answer files lists render (200) with "Unclaimed" in User/Applicant column; unclaimed sitting change page opens and links to its application. | ![](screenshots/page-2026-10-09T05-34-00-000Z.png) |
-
-### 10. Responsive passes
-
-| Test | Viewport | Status | Notes | Screenshot |
-|---|---|---|---|---|
-| 10 / 1.1-1.5 | mobile 375x812 | pass | Touch context: course detail, page 1, page 2 (empty and with file), page 3, check-your-answers, signup handoff: document scrollWidth 375 on every page. Callout, page nav, file widget, email field and statement fit. Only targets under 32px tall are inline text links (privacy/terms), acceptable. Header shows Login/Sign up (no hamburger). | ![](screenshots/page-2026-10-09T06-m04-page2-file.png) |
-| 10 / cya | mobile 375x812 | pass | Full-page check-your-answers: sections stack, Edit links visible, email field, statement, privacy link and Submit fit. | ![](screenshots/page-2026-10-09T06-m06-cya.png) |
-| 10 / 3.1 mismatch | mobile 375x812 | pass | Warning callout wraps, buttons stack full-size, no overflow. | ![](screenshots/page-2026-10-09T06-m08-mismatch.png) |
-| 10 / 8.1 429 | mobile 390 wide | pass | scrollWidth 390, content centred, Try again button fits. | ![](screenshots/page-2026-10-09T05-31-00-000Z.png) |
-| 1.1-1.5, 2.1 | tablet 768x1024 | pass | Desktop-style header (Login/Sign up), page 1, page 2 with file, check-your-answers (full page), signup handoff, no-form confirmation: scrollWidth 768 everywhere, form uses full content width, Previous/Next and Submit/Cancel sized sensibly. | ![](screenshots/page-2026-10-09T06-t02-page2-file.png) |
-| 2.1 | tablet 768x1024 | pass | No-form confirmation: email field, statement, privacy link, Submit application and Cancel fit. | ![](screenshots/page-2026-10-09T06-t05-noform-confirm.png) |
-
-Other screenshots collected in `screenshots/` from the mobile and tablet passes:
-
-![](screenshots/page-2026-10-09T06-m01-detail.png)
-![](screenshots/page-2026-10-09T06-m02-page1.png)
-![](screenshots/page-2026-10-09T06-m03-page2-empty.png)
-![](screenshots/page-2026-10-09T06-m05-page3.png)
-![](screenshots/page-2026-10-09T06-m07-signup.png)
-![](screenshots/page-2026-10-09T06-t01-page1.png)
-![](screenshots/page-2026-10-09T06-t03-cya.png)
-![](screenshots/page-2026-10-09T06-t04-signup.png)
+Outcome: **pass**. Pages checked: `/`, `/courses/`, `/applications/apply/functionality-demo-application-gated-course/`.
 
 ## Design check
 
-No design states tested.
+No design records exist, so no design states tested.
+
+## Results
+
+| Test | Viewport | Status | Note | Screenshot |
+|---|---|---|---|---|
+| 1.1 | desktop | FAIL | About you layout, fields, privacy statement and Next all correct; callout reads "for up to 2 weeks" (plan wording stale). Fails step 4 only: unreachable nav pills have no hover title (bug B1). | ![](screenshots/page-2026-10-10T08-25-00-803Z.png) |
+| 1.2 | desktop | pass | Native `required` stops a blank submit; with `novalidate` the server returns 422 with callout, per-field errors, `aria-invalid`, values kept. Invalid email gives 422. No row created. | ![](screenshots/page-2026-10-10T08-26-48-469Z.png) |
+| 1.3 | desktop | pass | Lands on page 1 "Your background", nav correct, Previous returns to About you with values (email lowercased). Admin row correct. | ![](screenshots/page-2026-10-10T08-27-05-189Z.png) |
+| 1.4 | desktop | pass | Editing first name works; blank email gives 422 with the name kept; restored value proceeds. | none |
+| 1.5 | desktop | pass | Page-one-file course shows a live file picker; upload swaps widget without reload; file listed on check-your-answers. | ![](screenshots/page-2026-10-10T08-30-00-000Z-grace-upload.png) |
+| 1.6 | desktop | pass | Check-your-answers shows About you card first with Edit; no email input; `?return=check` round trip works, including 422 keeping the URL. | ![](screenshots/page-2026-10-10T08-29-33-167Z.png) |
+| 1.7 | desktop | pass | Submit goes to signup with email, first and last name prefilled, plus toast; admin row submitted and unclaimed. | ![](screenshots/page-2026-10-10T08-29-51-350Z.png) |
+| 1.8 | desktop | pass | Signup errors keep Grace; real signup plus confirm claims the application; check-your-answers read-only; profile first name Grace. | ![](screenshots/page-2026-10-10T08-30-25-562Z.png) |
+| 1.9 | desktop | pass | Submitted unclaimed: fields disabled and no buttons. After claim, About you redirects to status. Fresh browser gets 404. | none |
+| 1.10 | desktop | pass | Re-applying with an unsubmitted draft resumes the same draft; re-posting creates no new row. | none |
+| 2.1 | desktop | pass | No-form course: single Submit application, 422 on blank, handoff carries `first_name` only. | ![](screenshots/page-2026-10-10T08-33-00-000Z-noform-about.png) |
+| 2.2 | desktop | pass | Page-less course: About you then check-your-answers with only the About you card; handoff carries both names. | ![](screenshots/page-2026-10-10T08-34-00-000Z-pageless-cya.png) |
+| 2.3 | desktop | pass | Submitted application's check-your-answers is read-only with About you card and submitted message. | ![](screenshots/page-2026-10-10T08-35-00-000Z-submitted-cya.png) |
+| 3.1 | desktop | pass | Login claims the draft; the name stays as typed and the About you card has no Edit. A plain login with no `next` lands on the dashboard rather than the claim landing (see notes). | none |
+| 3.2 | desktop | pass | Mismatch page names the typed email; row stays unclaimed; after adding the address as verified, claim succeeds and the typed name is kept. | ![](screenshots/page-2026-10-10T08-37-00-000Z-mismatch.png) |
+| 4.1 | desktop | pass | Signed-in applicant with a name opens page 1 directly; no callout, no Previous; About you card has no Edit. | ![](screenshots/page-2026-10-10T08-38-00-000Z-signedin-page1.png) |
+| 4.2 | desktop | pass | Signed-in applicant without a name sees only First name; 422 on blank; claim sets the profile name. | ![](screenshots/page-2026-10-10T08-40-00-000Z-name-only.png) |
+| 4.3 | desktop | pass | `require_name=False`: signed-in skips About you; anonymous sees "First name (optional)" with no asterisk. | none |
+| 5 | 1280 / 768 / 390 | pass | About you and form page 1 error states have identical computed styles at all three widths; no horizontal scroll. | ![](screenshots/page-2026-10-10T08-50-00-000Z-about-1280.png) ![](screenshots/page-2026-10-10T08-50-30-000Z-page1-1280.png) ![](screenshots/page-2026-10-10T08-51-00-000Z-about-768.png) ![](screenshots/page-2026-10-10T08-51-30-000Z-page1-768.png) ![](screenshots/page-2026-10-10T08-52-00-000Z-about-390.png) ![](screenshots/page-2026-10-10T08-52-30-000Z-page1-390.png) |
+| 6 | desktop | pass | Quiz blank submit gives 422 "Missing answers" callout; application date error shows the value kept with `aria-invalid`; checkbox group required message revealed with no POST. | ![](screenshots/page-2026-10-10T08-44-30-000Z-quiz-errors.png) ![](screenshots/page-2026-10-10T08-46-01-000Z-date-error.png) ![](screenshots/page-2026-10-10T08-48-00-000Z-checkbox-required.png) |
+| 7 | desktop | pass | Admin changelist Applicant name column and search correct; unclaimed change page shows read-only name and email. | ![](screenshots/page-2026-10-10T08-41-00-000Z-admin-list.png) ![](screenshots/page-2026-10-10T08-41-30-000Z-admin-change.png) |
+| 8 | mobile | pass | 375x812: About you, check-your-answers and signup fit with no horizontal scroll. Observation: Submit application is not full width (note 8). | ![](screenshots/page-2026-10-10T09-00-00-000Z-about-mobile.png) ![](screenshots/page-2026-10-10T09-00-30-000Z-cya-mobile.png) ![](screenshots/page-2026-10-10T09-00-45-000Z-signup-mobile.png) |
+| 8 | tablet | pass | 768x1024: course detail, About you, check-your-answers and signup render with the desktop header and no horizontal scroll. | ![](screenshots/page-2026-10-10T09-01-00-000Z-about-tablet.png) ![](screenshots/page-2026-10-10T09-01-30-000Z-cya-tablet.png) ![](screenshots/page-2026-10-10T09-01-45-000Z-signup-tablet.png) |
 
 ## Bugs
 
-### B1: Submitted anonymous application still says "Submit it to keep it"
+### B1: Unreachable application nav pills have no hover title
 
-- Manifestations: test 1.6, desktop.
-- Expected: once the anonymous application is submitted, the read-only check-your-answers page should not tell the visitor to submit it (the application is now held server-side until claimed or removed by an administrator).
-- Actual: the read-only check-your-answers page of a submitted, unclaimed application shows the info callout "This application is saved in this browser only, for up to 14 days. Submit it to keep it." directly above "Your application has been submitted. You will hear back once it has been reviewed." The template shows the notice whenever `is_unclaimed`, which matches spec 5.9 and the plan (anonymous form pages and check-your-answers); the post-submit wording is unspecified.
-- Screenshots: none.
+Manifestations: test 1.1 (desktop).
 
-### B2: Admin "Claimed" column is after "Applicant name" instead of after "Applicant"
+![](screenshots/page-2026-10-10T08-25-00-803Z.png)
 
-- Manifestations: test 9.1, desktop.
-- Expected: changelist columns Applicant, Claimed, Applicant name, Course, Submitted, Submitted time, Created (spec 5.7 and plan slice 4: insert `is_claimed` after `applicant_email`).
-- Actual: columns are Applicant, Applicant name, Claimed, Course, Submitted, Submitted time, Created at. `list_display` in `freedom_ls/course_applications/admin.py` has `is_claimed` after `applicant_name`.
-- Screenshots: none.
-
-### B3: Handoff toast invites "Create an account" when signups are closed
-
-- Manifestations: test 7, desktop.
-- Expected: when signups are closed and the visitor is handed to the login page, the toast should not invite them to create an account they cannot create.
-- Actual: the toast reads "Your application for ... has been sent. Create an account or log in with qa-anon-5@example.com to see its progress." on the login page with `allow_signups=False`. Spec section 5 defines a single toast for both cases, so the wording for the closed-signup case is a product/copy decision.
-- Screenshots: none.
+- **Expected:** Test plan 1.1 step 4: on About you, hovering the greyed "2" pill shows the title "Your background".
+- **Actual:** Unreachable pills render as `<span aria-disabled="true">` with no `title` attribute. The shared cotton component `freedom_ls/base/templates/cotton/form-page-link.html` gives a title only to reachable `<a>` pills, so hovering shows nothing. The spec does not require a title on unreachable pills, and this predates the branch's About you work.
 
 ## Bug status
 
-| Bug | Title | Status |
-|---|---|---|
-| B1 | Submitted anonymous application still says "Submit it to keep it" | **UNRESOLVED** (reason: spec 5.9 shows the notice on anonymous check-your-answers; what, if anything, a submitted unclaimed application should say is a copy decision) |
-| B2 | Admin "Claimed" column is after "Applicant name" instead of after "Applicant" | **FIXED** (commit: 4dd4b356). Re-verified: columns now Applicant, Claimed, Applicant name, Course, Submitted, Submitted time, Created at; Form progress records, Question answer files and the application change page still load. ![](screenshots/page-2026-10-09T06-fix-B2-admin.png) |
-| B3 | Handoff toast invites "Create an account" when signups are closed | **UNRESOLVED** (reason: spec defines one handoff toast for both cases; the closed-signup wording is a copy decision) |
+- **UNRESOLVED** — Unreachable application nav pills have no hover title (reason: product/UX decision — the test plan expects a title on unreachable pills, the spec is silent, and the shared `base` component deliberately gives one only to reachable pills; a human must choose which is intended)
 
 ## General notes
 
-### (a) Test plan corrections
+1. `content_save` does not delete FormQuestion rows removed from a page's YAML. The dev DB still had "What is your full name?" and "What is your email address?" on the demo form's page 1 after re-running `content_save`; they were deleted by hand for this run. A downstream site upgrading keeps any name/email questions it had unless someone removes them, which the upgrade notes may want to say.
+2. `qa_create_anon_apply_edge_courses` is idempotent by lookup and does not refresh an existing page's title. The page-one-file form's page was still titled "About you" from an older run and was renamed by hand.
+3. About you and form pages carry native `required` attributes with no `novalidate`, so a blank submit is stopped by the browser. The plan's 422 checks were run with `novalidate` set. Same convention as form-engine questions.
+4. The per-IP anonymous-start cap (10 per hour by default) returned 429 after this run's ~10 starts. Restarting runserver cleared the in-process LocMem counters. Working as designed; long QA runs will hit it.
+5. The Django debug toolbar opens in every fresh browser context and covers the right edge (it intercepted a click at 375px). It and the floating branch badge are dev-only.
+6. Plan wording that no longer matches the code, all treated as passes:
+   - The callout says "for up to 2 weeks" (duration filter over `SESSION_COOKIE_AGE`), not "14 days".
+   - The check card renders Name / value on separate lines rather than "Name: ...".
+   - A plain login with no `next` lands on the dashboard (listing the draft as "Finish your application...") rather than the claim landing.
+   - Section 7's "account's name for claimed ones": the column shows the row's stored name and falls back to the owner's only when blank, consistent with section 1.8.
+7. The dashboard links an application only to its status page, so check-your-answers after a claim was opened by URL.
+8. On mobile, check-your-answers' "Submit application" button is not full width while About you's "Next" is.
+9. Residue from an earlier QA run (23 applications from 2026-10-09) was deleted at the start. One aborted attempt in section 1.10 left an extra unclaimed `qa-about-3` draft.
 
-- Dev `CACHES` is LocMemCache, so `manage.py shell -c cache.clear()` cannot reset the server's throttle counters. Restart runserver instead. This run restarted it before 8.1, 8.2 and the mobile pass.
-- qa.anon.a already holds a form-course application after §3.1, so §6 needs a different clean learner. This run used qa.anon.c.
-- §9.1 step 3 example `qa-anon-3` is already claimed by then.
-- §1.5: `next` is emitted unencoded (`next=/applications/claim/`), semantically equal to the plan's encoded form.
-- The demo form's time question has min 09:00 and max 17:00.
-
-### (b) Data set-up
-
-- Fresh DB seeded with `create_demo_data --yes` and `content_save`.
-- Edge courses were created by the data helper via the new uncommitted command `freedom_ls/qa_helpers/management/commands/qa_create_anon_apply_edge_courses.py`.
-- No `SiteSignupPolicy` row existed, so §7 created one (`allow_signups` re-enabled afterwards, `require_terms_acceptance` on).
-
-### (c) Observations
-
-- Browser native `required` validation stops page submits before the server's 422. The server 422 was verified by bypassing it.
-- The uploaded 67 KB PNG is stored as 13.5 KB (re-encoded).
-- After deleting an unclaimed application the admin lands on the admin index rather than the changelist (stock Django when `has_change_permission` is False).
-- The Django debug toolbar handle intercepts taps at mobile width (dev-only).
-- The hidden course's `/courses/<slug>/` home redirects to login (pre-existing).
-
-status: ok
-reason: 3 bugs — 1 fixed, 2 unresolved; report rendered, screenshots verified
+status: ok · reason: 1 bug — 0 fixed, 1 unresolved; report rendered, screenshots verified

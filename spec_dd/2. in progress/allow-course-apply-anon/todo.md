@@ -99,5 +99,7 @@ Sections 10 to 14 above run once, after part 2 is implemented.
 - [x] (cmd) Run `/sdd:implement_plan` on `2b. plan.md`
 - [ ] (user) Spot-check the changes
 - [ ] (cmd) Run `/ds:security-review` on the pending changes
-- [ ] (cmd) Run `/fls-dev:do_qa` with `3b. frontend_qa.md`
+- [x] (cmd) Run `/fls-dev:do_qa` with `3b. frontend_qa.md`
 - [ ] (user) Review the QA report and fix any bugs with TDD
+- [ ] (user) Decide whether an unreachable page pill in the application nav shows its page title on hover (the 3b test plan expects it, the spec is silent, the shared base form-page-link component gives a title only to reachable pills), then either fix the component or correct the test plan
+- [ ] (user + cmd) Fix QA bug: unreachable application nav pills have no hover title (TDD — failing test first, then fix)
