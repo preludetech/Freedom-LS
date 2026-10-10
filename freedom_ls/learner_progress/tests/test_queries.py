@@ -28,7 +28,6 @@ from freedom_ls.learner_progress.queries import (
     registrations_with_progress_for_learner,
 )
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
-from freedom_ls.organisations.factories import OrganisationFactory
 
 # The bulk resolver must agree with the single-course one, course for course.
 #
@@ -125,9 +124,8 @@ class TestAgreesWithCourseProgressFor:
     ):
         course: Course = CourseFactory()
         user = UserFactory()
-        organisation = OrganisationFactory()
-        learner = LearnerFactory(user=user, organisation=organisation)
-        cohort = CohortFactory(organisation=organisation, is_active=False)
+        learner = LearnerFactory(user=user)
+        cohort = CohortFactory(organisation=learner.organisation, is_active=False)
         CohortMembershipFactory(learner=learner, cohort=cohort)
         ensure_course_progress_record(
             learner,
@@ -450,9 +448,8 @@ def test_a_registration_through_a_cohort_reports_the_cohort(mock_site_context):
 def test_an_inactive_cohorts_registration_is_skipped_and_the_individual_one_reported(
     mock_site_context,
 ):
-    organisation = OrganisationFactory()
-    learner = LearnerFactory(organisation=organisation)
-    cohort = CohortFactory(organisation=organisation, is_active=False)
+    learner = LearnerFactory()
+    cohort = CohortFactory(organisation=learner.organisation, is_active=False)
     CohortMembershipFactory(learner=learner, cohort=cohort)
     course: Course = CourseFactory()
     CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)

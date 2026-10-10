@@ -126,7 +126,7 @@ def test_an_action_that_is_permitted_but_not_offered_is_not_available() -> None:
 def test_an_action_that_is_not_offered_is_left_out_of_the_panel_actions(
     mock_site_context: Site,
 ) -> None:
-    item = _make_stub(name="unoffered")
+    item = make_stub(name="unoffered")
 
     class PanelWithActions(StubPanel):
         def get_actions(self) -> list[PanelAction]:
@@ -153,7 +153,7 @@ def test_a_row_action_is_kept_out_of_the_footer_and_exposed_by_url(
 ) -> None:
     """A row-scoped action resolves on the panel like any other, but the
     panel hands its URL to the cell templates instead of rendering it."""
-    item = _make_stub(name="rows")
+    item = make_stub(name="rows")
 
     class PanelWithRowAction(StubPanel):
         def get_actions(self) -> list[PanelAction]:
@@ -169,7 +169,7 @@ def test_a_row_action_is_kept_out_of_the_footer_and_exposed_by_url(
 
 @pytest.mark.django_db
 def test_an_unavailable_row_action_has_no_url(mock_site_context: Site) -> None:
-    item = _make_stub(name="rows")
+    item = make_stub(name="rows")
 
     class StubUnofferedRowAction(StubRowAction):
         def is_offered(self, ctx: PanelContext) -> bool:
