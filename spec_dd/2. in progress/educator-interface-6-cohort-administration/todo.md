@@ -5,6 +5,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [x] (user) Write the idea file in this directory
+- [ ] (user) Decide what to change after reading upstream_change_review.md, then edit the idea, spec or plan it names
 - [ ] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
