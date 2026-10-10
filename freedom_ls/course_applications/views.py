@@ -37,10 +37,7 @@ from freedom_ls.course_applications.claims import (
     unclaimed_application_ids,
 )
 from freedom_ls.course_applications.config import config
-from freedom_ls.course_applications.forms import (
-    ApplicantDetailsForm,
-    ApplicantEmailForm,
-)
+from freedom_ls.course_applications.forms import ApplicantDetailsForm
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.anonymous_sittings import (
@@ -157,12 +154,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     return render(
         request,
         "course_applications/apply.html",
-        {
-            "course": course,
-            "show_email_form": False,
-            "email_form": None,
-            "privacy_url": None,
-        },
+        {"course": course},
     )
 
 
@@ -204,8 +196,6 @@ def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
         return redirect(_resume_url(held, held.form_progress))
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
-    if course.application_form is None:
-        return _apply_anonymous_no_form_course(request, course)
     return _apply_anonymous_about_you(request, course)
 
 
@@ -326,13 +316,20 @@ def _apply_anonymous_about_you(request: HttpRequest, course: Course) -> HttpResp
         if capped is not None:
             return capped
         with transaction.atomic():
-            form_progress = FormProgress.objects.create(user=None, form=form)
+            form_progress = (
+                FormProgress.objects.create(user=None, form=form)
+                if form is not None
+                else None
+            )
             app = CourseApplication.objects.create(
                 course=course, form_progress=form_progress, **details_form.details
             )
-        remember_anonymous_sitting(request, form_progress)
         remember_unclaimed_application(request, app)
-        return redirect(_resume_url(app, form_progress))
+        if form_progress is not None:
+            remember_anonymous_sitting(request, form_progress)
+            return redirect(_resume_url(app, form_progress))
+        record_application_submitted(request, course)
+        return _redirect_to_handoff(request, app)
     return _render_about_you(
         request, course, details_form, application=None, form_progress=None
     )
@@ -377,33 +374,6 @@ def application_about_you(request: HttpRequest, pk: UUID) -> HttpResponse:
         form_progress=form_progress,
         read_only=read_only,
         return_to_check=return_to_check,
-    )
-
-
-def _apply_anonymous_no_form_course(
-    request: HttpRequest, course: Course
-) -> HttpResponse:
-    email_form = ApplicantEmailForm(request.POST or None)
-    if request.method == "POST" and email_form.is_valid():
-        capped = _start_cap_response(request)
-        if capped is not None:
-            return capped
-        app = CourseApplication.objects.create(
-            course=course, email=email_form.cleaned_data["email"]
-        )
-        record_application_submitted(request, course)
-        remember_unclaimed_application(request, app)
-        return _redirect_to_handoff(request, app)
-    return render(
-        request,
-        "course_applications/apply.html",
-        {
-            "course": course,
-            "email_form": email_form,
-            "show_email_form": True,
-            "privacy_url": _privacy_url(request),
-        },
-        status=422 if request.method == "POST" else 200,
     )
 
 

@@ -1317,7 +1317,7 @@ def test_anonymous_apply_post_creates_an_unclaimed_application(
 
     client.get(apply_url)
     assert not CourseApplication.objects.exists()
-    client.post(apply_url, {"email": "pat@example.com"})
+    client.post(apply_url, {"first_name": "Pat", "email": "pat@example.com"})
 
     assert CourseApplication.objects.filter(
         course=course, user__isnull=True, email="pat@example.com"
@@ -1534,15 +1534,18 @@ class TestAnonymousApply:
             "learner_interface:course_detail", kwargs={"course_slug": course.slug}
         )
 
-    def test_anonymous_no_form_get_shows_the_email_field(
+    def test_anonymous_no_form_get_shows_about_you_with_a_submit_button(
         self, client, mock_site_context
     ):
         course = CourseFactory()
 
         response = client.get(_apply_url(course))
 
+        body = response.content.decode()
         assert response.status_code == 200
-        assert 'name="email"' in response.content.decode()
+        assert "<h1>About you</h1>" in body
+        assert 'name="email"' in body
+        assert "Submit application" in body
 
     def test_anonymous_no_form_get_creates_nothing(self, client, mock_site_context):
         course = CourseFactory()
@@ -1551,25 +1554,7 @@ class TestAnonymousApply:
 
         assert not CourseApplication.objects.exists()
 
-    def test_anonymous_submit_requires_email(self, client, mock_site_context):
-        course = CourseFactory()
-
-        response = client.post(_apply_url(course), {"email": ""})
-
-        assert response.status_code == 422
-        assert not CourseApplication.objects.exists()
-
-    def test_anonymous_no_form_submit_creates_an_unclaimed_application_with_the_email(
-        self, client, mock_site_context
-    ):
-        course = CourseFactory()
-
-        client.post(_apply_url(course), {"email": "Pat@Example.com"})
-
-        app = CourseApplication.objects.get(course=course)
-        assert (app.user, app.email) == (None, "pat@example.com")
-
-    def test_anonymous_no_form_submit_records_the_submission_event(
+    def test_about_you_post_for_no_form_course_submits_and_hands_off(
         self, client, mock_site_context
     ):
         course = CourseFactory()
@@ -1577,26 +1562,32 @@ class TestAnonymousApply:
         with patch(
             "freedom_ls.course_applications.views.record_application_submitted"
         ) as record:
-            client.post(_apply_url(course), {"email": "pat@example.com"})
-
-        record.assert_called_once()
-
-    def test_anonymous_no_form_submit_remembers_the_application_in_the_session(
-        self, client, mock_site_context
-    ):
-        course = CourseFactory()
-
-        client.post(_apply_url(course), {"email": "pat@example.com"})
+            response = client.post(
+                _apply_url(course), {**ABOUT_YOU_DETAILS, "email": "Ada@Example.com"}
+            )
 
         app = CourseApplication.objects.get(course=course)
+        location = response["Location"]
+        assert (app.user, app.first_name, app.last_name, app.email) == (
+            None,
+            "Ada",
+            "Lovelace",
+            "ada@example.com",
+        )
+        assert (app.form_progress, FormProgress.objects.count()) == (None, 0)
         assert client.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] == [str(app.pk)]
+        record.assert_called_once()
+        assert location.startswith(reverse("account_signup"))
+        assert parse_qs(urlparse(location).query)["email"] == ["ada@example.com"]
 
     def test_anonymous_submit_redirects_to_signup_with_the_email_prefilled(
         self, client, mock_site_context
     ):
         course = CourseFactory()
 
-        response = client.post(_apply_url(course), {"email": "pat@example.com"})
+        response = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
 
         location = response["Location"]
         assert location.startswith(reverse("account_signup"))
@@ -1605,7 +1596,9 @@ class TestAnonymousApply:
     def test_anonymous_submit_carries_next(self, client, mock_site_context):
         course = CourseFactory()
 
-        response = client.post(_apply_url(course), {"email": "pat@example.com"})
+        response = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
 
         assert parse_qs(urlparse(response["Location"]).query)["next"] == [
             reverse("course_applications:claim")
@@ -1617,7 +1610,9 @@ class TestAnonymousApply:
         settings.ALLOW_SIGN_UPS = False
         course = CourseFactory()
 
-        response = client.post(_apply_url(course), {"email": "pat@example.com"})
+        response = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
 
         assert response["Location"].startswith(reverse("account_login"))
 
@@ -1627,8 +1622,12 @@ class TestAnonymousApply:
         course = CourseFactory()
         UserFactory(email="known@example.com")
 
-        known = client.post(_apply_url(course), {"email": "known@example.com"})
-        unknown = Client().post(_apply_url(course), {"email": "stranger@example.com"})
+        known = client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "known@example.com"}
+        )
+        unknown = Client().post(
+            _apply_url(course), {"first_name": "Pat", "email": "stranger@example.com"}
+        )
 
         assert known.status_code == unknown.status_code
         assert known["Location"].replace("known", "x") == unknown["Location"].replace(
@@ -1639,7 +1638,9 @@ class TestAnonymousApply:
         self, client, mock_site_context
     ):
         course = CourseFactory()
-        client.post(_apply_url(course), {"email": "pat@example.com"})
+        client.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
 
         response = client.get(_apply_url(course))
 
@@ -1982,7 +1983,9 @@ class TestClaimLanding:
         course = CourseFactory()
 
         response = client.post(
-            _apply_url(course), {"email": "pat@example.com"}, follow=True
+            _apply_url(course),
+            {"first_name": "Pat", "email": "pat@example.com"},
+            follow=True,
         )
 
         assert (
@@ -2044,6 +2047,17 @@ def _complete_anonymous_application(client, course, form):
     return app
 
 
+def _form_course():
+    return gated_course_with_form()[0]
+
+
+COURSE_KINDS = pytest.mark.parametrize(
+    "make_course",
+    [_form_course, CourseFactory],
+    ids=["form_course", "no_form_course"],
+)
+
+
 def _course_with_file_on_page_one(*, required: bool):
     form = FormFactory(strategy=FormStrategy.UNSCORED)
     page = FormPageFactory(form=form, order=0)
@@ -2100,10 +2114,11 @@ class TestAnonymousFormJourney:
         ]
         assert response["Location"] == _page_url(app, 1)
 
+    @COURSE_KINDS
     def test_about_you_post_with_errors_creates_nothing_and_keeps_typed_values(
-        self, client, mock_site_context
+        self, client, mock_site_context, make_course
     ):
-        course, _form = gated_course_with_form()
+        course = make_course()
 
         response = client.post(
             _apply_url(course), {"first_name": "Ada", "last_name": "Lovelace"}
@@ -2144,13 +2159,14 @@ class TestAnonymousFormJourney:
         app = CourseApplication.objects.get(course=course)
         assert response["Location"] == _check_url(app)
 
+    @COURSE_KINDS
     def test_start_cap_counts_only_valid_about_you_posts(
-        self, settings, mock_site_context
+        self, settings, mock_site_context, make_course
     ):
         settings.TRUSTED_PROXY_IP_HEADER = None
         settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 1
         settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS = 600
-        course, _form = gated_course_with_form()
+        course = make_course()
         refused = Client().post(_apply_url(course), {"first_name": "Ada"})
         accepted = Client().post(_apply_url(course), ABOUT_YOU_DETAILS)
 
@@ -2158,13 +2174,13 @@ class TestAnonymousFormJourney:
 
         assert (refused.status_code, accepted.status_code) == (422, 302)
         assert capped.status_code == 429
-        assert (CourseApplication.objects.count(), FormProgress.objects.count()) == (
-            1,
-            1,
-        )
+        assert CourseApplication.objects.count() == 1
 
-    def test_honeypot_on_about_you_creates_nothing(self, client, mock_site_context):
-        course, _form = gated_course_with_form()
+    @COURSE_KINDS
+    def test_honeypot_on_about_you_creates_nothing(
+        self, client, mock_site_context, make_course
+    ):
+        course = make_course()
 
         response = client.post(
             _apply_url(course), {**ABOUT_YOU_DETAILS, "fax_number": "bot"}
@@ -2599,7 +2615,9 @@ class TestSignedInApplyWithAHeldApplication:
 
 def _post_application(course, email: str = "pat@example.com", **extra: str):
     """One anonymous no-form application POST from a browser of its own."""
-    return Client().post(_apply_url(course), {"email": email, **extra})
+    return Client().post(
+        _apply_url(course), {"first_name": "Pat", "email": email, **extra}
+    )
 
 
 @pytest.mark.django_db
@@ -2644,7 +2662,7 @@ class TestAnonymousStartCap:
 
         Client().post(
             _apply_url(course),
-            {"email": "a@example.com"},
+            {"first_name": "Pat", "email": "a@example.com"},
             REMOTE_ADDR="203.0.113.7",
         )
 
@@ -2696,28 +2714,3 @@ class TestAnonymousStartCap:
         _post_application(course, "b@example.com")
 
         assert CourseApplication.objects.count() == 1
-
-    def test_a_refused_email_post_does_not_count_against_the_cap(self):
-        course = CourseFactory()
-        browser = Client()
-        browser.post(_apply_url(course), {"email": "not-an-address"})
-
-        response = browser.post(_apply_url(course), {"email": "a@example.com"})
-
-        assert response.status_code == 302
-        assert CourseApplication.objects.count() == 1
-
-
-@pytest.mark.django_db
-def test_honeypot_trip_rejects_submit_without_creating_an_owner(
-    client, mock_site_context
-):
-    course = CourseFactory()
-
-    response = client.post(
-        _apply_url(course), {"email": "pat@example.com", "fax_number": "bot"}
-    )
-
-    assert response.status_code == 422
-    assert not CourseApplication.objects.exists()
-    assert UNCLAIMED_APPLICATIONS_SESSION_KEY not in client.session
