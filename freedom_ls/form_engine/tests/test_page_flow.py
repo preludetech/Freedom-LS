@@ -298,7 +298,7 @@ def test_row_less_page_links_reach_only_page_one(two_page_form):
         two_page_form, current, None, PageSubmission(), _url_for_page
     )
 
-    accessible = [link["is_accessible"] for link in context["page_links"]]
+    accessible = [link.is_accessible for link in context["page_links"]]
     assert accessible == [True, False]
 
 

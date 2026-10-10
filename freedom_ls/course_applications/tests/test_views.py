@@ -342,6 +342,10 @@ def _edit_url(app, page_number):
     return f"{_page_url(app, page_number)}?return=check"
 
 
+def _about_you_url(app):
+    return reverse("course_applications:about_you", kwargs={"pk": app.pk})
+
+
 def _check_url(app):
     return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
 
@@ -559,7 +563,7 @@ class TestApplicationFormPage:
 
         response = client.get(_page_url(app, 1))
 
-        accessible = [link["is_accessible"] for link in response.context["page_links"]]
+        accessible = [link.is_accessible for link in response.context["page_links"]]
         assert accessible == [True, True]
 
     def test_answering_a_page_advances_to_the_next(self, client, mock_site_context):
@@ -723,7 +727,7 @@ class TestCheckYourAnswers:
 
         body = client.get(_check_url(app)).content.decode()
 
-        assert "About you" in body
+        assert "Your background" in body
         assert "Supporting documents" in body
 
     def test_an_edit_link_carries_the_return_marker(self, client, mock_site_context):
@@ -970,7 +974,7 @@ def _course_with_single_question(question_type: str, *, required: bool = False):
     so a rejected answer's effect on paging and completion is unambiguous.
     """
     form = FormFactory(strategy=FormStrategy.UNSCORED)
-    page = FormPageFactory(form=form, order=0, title="About you")
+    page = FormPageFactory(form=form, order=0, title="Your background")
     question = FormQuestionFactory(
         form_page=page,
         type=question_type,
@@ -1681,7 +1685,9 @@ class TestAnonymousApply:
         application = CourseApplication.objects.get(user=user)
         assert (application.first_name, application.last_name) == ("Ada", "Lovelace")
 
-    @pytest.mark.parametrize("view_name", ["apply", "form_page", "check_answers"])
+    @pytest.mark.parametrize(
+        "view_name", ["apply", "about_you", "form_page", "check_answers"]
+    )
     def test_every_unclaimed_application_view_sends_no_store_and_same_origin_referrer(
         self, client, mock_site_context, view_name
     ):
@@ -1689,6 +1695,7 @@ class TestAnonymousApply:
         app = _start_anonymous_application(client, course, form)
         urls = {
             "apply": _apply_url(course),
+            "about_you": _about_you_url(app),
             "form_page": _page_url(app, 1),
             "check_answers": _check_url(app),
         }
@@ -1995,10 +2002,19 @@ def _page_one_post(form, name="Ada"):
     return {f"question_{required.id}": name}
 
 
+ABOUT_YOU_DETAILS = {
+    "first_name": "Ada",
+    "last_name": "Lovelace",
+    "email": "ada@example.com",
+}
+
+
 def _start_anonymous_application(client, course, form):
-    """Take an anonymous visitor through the first valid page-1 save."""
-    client.post(_apply_url(course), _page_one_post(form))
-    return CourseApplication.objects.get(course=course)
+    """Take an anonymous visitor through About you and a valid page-1 save."""
+    client.post(_apply_url(course), ABOUT_YOU_DETAILS)
+    app = CourseApplication.objects.get(course=course)
+    client.post(_page_url(app, 1), _page_one_post(form))
+    return app
 
 
 def _signed_in_holding_unclaimed_draft(client, form):
@@ -2045,152 +2061,165 @@ def _course_with_file_on_page_one(*, required: bool):
 
 @pytest.mark.django_db
 class TestAnonymousFormJourney:
-    def test_anonymous_apply_renders_page_one_without_creating_rows(
+    def test_anonymous_apply_renders_about_you_without_creating_rows(
         self, client, mock_site_context
     ):
         course, _form = gated_course_with_form()
 
         response = client.get(_apply_url(course))
 
+        body = response.content.decode()
         assert response.status_code == 200
+        assert "<h1>About you</h1>" in body
+        assert "kept until an administrator removes it" in body
         assert (CourseApplication.objects.count(), FormProgress.objects.count()) == (
             0,
             0,
         )
 
-    def test_anonymous_page_one_post_creates_the_application(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-
-        client.post(_apply_url(course), _page_one_post(form))
-
-        app = CourseApplication.objects.get(course=course)
-        assert (app.user, app.email) == (None, "")
-
-    def test_anonymous_page_one_post_creates_the_sitting(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-
-        client.post(_apply_url(course), _page_one_post(form))
-
-        app = CourseApplication.objects.get(course=course)
-        assert (app.form_progress.user, app.form_progress.form) == (None, form)
-
-    def test_anonymous_page_one_post_remembers_the_application_id(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-
-        client.post(_apply_url(course), _page_one_post(form))
-
-        app = CourseApplication.objects.get(course=course)
-        assert client.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] == [str(app.pk)]
-
-    def test_anonymous_page_one_post_remembers_the_sitting_id(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-
-        client.post(_apply_url(course), _page_one_post(form))
-
-        app = CourseApplication.objects.get(course=course)
-        assert client.session[ANONYMOUS_SITTINGS_SESSION_KEY] == [
-            str(app.form_progress_id)
-        ]
-
-    def test_anonymous_page_one_post_with_errors_creates_nothing(
+    def test_about_you_post_creates_application_and_sitting_and_remembers_them(
         self, client, mock_site_context
     ):
         course, _form = gated_course_with_form()
 
-        response = client.post(_apply_url(course), {})
+        response = client.post(
+            _apply_url(course), {**ABOUT_YOU_DETAILS, "email": "Ada@Example.com"}
+        )
+
+        app = CourseApplication.objects.get(course=course)
+        assert (app.user, app.first_name, app.last_name, app.email) == (
+            None,
+            "Ada",
+            "Lovelace",
+            "ada@example.com",
+        )
+        assert (app.form_progress.user, FormProgress.objects.count()) == (None, 1)
+        assert client.session[UNCLAIMED_APPLICATIONS_SESSION_KEY] == [str(app.pk)]
+        assert client.session[ANONYMOUS_SITTINGS_SESSION_KEY] == [
+            str(app.form_progress_id)
+        ]
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_about_you_post_with_errors_creates_nothing_and_keeps_typed_values(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+
+        response = client.post(
+            _apply_url(course), {"first_name": "Ada", "last_name": "Lovelace"}
+        )
 
         assert response.status_code == 422
+        assert "Lovelace" in response.content.decode()
         assert (CourseApplication.objects.count(), FormProgress.objects.count()) == (
             0,
             0,
         )
 
-    def test_anonymous_page_one_refusal_keeps_typed_answers(
-        self, client, mock_site_context
+    @pytest.mark.parametrize(
+        ("require_name", "status", "label"),
+        [(True, 422, "First name"), (False, 302, "First name (optional)")],
+    )
+    def test_about_you_first_name_required_follows_signup_policy(
+        self, client, mock_site_context, require_name, status, label
     ):
-        course, form = gated_course_with_form()
-        optional = _questions_on(form, 1)[3]
+        SiteSignupPolicyFactory(require_name=require_name)
+        course, _form = gated_course_with_form()
 
         response = client.post(
-            _apply_url(course), {f"question_{optional.id}": "Because I want to"}
+            _apply_url(course), {"first_name": "", "email": "ada@example.com"}
         )
+        page = Client().get(_apply_url(course))
 
-        assert "Because I want to" in response.content.decode()
+        assert response.status_code == status
+        assert f">{label}" in page.content.decode()
 
-    def test_anonymous_page_one_post_ignores_a_required_file_question(
-        self, client, mock_site_context
-    ):
-        course, form = _course_with_file_on_page_one(required=True)
-        name = _questions_on(form, 1)[0]
-
-        response = client.post(_apply_url(course), {f"question_{name.id}": "Ada"})
-
-        assert response.status_code == 302
-
-    def test_anonymous_page_one_with_file_question_returns_to_page_one_after_first_save(
-        self, client, mock_site_context
-    ):
-        course, form = _course_with_file_on_page_one(required=False)
-        name = _questions_on(form, 1)[0]
-
-        response = client.post(_apply_url(course), {f"question_{name.id}": "Ada"})
-
-        app = CourseApplication.objects.get(course=course)
-        assert response["Location"] == f"{_page_url(app, 1)}?saved=1"
-
-    def test_anonymous_page_one_with_file_question_shows_the_saved_callout_after_the_redirect(
-        self, client, mock_site_context
-    ):
-        course, form = _course_with_file_on_page_one(required=False)
-        name = _questions_on(form, 1)[0]
-
-        response = client.post(
-            _apply_url(course), {f"question_{name.id}": "Ada"}, follow=True
-        )
-
-        assert "You can now attach your file." in response.content.decode()
-
-    def test_a_refused_resubmission_does_not_repeat_the_saved_callout(
-        self, client, mock_site_context
-    ):
-        course, form = _course_with_file_on_page_one(required=False)
-        name = _questions_on(form, 1)[0]
-        client.post(_apply_url(course), {f"question_{name.id}": "Ada"})
-        app = CourseApplication.objects.get(course=course)
-
-        response = client.post(
-            f"{_page_url(app, 1)}?saved=1", {f"question_{name.id}": ""}
-        )
-
-        assert response.status_code == 422
-        assert "Your answers are saved" not in response.content.decode()
-
-    def test_anonymous_page_one_post_advances_to_page_two(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-
-        response = client.post(_apply_url(course), _page_one_post(form))
-
-        app = CourseApplication.objects.get(course=course)
-        assert response["Location"] == _page_url(app, 2)
-
-    def test_anonymous_apply_to_a_form_with_no_pages_is_404(
+    def test_about_you_on_a_form_with_no_pages_leads_to_check_answers(
         self, client, mock_site_context
     ):
         course = _gated_course_with_a_page_less_form()
 
-        response = client.get(_apply_url(course))
+        response = client.post(_apply_url(course), ABOUT_YOU_DETAILS)
 
-        assert response.status_code == 404
+        app = CourseApplication.objects.get(course=course)
+        assert response["Location"] == _check_url(app)
+
+    def test_start_cap_counts_only_valid_about_you_posts(
+        self, settings, mock_site_context
+    ):
+        settings.TRUSTED_PROXY_IP_HEADER = None
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_LIMIT = 1
+        settings.COURSE_APPLICATIONS_ANONYMOUS_START_WINDOW_SECONDS = 600
+        course, _form = gated_course_with_form()
+        refused = Client().post(_apply_url(course), {"first_name": "Ada"})
+        accepted = Client().post(_apply_url(course), ABOUT_YOU_DETAILS)
+
+        capped = Client().post(_apply_url(course), ABOUT_YOU_DETAILS)
+
+        assert (refused.status_code, accepted.status_code) == (422, 302)
+        assert capped.status_code == 429
+        assert (CourseApplication.objects.count(), FormProgress.objects.count()) == (
+            1,
+            1,
+        )
+
+    def test_honeypot_on_about_you_creates_nothing(self, client, mock_site_context):
+        course, _form = gated_course_with_form()
+
+        response = client.post(
+            _apply_url(course), {**ABOUT_YOU_DETAILS, "fax_number": "bot"}
+        )
+
+        assert response.status_code == 422
+        assert "We couldn&#x27;t process this application" in response.content.decode()
+        assert not CourseApplication.objects.exists()
+
+    def test_about_you_fields_use_the_question_field_markup(
+        self, client, mock_site_context
+    ):
+        course, _form = gated_course_with_form()
+
+        html = client.post(_apply_url(course), {"first_name": "Ada"}).content.decode()
+
+        assert html.count("<fieldset") >= 3
+        assert html.count("<legend") >= 3
+        assert 'aria-invalid="true"' in html
+        assert 'aria-describedby="id_email_error"' in html
+        assert 'id="id_email_error"' in html
+
+    def test_about_you_nav_lists_about_you_first_and_numbers_pages_from_two(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+
+        before = client.get(_apply_url(course)).context["page_links"]
+        app = _start_anonymous_application(client, course, form)
+        after = client.get(_page_url(app, 1)).context["page_links"]
+
+        assert [
+            (link.number, link.title, link.is_current, link.is_accessible)
+            for link in before
+        ] == [
+            (1, "About you", True, True),
+            (2, "Your background", False, False),
+            (3, "Supporting documents", False, False),
+        ]
+        assert [
+            (link.number, link.is_current, link.is_accessible) for link in after[:2]
+        ] == [
+            (1, False, True),
+            (2, True, True),
+        ]
+
+    def test_form_page_one_previous_links_to_about_you_for_an_unclaimed_application(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = client.get(_page_url(app, 1))
+
+        assert response.context["previous_page_url"] == _about_you_url(app)
 
     def test_anonymous_apply_resumes_the_session_draft(self, client, mock_site_context):
         course, form = gated_course_with_form()
@@ -2260,7 +2289,7 @@ class TestAnonymousFormJourney:
     ):
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
-        client.post(_check_url(app), {"email": "pat@example.com"})
+        client.post(_check_url(app), {})
 
         response = client.post(_check_url(app))
 
@@ -2271,7 +2300,7 @@ class TestAnonymousFormJourney:
     ):
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
-        client.post(_check_url(app), {"email": "pat@example.com"})
+        client.post(_check_url(app), {})
 
         html = client.get(_check_url(app)).content.decode()
 
@@ -2288,7 +2317,7 @@ class TestAnonymousFormJourney:
 
         assert response.status_code == 200
 
-    def test_signed_in_user_on_a_session_held_draft_sees_the_email_field(
+    def test_signed_in_user_on_a_session_held_draft_sees_the_about_you_card(
         self, client, mock_site_context
     ):
         _course, form = gated_course_with_form()
@@ -2296,69 +2325,68 @@ class TestAnonymousFormJourney:
 
         html = client.get(_check_url(app)).content.decode()
 
-        assert 'name="email"' in html
+        assert "other@example.com" in html
 
-    def test_anonymous_check_answers_shows_the_email_field(
+    def test_check_answers_shows_about_you_card(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert "Ada Lovelace" in html
+        assert "ada@example.com" in html
+        assert f"{_about_you_url(app)}?return=check" in html
+
+    def test_check_answers_has_no_email_field(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        html = client.get(_check_url(app)).content.decode()
+
+        assert 'name="email"' not in html
+
+    def test_anonymous_submit_hands_off_without_reading_an_email(
         self, client, mock_site_context
     ):
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
 
-        html = client.get(_check_url(app)).content.decode()
+        with patch(
+            "freedom_ls.course_applications.views.record_application_submitted"
+        ) as record:
+            response = client.post(_check_url(app), {})
 
-        assert 'name="email"' in html
+        app.form_progress.refresh_from_db()
+        query = parse_qs(urlparse(response["Location"]).query)
+        assert app.form_progress.completed_time is not None
+        record.assert_called_once()
+        assert (urlparse(response["Location"]).path, query["email"]) == (
+            reverse("account_signup"),
+            ["ada@example.com"],
+        )
 
-    def test_anonymous_check_answers_shows_the_statement(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-        app = _complete_anonymous_application(client, course, form)
-
-        html = client.get(_check_url(app)).content.decode()
-
-        assert "kept until an administrator removes it" in html
-
-    def test_anonymous_submit_runs_whole_form_check_before_email(
+    def test_anonymous_submit_runs_the_whole_form_check(
         self, client, mock_site_context
     ):
         course, form = _course_with_file_on_page_one(required=True)
-        name = _questions_on(form, 1)[0]
-        client.post(_apply_url(course), {f"question_{name.id}": "Ada"})
+        client.post(_apply_url(course), ABOUT_YOU_DETAILS)
         app = CourseApplication.objects.get(course=course)
+        name = _questions_on(form, 1)[0]
+        client.post(_page_url(app, 1), {f"question_{name.id}": "Ada"})
 
-        response = client.post(_check_url(app), {"email": "pat@example.com"})
+        response = client.post(_check_url(app), {})
 
         assert response.status_code == 422
         assert "needs an answer" in response.content.decode()
-
-    def test_anonymous_submit_sets_the_email(self, client, mock_site_context):
-        course, form = gated_course_with_form()
-        app = _complete_anonymous_application(client, course, form)
-
-        client.post(_check_url(app), {"email": "Pat@Example.com"})
-
-        app.refresh_from_db()
-        assert app.email == "pat@example.com"
 
     def test_anonymous_submit_completes_the_sitting(self, client, mock_site_context):
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
 
-        client.post(_check_url(app), {"email": "pat@example.com"})
+        client.post(_check_url(app), {})
 
         app.form_progress.refresh_from_db()
         assert app.form_progress.completed_time is not None
-
-    def test_anonymous_submit_without_a_valid_email_completes_nothing(
-        self, client, mock_site_context
-    ):
-        course, form = gated_course_with_form()
-        app = _complete_anonymous_application(client, course, form)
-
-        response = client.post(_check_url(app), {"email": "not-an-email"})
-
-        app.form_progress.refresh_from_db()
-        assert (response.status_code, app.form_progress.completed_time) == (422, None)
 
     def test_anonymous_submit_records_the_event(self, client, mock_site_context):
         course, form = gated_course_with_form()
@@ -2367,7 +2395,7 @@ class TestAnonymousFormJourney:
         with patch(
             "freedom_ls.course_applications.views.record_application_submitted"
         ) as record:
-            client.post(_check_url(app), {"email": "pat@example.com"})
+            client.post(_check_url(app), {})
 
         record.assert_called_once()
 
@@ -2377,15 +2405,15 @@ class TestAnonymousFormJourney:
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
 
-        response = client.post(_check_url(app), {"email": "pat@example.com"})
+        response = client.post(_check_url(app), {})
 
         query = parse_qs(urlparse(response["Location"]).query)
         assert (urlparse(response["Location"]).path, query["email"]) == (
             reverse("account_signup"),
-            ["pat@example.com"],
+            ["ada@example.com"],
         )
 
-    def test_signed_in_check_answers_shows_account_email_read_only(
+    def test_signed_in_check_answers_shows_about_you_card_without_edit_link(
         self, client, mock_site_context
     ):
         course, _form = gated_course_with_form()
@@ -2393,8 +2421,8 @@ class TestAnonymousFormJourney:
 
         html = client.get(_check_url(app)).content.decode()
 
-        assert 'name="email"' not in html
         assert app.user.email in html
+        assert _about_you_url(app) not in html
 
     def test_unclaimed_form_pages_carry_the_browser_only_notice(
         self, client, mock_site_context
@@ -2423,7 +2451,7 @@ class TestAnonymousFormJourney:
     ):
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
-        client.post(_check_url(app), {"email": "pat@example.com"})
+        client.post(_check_url(app), {})
 
         pages = [client.get(_page_url(app, 1)), client.get(_check_url(app))]
 
@@ -2455,6 +2483,65 @@ class TestAnonymousFormJourney:
 
 
 @pytest.mark.django_db
+class TestAboutYouRevisit:
+    def test_about_you_edit_saves_and_returns_to_page_one(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = client.post(
+            _about_you_url(app), {**ABOUT_YOU_DETAILS, "first_name": "Augusta"}
+        )
+
+        app.refresh_from_db()
+        assert app.first_name == "Augusta"
+        assert response["Location"] == _page_url(app, 1)
+
+    def test_about_you_edit_with_return_marker_goes_to_check_answers(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = client.post(f"{_about_you_url(app)}?return=check", ABOUT_YOU_DETAILS)
+
+        assert response["Location"] == _check_url(app)
+
+    def test_about_you_is_read_only_once_submitted(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _complete_anonymous_application(client, course, form)
+        client.post(_check_url(app), {})
+
+        html = client.get(_about_you_url(app)).content.decode()
+
+        assert 'id="id_email"' in html
+        assert "disabled" in html
+        assert 'type="submit"' not in html
+
+    def test_about_you_redirects_once_claimed(self, client, mock_site_context):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+        app.user = UserFactory()
+        app.save(update_fields=["user"])
+        client.force_login(app.user)
+
+        response = client.get(_about_you_url(app))
+
+        assert response.status_code == 302
+
+    def test_about_you_without_the_application_in_session_is_404(
+        self, client, mock_site_context
+    ):
+        course, form = gated_course_with_form()
+        app = _start_anonymous_application(client, course, form)
+
+        response = Client().get(_about_you_url(app))
+
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
 class TestClaimLandingResumesDraft:
     def test_claim_landing_with_one_claimed_draft_resumes_it(
         self, client, mock_site_context
@@ -2478,7 +2565,7 @@ class TestSignedInApplyWithAHeldApplication:
     ):
         course, form = gated_course_with_form()
         app = _complete_anonymous_application(client, course, form)
-        client.post(_check_url(app), {"email": "pat@example.com"})
+        client.post(_check_url(app), {})
         _signed_in_with_verified(client, email="other@example.com")
 
         response = client.get(_apply_url(course))
@@ -2619,26 +2706,6 @@ class TestAnonymousStartCap:
 
         assert response.status_code == 302
         assert CourseApplication.objects.count() == 1
-
-    def test_a_refused_page_one_post_does_not_count_against_the_cap(self):
-        course, form = gated_course_with_form()
-        browser = Client()
-        browser.post(_apply_url(course), _page_one_post(form, name=""))
-
-        response = browser.post(_apply_url(course), _page_one_post(form))
-
-        assert response.status_code == 302
-        assert CourseApplication.objects.count() == 1
-
-    def test_the_start_cap_refuses_a_valid_page_one_post(self):
-        course, form = gated_course_with_form()
-        Client().post(_apply_url(course), _page_one_post(form))
-
-        response = Client().post(_apply_url(course), _page_one_post(form))
-
-        assert response.status_code == 429
-        assert CourseApplication.objects.count() == 1
-        assert FormProgress.objects.count() == 1
 
 
 @pytest.mark.django_db

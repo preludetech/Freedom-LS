@@ -10,6 +10,7 @@ neither owns the arithmetic.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from django.http import QueryDict
 
@@ -73,12 +74,42 @@ def page_accessibility_limit(
     return max(resume_page_number(form_progress), current_page_number)
 
 
+@dataclass(frozen=True, slots=True)
+class PageLink:
+    """One entry of the page-jump nav."""
+
+    number: int
+    title: str
+    url: str
+    is_current: bool
+    is_accessible: bool
+
+
+def page_link_entries(
+    pages: list[FormPage],
+    current_page_number: int,
+    limit: int,
+    url_for_page: Callable[[int], str],
+) -> list[PageLink]:
+    """One entry per page, in page order; pages past `limit` are not accessible."""
+    return [
+        PageLink(
+            number=number,
+            title=page.title,
+            url=url_for_page(number),
+            is_current=number == current_page_number,
+            is_accessible=number <= limit,
+        )
+        for number, page in enumerate(pages, start=1)
+    ]
+
+
 def build_page_links(
     form: Form,
     form_progress: FormProgress | None,
     current_page_number: int,
     url_for_page: Callable[[int], str],
-) -> list[dict[str, object]]:
+) -> list[PageLink]:
     """One entry per page for the page-jump nav, in page order.
 
     Without a sitting nothing has been reached, so the current page is the
@@ -89,16 +120,7 @@ def build_page_links(
         limit = current_page_number
     else:
         limit = max(_resume_page_number(form_progress, pages), current_page_number)
-    return [
-        {
-            "number": number,
-            "title": page.title,
-            "url": url_for_page(number),
-            "is_current": number == current_page_number,
-            "is_accessible": number <= limit,
-        }
-        for number, page in enumerate(pages, start=1)
-    ]
+    return page_link_entries(pages, current_page_number, limit, url_for_page)
 
 
 def unanswered_required_on_page(

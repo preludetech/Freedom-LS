@@ -1,0 +1,11 @@
+{% with error_id=field.id_for_label|add:"_error" %}
+    <c-field-shell :legend="field.label" :required="field.field.required"
+                   :error="field.errors.0" :error_id="error_id" testid_key="{{ field.name }}">
+        <c-text-input type="{{ field.field.widget.input_type }}"
+                      id="{{ field.id_for_label }}" name="{{ field.html_name }}"
+                      :label="field.label" value="{{ field.value|default:'' }}"
+                      :required="field.field.required" :disabled="read_only" :invalid="field.errors"
+                      autocomplete="{{ field.field.widget.attrs.autocomplete }}"
+                      :error_id="error_id" />
+    </c-field-shell>
+{% endwith %}

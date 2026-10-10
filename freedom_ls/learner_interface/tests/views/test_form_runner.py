@@ -1803,7 +1803,7 @@ def _accessibility_of_each_page(client, course, page_number: int) -> list[bool]:
         kwargs={"course_slug": course.slug, "index": 1, "page_number": page_number},
     )
     response = client.get(url)
-    return [link["is_accessible"] for link in response.context["page_links"]]
+    return [link.is_accessible for link in response.context["page_links"]]
 
 
 @pytest.mark.django_db

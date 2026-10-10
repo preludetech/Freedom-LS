@@ -194,7 +194,7 @@ def test_change_page_shows_the_answers_document(staff_client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert "About you" in content
+    assert "Your background" in content
     assert "Supporting documents" in content
     assert "Ada Lovelace" in content
     assert "Not answered" in content

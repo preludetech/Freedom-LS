@@ -44,7 +44,7 @@ def gated_course_with_form():
 
     form = FormFactory(strategy=FormStrategy.UNSCORED)
 
-    page_one = FormPageFactory(form=form, order=0, title="About you")
+    page_one = FormPageFactory(form=form, order=0, title="Your background")
     FormQuestionFactory(
         form_page=page_one,
         type="short_text",

@@ -9,6 +9,11 @@ urlpatterns = [
     path("claim/", views.claim_landing, name="claim"),
     path("status/<uuid:pk>/", views.application_status, name="status"),
     path(
+        "application/<uuid:pk>/about-you/",
+        views.application_about_you,
+        name="about_you",
+    ),
+    path(
         "application/<uuid:pk>/page/<int:page_number>/",
         views.application_form_page,
         name="form_page",

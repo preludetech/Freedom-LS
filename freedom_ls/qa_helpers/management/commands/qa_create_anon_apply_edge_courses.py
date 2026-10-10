@@ -4,7 +4,8 @@ Creates (idempotently) on a single site (default: DemoDev):
 
 1. "QA page-one file course" -- its application form has exactly ONE page with a
    required short-text question "Your name" and a required file-upload question
-   "Upload your ID".
+   "Upload your ID". It exists to show a file question on the first form page,
+   reached straight after About you.
 2. "QA page-less course" -- its application form has NO pages at all.
 3. "QA hidden gated course" -- visibility=hidden, bound to the same demo
    application form as "Functionality Demo - Application gated course".
@@ -56,8 +57,8 @@ PAGE_ONE_COURSE_TITLE = "QA page-one file course"
 PAGE_ONE_COURSE_SLUG = "qa-page-one-file-course"
 PAGE_ONE_FORM_TITLE = "QA page-one file application form"
 PAGE_ONE_FORM_SLUG = "qa-page-one-file-application-form"
-PAGE_ONE_PAGE_TITLE = "About you"
-PAGE_ONE_PAGE_SLUG = "qa-page-one-file-about-you"
+PAGE_ONE_PAGE_TITLE = "Your background"
+PAGE_ONE_PAGE_SLUG = "qa-page-one-file-your-background"
 PAGE_ONE_QUESTIONS: list[tuple[str, QuestionType]] = [
     ("Your name", QuestionType.SHORT_TEXT),
     ("Upload your ID", QuestionType.FILE_UPLOAD),

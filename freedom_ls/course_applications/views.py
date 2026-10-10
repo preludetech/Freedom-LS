@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from typing import cast
 from urllib.parse import urlencode
@@ -36,24 +37,28 @@ from freedom_ls.course_applications.claims import (
     unclaimed_application_ids,
 )
 from freedom_ls.course_applications.config import config
-from freedom_ls.course_applications.forms import ApplicantEmailForm
+from freedom_ls.course_applications.forms import (
+    ApplicantDetailsForm,
+    ApplicantEmailForm,
+)
 from freedom_ls.course_applications.models import CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.anonymous_sittings import (
     owned_or_held_q,
     remember_anonymous_sitting,
 )
-from freedom_ls.form_engine.enums import QuestionType
-from freedom_ls.form_engine.models import Form, FormProgress, QuestionAnswer
+from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.form_engine.page_flow import (
     PageSubmission,
-    page_at,
     page_context,
     render_form_page,
     resolve_page,
     submit_page,
 )
 from freedom_ls.form_engine.paging import (
+    PageLink,
+    build_page_links,
+    page_link_entries,
     resume_page_number,
     unanswered_required_in_form,
     unanswered_required_message,
@@ -199,9 +204,9 @@ def _apply_anonymous(request: HttpRequest, course: Course) -> HttpResponse:
         return redirect(_resume_url(held, held.form_progress))
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
-    if course.application_form is not None:
-        return _apply_anonymous_form_course(request, course)
-    return _apply_anonymous_no_form_course(request, course)
+    if course.application_form is None:
+        return _apply_anonymous_no_form_course(request, course)
+    return _apply_anonymous_about_you(request, course)
 
 
 def _session_lifetime() -> timedelta | None:
@@ -215,64 +220,163 @@ def _session_lifetime() -> timedelta | None:
     return timedelta(seconds=int(settings.SESSION_COOKIE_AGE))
 
 
-def _apply_anonymous_form_course(request: HttpRequest, course: Course) -> HttpResponse:
-    """Page 1 of the form with no rows behind it, until the first valid save.
+ABOUT_YOU_TITLE = "About you"
 
-    Nothing is created for a visitor who only looks. The first page-1 POST
-    that validates creates the unclaimed application and its sitting and saves
-    the page; one that fails creates nothing.
+
+def _about_you_url(app: CourseApplication) -> str:
+    return reverse("course_applications:about_you", kwargs={"pk": app.pk})
+
+
+def _with_about_you_entry(
+    page_links: list[PageLink], *, url: str, is_current: bool
+) -> list[PageLink]:
+    """The page-jump nav of an application that starts on About you.
+
+    The form pages keep their own URLs and numbering inside the form; only
+    the displayed numbers move up by one.
+    """
+    about_you = PageLink(1, ABOUT_YOU_TITLE, url, is_current, True)
+    return [about_you, *(replace(link, number=link.number + 1) for link in page_links)]
+
+
+def _render_about_you(
+    request: HttpRequest,
+    course: Course,
+    details_form: ApplicantDetailsForm,
+    *,
+    application: CourseApplication | None,
+    form_progress: FormProgress | None,
+    read_only: bool = False,
+    return_to_check: bool = False,
+    is_unclaimed: bool = True,
+) -> HttpResponse:
+    """Draw About you at the status its submission earned.
+
+    With no application yet, the form pages are listed but none is reachable.
     """
     form = course.application_form
-    current = page_at(form, 1) if form is not None else None
-    if form is None or current is None:
-        # A form with no pages has no page 1 to show an anonymous visitor.
-        raise Http404
-    submission = PageSubmission()
-    answers: dict[UUID, QuestionAnswer] = {}
-    if request.method == "POST":
+    if application is None or form_progress is None:
+        entries = page_link_entries(
+            list(form.pages.all()) if form is not None else [],
+            0,
+            0,
+            lambda number: "",
+        )
+        about_you_url = ""
+        check_answers_url = ""
+    else:
+        entries = build_page_links(
+            form_progress.form,
+            form_progress,
+            0,
+            lambda number: _page_url(application, number),
+        )
+        about_you_url = _about_you_url(application)
+        check_answers_url = reverse(
+            "course_applications:check_answers", kwargs={"pk": application.pk}
+        )
+    if return_to_check:
+        submit_label = "Save and return to your answers"
+    else:
+        submit_label = "Next" if form is not None else "Submit application"
+    refused = details_form.is_bound and not details_form.is_valid()
+    submission = PageSubmission(
+        required_answers_error=(
+            " ".join(str(error) for error in details_form.non_field_errors())
+            or "Check the details below."
+        )
+        if refused
+        else ""
+    )
+    context: dict[str, object] = {
+        "application": application,
+        "course": course,
+        "details_form": details_form,
+        "page_heading": ABOUT_YOU_TITLE,
+        "page_links": _with_about_you_entry(
+            entries, url=about_you_url, is_current=True
+        ),
+        "read_only": read_only,
+        "return_to_check": return_to_check,
+        "check_answers_url": check_answers_url,
+        "previous_page_url": None,
+        # About you is always followed by a page or by check-your-answers, so
+        # the read-only page never offers the last page's "Your answers" link.
+        "has_next_page": True,
+        "submit_label": submit_label,
+        "privacy_url": _privacy_url(request),
+        "is_unclaimed": is_unclaimed,
+        "session_lifetime": _session_lifetime(),
+        "required_answers_error": submission.required_answers_error,
+        "rejected_answers_error": submission.rejected_answers_error,
+    }
+    return render_form_page(
+        request, "course_applications/about_you.html", context, submission
+    )
+
+
+def _apply_anonymous_about_you(request: HttpRequest, course: Course) -> HttpResponse:
+    """About you for a visitor with nothing held: no row until the details are valid."""
+    form = course.application_form
+    details_form = ApplicantDetailsForm(
+        request.POST if request.method == "POST" else None
+    )
+    if request.method == "POST" and details_form.is_valid():
+        capped = _start_cap_response(request)
+        if capped is not None:
+            return capped
         with transaction.atomic():
             form_progress = FormProgress.objects.create(user=None, form=form)
             app = CourseApplication.objects.create(
-                course=course, email="", form_progress=form_progress
+                course=course, form_progress=form_progress, **details_form.details
             )
-            submission = submit_page(
-                current, request.POST, form_progress, ignore_file_questions=True
-            )
-            if not submission.accepted:
-                # The rows exist only so the page could be checked. They are
-                # rolled back, but what was typed is read first so the refused
-                # page is drawn over those answers rather than over blanks.
-                answers = form_progress.existing_answers_dict(current.questions)
-                prefetch_related_objects(list(answers.values()), "selected_options")
-                transaction.set_rollback(True)
-            else:
-                capped = _start_cap_response(request)
-                if capped is not None:
-                    transaction.set_rollback(True)
-                    return capped
-        if submission.accepted:
-            remember_anonymous_sitting(request, form_progress)
-            remember_unclaimed_application(request, app)
-            if any(
-                question.type == QuestionType.FILE_UPLOAD
-                for question in current.questions
-            ):
-                return redirect(f"{_page_url(app, 1)}?{SAVED_FOR_FILE}=1")
-            if current.is_last:
-                return redirect("course_applications:check_answers", pk=app.pk)
-            return redirect(_page_url(app, 2))
-    context = page_context(
-        form, current, None, submission, lambda number: request.path, answers=answers
-    ) | {
-        "application": None,
-        "course": course,
-        "return_to_check": False,
-        "check_answers_url": "",
-        "is_unclaimed": True,
-        "session_lifetime": _session_lifetime(),
-    }
-    return render_form_page(
-        request, "course_applications/form_page.html", context, submission
+        remember_anonymous_sitting(request, form_progress)
+        remember_unclaimed_application(request, app)
+        return redirect(_resume_url(app, form_progress))
+    return _render_about_you(
+        request, course, details_form, application=None, form_progress=None
+    )
+
+
+@never_cache_same_origin
+def application_about_you(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """The About you page of an application that already exists.
+
+    Only an unclaimed application shows it: a claimed application's details
+    are the account's, so there is nothing here for its owner to edit.
+    """
+    app, _form, form_progress = _application_for_request(request, pk)
+    if app.is_claimed:
+        return _landing_for(app)
+    read_only = app.is_submitted
+    if read_only and request.method == "POST":
+        return _redirect_after_submission(request, app)
+    # The form posts to its own URL, query string included, so the marker
+    # survives a 422 re-render.
+    return_to_check = request.GET.get("return") == RETURN_TO_CHECK
+    details_form = ApplicantDetailsForm(
+        request.POST if request.method == "POST" else None,
+        initial={
+            "first_name": app.first_name,
+            "last_name": app.last_name,
+            "email": app.email,
+        },
+    )
+    if request.method == "POST" and details_form.is_valid():
+        for name, value in details_form.details.items():
+            setattr(app, name, value)
+        app.save(update_fields=[*details_form.details, "updated_at"])
+        if return_to_check:
+            return redirect("course_applications:check_answers", pk=app.pk)
+        return redirect(_resume_url(app, form_progress, page_number=1))
+    return _render_about_you(
+        request,
+        app.course,
+        details_form,
+        application=app,
+        form_progress=form_progress,
+        read_only=read_only,
+        return_to_check=return_to_check,
     )
 
 
@@ -451,24 +555,26 @@ def _page_url(app: CourseApplication, page_number: int) -> str:
     )
 
 
-def _resume_url(app: CourseApplication, form_progress: FormProgress) -> str:
-    """Where an unfinished sitting picks back up.
+def _resume_url(
+    app: CourseApplication,
+    form_progress: FormProgress,
+    page_number: int | None = None,
+) -> str:
+    """Where an unfinished sitting picks back up, or `page_number` when given.
 
     A form with no pages has nothing to fill in, so the only place left to send
     the applicant is the page they submit from.
     """
     if not form_progress.form.pages.exists():
         return reverse("course_applications:check_answers", kwargs={"pk": app.pk})
-    return _page_url(app, resume_page_number(form_progress))
+    if page_number is None:
+        page_number = resume_page_number(form_progress)
+    return _page_url(app, page_number)
 
 
 # Query-string marker an Edit link from the check-your-answers page carries. A
 # page reached with it saves and goes straight back there instead of advancing.
 RETURN_TO_CHECK = "check"
-
-# Marker the first save of a page with a file question carries back to that
-# page, so it can say the file can now be attached.
-SAVED_FOR_FILE = "saved"
 
 
 @never_cache_same_origin
@@ -511,13 +617,21 @@ def application_form_page(
         "check_answers_url": reverse(
             "course_applications:check_answers", kwargs={"pk": app.pk}
         ),
-        # The form posts back to its own URL, marker included, so a refused
-        # re-submission must not repeat the "saved" notice.
-        "saved_for_file": request.method == "GET"
-        and request.GET.get(SAVED_FOR_FILE) == "1",
+        "page_heading": current.page.title,
+        "submit_label": (
+            "Save and return to your answers" if return_to_check else "Next"
+        ),
         "is_unclaimed": not app.is_claimed,
         "session_lifetime": _session_lifetime(),
     }
+    if not app.is_claimed:
+        context["page_links"] = _with_about_you_entry(
+            cast(list[PageLink], context["page_links"]),
+            url=_about_you_url(app),
+            is_current=False,
+        )
+        if page_number == 1:
+            context["previous_page_url"] = _about_you_url(app)
     return render_form_page(
         request, "course_applications/form_page.html", context, submission
     )
@@ -547,7 +661,6 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     app, form, form_progress = _application_for_request(request, pk)
     submitted = form_progress.completed_time is not None
     required_answers_error = ""
-    email_form = ApplicantEmailForm(request.POST if request.method == "POST" else None)
     refused = False
 
     if request.method == "POST" and not submitted:
@@ -564,15 +677,10 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
                 "and is pending review.",
             )
             return redirect("learner_interface:dashboard")
-        elif email_form.is_valid():
-            with transaction.atomic():
-                form_progress.complete()
-                app.email = email_form.cleaned_data["email"]
-                app.save(update_fields=["email", "updated_at"])
+        else:
+            form_progress.complete()
             record_application_submitted(request, app.course)
             return _redirect_to_handoff(request, app)
-        else:
-            refused = True
     elif request.method == "POST":
         return _redirect_after_submission(request, app)
 
@@ -581,7 +689,20 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     prefetch_related_objects(
         [form_progress], "answers__selected_options", "answers__answer_file"
     )
-    sections = []
+    sections: list[dict[str, object]] = [
+        {
+            "title": ABOUT_YOU_TITLE,
+            "edit_url": (
+                f"{_about_you_url(app)}?return={RETURN_TO_CHECK}"
+                if not app.is_claimed
+                else None
+            ),
+            "rows": [
+                {"label": "Name", "text": app.full_name},
+                {"label": "Email address", "text": app.email},
+            ],
+        }
+    ]
     for number, page in enumerate(form.pages.all(), start=1):
         questions = page_questions(page)
         answers = form_progress.existing_answers_dict(questions)
@@ -591,7 +712,11 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
                 "number": number,
                 "edit_url": f"{_page_url(app, number)}?return={RETURN_TO_CHECK}",
                 "rows": [
-                    {"question": question, "answer": answers.get(question.id)}
+                    {
+                        "label": question.rendered_question,
+                        "question": question,
+                        "answer": answers.get(question.id),
+                    }
                     for question in questions
                 ],
             }
@@ -606,9 +731,6 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             "sections": sections,
             "submitted": submitted,
             "required_answers_error": required_answers_error,
-            "email_form": email_form,
-            "privacy_url": _privacy_url(request),
-            "show_email_form": not app.is_claimed,
             "is_unclaimed": not app.is_claimed,
             "session_lifetime": _session_lifetime(),
         },
