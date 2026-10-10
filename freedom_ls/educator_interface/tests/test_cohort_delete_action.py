@@ -294,7 +294,7 @@ def test_a_delete_of_a_cohort_that_gained_a_member_answers_422_and_keeps_it(
 
 @pytest.mark.django_db
 def test_a_delete_of_a_cohort_already_deleted_answers_the_unavailable_fragment(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     """Two admins confirm Delete together: the second finds no row and gets
     the modal's "no longer available" copy, not a server error."""

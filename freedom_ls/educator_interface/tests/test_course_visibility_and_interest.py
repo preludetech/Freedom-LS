@@ -220,7 +220,7 @@ class TestInactiveCohortsDoNotCountAsActive:
 
 @pytest.mark.django_db
 def test_course_page_cohort_table_shows_cohort_status_and_registration_status(
-    mock_site_context: Site, logged_in_client: Callable[[User], Client]
+    mock_site_context: Site, logged_in_client: Callable[[AbstractBaseUser], Client]
 ) -> None:
     organisation = OrganisationFactory()
     educator = UserFactory(staff=True)
