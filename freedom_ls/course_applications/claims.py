@@ -105,9 +105,9 @@ def claim_unclaimed_applications(request: HttpRequest, user: User) -> ClaimRepor
     """Attach the applications this browser holds to the account that just signed in.
 
     One transaction per application, so a collision on one never undoes
-    another. An unsubmitted draft has no email to check, so possession of
-    the session that created it is the whole credential. A submitted one
-    also needs the typed address verified on this account: the session proves
+    another. An unsubmitted draft is still being written in this browser, so
+    possession of the session that created it is the whole credential. A
+    submitted one also needs the typed address verified on this account: the session proves
     the browser, the verified address proves the person.
     """
     ids = unclaimed_application_ids(request)
@@ -178,7 +178,13 @@ def _claim_one(pk: str, user: User) -> tuple[ClaimOutcome, str, str | None]:
         existing = _existing_application(user, course)
         if existing is not None:
             return "collided", str(existing.pk), sitting_pk
-        if application.email and not _has_verified_address(user, application.email):
+        if not application.is_submitted:
+            # A draft is still being written in this browser, so possession of
+            # the session is the whole credential, and the account's details
+            # replace whatever was typed: the decision goes to the account's
+            # address.
+            _take_account_details(application, user)
+        elif not _has_verified_address(user, application.email):
             return "mismatched", pk, sitting_pk
         return (*_attach(application, user), sitting_pk)
 
@@ -206,14 +212,24 @@ def has_unverified_address(user: User, email: str) -> bool:
     return unverified
 
 
+def _take_account_details(application: CourseApplication, user: User) -> None:
+    application.email = user.email
+    application.first_name = user.first_name
+    application.last_name = user.last_name
+
+
 def _attach(application: CourseApplication, user: User) -> tuple[ClaimOutcome, str]:
-    """Set the owner, inside a savepoint so a lost race is a collision, not an error."""
+    """Set the owner, inside a savepoint so a lost race is a collision, not an error.
+
+    A submitted application keeps the details it was sent with: they are the
+    record of what was submitted, and the address already matched a verified one.
+    """
     application.user = user
-    if not application.email:
-        application.email = user.email
     try:
         with transaction.atomic():
-            application.save(update_fields=["user", "email", "updated_at"])
+            application.save(
+                update_fields=["user", "email", "first_name", "last_name", "updated_at"]
+            )
             if application.form_progress is not None:
                 application.form_progress.user = user
                 application.form_progress.save(update_fields=["user"])

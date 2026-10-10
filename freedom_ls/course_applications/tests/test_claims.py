@@ -183,17 +183,6 @@ class TestClaimUnclaimedApplications:
         assert report.is_empty()
         assert not request.session.modified
 
-    def test_claim_of_a_draft_with_no_email_sets_the_account_email(
-        self, mock_site_context
-    ):
-        user = UserFactory(email="me@example.com")
-        app = CourseApplicationFactory(unclaimed=True, email="")
-
-        claim_unclaimed_applications(_request_holding(app), user)
-
-        app.refresh_from_db()
-        assert (app.user, app.email) == (user, "me@example.com")
-
     def test_claim_is_idempotent(self, mock_site_context):
         user = UserFactory()
         app = CourseApplicationFactory(user=user)
@@ -329,11 +318,16 @@ def test_two_concurrent_claims_attach_once(mock_site_context):
     assert CourseApplication.objects.filter(user=user).count() == 1
 
 
-def _unclaimed_with_sitting(**kwargs) -> CourseApplication:
+def _unclaimed_with_sitting(submitted: bool = False, **kwargs) -> CourseApplication:
+    from django.utils import timezone
+
     from freedom_ls.form_engine.factories import FormProgressFactory
 
+    sitting = FormProgressFactory(
+        user=None, completed_time=timezone.now() if submitted else None
+    )
     app: CourseApplication = CourseApplicationFactory(
-        unclaimed=True, form_progress=FormProgressFactory(user=None), **kwargs
+        unclaimed=True, form_progress=sitting, **kwargs
     )
     return app
 
@@ -379,7 +373,7 @@ class TestClaimTheSitting:
 
         user = UserFactory()
         EmailAddressFactory(user=user)
-        app = _unclaimed_with_sitting(email="pat@example.com")
+        app = _unclaimed_with_sitting(submitted=True, email="pat@example.com")
         request = _request_holding_sitting(app)
 
         claim_unclaimed_applications(request, user)
@@ -392,20 +386,54 @@ class TestClaimTheSitting:
         self, mock_site_context
     ):
         user = UserFactory()
-        app = _unclaimed_with_sitting(email="")
+        app = _unclaimed_with_sitting(email="typed@example.com")
 
         report = claim_unclaimed_applications(_request_holding_sitting(app), user)
 
         app.refresh_from_db()
         assert (app.user, report.claimed) == (user, [str(app.pk)])
 
-    def test_unsubmitted_draft_claim_sets_email_from_the_account(
-        self, mock_site_context
-    ):
-        user = UserFactory()
-        app = _unclaimed_with_sitting(email="")
+    def test_unsubmitted_draft_claim_takes_account_details(self, mock_site_context):
+        user = UserFactory(
+            email="me@example.com", first_name="Sam", last_name="Account"
+        )
+        app = _unclaimed_with_sitting(
+            email="typed@example.com", first_name="Typed", last_name="Name"
+        )
 
         claim_unclaimed_applications(_request_holding_sitting(app), user)
 
         app.refresh_from_db()
-        assert app.email == user.email
+        assert (app.email, app.first_name, app.last_name) == (
+            "me@example.com",
+            "Sam",
+            "Account",
+        )
+
+    def test_submitted_claim_keeps_typed_details(self, mock_site_context):
+        user = UserFactory(first_name="Sam", last_name="Account")
+        EmailAddressFactory(user=user, email="Typed@Example.com")
+        app = CourseApplicationFactory(
+            unclaimed=True,
+            email="typed@example.com",
+            first_name="Typed",
+            last_name="Name",
+        )
+
+        claim_unclaimed_applications(_request_holding(app), user)
+
+        app.refresh_from_db()
+        assert (app.email, app.first_name, app.last_name) == (
+            "typed@example.com",
+            "Typed",
+            "Name",
+        )
+
+    def test_claim_never_changes_the_account_name(self, mock_site_context):
+        user = UserFactory(first_name="Sam", last_name="Account")
+        app = _unclaimed_with_sitting(first_name="Typed", last_name="Name")
+
+        claim_unclaimed_applications(_request_holding_sitting(app), user)
+
+        user.refresh_from_db()
+        assert (user.first_name, user.last_name) == ("Sam", "Account")
