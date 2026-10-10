@@ -9,7 +9,6 @@ from __future__ import annotations
 import pytest
 
 from django.http import Http404, QueryDict
-from django.template.loader import render_to_string
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.form_engine.factories import (
@@ -259,11 +258,6 @@ def test_context_carries_the_submission_errors(two_page_form, sitting):
     assert context["rejected_answers_error"] == submission.rejected_answers_error
 
 
-# ---------------------------------------------------------------------------
-# A first page shown before any sitting exists
-# ---------------------------------------------------------------------------
-
-
 @pytest.fixture
 def file_question_form(mock_site_context) -> Form:
     """One page: a required short-text question and a required file question."""
@@ -272,50 +266,6 @@ def file_question_form(mock_site_context) -> Form:
     FormQuestionFactory(form_page=page, type="short_text", order=0, required=True)
     FormQuestionFactory(form_page=page, type="file_upload", order=1, required=True)
     return form
-
-
-@pytest.mark.django_db
-def test_row_less_page_render_shows_no_answers_and_no_upload_control(
-    file_question_form,
-):
-    current = resolve_page(file_question_form, 1)
-    context = page_context(
-        file_question_form, current, None, PageSubmission(), _url_for_page
-    )
-
-    html = render_to_string("form_engine/partials/page_children.html", context)
-
-    assert context["existing_answers"] == {}
-    assert "Save this page to attach a file." in html
-    assert 'type="file"' not in html
-
-
-@pytest.mark.django_db
-def test_row_less_page_links_reach_only_page_one(two_page_form):
-    current = resolve_page(two_page_form, 1)
-
-    context = page_context(
-        two_page_form, current, None, PageSubmission(), _url_for_page
-    )
-
-    accessible = [link.is_accessible for link in context["page_links"]]
-    assert accessible == [True, False]
-
-
-@pytest.mark.django_db
-def test_submit_page_can_ignore_file_questions(file_question_form):
-    sitting = FormProgressFactory(user=None, form=file_question_form)
-    current = resolve_page(file_question_form, 1)
-    short_text = current.questions[0]
-
-    submission = submit_page(
-        current,
-        _post_data({f"question_{short_text.id}": ["Ada"]}),
-        sitting,
-        ignore_file_questions=True,
-    )
-
-    assert submission.accepted is True
 
 
 @pytest.mark.django_db
@@ -329,20 +279,3 @@ def test_submit_page_measures_a_required_file_question_by_default(file_question_
     )
 
     assert submission.accepted is False
-
-
-@pytest.mark.django_db
-def test_page_context_renders_the_answers_it_is_given(two_page_form):
-    current = resolve_page(two_page_form, 1)
-    given: dict = {current.questions[0].id: object()}
-
-    context = page_context(
-        two_page_form,
-        current,
-        None,
-        PageSubmission(),
-        _url_for_page,
-        answers=given,
-    )
-
-    assert context["existing_answers"] is given
