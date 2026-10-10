@@ -252,7 +252,31 @@ def test_not_empty_sentence_pluralises_course_registrations(
 
     sentence = cohort_not_empty_sentence(cohort)
 
-    assert "0 learners and 2 course registrations, counting" in sentence
+    assert "while it has 2 course registrations, counting" in sentence
+
+
+@pytest.mark.django_db
+def test_not_empty_sentence_never_names_a_zero_count(mock_site_context: Site) -> None:
+    """ "0 learners" reads as a reason, and is not one."""
+    organisation = OrganisationFactory()
+    cohort = _cohort_with_courses(organisation, 0, name="Evening group")
+    CohortMembershipFactory(
+        cohort=cohort, learner=LearnerFactory(organisation=organisation)
+    )
+
+    sentence = cohort_not_empty_sentence(cohort)
+
+    assert "while it has 1 learner, counting" in sentence
+    assert "0 course" not in sentence
+
+
+@pytest.mark.django_db
+def test_not_empty_sentence_is_empty_for_an_empty_cohort(
+    mock_site_context: Site,
+) -> None:
+    cohort = _cohort_with_courses(OrganisationFactory(), 0)
+
+    assert cohort_not_empty_sentence(cohort) == ""
 
 
 # inactive cohorts are read-only

@@ -272,7 +272,16 @@ class DataTable:
                 queryset = table_filter.apply(queryset, values)
 
         if query.sort:
-            queryset = queryset.order_by(query.sort)
+            # The queryset's own ordering stays behind the sort, and pk ends
+            # it, or pages repeat and skip rows when several share a value.
+            sort_field = query.sort.lstrip("-")
+            tail = [
+                ordering
+                for ordering in queryset.query.order_by
+                if not isinstance(ordering, str)
+                or ordering.lstrip("-") not in (sort_field, "pk")
+            ]
+            queryset = queryset.order_by(query.sort, *tail, "pk")
         return queryset
 
     @classmethod

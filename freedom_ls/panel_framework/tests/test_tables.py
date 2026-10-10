@@ -897,3 +897,45 @@ def test_export_link_of_a_stacked_table_serves_its_csv(
 
     header, *_body = _rows(response)
     assert header == ["Name", "Kind"]
+
+
+@pytest.mark.django_db
+def test_a_sort_keeps_the_default_ordering_behind_it_and_ends_on_pk(
+    mock_site_context: Site,
+) -> None:
+    """Rows sharing a sort value would otherwise shuffle between pages."""
+
+    class ScoreSortableTable(StubDataTable):
+        @staticmethod
+        def get_columns() -> list[Column]:
+            return [
+                Column(
+                    header="SAT score",
+                    template="cotton/data-table-cells/text.html",
+                    attr="sat_score",
+                    sortable=True,
+                )
+            ]
+
+    request = RequestFactory().get("/", {"stub-sort": "-sat_score"})
+    query = ScoreSortableTable.parse_query(request, "stub")
+
+    rows = ScoreSortableTable.filter_queryset(
+        request, ScoreSortableTable.get_queryset(request), query
+    )
+
+    assert rows.query.order_by == ("-sat_score", "name", "pk")
+
+
+@pytest.mark.django_db
+def test_a_sort_on_the_default_field_does_not_repeat_it(
+    mock_site_context: Site,
+) -> None:
+    request = RequestFactory().get("/", {"stub-sort": "-name"})
+    query = StubDataTable.parse_query(request, "stub")
+
+    rows = StubDataTable.filter_queryset(
+        request, StubDataTable.get_queryset(request), query
+    )
+
+    assert rows.query.order_by == ("-name", "pk")

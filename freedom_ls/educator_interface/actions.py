@@ -21,6 +21,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.queries import (
     cohort_course_count,
     cohort_is_empty,
+    cohort_learner_count,
     members_keeping_access,
 )
 from freedom_ls.learner_management.utils import (
@@ -42,18 +43,22 @@ from freedom_ls.panel_framework.context import PanelContext
 
 def cohort_not_empty_sentence(cohort: Cohort) -> str:
     """Why a cohort cannot be deleted, counting everything deletion would
-    cascade away: removed learners and inactive registrations included."""
+    cascade away: removed learners and inactive registrations included.
+    Empty for an empty cohort, so one call tells a caller both things."""
     learners = cohort.cohortmembership_set.count()
     registrations = cohort.course_registrations.count()
-    counts = join_prose(
-        [
-            count_noun(Learner, learners),
-            count_phrase(registrations, "course registration", "course registrations"),
-        ]
-    )
+    parts = []
+    if learners:
+        parts.append(count_noun(Learner, learners))
+    if registrations:
+        parts.append(
+            count_phrase(registrations, "course registration", "course registrations")
+        )
+    if not parts:
+        return ""
     return (
-        f"{cohort} can't be deleted while it has {counts}, counting removed "
-        "learners and inactive registrations."
+        f"{cohort} can't be deleted while it has {join_prose(parts)}, counting "
+        "removed learners and inactive registrations."
     )
 
 
@@ -76,6 +81,13 @@ class RequiresActiveCohortMixin(PanelAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         if not cast(Cohort, ctx.instance).is_active:
             return self.refuse_inactive(ctx)
+        return self.handle_active_submit(ctx)
+
+    def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
+        """The submit once the cohort is known to be active: the next
+        handle_submit in the MRO. An action with no base submit of its own
+        overrides this, never handle_submit, so the guard above stays the
+        one place the refusal lives."""
         return super().handle_submit(ctx)
 
 
@@ -96,10 +108,8 @@ class CohortStateAction(PanelAction):
         context = super().get_context_data(ctx)
         context["cohort"] = cohort
         context["cohort_course_count"] = cohort_course_count(cohort)
-        context["is_empty"] = cohort_is_empty(cohort)
-        context["not_empty_sentence"] = (
-            "" if context["is_empty"] else cohort_not_empty_sentence(cohort)
-        )
+        context["not_empty_sentence"] = cohort_not_empty_sentence(cohort)
+        context["is_empty"] = not context["not_empty_sentence"]
         return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
@@ -149,40 +159,38 @@ class DeleteEmptyCohortAction(DeleteAction):
     def is_offered(self, ctx: PanelContext) -> bool:
         return cohort_is_empty(cast(Cohort, ctx.instance))
 
-    def _refuse_not_empty(self, ctx: PanelContext, cohort: Cohort) -> HttpResponse:
-        html = render_to_string(
-            self.template_name,
-            self._confirmation_context(
-                ctx,
-                cohort,
-                cascade_summary=[],
-                blocked_reason=cohort_not_empty_sentence(cohort),
-            ),
-            request=ctx.request,
+    def _blocked_context(
+        self, ctx: PanelContext, cohort: Cohort, reason: str
+    ) -> dict[str, object]:
+        return self._confirmation_context(
+            ctx, cohort, cascade_summary=[], blocked_reason=reason
         )
-        return HttpResponse(html, status=422)
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         cohort = cast(Cohort, ctx.instance)
-        if not cohort_is_empty(cohort):
-            return self._confirmation_context(
-                ctx,
-                cohort,
-                cascade_summary=[],
-                blocked_reason=cohort_not_empty_sentence(cohort),
-            )
+        reason = cohort_not_empty_sentence(cohort)
+        if reason:
+            return self._blocked_context(ctx, cohort, reason)
         return super().get_context_data(ctx)
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         with transaction.atomic():
             # Lock the cohort so a membership added between this check and the
             # delete either lands first and is refused here, or waits and then
-            # fails on the missing cohort.
-            cohort = Cohort.objects.select_for_update().get(
-                pk=cast(Cohort, ctx.instance).pk
+            # fails on the missing cohort. A cohort another request deleted
+            # while this one waited is a 404, which the action route answers
+            # with its "unavailable" fragment.
+            cohort = get_object_or_404(
+                Cohort.objects.select_for_update(), pk=cast(Cohort, ctx.instance).pk
             )
-            if not cohort_is_empty(cohort):
-                return self._refuse_not_empty(ctx, cohort)
+            reason = cohort_not_empty_sentence(cohort)
+            if reason:
+                html = render_to_string(
+                    self.template_name,
+                    self._blocked_context(ctx, cohort, reason),
+                    request=ctx.request,
+                )
+                return HttpResponse(html, status=422)
             return super().handle_submit(ctx)
 
 
@@ -232,12 +240,13 @@ KEEPING_NAMES_SHOWN = 10
 class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
     """Withdraws one of the cohort's active course registrations, after
     confirmation. The registration travels as a `registration` parameter, so
-    the action resolves on the courses tab and never renders as a footer
-    button."""
+    the action resolves on the courses tab and renders per row there, never
+    as a footer button."""
 
     label = "Unregister"
     action_name = "unregister"
     variant = "secondary"
+    renders_in_footer = False
     capability = "freedom_ls_learner_management.change_cohortcourseregistration"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "educator_interface/modal/unregister_confirmation.html"
@@ -258,9 +267,7 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
         cohort = cast(Cohort, ctx.instance)
         registration = self._registration(ctx)
         keeping = list(members_keeping_access(registration))
-        member_count = cohort.cohortmembership_set.filter(
-            learner__is_active=True
-        ).count()
+        member_count = cohort_learner_count(cohort)
         names = [learner.user.display_name for learner in keeping[:KEEPING_NAMES_SHOWN]]
         if len(keeping) > KEEPING_NAMES_SHOWN:
             names.append(f"{len(keeping) - KEEPING_NAMES_SHOWN} more")
@@ -278,9 +285,7 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
         )
         return context
 
-    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        if not cast(Cohort, ctx.instance).is_active:
-            return self.refuse_inactive(ctx)
+    def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
         unregister_cohort_from_course(self._registration(ctx))
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.

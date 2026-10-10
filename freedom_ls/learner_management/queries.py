@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-from django.db.models import Exists, Model, OuterRef, Q, QuerySet
+from django.db.models import Count, Exists, Model, OuterRef, Q, QuerySet
 
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.capabilities import (
@@ -52,9 +52,11 @@ class ResolvedRegistration(NamedTuple):
 def access_granting_cohort_registrations() -> QuerySet[CohortCourseRegistration]:
     """Cohort registrations that give their members course access.
 
-    CohortCourseRegistration.is_active and Cohort.is_active are checked
-    here and nowhere else, so no read site can honour one and forget the
-    other.
+    Every access read goes through this, so no read site can honour
+    CohortCourseRegistration.is_active and forget Cohort.is_active. The
+    course progress fan-out in learner_progress deliberately does not: it
+    reads the registration's flag alone, so an inactive cohort's members
+    keep their records and reports, and reactivating needs no catch-up.
     """
     return CohortCourseRegistration.objects.filter(
         is_active=True, cohort__is_active=True
@@ -357,15 +359,46 @@ def members_keeping_access(
     )
 
 
+class CohortCounts(NamedTuple):
+    """The two figures every cohort surface shows side by side."""
+
+    learners: int
+    courses: int
+
+
+def cohort_counts(cohort: Cohort) -> CohortCounts:
+    """Members whose Learner is still active in the organisation, and
+    courses the cohort holds an active registration for, in one query.
+    Every surface showing a cohort's counts reads this."""
+    learners, courses = (
+        Cohort.objects.filter(pk=cohort.pk)
+        .annotate(
+            active_learners=Count(
+                "cohortmembership",
+                filter=Q(cohortmembership__learner__is_active=True),
+                distinct=True,
+            ),
+            active_courses=Count(
+                "course_registrations",
+                filter=Q(course_registrations__is_active=True),
+                distinct=True,
+            ),
+        )
+        .values_list("active_learners", "active_courses")
+        .get()
+    )
+    return CohortCounts(learners=learners, courses=courses)
+
+
 def cohort_learner_count(cohort: Cohort) -> int:
     """Members of this cohort whose Learner is still active in the
-    organisation. Every surface showing a cohort's learner count reads this."""
-    return cohort.cohortmembership_set.filter(learner__is_active=True).count()
+    organisation."""
+    return cohort_counts(cohort).learners
 
 
 def cohort_course_count(cohort: Cohort) -> int:
     """Courses this cohort holds an active registration for."""
-    return cohort.course_registrations.filter(is_active=True).count()
+    return cohort_counts(cohort).courses
 
 
 def cohort_is_empty(cohort: Cohort) -> bool:
@@ -374,8 +407,11 @@ def cohort_is_empty(cohort: Cohort) -> bool:
     CohortCourseRegistration.is_active is False both count, because
     deleting the cohort would cascade them away."""
     return (
-        not cohort.cohortmembership_set.exists()
-        and not cohort.course_registrations.exists()
+        not Cohort.objects.filter(pk=cohort.pk)
+        .filter(
+            Q(cohortmembership__isnull=False) | Q(course_registrations__isnull=False)
+        )
+        .exists()
     )
 
 
@@ -634,12 +670,17 @@ def active_organisation_admins(organisation: Organisation) -> QuerySet[User]:
 
 
 def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
-    """Active users holding an active cohort_admin or cohort_viewer
-    assignment on this cohort, each with the role's display name, gated
-    on an active OrganisationMember the same way can() gates every
-    cohort-level grant. Ordered by name, then role."""
+    """Active users holding an active assignment on this cohort of any role
+    granting view_cohort, each with the role's display name, gated on an
+    active OrganisationMember the same way can() gates every cohort-level
+    grant. Ordered by name, then role.
+
+    The roles come from the site's config, as every other grant lookup
+    reads them, so a downstream role that grants view_cohort is listed and
+    an assignment of a role the config no longer names is left out."""
+    roles = get_role_config(cohort.site.name)
     assignments = list(
-        _active_role_assignments(Cohort, frozenset({"cohort_admin", "cohort_viewer"}))
+        _active_role_assignments(Cohort, roles_granting(VIEW_COHORT, cohort.site))
         .filter(object_id=str(cohort.pk))
         .select_related("user")
     )
@@ -650,7 +691,6 @@ def cohort_educators(cohort: Cohort) -> list[tuple[User, str]]:
             user_id__in=[assignment.user_id for assignment in assignments],
         ).values_list("user_id", flat=True)
     )
-    roles = get_role_config(cohort.site.name)
     educators = [
         (assignment.user, roles[assignment.role].display_name, assignment.role)
         for assignment in assignments
