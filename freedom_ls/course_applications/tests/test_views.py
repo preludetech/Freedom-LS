@@ -1650,6 +1650,31 @@ class TestAnonymousApply:
         ]
         assert CourseApplication.objects.count() == 1
 
+    def test_handoff_carries_first_and_last_name(self, client, mock_site_context):
+        course = CourseFactory()
+        client.post(
+            _apply_url(course),
+            {
+                "first_name": "Ada",
+                "last_name": "Lovelace",
+                "email": "ada@example.com",
+            },
+        )
+        blank_last = Client()
+        blank_last.post(
+            _apply_url(course), {"first_name": "Pat", "email": "pat@example.com"}
+        )
+
+        both = parse_qs(urlparse(client.get(_apply_url(course))["Location"]).query)
+        first_only = parse_qs(
+            urlparse(blank_last.get(_apply_url(course))["Location"]).query
+        )
+
+        assert both["first_name"] == ["Ada"]
+        assert both["last_name"] == ["Lovelace"]
+        assert first_only["first_name"] == ["Pat"]
+        assert "last_name" not in first_only
+
     def test_signed_in_apply_shows_the_account_email_read_only(
         self, client, mock_site_context
     ):

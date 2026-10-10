@@ -139,6 +139,17 @@ class SiteAwareSignupForm(HoneypotFormMixin, SignupForm):
             self.fields["first_name"].required = False
             self.fields["first_name"].label = _("First name (optional)")
 
+        # allauth prefills the email from the query string; the handoff from an
+        # application also carries the typed names.
+        if request is not None and not self.is_bound:
+            for name in ("first_name", "last_name"):
+                field = self.fields[name]
+                if not isinstance(field, forms.CharField):
+                    continue
+                typed = request.GET.get(name, "")[: field.max_length]
+                if typed:
+                    self.initial.setdefault(name, typed)
+
         # Terms / Privacy clickwrap. Per-site policy takes precedence; without
         # one, fall back to config.REQUIRE_TERMS_ACCEPTANCE so operators can
         # flip consent on for every site without creating a row per site.

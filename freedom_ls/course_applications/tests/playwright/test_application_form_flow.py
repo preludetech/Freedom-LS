@@ -194,6 +194,8 @@ def test_an_anonymous_visitor_can_apply_and_is_handed_off_to_signup(
     page.get_by_role("button", name="Submit application").click()
 
     expect(page).to_have_url(re.compile(r"email=ada%40example\.com"))
+    expect(page).to_have_url(re.compile(r"first_name=Ada"))
     expect(page).to_have_url(re.compile(r"next="))
     expect(page.get_by_label("Email")).to_have_value("ada@example.com")
+    expect(page.get_by_label("First name")).to_have_value("Ada")
     expect(page.get_by_text("Your application for")).to_be_visible()

@@ -380,7 +380,7 @@ def application_about_you(request: HttpRequest, pk: UUID) -> HttpResponse:
 def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpResponse:
     """Send an anonymous applicant to create or enter the account that will own this application.
 
-    The typed address prefills signup. The response is the same for a
+    The typed address and names prefill signup. The response is the same for a
     registered and an unregistered address: nothing here looks an account up.
     """
     messages.success(
@@ -390,7 +390,16 @@ def _redirect_to_handoff(request: HttpRequest, app: CourseApplication) -> HttpRe
     )
     auth_url = acquisition_auth_url(request)
     if auth_url is not None:
-        auth_url = f"{auth_url}?{urlencode({'email': app.email})}"
+        prefill = {
+            name: value
+            for name, value in (
+                ("email", app.email),
+                ("first_name", app.first_name),
+                ("last_name", app.last_name),
+            )
+            if value
+        }
+        auth_url = f"{auth_url}?{urlencode(prefill)}"
     return redirect_to_auth(
         request, next_url=reverse("course_applications:claim"), auth_url=auth_url
     )

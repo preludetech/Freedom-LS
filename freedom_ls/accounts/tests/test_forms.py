@@ -406,3 +406,43 @@ def test_honeypot_mixin_logs_with_its_context_label(
         f"Labelled honeypot tripped on site {mock_site_context.domain} "
         "from IP 203.0.113.7"
     ]
+
+
+def _signup_form_initial(client, query: dict[str, str]) -> dict[str, object]:
+    response = client.get(reverse("account_signup"), query)
+    assert response.status_code == 200
+    initial: dict[str, object] = response.context["form"].initial
+    return initial
+
+
+@pytest.mark.django_db
+def test_signup_form_prefills_names_from_query_string(
+    client, mock_site_context
+) -> None:
+    SiteSignupPolicyFactory(allow_signups=True)
+
+    initial = _signup_form_initial(client, {"first_name": "Ada", "last_name": "L"})
+
+    assert initial["first_name"] == "Ada"
+    assert initial["last_name"] == "L"
+
+
+@pytest.mark.django_db
+def test_signup_post_values_win_over_query_string(client, mock_site_context) -> None:
+    SiteSignupPolicyFactory(allow_signups=True)
+
+    response = client.post(
+        reverse("account_signup") + "?first_name=Ada",
+        {"first_name": "Grace", "email": "not-an-email"},
+    )
+
+    assert response.context["form"]["first_name"].value() == "Grace"
+
+
+@pytest.mark.django_db
+def test_signup_prefill_is_cut_to_the_field_length(client, mock_site_context) -> None:
+    SiteSignupPolicyFactory(allow_signups=True)
+
+    initial = _signup_form_initial(client, {"first_name": "A" * 500})
+
+    assert initial["first_name"] == "A" * 200
