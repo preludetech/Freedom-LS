@@ -1669,6 +1669,18 @@ class TestAnonymousApply:
 
         assert CourseApplication.objects.get(user=user).email == "me@example.com"
 
+    def test_signed_in_application_copies_account_names(
+        self, client, mock_site_context
+    ):
+        user = UserFactory(first_name="Ada", last_name="Lovelace")
+        client.force_login(user)
+        course = CourseFactory()
+
+        client.post(_apply_url(course))
+
+        application = CourseApplication.objects.get(user=user)
+        assert (application.first_name, application.last_name) == ("Ada", "Lovelace")
+
     @pytest.mark.parametrize("view_name", ["apply", "form_page", "check_answers"])
     def test_every_unclaimed_application_view_sends_no_store_and_same_origin_referrer(
         self, client, mock_site_context, view_name

@@ -380,9 +380,18 @@ class TestUnclaimedRows:
         assert CourseApplicationAdmin.applicant_email(None, app) == "pat@example.com"
 
     def test_unclaimed_row_shows_a_dash_for_the_name(self, mock_site_context):
-        app = CourseApplicationFactory(unclaimed=True)
+        app = CourseApplicationFactory(unclaimed=True, first_name="", last_name="")
 
         assert CourseApplicationAdmin.applicant_name(None, app) == "-"
+
+    def test_admin_applicant_name_shows_typed_name_for_unclaimed_row(
+        self, mock_site_context
+    ):
+        app = CourseApplicationFactory(
+            unclaimed=True, first_name="Pat", last_name="Typed"
+        )
+
+        assert CourseApplicationAdmin.applicant_name(None, app) == "Pat Typed"
 
 
 def _unclaimed_with_answers() -> tuple[CourseApplication, FormProgress, str]:
@@ -439,6 +448,16 @@ class TestUnclaimedAdmin:
         CourseApplicationFactory(unclaimed=True, email="other@example.com")
 
         response = staff_client.get(reverse(CHANGELIST), {"q": "needle@example.com"})
+
+        assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+    def test_admin_search_by_typed_name(self, staff_client):
+        wanted = CourseApplicationFactory(
+            unclaimed=True, first_name="Zebulon", last_name="Typed"
+        )
+        CourseApplicationFactory(unclaimed=True, first_name="Other", last_name="Name")
+
+        response = staff_client.get(reverse(CHANGELIST), {"q": "Zebulon"})
 
         assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
 

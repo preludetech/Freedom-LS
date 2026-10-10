@@ -155,3 +155,13 @@ class TestUnclaimedApplication:
 
     def test_a_no_form_unclaimed_row_is_submitted(self, mock_site_context):
         assert CourseApplicationFactory(unclaimed=True).is_submitted is True
+
+
+@pytest.mark.parametrize(
+    ("first_name", "last_name", "expected"),
+    [("Ada", "Lovelace", "Ada Lovelace"), ("Ada", "", "Ada"), ("", "", "")],
+)
+def test_full_name_joins_the_names_it_has(first_name, last_name, expected):
+    application = CourseApplication(first_name=first_name, last_name=last_name)
+
+    assert application.full_name == expected

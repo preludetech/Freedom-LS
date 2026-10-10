@@ -33,8 +33,10 @@ class CourseApplication(SiteAwareModel):
     back off that sitting, so it survives the course being re-pointed at another
     one.
 
-    An unclaimed application is a draft-state row with no owner. When application
-    review lands, the partial unique index it adds must carry `user IS NOT NULL`
+    An unclaimed application is a draft-state row with no owner. An anonymous
+    applicant types their name and email before any other row exists, so every
+    application carries an address, and a claimed application carries the
+    account's details. When application review lands, the partial unique index it adds must carry `user IS NOT NULL`
     in its condition, and its `submit` transition must accept a missing actor.
     """
 
@@ -46,6 +48,8 @@ class CourseApplication(SiteAwareModel):
         related_name="course_applications",
     )
     email = models.EmailField(blank=True)
+    first_name = models.CharField(max_length=200, blank=True)
+    last_name = models.CharField(max_length=200, blank=True)
     course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
         on_delete=models.CASCADE,
@@ -77,6 +81,10 @@ class CourseApplication(SiteAwareModel):
         if self.user_id is None:
             return f"CourseApplication({self.email}, {self.course_id})"
         return f"CourseApplication({self.user_id}, {self.course_id})"
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}".strip()
 
     @property
     def is_claimed(self) -> bool:

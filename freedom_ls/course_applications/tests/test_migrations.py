@@ -1,4 +1,4 @@
-"""Data migration for the application email column."""
+"""Data migrations for the application email and name columns."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ def executor() -> Iterator[MigrationExecutor]:
     final.migrate(final.loader.graph.leaf_nodes())
 
 
+# transaction=True because the migration executor commits schema changes.
 @pytest.mark.django_db(transaction=True)
 def test_email_backfilled_from_user_for_existing_rows(executor):
     before = "0004_courseapplication_email_and_user_nullable"
@@ -55,3 +56,31 @@ def test_email_backfilled_from_user_for_existing_rows(executor):
 
     migrated = new_apps.get_model(APP, "CourseApplication").objects.get(pk=row.pk)
     assert migrated.email == "owner@example.com"
+
+
+# transaction=True because the migration executor commits schema changes.
+@pytest.mark.django_db(transaction=True)
+def test_names_backfilled_from_user_for_existing_rows(executor):
+    before = "0006_courseapplication_first_name_and_more"
+    after = "0007_backfill_application_names"
+    old_apps = _apps_at(before)
+    site = old_apps.get_model("sites", "Site").objects.create(
+        domain="migration-names.example.com", name="migration-names"
+    )
+    user = old_apps.get_model("freedom_ls_accounts", "User").objects.create(
+        email="owner-names@example.com",
+        first_name="Ada",
+        last_name="Lovelace",
+        site=site,
+    )
+    course = old_apps.get_model("freedom_ls_content_engine", "Course").objects.create(
+        title="C", slug="c-names", site=site
+    )
+    row = old_apps.get_model(APP, "CourseApplication").objects.create(
+        user=user, course=course, site=site
+    )
+
+    new_apps = _apps_at(after)
+
+    migrated = new_apps.get_model(APP, "CourseApplication").objects.get(pk=row.pk)
+    assert (migrated.first_name, migrated.last_name) == ("Ada", "Lovelace")

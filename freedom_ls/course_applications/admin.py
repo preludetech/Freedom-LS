@@ -92,12 +92,21 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     list_filter_submit = True
     search_fields = [
         "email",
+        "first_name",
+        "last_name",
         "user__email",
         "user__first_name",
         "user__last_name",
         "course__title",
     ]
-    fields = ["is_submitted", "email", "submitted_time_display", "created_at"]
+    fields = [
+        "is_submitted",
+        "first_name",
+        "last_name",
+        "email",
+        "submitted_time_display",
+        "created_at",
+    ]
     readonly_fields = fields
     change_form_template = "admin/form_engine/answers_change_form.html"
 
@@ -206,11 +215,12 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
             return obj.email
         return obj.email or obj.user.email
 
-    @admin.display(description="Applicant name", ordering="user__last_name")
+    @admin.display(description="Applicant name", ordering="last_name")
     def applicant_name(self, obj: CourseApplication) -> str:
-        if obj.user is None:
-            return "-"
-        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        if obj.full_name or obj.user is None:
+            return obj.full_name or "-"
+        # A claimed row with no name of its own shows its owner's name.
+        return f"{obj.user.first_name} {obj.user.last_name}".strip() or "-"
 
     @admin.display(boolean=True, description="Submitted")
     def is_submitted(self, obj: CourseApplication) -> bool:

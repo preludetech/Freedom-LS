@@ -77,7 +77,13 @@ def _start_application(user: User, course: Course) -> CourseApplication:
         # check still converge on one row.
         app: CourseApplication
         app, _ = CourseApplication.objects.get_or_create(
-            user=user, course=course, defaults={"email": user.email}
+            user=user,
+            course=course,
+            defaults={
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+            },
         )
         if course.application_form is not None and app.form_progress is None:
             app.form_progress = FormProgress.objects.create(

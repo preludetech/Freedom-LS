@@ -23,9 +23,17 @@ class CourseApplicationFactory(SiteAwareFactory):
     user = factory.SubFactory(UserFactory)
     course = factory.SubFactory(CourseFactory)
     email = factory.LazyAttribute(lambda obj: obj.user.email if obj.user else "")
+    first_name = factory.LazyAttribute(
+        lambda obj: obj.user.first_name if obj.user else ""
+    )
+    last_name = factory.LazyAttribute(
+        lambda obj: obj.user.last_name if obj.user else ""
+    )
 
     class Params:
         unclaimed = factory.Trait(
             user=None,
             email=factory.Sequence(lambda n: f"applicant{n}@example.com"),
+            first_name="Pat",
+            last_name=factory.Sequence(lambda n: f"Applicant{n}"),
         )
