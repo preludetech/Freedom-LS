@@ -59,6 +59,7 @@ from freedom_ls.learner_management.queries import (
     organisation_for_learner_course,
     organisations_accessible_to,
     peers_of,
+    peers_through,
     registerable_courses_for,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
@@ -978,10 +979,17 @@ class TestEducatorsOf:
     def test_educators_of_agrees_with_learners_visible_to_inside_a_request(
         self, world: World
     ) -> None:
-        """Neither direction consults a cohort's own active state, because Cohort
-        has none. If one is added, change learners_visible_to and educators_of
+        """Neither direction consults Cohort.is_active: an inactive cohort keeps
+        its members and their educators, and loses only course access and peer
+        links. If that changes, change learners_visible_to and educators_of
         together; this test fails when only one moves."""
         assert visible_pairs(world) == educator_pairs(world)
+
+    def test_an_inactive_cohort_keeps_its_educators(self, world: World) -> None:
+        Cohort.objects.filter(pk=world.cohorts["c1"].pk).update(is_active=False)
+
+        assert visible_pairs(world) == educator_pairs(world)
+        assert "c1_admin" in educator_names(world, "in_c1")
 
     @pytest.mark.usefixtures("without_request")
     def test_educators_of_agrees_with_learners_visible_to_outside_a_request(
@@ -1278,6 +1286,58 @@ class TestPeersOf:
         self, world: World
     ) -> None:
         assert _peer_names(world, "in_c1") >= {"in_c1_and_c2", "no_cohort"}
+
+    def test_an_inactive_cohort_links_no_peers_through_membership_or_its_courses(
+        self, world: World
+    ) -> None:
+        Cohort.objects.filter(pk=world.cohorts["c1"].pk).update(is_active=False)
+
+        assert "in_c1_and_c2" not in _peer_names(world, "in_c1")
+        assert "in_c1" not in _peer_names(world, "in_c1_and_c2")
+
+    def test_a_learner_in_an_inactive_cohort_keeps_peers_found_another_way(
+        self, world: World
+    ) -> None:
+        Cohort.objects.filter(pk=world.cohorts["c1"].pk).update(is_active=False)
+
+        assert "no_cohort" in _peer_names(world, "in_c1")
+
+    @pytest.mark.parametrize(
+        ("own_cohort_registration", "other_cohort_registration"),
+        [(False, True), (True, False), (True, True)],
+        ids=["individual-cohort", "cohort-individual", "cohort-cohort"],
+    )
+    def test_a_course_shared_only_through_an_inactive_cohort_makes_no_peer(
+        self,
+        mock_site_context: Site,
+        own_cohort_registration: bool,
+        other_cohort_registration: bool,
+    ) -> None:
+        organisation = OrganisationFactory(site=mock_site_context)
+        course = LearnerCourseRegistrationFactory().course
+        own = LearnerFactory(organisation=organisation)
+        other = LearnerFactory(organisation=organisation)
+        _register_through(own, course, through_cohort=own_cohort_registration)
+        _register_through(other, course, through_cohort=other_cohort_registration)
+        Cohort.objects.filter(organisation=organisation).update(is_active=False)
+
+        assert not peers_of(own).filter(pk=other.pk).exists()
+
+    def test_peers_through_ignores_an_inactive_cohort_it_is_passed(
+        self, world: World
+    ) -> None:
+        c1 = world.cohorts["c1"]
+        Cohort.objects.filter(pk=c1.pk).update(is_active=False)
+        none = Course.objects.none().values("pk")
+
+        peers = peers_through(
+            world.learners["in_c1"],
+            cohorts=Cohort.objects.filter(pk=c1.pk).values("pk"),
+            own_courses=none,
+            cohort_courses=none,
+        )
+
+        assert not peers.exists()
 
 
 @pytest.mark.django_db

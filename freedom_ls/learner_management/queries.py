@@ -52,11 +52,12 @@ class ResolvedRegistration(NamedTuple):
 def access_granting_cohort_registrations() -> QuerySet[CohortCourseRegistration]:
     """Cohort registrations that give their members course access.
 
-    Every access read goes through this, so no read site can honour
-    CohortCourseRegistration.is_active and forget Cohort.is_active. The
-    course progress fan-out in learner_progress deliberately does not: it
-    reads the registration's flag alone, so an inactive cohort's members
-    keep their records and reports, and reactivating needs no catch-up.
+    Every access read and every course-peer read goes through this, so no read
+    site can honour CohortCourseRegistration.is_active and forget
+    Cohort.is_active. The course progress fan-out in learner_progress
+    deliberately does not: it reads the registration's flag alone, so an
+    inactive cohort's members keep their records and reports, and
+    reactivating needs no catch-up.
     """
     return CohortCourseRegistration.objects.filter(
         is_active=True, cohort__is_active=True
@@ -547,18 +548,22 @@ def colleagues_of(user: User, site: Site) -> QuerySet[User]:
 
 def is_in_cohort_expression(site: Site, cohorts: QuerySet) -> Exists:
     """Exists() for a Learner queryset: the outer row is a member of one of `cohorts`
-    (a values() queryset of cohort ids)."""
+    (a values() queryset of cohort ids) that is active. An inactive cohort links
+    no peers, whichever cohorts the caller passes."""
     return Exists(
         CohortMembership.objects.filter(
-            site=site, learner=OuterRef("pk"), cohort__in=cohorts
+            site=site,
+            learner=OuterRef("pk"),
+            cohort__in=cohorts,
+            cohort__is_active=True,
         )
     )
 
 
 def holds_registration_for_any_expression(site: Site, courses: QuerySet) -> Q:
     """Q for a Learner queryset: the outer row holds an active registration for one
-    of `courses` (a values() queryset of course ids), individually or through a
-    cohort it belongs to.
+    of `courses` (a values() queryset of course ids), individually or through an
+    active cohort it belongs to.
 
     Both cohort conditions sit in one filter() call, for the reason
     is_registered_for_course_expression gives: split across two calls, the
@@ -569,11 +574,10 @@ def holds_registration_for_any_expression(site: Site, courses: QuerySet) -> Q:
             site=site, learner=OuterRef("pk"), course__in=courses, is_active=True
         )
     ) | Exists(
-        CohortCourseRegistration.objects.filter(
+        access_granting_cohort_registrations().filter(
             site=site,
             course__in=courses,
             cohort__cohortmembership__learner=OuterRef("pk"),
-            is_active=True,
         )
     )
 
@@ -582,15 +586,15 @@ def registrations_of(
     learner: Learner,
 ) -> tuple[QuerySet[LearnerCourseRegistration], QuerySet[CohortCourseRegistration]]:
     """This learner's active registrations by each path: its own, and those of the
-    cohorts it is a member of. Returned separately because each kind carries its
+    active cohorts it is a member of. Returned separately because each kind carries its
     own configuration."""
     site = learner.site
     return (
         LearnerCourseRegistration.objects.filter(
             site=site, learner=learner, is_active=True
         ),
-        CohortCourseRegistration.objects.filter(
-            site=site, cohort__cohortmembership__learner=learner, is_active=True
+        access_granting_cohort_registrations().filter(
+            site=site, cohort__cohortmembership__learner=learner
         ),
     )
 
@@ -629,7 +633,8 @@ def peers_through(
 
 def peers_of(learner: Learner) -> QuerySet[Learner]:
     """Other users' active Learner rows in this learner's organisation that share
-    a cohort with it, or share a course both hold an active registration for."""
+    an active cohort with it, or share a course both hold an active registration
+    for."""
     if not learner.is_active:
         return Learner.objects.none()
     cohorts = CohortMembership.objects.filter(
