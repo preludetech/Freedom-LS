@@ -1,7 +1,7 @@
 ---
 content_type: FORM_PAGE
 subtitle: Who you are and where you are starting from
-title: About you
+title: Your background
 uuid: ea00e850-e51c-403d-bbd3-07f706eb4721
 ---
 content: |-
@@ -9,22 +9,12 @@ content: |-
   Nothing here rules you out.
 uuid: 2fce93f7-f721-4023-95cf-7b0ad2424d1b
 ---
-question: What is your full name?
-required: true
-type: short_text
-uuid: 0a73990c-d232-4da1-91ba-84ed30c683b9
----
 max: '2010-01-01'
 min: '1900-01-01'
 question: What is your date of birth?
 required: true
 type: date
 uuid: 9be9d76b-9d0b-484d-af63-b6e353d256cf
----
-question: What is your email address?
-required: true
-type: email
-uuid: 5c870e60-2bc0-4363-b603-53746b47753d
 ---
 question: What is your phone number?
 required: false
