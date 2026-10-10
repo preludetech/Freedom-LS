@@ -90,6 +90,9 @@ class TierConfig:
     none: tuple[str, ...]
     escalation: tuple[str, ...]
     tooling: tuple[tuple[str, tuple[str, ...]], ...]
+    # The marker expression every tier runs with. A later `-m` replaces the one in
+    # `addopts`, so tests the default run deselects still run when a tier selects them.
+    markers: str | None = None
 
 
 @dataclass(frozen=True)
@@ -130,6 +133,13 @@ def tooling_entries(
     return tuple(entries)
 
 
+def marker_expression(table: dict[str, object]) -> str | None:
+    value = table.get("markers")
+    if value is not None and not isinstance(value, str):
+        raise ConfigError("[tool.test_tiers] 'markers' must be a string")
+    return value
+
+
 def load_tier_config(project_root: Path) -> TierConfig:
     """Read `[tool.test_tiers]`, with the generic lists extended by the project's.
 
@@ -144,7 +154,16 @@ def load_tier_config(project_root: Path) -> TierConfig:
         none=NONE_GLOBS + glob_list(table, "none"),
         escalation=ESCALATION_GLOBS + glob_list(table, "escalation"),
         tooling=TOOLING + tooling_entries(table),
+        markers=marker_expression(table),
     )
+
+
+def marker_args(config: TierConfig) -> list[str]:
+    return [] if config.markers is None else ["-m", shlex.quote(config.markers)]
+
+
+def full_command(config: TierConfig) -> str:
+    return " ".join([FULL_COMMAND, *marker_args(config)])
 
 
 def first_match(path: str, globs: tuple[str, ...]) -> str | None:
@@ -378,7 +397,9 @@ def branch_test_decisions(
     return [replace(d, reason=BRANCH_TEST_REASON) for d in decisions]
 
 
-def compose_command(selected: set[str], touched: set[str], project_root: Path) -> str:
+def compose_command(
+    selected: set[str], touched: set[str], config: TierConfig, project_root: Path
+) -> str:
     """The pytest line for a targeted run; `touched` keeps those apps' browser tests in."""
     ignores = [
         f"--ignore={shlex.quote(d + '/playwright')}"
@@ -386,7 +407,12 @@ def compose_command(selected: set[str], touched: set[str], project_root: Path) -
         if d not in touched and (project_root / d / "playwright").is_dir()
     ]
     return " ".join(
-        [TARGETED_PREFIX, *ignores, *(shlex.quote(p) for p in sorted(selected))]
+        [
+            TARGETED_PREFIX,
+            *marker_args(config),
+            *ignores,
+            *(shlex.quote(p) for p in sorted(selected)),
+        ]
     )
 
 
@@ -467,9 +493,9 @@ def main() -> int:
         outcome = {"none": "none", "full": "full"}.get(d.kind) or ", ".join(d.selects)
         print(f"why: {d.path} -> {outcome} ({d.reason})")
     if tier == "full":
-        print(f"command: {FULL_COMMAND}")
+        print(f"command: {full_command(config)}")
     elif tier == "targeted":
-        print(f"command: {compose_command(selected, touched, project_root)}")
+        print(f"command: {compose_command(selected, touched, config, project_root)}")
     return 0
 
 

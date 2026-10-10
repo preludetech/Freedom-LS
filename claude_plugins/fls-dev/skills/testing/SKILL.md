@@ -109,6 +109,7 @@ FreedomLS ships to downstream projects, so markers control which tests are *port
 What runs where:
 
 - `uv run pytest` runs `not ci_only and not weasyprint and not dev_tooling` (the `addopts` `-m`), without coverage. `--cov` opts in. It includes `playwright` and `fls_internal`, since that *is* FLS regression testing. `testpaths` covers `freedom_ls`, `tests` and `claude_plugins/fls-content`.
+- The test tiers (`select_tests.sh`) pass `-m 'not ci_only and not weasyprint'`, from `[tool.test_tiers] markers`, so `dev_tooling` tests run when a tier selects them. `addopts` also sets `--dist loadfile`: under `-n auto` a module's tests stay on one worker, so a module-scoped fixture such as the demo-content import runs once per module.
 - CI runs three jobs. The unit job runs `-m "not playwright and not dev_tooling" --cov` with the coverage gate, and includes `weasyprint` because CI has the system libraries. The developer-tooling job runs `-m "dev_tooling and not playwright"`. The Playwright job runs `-m playwright -n auto`, which the root conftest caps at four workers.
 - A concrete downstream project runs:
 

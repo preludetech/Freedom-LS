@@ -737,6 +737,50 @@ def test_malformed_tooling_entry_exits_2_naming_the_key(
     assert "tooling" in result.stderr
 
 
+MARKERS_TABLE = '[tool.test_tiers]\nmarkers = "not slow"\n'
+
+
+def test_project_markers_entry_is_passed_to_the_full_command(tmp_path: Path) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": MARKERS_TABLE})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/migrations/0001_initial.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto -m 'not slow'"
+    ]
+
+
+def test_project_markers_entry_is_passed_to_the_targeted_command(
+    tmp_path: Path,
+) -> None:
+    # Arrange
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": MARKERS_TABLE})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "pkg/alpha/services.py")
+
+    # Assert
+    assert lines(result.stdout, "command") == [
+        "command: uv run pytest -n auto --no-cov -m 'not slow' pkg/alpha/tests"
+    ]
+
+
+def test_non_string_markers_entry_exits_2_naming_the_key(tmp_path: Path) -> None:
+    # Arrange
+    table = '[tool.test_tiers]\nmarkers = ["slow"]\n'
+    write_tree(tmp_path, alpha_app() | {"pyproject.toml": table})
+
+    # Act
+    result = run_script(SCRIPT, tmp_path, "docs/a.md")
+
+    # Assert
+    assert result.returncode == 2
+    assert "markers" in result.stderr
+
+
 def commit_all(project: Path, message: str) -> None:
     run_command(["git", "add", "."], project)
     run_command(

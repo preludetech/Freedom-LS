@@ -41,6 +41,10 @@ behaviour.
 - **If your project runs pytest with `--strict-markers` and registers FLS's markers in its own
   pytest config**, add `dev_tooling` to that list. Otherwise collecting those FLS tests fails with
   an unregistered-marker error.
+- **If your project runs the `ds` plugin's test tiers and its `addopts` deselects tests by
+  marker**, set `markers` in `[tool.test_tiers]` to the expression the tiers should run with.
+  The tier commands pass it as `-m`, which replaces the `-m` in `addopts`. Without it, a tier
+  skips the deselected tests even when it selects their directory.
 
 Many browser and markup tests were also merged or deleted, so the portable set is smaller than
 before. You don't need to do anything about that.

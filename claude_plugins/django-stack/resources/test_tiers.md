@@ -21,12 +21,16 @@ runs pytest names its tier; the flags live here and nowhere else.
   two glob tuples at the top of `${CLAUDE_PLUGIN_ROOT}/scripts/select_tests.py`; the project's own
   are in `[tool.test_tiers]` in `pyproject.toml`. The script applies them, so nobody applies them
   by hand. Done when every `why:` line is accounted for and the printed command exits zero.
-- **full.** The whole suite, in parallel, with whatever `addopts` in `pyproject.toml` adds
-  (coverage, the threshold, browser tests):
+- **full.** The whole suite, in parallel:
 
   ```
   uv run pytest -n auto
   ```
+
+  plus `-m '<expression>'` when `[tool.test_tiers]` in `pyproject.toml` sets `markers`. That
+  `-m` replaces the one in `addopts`, so tests the default run deselects still run in a tier.
+  The wrapper prints the exact line for a `tier: full` result. Coverage and its threshold run
+  wherever the project puts them: in `addopts`, or in CI only.
 
 ## How to run a tier
 
@@ -43,9 +47,9 @@ The TDD RED and GREEN runs of one test:
 uv run pytest <file>::<test> -x --no-cov
 ```
 
-`--no-cov` makes the exit code mean pass or fail. With coverage on, any run smaller than the whole
-suite fails the coverage threshold in `pyproject.toml`, whatever the test did. The same flag applies
-to `pytest --co` and to any other partial run.
+`--no-cov` makes the exit code mean pass or fail. In a project whose `addopts` turns coverage on,
+any run smaller than the whole suite fails the coverage threshold, whatever the test did. The same
+flag applies to `pytest --co` and to any other partial run.
 
 ## Reporting
 

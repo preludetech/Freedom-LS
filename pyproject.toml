@@ -80,7 +80,10 @@ DJANGO_SETTINGS_MODULE = "config.settings_dev"
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
 env = ["DJANGO_ALLOW_ASYNC_UNSAFE = True"]
 testpaths = ["freedom_ls", "tests", "claude_plugins/fls-content"]
-addopts = "--strict-markers -m 'not ci_only and not weasyprint and not dev_tooling' --disable-socket --allow-hosts=127.0.0.1,::1 --tracing=retain-on-failure --screenshot=only-on-failure"
+# --dist loadfile keeps a module's tests on one xdist worker, so a module-scoped fixture (the
+# demo-content import) runs once per module rather than once per worker. It does nothing
+# without -n.
+addopts = "--strict-markers -m 'not ci_only and not weasyprint and not dev_tooling' --disable-socket --allow-hosts=127.0.0.1,::1 --tracing=retain-on-failure --screenshot=only-on-failure --dist loadfile"
 markers = [
     "playwright: marks tests that use playwright for browser automation",
     "ci_only: marks slow tests that should only run in CI (e.g. real-time rate-limit windows)",
@@ -112,6 +115,10 @@ escalation = [
     "freedom_ls/site_aware_models/**",
     "freedom_ls/content_base/**",
 ]
+# The marker expression the tiers run with. It drops `not dev_tooling` from the default
+# filter, so a tier that selects tests/, freedom_ls/dev_tools/tests or the content validator
+# runs their tests.
+markers = "not ci_only and not weasyprint"
 
 # This repository hosts the plugins; their scripts and templates are tested in tests/.
 [[tool.test_tiers.tooling]]
@@ -149,6 +156,10 @@ omit = [
     # delete silently empties somebody's dataset -- but those are written where
     # the risk is, not to move this number.
     "*/qa_helpers/*",
+    # dev_tools is developer tooling too: the danger_ commands, create_demo_data and
+    # the guard that keeps them out of production. Its tests run in the dev-tooling CI
+    # job, which carries no coverage, so counting it here would only lower the number.
+    "*/dev_tools/*",
 ]
 
 [tool.coverage.report]
