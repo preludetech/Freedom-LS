@@ -10,6 +10,7 @@ from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
 from django.db.models import Model
 from django.db.models.deletion import ProtectedError
 from django.http import HttpRequest, HttpResponse
+from django.shortcuts import render
 from django.template.loader import render_to_string
 
 from freedom_ls.panel_framework.context import PanelContext
@@ -128,6 +129,45 @@ class PanelAction:
         raise NotImplementedError
 
 
+def form_fragment_context(
+    form: forms.BaseForm,
+    *,
+    form_title: str,
+    form_url: str,
+    submit_buttons: list[dict[str, str]],
+) -> dict[str, object]:
+    """Mark the form's first visible field for autofocus and build the
+    context `modal/form.html` renders.
+
+    Skipped when the form carries errors: a browser moves focus to a
+    freshly-inserted `autofocus` field as soon as it renders, which would
+    override the error-summary focus appModal sets for a 422 re-render.
+    """
+    fields = form.visible_fields()
+    if fields and not form.errors:
+        fields[0].field.widget.attrs["autofocus"] = True
+    return {
+        "form": form,
+        "field_error_count": sum(1 for name in form.errors if name != NON_FIELD_ERRORS),
+        "form_title": form_title,
+        "form_url": form_url,
+        "submit_buttons": submit_buttons,
+    }
+
+
+def denied_response(ctx: PanelContext, action: PanelAction) -> HttpResponse:
+    """The 403 fragment for an action the user may not perform."""
+    context = {
+        "action_label": action.label,
+        **ctx.config.get_denied_context(
+            ctx.request, action.get_capability(ctx), action.permission_object(ctx)
+        ),
+    }
+    return render(
+        ctx.request, "panel_framework/partials/action_denied.html", context, status=403
+    )
+
+
 class FormPanelAction(PanelAction):
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "panel_framework/modal/form.html"
@@ -167,25 +207,12 @@ class FormPanelAction(PanelAction):
     def _fragment_context(
         self, form: forms.ModelForm, form_url: str
     ) -> dict[str, object]:
-        """Mark the form's first visible field for autofocus and build the
-        context its fragment template renders.
-
-        Skipped when the form carries errors: a browser moves focus to a
-        freshly-inserted `autofocus` field as soon as it renders, which would
-        override the error-summary focus appModal sets for a 422 re-render.
-        """
-        fields = form.visible_fields()
-        if fields and not form.errors:
-            fields[0].field.widget.attrs["autofocus"] = True
-        return {
-            "form": form,
-            "field_error_count": sum(
-                1 for name in form.errors if name != NON_FIELD_ERRORS
-            ),
-            "form_title": self.form_title,
-            "form_url": form_url,
-            "submit_buttons": self.submit_buttons,
-        }
+        return form_fragment_context(
+            form,
+            form_title=self.form_title,
+            form_url=form_url,
+            submit_buttons=self.submit_buttons,
+        )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         """The modal fragment, holding an unbound form."""

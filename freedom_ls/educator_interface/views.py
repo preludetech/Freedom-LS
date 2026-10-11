@@ -25,6 +25,8 @@ from django.urls import reverse
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
+    AddExistingLearnersAction,
+    AddToCohortAction,
     DeleteEmptyCohortAction,
     EditCohortAction,
     EditLearnerNameAction,
@@ -646,6 +648,7 @@ class LearnerInstanceView(InstanceView):
     def get_actions(self) -> list[PanelAction]:
         return [
             EditLearnerNameAction(cast(Learner, self.instance)),
+            AddToCohortAction(),
             *learner_state_actions(),
         ]
 
@@ -726,7 +729,7 @@ class CohortLearnersPanel(DataTablePanel):
     refresh_events = (COHORT_CHANGED,)
 
     def get_actions(self) -> list[PanelAction]:
-        return [RemoveFromCohortAction()]
+        return [AddExistingLearnersAction(), RemoveFromCohortAction()]
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()

@@ -10,6 +10,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.learner_actions import (
+    add_to_cohort,
     deactivate_learner,
     reactivate_learner,
     remove_from_cohort,
@@ -199,3 +200,73 @@ class TestRemoveFromCohort:
             remove_from_cohort(learner, cohort)
 
         assert CohortMembership.objects.filter(learner=learner).count() == 1
+
+
+@pytest.mark.django_db
+class TestAddToCohort:
+    def test_creates_the_membership_once(self, mock_site_context):
+        cohort = CohortFactory()
+        learner = LearnerFactory(organisation=cohort.organisation)
+
+        added = add_to_cohort(learner, cohort)
+
+        assert (
+            added,
+            CohortMembership.objects.filter(learner=learner, cohort=cohort).count(),
+        ) == (True, 1)
+
+    def test_records_one_member_added_event_without_a_move_id(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        cohort = CohortFactory()
+        learner = LearnerFactory(organisation=cohort.organisation)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            add_to_cohort(learner, cohort)
+
+        event = WebhookEvent._base_manager.get()
+        assert event.event_type == "cohort.member_added"
+        assert event.payload == {
+            "user_id": learner.user.pk,
+            "user_email": learner.user.email,
+            "organisation_id": str(learner.organisation_id),
+            "learner_id": str(learner.pk),
+            "cohort_id": str(cohort.pk),
+            "cohort_name": cohort.name,
+            "move_id": None,
+        }
+
+    def test_a_repeat_returns_false(self, mock_site_context):
+        learner, cohort = _member()
+
+        assert add_to_cohort(learner, cohort) is False
+
+    def test_a_repeat_records_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        learner, cohort = _member()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            add_to_cohort(learner, cohort)
+
+        assert WebhookEvent._base_manager.count() == 0
+
+    def test_refuses_another_organisations_cohort_and_changes_nothing(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        elsewhere = CohortFactory(organisation=OrganisationFactory())
+
+        with pytest.raises(ValueError, match="another organisation"):
+            add_to_cohort(learner, elsewhere)
+
+        assert CohortMembership.objects.filter(learner=learner).count() == 0
+
+    def test_refuses_an_inactive_cohort_and_changes_nothing(self, mock_site_context):
+        cohort = CohortFactory(is_active=False)
+        learner = LearnerFactory(organisation=cohort.organisation)
+
+        with pytest.raises(ValueError, match="inactive"):
+            add_to_cohort(learner, cohort)
+
+        assert CohortMembership.objects.filter(learner=learner).count() == 0

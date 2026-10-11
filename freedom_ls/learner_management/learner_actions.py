@@ -72,3 +72,17 @@ def remove_from_cohort(learner: Learner, cohort: Cohort) -> bool:
         if deleted:
             _fire("cohort.member_removed", learner, _cohort_payload(cohort))
     return bool(deleted)
+
+
+def add_to_cohort(learner: Learner, cohort: Cohort) -> bool:
+    """Make the learner a member of an active cohort of their organisation;
+    False when they already were. Registrations the cohort holds start giving
+    them access through the membership's own signals."""
+    _check_cohort(learner, cohort)
+    with transaction.atomic():
+        _, created = CohortMembership._base_manager.get_or_create(
+            site=learner.site, learner=learner, cohort=cohort
+        )
+        if created:
+            _fire("cohort.member_added", learner, _cohort_payload(cohort))
+    return created

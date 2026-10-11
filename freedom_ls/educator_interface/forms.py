@@ -2,9 +2,15 @@ from collections.abc import Mapping
 from typing import cast
 
 from django import forms
+from django.db.models import QuerySet
+from django.http import QueryDict
 
 from freedom_ls.accounts.models import User
-from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+)
 from freedom_ls.learner_management.queries import registerable_courses_for
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
@@ -53,3 +59,31 @@ class CohortCourseRegistrationForm(forms.ModelForm):
         super().__init__(data)
         course_field = cast(forms.ModelChoiceField, self.fields["course"])
         course_field.queryset = registerable_courses_for(cohort)
+
+
+class CohortPickerForm(forms.Form):
+    """Picks one cohort from the queryset the action offers."""
+
+    cohort = forms.ModelChoiceField(queryset=Cohort.objects.none())
+
+    def __init__(
+        self, data: Mapping[str, str] | None = None, *, queryset: QuerySet[Cohort]
+    ) -> None:
+        super().__init__(data)
+        cast(forms.ModelChoiceField, self.fields["cohort"]).queryset = queryset
+
+
+class LearnerPickerForm(forms.Form):
+    """Picks any number of learners from the queryset the action offers."""
+
+    learners = forms.ModelMultipleChoiceField(
+        queryset=Learner.objects.none(), widget=forms.SelectMultiple
+    )
+
+    def __init__(
+        self, data: QueryDict | None = None, *, queryset: QuerySet[Learner]
+    ) -> None:
+        super().__init__(data)
+        cast(
+            forms.ModelMultipleChoiceField, self.fields["learners"]
+        ).queryset = queryset
