@@ -15,9 +15,13 @@ from django.template.loader import render_to_string
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
+    CohortPickerForm,
     LearnerNameForm,
+    LearnerPickerForm,
 )
+from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.learner_actions import (
+    add_to_cohort,
     deactivate_learner,
     reactivate_learner,
     remove_from_cohort,
@@ -28,6 +32,7 @@ from freedom_ls.learner_management.models import (
     Learner,
 )
 from freedom_ls.learner_management.queries import (
+    ADD_COHORTMEMBERSHIP,
     cohort_course_count,
     cohort_is_empty,
     cohort_learner_count,
@@ -48,6 +53,8 @@ from freedom_ls.panel_framework.actions import (
     PanelAction,
     count_noun,
     count_phrase,
+    denied_response,
+    form_fragment_context,
     join_prose,
     navigation_response,
 )
@@ -495,6 +502,159 @@ class RemoveFromCohortAction(MembershipAction):
             }
         )
         return context
+
+
+ADD_LEARNER = "freedom_ls_learner_management.add_learner"
+
+
+def _picker_fragment(
+    action: PanelAction,
+    ctx: PanelContext,
+    form: forms.BaseForm,
+    *,
+    title: str,
+    button: dict[str, str],
+    status: int = 200,
+) -> HttpResponse:
+    """The picker form's modal fragment, bound or unbound."""
+    context = form_fragment_context(
+        form,
+        form_title=title,
+        form_url=action.get_action_url(ctx),
+        submit_buttons=[button],
+    )
+    html = render_to_string(
+        "panel_framework/modal/form.html", context, request=ctx.request
+    )
+    return HttpResponse(html, status=status)
+
+
+def _membership_changed_response(
+    learner_ids: list[str], cohort_id: str
+) -> HttpResponse:
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = build_hx_trigger(
+        {LEARNER_CHANGED: learner_ids, COHORT_CHANGED: [cohort_id]}, close_modal=True
+    )
+    return response
+
+
+class AddToCohortAction(PanelAction):
+    """Adds the learner on the page to an active cohort the user may add to."""
+
+    label = "Add to cohort"
+    action_name = "add_to_cohort"
+    variant = "secondary"
+    capability = ADD_COHORTMEMBERSHIP
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/form.html"
+    _BUTTON = {
+        "label": "Add to cohort",
+        "variant": "primary",
+        "loading_text": "Adding...",
+    }
+
+    def _form(self, ctx: PanelContext) -> CohortPickerForm:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        learner = cast(Learner, ctx.instance)
+        if ctx.request.method == "POST":
+            # Wider than the offered set, so a cohort the user may see but not
+            # add to reaches the permission check and is refused as a denial.
+            queryset = Cohort.objects.filter(organisation=scoped.organisation)
+            data = ctx.request.POST
+        else:
+            queryset = cohorts_visible_to(
+                scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
+            ).filter(is_active=True)
+            data = None
+        return CohortPickerForm(
+            data, queryset=queryset.exclude(cohortmembership__learner=learner)
+        )
+
+    def _title(self, ctx: PanelContext) -> str:
+        return f"Add {cast(Learner, ctx.instance).user.display_name} to a cohort"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return form_fragment_context(
+            self._form(ctx),
+            form_title=self._title(ctx),
+            form_url=self.get_action_url(ctx),
+            submit_buttons=[self._BUTTON],
+        )
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        form = self._form(ctx)
+        if not form.is_valid():
+            return _picker_fragment(
+                self, ctx, form, title=self._title(ctx), button=self._BUTTON, status=422
+            )
+        cohort = cast(Cohort, form.cleaned_data["cohort"])
+        if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, cohort):
+            return denied_response(ctx, self)
+        if not cohort.is_active:
+            return inactive_cohort_response(ctx.request, cohort)
+        learner = cast(Learner, ctx.instance)
+        add_to_cohort(learner, cohort)
+        return _membership_changed_response([str(learner.pk)], str(cohort.pk))
+
+
+class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
+    """Adds existing learners to the cohort on the page, for a user who may
+    add cohort members but not create learners."""
+
+    label = "Add learners"
+    action_name = "add_existing_learners"
+    variant = "secondary"
+    capability = ADD_COHORTMEMBERSHIP
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/form.html"
+    _BUTTON = {
+        "label": "Add learners",
+        "variant": "primary",
+        "loading_text": "Adding...",
+    }
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return super().is_offered(ctx) and not can(
+            scoped.user, ADD_LEARNER, scoped.organisation
+        )
+
+    def _form(self, ctx: PanelContext) -> LearnerPickerForm:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        cohort = cast(Cohort, ctx.instance)
+        return LearnerPickerForm(
+            ctx.request.POST if ctx.request.method == "POST" else None,
+            queryset=learners_visible_to(scoped.user, scoped.organisation)
+            .select_related("user")
+            .exclude(cohortmembership__cohort=cohort),
+        )
+
+    def _title(self, ctx: PanelContext) -> str:
+        return f"Add learners to {cast(Cohort, ctx.instance)}"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        return form_fragment_context(
+            self._form(ctx),
+            form_title=self._title(ctx),
+            form_url=self.get_action_url(ctx),
+            submit_buttons=[self._BUTTON],
+        )
+
+    def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
+        form = self._form(ctx)
+        if not form.is_valid():
+            return _picker_fragment(
+                self, ctx, form, title=self._title(ctx), button=self._BUTTON, status=422
+            )
+        cohort = cast(Cohort, ctx.instance)
+        learners = form.cleaned_data["learners"]
+        with transaction.atomic():
+            for learner in learners:
+                add_to_cohort(learner, cohort)
+        return _membership_changed_response(
+            [str(learner.pk) for learner in learners], str(cohort.pk)
+        )
 
 
 def cohort_state_actions() -> list[PanelAction]:

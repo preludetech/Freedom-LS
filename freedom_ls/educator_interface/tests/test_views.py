@@ -1333,3 +1333,37 @@ def test_a_members_page_renders_an_inactive_cohorts_row_without_any_action(
 
     (row,) = document.xpath("//tr[contains(., 'Dormant group')]")
     assert row.cssselect("button") == []
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohorts_learners_tab_renders_no_add_learners_control(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    assert "add_existing_learners" not in lxml.html.tostring(document).decode()
+
+
+@pytest.mark.django_db
+def test_the_add_to_cohort_picker_on_a_learners_page_offers_no_inactive_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    inactive = CohortFactory(organisation=organisation, is_active=False)
+    learner = LearnerFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _interface_url(
+            organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert str(inactive.pk) not in response.content.decode()

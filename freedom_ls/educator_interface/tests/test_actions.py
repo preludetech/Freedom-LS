@@ -1187,3 +1187,270 @@ def test_a_forged_remove_on_an_unassigned_cohort_answers_403(
 
     assert response.status_code == 403
     assert CohortMembership.objects.filter(learner=learner, cohort=other).exists()
+
+
+# add to a cohort
+
+
+def _add_to_cohort_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+    )
+
+
+def _add_learners_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(
+        organisation, cohort, "/__tabs/learners/__actions/add_existing_learners"
+    )
+
+
+def _offered_options(client: Client, url: str) -> set[str]:
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value")
+        for option in document.cssselect("option[value]")
+        if option.get("value")
+    }
+
+
+def _cohort_admin_on(organisation: Organisation, *cohorts: Cohort):
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    for cohort in cohorts:
+        assign_role(grantor, educator, "cohort_admin", cohort)
+    return educator
+
+
+@pytest.mark.django_db
+def test_add_to_cohort_offers_only_active_cohorts_the_learner_is_not_in(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, member_of = _membership(organisation)
+    open_cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    inactive = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
+
+    offered = _offered_options(staff_client, _add_to_cohort_url(organisation, learner))
+
+    assert offered == {str(open_cohort.pk)}
+    assert str(member_of.pk) not in offered
+    assert str(inactive.pk) not in offered
+
+
+@pytest.mark.django_db
+def test_add_to_cohort_post_adds_the_membership(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+
+    response = _post(
+        staff_client,
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    assert response.status_code == 204
+    assert CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_add_to_cohort_post_sends_the_learner_and_cohort_events(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+
+    response = _post(
+        staff_client,
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+    assert trigger[COHORT_CHANGED] == {"ids": [str(cohort.pk)]}
+    assert "closeModal" in trigger
+
+
+@pytest.mark.django_db
+def test_add_to_cohort_post_naming_an_inactive_cohort_answers_422_and_adds_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
+
+    response = _post(
+        staff_client,
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    assert response.status_code == 422
+    assert not CohortMembership.objects.filter(learner=learner).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_add_to_cohort_offers_only_assigned_cohorts(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, granted = _membership(organisation)
+    spare = cast(Cohort, CohortFactory(organisation=organisation))
+    unassigned = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, granted, spare)
+
+    offered = _offered_options(
+        logged_in_client(educator), _add_to_cohort_url(organisation, learner)
+    )
+
+    assert offered == {str(spare.pk)}
+    assert str(unassigned.pk) not in offered
+
+
+@pytest.mark.django_db
+def test_a_forged_add_to_an_unassigned_cohort_answers_403_and_adds_nothing(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, granted = _membership(organisation)
+    unassigned = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, granted)
+
+    response = _post(
+        logged_in_client(educator),
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(unassigned.pk)},
+    )
+
+    assert response.status_code == 403
+    assert not CohortMembership.objects.filter(
+        learner=learner, cohort=unassigned
+    ).exists()
+
+
+def _learner_tab_triggers(client: Client, cohort: Cohort) -> list[str]:
+    url = _cohort_url(cohort.organisation, cohort, "/__tabs/learners")
+    document = lxml.html.fromstring(client.get(url).content.decode())
+    return [
+        button.get("hx-get") or ""
+        for button in document.cssselect("button[hx-get]")
+        if "add_existing_learners" in (button.get("hx-get") or "")
+    ]
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_without_add_learner_sees_the_learner_picker_on_the_cohort_tab(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, cohort)
+
+    triggers = _learner_tab_triggers(logged_in_client(educator), cohort)
+
+    assert len(triggers) == 1
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_with_add_learner_sees_no_learner_picker(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "organisation_admin", organisation)
+
+    triggers = _learner_tab_triggers(logged_in_client(educator), cohort)
+
+    assert triggers == []
+
+
+@pytest.mark.django_db
+def test_the_learner_picker_offers_learners_outside_the_cohort(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    member = cast(Learner, LearnerFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=cohort, learner=member)
+    outsider = cast(Learner, LearnerFactory(organisation=organisation))
+    educator = _cohort_admin_on(organisation, cohort)
+    CohortMembershipFactory(
+        cohort=CohortFactory(organisation=organisation), learner=outsider
+    )
+    assign_role(
+        LearnerFactory(user__superuser=True).user,
+        educator,
+        "organisation_admin",
+        organisation,
+    )
+
+    offered = _offered_options(
+        logged_in_client(educator), _add_learners_url(organisation, cohort)
+    )
+
+    assert str(member.pk) not in offered
+    assert str(outsider.pk) in offered
+
+
+@pytest.mark.django_db
+def test_the_learner_picker_post_adds_each_learner(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    first = cast(Learner, LearnerFactory(organisation=organisation))
+    second = cast(Learner, LearnerFactory(organisation=organisation))
+
+    response = staff_client.post(
+        _add_learners_url(organisation, cohort),
+        {"learners": [str(first.pk), str(second.pk)]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 204
+    assert set(
+        CohortMembership.objects.filter(cohort=cohort).values_list(
+            "learner_id", flat=True
+        )
+    ) == {first.pk, second.pk}
+
+
+@pytest.mark.django_db
+def test_the_learner_picker_post_sends_every_learner_id_and_the_cohort_id(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    first = cast(Learner, LearnerFactory(organisation=organisation))
+    second = cast(Learner, LearnerFactory(organisation=organisation))
+
+    response = staff_client.post(
+        _add_learners_url(organisation, cohort),
+        {"learners": [str(first.pk), str(second.pk)]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert set(trigger[LEARNER_CHANGED]["ids"]) == {str(first.pk), str(second.pk)}
+    assert trigger[COHORT_CHANGED] == {"ids": [str(cohort.pk)]}
+
+
+@pytest.mark.django_db
+def test_a_stale_learner_picker_post_on_an_inactive_cohort_answers_422(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, is_active=False))
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+
+    response = staff_client.post(
+        _add_learners_url(organisation, cohort),
+        {"learners": [str(learner.pk)]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
+    assert not CohortMembership.objects.filter(cohort=cohort).exists()

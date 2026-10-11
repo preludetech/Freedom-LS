@@ -759,3 +759,47 @@ class TestRemoveFromCohortIsolation:
         )
 
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestAddToCohortIsolation:
+    """The add pickers only accept pks from the organisation in the URL."""
+
+    def test_another_organisations_cohort_pk_adds_no_membership(
+        self, logged_in_client
+    ) -> None:
+        organisation_a = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation_a)
+        foreign_cohort = CohortFactory(organisation=OrganisationFactory())
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation_a, "organisation_admin")
+        url = _interface_url(
+            organisation_a.slug, f"learners/{learner.pk}/__actions/add_to_cohort"
+        )
+
+        response = logged_in_client(educator).post(
+            url, {"cohort": str(foreign_cohort.pk)}, HTTP_HX_REQUEST="true"
+        )
+
+        assert response.status_code == 422
+        assert not foreign_cohort.cohortmembership_set.exists()
+
+    def test_another_organisations_learner_pk_adds_no_membership(
+        self, logged_in_client
+    ) -> None:
+        organisation_a = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation_a)
+        foreign_learner = LearnerFactory(organisation=OrganisationFactory())
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, cohort, "cohort_admin")
+        url = _interface_url(
+            organisation_a.slug,
+            f"cohorts/{cohort.pk}/__tabs/learners/__actions/add_existing_learners",
+        )
+
+        response = logged_in_client(educator).post(
+            url, {"learners": [str(foreign_learner.pk)]}, HTTP_HX_REQUEST="true"
+        )
+
+        assert response.status_code == 422
+        assert not cohort.cohortmembership_set.exists()

@@ -28,7 +28,7 @@ from django.utils.cache import patch_vary_headers
 from django.utils.text import slugify
 
 from freedom_ls.base.csv_safety import UTF8_BOM
-from freedom_ls.panel_framework.actions import PanelAction
+from freedom_ls.panel_framework.actions import PanelAction, denied_response
 from freedom_ls.panel_framework.bulk_actions import (
     BulkAction,
     Selection,
@@ -614,15 +614,7 @@ def _handle_action(
     if not action.has_permission(ctx):
         if request.headers.get("HX-Request") != "true":
             raise PermissionDenied
-        context = {
-            "action_label": action.label,
-            **ctx.config.get_denied_context(
-                request, action.get_capability(ctx), action.permission_object(ctx)
-            ),
-        }
-        return render(
-            request, "panel_framework/partials/action_denied.html", context, status=403
-        )
+        return denied_response(ctx, action)
 
     if request.method in ("POST", "DELETE"):
         return action.handle_submit(ctx)
