@@ -97,17 +97,18 @@ def ensure_course_progress_records_for_cohort_registration(
 ) -> None:
     """One record per current member of the cohort whose Learner is active.
 
-    bulk_create so a large cohort is one statement, and ignore_conflicts so a
-    concurrent individual registration or a re-fired signal loses the race
-    harmlessly. bulk_create bypasses save(), so every instance carries its
-    site and its grant before the call -- there is no _set_site_from_request
-    to fall back on, which is what we want here.
+    bulk_create so a large cohort is one statement. Members who already hold a
+    record for this registration are excluded up front, so a re-fired signal
+    creates nothing; ignore_conflicts is not used because Postgres will not
+    apply it to a deferrable unique constraint. bulk_create bypasses save(),
+    so every instance carries its site and its grant before the call -- there
+    is no _set_site_from_request to fall back on, which is what we want here.
     """
     # No .distinct(): unique_learner_cohort_membership guarantees one
     # membership row per (learner, cohort), so the join cannot duplicate.
     learners = Learner._base_manager.filter(
         cohortmembership__cohort_id=cohort_registration.cohort_id, is_active=True
-    )
+    ).exclude(course_progress_records__cohort_registration=cohort_registration)
     CourseProgress._base_manager.bulk_create(
         [
             CourseProgress(
@@ -117,6 +118,5 @@ def ensure_course_progress_records_for_cohort_registration(
                 **_registration_kwargs(cohort_registration),
             )
             for learner in learners
-        ],
-        ignore_conflicts=True,
+        ]
     )

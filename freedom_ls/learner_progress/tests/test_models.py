@@ -4,7 +4,7 @@ import pytest
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.db.models import ProtectedError
+from django.db.models import Case, ProtectedError, Value, When
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -455,6 +455,37 @@ class TestUniquenessPerRegistration:
                 learner_registration=None,
                 cohort_registration=registration,
             )
+
+    def test_one_update_swapping_two_records_registrations_succeeds(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        first = _cohort_grant(learner, CourseFactory())
+        second = _cohort_grant(learner, CourseFactory())
+        first_record = CourseProgressFactory(
+            learner=learner,
+            course=first.course,
+            learner_registration=None,
+            cohort_registration=first,
+        )
+        second_record = CourseProgressFactory(
+            learner=learner,
+            course=second.course,
+            learner_registration=None,
+            cohort_registration=second,
+        )
+
+        CourseProgress.objects.filter(
+            id__in=[first_record.id, second_record.id]
+        ).update(
+            cohort_registration=Case(
+                When(id=first_record.id, then=Value(second.id)),
+                default=Value(first.id),
+            )
+        )
+
+        first_record.refresh_from_db()
+        assert first_record.cohort_registration_id == second.id
 
     def test_many_cohort_granted_records_for_one_learner_coexist(
         self, mock_site_context
