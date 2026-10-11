@@ -195,6 +195,20 @@ def _interface_link(
     )
 
 
+def _learner_column(attr: str = "") -> Column:
+    """The shared learner cell. `attr` names the row's learner; empty means
+    the row is the learner."""
+    prefix = f"{attr}__" if attr else ""
+    return Column(
+        header="Learner",
+        template="educator_interface/data-table-cells/learner.html",
+        attr=attr,
+        sortable=True,
+        sort_field=f"{prefix}user__first_name",
+        card="primary",
+    )
+
+
 def _registration_columns() -> list[Column]:
     """The Status/Registered columns the three registration tables share."""
     return [
@@ -336,28 +350,7 @@ class LearnerDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link(
-                "First Name",
-                "user.first_name",
-                "learners/{pk}",
-                sortable=True,
-                card="primary",
-                quick_view=True,
-                fallback_text_attr="user.email",
-            ),
-            _interface_link(
-                "Last Name",
-                "user.last_name",
-                "learners/{pk}",
-                sortable=True,
-            ),
-            Column(
-                header="Email",
-                template="cotton/data-table-cells/text.html",
-                attr="user.email",
-                # sortable=True,
-                card="md_only",
-            ),
+            _learner_column(),
             RelationLinkColumn(
                 header="Cohorts",
                 template="educator_interface/data-table-cells/cohort_links.html",
@@ -923,25 +916,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
     @staticmethod
     def get_columns() -> list[Column]:
         return [
-            _interface_link(
-                "First Name",
-                "learner.user.first_name",
-                "learners/{learner.pk}",
-                card="primary",
-                quick_view=True,
-                fallback_text_attr="learner.user.email",
-            ),
-            _interface_link(
-                "Last Name",
-                "learner.user.last_name",
-                "learners/{learner.pk}",
-            ),
-            Column(
-                header="Email",
-                template="cotton/data-table-cells/text.html",
-                attr="learner.user.email",
-                card="md_only",
-            ),
+            _learner_column("learner"),
             *_registration_columns(),
         ]
 
