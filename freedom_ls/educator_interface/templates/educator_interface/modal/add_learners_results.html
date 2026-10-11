@@ -1,0 +1,18 @@
+{% comment %}
+The modal body an AddLearnersAction's valid POST returns. Context: results
+(AddLearnerResult list), cohort (the Cohort they were added to, or None).
+{% endcomment %}
+<c-modal-header focus_title="true">{% if cohort %}Added to {{ cohort }}{% else %}Learners added{% endif %}</c-modal-header>
+
+<ul class="divide-y divide-border px-6 py-2 text-sm" data-testid="add-learners-results">
+    {% for result in results %}
+        <li class="py-2">
+            <span class="font-medium">{{ result.email }}</span>
+            <span class="text-muted">{{ result.outcome.label }}{% if result.cohort_outcome %}. {{ result.cohort_outcome.label }}{% endif %}</span>
+        </li>
+    {% endfor %}
+</ul>
+
+<c-button-group variant="right" class="border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose">Close</c-button>
+</c-button-group>

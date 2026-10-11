@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from django.http import QueryDict
 
 from freedom_ls.accounts.models import User
+from freedom_ls.learner_management.learner_actions import LearnerEntry
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -87,3 +88,55 @@ class LearnerPickerForm(forms.Form):
         cast(
             forms.ModelMultipleChoiceField, self.fields["learners"]
         ).queryset = queryset
+
+
+MAX_ADD_LEARNERS = 50
+
+
+class AddLearnersForm(forms.Form):
+    """Pasted lines of `email, first name, last name`, and an optional cohort.
+
+    An invalid address is not a form error: add_learners reports it on its
+    own row, so one typo does not block the rest of the list.
+    """
+
+    entries = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 8}),
+        help_text="One per line: email, first name, last name",
+    )
+    cohort = forms.ModelChoiceField(queryset=Cohort.objects.none(), required=False)
+
+    def __init__(
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        cohorts: QuerySet[Cohort],
+        preset: Cohort | None = None,
+    ) -> None:
+        super().__init__(data)
+        cohort_field = cast(forms.ModelChoiceField, self.fields["cohort"])
+        cohort_field.queryset = cohorts
+        if preset is not None:
+            cohort_field.widget = forms.HiddenInput()
+            cohort_field.initial = preset.pk
+
+    def clean_entries(self) -> list[LearnerEntry]:
+        lines = [
+            line.strip()
+            for line in self.cleaned_data["entries"].splitlines()
+            if line.strip()
+        ]
+        if not lines:
+            raise forms.ValidationError("Enter at least one email address.")
+        if len(lines) > MAX_ADD_LEARNERS:
+            raise forms.ValidationError(
+                f"Add up to {MAX_ADD_LEARNERS} at a time; larger lists are "
+                "imported from a file."
+            )
+        entries = []
+        for line in lines:
+            email, first_name, last_name, *_ = [
+                part.strip() for part in line.split(",")
+            ] + ["", ""]
+            entries.append(LearnerEntry(email, first_name, last_name))
+        return entries

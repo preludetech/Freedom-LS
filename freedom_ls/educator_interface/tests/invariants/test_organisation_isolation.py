@@ -803,3 +803,45 @@ class TestAddToCohortIsolation:
 
         assert response.status_code == 422
         assert not cohort.cohortmembership_set.exists()
+
+
+@pytest.mark.django_db
+class TestAddLearnersIsolation:
+    """The add-learners dialog only accepts cohorts from the organisation in the URL."""
+
+    def _url(self, organisation) -> str:
+        return _interface_url(organisation.slug, "learners/__actions/add_learners")
+
+    def _client(self, logged_in_client, organisation):
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_admin")
+        return logged_in_client(educator)
+
+    def test_another_organisations_cohort_pk_as_the_preset_answers_404(
+        self, logged_in_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        foreign_cohort = CohortFactory(organisation=OrganisationFactory())
+
+        response = self._client(logged_in_client, organisation).get(
+            self._url(organisation),
+            {"cohort": str(foreign_cohort.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_another_organisations_cohort_pk_in_the_post_adds_no_learner(
+        self, logged_in_client
+    ) -> None:
+        organisation = OrganisationFactory()
+        foreign_cohort = CohortFactory(organisation=OrganisationFactory())
+
+        response = self._client(logged_in_client, organisation).post(
+            self._url(organisation),
+            {"entries": "new@example.com", "cohort": str(foreign_cohort.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert not foreign_cohort.cohortmembership_set.exists()

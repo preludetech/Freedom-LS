@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
 from django import forms
 from django.db import transaction
-from django.db.models import Model
+from django.db.models import Model, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.forms import (
+    AddLearnersForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
     LearnerNameForm,
@@ -21,6 +23,7 @@ from freedom_ls.educator_interface.forms import (
 )
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.learner_actions import (
+    add_learners,
     add_to_cohort,
     deactivate_learner,
     reactivate_learner,
@@ -65,14 +68,17 @@ if TYPE_CHECKING:
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
-def _uuid_param(request: HttpRequest, name: str) -> UUID:
-    """A UUID the action's trigger sent along: from the form on a submit, from
-    the query string otherwise. A missing or malformed value is a 404."""
-    params = request.POST if request.method == "POST" else request.GET
+def _uuid_from(params: Mapping[str, str], name: str) -> UUID:
     try:
         return UUID(params.get(name, ""))
     except ValueError:
         raise Http404(f"No such {name}") from None
+
+
+def _uuid_param(request: HttpRequest, name: str) -> UUID:
+    """A UUID the action's trigger sent along: from the form on a submit, from
+    the query string otherwise. A missing or malformed value is a 404."""
+    return _uuid_from(request.POST if request.method == "POST" else request.GET, name)
 
 
 def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpResponse:
@@ -654,6 +660,114 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
                 add_to_cohort(learner, cohort)
         return _membership_changed_response(
             [str(learner.pk) for learner in learners], str(cohort.pk)
+        )
+
+
+class AddLearnersAction(PanelAction):
+    """Adds pasted email addresses as learners of the organisation, making a
+    pending account for each unknown address, and optionally puts them in a
+    cohort. The results come back in the modal, which stays open."""
+
+    label = "Add learners"
+    action_name = "add_learners"
+    capability = ADD_LEARNER
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "panel_framework/modal/form.html"
+    _BUTTON = {
+        "label": "Add learners",
+        "variant": "primary",
+        "loading_text": "Adding...",
+    }
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return cast("OrganisationScopedRequest", ctx.request).organisation
+
+    def _cohorts(self, ctx: PanelContext) -> QuerySet[Cohort]:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return cohorts_visible_to(
+            scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
+        ).filter(is_active=True)
+
+    def _preset_cohort(self, ctx: PanelContext) -> Cohort | None:
+        """The cohort the dialog is fixed to: the page's own cohort, else one
+        named in the query string. A form field of the same name never counts,
+        so a submitted cohort is only ever validated against the offered set."""
+        if isinstance(ctx.instance, Cohort):
+            return ctx.instance
+        if "cohort" not in ctx.request.GET:
+            return None
+        return get_object_or_404(
+            self._cohorts(ctx), pk=_uuid_from(ctx.request.GET, "cohort")
+        )
+
+    def _form(self, ctx: PanelContext, preset: Cohort | None) -> AddLearnersForm:
+        return AddLearnersForm(
+            ctx.request.POST if ctx.request.method == "POST" else None,
+            cohorts=self._cohorts(ctx),
+            preset=preset,
+        )
+
+    def _form_url(self, ctx: PanelContext, preset: Cohort | None) -> str:
+        url = self.get_action_url(ctx)
+        if preset is not None and not isinstance(ctx.instance, Cohort):
+            return f"{url}?cohort={preset.pk}"
+        return url
+
+    def _fragment_context(
+        self, ctx: PanelContext, form: AddLearnersForm, preset: Cohort | None
+    ) -> dict[str, object]:
+        return form_fragment_context(
+            form,
+            form_title=f"Add learners to {preset}" if preset else "Add learners",
+            form_url=self._form_url(ctx, preset),
+            submit_buttons=[self._BUTTON],
+        )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        preset = self._preset_cohort(ctx)
+        return self._fragment_context(ctx, self._form(ctx, preset), preset)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        preset = self._preset_cohort(ctx)
+        form = self._form(ctx, preset)
+        if not form.is_valid():
+            html = render_to_string(
+                self.template_name,
+                self._fragment_context(ctx, form, preset),
+                request=ctx.request,
+            )
+            return HttpResponse(html, status=422)
+        cohort = cast(Cohort | None, form.cleaned_data["cohort"]) or preset
+        organisation = cast("OrganisationScopedRequest", ctx.request).organisation
+        try:
+            results = add_learners(organisation, form.cleaned_data["entries"], cohort)
+        except ValueError:
+            return inactive_cohort_response(ctx.request, cast(Cohort, cohort))
+        html = render_to_string(
+            "educator_interface/modal/add_learners_results.html",
+            {"results": results, "cohort": cohort},
+            request=ctx.request,
+        )
+        events = {
+            LEARNER_CHANGED: [
+                str(result.learner.pk) for result in results if result.learner
+            ]
+        }
+        if cohort is not None:
+            events[COHORT_CHANGED] = [str(cohort.pk)]
+        response = HttpResponse(html)
+        response["HX-Trigger"] = build_hx_trigger(events)
+        return response
+
+
+class AddLearnersToCohortAction(RequiresActiveCohortMixin, AddLearnersAction):
+    """Add learners on a cohort's page, with the cohort preset. Offered only
+    to a user who may create learners; others get the existing-learner picker."""
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return super().is_offered(ctx) and can(
+            scoped.user, ADD_LEARNER, scoped.organisation
         )
 
 
