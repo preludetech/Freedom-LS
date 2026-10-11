@@ -52,6 +52,7 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
     colleagues_of,
     educators_of,
+    holds_registration_for_any_expression,
     is_registered_for_course_expression,
     latest_registration,
     learner_for_course,
@@ -1563,3 +1564,30 @@ def test_learner_status_and_learner_status_q_agree(
     assert learner_status(learner) == status
     matching = Learner.objects.filter(learner_status_q(status))
     assert list(matching) == [learner]
+
+
+@pytest.mark.django_db
+def test_holds_registration_without_a_site_matches_the_same_learners_as_with_it(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    organisation = OrganisationFactory()
+    cohort = _make_cohort(organisation=organisation)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course, is_active=True)
+    through_cohort = LearnerFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=through_cohort)
+    individual = LearnerCourseRegistrationFactory(
+        learner=LearnerFactory(organisation=organisation), course=course
+    ).learner
+    LearnerFactory(organisation=organisation)
+    site = individual.site
+
+    without_site = Learner.objects.filter(
+        holds_registration_for_any_expression(None, [str(course.pk)])
+    )
+    with_site = Learner.objects.filter(
+        holds_registration_for_any_expression(site, Course.objects.values("pk"))
+    )
+
+    assert set(without_site) == {through_cohort, individual}
+    assert set(with_site) == set(without_site)

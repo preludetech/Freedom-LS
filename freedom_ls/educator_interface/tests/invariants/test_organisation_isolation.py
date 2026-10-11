@@ -21,6 +21,7 @@ from __future__ import annotations
 import re
 from types import SimpleNamespace
 
+import lxml.html
 import pytest
 
 from django.test import Client, RequestFactory
@@ -183,15 +184,21 @@ class TestCrossOrganisationIsolation:
     def test_users_list_course_cell_never_names_a_course_registered_through_b(
         self, isolation
     ):
-        """Same leak, through the Registered Courses cell."""
+        """Same leak, through the Registered Courses cell. Only the table rows are
+        read: the Course filter lists every course visible to the educator."""
         response = isolation.client.get(
             _interface_url(isolation.organisation_a.slug, "learners")
         )
 
         assert response.status_code == 200
-        content = response.content.decode()
-        assert isolation.course_a.title in content
-        assert isolation.course_b.title not in content
+        rows = " ".join(
+            body.text_content()
+            for body in lxml.html.fromstring(response.content.decode()).cssselect(
+                "tbody"
+            )
+        )
+        assert isolation.course_a.title in rows
+        assert isolation.course_b.title not in rows
 
     def test_learner_detail_is_reachable_for_organisation_as_own_learner(
         self, isolation

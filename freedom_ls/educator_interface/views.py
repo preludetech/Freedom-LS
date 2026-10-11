@@ -30,6 +30,8 @@ from freedom_ls.educator_interface.events import (
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
+    LearnerCohortFilter,
+    LearnerCourseFilter,
     LearnerStatusFilter,
     ShowInactiveFilter,
     VisibleCourseFilter,
@@ -432,7 +434,11 @@ class LearnerDataTable(DataTable):
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
-        return [LearnerStatusFilter()]
+        return [
+            LearnerStatusFilter(),
+            LearnerCohortFilter("cohort", "Cohort", lookup=""),
+            LearnerCourseFilter("course", "Course", lookup=""),
+        ]
 
 
 class LearnerDetailsPanel(InstanceDetailsPanel):
