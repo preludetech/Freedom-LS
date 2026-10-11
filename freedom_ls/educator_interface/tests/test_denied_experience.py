@@ -19,6 +19,7 @@ from freedom_ls.educator_interface.views import OrganisationSectionConfig
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
+    CohortMembershipFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort, OrganisationMember
@@ -288,3 +289,26 @@ def test_an_organisation_admins_pasted_edit_name_post_answers_403_and_keeps_the_
 
     learner.user.refresh_from_db()
     assert (response.status_code, learner.user.first_name) == (403, "Ada")
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_pasted_deactivate_learner_post_answers_403_and_keeps_the_learner_active(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    user = UserFactory(staff=True)
+    assign_object_role(user, cohort, "cohort_admin")
+    client = logged_in_client(user)
+
+    response = client.post(
+        _interface_url(
+            organisation.slug, f"learners/{learner.pk}/__actions/deactivate"
+        ),
+        HTTP_HX_REQUEST="true",
+    )
+
+    learner.refresh_from_db()
+    assert (response.status_code, learner.is_active) == (403, True)

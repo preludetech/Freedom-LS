@@ -1,0 +1,7 @@
+{% extends "panel_framework/modal/read_only.html" %}
+
+{% block title %}{{ learner.user.display_name }} was already changed{% endblock title %}
+
+{% block content %}
+    <p class="text-sm">Nothing changed. Someone else may have already used {{ state }} on this learner.</p>
+{% endblock content %}
