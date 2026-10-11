@@ -167,6 +167,7 @@ class CourseProgress(SiteAwareModel):
             models.UniqueConstraint(
                 fields=["cohort_registration", "learner"],
                 name="one_course_progress_per_cohort_registration",
+                deferrable=models.Deferrable.IMMEDIATE,
             ),
             models.CheckConstraint(
                 condition=(

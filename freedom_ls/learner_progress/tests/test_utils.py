@@ -11,6 +11,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.learner_progress.utils import (
     ensure_course_progress_record,
@@ -195,3 +196,37 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
             first_learner.id,
             second_learner.id,
         }
+
+    def test_firing_twice_creates_one_record_per_member_and_raises_nothing(
+        self, mock_site_context
+    ):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        cohort = CohortFactory(organisation=learner.organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        ensure_course_progress_records_for_cohort_registration(registration)
+
+        ensure_course_progress_records_for_cohort_registration(registration)
+
+        assert (
+            CourseProgress.objects.filter(cohort_registration=registration).count() == 1
+        )
+
+    def test_a_member_who_already_holds_the_record_is_skipped(self, mock_site_context):
+        course = CourseFactory()
+        learner = LearnerFactory()
+        cohort = CohortFactory(organisation=learner.organisation)
+        CohortMembershipFactory(learner=learner, cohort=cohort)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        existing = CourseProgressFactory(
+            learner=learner,
+            course=course,
+            learner_registration=None,
+            cohort_registration=registration,
+        )
+
+        ensure_course_progress_records_for_cohort_registration(registration)
+
+        records = CourseProgress.objects.filter(cohort_registration=registration)
+        assert list(records.values_list("id", flat=True)) == [existing.id]
