@@ -7,15 +7,22 @@
         <div class="space-y-6">
             <h1>Your application</h1>
 
-            <p>
-                Your application for <strong>{{ application.course.title }}</strong> has been
-                received and is currently pending review.
-            </p>
+            {% if application.is_email_verified %}
+                <p>
+                    Your application for <strong>{{ application.course.title }}</strong> has been
+                    received and is currently pending review.
+                </p>
 
-            <p class="text-muted">
-                A reviewer will assess your application. You will be notified once a decision
-                has been made. No action is required from you at this time.
-            </p>
+                <p class="text-muted">
+                    A reviewer will assess your application. You will be notified once a decision
+                    has been made. No action is required from you at this time.
+                </p>
+            {% else %}
+                <p>
+                    Your application for <strong>{{ application.course.title }}</strong> has been
+                    received.
+                </p>
+            {% endif %}
 
             {% comment %}
             NOTE: when application review lands, dynamic state rendering goes here —
@@ -23,9 +30,15 @@
             (get_available_user_state_transitions).
             {% endcomment %}
 
-            <c-button href="{% url 'learner_interface:dashboard' %}">
-                Back to dashboard
-            </c-button>
+            {% if application.is_email_verified %}
+                <c-button href="{% url 'learner_interface:dashboard' %}">
+                    Back to dashboard
+                </c-button>
+            {% else %}
+                <c-button href="{% url 'learner_interface:course_detail' course_slug=application.course.slug %}" variant="secondary">
+                    Back to the course
+                </c-button>
+            {% endif %}
         </div>
     </c-page>
 {% endblock content %}

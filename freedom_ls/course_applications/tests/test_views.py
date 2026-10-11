@@ -2,14 +2,23 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from django.contrib.messages import get_messages
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.test import Client
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
+from freedom_ls.accounts.factories import (
+    SiteFactory,
+    SiteSignupPolicyFactory,
+    UserFactory,
+)
+from freedom_ls.accounts.models import User
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
@@ -20,7 +29,7 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -67,14 +76,19 @@ class TestApplyViewGet:
 
         assert course.title in response.content.decode()
 
-    def test_get_unauthenticated_redirects_to_signup(self, client, mock_site_context):
-        """GET apply without login redirects to signup with next set to the apply URL."""
+    def test_get_unauthenticated_redirects_to_applicant_details(
+        self, client, mock_site_context
+    ):
+        """GET apply without login sends a visitor to the details step."""
         course = CourseFactory()
         url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         response = client.get(url)
 
         assert response.status_code == 302
-        assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+        assert response["Location"] == reverse(
+            "course_applications:applicant_details",
+            kwargs={"course_slug": course.slug},
+        )
 
     def test_get_nonexistent_course_returns_404(self, client, mock_site_context):
         """GET apply for a non-existent course slug returns 404."""
@@ -313,16 +327,15 @@ class TestApplicationStatusView:
 
         assert response.status_code == 404
 
-    def test_unauthenticated_redirects_to_login(self, client, mock_site_context):
-        """Unauthenticated access to status page redirects to login with next set to the status URL."""
+    def test_unauthenticated_gets_404(self, client, mock_site_context):
+        """A visitor whose session holds no such application gets 404."""
         owner = UserFactory()
         app = CourseApplicationFactory(user=owner)
 
         url = reverse("course_applications:status", kwargs={"pk": app.pk})
         response = client.get(url)
 
-        assert response.status_code == 302
-        assert response["Location"] == f"{reverse('account_login')}?next={url}"
+        assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -1233,10 +1246,10 @@ def test_deferred_login_free_course_enrolls_and_redirects(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_apply_redirects_to_signup_with_next(
+def test_anonymous_access_to_apply_redirects_to_applicant_details(
     mock_site_context, course_with_topic
 ):
-    """Anonymous GET of apply → 302 to signup?next=<apply-url>."""
+    """Anonymous GET of apply on a form-less gated course → the details step."""
     course = course_with_topic(access_type="application_gated")
     client = Client()
     apply_url = reverse(
@@ -1245,9 +1258,9 @@ def test_anonymous_access_to_apply_redirects_to_signup_with_next(
     response = client.get(apply_url, follow=False)
 
     assert response.status_code == 302
-    signup_url = reverse("account_signup")
-    assert response["Location"].startswith(signup_url)
-    assert _next_param(response["Location"]) == apply_url
+    assert response["Location"] == reverse(
+        "course_applications:applicant_details", kwargs={"course_slug": course.slug}
+    )
 
 
 @pytest.mark.django_db
@@ -1277,36 +1290,19 @@ def test_deferred_login_gated_course_lands_on_apply_page(
 
 
 @pytest.mark.django_db
-def test_deferred_login_apply_round_trip_creates_no_application(
-    mock_site_context, client
-):
-    """An anonymous apply click survives sign-in without auto-submitting.
-
-    The anonymous POST redirects to login with next set to the apply URL
-    itself. Following that next after signing in lands on the GET
-    confirmation page, not an auto-created application — apply's GET and
-    POST share one URL, so `next` alone can't force the POST branch.
-    """
+def test_anonymous_apply_get_creates_no_application(mock_site_context, client):
+    """Opening the confirmation page after the details step submits nothing."""
     course = CourseFactory()
-    user = UserFactory()
+    _post_details(client, course)
 
-    apply_url = reverse(
-        "course_applications:apply", kwargs={"course_slug": course.slug}
-    )
-    response = client.post(apply_url)
-    next_url = _next_param(response["Location"])
+    response = client.get(_apply_url(course))
 
-    client.force_login(user)
-    followed = client.get(next_url)
-
-    assert followed.status_code == 200
-    assert not CourseApplication.objects.filter(user=user, course=course).exists()
+    assert response.status_code == 200
+    assert not CourseApplication.objects.filter(course=course).exists()
 
 
 @pytest.mark.django_db
-def test_deferred_login_apply_repeat_submissions_stay_idempotent(
-    mock_site_context, client
-):
+def test_signed_in_apply_repeat_submissions_stay_idempotent(mock_site_context, client):
     """A second POST to apply after signing in does not duplicate the application."""
     course = CourseFactory()
     user = UserFactory()
@@ -1365,40 +1361,26 @@ def test_deferred_login_initiate_access_coming_soon_creates_no_registration(
 
 
 @pytest.mark.django_db
-def test_deferred_login_application_status_owner_sees_status_page(
-    mock_site_context, client
-):
-    """After the login round trip, the application owner reaches their status page."""
+def test_signed_in_owner_sees_status_page(mock_site_context, client):
+    """The application owner reaches their status page."""
     owner = UserFactory()
     app = CourseApplicationFactory(user=owner)
-
-    status_url = reverse("course_applications:status", kwargs={"pk": app.pk})
-    response = client.get(status_url, follow=False)
-    next_url = _next_param(response["Location"])
-
     client.force_login(owner)
-    followed = client.get(next_url)
 
-    assert followed.status_code == 200
+    response = client.get(reverse("course_applications:status", kwargs={"pk": app.pk}))
+
+    assert response.status_code == 200
 
 
 @pytest.mark.django_db
-def test_deferred_login_application_status_non_owner_gets_404(
-    mock_site_context, client
-):
-    """After the login round trip, a non-owner still gets 404 on someone else's status page."""
-    owner = UserFactory()
-    other_user = UserFactory()
-    app = CourseApplicationFactory(user=owner)
+def test_signed_in_non_owner_gets_404_on_status_page(mock_site_context, client):
+    """A signed-in user who does not own the application gets 404."""
+    app = CourseApplicationFactory(user=UserFactory())
+    client.force_login(UserFactory())
 
-    status_url = reverse("course_applications:status", kwargs={"pk": app.pk})
-    response = client.get(status_url, follow=False)
-    next_url = _next_param(response["Location"])
+    response = client.get(reverse("course_applications:status", kwargs={"pk": app.pk}))
 
-    client.force_login(other_user)
-    followed = client.get(next_url)
-
-    assert followed.status_code == 404
+    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -1407,21 +1389,15 @@ def test_deferred_login_application_status_non_owner_gets_404(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_hidden_course_apply_redirects_to_signup_not_404(
-    mock_site_context,
-):
-    """acquisition_login_required runs before any visibility check, so an
-    anonymous visitor to a hidden course's apply URL gets a signup redirect
-    rather than the 404 that confirms a registered learner would eventually
-    see."""
+def test_anonymous_access_to_hidden_course_apply_is_404(mock_site_context):
+    """The visibility check runs for an anonymous visitor too."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
     client = Client()
 
     url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
     response = client.get(url, follow=False)
 
-    assert response.status_code == 302
-    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db
@@ -1445,10 +1421,10 @@ def test_anonymous_access_to_hidden_course_initiate_redirects_to_signup_not_404(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_status_for_hidden_course_application_redirects_to_login(
+def test_anonymous_access_to_status_for_hidden_course_application_is_404(
     mock_site_context,
 ):
-    """The same holds for an application status page belonging to a hidden course."""
+    """A session that holds no such application gets 404 on its status page."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
     owner = UserFactory()
     app = CourseApplicationFactory(user=owner, course=course)
@@ -1457,5 +1433,280 @@ def test_anonymous_access_to_status_for_hidden_course_application_redirects_to_l
     url = reverse("course_applications:status", kwargs={"pk": app.pk})
     response = client.get(url, follow=False)
 
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Anonymous apply on a form-less course
+# ---------------------------------------------------------------------------
+
+
+def _apply_url(course) -> str:
+    return reverse("course_applications:apply", kwargs={"course_slug": course.slug})
+
+
+def _details_url(course) -> str:
+    return reverse(
+        "course_applications:applicant_details", kwargs={"course_slug": course.slug}
+    )
+
+
+def _details_data(**overrides: str) -> dict[str, str]:
+    data = {
+        "email": "  Ada@Example.com ",
+        "first_name": "Ada",
+        "last_name": "Lovelace",
+    }
+    data.update(overrides)
+    return data
+
+
+def _post_details(client, course, **overrides: str):
+    return client.post(_details_url(course), _details_data(**overrides))
+
+
+@pytest.fixture
+def gated_course(mock_site_context):
+    return CourseFactory(access_config={"access_type": "application_gated"})
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_on_course_with_form_redirects_to_login(
+    mock_site_context, client
+):
+    course, _ = gated_course_with_form()
+    url = _apply_url(course)
+
+    response = client.get(url)
+
     assert response.status_code == 302
-    assert response["Location"] == f"{reverse('account_login')}?next={url}"
+    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_on_coming_soon_course_redirects_to_course_detail(
+    mock_site_context, client
+):
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+    response = client.get(_apply_url(course))
+
+    assert response["Location"] == reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+
+
+@pytest.mark.django_db
+def test_details_step_get_renders_the_three_fields(client, gated_course):
+    response = client.get(_details_url(gated_course))
+
+    content = response.content.decode()
+    assert response.status_code == 200
+    assert 'name="email"' in content
+    assert 'name="first_name"' in content
+    assert 'name="last_name"' in content
+
+
+@pytest.mark.django_db
+def test_details_step_on_coming_soon_course_redirects_to_course_detail(
+    mock_site_context, client
+):
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+    response = client.get(_details_url(course))
+
+    assert response["Location"] == reverse(
+        "learner_interface:course_detail", kwargs={"course_slug": course.slug}
+    )
+
+
+@pytest.mark.django_db
+def test_details_step_on_hidden_course_is_404(mock_site_context, client):
+    course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+    assert client.get(_details_url(course)).status_code == 404
+
+
+@pytest.mark.django_db
+def test_details_step_signed_in_redirects_to_apply(client, gated_course):
+    client.force_login(UserFactory())
+
+    response = client.get(_details_url(gated_course))
+
+    assert response["Location"] == _apply_url(gated_course)
+
+
+@pytest.mark.django_db
+def test_details_step_invalid_post_is_422(client, gated_course):
+    response = _post_details(client, gated_course, email="not-an-email")
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_details_step_valid_post_creates_applicant_with_normalised_email(
+    client, gated_course
+):
+    response = _post_details(client, gated_course)
+
+    applicant = AnonymousApplicant.objects.get(course=gated_course)
+    assert response["Location"] == _apply_url(gated_course)
+    assert applicant.email == "ada@example.com"
+
+
+@pytest.mark.django_db
+def test_details_step_valid_post_creates_no_user(client, gated_course):
+    users_before = User._base_manager.count()
+
+    _post_details(client, gated_course)
+
+    assert User._base_manager.count() == users_before
+
+
+@pytest.mark.django_db
+def test_apply_after_details_links_previous_to_details_step(client, gated_course):
+    _post_details(client, gated_course)
+
+    response = client.get(_apply_url(gated_course))
+
+    assert response.status_code == 200
+    assert f'href="{_details_url(gated_course)}"' in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_post_creates_application_without_user(client, gated_course):
+    _post_details(client, gated_course)
+
+    client.post(_apply_url(gated_course))
+
+    application = CourseApplication.objects.get(course=gated_course)
+    assert application.user is None
+    assert application.anonymous_applicant is not None
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_post_redirects_to_status_page(client, gated_course):
+    _post_details(client, gated_course)
+
+    response = client.post(_apply_url(gated_course))
+
+    application = CourseApplication.objects.get(course=gated_course)
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_post_queues_application_submitted_event(client, gated_course):
+    _post_details(client, gated_course)
+
+    with patch(
+        "freedom_ls.course_applications.views.record_application_submitted"
+    ) as record:
+        client.post(_apply_url(gated_course))
+
+    record.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_status_page_renders_for_the_applying_session(client, gated_course):
+    _post_details(client, gated_course)
+    client.post(_apply_url(gated_course))
+    application = CourseApplication.objects.get(course=gated_course)
+
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert response.status_code == 200
+    assert "has been" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_status_page_is_404_for_a_fresh_client(client, gated_course):
+    application = CourseApplicationFactory(course=gated_course, anonymous=True)
+
+    response = Client().get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_status_page_is_404_for_a_signed_in_non_owner(client, gated_course):
+    application = CourseApplicationFactory(course=gated_course, anonymous=True)
+    client.force_login(UserFactory())
+
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_details_step_after_submission_redirects_to_status_page(client, gated_course):
+    _post_details(client, gated_course)
+    client.post(_apply_url(gated_course))
+    application = CourseApplication.objects.get(course=gated_course)
+
+    response = client.get(_details_url(gated_course))
+
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+def test_reposting_details_updates_the_same_applicant(client, gated_course):
+    _post_details(client, gated_course)
+
+    _post_details(client, gated_course, first_name="Augusta")
+
+    applicant = AnonymousApplicant.objects.get(course=gated_course)
+    assert applicant.first_name == "Augusta"
+
+
+def _enumeration_emails() -> dict[str, str]:
+    return {
+        "new": "brand-new@example.com",
+        "same_site": str(UserFactory().email),
+        "other_site": str(UserFactory(site=SiteFactory()).email),
+    }
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("kind", ["new", "same_site", "other_site"])
+def test_details_post_answers_the_same_whether_or_not_the_address_has_an_account(
+    client, gated_course, kind
+):
+    response = _post_details(client, gated_course, email=_enumeration_emails()[kind])
+
+    assert response.status_code == 302
+    assert response["Location"] == _apply_url(gated_course)
+
+
+@pytest.mark.django_db
+def test_details_post_reads_no_user_table(client, gated_course):
+    with CaptureQueriesContext(connection) as queries:
+        _post_details(client, gated_course)
+
+    sql = " ".join(query["sql"] for query in queries.captured_queries)
+    assert (
+        any(table in sql for table in ("accounts_user", "account_emailaddress"))
+        is False
+    )
+
+
+@pytest.mark.django_db
+def test_details_post_succeeds_with_csrf_enforced(gated_course):
+    client = Client(enforce_csrf_checks=True)
+    client.get(_details_url(gated_course))
+    token = client.cookies["csrftoken"].value
+
+    response = client.post(
+        _details_url(gated_course), _details_data(csrfmiddlewaretoken=token)
+    )
+
+    assert response.status_code == 302

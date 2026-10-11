@@ -1,0 +1,28 @@
+{% comment %}
+One text field of the applicant details step. Takes `field`, a bound field.
+The legend and input classes repeat those of form_engine/question.html and
+form_engine/inputs/text_input.html: those templates read a form question and
+the answers dictionary, which a Django form field cannot supply.
+{% endcomment %}
+<fieldset class="space-y-3 border-0 p-0">
+    <legend class="font-semibold text-on-surface w-full px-0">
+        {{ field.label }}{% if field.field.required %}&nbsp;<span class="text-error" aria-hidden="true">*</span><span class="sr-only">(required)</span>{% endif %}
+    </legend>
+    <div class="space-y-2">
+        <label class="sr-only" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <input type="{% if field.name == 'email' %}email{% else %}text{% endif %}"
+               id="{{ field.id_for_label }}"
+               name="{{ field.html_name }}"
+               {% if field.name == 'email' %}autocomplete="email"{% elif field.name == 'first_name' %}autocomplete="given-name"{% elif field.name == 'last_name' %}autocomplete="family-name"{% endif %}
+               class="w-full rounded-md border border-border bg-white px-3 py-2 text-on-surface
+                      focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+               {% if field.field.required %}required{% endif %}
+               {% if field.errors %}aria-invalid="true" aria-describedby="{{ field.id_for_label }}_error"{% endif %}
+               {% if field.value %}value="{{ field.value }}"{% endif %} />
+    </div>
+    {% if field.errors %}
+        <p class="text-sm text-error" id="{{ field.id_for_label }}_error">
+            <span class="sr-only">Error: </span>{{ field.errors|join:" " }}
+        </p>
+    {% endif %}
+</fieldset>

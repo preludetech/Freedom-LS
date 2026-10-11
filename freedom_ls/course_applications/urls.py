@@ -6,6 +6,11 @@ app_name = "course_applications"
 
 urlpatterns = [
     path("apply/<slug:course_slug>/", views.apply, name="apply"),
+    path(
+        "apply/<slug:course_slug>/your-details/",
+        views.applicant_details,
+        name="applicant_details",
+    ),
     path("status/<uuid:pk>/", views.application_status, name="status"),
     path(
         "application/<uuid:pk>/page/<int:page_number>/",

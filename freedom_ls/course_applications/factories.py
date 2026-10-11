@@ -6,8 +6,23 @@ import factory
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import (
+    AnonymousApplicant,
+    CourseApplication,
+)
 from freedom_ls.site_aware_models.factories import SiteAwareFactory
+
+
+class AnonymousApplicantFactory(SiteAwareFactory):
+    """Factory for AnonymousApplicant instances."""
+
+    class Meta:
+        model = AnonymousApplicant
+
+    course = factory.SubFactory(CourseFactory)
+    email = factory.Sequence(lambda n: f"applicant{n}@example.com")
+    first_name = "Anna"
+    last_name = "Applicant"
 
 
 class CourseApplicationFactory(SiteAwareFactory):
@@ -22,3 +37,11 @@ class CourseApplicationFactory(SiteAwareFactory):
 
     user = factory.SubFactory(UserFactory)
     course = factory.SubFactory(CourseFactory)
+
+    class Params:
+        anonymous = factory.Trait(
+            user=None,
+            anonymous_applicant=factory.SubFactory(
+                AnonymousApplicantFactory, course=factory.SelfAttribute("..course")
+            ),
+        )

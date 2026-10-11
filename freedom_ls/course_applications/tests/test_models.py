@@ -16,7 +16,9 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
-from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.factories import (
+    CourseApplicationFactory,
+)
 from freedom_ls.course_applications.models import CourseApplication
 
 
@@ -129,3 +131,67 @@ class TestIsSubmitted:
         app.form_progress.complete()
 
         assert app.is_submitted is True
+
+
+@pytest.mark.django_db
+class TestAnonymousApplications:
+    def test_signed_in_application_is_email_verified(self, mock_site_context):
+        assert CourseApplicationFactory().is_email_verified is True
+
+    def test_anonymous_application_is_not_email_verified(self, mock_site_context):
+        assert CourseApplicationFactory(anonymous=True).is_email_verified is False
+
+    def test_anonymous_application_reports_the_applicants_email(
+        self, mock_site_context
+    ):
+        application = CourseApplicationFactory(anonymous=True)
+
+        assert application.applicant_email == application.anonymous_applicant.email
+
+    def test_signed_in_application_reports_the_users_email(self, mock_site_context):
+        application = CourseApplicationFactory()
+
+        assert application.applicant_email == application.user.email
+
+    def test_anonymous_application_reports_the_applicants_name(self, mock_site_context):
+        application = CourseApplicationFactory(anonymous=True)
+        applicant = application.anonymous_applicant
+
+        assert (
+            application.applicant_name
+            == f"{applicant.first_name} {applicant.last_name}"
+        )
+
+    def test_signed_in_application_reports_the_users_name(self, mock_site_context):
+        application = CourseApplicationFactory()
+        user = application.user
+
+        assert (
+            application.applicant_name == f"{user.first_name} {user.last_name}".strip()
+        )
+
+    def test_two_anonymous_applications_for_one_course_coexist(self, mock_site_context):
+        course = CourseFactory()
+        CourseApplicationFactory(course=course, anonymous=True)
+        CourseApplicationFactory(course=course, anonymous=True)
+
+        assert CourseApplication.objects.filter(course=course).count() == 2
+
+    def test_anonymous_and_signed_in_application_for_one_user_and_course_coexist(
+        self, mock_site_context
+    ):
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+        anonymous = CourseApplicationFactory(course=course, anonymous=True)
+        anonymous.user = user
+        anonymous.save()
+
+        assert CourseApplication.objects.filter(user=user, course=course).count() == 2
+
+    def test_deleting_an_applicant_removes_its_application(self, mock_site_context):
+        application = CourseApplicationFactory(anonymous=True)
+
+        application.anonymous_applicant.delete()
+
+        assert not CourseApplication.objects.filter(pk=application.pk).exists()

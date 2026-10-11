@@ -10,6 +10,7 @@ from django.contrib import admin
 from django.db.models import Q, QuerySet
 from django.http import HttpRequest, HttpResponse
 from django.utils import formats, timezone
+from django.utils.safestring import SafeString
 
 from freedom_ls.accounts.admin import USER_ERASURE_CASCADE_MODELS
 from freedom_ls.form_engine.admin import answers_context
@@ -75,7 +76,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ]
     # Every column reads one of these relations; without them the changelist
     # queries once per row.
-    list_select_related = ["user", "course", "form_progress"]
+    list_select_related = ["user", "anonymous_applicant", "course", "form_progress"]
     ordering = ["-created_at"]
     list_filter = [
         CourseApplicationSubmittedFilter,
@@ -99,7 +100,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         queryset: QuerySet[CourseApplication] = (
             super()
             .get_queryset(request)
-            .select_related("user", "course", "form_progress")
+            .select_related("user", "anonymous_applicant", "course", "form_progress")
         )
         return queryset
 
@@ -115,7 +116,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         if obj is not None:
             form_progress = obj.form_progress
             context["summary_rows"] = [
-                ("Applicant", admin_change_link(request, obj.user)),
+                ("Applicant", self._applicant_link(request, obj)),
                 ("Course", admin_change_link(request, obj.course)),
                 (
                     "Form progress record",
@@ -130,6 +131,15 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
             request, context, add, change, form_url, obj
         )
         return response
+
+    def _applicant_link(
+        self, request: HttpRequest, obj: CourseApplication
+    ) -> str | SafeString:
+        if obj.user is not None:
+            return admin_change_link(request, obj.user)
+        if obj.anonymous_applicant is not None:
+            return admin_change_link(request, obj.anonymous_applicant)
+        return ""
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False
@@ -146,11 +156,11 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Applicant", ordering="user__email")
     def applicant_email(self, obj: CourseApplication) -> str:
-        return obj.user.email
+        return obj.applicant_email
 
     @admin.display(description="Applicant name", ordering="user__last_name")
     def applicant_name(self, obj: CourseApplication) -> str:
-        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return obj.applicant_name
 
     @admin.display(boolean=True, description="Submitted")
     def is_submitted(self, obj: CourseApplication) -> bool:

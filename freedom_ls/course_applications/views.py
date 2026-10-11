@@ -13,12 +13,19 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
-from freedom_ls.accounts.decorators import acquisition_login_required
 from freedom_ls.accounts.models import User
+from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.anonymous_session import (
+    anonymous_applicant_for_course,
+    application_of,
+    owned_applications,
+    remember_anonymous_applicant,
+)
+from freedom_ls.course_applications.forms import ApplicantDetailsForm
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.models import Form, FormProgress
 from freedom_ls.form_engine.page_flow import (
@@ -36,8 +43,15 @@ from freedom_ls.form_engine.paging import (
 from freedom_ls.form_engine.queries import page_questions
 
 
-def _start_application(user: User, course: Course) -> CourseApplication:
+def _start_application(
+    course: Course,
+    *,
+    user: User | None = None,
+    anonymous_applicant: AnonymousApplicant | None = None,
+) -> CourseApplication:
     """The applicant's application to this course, created if they have none.
+
+    The applicant is a signed-in user or an anonymous applicant, never both.
 
     A course that names an application form gets a sitting of that form created
     alongside the application; the sitting is a draft, not a submission.
@@ -47,7 +61,9 @@ def _start_application(user: User, course: Course) -> CourseApplication:
         # re-get), so concurrent requests that both pass the existing-application
         # check still converge on one row.
         app: CourseApplication
-        app, _ = CourseApplication.objects.get_or_create(user=user, course=course)
+        app, _ = CourseApplication.objects.get_or_create(
+            user=user, anonymous_applicant=anonymous_applicant, course=course
+        )
         if course.application_form is not None and app.form_progress is None:
             app.form_progress = FormProgress.objects.create(
                 user=user, form=course.application_form
@@ -56,7 +72,6 @@ def _start_application(user: User, course: Course) -> CourseApplication:
     return app
 
 
-@acquisition_login_required
 def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     """Apply entry view.
 
@@ -73,17 +88,22 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     GET: show confirmation page ("Apply to <course>?").
     POST: get_or_create the application, then redirect to status page.
 
+    An anonymous visitor is sent through the applicant details step first (see
+    `applicant_details`); no account exists for them until they follow the
+    claim link in the confirmation email.
+
     NOTE: when application review lands, the POST body will wrap get_or_create in
       an atomic block and call app.submit() (the FSM transition) + create an
       ApplicationStateTransition audit row.
     """
     course = get_object_or_404(Course, slug=course_slug)
-    user = cast(
-        User, request.user
-    )  # acquisition_login_required guarantees an authenticated User
 
     # Enforce course visibility: hidden courses 404 for unregistered users.
-    raise_404_if_hidden_unregistered(user, course)
+    raise_404_if_hidden_unregistered(request.user, course)
+
+    if not request.user.is_authenticated:
+        return _anonymous_apply(request, course)
+    user = cast(User, request.user)
 
     # An existing applicant always reaches their application record, even if the
     # course was later flipped to coming-soon — so this short-circuit precedes the
@@ -98,7 +118,7 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
 
     if course.application_form is not None or request.method == "POST":
-        app = _start_application(user, course)
+        app = _start_application(course, user=user)
         if app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
         record_application_submitted(request, course)
@@ -111,12 +131,12 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
 
 
-@login_required
 def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Applicant status page.
 
     Shows a static plain-language "received and pending review" confirmation.
-    Only the application owner may view this page — non-owners get 404.
+    Only the application owner may view this page — non-owners get 404. Ownership
+    covers an anonymous session's own unverified application.
 
     An application whose form is still unfinished is sent back to it: there is
     nothing to say about a request that has not been made yet.
@@ -126,9 +146,10 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
       goes here.
     """
     app = get_object_or_404(
-        CourseApplication.objects.select_related("course", "form_progress"),
+        owned_applications(request).select_related(
+            "course", "form_progress", "anonymous_applicant"
+        ),
         pk=pk,
-        user=request.user,
     )
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))
@@ -136,6 +157,79 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         request,
         "course_applications/application_status.html",
         {"application": app},
+    )
+
+
+def _anonymous_login_redirect(request: HttpRequest) -> HttpResponse:
+    return redirect_to_auth(
+        request,
+        next_url=request.get_full_path(),
+        auth_url=acquisition_auth_url(request),
+    )
+
+
+def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
+    if course.application_form is not None:
+        return _anonymous_login_redirect(request)
+    if course.visibility == CourseVisibility.COMING_SOON:
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
+    applicant = anonymous_applicant_for_course(request, course)
+    if applicant is None:
+        return redirect(
+            "course_applications:applicant_details", course_slug=course.slug
+        )
+    app = application_of(applicant)
+    if app is not None:
+        if not app.is_submitted and app.form_progress is not None:
+            return redirect(_resume_url(app, app.form_progress))
+        return redirect("course_applications:status", pk=app.pk)
+    if request.method == "POST":
+        app = _start_application(course, anonymous_applicant=applicant)
+        record_application_submitted(request, course)
+        return redirect("course_applications:status", pk=app.pk)
+    return render(
+        request,
+        "course_applications/apply.html",
+        {
+            "course": course,
+            "previous_page_url": reverse(
+                "course_applications:applicant_details",
+                kwargs={"course_slug": course.slug},
+            ),
+        },
+    )
+
+
+def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
+    """The step before the form that asks an anonymous visitor who they are."""
+    if request.user.is_authenticated:
+        return redirect("course_applications:apply", course_slug=course_slug)
+    course = get_object_or_404(Course, slug=course_slug)
+    raise_404_if_hidden_unregistered(request.user, course)
+    if course.application_form is not None:
+        return _anonymous_login_redirect(request)
+    if course.visibility == CourseVisibility.COMING_SOON:
+        return redirect("learner_interface:course_detail", course_slug=course.slug)
+    applicant = anonymous_applicant_for_course(request, course)
+    app = application_of(applicant) if applicant is not None else None
+    if app is not None and app.is_submitted:
+        return redirect("course_applications:status", pk=app.pk)
+    instance = applicant if applicant is not None else AnonymousApplicant(course=course)
+    status = 200
+    if request.method == "POST":
+        form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
+        if form.is_valid():
+            applicant = form.save()
+            remember_anonymous_applicant(request, applicant)
+            return redirect("course_applications:apply", course_slug=course.slug)
+        status = 422
+    else:
+        form = ApplicantDetailsForm(request=request, instance=instance)
+    return render(
+        request,
+        "course_applications/applicant_details.html",
+        {"course": course, "form": form},
+        status=status,
     )
 
 

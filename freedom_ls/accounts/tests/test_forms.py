@@ -8,12 +8,18 @@ import re
 import pytest
 from allauth.core.context import request_context
 
+from django import forms
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
-from freedom_ls.accounts.forms import SiteAwareSignupForm
+from freedom_ls.accounts.forms import (
+    SiteAwareSignupForm,
+    apply_signup_name_policy,
+    honeypot_field,
+    reject_honeypot,
+)
 from freedom_ls.accounts.models import LegalConsent
 
 User = get_user_model()
@@ -360,3 +366,45 @@ def test_signup_with_empty_honeypot_creates_user(mock_site_context):
     Client().post(reverse("account_signup"), _signup_data(**{HONEYPOT_FIELD: ""}))
 
     assert User.objects.filter(email="honeypot@example.com").exists()
+
+
+class _HoneypotOnlyForm(forms.Form):
+    first_name = forms.CharField(required=False)
+    fax_number = honeypot_field()
+
+
+def _cleaned_form(fax_number: str) -> _HoneypotOnlyForm:
+    form = _HoneypotOnlyForm(data={"fax_number": fax_number})
+    form.is_valid()
+    return form
+
+
+@pytest.mark.django_db
+def test_reject_honeypot_adds_given_message_when_filled(allauth_request_ctx):
+    form = _cleaned_form(BOT_VALUE)
+
+    reject_honeypot(form, allauth_request_ctx, "Custom message")
+
+    assert form.non_field_errors() == ["Custom message"]
+
+
+@pytest.mark.django_db
+def test_reject_honeypot_leaves_form_untouched_when_empty(allauth_request_ctx):
+    form = _cleaned_form("")
+
+    reject_honeypot(form, allauth_request_ctx, "Custom message")
+
+    assert not form.errors
+
+
+@pytest.mark.django_db
+def test_apply_signup_name_policy_makes_first_name_optional(
+    allauth_request_ctx, mock_site_context, site
+):
+    policy = SiteSignupPolicyFactory(site=site, require_name=False)
+    form = _HoneypotOnlyForm()
+    form.fields["first_name"].required = True
+
+    apply_signup_name_policy(form, policy)
+
+    assert form.fields["first_name"].required is False

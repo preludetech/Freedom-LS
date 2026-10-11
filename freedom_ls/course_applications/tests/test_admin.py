@@ -57,8 +57,8 @@ def test_changelist_lists_drafts_and_submitted(staff_client):
 
     assert response.status_code == 200
     content = response.content.decode()
-    assert draft.user.email in content
-    assert submitted.user.email in content
+    assert draft.applicant_email in content
+    assert submitted.applicant_email in content
 
 
 def test_is_submitted_column(mock_site_context):
@@ -187,6 +187,7 @@ def test_change_page_shows_the_answers_document(staff_client):
 def test_change_page_summary_links_to_user_course_and_sitting(staff_client):
     application, _ = _answered_application()
     assert application.form_progress is not None
+    assert application.user is not None
 
     content = staff_client.get(reverse(CHANGE, args=[application.pk])).content.decode()
 
@@ -203,6 +204,7 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
 ):
     application, download_url = _answered_application()
     assert application.form_progress is not None
+    assert application.user is not None
     staff = UserFactory(is_staff=True)
     staff.user_permissions.add(
         Permission.objects.get(codename="view_courseapplication")
@@ -212,7 +214,7 @@ def test_change_page_summary_is_plain_text_for_a_reader_who_cannot_open_the_link
 
     content = client.get(reverse(CHANGE, args=[application.pk])).content.decode()
 
-    assert application.user.email in content
+    assert application.applicant_email in content
     assert application.course.title in content
     assert str(application.form_progress) in content
     for name, obj in [
@@ -352,3 +354,21 @@ def test_created_date_range_with_blank_times_shows_no_time_errors(staff_client):
     )
 
     assert "Enter a valid time." not in response.content.decode()
+
+
+def test_changelist_shows_an_anonymous_applications_email(staff_client):
+    application = CourseApplicationFactory(anonymous=True)
+
+    response = staff_client.get(reverse(CHANGELIST))
+
+    assert response.status_code == 200
+    assert application.anonymous_applicant.email in response.content.decode()
+
+
+def test_change_page_shows_an_anonymous_applications_email(staff_client):
+    application = CourseApplicationFactory(anonymous=True)
+
+    response = staff_client.get(reverse(CHANGE, args=[application.pk]))
+
+    assert response.status_code == 200
+    assert application.anonymous_applicant.email in response.content.decode()

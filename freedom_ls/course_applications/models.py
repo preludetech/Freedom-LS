@@ -12,7 +12,47 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
-from freedom_ls.site_aware_models.models import SiteAwareModel
+from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+
+
+class AnonymousApplicant(SiteAwareModel, TimestampedModel):
+    """What an anonymous visitor said about themselves when applying to one course.
+
+    No User exists until the claim link in the post-submit email is followed:
+    creating one earlier would collide with the globally unique email and fire
+    signup side effects for an address nobody has proven they own. The consent
+    evidence lives here for the same reason and is copied into LegalConsent rows
+    once there is a user to attach it to.
+    """
+
+    course = models.ForeignKey(
+        "freedom_ls_content_engine.Course",
+        on_delete=models.CASCADE,
+        related_name="anonymous_applicants",
+    )
+    # Stored stripped and lowercased, so the rate-limit key and the claim lookup
+    # see one spelling of an address.
+    email = models.EmailField()
+    first_name = models.CharField(max_length=200, blank=True, default="")
+    last_name = models.CharField(max_length=200, blank=True, default="")
+    terms_version = models.CharField(max_length=64, blank=True, default="")
+    terms_git_hash = models.CharField(max_length=64, blank=True, default="")
+    privacy_version = models.CharField(max_length=64, blank=True, default="")
+    privacy_git_hash = models.CharField(max_length=64, blank=True, default="")
+    consent_ip_address = models.GenericIPAddressField(null=True, blank=True)
+    consented_at = models.DateTimeField(null=True, blank=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="anonymous_applications",
+    )
+    # Set once. A claim link whose applicant carries this is already used.
+    claimed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"AnonymousApplicant({self.email}, {self.course_id})"
 
 
 class CourseApplication(SiteAwareModel):
@@ -36,8 +76,17 @@ class CourseApplication(SiteAwareModel):
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name="course_applications",
+    )
+    anonymous_applicant = models.OneToOneField(
+        AnonymousApplicant,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="course_application",
     )
     course = models.ForeignKey(
         "freedom_ls_content_engine.Course",
@@ -63,6 +112,11 @@ class CourseApplication(SiteAwareModel):
             models.UniqueConstraint(
                 fields=["site", "user", "course"],
                 name="unique_application_per_site_user_course",
+                # Covers only applications started while signed in: an account
+                # that already applied may later claim one started
+                # anonymously, so the same (user, course) pair can legitimately
+                # appear twice.
+                condition=models.Q(anonymous_applicant__isnull=True),
             )
         ]
 
@@ -80,3 +134,32 @@ class CourseApplication(SiteAwareModel):
         return (
             self.form_progress is None or self.form_progress.completed_time is not None
         )
+
+    @property
+    def is_email_verified(self) -> bool:
+        """Whether somebody has proven they own the applicant's address.
+
+        True as soon as a user holds the application: a signed-in applicant
+        verified their address at signup, and an anonymous one proves it by
+        following the claim link, which is what sets `user`.
+        """
+        return self.user_id is not None
+
+    @property
+    def applicant_email(self) -> str:
+        if self.user is not None:
+            return self.user.email
+        if self.anonymous_applicant is not None:
+            return self.anonymous_applicant.email
+        return ""
+
+    @property
+    def applicant_name(self) -> str:
+        if self.user is not None:
+            first, last = self.user.first_name, self.user.last_name
+        elif self.anonymous_applicant is not None:
+            first = self.anonymous_applicant.first_name
+            last = self.anonymous_applicant.last_name
+        else:
+            return ""
+        return f"{first} {last}".strip()
