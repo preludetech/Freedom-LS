@@ -1,0 +1,7 @@
+{% extends "panel_framework/modal/read_only.html" %}
+
+{% block title %}Setup email sent recently{% endblock title %}
+
+{% block content %}
+    <p class="text-sm">{{ learner.user.display_name }} was sent a setup email recently. Try again in {{ minutes }} minutes.</p>
+{% endblock content %}

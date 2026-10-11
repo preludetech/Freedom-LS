@@ -1,0 +1,7 @@
+{% extends "panel_framework/modal/read_only.html" %}
+
+{% block title %}{{ learner.user.display_name }} has already set up their account{% endblock title %}
+
+{% block content %}
+    <p class="text-sm">Nothing was sent. {{ learner.user.display_name }} has signed in or set a password since this page loaded.</p>
+{% endblock content %}
