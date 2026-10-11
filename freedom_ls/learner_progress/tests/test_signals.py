@@ -24,12 +24,16 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.learner_actions import deactivate_learner
+from freedom_ls.learner_management.learner_actions import (
+    deactivate_learner,
+    move_between_cohorts,
+)
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
     unregister_cohort_from_course,
@@ -41,6 +45,11 @@ from freedom_ls.learner_progress.factories import (
 )
 from freedom_ls.learner_progress.models import CourseProgress, TopicProgress
 from freedom_ls.learner_progress.signals import _ensure_and_announce
+from freedom_ls.learner_progress.tests.helpers import (
+    cohort_record,
+    cohort_registration,
+    make_move_world,
+)
 
 
 def _webhook_events():
@@ -825,3 +834,153 @@ class TestDeactivatingALearner:
             before,
             CourseProgress.objects.filter(learner=learner).count(),
         ) == (1, 1)
+
+
+@pytest.mark.django_db
+class TestCarryingCourseProgressOnMove:
+    def test_a_record_with_nothing_at_the_destination_is_repointed(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        _, record = cohort_record(world, world.source, course, 40)
+        destination_registration = cohort_registration(world.destination, course)
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        record.refresh_from_db()
+        assert record.cohort_registration_id == destination_registration.pk
+
+    def test_a_clash_where_the_source_is_further_along_swaps_the_registrations(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        source_registration, ahead = cohort_record(world, world.source, course, 80)
+        destination_registration, behind = cohort_record(
+            world, world.destination, course, 20
+        )
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        ahead.refresh_from_db()
+        behind.refresh_from_db()
+        assert (ahead.cohort_registration_id, behind.cohort_registration_id) == (
+            destination_registration.pk,
+            source_registration.pk,
+        )
+
+    def test_a_clash_where_the_destination_is_further_along_leaves_both(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        source_registration, behind = cohort_record(world, world.source, course, 20)
+        destination_registration, ahead = cohort_record(
+            world, world.destination, course, 80
+        )
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        behind.refresh_from_db()
+        ahead.refresh_from_db()
+        assert (behind.cohort_registration_id, ahead.cohort_registration_id) == (
+            source_registration.pk,
+            destination_registration.pk,
+        )
+
+    def test_a_tied_clash_leaves_both(self, mock_site_context):
+        world = make_move_world()
+        course = CourseFactory()
+        source_registration, source_record = cohort_record(
+            world, world.source, course, 50
+        )
+        destination_registration, destination_record = cohort_record(
+            world, world.destination, course, 50
+        )
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        source_record.refresh_from_db()
+        destination_record.refresh_from_db()
+        assert (
+            source_record.cohort_registration_id,
+            destination_record.cohort_registration_id,
+        ) == (source_registration.pk, destination_registration.pk)
+
+    def test_a_course_only_the_source_grants_keeps_its_record_in_place(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        source_registration, record = cohort_record(
+            world, world.source, CourseFactory(), 40
+        )
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        record.refresh_from_db()
+        assert record.cohort_registration_id == source_registration.pk
+
+    def test_a_record_under_an_inactive_source_registration_stays_in_place(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        source_registration, record = cohort_record(
+            world, world.source, course, 40, registration_active=False
+        )
+        cohort_registration(world.destination, course)
+
+        move_between_cohorts(world.learner, world.source, world.destination)
+
+        record.refresh_from_db()
+        assert record.cohort_registration_id == source_registration.pk
+
+    def test_a_course_only_the_destination_grants_gets_a_fresh_record_on_commit(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        registration = cohort_registration(world.destination, course)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            move_between_cohorts(world.learner, world.source, world.destination)
+
+        assert CourseProgress.objects.filter(
+            learner=world.learner, cohort_registration=registration
+        ).exists()
+
+    def test_a_carried_record_leaves_no_duplicate_after_commit(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        cohort_record(world, world.source, course, 40)
+        cohort_registration(world.destination, course)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            move_between_cohorts(world.learner, world.source, world.destination)
+
+        assert (
+            CourseProgress.objects.filter(learner=world.learner, course=course).count()
+            == 1
+        )
+
+    def test_a_failing_receiver_rolls_back_both_memberships(self, mock_site_context):
+        world = make_move_world()
+
+        def fail(**kwargs: object) -> None:
+            raise RuntimeError("receiver failed")
+
+        cohort_membership_moved.connect(fail, weak=False)
+        try:
+            with pytest.raises(RuntimeError):
+                move_between_cohorts(world.learner, world.source, world.destination)
+        finally:
+            cohort_membership_moved.disconnect(fail)
+
+        assert list(
+            CohortMembership.objects.filter(learner=world.learner).values_list(
+                "cohort_id", flat=True
+            )
+        ) == [world.source.pk]

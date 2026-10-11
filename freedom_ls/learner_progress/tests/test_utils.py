@@ -13,9 +13,16 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
+from freedom_ls.learner_progress.tests.helpers import (
+    cohort_record,
+    cohort_registration,
+    make_move_world,
+)
 from freedom_ls.learner_progress.utils import (
     ensure_course_progress_record,
     ensure_course_progress_records_for_cohort_registration,
+    move_progress_preview,
+    plan_progress_carry,
 )
 from freedom_ls.site_aware_models.models import _thread_locals
 
@@ -230,3 +237,69 @@ class TestEnsureCourseProgressRecordsForCohortRegistration:
 
         records = CourseProgress.objects.filter(cohort_registration=registration)
         assert list(records.values_list("id", flat=True)) == [existing.id]
+
+
+@pytest.mark.django_db
+class TestPlanProgressCarry:
+    def test_names_each_shared_course_with_the_further_percentage(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        _, record = cohort_record(world, world.source, course, 80)
+        destination_registration, existing = cohort_record(
+            world, world.destination, course, 20
+        )
+
+        [carry] = plan_progress_carry(world.learner, world.source, world.destination)
+
+        assert (
+            carry.record,
+            carry.destination_registration,
+            carry.existing,
+            carry.continues_at,
+        ) == (record, destination_registration, existing, 80)
+
+    def test_has_no_existing_record_when_the_destination_holds_none(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        cohort_record(world, world.source, course, 30)
+        cohort_registration(world.destination, course)
+
+        [carry] = plan_progress_carry(world.learner, world.source, world.destination)
+
+        assert (carry.existing, carry.continues_at) == (None, 30)
+
+    def test_yields_nothing_for_courses_only_one_side_grants(self, mock_site_context):
+        world = make_move_world()
+        cohort_record(world, world.source, CourseFactory(), 30)
+        cohort_registration(world.destination, CourseFactory())
+
+        assert plan_progress_carry(world.learner, world.source, world.destination) == []
+
+
+@pytest.mark.django_db
+class TestMoveProgressPreview:
+    def test_names_each_shared_course_with_the_continuing_percentage(
+        self, mock_site_context
+    ):
+        world = make_move_world()
+        course = CourseFactory()
+        cohort_record(world, world.source, course, 20)
+        cohort_record(world, world.destination, course, 80)
+
+        [outcome] = move_progress_preview(
+            world.learner, world.source, world.destination
+        )
+
+        assert (outcome.course, outcome.progress_percentage) == (course, 80)
+
+    def test_names_nothing_for_a_course_only_one_side_grants(self, mock_site_context):
+        world = make_move_world()
+        cohort_record(world, world.source, CourseFactory(), 30)
+
+        assert (
+            move_progress_preview(world.learner, world.source, world.destination) == []
+        )

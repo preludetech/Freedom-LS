@@ -4,6 +4,7 @@ no request, webhook events on commit only when something changed."""
 from __future__ import annotations
 
 from dataclasses import dataclass
+from uuid import uuid4
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -16,6 +17,7 @@ from freedom_ls.accounts.account_setup import (
     send_account_setup_email,
 )
 from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
+from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_management.utils import (
     ensure_learner,
     fire_webhook_event_on_commit,
@@ -100,6 +102,43 @@ def add_to_cohort(learner: Learner, cohort: Cohort) -> bool:
         if created:
             _fire("cohort.member_added", learner, _cohort_payload(cohort))
     return created
+
+
+def move_between_cohorts(learner: Learner, source: Cohort, destination: Cohort) -> str:
+    """Move the learner from one active cohort to another of their
+    organisation in one transaction, and return the `move_id` that ties the
+    removed and added events together. Raises ValueError, changing nothing,
+    when the cohorts are the same, either is unusable, the learner is not in
+    the source or is already in the destination."""
+    if source.pk == destination.pk:
+        raise ValueError("The source and destination cohorts are the same.")
+    _check_cohort(learner, source)
+    _check_cohort(learner, destination)
+    move_id = str(uuid4())
+    with transaction.atomic():
+        Learner._base_manager.select_for_update().get(pk=learner.pk)
+        deleted, _ = CohortMembership._base_manager.filter(
+            learner=learner, cohort=source
+        ).delete()
+        if not deleted:
+            raise ValueError("The learner is not a member of the source cohort.")
+        # Checked before the create so the refusal is a ValueError, not an
+        # integrity error.
+        if CohortMembership._base_manager.filter(
+            learner=learner, cohort=destination
+        ).exists():
+            raise ValueError(
+                "The learner is already a member of the destination cohort."
+            )
+        CohortMembership._base_manager.create(
+            site=learner.site, learner=learner, cohort=destination
+        )
+        cohort_membership_moved.send(
+            sender=Learner, learner=learner, source=source, destination=destination
+        )
+        _fire("cohort.member_removed", learner, _cohort_payload(source, move_id))
+        _fire("cohort.member_added", learner, _cohort_payload(destination, move_id))
+    return move_id
 
 
 @dataclass(frozen=True)

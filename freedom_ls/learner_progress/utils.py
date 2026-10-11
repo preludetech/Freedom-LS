@@ -6,10 +6,12 @@ there is no services.py convention in this codebase.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from uuid import UUID
 
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.models import (
+    Cohort,
     CohortCourseRegistration,
     Learner,
     LearnerCourseRegistration,
@@ -120,3 +122,76 @@ def ensure_course_progress_records_for_cohort_registration(
             for learner in learners
         ]
     )
+
+
+@dataclass(frozen=True)
+class ProgressCarry:
+    """One course both cohorts grant: the learner's record under the source
+    registration, the destination registration, and the record already
+    there, if any."""
+
+    record: CourseProgress
+    destination_registration: CohortCourseRegistration
+    existing: CourseProgress | None
+
+    @property
+    def continues_at(self) -> int:
+        """The percentage the learner keeps: the further of the two records."""
+        if self.existing is None:
+            return self.record.progress_percentage
+        return max(self.record.progress_percentage, self.existing.progress_percentage)
+
+
+def plan_progress_carry(
+    learner: Learner, source: Cohort, destination: Cohort
+) -> list[ProgressCarry]:
+    """The records a move from `source` to `destination` carries across, by
+    course title. Only records under the source's access-granting
+    registrations count, and only for courses the destination also grants."""
+    destination_registrations = {
+        registration.course_id: registration
+        for registration in CohortCourseRegistration._base_manager.filter(
+            cohort=destination, is_active=True
+        )
+    }
+    source_records = (
+        CourseProgress._base_manager.filter(
+            learner=learner,
+            cohort_registration__cohort=source,
+            cohort_registration__is_active=True,
+            course_id__in=destination_registrations.keys(),
+        )
+        .select_related("course", "cohort_registration")
+        .order_by("course__title")
+    )
+    existing_by_registration = {
+        record.cohort_registration_id: record
+        for record in CourseProgress._base_manager.filter(
+            learner=learner,
+            cohort_registration__in=destination_registrations.values(),
+        ).select_related("course")
+    }
+    carries: list[ProgressCarry] = []
+    for record in source_records:
+        target = destination_registrations[record.course_id]
+        carries.append(
+            ProgressCarry(record, target, existing_by_registration.get(target.pk))
+        )
+    return carries
+
+
+@dataclass(frozen=True)
+class MoveProgressOutcome:
+    course: Course
+    progress_percentage: int
+
+
+def move_progress_preview(
+    learner: Learner, source: Cohort, destination: Cohort
+) -> list[MoveProgressOutcome]:
+    """What will continue for the learner if they move: each shared course
+    with the percentage they keep."""
+    return [
+        MoveProgressOutcome(carry.record.course, carry.continues_at)
+        for carry in plan_progress_carry(learner, source, destination)
+    ]
