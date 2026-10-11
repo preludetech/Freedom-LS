@@ -30,6 +30,7 @@ from freedom_ls.educator_interface.events import (
 )
 from freedom_ls.educator_interface.exceptions import OrganisationScopeDenied
 from freedom_ls.educator_interface.filters import (
+    LearnerStatusFilter,
     ShowInactiveFilter,
     VisibleCourseFilter,
 )
@@ -44,11 +45,13 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
+    LearnerStatus,
     active_organisation_admins,
     cohort_counts,
     cohort_educators,
     cohorts_visible_to,
     courses_visible_to,
+    learner_status,
     learners_visible_to,
     organisations_accessible_to,
 )
@@ -310,7 +313,7 @@ class LearnerDataTable(DataTable):
         request = cast(OrganisationScopedRequest, request)
         organisation = request.organisation
         return (
-            learners_visible_to(request.user, organisation)
+            learners_visible_to(request.user, organisation, include_removed=True)
             .select_related("user")
             .prefetch_related(
                 # A Learner belongs to exactly one organisation, so the course
@@ -368,7 +371,15 @@ class LearnerDataTable(DataTable):
                 header="Registered Courses",
                 template="educator_interface/data-table-cells/learner_courses.html",
             ),
+            Column(
+                header="Status",
+                template="educator_interface/data-table-cells/learner_status.html",
+            ),
         ]
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [LearnerStatusFilter()]
 
 
 class LearnerDetailsPanel(InstanceDetailsPanel):
@@ -411,6 +422,19 @@ def _interface_path(organisation: Organisation, path_string: str) -> str:
         "educator_interface:interface",
         kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
     )
+
+
+_LEARNER_STATUS_TONES: dict[LearnerStatus, str] = {
+    LearnerStatus.ACTIVE: "success",
+    LearnerStatus.PENDING: "info",
+    LearnerStatus.REMOVED: "muted",
+}
+
+
+def learner_status_badge(learner: Learner) -> StatusBadge:
+    """The badge for a learner's status: Active, Pending or Removed."""
+    status = learner_status(learner)
+    return StatusBadge(_LEARNER_STATUS_TONES[status], status.label)
 
 
 def active_status_badge(is_active: bool) -> StatusBadge:
@@ -474,7 +498,8 @@ class CohortLearnersPanel(DataTablePanel):
         )
 
     def get_tab_count(self) -> int | None:
-        return self.get_queryset(self.request).count()
+        # The table lists removed members too; the tab counts current ones.
+        return self.get_queryset(self.request).filter(is_active=True).count()
 
 
 class CohortCoursesPanel(DataTablePanel):
@@ -721,7 +746,7 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
     def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
         organisation = cast(OrganisationScopedRequest, request).organisation
         if (
-            not learners_visible_to(request.user, organisation)
+            not learners_visible_to(request.user, organisation, include_removed=True)
             .filter(pk=instance.pk)
             .exists()
         ):

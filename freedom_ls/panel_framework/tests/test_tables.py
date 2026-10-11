@@ -16,7 +16,7 @@ from django.test import Client, RequestFactory
 from django.utils import timezone
 
 from freedom_ls.panel_framework.context import PanelContext
-from freedom_ls.panel_framework.filters import TableFilter
+from freedom_ls.panel_framework.filters import ChoiceFilter, TableFilter
 from freedom_ls.panel_framework.panels import DataTablePanel
 from freedom_ls.panel_framework.tables import Column, DataTable, ExportColumn
 from freedom_ls.panel_framework.views import SectionConfigBase
@@ -939,3 +939,33 @@ def test_a_sort_on_the_default_field_does_not_repeat_it(
     )
 
     assert rows.query.order_by == ("-name", "pk")
+
+
+class _DefaultedFilterTable(StubDataTable):
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [
+            ChoiceFilter(
+                "kind",
+                "Kind",
+                lookup="kind",
+                choices=[("a", "A"), ("b", "B")],
+                default=("a",),
+            )
+        ]
+
+
+def test_a_filters_default_applies_when_its_parameter_is_absent() -> None:
+    request = RequestFactory().get("/")
+
+    query = _DefaultedFilterTable.parse_query(request, "stub")
+
+    assert query.filters == {"kind": ["a"]}
+
+
+def test_a_filters_default_does_not_apply_when_its_parameter_is_present() -> None:
+    request = RequestFactory().get("/", {"stub-kind": "b"})
+
+    query = _DefaultedFilterTable.parse_query(request, "stub")
+
+    assert query.filters == {"kind": ["b"]}

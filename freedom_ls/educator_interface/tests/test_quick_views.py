@@ -139,6 +139,20 @@ class TestLearnerQuickView:
 
         assert "Active" in response.content.decode()
 
+    def test_shows_pending_status_for_a_learner_who_has_never_logged_in(
+        self, educator_client
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation, is_active=True)
+        learner.user.set_unusable_password()
+        learner.user.save(update_fields=["password"])
+
+        response = _get_quick_view(
+            educator_client(organisation), organisation, f"learners/{learner.pk}"
+        )
+
+        assert "Pending" in response.content.decode()
+
     def test_lists_a_visible_cohort_membership_as_a_link(self, educator_client):
         organisation = OrganisationFactory()
         learner = LearnerFactory(organisation=organisation)

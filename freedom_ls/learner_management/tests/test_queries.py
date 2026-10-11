@@ -39,6 +39,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     CohortCounts,
+    LearnerStatus,
     ResolvedRegistration,
     active_organisation_admins,
     all_cohorts_visible_to,
@@ -54,6 +55,8 @@ from freedom_ls.learner_management.queries import (
     is_registered_for_course_expression,
     latest_registration,
     learner_for_course,
+    learner_status,
+    learner_status_q,
     learners_visible_to,
     members_keeping_access,
     organisation_for_learner_course,
@@ -552,6 +555,36 @@ class TestLearnersVisibleTo:
         assign_object_role(role_holder, organisation, "organisation_admin")
 
         assert list(learners_visible_to(role_holder, organisation)) == []
+
+    def test_include_removed_returns_a_removed_learner_on_the_organisation_path(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        removed = LearnerFactory(
+            user=UserFactory(), organisation=organisation, is_active=False
+        )
+        role_holder = UserFactory()
+        assign_object_role(role_holder, organisation, "organisation_admin")
+
+        result = learners_visible_to(role_holder, organisation, include_removed=True)
+
+        assert set(result) == {removed}
+
+    def test_include_removed_returns_a_removed_member_on_the_cohort_grant_path(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        cohort = _make_cohort(organisation=organisation)
+        removed = LearnerFactory(
+            user=UserFactory(), organisation=organisation, is_active=False
+        )
+        CohortMembershipFactory(learner=removed, cohort=cohort)
+        educator = UserFactory()
+        assign_object_role(educator, cohort, "cohort_admin")
+
+        result = learners_visible_to(educator, organisation, include_removed=True)
+
+        assert set(result) == {removed}
 
     def test_learner_in_another_organisation_is_not_visible(self, mock_site_context):
         organisation = OrganisationFactory()
@@ -1502,3 +1535,31 @@ class TestMembersKeepingAccess:
 
         with django_assert_num_queries(1):
             list(members_keeping_access(registration))
+
+
+def _learner_with_status(status: LearnerStatus) -> Learner:
+    learner = cast(
+        Learner,
+        LearnerFactory(
+            user=UserFactory(), organisation=OrganisationFactory(), is_active=True
+        ),
+    )
+    if status == LearnerStatus.REMOVED:
+        learner.is_active = False
+        learner.save(update_fields=["is_active"])
+    if status == LearnerStatus.PENDING:
+        learner.user.set_unusable_password()
+        learner.user.save(update_fields=["password"])
+    return learner
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("status", list(LearnerStatus))
+def test_learner_status_and_learner_status_q_agree(
+    mock_site_context, status: LearnerStatus
+) -> None:
+    learner = _learner_with_status(status)
+
+    assert learner_status(learner) == status
+    matching = Learner.objects.filter(learner_status_q(status))
+    assert list(matching) == [learner]

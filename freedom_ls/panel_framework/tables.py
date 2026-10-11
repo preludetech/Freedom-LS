@@ -247,7 +247,12 @@ class DataTable:
             sort = ""
         filters: dict[str, list[str]] = {}
         for table_filter in cls.get_filters():
-            values = request.GET.getlist(f"{key}-{table_filter.key}")
+            name = f"{key}-{table_filter.key}"
+            values = (
+                request.GET.getlist(name)
+                if name in request.GET
+                else list(table_filter.default)
+            )
             validated = table_filter.validate(values, request)
             if validated:
                 filters[table_filter.key] = validated

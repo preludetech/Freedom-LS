@@ -95,6 +95,26 @@ def test_cohort_detail_page_has_overview_learners_courses_and_settings_tabs(
 
 
 @pytest.mark.django_db
+def test_the_learners_tab_count_excludes_a_removed_member(staff_client: Client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(
+        cohort=cohort, learner=LearnerFactory(organisation=organisation)
+    )
+    CohortMembershipFactory(
+        cohort=cohort,
+        learner=LearnerFactory(organisation=organisation, is_active=False),
+    )
+
+    document = _get_document(
+        staff_client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+    )
+
+    (nav,) = document.cssselect("nav[aria-label='Cohort sections']")
+    assert nav.cssselect("a")[1].text_content().split() == ["Learners", "1"]
+
+
+@pytest.mark.django_db
 def test_the_learners_tab_url_renders_the_cohorts_learners(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = CohortFactory(organisation=organisation, name="Evening group")
