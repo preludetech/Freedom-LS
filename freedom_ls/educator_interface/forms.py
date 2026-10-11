@@ -3,6 +3,7 @@ from typing import cast
 
 from django import forms
 
+from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
 from freedom_ls.learner_management.queries import registerable_courses_for
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
@@ -24,6 +25,14 @@ class CohortForm(ConstraintValidationFormMixin):
     class Meta:
         model = Cohort
         fields = ["name"]
+
+
+class LearnerNameForm(forms.ModelForm):
+    """A learner's first and last name, edited on their user."""
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name"]
 
 
 class CohortCourseRegistrationForm(forms.ModelForm):

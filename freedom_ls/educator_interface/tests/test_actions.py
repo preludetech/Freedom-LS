@@ -12,8 +12,10 @@ from django.contrib.sites.models import Site
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
+from freedom_ls.educator_interface.events import LEARNER_CHANGED
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -21,7 +23,11 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort, CohortCourseRegistration
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortCourseRegistration,
+    Learner,
+)
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -687,3 +693,117 @@ def test_unregister_post_on_an_inactive_cohort_answers_422_and_changes_nothing(
     assert response.status_code == 422
     assert "Old group is inactive" in response.content.decode()
     assert registration.is_active is True
+
+
+# edit a learner's name
+
+
+def _site_admin_client(site: Site, logged_in_client) -> Client:
+    admin = UserFactory(staff=True)
+    assign_role(UserFactory(superuser=True), admin, "site_admin", site)
+    return cast(Client, logged_in_client(admin))
+
+
+def _edit_name_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/edit_name"
+    )
+
+
+def _named_learner(organisation: Organisation) -> Learner:
+    return cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(first_name="Ada", last_name="Lovelace"),
+        ),
+    )
+
+
+@pytest.mark.django_db
+def test_a_site_admins_learner_header_offers_edit_name(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    client = _site_admin_client(mock_site_context, logged_in_client)
+
+    response = client.get(_interface_url(organisation.slug, f"learners/{learner.pk}"))
+
+    document = lxml.html.fromstring(response.content.decode())
+    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
+    assert _edit_name_url(organisation, learner) in triggers
+
+
+@pytest.mark.django_db
+def test_an_organisation_admins_learner_header_offers_no_edit_name(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    user = UserFactory(staff=True)
+    assign_role(UserFactory(superuser=True), user, "organisation_admin", organisation)
+    client = logged_in_client(user)
+
+    response = client.get(_interface_url(organisation.slug, f"learners/{learner.pk}"))
+
+    document = lxml.html.fromstring(response.content.decode())
+    triggers = {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
+    assert _edit_name_url(organisation, learner) not in triggers
+
+
+@pytest.mark.django_db
+def test_edit_name_post_changes_the_users_first_name(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    client = _site_admin_client(mock_site_context, logged_in_client)
+
+    _post(
+        client,
+        _edit_name_url(organisation, learner),
+        {"first_name": "Grace", "last_name": "Hopper"},
+    )
+
+    learner.user.refresh_from_db()
+    assert learner.user.first_name == "Grace"
+
+
+@pytest.mark.django_db
+def test_edit_name_post_sends_the_new_display_name_as_the_page_title(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    client = _site_admin_client(mock_site_context, logged_in_client)
+
+    response = _post(
+        client,
+        _edit_name_url(organisation, learner),
+        {"first_name": "Grace", "last_name": "Hopper"},
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert (response.status_code, trigger["instanceTitleChanged"]["title"]) == (
+        204,
+        "Grace Hopper",
+    )
+
+
+@pytest.mark.django_db
+def test_edit_name_post_fires_the_learner_changed_event_for_the_learner(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner = _named_learner(organisation)
+    client = _site_admin_client(mock_site_context, logged_in_client)
+
+    response = _post(
+        client,
+        _edit_name_url(organisation, learner),
+        {"first_name": "Grace", "last_name": "Hopper"},
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}

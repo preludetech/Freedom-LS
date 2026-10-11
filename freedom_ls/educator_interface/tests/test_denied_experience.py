@@ -19,6 +19,7 @@ from freedom_ls.educator_interface.views import OrganisationSectionConfig
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
+    LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort, OrganisationMember
 from freedom_ls.organisations.factories import OrganisationFactory
@@ -264,3 +265,26 @@ def test_a_cohort_viewers_pasted_unregister_url_answers_403(
     )
 
     assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_an_organisation_admins_pasted_edit_name_post_answers_403_and_keeps_the_name(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(
+        organisation=organisation,
+        user=UserFactory(first_name="Ada", last_name="Lovelace"),
+    )
+    user = UserFactory(staff=True)
+    assign_object_role(user, organisation, "organisation_admin")
+    client = logged_in_client(user)
+
+    response = client.post(
+        _interface_url(organisation.slug, f"learners/{learner.pk}/__actions/edit_name"),
+        {"first_name": "Grace", "last_name": "Hopper"},
+        HTTP_HX_REQUEST="true",
+    )
+
+    learner.user.refresh_from_db()
+    assert (response.status_code, learner.user.first_name) == (403, "Ada")

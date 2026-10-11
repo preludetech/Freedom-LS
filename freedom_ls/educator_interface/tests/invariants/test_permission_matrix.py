@@ -71,6 +71,7 @@ CHANGE_COHORT = "freedom_ls_learner_management.change_cohort"
 DELETE_COHORT = "freedom_ls_learner_management.delete_cohort"
 ADD_LEARNER = "freedom_ls_learner_management.add_learner"
 CHANGE_LEARNER = "freedom_ls_learner_management.change_learner"
+CHANGE_USER = "freedom_ls_accounts.change_user"
 ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
 DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
 ADD_COHORTCOURSEREGISTRATION = (
@@ -164,6 +165,16 @@ MATRIX: dict[str, dict[str, set[tuple[str, str]]]] = {
             ("learner", OTHER_ORGANISATION),
         },
         "organisation_admin": {("learner", OWN), ("learner", OTHER_COHORT)},
+        "cohort_admin": set(),
+        "cohort_viewer": set(),
+    },
+    CHANGE_USER: {
+        "site_admin": {
+            ("learner", OWN),
+            ("learner", OTHER_COHORT),
+            ("learner", OTHER_ORGANISATION),
+        },
+        "organisation_admin": set(),
         "cohort_admin": set(),
         "cohort_viewer": set(),
     },
@@ -311,6 +322,7 @@ CAPABILITY_SCOPE_KINDS: dict[str, tuple[str, ...]] = {
     DELETE_COHORT: ("cohort",),
     ADD_LEARNER: ("organisation",),
     CHANGE_LEARNER: ("learner",),
+    CHANGE_USER: ("learner",),
     ADD_COHORTMEMBERSHIP: ("cohort",),
     DELETE_COHORTMEMBERSHIP: ("cohort",),
     ADD_COHORTCOURSEREGISTRATION: ("cohort",),

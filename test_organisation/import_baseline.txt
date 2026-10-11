@@ -40,7 +40,6 @@ freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.
 freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.course_applications.models
 
 # educator_interface
-freedom_ls.educator_interface.tests.playwright.conftest -> freedom_ls.accounts.models
 freedom_ls.educator_interface.tests.playwright.test_cohort_management_flow -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.playwright.test_mobile_navigation_flow -> freedom_ls.role_based_permissions.utils
 freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.role_based_permissions.utils

@@ -12,7 +12,11 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
-from freedom_ls.educator_interface.forms import CohortCourseRegistrationForm
+from freedom_ls.educator_interface.events import LEARNER_CHANGED
+from freedom_ls.educator_interface.forms import (
+    CohortCourseRegistrationForm,
+    LearnerNameForm,
+)
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -93,6 +97,31 @@ class RequiresActiveCohortMixin(PanelAction):
 
 class EditCohortAction(RequiresActiveCohortMixin, EditAction):
     """Edit, offered only while the cohort is active."""
+
+
+class EditLearnerNameAction(EditAction):
+    """Edit the learner's first and last name, which live on their user."""
+
+    label = "Edit name"
+    action_name = "edit_name"
+
+    def __init__(self, learner: Learner) -> None:
+        super().__init__(
+            form_class=LearnerNameForm,
+            form_title=f"Edit {learner.user.display_name}",
+            instance=learner.user,
+            success_events=(LEARNER_CHANGED,),
+        )
+        self._learner = learner
+
+    def get_form(
+        self, request: HttpRequest, instance: Model | None = None
+    ) -> forms.ModelForm:
+        # The page's instance is the learner; the form edits their user.
+        return super().get_form(request, self._instance)
+
+    def event_instance(self, form: forms.ModelForm) -> Model:
+        return self._learner
 
 
 class CohortStateAction(PanelAction):

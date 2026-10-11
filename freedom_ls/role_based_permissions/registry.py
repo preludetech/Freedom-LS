@@ -6,7 +6,7 @@ PERMISSIONS: dict[str, str] = {
     # --- accounts app (label: freedom_ls_accounts) ---
     # "freedom_ls_accounts.view_user": "Can view user",
     # "freedom_ls_accounts.add_user": "Can add user",
-    # "freedom_ls_accounts.change_user": "Can change user",
+    "freedom_ls_accounts.change_user": "Can change user",
     # "freedom_ls_accounts.delete_user": "Can delete user",
     # "freedom_ls_accounts.view_sitesignuppolicy": "Can view site signup policy",
     # "freedom_ls_accounts.add_sitesignuppolicy": "Can add site signup policy",
