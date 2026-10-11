@@ -329,3 +329,12 @@ def test_free_text_question_still_counts_toward_the_quiz_max_score(mock_site_con
 
     form_progress.refresh_from_db()
     assert form_progress.scores == {"score": 1, "max_score": 2}
+
+
+@pytest.mark.django_db
+def test_complete_stamps_a_sitting_that_has_no_user(mock_site_context):
+    progress = FormProgressFactory(user=None)
+
+    progress.complete()
+
+    assert progress.completed_time is not None

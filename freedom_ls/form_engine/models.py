@@ -237,7 +237,11 @@ User = get_user_model()
 
 
 class FormProgress(SiteAwareModel):
-    """Tracks a learner's progress through a form."""
+    """Tracks a learner's progress through a form.
+
+    A sitting with no user is an anonymous visitor's. form_engine does not know
+    what that visitor is doing; the app above it does.
+    """
 
     # PROTECT: an attempt is the audit record of a sitting, so deleting the form
     # out from under it would erase what was answered.
@@ -245,7 +249,11 @@ class FormProgress(SiteAwareModel):
         Form, on_delete=models.PROTECT, related_name="progress_records"
     )
     user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="form_progress"
+        User,
+        on_delete=models.CASCADE,
+        related_name="form_progress",
+        null=True,
+        blank=True,
     )
     start_time = models.DateTimeField(auto_now_add=True)
     last_updated_time = models.DateTimeField(auto_now=True)

@@ -786,3 +786,23 @@ class TestReRegisteringACohort:
             50,
             completed_time,
         )
+
+
+@pytest.mark.django_db
+def test_completing_a_user_less_sitting_recalculates_nothing(
+    mock_site_context, monkeypatch
+):
+    """A sitting with no user has no course attempt, so no progress moves."""
+    from freedom_ls.form_engine.factories import FormProgressFactory
+    from freedom_ls.learner_progress import signals
+
+    calls = []
+    monkeypatch.setattr(
+        signals,
+        "recalculate_progress_percentage",
+        lambda course_progress: calls.append(course_progress),
+    )
+
+    FormProgressFactory(user=None).complete()
+
+    assert calls == []

@@ -38,9 +38,10 @@ from freedom_ls.form_engine.factories import (
 )
 from freedom_ls.form_engine.models import FormStrategy
 from freedom_ls.form_engine.queries import page_questions
+from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
-from freedom_ls.learner_progress.models import CourseFormAttempt
+from freedom_ls.learner_progress.models import CourseFormAttempt, CourseProgress
 
 from .helpers import gated_course_with_form
 
@@ -1472,19 +1473,6 @@ def gated_course(mock_site_context):
 
 
 @pytest.mark.django_db
-def test_anonymous_apply_on_course_with_form_redirects_to_login(
-    mock_site_context, client
-):
-    course, _ = gated_course_with_form()
-    url = _apply_url(course)
-
-    response = client.get(url)
-
-    assert response.status_code == 302
-    assert response["Location"] == f"{reverse('account_signup')}?next={url}"
-
-
-@pytest.mark.django_db
 def test_anonymous_apply_on_coming_soon_course_redirects_to_course_detail(
     mock_site_context, client
 ):
@@ -1810,3 +1798,151 @@ def test_details_step_post_for_a_different_address_from_a_new_ip_is_not_limited(
         )
 
     assert response.status_code != 429
+
+
+# ---------------------------------------------------------------------------
+# Anonymous apply on a course with a form
+# ---------------------------------------------------------------------------
+
+
+def _anonymous_form_applicant(client):
+    """Post the details step on a form course and return the course, form and
+    the user-less application it started."""
+    course, form = gated_course_with_form()
+    _post_details(client, course)
+    return course, form, CourseApplication.objects.get(course=course)
+
+
+@pytest.mark.django_db
+def test_details_post_on_a_form_course_creates_a_user_less_sitting(
+    mock_site_context, client
+):
+    _course, _form, application = _anonymous_form_applicant(client)
+
+    assert application.user is None
+    assert application.form_progress.user is None
+
+
+@pytest.mark.django_db
+def test_details_post_on_a_form_course_redirects_to_page_one(mock_site_context, client):
+    course, _form = gated_course_with_form()
+
+    response = _post_details(client, course)
+
+    application = CourseApplication.objects.get(course=course)
+    assert response["Location"] == _page_url(application, 1)
+
+
+@pytest.mark.django_db
+def test_details_post_on_a_form_course_allows_the_session_to_use_the_sitting(
+    mock_site_context, client
+):
+    _course, _form, application = _anonymous_form_applicant(client)
+
+    allowed = client.session[ANONYMOUS_FORM_PROGRESS_SESSION_KEY]
+
+    assert allowed == [str(application.form_progress.pk)]
+
+
+@pytest.mark.django_db
+def test_page_one_previous_link_goes_back_to_the_details_step(
+    mock_site_context, client
+):
+    course, _form, application = _anonymous_form_applicant(client)
+
+    body = client.get(_page_url(application, 1)).content.decode()
+
+    assert f'href="{_details_url(course)}"' in body
+
+
+@pytest.mark.django_db
+def test_page_two_previous_link_goes_to_page_one(mock_site_context, client):
+    _course, _form, application = _anonymous_form_applicant(client)
+
+    body = client.get(_page_url(application, 2)).content.decode()
+
+    assert f'href="{_page_url(application, 1)}"' in body
+
+
+def _submit_anonymous_application(client, form, application):
+    name = _questions_on(form, 1)[0]
+    client.post(_page_url(application, 1), {f"question_{name.id}": "Ada"})
+    client.post(_page_url(application, 2), {})
+    return client.post(_check_url(application))
+
+
+@pytest.mark.django_db
+def test_submitting_an_anonymous_application_stamps_the_sitting(
+    mock_site_context, client
+):
+    _course, form, application = _anonymous_form_applicant(client)
+
+    _submit_anonymous_application(client, form, application)
+
+    application.form_progress.refresh_from_db()
+    assert application.form_progress.completed_time is not None
+
+
+@pytest.mark.django_db
+def test_submitting_an_anonymous_application_redirects_to_the_status_page(
+    mock_site_context, client
+):
+    _course, form, application = _anonymous_form_applicant(client)
+
+    response = _submit_anonymous_application(client, form, application)
+
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+def test_submitting_an_anonymous_application_creates_no_course_attempt(
+    mock_site_context, client
+):
+    _course, form, application = _anonymous_form_applicant(client)
+
+    _submit_anonymous_application(client, form, application)
+
+    assert CourseFormAttempt.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_submitting_an_anonymous_application_changes_no_course_progress(
+    mock_site_context, client
+):
+    _course, form, application = _anonymous_form_applicant(client)
+    before = CourseProgress.objects.count()
+
+    _submit_anonymous_application(client, form, application)
+
+    assert CourseProgress.objects.count() == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("target", ["page", "check", "status"])
+def test_a_fresh_client_gets_404_on_an_anonymous_applications_urls(
+    mock_site_context, client, target
+):
+    _course, _form, application = _anonymous_form_applicant(client)
+    urls = {
+        "page": _page_url(application, 1),
+        "check": _check_url(application),
+        "status": reverse("course_applications:status", kwargs={"pk": application.pk}),
+    }
+
+    response = Client().get(urls[target])
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_second_details_post_resumes_without_a_second_application(
+    mock_site_context, client
+):
+    course, _form, application = _anonymous_form_applicant(client)
+
+    response = _post_details(client, course)
+
+    assert response["Location"] == _page_url(application, 1)
+    assert CourseApplication.objects.filter(course=course).count() == 1

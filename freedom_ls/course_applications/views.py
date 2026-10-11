@@ -8,7 +8,6 @@ from uuid import UUID
 from allauth.core.ratelimit import consume_or_429
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import prefetch_related_objects
@@ -17,7 +16,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from freedom_ls.accounts.models import User
-from freedom_ls.accounts.utils import acquisition_auth_url, redirect_to_auth
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
@@ -45,6 +43,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_message,
 )
 from freedom_ls.form_engine.queries import page_questions
+from freedom_ls.form_engine.session_access import allow_anonymous_form_progress
 from freedom_ls.site_aware_models.models import get_cached_site
 
 
@@ -165,17 +164,7 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     )
 
 
-def _anonymous_login_redirect(request: HttpRequest) -> HttpResponse:
-    return redirect_to_auth(
-        request,
-        next_url=request.get_full_path(),
-        auth_url=acquisition_auth_url(request),
-    )
-
-
 def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
-    if course.application_form is not None:
-        return _anonymous_login_redirect(request)
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     applicant = anonymous_applicant_for_course(request, course)
@@ -211,8 +200,6 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         return redirect("course_applications:apply", course_slug=course_slug)
     course = get_object_or_404(Course, slug=course_slug)
     raise_404_if_hidden_unregistered(request.user, course)
-    if course.application_form is not None:
-        return _anonymous_login_redirect(request)
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     applicant = anonymous_applicant_for_course(request, course)
@@ -237,7 +224,13 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         if form.is_valid():
             applicant = form.save()
             remember_anonymous_applicant(request, applicant)
-            return redirect("course_applications:apply", course_slug=course.slug)
+            if course.application_form is None:
+                return redirect("course_applications:apply", course_slug=course.slug)
+            app = _start_application(course, anonymous_applicant=applicant)
+            if app.form_progress is not None:
+                allow_anonymous_form_progress(request, app.form_progress)
+                return redirect(_resume_url(app, app.form_progress))
+            return redirect("course_applications:status", pk=app.pk)
         status = 422
     else:
         form = ApplicantDetailsForm(request=request, instance=instance)
@@ -258,9 +251,10 @@ def _owned_application_with_form(
     to show, and 404 is the honest answer for a URL that names one.
     """
     app: CourseApplication = get_object_or_404(
-        CourseApplication.objects.select_related("course", "form_progress__form"),
+        owned_applications(request).select_related(
+            "course", "form_progress__form", "anonymous_applicant"
+        ),
         pk=pk,
-        user=request.user,
     )
     if app.form_progress is None:
         raise Http404
@@ -290,7 +284,6 @@ def _resume_url(app: CourseApplication, form_progress: FormProgress) -> str:
 RETURN_TO_CHECK = "check"
 
 
-@login_required
 def application_form_page(
     request: HttpRequest, pk: UUID, page_number: int
 ) -> HttpResponse:
@@ -331,12 +324,16 @@ def application_form_page(
             "course_applications:check_answers", kwargs={"pk": app.pk}
         ),
     }
+    if app.user_id is None and page_number == 1:
+        context["previous_page_url"] = reverse(
+            "course_applications:applicant_details",
+            kwargs={"course_slug": app.course.slug},
+        )
     return render_form_page(
         request, "course_applications/form_page.html", context, submission
     )
 
 
-@login_required
 def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Everything the applicant has said, one card per page, and the one place
     they submit from.
@@ -353,6 +350,8 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         if not unanswered:
             form_progress.complete()
             record_application_submitted(request, app.course)
+            if app.user_id is None:
+                return redirect("course_applications:status", pk=app.pk)
             messages.success(
                 request,
                 f"Your application for {app.course.title} has been submitted "
