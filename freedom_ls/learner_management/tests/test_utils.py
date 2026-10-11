@@ -43,6 +43,7 @@ from freedom_ls.learner_management.utils import (
     unregister_cohort_from_course,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.webhooks.models import WebhookEvent
 
 
 def _register_via_cohort(learner: Learner, course: Course) -> Cohort:
@@ -359,6 +360,71 @@ class TestEnsureOrganisationMember:
             ).count()
             == 1
         )
+
+
+@pytest.mark.django_db
+@pytest.mark.django_db
+class TestCohortRegistrationWebhooks:
+    def test_registering_records_a_course_registered_event(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        cohort = CohortFactory()
+        course = CourseFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            register_cohort_for_course(cohort, course)
+
+        event = WebhookEvent._base_manager.get()
+        assert event.event_type == "cohort.course_registered"
+        assert event.site_id == cohort.site_id
+        assert event.payload == {
+            "organisation_id": str(cohort.organisation_id),
+            "cohort_id": str(cohort.pk),
+            "course_id": str(course.pk),
+            "course_title": course.title,
+        }
+
+    def test_registering_again_records_nothing_more(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        registration = CohortCourseRegistrationFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            register_cohort_for_course(registration.cohort, registration.course)
+
+        assert WebhookEvent._base_manager.count() == 0
+
+    def test_unregistering_records_a_course_unregistered_event(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        registration = CohortCourseRegistrationFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            unregister_cohort_from_course(registration)
+
+        event = WebhookEvent._base_manager.get()
+        assert event.event_type == "cohort.course_unregistered"
+
+    def test_unregistering_an_inactive_registration_records_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            unregister_cohort_from_course(registration)
+
+        assert WebhookEvent._base_manager.count() == 0
+
+    def test_reactivating_records_one_course_registered_event(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        registration = CohortCourseRegistrationFactory(is_active=False)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            register_cohort_for_course(registration.cohort, registration.course)
+
+        event = WebhookEvent._base_manager.get()
+        assert event.event_type == "cohort.course_registered"
 
 
 @pytest.mark.django_db
