@@ -42,7 +42,10 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import CohortCourseRegistration
+from freedom_ls.learner_management.models import (
+    CohortCourseRegistration,
+    CohortMembership,
+)
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.tables import DataTable
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -761,6 +764,54 @@ class TestRemoveFromCohortIsolation:
         )
 
         assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestMoveToCohortIsolation:
+    """move resolves its source and destination inside the organisation in
+    the URL, so a pk from another organisation changes nothing."""
+
+    def _setup(self):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+        cohort = CohortFactory(organisation=organisation)
+        CohortMembershipFactory(cohort=cohort, learner=learner)
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation, "organisation_admin")
+        url = _interface_url(
+            organisation.slug,
+            f"learners/{learner.pk}/__tabs/overview/__panels/cohorts/__actions/move",
+        )
+        return learner, cohort, educator, url
+
+    def test_another_organisations_source_cohort_answers_404(
+        self, logged_in_client
+    ) -> None:
+        _learner, cohort, educator, url = self._setup()
+        foreign = CohortFactory(organisation=OrganisationFactory())
+
+        response = logged_in_client(educator).post(
+            url,
+            {"cohort": str(foreign.pk), "destination": str(cohort.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
+    def test_another_organisations_destination_changes_nothing(
+        self, logged_in_client
+    ) -> None:
+        learner, cohort, educator, url = self._setup()
+        foreign = CohortFactory(organisation=OrganisationFactory())
+
+        response = logged_in_client(educator).post(
+            url,
+            {"cohort": str(cohort.pk), "destination": str(foreign.pk)},
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 422
+        assert CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
 
 
 @pytest.mark.django_db

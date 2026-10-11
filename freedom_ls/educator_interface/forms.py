@@ -63,15 +63,21 @@ class CohortCourseRegistrationForm(forms.ModelForm):
 
 
 class CohortPickerForm(forms.Form):
-    """Picks one cohort from the queryset the action offers."""
+    """Picks one cohort from the queryset the action offers. The field is
+    named `cohort` unless `field_name` says otherwise."""
 
     cohort = forms.ModelChoiceField(queryset=Cohort.objects.none())
 
     def __init__(
-        self, data: Mapping[str, str] | None = None, *, queryset: QuerySet[Cohort]
+        self,
+        data: Mapping[str, str] | None = None,
+        *,
+        queryset: QuerySet[Cohort],
+        field_name: str = "cohort",
     ) -> None:
         super().__init__(data)
-        cast(forms.ModelChoiceField, self.fields["cohort"]).queryset = queryset
+        self.fields[field_name] = self.fields.pop("cohort")
+        cast(forms.ModelChoiceField, self.fields[field_name]).queryset = queryset
 
 
 class LearnerPickerForm(forms.Form):
