@@ -17,6 +17,10 @@ from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     LearnerNameForm,
 )
+from freedom_ls.learner_management.learner_actions import (
+    deactivate_learner,
+    reactivate_learner,
+)
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
@@ -32,6 +36,7 @@ from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
     unregister_cohort_from_course,
 )
+from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.actions import (
     DeleteAction,
     EditAction,
@@ -261,6 +266,68 @@ class RegisterCohortForCourseAction(RequiresActiveCohortMixin, FormPanelAction):
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(self._page_url)
+
+
+class LearnerStateAction(PanelAction):
+    """Moves a learner to `target_state`, after confirmation."""
+
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    variant = "secondary"
+    capability = "freedom_ls_learner_management.change_learner"
+    target_state: bool
+
+    def perform(self, learner: Learner) -> bool:
+        raise NotImplementedError
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return cast(Learner, ctx.instance).is_active != self.target_state
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        learner = cast(Learner, ctx.instance)
+        context = super().get_context_data(ctx)
+        context["learner"] = learner
+        context["on_default_organisation"] = (
+            learner.organisation_id == get_default_organisation(learner.site).pk
+        )
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        learner = cast(Learner, ctx.instance)
+        if not self.perform(learner):
+            return render(
+                ctx.request,
+                "educator_interface/modal/learner_already_in_state.html",
+                {"learner": learner, "state": self.label},
+                status=422,
+            )
+        # The header's badge and actions change, so the page re-renders in
+        # full and no domain event is sent.
+        return navigation_response(ctx.page_url)
+
+
+class DeactivateLearnerAction(LearnerStateAction):
+    label = "Deactivate"
+    action_name = "deactivate"
+    target_state = False
+    template_name = "educator_interface/modal/deactivate_learner_confirmation.html"
+
+    def perform(self, learner: Learner) -> bool:
+        return deactivate_learner(learner)
+
+
+class ReactivateLearnerAction(LearnerStateAction):
+    label = "Reactivate"
+    action_name = "reactivate"
+    target_state = True
+    template_name = "educator_interface/modal/reactivate_learner_confirmation.html"
+
+    def perform(self, learner: Learner) -> bool:
+        return reactivate_learner(learner)
+
+
+def learner_state_actions() -> list[PanelAction]:
+    """Both state actions; `is_offered` picks which one renders."""
+    return [DeactivateLearnerAction(), ReactivateLearnerAction()]
 
 
 KEEPING_NAMES_SHOWN = 10

@@ -31,6 +31,7 @@ from freedom_ls.learner_management.models import (
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.organisations.utils import get_default_organisation
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
@@ -807,3 +808,161 @@ def test_edit_name_post_fires_the_learner_changed_event_for_the_learner(
 
     trigger = json.loads(response["HX-Trigger"])
     assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+
+
+# deactivate and reactivate a learner
+
+
+def _learner_state_url(
+    organisation: Organisation, learner: Learner, action: str
+) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/{action}"
+    )
+
+
+def _header_triggers(
+    client: Client, organisation: Organisation, learner: Learner
+) -> set[str | None]:
+    response = client.get(_interface_url(organisation.slug, f"learners/{learner.pk}"))
+    document = lxml.html.fromstring(response.content.decode())
+    return {button.get("hx-get") for button in document.cssselect("button[hx-get]")}
+
+
+@pytest.mark.django_db
+def test_an_active_learners_header_offers_deactivate_not_reactivate(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    triggers = _header_triggers(staff_client, organisation, learner)
+
+    assert (
+        _learner_state_url(organisation, learner, "deactivate") in triggers,
+        _learner_state_url(organisation, learner, "reactivate") in triggers,
+    ) == (True, False)
+
+
+@pytest.mark.django_db
+def test_a_removed_learners_header_offers_reactivate_not_deactivate(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=False)
+
+    triggers = _header_triggers(staff_client, organisation, learner)
+
+    assert (
+        _learner_state_url(organisation, learner, "deactivate") in triggers,
+        _learner_state_url(organisation, learner, "reactivate") in triggers,
+    ) == (False, True)
+
+
+@pytest.mark.django_db
+def test_deactivate_fragment_names_self_registration_only_on_the_default_organisation(
+    staff_client: Client, mock_site_context: Site
+):
+    default = get_default_organisation(mock_site_context)
+    learner = LearnerFactory(organisation=default, is_active=True)
+
+    text = _get_fragment(
+        staff_client, _learner_state_url(default, learner, "deactivate")
+    )
+
+    assert "self-register" in text
+
+
+@pytest.mark.django_db
+def test_deactivate_fragment_omits_self_registration_on_another_organisation(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory(is_default=False)
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    text = _get_fragment(
+        staff_client, _learner_state_url(organisation, learner, "deactivate")
+    )
+
+    assert "self-register" not in text
+
+
+@pytest.mark.django_db
+def test_reactivate_fragment_says_access_returns_through_existing_cohorts_and_registrations(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=False)
+
+    text = _get_fragment(
+        staff_client, _learner_state_url(organisation, learner, "reactivate")
+    )
+
+    assert "existing cohorts and registrations" in text
+
+
+@pytest.mark.django_db
+def test_deactivate_post_answers_204_with_a_location_to_the_learner_page(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    response = _post(
+        staff_client, _learner_state_url(organisation, learner, "deactivate")
+    )
+
+    location = json.loads(response["HX-Location"])
+    assert (response.status_code, location["path"]) == (
+        204,
+        _interface_url(organisation.slug, f"learners/{learner.pk}"),
+    )
+
+
+@pytest.mark.django_db
+def test_deactivate_post_sets_the_learner_inactive(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    _post(staff_client, _learner_state_url(organisation, learner, "deactivate"))
+
+    learner.refresh_from_db()
+    assert learner.is_active is False
+
+
+@pytest.mark.django_db
+def test_reactivate_post_sets_the_learner_active(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=False)
+
+    _post(staff_client, _learner_state_url(organisation, learner, "reactivate"))
+
+    learner.refresh_from_db()
+    assert learner.is_active is True
+
+
+@pytest.mark.django_db
+def test_deactivating_a_removed_learner_answers_422_and_changes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=False)
+
+    response = _post(
+        staff_client, _learner_state_url(organisation, learner, "deactivate")
+    )
+
+    learner.refresh_from_db()
+    assert (response.status_code, learner.is_active) == (422, False)
+
+
+@pytest.mark.django_db
+def test_reactivating_an_active_learner_answers_422(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation, is_active=True)
+
+    response = _post(
+        staff_client, _learner_state_url(organisation, learner, "reactivate")
+    )
+
+    assert response.status_code == 422

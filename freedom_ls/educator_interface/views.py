@@ -32,6 +32,7 @@ from freedom_ls.educator_interface.actions import (
     UnregisterCohortFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
+    learner_state_actions,
 )
 from freedom_ls.educator_interface.events import (
     COHORT_CHANGED,
@@ -604,7 +605,10 @@ class LearnerInstanceView(InstanceView):
         return cast(Learner, self.instance).user.email
 
     def get_actions(self) -> list[PanelAction]:
-        return [EditLearnerNameAction(cast(Learner, self.instance))]
+        return [
+            EditLearnerNameAction(cast(Learner, self.instance)),
+            *learner_state_actions(),
+        ]
 
 
 def _interface_path(organisation: Organisation, path_string: str) -> str:

@@ -63,3 +63,32 @@ def test_opening_a_learner_and_their_courses_tab(
         assert_no_horizontal_overflow(page)
         page.goto(learner_url)
         assert_no_horizontal_overflow(page)
+
+
+def test_deactivating_then_reactivating_a_learner_from_the_page_header(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: AbstractBaseUser,
+) -> None:
+    page = educator_logged_in_page
+    organisation = OrganisationFactory(name="Org A")
+    learner = LearnerFactory(
+        organisation=organisation,
+        user__first_name="Ada",
+        user__last_name="Lovelace",
+    )
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    page.goto(interface_url(live_server, organisation.slug, f"learners/{learner.pk}"))
+    modal = page.locator("#app-modal")
+    main = page.locator("#main-content")
+
+    main.get_by_role("button", name="Deactivate", exact=True).first.click()
+    modal.get_by_role("button", name="Deactivate", exact=True).click()
+
+    expect(modal).to_be_hidden()
+    expect(main.get_by_text("Removed", exact=True).first).to_be_visible()
+    main.get_by_role("button", name="Reactivate", exact=True).first.click()
+    modal.get_by_role("button", name="Reactivate", exact=True).click()
+    expect(modal).to_be_hidden()
+    expect(main.get_by_text("Active", exact=True).first).to_be_visible()

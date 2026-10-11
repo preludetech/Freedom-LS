@@ -24,6 +24,7 @@ from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
+from freedom_ls.learner_management.learner_actions import deactivate_learner
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
@@ -806,3 +807,21 @@ def test_completing_a_user_less_sitting_recalculates_nothing(
     FormProgressFactory(user=None).complete()
 
     assert calls == []
+
+
+@pytest.mark.django_db
+class TestDeactivatingALearner:
+    def test_every_course_progress_record_is_kept(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            registration = LearnerCourseRegistrationFactory()
+        learner = registration.learner
+        before = CourseProgress.objects.filter(learner=learner).count()
+
+        deactivate_learner(learner)
+
+        assert (
+            before,
+            CourseProgress.objects.filter(learner=learner).count(),
+        ) == (1, 1)
