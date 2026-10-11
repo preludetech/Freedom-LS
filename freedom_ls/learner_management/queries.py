@@ -597,24 +597,30 @@ def is_in_cohort_expression(site: Site, cohorts: QuerySet) -> Exists:
     )
 
 
-def holds_registration_for_any_expression(site: Site, courses: QuerySet) -> Q:
+def holds_registration_for_any_expression(
+    site: Site | None, courses: QuerySet | list[str]
+) -> Q:
     """Q for a Learner queryset: the outer row holds an active registration for one
-    of `courses` (a values() queryset of course ids), individually or through an
-    active cohort it belongs to.
+    of `courses` (a values() queryset of course ids, or a list of them), individually
+    or through an active cohort it belongs to.
+
+    With `site=None` no site condition is added: the site-aware manager already
+    scopes the subqueries to the current site.
 
     Both cohort conditions sit in one filter() call, for the reason
     is_registered_for_course_expression gives: split across two calls, the
     membership and the registration could match different cohorts.
     """
+    site_condition = {} if site is None else {"site": site}
     return Exists(
         LearnerCourseRegistration.objects.filter(
-            site=site, learner=OuterRef("pk"), course__in=courses, is_active=True
+            learner=OuterRef("pk"), course__in=courses, is_active=True, **site_condition
         )
     ) | Exists(
         access_granting_cohort_registrations().filter(
-            site=site,
             course__in=courses,
             cohort__cohortmembership__learner=OuterRef("pk"),
+            **site_condition,
         )
     )
 

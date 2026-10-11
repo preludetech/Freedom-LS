@@ -555,15 +555,15 @@ def test_nameless_learner_cell_has_no_secondary_line_and_the_email_is_the_card_p
 @pytest.mark.django_db
 def test_learners_list_sorted_by_learner_orders_by_first_name(educator_client):
     organisation = OrganisationFactory()
-    _make_learner(organisation=organisation, first_name="Zed", email="z@example.com")
     _make_learner(organisation=organisation, first_name="Abe", email="a@example.com")
+    _make_learner(organisation=organisation, first_name="Zed", email="z@example.com")
 
     response = educator_client(organisation).get(
-        _learners_url(organisation.slug), {"sort": "user__first_name"}
+        _learners_url(organisation.slug), {"learners-sort": "-user__first_name"}
     )
 
     content = response.content.decode()
-    assert content.index("Abe") < content.index("Zed")
+    assert content.index("Zed") < content.index("Abe")
 
 
 def _row_cells(response, header: str):
