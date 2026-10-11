@@ -1,6 +1,7 @@
 """The applicant's file endpoints: attach, remove, download.
 
-Every lookup is scoped to the signed-in owner of the sitting. A file answer is a
+Every lookup is scoped to the owner of the sitting: the signed-in user, or the
+session that was allowed a user-less sitting. A file answer is a
 scan of someone's identity document, so ownership is the control -- never the
 unguessability of a URL.
 """
@@ -9,7 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
@@ -25,6 +25,7 @@ from freedom_ls.form_engine.models import (
     QuestionAnswerFile,
 )
 from freedom_ls.form_engine.permissions import can_download_answer_files
+from freedom_ls.form_engine.session_access import owned_form_progress
 from freedom_ls.form_engine.uploads import validate_and_sanitise
 
 FILE_WIDGET_TEMPLATE = "form_engine/inputs/file_upload.html"
@@ -39,9 +40,8 @@ def _owned_file_question(
     lifted from another form reaches nothing.
     """
     form_progress = get_object_or_404(
-        FormProgress.objects.select_related("form"),
+        owned_form_progress(request).select_related("form"),
         pk=progress_pk,
-        user=request.user,
     )
     question = get_object_or_404(
         FormQuestion,
@@ -76,7 +76,6 @@ def _render_file_widget(
     )
 
 
-@login_required
 @require_POST
 def partial_question_file_upload(
     request: HttpRequest, progress_pk: str, question_pk: str
@@ -112,7 +111,6 @@ def partial_question_file_upload(
     return _render_file_widget(request, form_progress, question, answer_file)
 
 
-@login_required
 @require_POST
 def partial_question_file_remove(
     request: HttpRequest, progress_pk: str, question_pk: str
@@ -159,17 +157,16 @@ def stream_question_answer_file(answer_file: QuestionAnswerFile) -> FileResponse
     return response
 
 
-@login_required
 def own_question_answer_file(request: HttpRequest, file_pk: str) -> FileResponse:
     """Serve an applicant back the file they attached.
 
-    Ownership is the whole control: the lookup is scoped to the signed-in owner
-    of the sitting, never to the unguessability of the URL.
+    Ownership is the whole control: the lookup is scoped to the owner of the
+    sitting (the signed-in user, or the session allowed it), never to the unguessability of the URL.
     """
     answer_file = get_object_or_404(
         QuestionAnswerFile.objects.select_related("answer__form_progress"),
         pk=file_pk,
-        answer__form_progress__user=request.user,
+        answer__form_progress__in=owned_form_progress(request),
     )
     return stream_question_answer_file(answer_file)
 

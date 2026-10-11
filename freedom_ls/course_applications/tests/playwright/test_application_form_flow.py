@@ -14,6 +14,10 @@ from freedom_ls.conftest import reverse_url
 from freedom_ls.form_engine.uploads import MAX_UPLOAD_BYTES
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.images import png_bytes
+from freedom_ls.tests.playwright_helpers import (
+    QA_VIEWPORTS,
+    assert_no_horizontal_overflow,
+)
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
@@ -142,3 +146,55 @@ def test_an_oversize_file_is_refused_in_the_browser_without_being_uploaded(
     assert uploads == []
     expect(logged_in_page.get_by_text("Choose a smaller one")).to_be_visible()
     expect(logged_in_page.get_by_label("Upload your ID")).to_have_value("")
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_an_anonymous_visitor_can_apply_from_details_to_submit(
+    live_server, live_server_site, mock_site_context, page: Page, tmp_path
+):
+    course, _form = gated_course_with_form()
+    scan = tmp_path / "id-scan.png"
+    scan.write_bytes(png_bytes())
+
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+
+    # No account yet: the first step asks who is applying.
+    expect(page.get_by_role("heading", name="Your details")).to_be_visible()
+    details_url = page.url
+    page.get_by_label("Email").fill("anon.applicant@example.com")
+    page.get_by_label("First name").fill("Ada")
+    page.get_by_role("button", name="Next").click()
+
+    page.get_by_label("Your name").fill("Ada Lovelace")
+    form_page_url = page.url
+    page.get_by_role("button", name="Next").click()
+
+    page.get_by_label("Upload your ID").set_input_files(str(scan))
+    expect(page.get_by_text("id-scan.png")).to_be_visible()
+
+    page.get_by_role("button", name="Remove").click()
+    expect(page.get_by_text("id-scan.png")).to_be_hidden()
+
+    page.get_by_label("Upload your ID").set_input_files(str(scan))
+    expect(page.get_by_text("id-scan.png")).to_be_visible()
+    page.get_by_role("button", name="Next").click()
+
+    page.get_by_role("button", name="Submit application").click()
+    expect(page.get_by_text("has been received")).to_be_visible()
+    status_url = page.url
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(details_url)
+        assert_no_horizontal_overflow(page)
+        page.goto(form_page_url)
+        assert_no_horizontal_overflow(page)
+        page.goto(status_url)
+        assert_no_horizontal_overflow(page)

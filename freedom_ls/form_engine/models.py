@@ -705,8 +705,13 @@ def question_answer_file_upload_to(instance: QuestionAnswerFile, filename: str) 
     `QuestionAnswerFile.save()` deletes the old one.
     """
     extension = Path(filename).suffix.lower()
-    user_id = instance.answer.form_progress.user_id
-    return f"user_uploads/{user_id}/form_answers/{instance.pk}{extension}"
+    form_progress = instance.answer.form_progress
+    # A sitting with no user is an anonymous visitor's. The sitting id is the
+    # erasure prefix then, and the key is kept after the visitor claims an
+    # account: deletion is row-driven, so erasing the user still removes it.
+    if form_progress.user_id is None:
+        return f"user_uploads/anonymous/{form_progress.pk}/form_answers/{instance.pk}{extension}"
+    return f"user_uploads/{form_progress.user_id}/form_answers/{instance.pk}{extension}"
 
 
 class QuestionAnswerFile(SiteAwareModel, TimestampedModel):

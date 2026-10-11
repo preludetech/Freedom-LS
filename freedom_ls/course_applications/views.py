@@ -350,7 +350,7 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
         if not unanswered:
             form_progress.complete()
             record_application_submitted(request, app.course)
-            if app.user_id is None:
+            if not app.is_email_verified:
                 return redirect("course_applications:status", pk=app.pk)
             messages.success(
                 request,

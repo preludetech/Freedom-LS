@@ -24,6 +24,7 @@ from freedom_ls.form_engine.models import (
     FormStrategy,
     QuestionAnswerFile,
 )
+from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.tests.images import png_bytes
 
 # The three file endpoints an applicant reaches: attach, remove, download.
@@ -569,3 +570,148 @@ def test_a_page_with_no_children_renders_nothing(mock_site_context):
     page: FormPage = FormPageFactory(order=0)
 
     assert _render_children(page).strip() == ""
+
+
+# ---------------------------------------------------------------------------
+# Anonymous sittings
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def anonymous_sitting(mock_site_context) -> tuple[FormProgress, FormQuestion]:
+    """An open user-less sitting with one file question on its only page."""
+    form = FormFactory(strategy=FormStrategy.UNSCORED)
+    page = FormPageFactory(form=form, order=0)
+    question: FormQuestion = FormQuestionFactory(
+        form_page=page, type="file_upload", order=0, required=True
+    )
+    form_progress: FormProgress = FormProgressFactory(form=form, user=None)
+    return form_progress, question
+
+
+def _allow_session(client, form_progress: FormProgress) -> None:
+    session = client.session
+    session[ANONYMOUS_FORM_PROGRESS_SESSION_KEY] = [str(form_progress.pk)]
+    session.save()
+
+
+def _anonymous_file(form_progress: FormProgress) -> QuestionAnswerFile:
+    answer_file: QuestionAnswerFile = QuestionAnswerFileFactory(
+        answer__form_progress=form_progress
+    )
+    return answer_file
+
+
+@pytest.mark.django_db
+def test_an_allowed_anonymous_session_can_attach_a_file(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, question = anonymous_sitting
+    _allow_session(client, form_progress)
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_an_allowed_anonymous_session_can_download_its_file(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, _question = anonymous_sitting
+    answer_file = _anonymous_file(form_progress)
+    _allow_session(client, form_progress)
+
+    response = client.get(_download_url(answer_file))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_an_allowed_anonymous_session_can_remove_its_file(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, question = anonymous_sitting
+    _anonymous_file(form_progress)
+    _allow_session(client, form_progress)
+
+    response = client.post(_remove_url(form_progress, question), HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_fresh_client_cannot_attach_to_an_anonymous_sitting(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, question = anonymous_sitting
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_fresh_client_cannot_download_an_anonymous_sittings_file(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, _question = anonymous_sitting
+    answer_file = _anonymous_file(form_progress)
+
+    response = client.get(_download_url(answer_file))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_fresh_client_cannot_remove_an_anonymous_sittings_file(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, question = anonymous_sitting
+    _anonymous_file(form_progress)
+
+    response = client.post(_remove_url(form_progress, question), HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_signed_in_user_cannot_reach_an_anonymous_sitting(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, question = anonymous_sitting
+    client.force_login(UserFactory())
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_the_anonymous_session_loses_the_sitting_once_it_has_a_user(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, question = anonymous_sitting
+    _allow_session(client, form_progress)
+    form_progress.user = UserFactory()
+    form_progress.save()
+
+    response = client.post(
+        _upload_url(form_progress, question),
+        {"file": _png_upload()},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 404

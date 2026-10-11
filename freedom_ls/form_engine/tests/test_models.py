@@ -338,3 +338,17 @@ def test_complete_stamps_a_sitting_that_has_no_user(mock_site_context):
     progress.complete()
 
     assert progress.completed_time is not None
+
+
+@pytest.mark.django_db
+def test_a_file_on_a_user_less_sitting_is_stored_under_the_anonymous_prefix(
+    mock_site_context,
+):
+    form_progress = FormProgressFactory(user=None)
+    answer_file: QuestionAnswerFile = QuestionAnswerFileFactory(
+        answer__form_progress=form_progress
+    )
+
+    assert str(answer_file.file.name).startswith(
+        f"user_uploads/anonymous/{form_progress.pk}/form_answers/"
+    )
