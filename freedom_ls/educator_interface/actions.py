@@ -13,6 +13,13 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
+from freedom_ls.accounts.account_setup import (
+    AccountAlreadySetUp,
+    SetupEmailRecentlySent,
+    is_pending,
+    resend_account_setup_email,
+)
+from freedom_ls.accounts.config import config as accounts_config
 from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
@@ -364,6 +371,52 @@ class ReactivateLearnerAction(LearnerStateAction):
 def learner_state_actions() -> list[PanelAction]:
     """Both state actions; `is_offered` picks which one renders."""
     return [DeactivateLearnerAction(), ReactivateLearnerAction()]
+
+
+class ResendSetupEmailAction(PanelAction):
+    """Sends a pending learner the account setup email again, after confirmation."""
+
+    label = "Resend setup email"
+    action_name = "resend_setup_email"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    variant = "secondary"
+    capability = "freedom_ls_learner_management.change_learner"
+    template_name = "educator_interface/modal/resend_setup_email_confirmation.html"
+
+    def is_offered(self, ctx: PanelContext) -> bool:
+        return is_pending(cast(Learner, ctx.instance).user)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        context = super().get_context_data(ctx)
+        context["learner"] = ctx.instance
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        learner = cast(Learner, ctx.instance)
+        try:
+            resend_account_setup_email(learner.user, learner.organisation.name)
+        except SetupEmailRecentlySent:
+            return render(
+                ctx.request,
+                "educator_interface/modal/setup_email_recently_sent.html",
+                {
+                    "learner": learner,
+                    "minutes": accounts_config.SETUP_EMAIL_RESEND_SECONDS // 60,
+                },
+                status=422,
+            )
+        except AccountAlreadySetUp:
+            return render(
+                ctx.request,
+                "educator_interface/modal/account_already_set_up.html",
+                {"learner": learner},
+                status=422,
+            )
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = build_hx_trigger(
+            {LEARNER_CHANGED: [str(learner.pk)]}, close_modal=True
+        )
+        return response
 
 
 KEEPING_NAMES_SHOWN = 10

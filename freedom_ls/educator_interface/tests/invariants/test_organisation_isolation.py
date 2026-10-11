@@ -248,7 +248,9 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
-    @pytest.mark.parametrize("action", ["deactivate", "reactivate"])
+    @pytest.mark.parametrize(
+        "action", ["deactivate", "reactivate", "resend_setup_email"]
+    )
     def test_learner_state_action_404s_for_a_learner_outside_organisation_a(
         self, isolation, action: str
     ):

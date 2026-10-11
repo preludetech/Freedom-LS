@@ -9,9 +9,12 @@ import lxml.html
 import pytest
 
 from django.contrib.sites.models import Site
+from django.core import mail
+from django.core.cache import cache
 from django.test import Client
 from django.urls import reverse
 
+from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
@@ -1672,3 +1675,141 @@ def test_a_stale_add_learners_post_on_an_inactive_cohort_answers_422_and_adds_no
 
     assert response.status_code == 422
     assert not Learner.objects.filter(user__email="new@example.com").exists()
+
+
+# resend the account setup email
+
+
+@pytest.fixture
+def _clear_resend_guard():
+    cache.clear()
+    yield
+    cache.clear()
+
+
+def _resend_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/resend_setup_email"
+    )
+
+
+def _pending_learner(organisation: Organisation) -> Learner:
+    user = UserFactory(email="pending@example.com", last_login=None)
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    return cast(Learner, LearnerFactory(organisation=organisation, user=user))
+
+
+@pytest.mark.django_db
+def test_a_pending_learners_header_offers_resend_setup_email(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+
+    triggers = _header_triggers(staff_client, organisation, learner)
+
+    assert _resend_url(organisation, learner) in triggers
+
+
+@pytest.mark.django_db
+def test_a_learner_who_has_set_up_their_account_is_offered_no_resend(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+
+    triggers = _header_triggers(staff_client, organisation, learner)
+
+    assert _resend_url(organisation, learner) not in triggers
+
+
+@pytest.mark.django_db
+def test_resend_fragment_names_the_address(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+
+    text = _get_fragment(staff_client, _resend_url(organisation, learner))
+
+    assert "pending@example.com" in text
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_resend_post_sends_one_message_and_answers_204(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    assert (response.status_code, len(mail.outbox)) == (204, 1)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_resend_post_fires_learner_changed_and_closes_the_modal(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    events = json.loads(response["HX-Trigger"])
+    assert (events[LEARNER_CHANGED], "closeModal" in events) == (
+        {"ids": [str(learner.pk)]},
+        True,
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_second_resend_answers_422_with_the_minutes_to_wait(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    with django_capture_on_commit_callbacks(execute=True):
+        _post(staff_client, _resend_url(organisation, learner))
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    minutes = config.SETUP_EMAIL_RESEND_SECONDS // 60
+    assert (response.status_code, len(mail.outbox)) == (422, 1)
+    assert f"{minutes} minutes" in response.content.decode()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_resend_for_a_learner_who_has_set_up_answers_422_and_sends_nothing(
+    staff_client: Client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(staff_client, _resend_url(organisation, learner))
+
+    assert (response.status_code, len(mail.outbox)) == (422, 0)
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("_clear_resend_guard")
+def test_a_cohort_admins_forged_resend_answers_403_and_sends_nothing(
+    mock_site_context: Site, logged_in_client, django_capture_on_commit_callbacks
+):
+    organisation = OrganisationFactory()
+    learner = _pending_learner(organisation)
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", cohort)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post(logged_in_client(educator), _resend_url(organisation, learner))
+
+    assert (response.status_code, len(mail.outbox)) == (403, 0)

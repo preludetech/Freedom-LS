@@ -34,6 +34,7 @@ from freedom_ls.educator_interface.actions import (
     EditLearnerNameAction,
     RegisterCohortForCourseAction,
     RemoveFromCohortAction,
+    ResendSetupEmailAction,
     UnregisterCohortFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
@@ -651,6 +652,7 @@ class LearnerInstanceView(InstanceView):
         return [
             EditLearnerNameAction(cast(Learner, self.instance)),
             AddToCohortAction(),
+            ResendSetupEmailAction(),
             *learner_state_actions(),
         ]
 
