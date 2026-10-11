@@ -18,6 +18,7 @@ from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
     deactivate_learner,
+    move_between_cohorts,
     reactivate_learner,
     remove_from_cohort,
 )
@@ -462,3 +463,115 @@ class TestAddLearners:
             _outcome(OrganisationFactory(), "late@example.com", cohort)
 
         assert not User._base_manager.filter(email="late@example.com").exists()
+
+
+@pytest.mark.django_db
+class TestMoveBetweenCohorts:
+    def _setup(self):
+        source = CohortFactory()
+        destination = CohortFactory(organisation=source.organisation)
+        learner = LearnerFactory(organisation=source.organisation)
+        CohortMembershipFactory(cohort=source, learner=learner)
+        return learner, source, destination
+
+    def test_deletes_the_source_membership(self, mock_site_context):
+        learner, source, destination = self._setup()
+
+        move_between_cohorts(learner, source, destination)
+
+        assert not CohortMembership.objects.filter(
+            learner=learner, cohort=source
+        ).exists()
+
+    def test_creates_the_destination_membership(self, mock_site_context):
+        learner, source, destination = self._setup()
+
+        move_between_cohorts(learner, source, destination)
+
+        assert CohortMembership.objects.filter(
+            learner=learner, cohort=destination
+        ).exists()
+
+    def test_records_removed_then_added_with_the_returned_move_id(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        learner, source, destination = self._setup()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            move_id = move_between_cohorts(learner, source, destination)
+
+        events = list(WebhookEvent._base_manager.order_by("pk"))
+        assert [
+            (e.event_type, e.payload["cohort_id"], e.payload["move_id"]) for e in events
+        ] == [
+            ("cohort.member_removed", str(source.pk), move_id),
+            ("cohort.member_added", str(destination.pk), move_id),
+        ]
+
+    def test_refuses_the_same_cohort(self, mock_site_context):
+        learner, source, _ = self._setup()
+
+        with pytest.raises(ValueError, match="same"):
+            move_between_cohorts(learner, source, source)
+
+    def test_refuses_another_organisations_destination_and_changes_nothing(
+        self, mock_site_context
+    ):
+        learner, source, _ = self._setup()
+        elsewhere = CohortFactory(organisation=OrganisationFactory())
+
+        with pytest.raises(ValueError, match="another organisation"):
+            move_between_cohorts(learner, source, elsewhere)
+
+        assert CohortMembership.objects.get(learner=learner).cohort_id == source.pk
+
+    def test_refuses_an_inactive_source_and_changes_nothing(self, mock_site_context):
+        learner, source, destination = self._setup()
+        source.is_active = False
+        source.save()
+
+        with pytest.raises(ValueError, match="inactive"):
+            move_between_cohorts(learner, source, destination)
+
+        assert CohortMembership.objects.get(learner=learner).cohort_id == source.pk
+
+    def test_refuses_an_inactive_destination_and_changes_nothing(
+        self, mock_site_context
+    ):
+        learner, source, destination = self._setup()
+        destination.is_active = False
+        destination.save()
+
+        with pytest.raises(ValueError, match="inactive"):
+            move_between_cohorts(learner, source, destination)
+
+        assert CohortMembership.objects.get(learner=learner).cohort_id == source.pk
+
+    def test_refuses_a_missing_source_membership_and_changes_nothing(
+        self, mock_site_context
+    ):
+        learner, source, destination = self._setup()
+        other = CohortFactory(organisation=source.organisation)
+
+        with pytest.raises(ValueError, match="not a member of the source"):
+            move_between_cohorts(learner, other, destination)
+
+        assert CohortMembership.objects.get(learner=learner).cohort_id == source.pk
+
+    def test_refuses_an_existing_destination_membership_and_changes_nothing(
+        self, mock_site_context
+    ):
+        learner, source, destination = self._setup()
+        CohortMembershipFactory(cohort=destination, learner=learner)
+
+        with pytest.raises(ValueError, match="already a member"):
+            move_between_cohorts(learner, source, destination)
+
+        assert CohortMembership.objects.filter(learner=learner).count() == 2
+
+    def test_a_repeated_move_raises(self, mock_site_context):
+        learner, source, destination = self._setup()
+        move_between_cohorts(learner, source, destination)
+
+        with pytest.raises(ValueError, match="not a member of the source"):
+            move_between_cohorts(learner, source, destination)

@@ -15,17 +15,20 @@ from __future__ import annotations
 from typing import cast
 
 from django.db import transaction
+from django.db.models import Case, Value, When
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.signals import form_attempt_completed
 from freedom_ls.learner_management.models import (
+    Cohort,
     CohortCourseRegistration,
     CohortMembership,
     Learner,
     LearnerCourseRegistration,
 )
+from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
     CourseItemProgress,
@@ -39,6 +42,7 @@ from freedom_ls.learner_progress.utils import (
     calculate_course_progress_percentage,
     ensure_course_progress_record,
     ensure_course_progress_records_for_cohort_registration,
+    plan_progress_carry,
 )
 
 
@@ -238,3 +242,39 @@ def ensure_course_progress_on_cohort_membership(
     if raw:
         return
     transaction.on_commit(lambda: _ensure_for_membership(instance))
+
+
+@receiver(
+    cohort_membership_moved, dispatch_uid="learner_progress.cohort_membership_moved"
+)
+def carry_course_progress_on_move(
+    sender: type[Learner],
+    learner: Learner,
+    source: Cohort,
+    destination: Cohort,
+    **kwargs: object,
+) -> None:
+    """Carry the learner's work across a move. With no record under the
+    destination registration the source record moves there; where both
+    exist, the further one ends up under the destination and the other
+    under the source, unused; a tie leaves both. Runs inside the move's
+    transaction so the membership's own on-commit mint finds the moved
+    record."""
+    for carry in plan_progress_carry(learner, source, destination):
+        record, target, existing = (
+            carry.record,
+            carry.destination_registration,
+            carry.existing,
+        )
+        if existing is None:
+            record.cohort_registration = target
+            record.save(update_fields=["cohort_registration"])
+        elif record.progress_percentage > existing.progress_percentage:
+            # One UPDATE: the deferrable constraint is checked at the end of
+            # the statement, after both rows have swapped.
+            CourseProgress._base_manager.filter(pk__in=[record.pk, existing.pk]).update(
+                cohort_registration=Case(
+                    When(pk=record.pk, then=Value(target.pk)),
+                    When(pk=existing.pk, then=Value(record.cohort_registration_id)),
+                )
+            )

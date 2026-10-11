@@ -7,12 +7,17 @@ nothing imports is never connected, and fails silently rather than loudly.
 from __future__ import annotations
 
 from django.db.models.signals import post_save
-from django.dispatch import receiver
+from django.dispatch import Signal, receiver
 
 from freedom_ls.learner_management.models import Cohort
 from freedom_ls.learner_management.utils import ensure_organisation_member
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.models import ObjectRoleAssignment
+
+# Sent synchronously inside the move's transaction, after the destination
+# membership exists, with `learner`, `source` and `destination`. A receiver that
+# raises rolls the whole move back.
+cohort_membership_moved = Signal()
 
 
 @receiver(post_save, sender=ObjectRoleAssignment)
