@@ -90,3 +90,6 @@ From `research_anonymous_apply_security.md`, which also covers the reasoning:
 - Changing the normal signup page, or making it passwordless.
 - Changing how authenticated applicants apply.
 - CAPTCHA. The honeypot and rate limits are the bot defence for now.
+
+# IMPORTANT
+There is currently a work tree in progress that attempts to do the same thing, but the process is overly complicated because it was initially implemented incorrectly. So we're starting from scratch, hoping to make a simpler implementation.
