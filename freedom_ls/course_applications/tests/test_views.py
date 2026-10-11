@@ -7,9 +7,10 @@ from unittest.mock import patch
 import pytest
 
 from django.contrib.messages import get_messages
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
-from django.test import Client
+from django.test import Client, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
@@ -1736,3 +1737,76 @@ def test_details_step_post_without_the_consent_is_422(
     response = _post_details(client, gated_course)
 
     assert response.status_code == 422
+
+
+DETAILS_RATE_LIMITS = {"application_details": "5/m/ip,5/h/key"}
+
+
+def _post_details_from_distinct_clients(client, course, count: int, **overrides: str):
+    """Post the details step `count` times, each from its own IP address."""
+    return [
+        client.post(
+            _details_url(course),
+            _details_data(**overrides),
+            REMOTE_ADDR=f"10.0.0.{index + 1}",
+        )
+        for index in range(count)
+    ]
+
+
+def _post_details_from_one_client(client, course, count: int, **overrides: str):
+    return [
+        client.post(
+            _details_url(course),
+            _details_data(**overrides),
+            REMOTE_ADDR="10.9.9.9",
+        )
+        for _ in range(count)
+    ]
+
+
+@pytest.mark.django_db
+def test_details_step_sixth_post_from_one_ip_is_rate_limited(client, gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details_from_one_client(client, gated_course, 5)
+
+        response = client.post(
+            _details_url(gated_course),
+            _details_data(email="other@example.com"),
+            REMOTE_ADDR="10.9.9.9",
+        )
+
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_details_step_sixth_post_for_one_address_from_a_new_ip_is_rate_limited(
+    client, gated_course
+):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details_from_distinct_clients(client, gated_course, 5)
+
+        response = client.post(
+            _details_url(gated_course), _details_data(), REMOTE_ADDR="10.1.1.1"
+        )
+
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_details_step_post_for_a_different_address_from_a_new_ip_is_not_limited(
+    client, gated_course
+):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details_from_distinct_clients(client, gated_course, 5)
+
+        response = client.post(
+            _details_url(gated_course),
+            _details_data(email="grace@example.com"),
+            REMOTE_ADDR="10.1.1.1",
+        )
+
+    assert response.status_code != 429

@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import cast
 from uuid import UUID
 
+from allauth.core.ratelimit import consume_or_429
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites.models import Site
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
@@ -24,6 +27,7 @@ from freedom_ls.course_applications.anonymous_session import (
     owned_applications,
     remember_anonymous_applicant,
 )
+from freedom_ls.course_applications.applicant_email import email_rate_limit_key
 from freedom_ls.course_applications.forms import ApplicantDetailsForm
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
@@ -41,6 +45,7 @@ from freedom_ls.form_engine.paging import (
     unanswered_required_message,
 )
 from freedom_ls.form_engine.queries import page_questions
+from freedom_ls.site_aware_models.models import get_cached_site
 
 
 def _start_application(
@@ -217,6 +222,17 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     instance = applicant if applicant is not None else AnonymousApplicant(course=course)
     status = 200
     if request.method == "POST":
+        site = get_cached_site(request)
+        if not isinstance(site, Site):
+            # A host that resolves no Site could not save the applicant either.
+            raise Http404
+        limited: HttpResponse | None = consume_or_429(
+            request,
+            action="application_details",
+            key=email_rate_limit_key(site, request.POST.get("email", "")),
+        )
+        if limited is not None:
+            return limited
         form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
         if form.is_valid():
             applicant = form.save()

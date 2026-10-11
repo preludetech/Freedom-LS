@@ -455,6 +455,10 @@ ACCOUNT_PREVENT_ENUMERATION = True
 ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
     "signup": "5/m/ip",
     "login_failed": "10/m/ip,5/5m/key",
+    # The details step and the claim email are the two anonymous writes. Both
+    # keys carry the site so one tenant's traffic cannot exhaust another's.
+    "application_details": "5/m/ip,5/h/key",
+    "application_claim_email": "3/h/key",
 }
 
 
