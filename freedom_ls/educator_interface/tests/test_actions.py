@@ -2237,3 +2237,118 @@ def test_a_cohort_admins_forged_register_on_a_learner_outside_their_cohorts_is_r
 
     assert response.status_code == 404
     assert not LearnerCourseRegistration.objects.filter(learner=outsider).exists()
+
+
+# re-register a learner individually
+
+
+def _learner_reregister_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
+        "/__actions/reregister_for_course",
+    )
+
+
+def _reregister_triggers(client: Client, url: str) -> list[str]:
+    document = lxml.html.fromstring(client.get(url).content.decode())
+    return [
+        button.get("hx-get") or ""
+        for button in document.cssselect("button[hx-get]")
+        if "reregister_for_course" in (button.get("hx-get") or "")
+    ]
+
+
+@pytest.mark.django_db
+def test_reregister_is_offered_on_an_inactive_individual_row_only(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    inactive = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+    LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, is_active=False)
+
+    triggers = _reregister_triggers(
+        staff_client, _interface_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    assert [t.split("?registration=")[1] for t in triggers] == [str(inactive.pk)]
+
+
+@pytest.mark.django_db
+def test_reregister_fragment_names_the_learner_and_the_course(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra"), is_active=False
+    )
+
+    text = _get_fragment(
+        staff_client,
+        _learner_reregister_url(organisation, learner)
+        + f"?registration={registration.pk}",
+    )
+
+    assert f"Register {learner.user.display_name} for Algebra again?" in text
+
+
+@pytest.mark.django_db
+def test_reregister_post_reactivates_the_registration_with_both_events(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+
+    response = _post(
+        staff_client,
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    trigger = json.loads(response["HX-Trigger"])
+    assert (response.status_code, registration.is_active) == (204, True)
+    assert trigger[REGISTRATION_CHANGED] == {"ids": [str(learner.pk)]}
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+
+
+@pytest.mark.django_db
+def test_reregister_post_naming_an_active_registration_answers_404(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+
+    response = _post(
+        staff_client,
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_cohort_viewers_forged_reregister_answers_403(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    registration = LearnerCourseRegistrationFactory(learner=learner, is_active=False)
+    grantor = LearnerFactory(user__superuser=True).user
+    viewer = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, viewer, "cohort_viewer", cohort)
+
+    response = _post(
+        logged_in_client(viewer),
+        _learner_reregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    assert (response.status_code, registration.is_active) == (403, False)

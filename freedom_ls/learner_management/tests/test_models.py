@@ -816,3 +816,31 @@ class TestOrphanedDeadlineResolvesAsWholeCourse:
         assert [effective.deadline for effective in resolved[(None, None)]] == [
             deadline_dt
         ]
+
+
+@pytest.mark.django_db
+def test_loaded_is_active_is_the_value_the_row_was_loaded_with(mock_site_context):
+    registration = LearnerCourseRegistrationFactory(is_active=False)
+
+    loaded = LearnerCourseRegistration.objects.get(pk=registration.pk)
+    loaded.is_active = True
+
+    assert loaded.loaded_is_active is False
+
+
+@pytest.mark.django_db
+def test_loaded_is_active_is_none_when_is_active_is_deferred(mock_site_context):
+    registration = LearnerCourseRegistrationFactory()
+
+    loaded = LearnerCourseRegistration.objects.defer("is_active").get(
+        pk=registration.pk
+    )
+
+    assert loaded.loaded_is_active is None
+
+
+@pytest.mark.django_db
+def test_loaded_is_active_is_none_on_an_unsaved_instance(mock_site_context):
+    registration = LearnerCourseRegistrationFactory.build()
+
+    assert registration.loaded_is_active is None

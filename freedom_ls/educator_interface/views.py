@@ -36,6 +36,7 @@ from freedom_ls.educator_interface.actions import (
     RegisterCohortForCourseAction,
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
+    ReregisterLearnerForCourseAction,
     ResendSetupEmailAction,
     UnregisterCohortFromCourseAction,
     UnregisterLearnerFromCourseAction,
@@ -573,7 +574,10 @@ class LearnerRegistrationsPanel(Panel):
     refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
 
     def get_actions(self) -> list[PanelAction]:
-        return [UnregisterLearnerFromCourseAction()]
+        return [
+            UnregisterLearnerFromCourseAction(),
+            ReregisterLearnerForCourseAction(),
+        ]
 
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)

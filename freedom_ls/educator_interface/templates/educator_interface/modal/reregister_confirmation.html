@@ -1,0 +1,22 @@
+{% comment %}
+The modal fragment a ReregisterLearnerForCourseAction's GET returns. Context:
+learner, registration, course, confirm_url.
+{% endcomment %}
+<c-modal-header>Register {{ learner.user.display_name }} for {{ course }} again?</c-modal-header>
+
+<div class="space-y-3 px-6 py-4 text-sm">
+    <p>They get access to {{ course }} again, with their earlier progress.</p>
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <form hx-post="{{ confirm_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="registration" value="{{ registration.pk }}">
+        <c-button type="submit" variant="primary" loading="true" loading_text="Registering...">
+            Re-register
+        </c-button>
+    </form>
+</c-button-group>

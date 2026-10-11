@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import cast
 from unittest.mock import patch
 
 import pytest
@@ -9,6 +10,7 @@ from django.core import serializers
 from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.content_engine.factories import (
     ContentCollectionItemFactory,
@@ -27,6 +29,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.learner_actions import (
     deactivate_learner,
     move_between_cohorts,
+    register_for_course,
 )
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
@@ -693,6 +696,121 @@ class TestCourseRegisteredNotification:
         assert Notification._base_manager.filter(
             user=registration.learner.user, category="course.registered"
         ).exists()
+
+
+@pytest.mark.django_db
+class TestReactivationAnnouncesTheRegistration:
+    """A reactivation fires `course.registered` for integrators and raises no
+    notification: the person who reactivated it, or the learner themselves, is
+    already looking at the result."""
+
+    @pytest.fixture
+    def deactivated_registration(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> LearnerCourseRegistration:
+        """An inactive row loaded fresh from the database, with the creation
+        notification already cleared."""
+        with django_capture_on_commit_callbacks(execute=True):
+            registration = LearnerCourseRegistrationFactory()
+        Notification._base_manager.all().delete()
+        LearnerCourseRegistration.objects.filter(pk=registration.pk).update(
+            is_active=False
+        )
+        return cast(
+            LearnerCourseRegistration,
+            LearnerCourseRegistration.objects.get(pk=registration.pk),
+        )
+
+    def test_register_for_course_records_the_event_and_no_notification(
+        self, deactivated_registration, django_capture_on_commit_callbacks
+    ) -> None:
+        with (
+            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            register_for_course(
+                deactivated_registration.learner, deactivated_registration.course
+            )
+
+        assert [call.args[0] for call in fire.call_args_list] == ["course.registered"]
+        assert not Notification._base_manager.exists()
+
+    def test_the_self_registration_view_records_the_event_and_no_notification(
+        self,
+        mock_site_context,
+        logged_in_client,
+        course_with_topic,
+        django_capture_on_commit_callbacks,
+    ) -> None:
+        course = course_with_topic(access_type="free")
+        client = logged_in_client(UserFactory())
+        url = reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": course.slug},
+        )
+        with django_capture_on_commit_callbacks(execute=True):
+            client.post(url)
+        LearnerCourseRegistration.objects.update(is_active=False)
+        Notification._base_manager.all().delete()
+
+        with (
+            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            client.post(url)
+
+        assert [call.args[0] for call in fire.call_args_list] == ["course.registered"]
+        assert not Notification._base_manager.exists()
+
+    def test_saving_the_reactivated_instance_again_records_nothing(
+        self, deactivated_registration, django_capture_on_commit_callbacks
+    ) -> None:
+        deactivated_registration.is_active = True
+        with django_capture_on_commit_callbacks(execute=True):
+            deactivated_registration.save()
+
+        with (
+            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            deactivated_registration.save()
+
+        fire.assert_not_called()
+
+    def test_a_no_op_save_of_an_active_registration_records_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        registration = LearnerCourseRegistrationFactory()
+        registration = LearnerCourseRegistration.objects.get(pk=registration.pk)
+
+        with (
+            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            registration.save()
+
+        fire.assert_not_called()
+
+    def test_creating_a_staff_registration_still_notifies(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            registration = LearnerCourseRegistrationFactory()
+
+        assert (
+            Notification._base_manager.filter(
+                user=registration.learner.user, category="course.registered"
+            ).count()
+            == 1
+        )
+
+    def test_creating_a_self_registration_still_notifies_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ) -> None:
+        with django_capture_on_commit_callbacks(execute=True):
+            LearnerCourseRegistrationFactory(self_registered=True)
+
+        assert not Notification._base_manager.exists()
 
 
 # Webhook events fired when a learner course registration is created or saved.

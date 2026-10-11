@@ -12,6 +12,9 @@
                         {% if row.is_individual and row.is_active and row_action_urls.unregister_from_course %}
                             <c-modal-trigger url="{{ row_action_urls.unregister_from_course }}?registration={{ row.registration.pk }}" label="Unregister" variant="secondary" />
                         {% endif %}
+                        {% if row.is_individual and not row.is_active and row_action_urls.reregister_for_course %}
+                            <c-modal-trigger url="{{ row_action_urls.reregister_for_course }}?registration={{ row.registration.pk }}" label="Re-register" variant="secondary" />
+                        {% endif %}
                     </span>
                 </li>
             {% endfor %}
