@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pytest
 
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -10,6 +12,10 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_management.learner_actions import (
+    AddOutcome,
+    CohortOutcome,
+    LearnerEntry,
+    add_learners,
     add_to_cohort,
     deactivate_learner,
     reactivate_learner,
@@ -270,3 +276,189 @@ class TestAddToCohort:
             add_to_cohort(learner, cohort)
 
         assert CohortMembership.objects.filter(learner=learner).count() == 0
+
+
+def _outcome(organisation, email, cohort=None):
+    return add_learners(organisation, [LearnerEntry(email)], cohort)[0]
+
+
+@pytest.mark.django_db
+class TestAddLearners:
+    def test_a_new_address_is_created_and_sent_the_setup_email(
+        self, mock_site_context, django_capture_on_commit_callbacks, mailoutbox
+    ):
+        organisation = OrganisationFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            result = _outcome(organisation, "new@example.com")
+
+        assert result.outcome == AddOutcome.CREATED
+        assert [m.to for m in mailoutbox] == [["new@example.com"]]
+
+    def test_an_existing_user_joins_the_organisation(self, mock_site_context):
+        organisation = OrganisationFactory()
+        user = UserFactory(email="known@example.com")
+
+        result = _outcome(organisation, "known@example.com")
+
+        assert result.outcome == AddOutcome.JOINED
+        assert result.learner.user == user
+
+    def test_a_removed_learner_is_reactivated(self, mock_site_context):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation, is_active=False)
+
+        result = _outcome(organisation, learner.user.email)
+
+        learner.refresh_from_db()
+        assert (result.outcome, learner.is_active) == (AddOutcome.REACTIVATED, True)
+
+    def test_an_active_learner_is_reported_as_already_a_learner(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation)
+
+        result = _outcome(organisation, learner.user.email)
+
+        assert result.outcome == AddOutcome.ALREADY_LEARNER
+
+    def test_an_invalid_address_is_reported_and_creates_no_user(
+        self, mock_site_context
+    ):
+        organisation = OrganisationFactory()
+        before = User._base_manager.count()
+
+        result = _outcome(organisation, "not-an-email")
+
+        assert (result.outcome, User._base_manager.count()) == (
+            AddOutcome.INVALID_EMAIL,
+            before,
+        )
+
+    def test_an_address_on_another_site_is_refused(self, mock_site_context):
+        organisation = OrganisationFactory()
+        User._base_manager.create(site=SiteFactory(), email="away@example.com")
+
+        result = _outcome(organisation, "away@example.com")
+
+        assert result.outcome == AddOutcome.EMAIL_IN_USE_ELSEWHERE
+
+    def test_a_repeated_address_collapses_to_one_result(self, mock_site_context):
+        organisation = OrganisationFactory()
+
+        results = add_learners(
+            organisation,
+            [LearnerEntry("dup@example.com"), LearnerEntry(" DUP@example.com ")],
+        )
+
+        assert len(results) == 1
+
+    def test_the_second_run_reports_already_learner_and_already_member(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory()
+        entries = [LearnerEntry("again@example.com")]
+        add_learners(cohort.organisation, entries, cohort)
+
+        result = add_learners(cohort.organisation, entries, cohort)[0]
+
+        assert (result.outcome, result.cohort_outcome) == (
+            AddOutcome.ALREADY_LEARNER,
+            CohortOutcome.ALREADY_MEMBER,
+        )
+
+    def test_a_cohort_adds_the_new_learner_to_it(self, mock_site_context):
+        cohort = CohortFactory()
+
+        result = _outcome(cohort.organisation, "member@example.com", cohort)
+
+        assert result.cohort_outcome == CohortOutcome.ADDED
+        assert CohortMembership.objects.filter(
+            learner=result.learner, cohort=cohort
+        ).exists()
+
+    def test_a_removed_learner_records_a_reactivated_event(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        organisation = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation, is_active=False)
+
+        with django_capture_on_commit_callbacks(execute=True):
+            _outcome(organisation, learner.user.email)
+
+        event = WebhookEvent._base_manager.get()
+        assert event.event_type == "learner.reactivated"
+
+    def test_a_new_learner_records_an_added_event_with_account_created(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        organisation = OrganisationFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            result = _outcome(organisation, "fresh@example.com")
+
+        event = WebhookEvent._base_manager.get()
+        assert event.event_type == "learner.added"
+        assert event.payload == {
+            "user_id": result.learner.user.pk,
+            "user_email": "fresh@example.com",
+            "organisation_id": str(organisation.pk),
+            "learner_id": str(result.learner.pk),
+            "account_created": True,
+        }
+
+    def test_an_existing_user_joining_records_account_created_false(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        organisation = OrganisationFactory()
+        UserFactory(email="known@example.com")
+
+        with django_capture_on_commit_callbacks(execute=True):
+            _outcome(organisation, "known@example.com")
+
+        event = WebhookEvent._base_manager.get(event_type="learner.added")
+        assert event.payload["account_created"] is False
+
+    def test_a_cohort_records_one_member_added_event_without_a_move_id(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        cohort = CohortFactory()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            _outcome(cohort.organisation, "member@example.com", cohort)
+
+        event = WebhookEvent._base_manager.get(event_type="cohort.member_added")
+        assert event.payload["move_id"] is None
+
+    def test_a_second_run_records_no_member_added_event(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        cohort = CohortFactory()
+        _outcome(cohort.organisation, "member@example.com", cohort)
+        WebhookEvent._base_manager.all().delete()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            _outcome(cohort.organisation, "member@example.com", cohort)
+
+        assert WebhookEvent._base_manager.count() == 0
+
+    def test_an_inactive_cohort_raises_before_any_entry_is_touched(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(is_active=False)
+
+        with pytest.raises(ValueError, match="active cohort"):
+            _outcome(cohort.organisation, "late@example.com", cohort)
+
+        assert not User._base_manager.filter(email="late@example.com").exists()
+
+    def test_another_organisations_cohort_raises_before_any_entry_is_touched(
+        self, mock_site_context
+    ):
+        cohort = CohortFactory(organisation=OrganisationFactory())
+
+        with pytest.raises(ValueError, match="active cohort"):
+            _outcome(OrganisationFactory(), "late@example.com", cohort)
+
+        assert not User._base_manager.filter(email="late@example.com").exists()

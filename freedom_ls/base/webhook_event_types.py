@@ -4,13 +4,14 @@ FLS_WEBHOOK_EVENT_TYPES = [
     ("course.registered", "Course registered"),
     ("cohort.course_registered", "Cohort registered for course"),
     ("cohort.course_unregistered", "Cohort unregistered from course"),
+    ("learner.added", "Learner added"),
     ("learner.deactivated", "Learner deactivated"),
     ("learner.reactivated", "Learner reactivated"),
     ("cohort.member_added", "Learner added to cohort"),
     ("cohort.member_removed", "Learner removed from cohort"),
 ]
 
-WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | None]] = {
+WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | bool | None]] = {
     "user.registered": {
         "user_id": "sample-uuid-1234",
         "user_email": "test@example.com",
@@ -46,6 +47,13 @@ WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | None]] = {
         "cohort_id": "sample-cohort-uuid",
         "course_id": "sample-course-uuid",
         "course_title": "Sample Course",
+    },
+    "learner.added": {
+        "user_id": "sample-uuid-1234",
+        "user_email": "test@example.com",
+        "organisation_id": "sample-organisation-uuid",
+        "learner_id": "sample-learner-uuid",
+        "account_created": True,
     },
     "learner.deactivated": {
         "user_id": "sample-uuid-1234",

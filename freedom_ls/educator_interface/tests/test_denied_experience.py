@@ -15,6 +15,7 @@ from django.test import Client, RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.educator_interface.views import OrganisationSectionConfig
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -312,3 +313,23 @@ def test_a_cohort_admins_pasted_deactivate_learner_post_answers_403_and_keeps_th
 
     learner.refresh_from_db()
     assert (response.status_code, learner.is_active) == (403, True)
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_pasted_add_learners_post_answers_403_and_creates_nothing(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory(staff=True)
+    assign_object_role(user, cohort, "cohort_admin")
+    client = logged_in_client(user)
+
+    response = client.post(
+        _interface_url(organisation.slug, "learners/__actions/add_learners"),
+        {"entries": "new@example.com", "cohort": str(cohort.pk)},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 403
+    assert not User.objects.filter(email="new@example.com").exists()
