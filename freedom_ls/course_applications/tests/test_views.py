@@ -2015,6 +2015,15 @@ def test_claim_get_renders_the_confirm_page(client, claimable):
 
 
 @pytest.mark.django_db
+def test_claim_get_does_not_promise_a_password_step(client, claimable):
+    """The confirm copy is the same for every address, so it must not describe
+    a step that only new accounts see."""
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert b"choose a password" not in response.content
+
+
+@pytest.mark.django_db
 def test_claim_get_creates_no_user(client, claimable):
     users_before = User._base_manager.count()
 
