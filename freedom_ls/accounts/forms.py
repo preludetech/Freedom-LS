@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from allauth.account.forms import SignupForm
@@ -18,6 +19,7 @@ from freedom_ls.site_aware_models.models import get_cached_site
 if TYPE_CHECKING:
     from django_stubs_ext import StrPromise
 
+    from .legal_docs import LegalDoc
     from .models import SiteSignupPolicy
 
 User = get_user_model()
@@ -114,6 +116,72 @@ def apply_signup_name_policy(
         form.fields["first_name"].label = _("First name (optional)")
 
 
+def add_consent_fields(
+    form: forms.BaseForm, request: HttpRequest | None, policy: SiteSignupPolicy | None
+) -> None:
+    """Add the Terms / Privacy clickwrap checkboxes the site's policy asks for.
+
+    Per-site policy takes precedence; without one, ``config.REQUIRE_TERMS_ACCEPTANCE``
+    applies so operators can flip consent on for every site without a row per
+    site. A checkbox is only added when its document resolves, so the label
+    never links to a missing page. Does nothing without a request.
+    """
+    from .legal_docs import has_legal_doc
+    from .utils import get_effective_require_terms_acceptance
+
+    if request is None or not get_effective_require_terms_acceptance(policy):
+        return
+    site = get_cached_site(request)
+    if not isinstance(site, Site):
+        return
+
+    if has_legal_doc(site, "terms"):
+        form.fields["accept_terms"] = forms.BooleanField(
+            required=True,
+            label=_("I accept the Terms and Conditions"),
+        )
+    else:
+        logger.warning(
+            "Site %s has require_terms_acceptance=True but no terms doc; "
+            "skipping accept_terms checkbox",
+            site.domain,
+        )
+
+    if has_legal_doc(site, "privacy"):
+        form.fields["accept_privacy"] = forms.BooleanField(
+            required=True,
+            label=_("I accept the Privacy Policy"),
+        )
+    else:
+        logger.warning(
+            "Site %s has require_terms_acceptance=True but no privacy "
+            "doc; skipping accept_privacy checkbox",
+            site.domain,
+        )
+
+
+CONSENT_PAIRS: tuple[tuple[str, str], ...] = (
+    ("terms", "accept_terms"),
+    ("privacy", "accept_privacy"),
+)
+
+
+def accepted_legal_docs(
+    site: Site, cleaned_data: Mapping[str, object]
+) -> list[tuple[str, LegalDoc]]:
+    """The documents this submission consented to, with the version it saw."""
+    from .legal_docs import get_legal_doc
+
+    accepted: list[tuple[str, LegalDoc]] = []
+    for doc_type, field_name in CONSENT_PAIRS:
+        if not cleaned_data.get(field_name):
+            continue
+        doc = get_legal_doc(site, doc_type)
+        if doc is not None:
+            accepted.append((doc_type, doc))
+    return accepted
+
+
 class SiteAwareSignupForm(SignupForm):
     """allauth signup form extended for FLS:
 
@@ -132,53 +200,21 @@ class SiteAwareSignupForm(SignupForm):
         super().__init__(*args, **kwargs)
 
         # Local imports to avoid circulars at module import time.
-        from .legal_docs import has_legal_doc
         from .utils import (
             get_effective_require_terms_acceptance,
             get_signup_policy_for_request,
         )
 
         request = _get_request_or_none()
-        site: Site | None
-        site_obj = get_cached_site(request) if request is not None else None
-        site = site_obj if isinstance(site_obj, Site) else None
-
         policy = get_signup_policy_for_request(request) if request is not None else None
 
         # Name handling. Per-site policy takes precedence; without one, fall
         # back to config.REQUIRE_NAME.
         apply_signup_name_policy(self, policy)
 
-        # Terms / Privacy clickwrap. Per-site policy takes precedence; without
-        # one, fall back to config.REQUIRE_TERMS_ACCEPTANCE so operators can
-        # flip consent on for every site without creating a row per site.
-        require_terms = get_effective_require_terms_acceptance(policy)
+        add_consent_fields(self, request, policy)
 
-        if require_terms and request is not None and site is not None:
-            if has_legal_doc(site, "terms"):
-                self.fields["accept_terms"] = forms.BooleanField(
-                    required=True,
-                    label=_("I accept the Terms and Conditions"),
-                )
-            else:
-                logger.warning(
-                    "Site %s has require_terms_acceptance=True but no terms doc; "
-                    "skipping accept_terms checkbox",
-                    site.domain,
-                )
-
-            if has_legal_doc(site, "privacy"):
-                self.fields["accept_privacy"] = forms.BooleanField(
-                    required=True,
-                    label=_("I accept the Privacy Policy"),
-                )
-            else:
-                logger.warning(
-                    "Site %s has require_terms_acceptance=True but no privacy "
-                    "doc; skipping accept_privacy checkbox",
-                    site.domain,
-                )
-        elif require_terms and request is None:
+        if get_effective_require_terms_acceptance(policy) and request is None:
             # Out-of-request construction (e.g. management command). Refuse to
             # silently skip the checkboxes — fail closed.
             raise RuntimeError(
@@ -199,7 +235,6 @@ class SiteAwareSignupForm(SignupForm):
         The writes are wrapped in a transaction so a partial DB failure (one
         consent saved, the other 500s) does not leave asymmetric state.
         """
-        from .legal_docs import get_legal_doc
         from .models import LegalConsent
         from .utils import get_client_ip
 
@@ -209,19 +244,8 @@ class SiteAwareSignupForm(SignupForm):
 
         ip = get_client_ip(request)
 
-        consent_pairs: list[tuple[str, str]] = [
-            ("terms", "accept_terms"),
-            ("privacy", "accept_privacy"),
-        ]
-
         with transaction.atomic():
-            for doc_type, accepted_field in consent_pairs:
-                if not self.cleaned_data.get(accepted_field):
-                    continue
-                doc = get_legal_doc(site_obj, doc_type)
-                if doc is None:
-                    # Defensive: the form would not have asked.
-                    continue
+            for doc_type, doc in accepted_legal_docs(site_obj, self.cleaned_data):
                 LegalConsent.objects.create(
                     user=user,
                     document_type=doc_type,

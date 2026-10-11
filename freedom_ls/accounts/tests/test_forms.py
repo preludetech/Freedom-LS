@@ -16,6 +16,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import SiteSignupPolicyFactory, UserFactory
 from freedom_ls.accounts.forms import (
     SiteAwareSignupForm,
+    accepted_legal_docs,
     apply_signup_name_policy,
     honeypot_field,
     reject_honeypot,
@@ -408,3 +409,26 @@ def test_apply_signup_name_policy_makes_first_name_optional(
     apply_signup_name_policy(form, policy)
 
     assert form.fields["first_name"].required is False
+
+
+@pytest.mark.django_db
+def test_accepted_legal_docs_returns_only_the_ticked_documents(
+    mock_site_context, legal_repo_mock
+):
+    accepted = accepted_legal_docs(
+        mock_site_context, {"accept_terms": True, "accept_privacy": False}
+    )
+
+    assert [doc_type for doc_type, _doc in accepted] == ["terms"]
+    assert accepted[0][1].version == "1.5"
+
+
+@pytest.mark.django_db
+def test_accepted_legal_docs_skips_a_ticked_document_that_does_not_resolve(
+    mock_site_context, mock_legal_blobs
+):
+    accepted = accepted_legal_docs(
+        mock_site_context, {"accept_terms": True, "accept_privacy": True}
+    )
+
+    assert accepted == []

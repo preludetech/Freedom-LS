@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 from django import forms
+from django.contrib.sites.models import Site
 from django.http import HttpRequest, QueryDict
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.accounts.forms import (
+    accepted_legal_docs,
+    add_consent_fields,
     apply_signup_name_policy,
     honeypot_field,
     reject_honeypot,
 )
-from freedom_ls.accounts.utils import get_signup_policy_for_request
+from freedom_ls.accounts.utils import get_client_ip, get_signup_policy_for_request
 from freedom_ls.course_applications.applicant_email import normalise_email
 from freedom_ls.course_applications.models import AnonymousApplicant
+from freedom_ls.site_aware_models.models import get_cached_site
 
 HONEYPOT_APPLICATION_MESSAGE = _(
     "We couldn't process this application. If you used autofill or a password "
@@ -45,7 +50,9 @@ class ApplicantDetailsForm(forms.ModelForm):
     ) -> None:
         super().__init__(data, instance=instance)
         self.request = request
-        apply_signup_name_policy(self, get_signup_policy_for_request(request))
+        policy = get_signup_policy_for_request(request)
+        apply_signup_name_policy(self, policy)
+        add_consent_fields(self, request, policy)
 
     def clean_email(self) -> str:
         return normalise_email(self.cleaned_data["email"])
@@ -54,3 +61,34 @@ class ApplicantDetailsForm(forms.ModelForm):
         cleaned_data: dict[str, object] = super().clean() or {}
         reject_honeypot(self, self.request, HONEYPOT_APPLICATION_MESSAGE)
         return cleaned_data
+
+    def save(self, commit: bool = True) -> AnonymousApplicant:
+        applicant: AnonymousApplicant = super().save(commit=False)
+        site = get_cached_site(self.request)
+        # The checkboxes only exist when a real Site resolved, so an unresolved
+        # host simply has nothing to record here.
+        if isinstance(site, Site):
+            self._record_consent_evidence(applicant, site)
+        if commit:
+            applicant.save()
+        return applicant
+
+    def _record_consent_evidence(
+        self, applicant: AnonymousApplicant, site: Site
+    ) -> None:
+        """Keep what a LegalConsent row will need, since no user exists yet to hold one."""
+        accepted = accepted_legal_docs(site, self.cleaned_data)
+        for doc_type, doc in accepted:
+            if doc_type == "terms":
+                applicant.terms_version, applicant.terms_git_hash = (
+                    doc.version,
+                    doc.git_hash,
+                )
+            else:
+                applicant.privacy_version, applicant.privacy_git_hash = (
+                    doc.version,
+                    doc.git_hash,
+                )
+        if accepted:
+            applicant.consent_ip_address = get_client_ip(self.request) or None
+            applicant.consented_at = timezone.now()

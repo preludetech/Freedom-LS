@@ -76,3 +76,86 @@ def test_closed_signups_do_not_change_validation(request_for_site, site):
     form = _form(request_for_site)
 
     assert form.is_valid() is True
+
+
+@pytest.fixture
+def terms_required(site, legal_repo_mock):
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
+
+
+def _consent(**overrides: str) -> dict[str, str]:
+    data = {"accept_terms": "on", "accept_privacy": "on"}
+    data.update(overrides)
+    return data
+
+
+def test_form_has_both_consent_checkboxes_when_the_policy_requires_terms(
+    request_for_site, terms_required
+):
+    form = _form(request_for_site)
+
+    assert {"accept_terms", "accept_privacy"} <= set(form.fields)
+
+
+def test_form_without_the_checkboxes_ticked_is_invalid(
+    request_for_site, terms_required
+):
+    form = _form(request_for_site)
+
+    assert form.is_valid() is False
+    assert set(form.errors) == {"accept_terms", "accept_privacy"}
+
+
+def test_save_stores_the_document_versions_and_git_hashes(
+    request_for_site, terms_required
+):
+    form = _form(request_for_site, **_consent())
+    assert form.is_valid()
+
+    applicant = form.save(commit=False)
+
+    assert applicant.terms_version == "1.5"
+    assert len(applicant.terms_git_hash) == 40
+    assert applicant.privacy_version == "1.5"
+    assert len(applicant.privacy_git_hash) == 40
+
+
+def test_save_stores_the_client_ip(request_for_site, terms_required, settings):
+    settings.TRUSTED_PROXY_IP_HEADER = None
+    request_for_site.META["REMOTE_ADDR"] = "203.0.113.7"
+    form = _form(request_for_site, **_consent())
+    assert form.is_valid()
+
+    applicant = form.save(commit=False)
+
+    assert applicant.consent_ip_address == "203.0.113.7"
+
+
+def test_save_stores_when_consent_was_given(request_for_site, terms_required):
+    form = _form(request_for_site, **_consent())
+    assert form.is_valid()
+
+    applicant = form.save(commit=False)
+
+    assert applicant.consented_at is not None
+
+
+def test_form_without_a_terms_policy_has_no_consent_field(request_for_site, site):
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=False)
+
+    form = _form(request_for_site)
+
+    assert "accept_terms" not in form.fields
+    assert "accept_privacy" not in form.fields
+
+
+def test_save_without_a_terms_policy_leaves_the_evidence_blank(request_for_site, site):
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=False)
+    form = _form(request_for_site)
+    assert form.is_valid()
+
+    applicant = form.save(commit=False)
+
+    assert applicant.terms_version == ""
+    assert applicant.consent_ip_address is None
+    assert applicant.consented_at is None

@@ -1710,3 +1710,29 @@ def test_details_post_succeeds_with_csrf_enforced(gated_course):
     )
 
     assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_details_step_links_both_consent_checkboxes_to_the_legal_documents(
+    client, gated_course, site, legal_repo_mock
+):
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
+
+    content = client.get(_details_url(gated_course)).content.decode()
+
+    assert "I accept the" in content
+    assert reverse("accounts:legal_doc", kwargs={"doc_type": "terms"}) in content
+    assert reverse("accounts:legal_doc", kwargs={"doc_type": "privacy"}) in content
+    assert 'name="accept_terms"' in content
+    assert 'name="accept_privacy"' in content
+
+
+@pytest.mark.django_db
+def test_details_step_post_without_the_consent_is_422(
+    client, gated_course, site, legal_repo_mock
+):
+    SiteSignupPolicyFactory(site=site, require_terms_acceptance=True)
+
+    response = _post_details(client, gated_course)
+
+    assert response.status_code == 422
