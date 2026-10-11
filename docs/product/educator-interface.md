@@ -1,16 +1,16 @@
 # Educator Interface
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-11_
 
 ## Summary
 
 - Educators use a single-page HTMX panel with three sections: Cohorts, Learners, and Courses.
 - A learner or cohort can be previewed in a read-only quick-view drawer without leaving the list.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
-- The cohort detail view includes a course-progress matrix showing completion, quiz scores, pass/fail, and deadlines for every learner and course item.
+- Educators can create, edit, deactivate and delete cohorts, and register a cohort for courses or unregister it. A cohort's page shows an overview with per-course completion, then Learners, Courses and Settings tabs. See [Cohorts](#cohorts).
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
-- **Access is granted by role** — site admin, organisation admin, cohort admin or cohort viewer. Cohorts and Learners are permission-checked on listings and detail pages; the Courses list and course detail pages are not. See [Access Control](#access-control).
-- **Limits:** cohort membership, course registration, deadline management, and generating a cohort progress report are admin-only. There is no messaging capability.
+- **Access is granted by role** — site admin, organisation admin, cohort admin or cohort viewer. Cohorts, Learners and Courses are all scoped to the current organisation and filtered to what the educator's roles cover. See [Access Control](#access-control).
+- **Limits:** cohort membership, individual course registration, deadline management, and generating a cohort progress report are done in the Django admin. There is no messaging capability. See [Limits](#limits).
 
 ## Panel Interface
 
@@ -22,13 +22,20 @@ The educator interface is a single-page application, scoped to one organisation 
 
 ![Learner quick view open beside the Learners list](screenshots/educator_learner_quick_view.png)
 
-Creating or deleting a cohort happens in a dialog over the current page rather than on a separate page.
+Creating, editing, deactivating and deleting a cohort, and registering or unregistering it for a course, happen in a dialog over the current page rather than on a separate page.
 
 ### Cohorts
 
-- **List view** — each cohort in the current organisation the educator has access to, with its learner count and registered courses.
-- **Detail view** — cohort name (editable inline), learner members, and registered courses. Cohorts can be created and deleted, though deletion is refused — with a plain message naming what still depends on it — once the cohort has course progress recorded against it. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
-- **Course Progress tab** — the [progress matrix](#course-progress-matrix).
+![Cohort page on its Overview tab, with per-course completion and the cohort's educators](screenshots/educator_cohort_overview.png)
+
+- **List view** — each cohort in the current organisation the educator has access to, with its status, learner count and registered courses. Inactive cohorts are hidden until **Show inactive** is switched on, and the list can be filtered by course.
+- **Creating and renaming** — a name is all a cohort needs, and names must be unique within an organisation. **Save and add another** keeps the dialog open for creating several in a row. An active cohort is renamed from its page header.
+- **Detail page** — four tabs. *Overview* shows the cohort's details, completion for each course it is registered for, the educators assigned to it with their roles, and a needs-attention card. *Learners* lists the members. *Courses* lists the cohort's course registrations. *Settings* holds deactivation and deletion. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
+- **Registering for courses** — the Courses tab registers the cohort for any course that is not coming soon, and unregisters it from a row. Unregistering is reversible and everyone keeps their progress. The confirmation says how many members lose access and names the members who keep it through another registration.
+- **Deactivating** — an inactive cohort's registrations grant no access to their courses and the cohort becomes read-only; learners keep their place and progress, and reactivating restores access. See [learner tracking](./learner-tracking.md#what-is-recorded).
+- **Deleting** — only while the cohort has no learners and no course registrations, removed learners and inactive registrations included; otherwise the Settings tab says what still depends on it.
+
+Renaming, deactivating, reactivating and deleting need an organisation admin or site admin; a cohort admin can register and unregister courses on their own cohort. Not built: adding or removing cohort members (see [Limits](#limits)), bulk actions, and assigning a cohort's educators. The needs-attention card is a placeholder that always reads "Nothing needs attention yet."
 
 ### Learners
 
@@ -40,13 +47,13 @@ Lists the learners of the current organisation the educator has access to — me
 
 ![Educator courses list showing each course's visibility, hidden courses included](screenshots/educator_course_visibility.png)
 
-Lists all courses with their active learner and cohort counts. Each course shows its **visibility** — published, coming soon, or hidden — so educators and admins see every course regardless of state; visibility filtering only ever applies to learners, never to educator or admin views.
+The Courses section is read-only and scoped to the current organisation. It lists every published course, plus any course registered to a cohort or learner the educator can see, so a hidden or coming-soon course appears only where this organisation uses it. Cohorts are registered for courses from the cohort page.
 
-Unlike Cohorts and Learners, this section is not scoped to the current organisation, and the list and course detail pages carry **no permission check** — every course on the site, hidden ones included, is visible to any authenticated user. See [Access Control](#access-control).
+Each course shows its **visibility** — published, coming soon, or hidden — its active learner and cohort counts, and the cohorts registered for it. Counts and cohort links include only what the educator can see, and inactive cohorts are not counted. Visibility filtering only ever applies to learners, never to educator or admin views.
 
-Each course also shows an **interest count**: the number of learners who have expressed interest through the coming-soon waitlist. The count is shown for every course, not only coming-soon ones, so a course that has since launched still shows the demand it attracted. Who expressed that interest, and when, is read in the Django admin rather than here — see [admin interface](./admin-interface.md).
+Each course also shows an **interest count**: the number of learners who have expressed interest through the coming-soon waitlist, counted site-wide rather than per organisation. The count is shown for every course, so a course that has since launched still shows the demand it attracted. Who expressed that interest, and when, is read in the Django admin — see [admin interface](./admin-interface.md).
 
-The course detail view shows the title and category, the cohorts registered for the course, and any direct non-cohort registrations. Both registration lists show only the cohorts and learners the educator can see.
+The course detail view shows the title and category, the cohorts registered for the course with each cohort's status, and any direct non-cohort registrations, limited to what the educator can see. A course outside the organisation's scope returns "not found".
 
 Visibility is **read-only** here and in the Django admin. It is set solely in the course's content frontmatter and takes effect on import — see [content editing workflow](./content-editing-workflow.md). The learner-facing experience of coming-soon and hidden courses is covered in [learner experience](./learner-experience.md).
 
@@ -62,18 +69,6 @@ A switcher at the top of the left sidebar always names the current organisation.
 
 Switching on a list page reloads it for the newly selected organisation. Switching while viewing a cohort or learner that does not belong to the newly selected organisation returns to the equivalent list with an inline notice rather than an error page.
 
-The Courses section is the exception: it is not organisation-scoped, and the switcher does not change what it shows. See [Courses](#courses).
-
-## Course-Progress Matrix
-
-![Cohort progress matrix](screenshots/educator_cohort_progress_matrix.png)
-
-The Course Progress tab on a cohort detail page shows a paginated matrix of learners (rows) against course items (columns). Each cell shows completion status (complete / in progress / not started), the quiz score and pass/fail outcome for form items, and the item's deadline with an overdue indicator where the deadline has passed and the item is not complete. Both cohort-level deadlines and per-learner overrides are visible.
-
-The matrix shows the selected cohort registration's progress and only that — the percentage column and the item cells always read the same registration, so the two halves cannot disagree. A cohort member who also holds their own registration for the same course did that work under the other registration and reads as 0% here; the panel carries an on-screen note saying so, and there is no way to reach the other registration's progress from this view. See [learner tracking](./learner-tracking.md) for how progress is scoped.
-
-This view is on-screen only, and shows one course at a time. For a printable, filable record covering every course the cohort is registered for, a [cohort progress report](./reports.md) can be produced from the Django admin by anyone whose role covers the cohort — see [access control](#access-control).
-
 ## Access Control
 
 Access to the educator interface and to cohort reports comes from **role assignments**. Permissions granted on a cohort or organisation in the Django admin have no effect here. There are four built-in roles:
@@ -87,21 +82,19 @@ These describe what each role is allowed; several of those actions have no scree
 
 **Not yet built.** There is no screen, in this interface or the Django admin, for assigning roles or deactivating a member; both are currently done by a developer.
 
-**What is enforced.** The Cohorts and Learners listings are scoped to the selected organisation and filtered to what the educator's roles cover. Their detail pages carry the same check: an educator who navigates directly to one outside their access gets a "not found" response, the same response a record that does not exist would give, so identifiers cannot be probed by guessing URLs. Every write is checked before it runs, and a control the educator's role does not allow is hidden rather than shown disabled.
+**What is enforced.** The Cohorts, Learners and Courses listings are scoped to the selected organisation and filtered to what the educator's roles cover. Their detail pages carry the same check: an educator who navigates directly to one outside their access gets a "not found" response, the same response a record that does not exist would give, so identifiers cannot be probed by guessing URLs. Every write is checked before it runs, and a control the educator's role does not allow is hidden rather than shown disabled.
 
 If an educator acts from a page that was open when their access was removed, a dialog says the action can no longer be used there and names who to ask: the organisation's admins by name where the educator may see the organisation's members, otherwise "an administrator". It offers close only, never retry. If the object itself has left their access, the dialog says it is no longer available.
-
-**Known gap — the Courses list and course detail pages are not permission-checked.** Every authenticated user on the site sees every course, including courses authored as hidden, which learners cannot otherwise discover. Only the registration lists on a course's detail page are filtered. This is a read and disclosure defect, not a design decision, and it is tracked in the [roadmap](./roadmap.md).
 
 **Site isolation is unaffected.** All educator interface queries remain scoped to the current site, so nothing here crosses a tenant boundary. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md).
 
 ## Limits
 
-These operations are **admin-only** and cannot be performed from the educator interface:
+These operations are not available in the educator interface:
 
 - **Cohort membership** — adding or removing learners.
 - **Learner roster** — associating a person with an organisation, or marking one removed, is done in the [Django admin](./admin-interface.md#learner-rosters).
-- **Course registration** — registering a cohort or an individual learner for a course.
+- **Individual course registration** — registering a single learner for a course.
 - **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 - **Cohort progress reports** — generating a cohort's [progress report](./reports.md) is done from the Django admin. An educator with access to the cohort can have one produced, but not from this interface.
 

@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-10-04_
+_Last updated: 2026-10-11_
 
 ## Summary
 
@@ -276,6 +276,6 @@ When every item in a course is complete, the learner reaches a finish page and t
 Deadlines are set by administrators (cohort-level or per-learner) and are read-only from the learner's perspective. Applicable deadline dates appear as colour-coded badges against items in the course contents.
 
 - **Hard deadline** — once expired, an incomplete item is locked. A lock icon is shown and the learner cannot open it. Completed items are never locked.
-- **Soft deadline** — shown to the learner but never locks anything; the content stays accessible and completable past the date. Note there is no explicit "overdue" state on the learner's side — overdue highlighting appears only in the educator's [progress matrix](./educator-interface.md#course-progress-matrix).
+- **Soft deadline** — shown to the learner but never locks anything; the content stays accessible and completable past the date. Note there is no explicit "overdue" state on the learner's side, and the [educator interface](./educator-interface.md) does not show overdue items either.
 
 Where both a cohort deadline and a per-learner override apply, the most permissive — the latest — governs. Where a learner is registered for the same course through more than one [organisation](./multi-tenancy-and-isolation.md#organisations), each organisation's deadlines apply only to that organisation's registration; they are never merged into one list. Deadlines can be disabled site-wide via the `DEADLINES_ACTIVE` setting.

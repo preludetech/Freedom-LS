@@ -1,14 +1,13 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-11_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
 Each document labels its claims by actual state — built, operational (needs deployment configuration), or not yet built. Anything incomplete is collected in the [roadmap](./roadmap.md).
 
-**Three things worth knowing up front:**
+**Two things worth knowing up front:**
 
-- **There is an open authorisation defect.** The educator interface's Courses section does not permission-check reads: any authenticated user on a site can read the full course list, hidden courses included, and any course detail page. Cohort and learner pages are now checked. Writes are gated and site isolation is unaffected. See [educator interface](./educator-interface.md#access-control).
 - **FLS is not certified** under ISO 27001 or any other framework. The target host (Vultr Johannesburg) is ISO/IEC 27001:2022 certified, which covers the physical and hypervisor layers only — the operator owns everything above. See [security and data handling](./security-and-data-handling.md).
 - **FLS is never deployed standalone.** A production deployment is a downstream project that installs FLS as a submodule. See [deployment](./deployment.md).
 
@@ -20,7 +19,7 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy with optional extra registration forms, hardened password and lockout policy, and an append-only legal-consent audit trail. No MFA. |
 | [Learner Experience](./learner-experience.md) | Public catalogue, course pages and article blog, personalised dashboard, self-enrolment or application, coming-soon and hidden course visibility with an express-interest waitlist, sequential unlock with resume, multi-page forms, quiz feedback, and deadlines. |
 | [Learner Tracking](./learner-tracking.md) | Per-item completion, quiz attempts and scores, course progress percentage, and a resume pointer. No time-on-task and no score export. |
-| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, learner, and course views, scoped to one organisation at a time, plus a course-progress matrix. Access follows four built-in roles — site admin, organisation admin, cohort admin and cohort viewer — with no screen yet for assigning them. Read and monitoring only — and with a known authorisation gap on the Courses section. |
+| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, learner, and course views, scoped to one organisation at a time. Cohorts can be created, edited, deactivated, reactivated, deleted when empty, and registered for courses; the Courses section is read-only and shows only what the organisation can see. Access follows four built-in roles — site admin, organisation admin, cohort admin and cohort viewer — with no screen yet for assigning them. No cohort membership, bulk or deadline actions yet. |
 | [Cohort Reports](./reports.md) | A per-cohort A4 PDF covering every course the cohort is registered for: a summary table per course, a detail section per learner, at-risk flags, and a cohort-wide analysis of which quiz questions caused the most trouble. Generated on demand from the admin and downloaded through a permission-checked link. No scheduling, no email, no retention policy. |
 | [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, organisation management, read-only consent records, and a webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
@@ -47,4 +46,4 @@ Each document labels its claims by actual state — built, operational (needs de
 
 | Doc | Description |
 |---|---|
-| [Roadmap](./roadmap.md) | Everything not yet complete: the educator interface authorisation gap, application review, notification delivery and events, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |
+| [Roadmap](./roadmap.md) | Everything not yet complete: the remaining educator interface management actions, application review, notification delivery and events, MFA, RBAC wiring, per-request media access control, data-retention tooling, xAPI, and enforcing CSP. |

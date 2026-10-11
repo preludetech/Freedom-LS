@@ -1,14 +1,15 @@
 # Learner Tracking
 
-_Last updated: 2026-09-07_
+_Last updated: 2026-10-11_
 
 ## Summary
 
 - FLS records per-item completion for every topic and form a learner interacts with, plus a per-course progress percentage and a resume pointer. This is the closest built-in equivalent to an activity log.
 - Quiz attempts store per-question answers, scores, and pass/fail. Attempts are unlimited and every attempt is kept as a separate record.
 - Progress is scoped to the registration that granted access, so a learner registered for the same course through two organisations accumulates two independent sets of progress rather than one shared set.
+- An inactive cohort's course registrations grant its members no access, but nothing recorded is lost: reactivating the cohort restores access and progress exactly as they were. See [what is recorded](#what-is-recorded).
 - Course progress percentage recalculates automatically when an item is completed. A quiz only counts toward it once the learner has passed — a failed attempt does not complete the item. See [progress percentage](#progress-percentage).
-- Administrators see all progress data in the Django admin. Educators see completion and quiz data for their cohorts in the [educator interface](./educator-interface.md).
+- Administrators see all progress data in the Django admin. Educators see per-course completion for their cohorts in the [educator interface](./educator-interface.md); quiz data comes through [cohort reports](./reports.md).
 - **Not built:** time-on-task duration and xAPI. There is still no CSV or API export of scores or grades, though a staff user can generate a per-cohort PDF report holding completion, quiz scores, and per-question answers — see [cohort reports](./reports.md). See [roadmap](./roadmap.md).
 
 ## What Is Recorded
@@ -23,6 +24,8 @@ _Last updated: 2026-09-07_
 
 A learner can hold more than one registration for the same course — most often through more than one organisation, but also by holding a cohort registration and an individual one at once. Each grants its own progress record, with its own percentage, completion time, resume pointer, and quiz-attempt history; completing the course under one leaves the other exactly as it stands. The learner interface shows one registration's progress at a time and offers no organisation switch, so the two are never seen side by side. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations).
 
+A deactivated cohort stops granting access through its course registrations; a member keeps access to a course only through an individual registration or another active cohort's registration. Progress records are neither removed nor changed, so a learner who regains access continues where they left off. Unregistering a cohort from a course works the same way: progress is kept, and registering the cohort again picks up the earlier registration and gives progress records to members who joined in the meantime.
+
 ## Progress Percentage
 
 The percentage is completed items divided by total items in the course, rounded to a whole number. It recalculates automatically the first time an item is marked complete.
@@ -36,7 +39,7 @@ Bulk database updates that bypass the normal save path do not trigger recalculat
 ## Who Can Read Tracking Data
 
 - **Administrators** — full read access to all progress and answer records in the Django admin, and can generate a [cohort progress report](./reports.md) for any cohort. A learner's admin page brings their cohorts, registrations and progress across every course onto one page. See [admin interface](./admin-interface.md#learner-progress).
-- **Educators** — completion status, quiz scores, and deadline information for learners in their cohorts, via the course-progress matrix. Which cohorts and learners an educator can reach this way is bounded by the organisation they are currently viewing as well as by their access grants. See [educator interface](./educator-interface.md#access-control). An educator with access to a cohort under either of those routes can also generate that cohort's [progress report](./reports.md), from the Django admin.
+- **Educators** — how many of a cohort's learners have completed each of its courses, and each learner's progress percentage per registration, in the [educator interface](./educator-interface.md). There is no per-item view of completion, quiz scores or deadlines there. Which cohorts and learners an educator can reach is bounded by the organisation they are currently viewing as well as by their access grants. See [educator interface](./educator-interface.md#access-control). An educator with access to a cohort under either of those routes can also generate that cohort's [progress report](./reports.md), from the Django admin.
 - **Learners** — their own progress, shown indirectly through course player status indicators, dashboard sections, and quiz feedback. There is no raw data export for learners.
 
 ## Limits

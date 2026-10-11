@@ -1,27 +1,13 @@
 # Roadmap
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-11_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
 - **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (decides educator-interface and report access; no screen to assign roles or manage organisation members), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
-- **Not built:** 2FA/MFA, educator-interface management actions, notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
-- **Known defect:** the educator interface's Courses list is still unfiltered and course detail pages are still not permission-checked, though the registration lists on them are now filtered. Cohort and learner detail pages are checked.
+- **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadlines), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
-
-## Educator Interface Authorisation Gap
-
-**Status: Partially fixed.**
-
-The educator interface's Cohorts and Learners listings are filtered by role, and their detail pages are now permission-checked and deny by default: a user without access gets "not found" rather than the underlying data. What remains unfixed:
-
-- **The Courses list is still entirely unfiltered** — every course on the site, including those authored as hidden, is visible to any authenticated user.
-- **Course detail pages are still not permission-checked.** Only the cohort and learner registration lists on them are filtered to what the viewer can see.
-
-Reads only — create, rename, and delete actions are checked against the user's role, so this remains a disclosure defect rather than a route to modifying data. Site isolation is unaffected: the gap is within a single tenant, never across tenants.
-
-The fix is a permission filter on the Courses list and a permission check on course detail pages, matching what now governs the Cohorts and Learners sections. See [educator interface](./educator-interface.md#access-control).
 
 ## Organisation Deferrals
 
@@ -36,7 +22,6 @@ Organisations shipped as a grouping layer between a site and its cohorts and reg
 - **No cross-organisation view** — nothing shows one person's associations across every organisation they study with, though a person can hold several.
 - **No notification when a learner is removed** — neither the learner nor anyone else is told, even though courses held through that organisation stop opening for them.
 - **No per-organisation domain, subdomain, colours, or theme**, and no organisation branding in emails or certificates.
-- **The educator interface's Courses section is not organisation-scoped** — it shows the same list regardless of which organisation is selected. The separate, pre-existing filtering defect on that same list is covered above.
 - **The organisation switcher has no search, recents, or favourites** — it is a flat list.
 
 See [educator interface](./educator-interface.md#organisation-scope) and [admin interface](./admin-interface.md#organisation-management) for what is available today.
@@ -134,16 +119,18 @@ A site-scoped equivalent of Django's groups is written but commented out, so gro
 
 ## Educator Interface Gaps
 
-**Status: Read and monitoring only.**
+**Status: Cohorts can be administered; learner and deadline management cannot.**
 
-These operations must be performed in the Django admin by an administrator:
+The educator interface can create, edit, deactivate, reactivate and delete cohorts, and register a cohort for courses or unregister it; its Courses section is read-only. See [educator interface](./educator-interface.md). These operations must still be performed in the Django admin by an administrator:
 
-- **Cohort membership** — adding or removing learners.
+- **Cohort membership** — adding learners to a cohort, moving them between cohorts, or removing them.
 - **Organisation membership** — associating a learner with an organisation, or marking one removed.
-- **Course registration** — registering a cohort or an individual learner for a course.
+- **Individual course registration** — registering a single learner for a course.
 - **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 
-There is also **no messaging capability** — educators cannot contact learners from within FLS (see [Notification System](#notification-system)). For what the interface does provide, see [educator interface](./educator-interface.md).
+Also not built in the educator interface: bulk actions on lists, changing which educators a cohort has (see [Role-Based Access Control](#role-based-access-control-rbac)), and data for the cohort overview's "needs attention" card, which shows a placeholder.
+
+There is also **no messaging capability** — educators cannot contact learners from within FLS (see [Notification System](#notification-system)).
 
 ## Enforcing Content Security Policy
 

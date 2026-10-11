@@ -1,6 +1,6 @@
 # Cohort Reports
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-11_
 
 ## Summary
 
@@ -15,7 +15,7 @@ _Last updated: 2026-10-01_
 
 One portrait A4 PDF per cohort, covering every course that cohort is registered for, a section apiece. A course whose registration has since been deactivated still appears and is marked inactive — learners did that work and it should not vanish from the record.
 
-The audience is internal educators and staff, so the report uses learners' real names and is not anonymised. It exists to be taken into a meeting, filed, marked up, or handed to someone who does not have a login — which the live [course-progress matrix](./educator-interface.md#course-progress-matrix) cannot be.
+The audience is internal educators and staff, so the report uses learners' real names and is not anonymised. It exists to be taken into a meeting, filed, marked up, or handed to someone who does not have a login.
 
 ![](screenshots/cohort_report_cover.png)
 
