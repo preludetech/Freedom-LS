@@ -23,12 +23,14 @@ from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.views import LearnerDataTable
 from freedom_ls.learner_management.factories import (
+    CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Cohort, Learner
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.utils import assign_object_role
@@ -270,19 +272,32 @@ def test_cohort_only_educator_can_open_a_member_of_their_own_cohort(
 @pytest.mark.django_db
 class TestLearnerDataTableQueryCost:
     """The prefetches in LearnerDataTable.get_queryset are what keep the
-    Cohorts and Registered Courses cells' cost from growing with row count."""
+    Cohorts, Courses and Last active cells' cost from growing with row count."""
 
     @staticmethod
     def _seed_learners(organisation: Organisation, count: int) -> None:
-        """One learner per iteration, each in a cohort of its own and holding a
-        registration of its own -- both cells the prefetches feed."""
+        """One learner per iteration, in two cohorts that each register a
+        course, holding two registrations of their own, with a progress record
+        for one -- every cell the prefetches feed."""
         for _ in range(count):
             learner = LearnerFactory(user=UserFactory(), organisation=organisation)
-            CohortMembershipFactory(
-                learner=learner, cohort=_make_cohort(organisation=organisation)
+            for _ in range(2):
+                cohort = _make_cohort(organisation=organisation)
+                CohortMembershipFactory(learner=learner, cohort=cohort)
+                CohortCourseRegistrationFactory(
+                    cohort=cohort, course=CourseFactory(), is_active=True
+                )
+            registration = LearnerCourseRegistrationFactory(
+                learner=learner, course=CourseFactory(), is_active=True
             )
             LearnerCourseRegistrationFactory(
                 learner=learner, course=CourseFactory(), is_active=True
+            )
+            CourseProgressFactory(
+                learner=learner,
+                course=registration.course,
+                learner_registration=registration,
+                progress_percentage=40,
             )
 
     def _render_query_count(
@@ -549,3 +564,170 @@ def test_learners_list_sorted_by_learner_orders_by_first_name(educator_client):
 
     content = response.content.decode()
     assert content.index("Abe") < content.index("Zed")
+
+
+def _row_cells(response, header: str):
+    """The desktop table's cells under the column headed ``header``."""
+    document = lxml.html.fromstring(response.content.decode())
+    headers = [" ".join(th.text_content().split()) for th in document.cssselect("th")]
+    position = headers.index(header) + 1
+    return document.cssselect(f"tbody tr td:nth-child({position})")
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_shows_each_active_course_with_its_percentage(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Intro to Freedom"), is_active=True
+    )
+    CourseProgressFactory(
+        learner=learner,
+        course=registration.course,
+        learner_registration=registration,
+        progress_percentage=40,
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert "Intro to Freedom" in cell.text_content()
+    assert "40%" in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_skips_an_inactive_individual_registration(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    LearnerCourseRegistrationFactory(
+        learner=_make_learner(organisation=organisation),
+        course=CourseFactory(title="Dropped Course"),
+        is_active=False,
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert "Dropped Course" not in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_lists_a_course_from_an_active_cohort(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    cohort = _make_cohort(organisation=organisation)
+    CohortMembershipFactory(
+        learner=_make_learner(organisation=organisation), cohort=cohort
+    )
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Cohort Course"), is_active=True
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert "Cohort Course" in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_skips_a_course_from_an_inactive_cohort(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(
+        organisation=organisation, name=f"Cohort {uuid.uuid4()}", is_active=False
+    )
+    CohortMembershipFactory(
+        learner=_make_learner(organisation=organisation), cohort=cohort
+    )
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Hidden Course"), is_active=True
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert "Hidden Course" not in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_courses_cell_shows_the_higher_of_two_records_for_one_course(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation)
+    course = CourseFactory(title="Shared Course")
+    individual = LearnerCourseRegistrationFactory(
+        learner=learner, course=course, is_active=True
+    )
+    cohort = _make_cohort(organisation=organisation)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    cohort_registration = CohortCourseRegistrationFactory(
+        cohort=cohort, course=course, is_active=True
+    )
+    CourseProgressFactory(
+        learner=learner,
+        course=course,
+        learner_registration=individual,
+        progress_percentage=20,
+    )
+    CourseProgressFactory(
+        learner=learner,
+        course=course,
+        learner_registration=None,
+        cohort_registration=cohort_registration,
+        progress_percentage=70,
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Courses")
+    assert "70%" in cell.text_content()
+    assert "20%" not in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_learners_list_last_active_reads_never_without_a_progress_record(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    (cell,) = _row_cells(response, "Last active")
+    assert cell.text_content().strip() == "Never"
+
+
+@pytest.mark.django_db
+def test_learners_list_sorted_by_last_active_orders_by_most_recent_visit(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    for first_name, visited in (("Early", "2024-01-01"), ("Late", "2025-06-01")):
+        learner = _make_learner(
+            organisation=organisation,
+            first_name=first_name,
+            email=f"{first_name.lower()}@visit.example.com",
+        )
+        CourseProgressFactory(
+            learner=learner, last_accessed_time=f"{visited}T10:00:00+00:00"
+        )
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug), {"learners-sort": "-last_active"}
+    )
+
+    content = response.content.decode()
+    assert content.index("late@visit") < content.index("early@visit")
+
+
+@pytest.mark.django_db
+def test_learners_table_row_label_is_the_display_name():
+    learner = LearnerFactory(user=UserFactory(first_name="Ada", last_name="Lovelace"))
+
+    assert LearnerDataTable.get_row_label(learner) == learner.user.display_name

@@ -8,7 +8,7 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Page
-from django.db.models import Count, F, Model, Prefetch, Q, QuerySet
+from django.db.models import Count, F, Max, Model, Prefetch, Q, QuerySet
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -319,6 +319,43 @@ class LearnerCohortDataTable(CohortDataTable):
         return []
 
 
+@dataclass(frozen=True)
+class LearnerCourseSummary:
+    """One course a learner reaches, with the furthest of their course
+    progress records for it, or None when nothing has been minted yet."""
+
+    course: Course
+    progress_percentage: int | None
+
+
+def learner_course_summaries(learner: Learner) -> list[LearnerCourseSummary]:
+    """The courses a learner reaches through an active individual registration
+    or an active registration of an active cohort, in the order found.
+
+    Reads only the caches `LearnerDataTable.get_queryset` prefetches, so a
+    page of learners costs the same number of queries as one learner.
+    """
+    courses: dict[UUID, Course] = {
+        registration.course_id: registration.course
+        for registration in learner.learnercourseregistration_set.all()
+    }
+    for membership in learner.cohortmembership_set.all():
+        if not membership.cohort.is_active:
+            continue
+        for registration in membership.cohort.course_registrations.all():
+            courses.setdefault(registration.course_id, registration.course)
+
+    furthest: dict[UUID, int] = {}
+    for record in learner.course_progress_records.all():
+        furthest[record.course_id] = max(
+            furthest.get(record.course_id, 0), record.progress_percentage
+        )
+    return [
+        LearnerCourseSummary(course, furthest.get(course_id))
+        for course_id, course in courses.items()
+    ]
+
+
 class LearnerDataTable(DataTable):
     search_fields = ["user__first_name", "user__last_name", "user__email"]
 
@@ -342,8 +379,21 @@ class LearnerDataTable(DataTable):
                         cohort__in=cohorts_visible_to(request.user, organisation)
                     ).select_related("cohort"),
                 ),
-                "learnercourseregistration_set__course",
+                Prefetch(
+                    "cohortmembership_set__cohort__course_registrations",
+                    queryset=CohortCourseRegistration.objects.filter(
+                        is_active=True
+                    ).select_related("course"),
+                ),
+                Prefetch(
+                    "learnercourseregistration_set",
+                    queryset=LearnerCourseRegistration.objects.filter(
+                        is_active=True
+                    ).select_related("course"),
+                ),
+                "course_progress_records",
             )
+            .annotate(last_active=Max("course_progress_records__last_accessed_time"))
             .order_by("user__first_name", "user__last_name")
         )
 
@@ -351,6 +401,10 @@ class LearnerDataTable(DataTable):
     def get_columns() -> list[Column]:
         return [
             _learner_column(),
+            Column(
+                header="Status",
+                template="educator_interface/data-table-cells/learner_status.html",
+            ),
             RelationLinkColumn(
                 header="Cohorts",
                 template="educator_interface/data-table-cells/cohort_links.html",
@@ -361,14 +415,20 @@ class LearnerDataTable(DataTable):
                 url_path_template="cohorts/{pk}",
             ),
             Column(
-                header="Registered Courses",
+                header="Courses",
                 template="educator_interface/data-table-cells/learner_courses.html",
             ),
             Column(
-                header="Status",
-                template="educator_interface/data-table-cells/learner_status.html",
+                header="Last active",
+                template="educator_interface/data-table-cells/learner_last_active.html",
+                attr="last_active",
+                sortable=True,
             ),
         ]
+
+    @staticmethod
+    def get_row_label(row: Model) -> str:
+        return cast(Learner, row).user.display_name
 
     @staticmethod
     def get_filters() -> list[TableFilter]:
