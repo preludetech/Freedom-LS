@@ -1,6 +1,6 @@
 # Webhooks
 
-_Last updated: 2026-08-29_
+_Last updated: 2026-10-11_
 
 ## Summary
 
@@ -15,7 +15,7 @@ _Last updated: 2026-08-29_
 
 Webhooks are an outbound data flow to third-party systems. Three events ship by default:
 
-- **User registration.** A new user completes email verification.
+- **User registration.** A new user completes email verification, or an anonymous course applicant [follows their emailed claim link](./learner-experience.md#applying-to-a-course) and a new account is created for them. That second kind can arrive before the account has a password, and while the site's signups are turned off. It does not fire for an applicant who never follows the link, or when the link attaches the application to an existing account.
 - **Course registration.** A learner self-registers, or is registered, for a course.
 - **Course completion.** A learner completes every item in a course.
 

@@ -1,12 +1,12 @@
 # Authentication
 
-_Last updated: 2026-09-27_
+_Last updated: 2026-10-11_
 
 ## Summary
 
 - Email is the sole login identifier — there are no usernames. Email verification is mandatory before login is permitted.
 - Accounts are hardened with Argon2 hashing, brute-force lockout, login and signup rate limiting, email-enumeration prevention, and a 10-character minimum password.
-- Each site has its own signup policy controlling whether self-registration is open and what is collected, including additional registration forms shown after verification.
+- Each site has its own signup policy controlling whether self-registration is open and what is collected, including additional registration forms shown after verification. An anonymous course applicant who follows their emailed claim link also gets an account, even when self-registration is off.
 - Every consent to a legal document is recorded in an append-only audit trail tied to the exact document version accepted.
 - A separate token-based system exists for machine-to-machine API access, but is not enabled in a default installation.
 - Multi-factor authentication is **not implemented**; see [roadmap](./roadmap.md).
@@ -20,6 +20,8 @@ Email is the login identifier; there are no username fields, and addresses are s
 ## Registration
 
 **Email verification is mandatory.** A user cannot log in until they follow the verification link sent to their address. Following it logs them in immediately.
+
+**Accounts created by claiming an application.** An anonymous visitor can [apply to a course](./learner-experience.md#applying-to-a-course) before having an account. Following the claim link emailed after they submit creates an account with a verified email and no password, signs them in, and sends them on to set a password. This works even when the site's signup policy has self-registration turned off, since the link proves they own the address, and the terms and privacy versions they accepted when applying are recorded as consent. If an account with that email already exists on the same site, the link attaches the application to it and signs that person in, leaving their profile and password alone; mailbox control already grants that access through password reset. An account on a different site is never attached.
 
 **Per-site signup policy.** Each site can define its own policy controlling whether self-registration is open at all, whether a name is required at signup, whether terms must be accepted before registration completes, and which additional registration forms to present after email verification. A site without its own policy falls back to the installation-wide defaults `ALLOW_SIGN_UPS`, `REQUIRE_NAME`, and `REQUIRE_TERMS_ACCEPTANCE`.
 
@@ -45,11 +47,11 @@ This is the canonical description of the consent trail; other docs link here. Ho
 
 **Login failure rate limiting.** A shorter-lived limit sits above the lockout on the login form, capping failed attempts to about ten a minute from one address and about five within a few minutes against one account — enough to blunt both password spraying and a distributed attack on a single account, without shutting anyone out for the hour the lockout does. Unlike the lockout, it guards the ordinary login form only; the Django admin login has the lockout and nothing above it, which is why the lockout's second rule matters — it is the only cap that applies there.
 
-**Signup rate limiting.** Signups are capped per minute, per IP address and per key.
+**Signup rate limiting.** Signups are capped per minute, per IP address and per key. Anonymous course applications are limited per IP address and per email, and claim emails per email.
 
 **Signup honeypot.** The signup form carries a text field that people never see and bots fill in. A filled field rejects the signup with a message asking the person to type their details by hand, and logs a warning with the site and client IP. The field is hidden with `display:none` and given a name no browser or password manager autofills, so autofill doesn't trip it for real people.
 
-**Email-enumeration prevention.** Responses do not distinguish "email not registered" from "password incorrect", so the login and reset flows cannot be used to discover which addresses have accounts. A failed login also prompts the visitor to [create an account](./learner-experience.md#deferred-login-intent-completion), and that prompt is the same whatever email was typed, so it gives nothing away.
+**Email-enumeration prevention.** Responses do not distinguish "email not registered" from "password incorrect", so the login and reset flows cannot be used to discover which addresses have accounts. A failed login also prompts the visitor to [create an account](./learner-experience.md#deferred-login-intent-completion), and that prompt is the same whatever email was typed, so it gives nothing away. The anonymous application step responds the same way whether or not the email is registered.
 
 Development settings deliberately relax exactly two of these: the password validators are emptied and the signup/login rate limits are switched off. Both are active in production. The brute-force lockout is not relaxed — it applies in development too. See [security and data handling](./security-and-data-handling.md).
 
@@ -59,7 +61,7 @@ Users authenticate with standard session cookies. A successful password reset lo
 
 ## Registration Webhook
 
-A successful new registration fires a `user.registered` webhook carrying the user's id, email, and name. See [webhooks](./webhooks.md).
+A successful new registration, including an account created by claiming an application, fires a `user.registered` webhook carrying the user's id, email, and name. See [webhooks](./webhooks.md).
 
 ## API Client Authentication
 

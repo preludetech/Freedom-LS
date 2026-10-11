@@ -1,6 +1,6 @@
 # Admin Interface
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-11_
 
 ## Summary
 
@@ -13,7 +13,7 @@ _Last updated: 2026-10-10_
 - Authored content — courses, course parts, topics, activities, files, and forms — cannot be deleted through the admin at all, inlines included. Adding and changing stay available. Articles are the one exception: they can be deleted.
 - Course categories can be seen and edited in the admin but not added or deleted, and any edit is overwritten the next time content is loaded — the category vocabulary belongs to the content repo.
 - A staff user generates a cohort's progress report from the admin by picking a cohort and triggering generation; the choice is limited to cohorts that user is allowed to see, generation runs in the background, and the finished PDF downloads through a permission-checked link rather than a public URL.
-- Course applications are read in the admin: a list to find one by applicant, course, submitted or draft, and created date, and a page that shows the applicant's answers read-only, with any attached file downloadable. Staff granted the standard view permissions can read them; nobody can add, edit or delete an application there. There is no review workflow yet.
+- Course applications are read in the admin: a list to find one by applicant, course, submitted or draft, verified or unverified email, and created date, and a page that shows the applicant's answers read-only, with any attached file downloadable. Applications from anonymous visitors appear as soon as they are submitted, flagged as unverified until the applicant follows their emailed link. Staff granted the standard view permissions can read them; nobody can add, edit or delete an application there. There is no review workflow yet.
 - Messaging configuration sets whether learners may start conversations with their educators, cohort peers and course peers, and which educator roles learners are offered. No messaging screen exists yet, so these settings have no visible effect until messaging ships.
 - The admin path is configurable via `DJANGO_ADMIN_URL`, so production can move it off the default location.
 - Legal consent records are fully read-only — they cannot be added, changed, or deleted.
@@ -56,7 +56,11 @@ A learner's own admin page gathers their cohorts, their individual course regist
 
 The progress changelists ask the same questions across many learners at once, filtering by whether an item is finished, by learner, course, cohort and organisation, and by when it was finished. Course progress additionally filters by completion percentage and by when the learner was last active, for finding learners who have gone quiet. Form attempts sat outside any course are read on the form progress list, which names the course each was sat in, or nothing when it was sat on its own. Full tracking semantics — what a progress record means and how it is derived — are covered in [learner tracking](./learner-tracking.md).
 
-Course [applications](./learner-experience.md#applying-to-a-course) have their own read-only list in the admin, with drafts shown alongside submitted applications. An administrator finds one by searching or filtering on applicant, course, submitted or draft, and created date, then opens it to read the applicant's answers page by page. Questions the applicant skipped are marked "Not answered", and an attached file appears with a download link. The form progress page shows the same answers the same way and links to its application. Access follows the standard view permissions, so a staff user granted them can read applications, answers and files without being a superuser; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built). Applications cannot be added, edited or deleted in the admin, and there is no review, approve or reject action yet; see [roadmap](./roadmap.md).
+Course [applications](./learner-experience.md#applying-to-a-course) have their own read-only list in the admin, with drafts shown alongside submitted applications. An administrator finds one by searching or filtering on applicant, course, submitted or draft, and created date, then opens it to read the applicant's answers page by page. Questions the applicant skipped are marked "Not answered", and an attached file appears with a download link. The form progress page shows the same answers the same way and links to its application.
+
+Anonymous visitors can apply before they have an account, so their applications show up as soon as they are submitted and can be found by the applicant's email. Until the applicant follows the emailed claim link, the application is flagged "Unverified email" on the list, the application page, and the form-answer and uploaded-file screens. Anonymous applicants also have their own read-only list, searchable by email, whose only action is delete: deleting one erases that applicant's application, answers and files, which is how an erasure request is handled before an account exists. Nothing is purged automatically, and an applicant cannot correct a mistyped email; see [security and data handling](./security-and-data-handling.md).
+
+Access follows the standard view permissions, so a staff user granted them can read applications, answers and files without being a superuser; see [security and data handling](./security-and-data-handling.md#applicant-uploads-built). Applications cannot be added, edited or deleted in the admin, and there is no review, approve or reject action yet; see [roadmap](./roadmap.md).
 
 ## Course Interest
 

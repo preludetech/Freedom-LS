@@ -1,10 +1,10 @@
 # Signup Attribution
 
-_Last updated: 2026-09-12_
+_Last updated: 2026-10-11_
 
 ## Summary
 
-- **Every signup made through the signup form has a record of where it came from.** Landing on a tracked link and later signing up writes a permanent record against the new account: the advert or campaign, a referral code if one brought the visitor, UTM parameters, ad-platform click identifiers, the landing page and the referrer. Built.
+- **Every signup made through the signup form, and every account created by claiming an anonymous course application, has a record of where it came from.** Landing on a tracked link and later signing up writes a permanent record against the new account: the advert or campaign, a referral code if one brought the visitor, UTM parameters, ad-platform click identifiers, the landing page and the referrer. Built.
 - **A daily tally of first-time tracked arrivals per campaign** supplies the denominator: signups over arrivals, both grouped by campaign, is a conversion rate. Built.
 - **Two read-only admin lists and a CSV export are the whole interface.** A dashboard or conversion-rate view is not built.
 - **A signup with no tracked landing records as "direct" / "none"** rather than a blank, so an untracked signup still counts as a channel.
@@ -14,7 +14,7 @@ _Last updated: 2026-09-12_
 
 A tracked link, one carrying an advert code, a referral code, a UTM parameter or an ad-click identifier, sets a signed, host-only cookie on first landing. Nothing about that visitor is written to the database at that point; only the day's tally for that campaign goes up by one. The cookie lasts 90 days by default, and a later landing inside that window leaves it untouched, so only the first touch is ever recorded. Following a referral code's own redirect link neither sets this cookie nor moves this tally; only the page it redirects to does.
 
-Submitting the signup form writes whatever the cookie carried, together with the request's IP address, browser user agent, and any Google Analytics or Meta cookies present, into a permanent record against the new account. An account created any other way, by an administrator, a management command or an import, gets no record. Confirming the account's email afterwards, even from a different browser, does not change what was recorded at signup.
+Submitting the signup form writes whatever the cookie carried, together with the request's IP address, browser user agent, and any Google Analytics or Meta cookies present, into a permanent record against the new account. An account created when an anonymous applicant follows their emailed claim link (see [learner experience](./learner-experience.md#applying-to-a-course)) also gets a record, taken from the request that follows the link rather than the visit where they applied. A link opened in a different browser, such as a phone's mail app, has no tracking cookie, so the account records as "direct" / "none". An applicant who never follows the link has no record, and a claim that attaches to an existing account records nothing new. An account created any other way, by an administrator, a management command or an import, gets no record. Confirming the account's email afterwards, even from a different browser, does not change what was recorded at signup.
 
 ## What Is Recorded
 
