@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
 from django import forms
@@ -12,7 +12,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, render
 from django.template.loader import render_to_string
 
-from freedom_ls.educator_interface.events import LEARNER_CHANGED
+from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.educator_interface.forms import (
     CohortCourseRegistrationForm,
     LearnerNameForm,
@@ -20,6 +20,7 @@ from freedom_ls.educator_interface.forms import (
 from freedom_ls.learner_management.learner_actions import (
     deactivate_learner,
     reactivate_learner,
+    remove_from_cohort,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -30,6 +31,9 @@ from freedom_ls.learner_management.queries import (
     cohort_course_count,
     cohort_is_empty,
     cohort_learner_count,
+    cohorts_visible_to,
+    courses_losing_access,
+    learners_visible_to,
     members_keeping_access,
 )
 from freedom_ls.learner_management.utils import (
@@ -48,6 +52,30 @@ from freedom_ls.panel_framework.actions import (
     navigation_response,
 )
 from freedom_ls.panel_framework.context import PanelContext
+from freedom_ls.panel_framework.events import build_hx_trigger
+
+if TYPE_CHECKING:
+    from freedom_ls.educator_interface.views import OrganisationScopedRequest
+
+
+def _uuid_param(request: HttpRequest, name: str) -> UUID:
+    """A UUID the action's trigger sent along: from the form on a submit, from
+    the query string otherwise. A missing or malformed value is a 404."""
+    params = request.POST if request.method == "POST" else request.GET
+    try:
+        return UUID(params.get(name, ""))
+    except ValueError:
+        raise Http404(f"No such {name}") from None
+
+
+def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpResponse:
+    """The 422 fragment for a change aimed at an inactive cohort."""
+    return render(
+        request,
+        "educator_interface/modal/cohort_inactive.html",
+        {"cohort": cohort},
+        status=422,
+    )
 
 
 def cohort_not_empty_sentence(cohort: Cohort) -> str:
@@ -80,12 +108,7 @@ class RequiresActiveCohortMixin(PanelAction):
         return cast(Cohort, ctx.instance).is_active
 
     def refuse_inactive(self, ctx: PanelContext) -> HttpResponse:
-        return render(
-            ctx.request,
-            "educator_interface/modal/cohort_inactive.html",
-            {"cohort": ctx.instance},
-            status=422,
-        )
+        return inactive_cohort_response(ctx.request, cast(Cohort, ctx.instance))
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         if not cast(Cohort, ctx.instance).is_active:
@@ -348,14 +371,9 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
     template_name = "educator_interface/modal/unregister_confirmation.html"
 
     def _registration(self, ctx: PanelContext) -> CohortCourseRegistration:
-        params = ctx.request.POST if ctx.request.method == "POST" else ctx.request.GET
-        try:
-            registration_pk = UUID(params.get("registration", ""))
-        except ValueError:
-            raise Http404("No such registration") from None
         return get_object_or_404(
             cast(Cohort, ctx.instance).course_registrations.select_related("course"),
-            pk=registration_pk,
+            pk=_uuid_param(ctx.request, "registration"),
             is_active=True,
         )
 
@@ -386,6 +404,97 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(ctx.page_url)
+
+
+class MembershipAction(PanelAction):
+    """A change to one learner's membership of one cohort, after confirmation.
+
+    The action resolves on the learner page, where the cohort travels as a
+    `cohort` parameter, and on the cohort page, where the learner travels as
+    a `learner` parameter. It renders per row, never as a footer button.
+    """
+
+    variant = "secondary"
+    renders_in_footer = False
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+
+    def perform(self, learner: Learner, cohort: Cohort) -> bool:
+        raise NotImplementedError
+
+    def _cohort(self, ctx: PanelContext) -> Cohort:
+        if isinstance(ctx.instance, Cohort):
+            return ctx.instance
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return get_object_or_404(
+            cohorts_visible_to(scoped.user, scoped.organisation),
+            pk=_uuid_param(ctx.request, "cohort"),
+        )
+
+    def _pair(self, ctx: PanelContext) -> tuple[Learner, Cohort]:
+        if isinstance(ctx.instance, Cohort):
+            scoped = cast("OrganisationScopedRequest", ctx.request)
+            learner = get_object_or_404(
+                learners_visible_to(
+                    scoped.user, scoped.organisation, include_removed=True
+                ),
+                pk=_uuid_param(ctx.request, "learner"),
+            )
+            return learner, ctx.instance
+        return cast(Learner, ctx.instance), self._cohort(ctx)
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        # Rendering asks has_permission before any row names a cohort, so the
+        # capability is asked about the page's own object until a submit or a
+        # fragment names the cohort.
+        if (
+            isinstance(ctx.instance, Cohort)
+            or "cohort" in ctx.request.GET
+            or "cohort" in ctx.request.POST
+        ):
+            return self._cohort(ctx)
+        return ctx.scope_object()
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        learner, cohort = self._pair(ctx)
+        if not cohort.is_active:
+            return inactive_cohort_response(ctx.request, cohort)
+        self.perform(learner, cohort)
+        ids = [str(learner.pk), str(cohort.pk)]
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = build_hx_trigger(
+            {LEARNER_CHANGED: ids, COHORT_CHANGED: ids}, close_modal=True
+        )
+        return response
+
+
+class RemoveFromCohortAction(MembershipAction):
+    label = "Remove from cohort"
+    action_name = "remove_from_cohort"
+    capability = "freedom_ls_learner_management.delete_cohortmembership"
+    template_name = "educator_interface/modal/remove_from_cohort_confirmation.html"
+
+    def perform(self, learner: Learner, cohort: Cohort) -> bool:
+        return remove_from_cohort(learner, cohort)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        learner, cohort = self._pair(ctx)
+        if isinstance(ctx.instance, Cohort):
+            other_side = {"name": "learner", "value": str(learner.pk)}
+        else:
+            other_side = {"name": "cohort", "value": str(cohort.pk)}
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "learner": learner,
+                "cohort": cohort,
+                "losing_courses": join_prose(
+                    [str(course) for course in courses_losing_access(learner, cohort)]
+                ),
+                "other_side": other_side,
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
 
 
 def cohort_state_actions() -> list[PanelAction]:

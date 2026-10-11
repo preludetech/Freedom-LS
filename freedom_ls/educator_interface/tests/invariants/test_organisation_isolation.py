@@ -708,3 +708,54 @@ class TestCourseDetailPanelsAreScopedWithinAnOrganisation:
 
         assert scenario.learner_a.user.first_name in content
         assert scenario.learner_b.user.first_name in content
+
+
+@pytest.mark.django_db
+class TestRemoveFromCohortIsolation:
+    """remove_from_cohort resolves its learner and cohort inside the
+    organisation in the URL, so a pk from another organisation is a 404."""
+
+    @staticmethod
+    def _post(client: Client, url: str, data: dict[str, str]):
+        return client.post(url, data, HTTP_HX_REQUEST="true")
+
+    def test_another_organisations_cohort_pk_on_a_learner_page_answers_404(
+        self, logged_in_client
+    ) -> None:
+        organisation_a = OrganisationFactory()
+        organisation_b = OrganisationFactory()
+        learner = LearnerFactory(organisation=organisation_a)
+        foreign_cohort = CohortFactory(organisation=organisation_b)
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation_a, "organisation_admin")
+        url = _interface_url(
+            organisation_a.slug,
+            f"learners/{learner.pk}/__tabs/overview/__panels/cohorts"
+            "/__actions/remove_from_cohort",
+        )
+
+        response = self._post(
+            logged_in_client(educator), url, {"cohort": str(foreign_cohort.pk)}
+        )
+
+        assert response.status_code == 404
+
+    def test_another_organisations_learner_pk_on_a_cohort_page_answers_404(
+        self, logged_in_client
+    ) -> None:
+        organisation_a = OrganisationFactory()
+        organisation_b = OrganisationFactory()
+        cohort = CohortFactory(organisation=organisation_a)
+        foreign_learner = LearnerFactory(organisation=organisation_b)
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation_a, "organisation_admin")
+        url = _interface_url(
+            organisation_a.slug,
+            f"cohorts/{cohort.pk}/__tabs/learners/__actions/remove_from_cohort",
+        )
+
+        response = self._post(
+            logged_in_client(educator), url, {"learner": str(foreign_learner.pk)}
+        )
+
+        assert response.status_code == 404
