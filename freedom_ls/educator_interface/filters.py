@@ -2,14 +2,24 @@
 
 from __future__ import annotations
 
+from functools import reduce
+from operator import or_
 from typing import TYPE_CHECKING, cast
 
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
-from freedom_ls.learner_management.models import CohortCourseRegistration
-from freedom_ls.learner_management.queries import courses_visible_to
-from freedom_ls.panel_framework.filters import RelatedChoiceFilter, TableFilter
+from freedom_ls.learner_management.models import CohortCourseRegistration, Learner
+from freedom_ls.learner_management.queries import (
+    LearnerStatus,
+    courses_visible_to,
+    learner_status_q,
+)
+from freedom_ls.panel_framework.filters import (
+    ChoiceFilter,
+    RelatedChoiceFilter,
+    TableFilter,
+)
 
 if TYPE_CHECKING:
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
@@ -49,4 +59,27 @@ class VisibleCourseFilter(RelatedChoiceFilter):
             pk__in=CohortCourseRegistration.objects.filter(
                 course__in=values, is_active=True
             ).values("cohort_id")
+        )
+
+
+class LearnerStatusFilter(ChoiceFilter):
+    """Narrows learners to the chosen statuses; active and pending while the
+    parameter is absent."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "status",
+            "Status",
+            lookup="",
+            choices=LearnerStatus.choices,
+            default=(LearnerStatus.ACTIVE, LearnerStatus.PENDING),
+            always_shown=True,
+        )
+
+    def apply(
+        self, queryset: QuerySet[Learner], values: list[str]
+    ) -> QuerySet[Learner]:
+        # filter_queryset only calls apply with at least one value.
+        return queryset.filter(
+            reduce(or_, (learner_status_q(LearnerStatus(v)) for v in values))
         )

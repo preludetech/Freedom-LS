@@ -2,8 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, NamedTuple, cast
 
-from django.db.models import Count, Exists, Model, OuterRef, Q, QuerySet
+from django.db.models import (
+    Count,
+    Exists,
+    Model,
+    OuterRef,
+    Q,
+    QuerySet,
+    TextChoices,
+)
 
+from freedom_ls.accounts.account_setup import is_pending, pending_user_q
 from freedom_ls.content_engine.models import Course, CourseVisibility
 from freedom_ls.learner_management.capabilities import (
     _active_role_assignments,
@@ -443,8 +452,32 @@ def visible_learners_expression(user: User, roles: frozenset[str], site: Site) -
     )
 
 
+class LearnerStatus(TextChoices):
+    ACTIVE = "active", "Active"
+    PENDING = "pending", "Pending"
+    REMOVED = "removed", "Removed"
+
+
+def learner_status(learner: Learner) -> LearnerStatus:
+    if not learner.is_active:
+        return LearnerStatus.REMOVED
+    if is_pending(learner.user):
+        return LearnerStatus.PENDING
+    return LearnerStatus.ACTIVE
+
+
+def learner_status_q(status: LearnerStatus) -> Q:
+    """The queryset twin of learner_status, on a Learner queryset."""
+    pending = pending_user_q("user__")
+    if status == LearnerStatus.REMOVED:
+        return Q(is_active=False)
+    if status == LearnerStatus.PENDING:
+        return Q(is_active=True) & pending
+    return Q(is_active=True) & ~pending
+
+
 def learners_visible_to(
-    user: RequestUser, organisation: Organisation
+    user: RequestUser, organisation: Organisation, *, include_removed: bool = False
 ) -> QuerySet[Learner]:
     """Learners this person may see within an organisation.
 
@@ -455,11 +488,15 @@ def learners_visible_to(
     so widening it to cover every learner in the organisation would hand a
     cohort-scoped educator the whole organisation's roster; only a
     site/organisation-level grant sees both.
+
+    Removed learners are left out unless `include_removed` is set.
     """
     # is_active sits outside the visibility Q: a removed learner must not
     # reappear just because they still hold a membership in a granted cohort,
     # or still belong to the organisation.
-    within = Learner.objects.filter(organisation=organisation, is_active=True)
+    within = Learner.objects.filter(organisation=organisation)
+    if not include_removed:
+        within = within.filter(is_active=True)
     resolved = _resolved_or_none(user, within)
     if resolved is not None:
         return resolved

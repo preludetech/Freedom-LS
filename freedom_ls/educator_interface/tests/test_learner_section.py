@@ -96,6 +96,77 @@ def test_learners_section_lists_a_learner_visible_to_an_organisation_role_holder
     assert "Ada" in content
 
 
+def _make_pending_learner(*, organisation: Organisation, **user_fields: str) -> Learner:
+    learner = _make_learner(organisation=organisation, **user_fields)
+    learner.user.set_unusable_password()
+    learner.user.save(update_fields=["password"])
+    return learner
+
+
+@pytest.mark.django_db
+def test_learners_list_shows_a_pending_learners_badge(educator_client):
+    organisation = OrganisationFactory()
+    _make_pending_learner(organisation=organisation)
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    (row_status,) = document.xpath(
+        "//*[@id='learners-table']//*[normalize-space()='Pending']"
+        "[not(.//*[normalize-space()='Pending'])]"
+    )[:1]
+    assert row_status is not None
+
+
+@pytest.mark.django_db
+def test_learners_list_hides_a_removed_learner_by_default(educator_client):
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+    removed = _make_learner(
+        organisation=organisation, first_name="Grace", last_name="Hopper"
+    )
+    removed.is_active = False
+    removed.save(update_fields=["is_active"])
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    content = response.content.decode()
+    assert "Ada" in content
+    assert "Grace" not in content
+
+
+@pytest.mark.django_db
+def test_learners_list_shows_a_removed_learner_when_filtered_to_removed(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    removed = _make_learner(
+        organisation=organisation, first_name="Grace", last_name="Hopper"
+    )
+    removed.is_active = False
+    removed.save(update_fields=["is_active"])
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug), {"learners-status": "removed"}
+    )
+
+    assert "Grace" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_removed_learners_detail_page_answers_200(educator_client):
+    organisation = OrganisationFactory()
+    removed = _make_learner(organisation=organisation)
+    removed.is_active = False
+    removed.save(update_fields=["is_active"])
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"learners/{removed.pk}")
+    )
+
+    assert response.status_code == 200
+
+
 @pytest.mark.django_db
 def test_learners_list_excludes_a_learner_from_another_organisation(educator_client):
     """Paired with a learner who should appear: absence alone would also hold
@@ -280,7 +351,7 @@ def test_learner_detail_cohorts_card_rows_end_with_a_decorative_open_page_icon(
 
 
 @pytest.mark.django_db
-def test_learners_mobile_toolbar_offers_sort_and_no_filter(educator_client):
+def test_learners_mobile_toolbar_offers_sort_and_filter(educator_client):
     organisation = OrganisationFactory()
     _make_learner(organisation=organisation)
 
@@ -288,7 +359,7 @@ def test_learners_mobile_toolbar_offers_sort_and_no_filter(educator_client):
 
     document = lxml.html.fromstring(response.content.decode())
     assert document.xpath("//button[normalize-space()='Sort']")
-    assert not document.xpath("//button[normalize-space()='Filter']")
+    assert document.xpath("//button[normalize-space()='Filter']")
 
 
 @pytest.mark.django_db

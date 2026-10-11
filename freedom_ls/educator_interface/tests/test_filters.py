@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.test import RequestFactory
@@ -9,6 +11,7 @@ from django.test import RequestFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.filters import (
+    LearnerStatusFilter,
     ShowInactiveFilter,
     VisibleCourseFilter,
 )
@@ -18,7 +21,7 @@ from freedom_ls.learner_management.factories import (
     CohortFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.panel_framework.filters import TableFilter
@@ -168,3 +171,37 @@ def test_the_toggle_is_read_under_whatever_key_the_table_declares_it(
         active,
         inactive,
     ]
+
+
+def _status_learners() -> dict[str, Learner]:
+    organisation = OrganisationFactory()
+    active = cast(Learner, LearnerFactory(organisation=organisation))
+    pending = cast(Learner, LearnerFactory(organisation=organisation))
+    pending.user.set_unusable_password()
+    pending.user.save(update_fields=["password"])
+    removed = cast(Learner, LearnerFactory(organisation=organisation, is_active=False))
+    return {"active": active, "pending": pending, "removed": removed}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("status", ["active", "pending", "removed"])
+def test_status_filter_narrows_to_each_status(status: str) -> None:
+    learners = _status_learners()
+
+    result = LearnerStatusFilter().apply(Learner.objects.all(), [status])
+
+    assert list(result) == [learners[status]]
+
+
+@pytest.mark.django_db
+def test_status_filter_with_two_statuses_returns_both() -> None:
+    learners = _status_learners()
+
+    result = LearnerStatusFilter().apply(Learner.objects.all(), ["active", "pending"])
+
+    assert set(result) == {learners["active"], learners["pending"]}
+
+
+@pytest.mark.django_db
+def test_status_filter_defaults_to_active_and_pending() -> None:
+    assert LearnerStatusFilter().default == ("active", "pending")

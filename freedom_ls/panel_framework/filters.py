@@ -19,7 +19,8 @@ class TableFilter:
 
     `always_shown` decides whether the filter renders as a pill with no
     value set, or only appears once applied (via a link) or opened from
-    "Add filter".
+    "Add filter". `default` is the selection used while the filter's query
+    parameter is absent from the request.
     """
 
     always_shown: bool = False
@@ -28,12 +29,19 @@ class TableFilter:
     widget: Literal["chips", "select"] = "chips"
 
     def __init__(
-        self, key: str, label: str, *, lookup: str, always_shown: bool = False
+        self,
+        key: str,
+        label: str,
+        *,
+        lookup: str,
+        always_shown: bool = False,
+        default: tuple[str, ...] = (),
     ) -> None:
         self.key = key
         self.label = label
         self.lookup = lookup
         self.always_shown = always_shown
+        self.default = default
 
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         """Every value this filter accepts, as `(value, label)` pairs."""
@@ -64,8 +72,11 @@ class ChoiceFilter(TableFilter):
         lookup: str,
         choices: list[tuple[str, str]] | None = None,
         always_shown: bool = False,
+        default: tuple[str, ...] = (),
     ) -> None:
-        super().__init__(key, label, lookup=lookup, always_shown=always_shown)
+        super().__init__(
+            key, label, lookup=lookup, always_shown=always_shown, default=default
+        )
         self.choices = choices or []
 
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:

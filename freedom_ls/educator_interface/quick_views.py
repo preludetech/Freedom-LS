@@ -57,9 +57,6 @@ class LearnerQuickView(QuickView):
             or registration.cohort.pk in visible_cohort_ids
         ]
         return {
-            # The template reads learner.is_active directly for the Status
-            # line, showing "Active" or "Removed" -- a placeholder until
-            # learner administration adds a genuine "pending" state.
             "learner": learner,
             "memberships": memberships,
             "registrations": registrations,

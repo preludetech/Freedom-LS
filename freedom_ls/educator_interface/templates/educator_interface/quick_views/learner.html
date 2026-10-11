@@ -1,4 +1,4 @@
-{% load panel_tags %}
+{% load panel_tags educator_tags %}
 
 {% comment %}
 The learner's name and email are the drawer's heading and subtitle, so the
@@ -6,8 +6,7 @@ rows start at their status.
 {% endcomment %}
 <c-panel-definition-list columns="2">
     <c-panel-definition-row label="Status">
-        {% comment %}TODO: show "pending" once learner administration adds a pending state.{% endcomment %}
-        {% if learner.is_active %}Active{% else %}Removed{% endif %}
+        {% learner_status_badge learner as badge %}{{ badge.label }}
     </c-panel-definition-row>
     <c-panel-definition-row label="Last active">
         {% comment %}
