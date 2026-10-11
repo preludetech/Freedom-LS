@@ -1,17 +1,18 @@
-{% for reg in object.learnercourseregistration_set.all %}
-    {{ reg.course.title }}
-    {% if not forloop.last %}
-        ,
-    {% endif %}
-{% empty %}
-    -
-{% endfor %}
-
+{% load educator_tags %}
 {% comment %}
-@claude todo: this template closely resembles the cohort courses template. Make it DRY.
-
-Change the rendering so that
-- each course appears on a new line
-- dont include the registration date
-- only include active course registrations
+One line per course the learner reaches through an active registration, with
+the furthest progress percentage once a course progress record exists.
 {% endcomment %}
+{% learner_course_summaries object as summaries %}
+{% if summaries %}
+    <ul class="list-none ml-0 space-y-1">
+        {% for summary in summaries %}
+            <li class="py-0">
+                {{ summary.course.title }}
+                {% if summary.progress_percentage is not None %}<span class="text-muted">{{ summary.progress_percentage }}%</span>{% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    -
+{% endif %}
