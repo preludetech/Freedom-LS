@@ -124,16 +124,17 @@ def recalculate_course_progress_on_form_attempt(
 
 
 def _ensure_and_announce(
-    registration: LearnerCourseRegistration, *, announce: bool
+    registration: LearnerCourseRegistration, *, announce: bool, notify: bool = True
 ) -> None:
     """Mint this registration's record, then announce it.
 
-    `announce` is decided when the signal is received, not here: by the time
-    the transaction commits, `created` is long gone.
+    `announce` and `notify` are decided when the signal is received, not here:
+    by the time the transaction commits, `created` is long gone.
 
-    Integrators hear about every registration. The learner is only notified
-    when someone else registered them: a learner who registered themselves is
-    already in the course.
+    Integrators hear about every registration, a reactivation included. The
+    learner is only notified when someone else registered them: a learner who
+    registered themselves is already in the course, and whoever reactivates a
+    registration is looking at the result.
 
     _base_manager on the Learner lookup, because this runs from anywhere a
     registration is written -- a management command with no ambient request,
@@ -149,7 +150,7 @@ def _ensure_and_announce(
     if not announce:
         return
 
-    if not registration.self_registered:
+    if notify and not registration.self_registered:
         raise_notification(
             user=learner.user,
             category="course.registered",
@@ -208,12 +209,19 @@ def ensure_course_progress_on_learner_registration(
         # loaddata: deriving records from a fixture would invent data the
         # fixture author did not ask for.
         return
+    reactivated = not created and instance.loaded_is_active is False
+    # Remembered so a second save of this instance is not a second reactivation.
+    instance.loaded_is_active = instance.is_active
     if not instance.is_active:
         # A withdrawn registration grants nothing: not on a deactivating save,
         # and not on a creation either -- an import of a past enrolment would
         # otherwise announce one that was never active.
         return
-    transaction.on_commit(lambda: _ensure_and_announce(instance, announce=created))
+    transaction.on_commit(
+        lambda: _ensure_and_announce(
+            instance, announce=created or reactivated, notify=created
+        )
+    )
 
 
 @receiver(post_save, sender=CohortCourseRegistration)

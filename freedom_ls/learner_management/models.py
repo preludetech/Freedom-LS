@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Collection
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -156,6 +158,11 @@ class LearnerCourseRegistration(SiteAwareModel):
     )
     registered_at = models.DateTimeField(auto_now_add=True)
 
+    # The `is_active` this instance was loaded with, or None when it was built in
+    # memory or loaded with `is_active` deferred. A save compares it with the
+    # new value to tell a reactivation from a no-op without a second query.
+    loaded_is_active: bool | None = None
+
     class Meta:
         constraints = [
             models.UniqueConstraint(
@@ -163,6 +170,19 @@ class LearnerCourseRegistration(SiteAwareModel):
                 name="unique_learner_course_registration",
             )
         ]
+
+    @classmethod
+    def from_db(
+        cls,
+        db: str | None,
+        field_names: Collection[str],
+        values: Collection[object],
+    ) -> LearnerCourseRegistration:
+        instance = super().from_db(db, field_names, values)
+        loaded = dict(zip(field_names, values, strict=False))
+        if "is_active" in loaded:
+            instance.loaded_is_active = bool(loaded["is_active"])
+        return instance
 
     def __str__(self):
         return f"{self.learner} - {self.course}"

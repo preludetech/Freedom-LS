@@ -167,6 +167,11 @@ document.addEventListener("alpine:init", () => {
             // re-render or a 422: the guard always compares against what is
             // on screen right now, not what was there before.
             this._snapshotForm();
+            // htmx wires a swapped-in fragment's hx-* attributes in its settle
+            // phase, a beat after afterSwap. Opening the dialog first would
+            // show controls that ignore the first interaction (a select whose
+            // hx-get fires on change), so wire them now; process is idempotent.
+            htmx.process(this._body);
             if (!this._dialog.open) {
                 // The fragment is already in the DOM, so native autofocus
                 // picks the initial focus.

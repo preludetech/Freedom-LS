@@ -584,6 +584,49 @@ class UnregisterLearnerFromCourseAction(PanelAction):
         return _registration_changed_response(learner)
 
 
+class ReregisterLearnerForCourseAction(PanelAction):
+    """Reactivates one of the learner's inactive individual registrations,
+    after confirmation. Like unregistering, the registration travels as a
+    `registration` parameter and the action renders per row."""
+
+    label = "Re-register"
+    action_name = "reregister_for_course"
+    variant = "secondary"
+    renders_in_footer = False
+    capability = "freedom_ls_learner_management.change_learnercourseregistration"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "educator_interface/modal/reregister_confirmation.html"
+
+    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
+        registrations = LearnerCourseRegistration.objects.filter(
+            learner=cast(Learner, ctx.instance), is_active=False
+        ).select_related("course")
+        return cast(
+            LearnerCourseRegistration,
+            get_object_or_404(
+                registrations, pk=_uuid_param(ctx.request, "registration")
+            ),
+        )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        registration = self._registration(ctx)
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "learner": cast(Learner, ctx.instance),
+                "registration": registration,
+                "course": registration.course,
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        learner = cast(Learner, ctx.instance)
+        register_for_course(learner, self._registration(ctx).course)
+        return _registration_changed_response(learner)
+
+
 class MembershipAction(PanelAction):
     """A change to one learner's membership of one cohort, after confirmation.
 
