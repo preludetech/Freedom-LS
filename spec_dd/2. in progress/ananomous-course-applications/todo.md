@@ -51,8 +51,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-- [ ] (user) Decide whether the claim confirm page may say something different when an account already exists for the address (which tells the link holder that account exists) or should use neutral wording for everyone, then fix the 'You will choose a password on the next page' sentence in claim.html to match
-- [ ] (user + cmd) Fix QA bug: claim confirm page promises a password step that existing accounts never see (TDD — failing test first, then fix)
+- [x] (user) Decide whether the claim confirm page may say something different when an account already exists for the address (which tells the link holder that account exists) or should use neutral wording for everyone, then fix the 'You will choose a password on the next page' sentence in claim.html to match
+- [x] (user + cmd) Fix QA bug: claim confirm page promises a password step that existing accounts never see (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

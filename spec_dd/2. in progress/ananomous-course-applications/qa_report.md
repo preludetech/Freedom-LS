@@ -78,7 +78,7 @@ Manifestations: 3.3 (desktop), 7 (mobile).
 
 | Bug | Status |
 |---|---|
-| B1 | **UNRESOLVED** — Claim confirm page promises a password step that existing accounts never see (reason: copy decision with an account-disclosure angle — vary the text when an account exists, which tells the link holder it exists, or use neutral wording for everyone) |
+| B1 | **RESOLVED** — Claim confirm page promises a password step that existing accounts never see. Decision: neutral wording for everyone, so the page never reveals whether an account exists for the address. The sentence now reads "You can then follow your application's progress while signed in." Guarded by `test_claim_get_does_not_promise_a_password_step`. |
 
 ## General notes
 
