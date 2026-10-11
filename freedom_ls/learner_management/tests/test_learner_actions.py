@@ -500,7 +500,7 @@ class TestMoveBetweenCohorts:
         with django_capture_on_commit_callbacks(execute=True):
             move_id = move_between_cohorts(learner, source, destination)
 
-        events = list(WebhookEvent._base_manager.order_by("pk"))
+        events = list(WebhookEvent._base_manager.order_by("created_at"))
         assert [
             (e.event_type, e.payload["cohort_id"], e.payload["move_id"]) for e in events
         ] == [
