@@ -8,7 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.loader import render_to_string
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.form_engine.factories import (
     FormContentFactory,
     FormFactory,
@@ -26,6 +26,7 @@ from freedom_ls.form_engine.models import (
 )
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.tests.images import png_bytes
+from freedom_ls.tests.site_context import site_context
 
 # The three file endpoints an applicant reaches: attach, remove, download.
 #
@@ -667,6 +668,21 @@ def test_a_fresh_client_cannot_download_an_anonymous_sittings_file(
     answer_file = _anonymous_file(form_progress)
 
     response = client.get(_download_url(answer_file))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_an_allowed_anonymous_session_cannot_download_its_file_from_another_sites_host(
+    mock_site_context, client, anonymous_sitting
+):
+    form_progress, _question = anonymous_sitting
+    answer_file = _anonymous_file(form_progress)
+    _allow_session(client, form_progress)
+    other_site = SiteFactory(domain="other.example.com", name="Other")
+
+    with site_context(other_site):
+        response = client.get(_download_url(answer_file))
 
     assert response.status_code == 404
 

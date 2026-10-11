@@ -39,7 +39,8 @@ from django.db import transaction
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.erasure import erase_anonymous_applicant
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
@@ -130,6 +131,13 @@ def _purge_course_data(user: User) -> list[str]:
     mis-targeted run is visible in the output rather than silent.
     """
     lines: list[str] = []
+
+    # _base_manager: the address may have applied on any site.
+    for applicant in AnonymousApplicant._base_manager.filter(email=user.email.lower()):
+        lines.append(
+            f"AnonymousApplicant {applicant.pk} (course={applicant.course_id})"
+        )
+        erase_anonymous_applicant(applicant)
 
     applications = CourseApplication._base_manager.filter(user=user)
     for application in applications.select_related("course"):

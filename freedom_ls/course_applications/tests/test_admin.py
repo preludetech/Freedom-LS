@@ -8,22 +8,39 @@ from typing import cast
 import pytest
 
 from django.contrib.auth.models import Permission
-from django.test import Client
+from django.test import Client, RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.course_applications.admin import CourseApplicationAdmin
-from freedom_ls.course_applications.factories import CourseApplicationFactory
-from freedom_ls.course_applications.models import CourseApplication
-from freedom_ls.course_applications.tests.helpers import gated_course_with_form
+from freedom_ls.course_applications.admin import (
+    AnonymousApplicantAdmin,
+    CourseApplicationAdmin,
+)
+from freedom_ls.course_applications.factories import (
+    AnonymousApplicantFactory,
+    CourseApplicationFactory,
+)
+from freedom_ls.course_applications.models import (
+    AnonymousApplicant,
+    CourseApplication,
+)
+from freedom_ls.course_applications.tests.helpers import (
+    gated_course_with_form,
+    unverified_application_with_file,
+)
 from freedom_ls.form_engine.factories import (
     FormProgressFactory,
     QuestionAnswerFactory,
     QuestionAnswerFileFactory,
 )
-from freedom_ls.form_engine.models import FormProgress, FormQuestion
+from freedom_ls.form_engine.models import (
+    FormProgress,
+    FormQuestion,
+    QuestionAnswer,
+    QuestionAnswerFile,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -372,3 +389,317 @@ def test_change_page_shows_an_anonymous_applications_email(staff_client):
 
     assert response.status_code == 200
     assert application.anonymous_applicant.email in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# Unverified applicants
+# ---------------------------------------------------------------------------
+
+APPLICANT_CHANGELIST = (
+    "admin:freedom_ls_course_applications_anonymousapplicant_changelist"
+)
+APPLICANT_ADD = "admin:freedom_ls_course_applications_anonymousapplicant_add"
+APPLICANT_DELETE = "admin:freedom_ls_course_applications_anonymousapplicant_delete"
+FORM_PROGRESS_CHANGELIST = "admin:freedom_ls_form_engine_formprogress_changelist"
+ANSWER_FILE_CHANGELIST = "admin:freedom_ls_form_engine_questionanswerfile_changelist"
+
+
+def _admin_request(user: User):
+    request = RequestFactory().get("/")
+    request.user = user
+    return request
+
+
+def test_email_verified_column_is_false_for_an_anonymous_application(
+    mock_site_context,
+):
+    model_admin = CourseApplicationAdmin(CourseApplication, None)
+
+    assert model_admin.is_email_verified(CourseApplicationFactory(anonymous=True)) is (
+        False
+    )
+
+
+def test_email_verified_column_is_true_for_a_signed_in_application(
+    mock_site_context,
+):
+    model_admin = CourseApplicationAdmin(CourseApplication, None)
+
+    assert model_admin.is_email_verified(CourseApplicationFactory()) is True
+
+
+def test_unverified_filter_narrows_to_anonymous_applications(staff_client):
+    anonymous = CourseApplicationFactory(anonymous=True)
+    CourseApplicationFactory()
+
+    response = staff_client.get(reverse(CHANGELIST), {"email_verified": "unverified"})
+
+    assert [row.pk for row in response.context["cl"].result_list] == [anonymous.pk]
+
+
+def test_verified_filter_narrows_to_signed_in_applications(staff_client):
+    CourseApplicationFactory(anonymous=True)
+    verified = CourseApplicationFactory()
+
+    response = staff_client.get(reverse(CHANGELIST), {"email_verified": "verified"})
+
+    assert [row.pk for row in response.context["cl"].result_list] == [verified.pk]
+
+
+def test_search_by_the_anonymous_email_finds_the_application(staff_client):
+    wanted = CourseApplicationFactory(anonymous=True)
+    CourseApplicationFactory(anonymous=True)
+
+    response = staff_client.get(
+        reverse(CHANGELIST), {"q": wanted.anonymous_applicant.email}
+    )
+
+    assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+
+def test_change_page_summary_starts_with_the_unverified_email(staff_client):
+    application = CourseApplicationFactory(anonymous=True)
+
+    response = staff_client.get(reverse(CHANGE, args=[application.pk]))
+
+    assert response.context["summary_rows"][0] == (
+        "Unverified email",
+        application.anonymous_applicant.email,
+    )
+
+
+def test_change_page_summary_of_a_signed_in_application_has_no_unverified_row(
+    staff_client,
+):
+    application = CourseApplicationFactory()
+
+    response = staff_client.get(reverse(CHANGE, args=[application.pk]))
+
+    assert response.context["summary_rows"][0][0] == "Applicant"
+
+
+def test_changelist_of_ten_anonymous_applications_stays_under_a_query_bound(
+    staff_client, django_assert_max_num_queries
+):
+    for _ in range(10):
+        CourseApplicationFactory(anonymous=True)
+
+    with django_assert_max_num_queries(25):
+        response = staff_client.get(reverse(CHANGELIST))
+
+    assert response.status_code == 200
+
+
+def test_applicant_admin_denies_add(mock_site_context):
+    model_admin = AnonymousApplicantAdmin(AnonymousApplicant, None)
+
+    request = _admin_request(UserFactory(superuser=True))
+
+    assert model_admin.has_add_permission(request) is False
+
+
+def test_applicant_admin_denies_change(mock_site_context):
+    model_admin = AnonymousApplicantAdmin(AnonymousApplicant, None)
+    applicant = AnonymousApplicantFactory()
+
+    request = _admin_request(UserFactory(superuser=True))
+
+    assert model_admin.has_change_permission(request, applicant) is False
+
+
+def test_applicant_admin_allows_delete(mock_site_context):
+    model_admin = AnonymousApplicantAdmin(AnonymousApplicant, None)
+    applicant = AnonymousApplicantFactory()
+
+    request = _admin_request(UserFactory(superuser=True))
+
+    assert model_admin.has_delete_permission(request, applicant) is True
+
+
+def test_applicant_changelist_searches_by_email(staff_client):
+    wanted = AnonymousApplicantFactory(email="findme@example.com")
+    AnonymousApplicantFactory()
+
+    response = staff_client.get(reverse(APPLICANT_CHANGELIST), {"q": "findme"})
+
+    assert [row.pk for row in response.context["cl"].result_list] == [wanted.pk]
+
+
+def test_applicant_admin_is_claimed_column_follows_claimed_at(mock_site_context):
+    model_admin = AnonymousApplicantAdmin(AnonymousApplicant, None)
+    claimed = AnonymousApplicantFactory(claimed_at=timezone.now())
+
+    assert model_admin.is_claimed(claimed) is True
+
+
+def test_applicant_admin_is_claimed_column_is_false_before_a_claim(mock_site_context):
+    model_admin = AnonymousApplicantAdmin(AnonymousApplicant, None)
+
+    assert model_admin.is_claimed(AnonymousApplicantFactory()) is False
+
+
+def test_deleting_an_applicant_removes_the_application(staff_client):
+    unverified = unverified_application_with_file()
+    url = reverse(APPLICANT_DELETE, args=[unverified.applicant.pk])
+
+    response = staff_client.post(url, {"post": "yes"})
+
+    assert response.status_code == 302
+    assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
+
+
+def test_deleting_an_applicant_removes_the_sitting_and_its_answers(staff_client):
+    unverified = unverified_application_with_file()
+    progress_pk = unverified.sitting.pk
+    url = reverse(APPLICANT_DELETE, args=[unverified.applicant.pk])
+
+    staff_client.post(url, {"post": "yes"})
+
+    assert not FormProgress.objects.filter(pk=progress_pk).exists()
+    assert not QuestionAnswer.objects.filter(form_progress_id=progress_pk).exists()
+
+
+def test_deleting_an_applicant_removes_the_stored_file(staff_client):
+    unverified = unverified_application_with_file()
+    answer_file = QuestionAnswerFile.objects.get(
+        answer__form_progress=unverified.sitting
+    )
+    storage, name = answer_file.file.storage, answer_file.file.name
+    url = reverse(APPLICANT_DELETE, args=[unverified.applicant.pk])
+
+    staff_client.post(url, {"post": "yes"})
+
+    assert not storage.exists(name)
+
+
+def test_delete_confirmation_page_loads_for_an_applicant_with_an_application(
+    staff_client,
+):
+    unverified = unverified_application_with_file()
+    url = reverse(APPLICANT_DELETE, args=[unverified.applicant.pk])
+
+    response = staff_client.get(url)
+
+    assert response.status_code == 200
+
+
+def test_bulk_delete_removes_both_applicants_applications(staff_client):
+    first = unverified_application_with_file()
+    second = unverified_application_with_file()
+
+    staff_client.post(
+        reverse(APPLICANT_CHANGELIST),
+        {
+            "action": "delete_selected",
+            "_selected_action": [
+                str(first.applicant.pk),
+                str(second.applicant.pk),
+            ],
+            "post": "yes",
+        },
+    )
+
+    assert not CourseApplication.objects.filter(
+        pk__in=[first.application.pk, second.application.pk]
+    ).exists()
+
+
+def test_bulk_delete_removes_both_applicants_sittings(staff_client):
+    first = unverified_application_with_file()
+    second = unverified_application_with_file()
+    sitting_pks = [first.sitting.pk, second.sitting.pk]
+
+    staff_client.post(
+        reverse(APPLICANT_CHANGELIST),
+        {
+            "action": "delete_selected",
+            "_selected_action": [
+                str(first.applicant.pk),
+                str(second.applicant.pk),
+            ],
+            "post": "yes",
+        },
+    )
+
+    assert not FormProgress.objects.filter(pk__in=sitting_pks).exists()
+
+
+def test_form_progress_changelist_labels_an_unverified_sitting(staff_client):
+    unverified = unverified_application_with_file()
+
+    response = staff_client.get(reverse(FORM_PROGRESS_CHANGELIST))
+
+    assert f"Unverified: {unverified.applicant.email}" in response.content.decode()
+
+
+def test_form_progress_changelist_of_ten_unverified_sittings_stays_under_a_query_bound(
+    staff_client, django_assert_max_num_queries
+):
+    for _ in range(10):
+        unverified_application_with_file()
+
+    with django_assert_max_num_queries(25):
+        response = staff_client.get(reverse(FORM_PROGRESS_CHANGELIST))
+
+    assert response.status_code == 200
+
+
+def test_form_progress_change_page_summary_has_the_unverified_email(staff_client):
+    unverified = unverified_application_with_file()
+
+    response = staff_client.get(_application_sitting_change_url(unverified.application))
+
+    assert (
+        "Unverified email",
+        unverified.applicant.email,
+    ) in response.context["summary_rows"]
+
+
+def test_answer_file_changelist_labels_an_unverified_sitting(staff_client):
+    unverified = unverified_application_with_file()
+
+    response = staff_client.get(reverse(ANSWER_FILE_CHANGELIST))
+
+    assert f"Unverified: {unverified.applicant.email}" in response.content.decode()
+
+
+def test_answer_file_changelist_of_ten_unverified_files_stays_under_a_query_bound(
+    staff_client, django_assert_max_num_queries
+):
+    for _ in range(10):
+        unverified_application_with_file()
+
+    with django_assert_max_num_queries(25):
+        response = staff_client.get(reverse(ANSWER_FILE_CHANGELIST))
+
+    assert response.status_code == 200
+
+
+def test_erasing_a_claimed_applicants_user_removes_the_applicant_and_its_records(
+    staff_client,
+):
+    user = UserFactory()
+    unverified = unverified_application_with_file()
+    applicant = unverified.applicant
+    progress = unverified.sitting
+    answer_file = QuestionAnswerFile.objects.get(answer__form_progress=progress)
+    storage, name = answer_file.file.storage, answer_file.file.name
+    application = unverified.application
+    application.user = user
+    application.save()
+    applicant.user = user
+    applicant.claimed_at = timezone.now()
+    applicant.save()
+    progress.user = user
+    progress.save()
+
+    response = staff_client.post(
+        reverse("admin:freedom_ls_accounts_user_delete", args=[user.pk]),
+        {"post": "yes"},
+    )
+
+    assert response.status_code == 302
+    assert not AnonymousApplicant.objects.filter(pk=applicant.pk).exists()
+    assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
+    assert not FormProgress.objects.filter(pk=progress.pk).exists()
+    assert not storage.exists(name)

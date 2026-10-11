@@ -41,7 +41,8 @@ from django.core.files.storage import Storage
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.erasure import erase_anonymous_applicant
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.models import (
     FormProgress,
     QuestionAnswer,
@@ -66,6 +67,22 @@ def _get_course(site: Site, course_slug: str) -> Course:
             f"Course '{course_slug}' not found on site '{site.name}'."
         )
     return course
+
+
+def _erase_anonymous_applicants(email: str, course: Course, dry_run: bool) -> None:
+    """Erase the unverified applicants for this address and course, on any site.
+
+    _base_manager: outside a request there is no ambient site to filter on.
+    """
+    applicants = AnonymousApplicant._base_manager.filter(
+        email=email.strip().lower(), course=course
+    )
+    for applicant in applicants:
+        if dry_run:
+            click.echo(f"  would erase AnonymousApplicant {applicant.pk}")
+            continue
+        erase_anonymous_applicant(applicant)
+        click.secho(f"Erased AnonymousApplicant {applicant.pk}", fg="green", bold=True)
 
 
 @click.command()
@@ -102,6 +119,7 @@ def command(learner: str, course_slug: str, site_name: str, dry_run: bool) -> No
     ).first()
     if application is None:
         click.secho("\nNo application to withdraw. Nothing to do.", fg="yellow")
+        _erase_anonymous_applicants(learner, course, dry_run)
         return
 
     form_progress_pk = application.form_progress_id
@@ -132,6 +150,7 @@ def command(learner: str, course_slug: str, site_name: str, dry_run: bool) -> No
             click.echo(f"    upload {name} (exists={storage.exists(name)})")
 
     if dry_run:
+        _erase_anonymous_applicants(learner, course, dry_run)
         click.secho("\n--dry-run: nothing was deleted.", fg="yellow", bold=True)
         return
 
@@ -142,6 +161,8 @@ def command(learner: str, course_slug: str, site_name: str, dry_run: bool) -> No
         click.secho(f"Sitting deleted:     {deleted}", fg="green", bold=True)
         for name, storage in file_paths:
             click.echo(f"  upload {name} exists now: {storage.exists(name)}")
+
+    _erase_anonymous_applicants(learner, course, dry_run)
 
     click.secho("\nVerifying:", fg="cyan", bold=True)
     remaining = CourseApplication._base_manager.filter(user=user, course=course).count()

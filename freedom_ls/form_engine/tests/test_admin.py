@@ -20,6 +20,7 @@ from freedom_ls.form_engine.admin import (
     FormQuestionAdmin,
     QuestionAnswerAdmin,
     QuestionOptionAdmin,
+    applicant_label,
 )
 from freedom_ls.form_engine.enums import QuestionType
 from freedom_ls.form_engine.factories import (
@@ -635,3 +636,19 @@ def test_the_change_page_of_a_sitting_with_no_application_has_no_summary_rows(
 
     assert response.status_code == 200
     assert "summary_rows" not in response.context
+
+
+@pytest.mark.django_db
+def test_applicant_label_for_a_sitting_with_a_user_is_the_user(mock_site_context):
+    progress = FormProgressFactory(user=UserFactory(email="sitter@example.com"))
+
+    assert applicant_label(progress) == str(progress.user)
+
+
+@pytest.mark.django_db
+def test_applicant_label_for_a_user_less_sitting_with_no_application(
+    mock_site_context,
+):
+    progress = FormProgressFactory(user=None)
+
+    assert applicant_label(progress) == "Unverified"

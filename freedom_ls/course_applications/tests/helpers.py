@@ -1,13 +1,23 @@
 """Builders shared by the course_applications tests."""
 
+from typing import NamedTuple, cast
+
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.models import (
+    AnonymousApplicant,
+    CourseApplication,
+)
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
+    QuestionAnswerFactory,
+    QuestionAnswerFileFactory,
     QuestionOptionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 
 
 def gated_course_with_form() -> tuple[CourseFactory, FormFactory]:
@@ -64,3 +74,29 @@ def gated_course_with_form() -> tuple[CourseFactory, FormFactory]:
     course.application_form = form
     course.save(update_fields=["application_form"])
     return course, form
+
+
+class UnverifiedApplication(NamedTuple):
+    """An unverified application with its applicant and its sitting."""
+
+    application: CourseApplication
+    applicant: AnonymousApplicant
+    sitting: FormProgress
+
+
+def unverified_application_with_file() -> UnverifiedApplication:
+    """An unverified application whose sitting holds one answer with a stored file."""
+    application = cast(
+        CourseApplication,
+        CourseApplicationFactory(
+            anonymous=True, form_progress=FormProgressFactory(user=None)
+        ),
+    )
+    assert application.anonymous_applicant is not None
+    assert application.form_progress is not None
+    QuestionAnswerFileFactory(
+        answer=QuestionAnswerFactory(form_progress=application.form_progress)
+    )
+    return UnverifiedApplication(
+        application, application.anonymous_applicant, application.form_progress
+    )

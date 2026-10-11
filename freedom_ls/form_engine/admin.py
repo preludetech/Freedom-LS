@@ -1,10 +1,12 @@
 from unfold.contrib.filters.admin import AutocompleteSelectFilter
 
+from django.apps import apps
 from django.contrib import admin
 from django.contrib.sites.models import Site
 from django.http import HttpRequest, HttpResponse
 from django.urls import URLPattern, path, reverse
 from django.utils.html import format_html
+from django.utils.safestring import SafeString
 
 from freedom_ls.content_base.admin_filters import ContentTagListFilter
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
@@ -254,6 +256,21 @@ def answers_context(
     }
 
 
+def applicant_label(form_progress: FormProgress) -> str:
+    """Who sat this form: the user, or the unverified email its application holds.
+
+    The application is reached only through its reverse accessor; the app that
+    owns it sits above this one and may not be installed.
+    """
+    if form_progress.user is not None:
+        return str(form_progress.user)
+    # hasattr, because a missing reverse one-to-one raises rather than returning None.
+    if not hasattr(form_progress, "course_application"):
+        return "Unverified"
+    applicant = form_progress.course_application.anonymous_applicant
+    return "Unverified" if applicant is None else f"Unverified: {applicant.email}"
+
+
 class FormProgressCompletionFilter(CompletionListFilter):
     completion_field = "completed_time"
 
@@ -261,7 +278,7 @@ class FormProgressCompletionFilter(CompletionListFilter):
 @admin.register(FormProgress)
 class FormProgressAdmin(SiteAwareModelAdmin):
     list_display = [
-        "user",
+        "applicant",
         "form",
         "in_course",
         "start_time",
@@ -300,6 +317,14 @@ class FormProgressAdmin(SiteAwareModelAdmin):
         "furthest_page_reached",
     )
     change_form_template = "admin/form_engine/answers_change_form.html"
+
+    def get_list_select_related(self, request: HttpRequest) -> list[str]:
+        related = list(self.list_select_related)
+        if apps.is_installed("freedom_ls.course_applications"):
+            # A string path, because the app that owns the application sits
+            # above this one and may not be installed.
+            related.append("course_application__anonymous_applicant")
+        return related
 
     fieldsets = (
         (None, {"fields": ("user", "form")}),
@@ -344,7 +369,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
             # Two queries on a single change page is the price.
             if hasattr(obj, "course_application"):
                 application = obj.course_application
-                context["summary_rows"] = [
+                summary_rows: list[tuple[str, str | SafeString]] = [
                     (
                         "Application",
                         admin_change_link(
@@ -354,10 +379,19 @@ class FormProgressAdmin(SiteAwareModelAdmin):
                         ),
                     )
                 ]
+                if obj.user is None and application.anonymous_applicant is not None:
+                    summary_rows.insert(
+                        0, ("Unverified email", application.anonymous_applicant.email)
+                    )
+                context["summary_rows"] = summary_rows
         response: HttpResponse = super().render_change_form(
             request, context, add, change, form_url, obj
         )
         return response
+
+    @admin.display(description="Applicant", ordering="user__email")
+    def applicant(self, obj: FormProgress) -> str:
+        return applicant_label(obj)
 
     @admin.display(description="In course")
     def in_course(self, obj: FormProgress) -> str | None:
@@ -427,6 +461,15 @@ class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
     ]
     list_select_related = ["answer__form_progress__user", "answer__question"]
     list_filter = ["created_at"]
+
+    def get_list_select_related(self, request: HttpRequest) -> list[str]:
+        related = list(self.list_select_related)
+        if apps.is_installed("freedom_ls.course_applications"):
+            related.append(
+                "answer__form_progress__course_application__anonymous_applicant"
+            )
+        return related
+
     readonly_fields = [
         "answer",
         "original_filename",
@@ -443,7 +486,7 @@ class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
 
     @admin.display(description="Applicant", ordering="answer__form_progress__user")
     def applicant(self, obj: QuestionAnswerFile) -> str:
-        return str(obj.answer.form_progress.user)
+        return applicant_label(obj.answer.form_progress)
 
     @admin.display(description="Question", ordering="answer__question")
     def question(self, obj: QuestionAnswerFile) -> str:

@@ -17,12 +17,14 @@ from freedom_ls.form_engine.admin import answers_context
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_change_link
 from freedom_ls.site_aware_models.admin_filters import InclusiveRangeDateTimeFilter
 
-from .models import CourseApplication
+from .erasure import erase_anonymous_applicant
+from .models import AnonymousApplicant, CourseApplication
 
 # The admin below denies delete so nobody can thin out applications one by one.
 # Erasing the applicant is the one path that must take them along, and the User
 # admin only vouches for the models named here.
 USER_ERASURE_CASCADE_MODELS.add(CourseApplication)
+USER_ERASURE_CASCADE_MODELS.add(AnonymousApplicant)
 
 
 class CourseApplicationSubmittedFilter(admin.SimpleListFilter):
@@ -56,6 +58,27 @@ class CourseApplicationSubmittedFilter(admin.SimpleListFilter):
         return queryset
 
 
+class EmailVerifiedFilter(admin.SimpleListFilter):
+    """Applications whose address somebody has proven they own, or not yet."""
+
+    title = "email verified"
+    parameter_name = "email_verified"
+
+    def lookups(
+        self, request: HttpRequest, model_admin: admin.ModelAdmin
+    ) -> list[tuple[str, str]]:
+        return [("verified", "Verified"), ("unverified", "Unverified")]
+
+    def queryset(
+        self, request: HttpRequest, queryset: QuerySet[CourseApplication]
+    ) -> QuerySet[CourseApplication]:
+        if self.value() == "verified":
+            return queryset.filter(user__isnull=False)
+        if self.value() == "unverified":
+            return queryset.filter(user__isnull=True)
+        return queryset
+
+
 @admin.register(CourseApplication)
 class CourseApplicationAdmin(SiteAwareModelAdmin):
     """Find an application and read it. Nothing here writes.
@@ -69,6 +92,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     list_display = [
         "applicant_email",
         "applicant_name",
+        "is_email_verified",
         "course",
         "is_submitted",
         "submitted_time",
@@ -80,6 +104,7 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ordering = ["-created_at"]
     list_filter = [
         CourseApplicationSubmittedFilter,
+        EmailVerifiedFilter,
         ("course", AutocompleteSelectFilter),
         ("created_at", InclusiveRangeDateTimeFilter),
     ]
@@ -90,6 +115,9 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         "user__email",
         "user__first_name",
         "user__last_name",
+        "anonymous_applicant__email",
+        "anonymous_applicant__first_name",
+        "anonymous_applicant__last_name",
         "course__title",
     ]
     fields = ["is_submitted", "submitted_time_display", "created_at"]
@@ -115,7 +143,13 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     ) -> HttpResponse:
         if obj is not None:
             form_progress = obj.form_progress
+            unverified_rows = (
+                []
+                if obj.is_email_verified
+                else [("Unverified email", obj.applicant_email)]
+            )
             context["summary_rows"] = [
+                *unverified_rows,
                 ("Applicant", self._applicant_link(request, obj)),
                 ("Course", admin_change_link(request, obj.course)),
                 (
@@ -162,6 +196,10 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
     def applicant_name(self, obj: CourseApplication) -> str:
         return obj.applicant_name
 
+    @admin.display(boolean=True, description="Email verified")
+    def is_email_verified(self, obj: CourseApplication) -> bool:
+        return obj.is_email_verified
+
     @admin.display(boolean=True, description="Submitted")
     def is_submitted(self, obj: CourseApplication) -> bool:
         return obj.is_submitted
@@ -184,3 +222,78 @@ class CourseApplicationAdmin(SiteAwareModelAdmin):
         if submitted_time is None:
             return str(self.get_empty_value_display())
         return formats.localize(timezone.localtime(submitted_time))
+
+
+@admin.register(AnonymousApplicant)
+class AnonymousApplicantAdmin(SiteAwareModelAdmin):
+    """Find an unverified applicant and erase them. Nothing here writes.
+
+    Deleting an applicant takes their application, sitting, answers and stored
+    files with it, which is how a right-to-erasure request for an address that
+    never became an account is carried out.
+    """
+
+    list_display = [
+        "email",
+        "first_name",
+        "last_name",
+        "course",
+        "is_claimed",
+        "created_at",
+    ]
+    list_select_related = ["course", "user"]
+    ordering = ["-created_at"]
+    search_fields = ["email", "first_name", "last_name"]
+    list_filter = [
+        ("course", AutocompleteSelectFilter),
+        ("created_at", InclusiveRangeDateTimeFilter),
+    ]
+    list_filter_submit = True
+    readonly_fields = [
+        "course",
+        "email",
+        "first_name",
+        "last_name",
+        "terms_version",
+        "terms_git_hash",
+        "privacy_version",
+        "privacy_git_hash",
+        "consent_ip_address",
+        "consented_at",
+        "user",
+        "claimed_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: AnonymousApplicant | None = None
+    ) -> bool:
+        return False
+
+    def get_deleted_objects(
+        self, objs: QuerySet[AnonymousApplicant], request: HttpRequest
+    ) -> tuple[list[object], dict[str, int], set[str], list[object]]:
+        to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
+            objs, request
+        )
+        # The application admin denies delete to everyone, yet the confirmation
+        # page lists the application the erasure takes along.
+        perms_needed.discard(str(CourseApplication._meta.verbose_name))
+        return to_delete, model_count, perms_needed, protected
+
+    def delete_model(self, request: HttpRequest, obj: AnonymousApplicant) -> None:
+        erase_anonymous_applicant(obj)
+
+    def delete_queryset(
+        self, request: HttpRequest, queryset: QuerySet[AnonymousApplicant]
+    ) -> None:
+        for applicant in queryset:
+            erase_anonymous_applicant(applicant)
+
+    @admin.display(boolean=True, description="Claimed", ordering="claimed_at")
+    def is_claimed(self, obj: AnonymousApplicant) -> bool:
+        return obj.claimed_at is not None
