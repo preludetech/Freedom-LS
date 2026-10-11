@@ -168,11 +168,16 @@ class LegalConsent(SiteAwareModel):
     Each row is created exactly once (at signup, or via a future re-consent
     flow). The model rejects updates to existing rows; the admin registers
     this model as fully read-only.
+
+    For the `application_details_step` method `timestamp` is the moment the
+    applicant's claim created the user. The moment they ticked the boxes is kept
+    by the anonymous applicant that was claimed.
     """
 
     DOCUMENT_TYPE_CHOICES = [("terms", "Terms"), ("privacy", "Privacy")]
     CONSENT_METHOD_CHOICES = [
         ("signup_checkbox", "Signup checkbox"),
+        ("application_details_step", "Application details step"),
     ]
 
     user = models.ForeignKey(

@@ -1,0 +1,31 @@
+{% extends "_base.html" %}
+
+{% block head_title %}Finish your application{% endblock %}
+
+{% block content %}
+    <c-page width="narrow">
+        <div class="space-y-6">
+            {% if claim_state == "confirm" %}
+                <h1>Finish your application for {{ course.title }}</h1>
+                <p>
+                    Confirming attaches your application to an account for the address this
+                    link was sent to. You will choose a password on the next page.
+                </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <c-button type="submit">Confirm</c-button>
+                </form>
+            {% elif claim_state == "expired" %}
+                <h1>This link has expired</h1>
+                <p class="text-muted">
+                    Links to finish an application stop working after a few days.
+                </p>
+            {% else %}
+                <h1>This link is invalid or has already been used</h1>
+                <p>
+                    <a href="{% url 'learner_interface:courses' %}">Browse courses</a>
+                </p>
+            {% endif %}
+        </div>
+    </c-page>
+{% endblock content %}

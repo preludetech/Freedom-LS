@@ -22,4 +22,5 @@ urlpatterns = [
         views.application_check_answers,
         name="check_answers",
     ),
+    path("claim/<str:token>/", views.claim_application, name="claim"),
 ]

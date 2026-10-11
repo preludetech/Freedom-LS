@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import pytest
+import time_machine
+from allauth.account import app_settings as allauth_account_settings
+from allauth.account.models import EmailAddress
 
 from django.contrib.messages import get_messages
 from django.core.cache import cache
@@ -13,13 +18,14 @@ from django.db import connection
 from django.test import Client, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import (
     SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
 )
-from freedom_ls.accounts.models import User
+from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.accounts.tests._auth_page_helpers import _next_param
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
@@ -29,11 +35,16 @@ from freedom_ls.tests.images import png_bytes
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
+from freedom_ls.course_applications.anonymous_session import (
+    ANONYMOUS_APPLICANTS_SESSION_KEY,
+)
+from freedom_ls.course_applications.claims import claim_token
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
+    FormProgressFactory,
     FormQuestionFactory,
 )
 from freedom_ls.form_engine.models import FormStrategy
@@ -1946,3 +1957,342 @@ def test_a_second_details_post_resumes_without_a_second_application(
 
     assert response["Location"] == _page_url(application, 1)
     assert CourseApplication.objects.filter(course=course).count() == 1
+
+
+# ---------------------------------------------------------------------------
+# The claim page
+# ---------------------------------------------------------------------------
+
+
+def _claim_url(applicant) -> str:
+    return reverse(
+        "course_applications:claim", kwargs={"token": claim_token(applicant)}
+    )
+
+
+def _stamp_consent(applicant) -> None:
+    applicant.terms_version = "1.2"
+    applicant.terms_git_hash = "a" * 40
+    applicant.privacy_version = "2.0"
+    applicant.privacy_git_hash = "b" * 40
+    applicant.consent_ip_address = "203.0.113.9"
+    applicant.save()
+
+
+def _submitted_form_less_application(*, consent: bool = True):
+    application = CourseApplicationFactory(anonymous=True)
+    if consent:
+        _stamp_consent(application.anonymous_applicant)
+    return application
+
+
+def _submitted_form_application():
+    course, form = gated_course_with_form()
+    application = CourseApplicationFactory(anonymous=True, course=course)
+    application.form_progress = FormProgressFactory(
+        user=None, form=form, completed_time=timezone.now()
+    )
+    application.save(update_fields=["form_progress"])
+    return application
+
+
+def _claim(client, application):
+    return client.post(_claim_url(application.anonymous_applicant))
+
+
+@pytest.fixture
+def claimable(mock_site_context):
+    return _submitted_form_less_application()
+
+
+@pytest.mark.django_db
+def test_claim_get_renders_the_confirm_page(client, claimable):
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert response.context["claim_state"] == "confirm"
+
+
+@pytest.mark.django_db
+def test_claim_get_creates_no_user(client, claimable):
+    users_before = User._base_manager.count()
+
+    client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert User._base_manager.count() == users_before
+
+
+@pytest.mark.django_db
+def test_claim_get_leaves_claimed_at_empty(client, claimable):
+    client.get(_claim_url(claimable.anonymous_applicant))
+
+    claimable.anonymous_applicant.refresh_from_db()
+    assert claimable.anonymous_applicant.claimed_at is None
+
+
+@pytest.mark.django_db
+def test_claim_post_creates_a_user_with_an_unusable_password(client, claimable):
+    _claim(client, claimable)
+
+    user = User.objects.get(email=claimable.anonymous_applicant.email)
+    assert user.has_usable_password() is False
+
+
+@pytest.mark.django_db
+def test_claim_post_copies_the_names_and_site_onto_the_user(
+    client, claimable, mock_site_context
+):
+    _claim(client, claimable)
+
+    user = User.objects.get(email=claimable.anonymous_applicant.email)
+    assert (user.first_name, user.last_name) == ("Anna", "Applicant")
+    assert user.site_id == claimable.site_id
+
+
+@pytest.mark.django_db
+def test_claim_post_creates_one_verified_primary_email_address(client, claimable):
+    _claim(client, claimable)
+
+    addresses = EmailAddress.objects.filter(email=claimable.anonymous_applicant.email)
+    assert [(a.verified, a.primary) for a in addresses] == [(True, True)]
+
+
+@pytest.mark.django_db
+def test_claim_post_writes_one_consent_per_accepted_document(client, claimable):
+    _claim(client, claimable)
+
+    user = User.objects.get(email=claimable.anonymous_applicant.email)
+    consents = LegalConsent.objects.filter(user=user).order_by("document_type")
+    assert [
+        (c.document_type, c.document_version, c.git_hash, c.ip_address)
+        for c in consents
+    ] == [
+        ("privacy", "2.0", "b" * 40, "203.0.113.9"),
+        ("terms", "1.2", "a" * 40, "203.0.113.9"),
+    ]
+
+
+@pytest.mark.django_db
+def test_claim_post_records_the_application_details_step_as_consent_method(
+    client, claimable
+):
+    _claim(client, claimable)
+
+    user = User.objects.get(email=claimable.anonymous_applicant.email)
+    methods = set(
+        LegalConsent.objects.filter(user=user).values_list("consent_method", flat=True)
+    )
+    assert methods == {"application_details_step"}
+
+
+@pytest.mark.django_db
+def test_claim_post_without_consent_evidence_writes_no_consent(
+    client, mock_site_context
+):
+    application = _submitted_form_less_application(consent=False)
+
+    _claim(client, application)
+
+    assert LegalConsent.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_claim_post_attaches_the_user_to_the_application(client, claimable):
+    _claim(client, claimable)
+
+    claimable.refresh_from_db()
+    user = User.objects.get(email=claimable.anonymous_applicant.email)
+    assert claimable.user == user
+
+
+@pytest.mark.django_db
+def test_claim_post_attaches_the_user_to_the_sitting(client, mock_site_context):
+    application = _submitted_form_application()
+
+    _claim(client, application)
+
+    application.form_progress.refresh_from_db()
+    user = User.objects.get(email=application.anonymous_applicant.email)
+    assert application.form_progress.user == user
+
+
+@pytest.mark.django_db
+def test_claim_post_attaches_the_user_to_the_applicant(client, claimable):
+    _claim(client, claimable)
+
+    applicant = AnonymousApplicant.objects.get(pk=claimable.anonymous_applicant.pk)
+    assert applicant.user == User.objects.get(email=applicant.email)
+
+
+@pytest.mark.django_db
+def test_claim_post_stamps_claimed_at(client, claimable):
+    _claim(client, claimable)
+
+    applicant = AnonymousApplicant.objects.get(pk=claimable.anonymous_applicant.pk)
+    assert applicant.claimed_at is not None
+
+
+@pytest.mark.django_db
+def test_claim_post_redirects_to_set_password_with_the_status_page_as_next(
+    client, claimable
+):
+    response = _claim(client, claimable)
+
+    status_url = reverse("course_applications:status", kwargs={"pk": claimable.pk})
+    assert response["Location"] == (
+        f"{reverse('account_set_password')}?{urlencode({'next': status_url})}"
+    )
+
+
+@pytest.mark.django_db
+def test_claim_post_changes_the_session_key(client, claimable):
+    client.get(_claim_url(claimable.anonymous_applicant))
+    session = client.session
+    session["warmup"] = "1"
+    session.save()
+    key_before = client.session.session_key
+
+    _claim(client, claimable)
+
+    assert client.session.session_key != key_before
+
+
+@pytest.mark.django_db
+def test_claim_post_removes_the_applicant_from_the_session_map(
+    client, mock_site_context
+):
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    _post_details(client, course)
+    client.post(_apply_url(course))
+    application = CourseApplication.objects.get(course=course)
+
+    _claim(client, application)
+
+    assert client.session.get(ANONYMOUS_APPLICANTS_SESSION_KEY) == {}
+
+
+@pytest.mark.django_db
+def test_claim_post_fires_the_user_registered_webhook_once(client, claimable):
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
+        _claim(client, claimable)
+
+    assert fire.call_count == 1
+    assert fire.call_args.args[0] == "user.registered"
+
+
+@pytest.mark.django_db
+def test_claim_post_queues_one_sign_up_analytics_event(client, claimable):
+    _claim(client, claimable)
+
+    events = client.session["google_analytics_events"]
+    assert [event["name"] for event in events] == ["sign_up"]
+
+
+@pytest.mark.django_db
+def test_claim_post_writes_one_signup_attribution(client, claimable):
+    _claim(client, claimable)
+
+    user = User.objects.get(email=claimable.anonymous_applicant.email)
+    # Reverse accessor of the one-to-one: course_applications does not depend on
+    # referral_tracking, so the model is reached through the user.
+    assert user.signup_attribution is not None
+
+
+@pytest.mark.django_db
+def test_claim_of_a_form_less_application_succeeds(client, claimable):
+    response = _claim(client, claimable)
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("route", "extra"),
+    [("status", {}), ("form_page", {"page_number": 1}), ("check_answers", {})],
+)
+def test_pre_claim_anonymous_client_gets_404_after_the_claim(
+    client, mock_site_context, route, extra
+):
+    application = _submitted_form_application()
+    session = client.session
+    session[ANONYMOUS_APPLICANTS_SESSION_KEY] = {
+        str(application.course_id): str(application.anonymous_applicant.pk)
+    }
+    session.save()
+    _claim(Client(), application)
+
+    response = client.get(
+        reverse(f"course_applications:{route}", kwargs={"pk": application.pk, **extra})
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_signed_in_claimant_reaches_the_status_page(client, claimable):
+    _claim(client, claimable)
+
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": claimable.pk})
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_second_claim_post_renders_the_invalid_page(client, claimable):
+    _claim(client, claimable)
+
+    response = _claim(Client(), claimable)
+
+    assert response.context["claim_state"] == "invalid"
+
+
+@pytest.mark.django_db
+def test_claim_get_after_a_claim_renders_the_invalid_page(client, claimable):
+    _claim(client, claimable)
+
+    response = Client().get(_claim_url(claimable.anonymous_applicant))
+
+    assert response.context["claim_state"] == "invalid"
+
+
+@pytest.mark.django_db
+def test_claim_of_a_draft_application_renders_the_invalid_page(
+    client, mock_site_context
+):
+    application = _submitted_form_application()
+    application.form_progress.completed_time = None
+    application.form_progress.save(update_fields=["completed_time"])
+
+    response = client.get(_claim_url(application.anonymous_applicant))
+
+    assert response.context["claim_state"] == "invalid"
+
+
+@pytest.mark.django_db
+def test_claim_with_an_expired_token_renders_the_expired_page(client, claimable):
+    url = _claim_url(claimable.anonymous_applicant)
+    days = allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS
+
+    with time_machine.travel(timezone.now() + timedelta(days=days, hours=1)):
+        response = client.get(url)
+
+    assert response.context["claim_state"] == "expired"
+
+
+@pytest.mark.django_db
+def test_unclaimed_applicant_leaves_no_user_or_side_effects(client, mock_site_context):
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
+        _post_details(client, course)
+        client.post(_apply_url(course))
+
+    assert (
+        User._base_manager.count(),
+        LegalConsent.objects.count(),
+        fire.call_count,
+        "google_analytics_events" in client.session
+        and any(
+            e["name"] == "sign_up" for e in client.session["google_analytics_events"]
+        ),
+    ) == (0, 0, 0, False)

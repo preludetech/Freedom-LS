@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from typing import cast
+from urllib.parse import urlencode
 from uuid import UUID
 
+from allauth.account.adapter import get_adapter
 from allauth.core.ratelimit import consume_or_429
 
 from django.contrib import messages
@@ -22,10 +24,15 @@ from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.anonymous_session import (
     anonymous_applicant_for_course,
     application_of,
+    forget_anonymous_applicant,
     owned_applications,
     remember_anonymous_applicant,
 )
 from freedom_ls.course_applications.applicant_email import email_rate_limit_key
+from freedom_ls.course_applications.claims import (
+    attach_claimed_application,
+    read_claim_token,
+)
 from freedom_ls.course_applications.forms import ApplicantDetailsForm
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
@@ -397,3 +404,55 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     )
     response["Cache-Control"] = "no-store"
     return response
+
+
+def _render_claim(
+    request: HttpRequest,
+    claim_state: str,
+    applicant: AnonymousApplicant | None = None,
+) -> HttpResponse:
+    return render(
+        request,
+        "course_applications/claim.html",
+        {
+            "claim_state": claim_state,
+            "course": applicant.course if applicant is not None else None,
+        },
+    )
+
+
+def claim_application(request: HttpRequest, token: str) -> HttpResponse:
+    """Follow the emailed link: confirm on GET, claim on POST.
+
+    GET changes nothing because mail scanners fetch links. Every way the link
+    can be unusable renders the same page, so a guessed or reused token learns
+    nothing about who applied.
+    """
+    link = read_claim_token(token)
+    application = application_of(link.applicant) if link is not None else None
+    if (
+        link is None
+        or link.applicant.claimed_at is not None
+        or application is None
+        or not application.is_submitted
+    ):
+        return _render_claim(request, "invalid")
+    if link.expired:
+        return _render_claim(request, "expired", link.applicant)
+    if request.method != "POST":
+        return _render_claim(request, "confirm", link.applicant)
+    outcome = attach_claimed_application(request, application)
+    if outcome is None:
+        return _render_claim(request, "invalid")
+    forget_anonymous_applicant(request, link.applicant)
+    if not outcome.user.is_active:
+        return redirect("account_login")
+    # Logging in cycles the session key, so the anonymous session's identifier
+    # never carries over into the signed-in one.
+    get_adapter(request).login(request, outcome.user)
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+    if outcome.user_was_created:
+        return redirect(
+            f"{reverse('account_set_password')}?{urlencode({'next': status_url})}"
+        )
+    return redirect(status_url)

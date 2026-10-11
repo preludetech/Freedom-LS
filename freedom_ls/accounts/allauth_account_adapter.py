@@ -28,6 +28,22 @@ from .config import config
 from .models import SiteSignupPolicy, User
 
 
+def announce_user_registered(request: HttpRequest, user: User) -> None:
+    """Fire the side effects of a new account: the webhook and the sign-up event."""
+    from freedom_ls.webhooks.events import fire_webhook_event
+
+    fire_webhook_event(
+        "user.registered",
+        {
+            "user_id": user.pk,
+            "user_email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+        },
+    )
+    record_sign_up(request)
+
+
 class AccountAdapter(DefaultAccountAdapter):
     def send_mail(self, template_prefix: str, email: str, context: dict) -> None:
         # Mirrors DefaultAccountAdapter.send_mail() but adds 8bit encoding and
@@ -133,18 +149,7 @@ class AccountAdapter(DefaultAccountAdapter):
     ) -> User:
         user = super().save_user(request, user, form, commit=commit)
         if commit:
-            from freedom_ls.webhooks.events import fire_webhook_event
-
-            fire_webhook_event(
-                "user.registered",
-                {
-                    "user_id": user.pk,
-                    "user_email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                },
-            )
-            record_sign_up(request)
+            announce_user_registered(request, user)
         return user
 
     def send_notification_mail(
