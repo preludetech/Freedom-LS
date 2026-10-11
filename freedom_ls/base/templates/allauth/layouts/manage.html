@@ -3,13 +3,13 @@
 
 {% block body %}
 
-    <div>
+    <div class="max-w-2xl mx-auto px-4 py-6 space-y-6">
 
-    <section class="p-4 col-span-2 space-y-2">
+    <section class="space-y-2">
         {% block content %}{% endblock %}
     </section>
 
-    <nav class="p-4 flex flex-col space-y-2">
+    <nav class="flex flex-col space-y-2 border-t border-border pt-4">
         {% url 'account_email' as email_url_ %}
         {% if email_url_ %}
         <a class="" href="{{ email_url_ }}">{% trans "Change Email" %}</a>
