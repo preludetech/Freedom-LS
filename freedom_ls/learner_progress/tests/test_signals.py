@@ -727,7 +727,7 @@ class TestCourseRegisteredWebhookEvent:
 
 @pytest.mark.django_db(transaction=True)
 class TestCohortRegistrationWebhookEvents:
-    def test_registering_a_cohort_fires_no_webhook_event(
+    def test_registering_a_cohort_fires_no_learner_course_registered_event(
         self, mock_site_context: object
     ) -> None:
         cohort = CohortFactory()
@@ -735,9 +735,9 @@ class TestCohortRegistrationWebhookEvents:
 
         register_cohort_for_course(cohort, course)
 
-        assert not _webhook_events().exists()
+        assert not _webhook_events().filter(event_type="course.registered").exists()
 
-    def test_unregistering_a_cohort_fires_no_webhook_event(
+    def test_unregistering_a_cohort_fires_no_learner_course_registered_event(
         self, mock_site_context: object
     ) -> None:
         registration = CohortCourseRegistrationFactory()
@@ -745,7 +745,7 @@ class TestCohortRegistrationWebhookEvents:
 
         unregister_cohort_from_course(registration)
 
-        assert not _webhook_events().exists()
+        assert not _webhook_events().filter(event_type="course.registered").exists()
 
 
 @pytest.mark.django_db

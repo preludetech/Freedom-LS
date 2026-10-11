@@ -245,6 +245,30 @@ def test_signup_creates_user_registered_webhook_event(mock_site_context) -> None
     assert event.site_id == mock_site_context.pk
 
 
+@pytest.mark.django_db(transaction=True)
+class TestFireWebhookEventWithoutRequest:
+    def test_explicit_site_records_the_event_with_that_site(self) -> None:
+        from freedom_ls.accounts.factories import SiteFactory
+        from freedom_ls.webhooks.events import fire_webhook_event
+
+        site = SiteFactory()
+
+        fire_webhook_event("user.registered", {"user_id": "abc-123"}, site=site)
+
+        event = WebhookEvent._base_manager.get(event_type="user.registered")
+        assert event.site_id == site.pk
+
+    def test_no_site_and_no_request_records_nothing(self) -> None:
+        from freedom_ls.tests.site_context import drop_ambient_request
+        from freedom_ls.webhooks.events import fire_webhook_event
+
+        drop_ambient_request()
+
+        fire_webhook_event("user.registered", {"user_id": "abc-123"})
+
+        assert WebhookEvent._base_manager.count() == 0
+
+
 class TestWebhookEventTypeSamples:
     def test_every_event_type_has_a_sample(self) -> None:
         """Every event type in FLS_WEBHOOK_EVENT_TYPES must have a corresponding sample."""

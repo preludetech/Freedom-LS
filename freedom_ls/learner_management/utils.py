@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from django.db import transaction
+
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
+    from django.contrib.sites.models import Site
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
@@ -111,13 +114,35 @@ def ensure_organisation_member(
     return member
 
 
-def announce_cohort_registration_change(registration: CohortCourseRegistration) -> None:
-    """Tell integrators a cohort registration changed.
+def fire_webhook_event_on_commit(
+    event_type: str, payload: dict[str, object], site: Site
+) -> None:
+    """Every learner-management event fires once the transaction it belongs
+    to has committed, so an integrator never hears about a rolled-back change."""
+    from freedom_ls.webhooks.events import fire_webhook_event
 
-    Does nothing today because FLS_WEBHOOK_EVENT_TYPES has no cohort
-    registration event for a webhook to carry.
-    """
-    # TODO: fire the cohort registration webhook events here once they are declared in FLS_WEBHOOK_EVENT_TYPES.
+    transaction.on_commit(lambda: fire_webhook_event(event_type, payload, site=site))
+
+
+def announce_cohort_registration_change(registration: CohortCourseRegistration) -> None:
+    """Tell integrators a cohort registration changed. Called only by a
+    change, never by a no-op save."""
+    cohort = registration.cohort
+    event_type = (
+        "cohort.course_registered"
+        if registration.is_active
+        else "cohort.course_unregistered"
+    )
+    fire_webhook_event_on_commit(
+        event_type,
+        {
+            "organisation_id": str(cohort.organisation_id),
+            "cohort_id": str(cohort.pk),
+            "course_id": str(registration.course_id),
+            "course_title": registration.course.title,
+        },
+        cohort.site,
+    )
 
 
 def register_cohort_for_course(
@@ -137,16 +162,20 @@ def register_cohort_for_course(
     registration, created = CohortCourseRegistration._base_manager.get_or_create(
         site=cohort.site, cohort=cohort, course=course
     )
-    if not created and not registration.is_active:
+    reactivated = not created and not registration.is_active
+    if reactivated:
         registration.is_active = True
         registration.save(update_fields=["is_active"])
-    announce_cohort_registration_change(registration)
+    if created or reactivated:
+        announce_cohort_registration_change(registration)
     return registration
 
 
 def unregister_cohort_from_course(registration: CohortCourseRegistration) -> None:
     """Withdraw the registration. Reversible: the row and every course
     progress record it minted stay."""
+    was_active = registration.is_active
     registration.is_active = False
     registration.save(update_fields=["is_active"])
-    announce_cohort_registration_change(registration)
+    if was_active:
+        announce_cohort_registration_change(registration)
