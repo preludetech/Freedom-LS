@@ -425,6 +425,27 @@ def courses_losing_access(
     ]
 
 
+def courses_gaining_access(learner: Learner, adding: Cohort) -> list[Course]:
+    """Courses `adding` grants that the learner does not reach today, ordered
+    by title. A course already held by an active individual registration or
+    granted by a cohort the learner belongs to is not new to them."""
+    granted = Course.objects.filter(
+        pk__in=access_granting_cohort_registrations()
+        .filter(cohort=adding)
+        .values("course_id")
+    ).order_by("title")
+    held_individually = set(
+        LearnerCourseRegistration.objects.filter(
+            learner=learner, is_active=True
+        ).values_list("course_id", flat=True)
+    )
+    return [
+        course
+        for course in granted
+        if course.pk not in held_individually and not other_grants_for(learner, course)
+    ]
+
+
 class CohortCounts(NamedTuple):
     """The two figures every cohort surface shows side by side."""
 

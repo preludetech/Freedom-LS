@@ -1,0 +1,58 @@
+{% comment %}
+The modal fragment a MoveToCohortAction returns. Context: learner, cohort (the
+source), form (the destination picker), other_side (name and value of the
+hidden input), action_url. Once a destination is chosen: destination,
+losing_courses and gaining_courses (prose lists, empty when none) and
+progress_outcomes. refusal carries the reason a 422 re-render gives.
+{% endcomment %}
+<c-modal-header>Move {{ learner.user.display_name }} from {{ cohort }}</c-modal-header>
+
+<form hx-post="{{ action_url }}"
+      hx-target="#app-modal-body"
+      hx-swap="innerHTML"
+      hx-disabled-elt="#app-modal-body button[type='submit']">
+    <div class="space-y-3 px-6 py-4 text-sm">
+        {% if refusal %}
+            <p role="alert" class="rounded-md border border-error/20 bg-error/10 p-3 text-error">{{ refusal }}</p>
+        {% endif %}
+        <input type="hidden" name="{{ other_side.name }}" value="{{ other_side.value }}">
+        <label for="move-destination" class="block font-medium">Move to</label>
+        <select id="move-destination"
+                name="destination"
+                class="w-full rounded-md border border-border bg-surface px-3 py-2"
+                hx-get="{{ action_url }}"
+                hx-include="closest form"
+                hx-trigger="change"
+                hx-target="#app-modal-body"
+                hx-swap="innerHTML"
+                autofocus>
+            <option value="">Choose a cohort</option>
+            {% for option in form.destination.field.queryset %}
+                <option value="{{ option.pk }}" {% if option.pk == destination.pk %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+        </select>
+        {% if destination %}
+            {% if losing_courses %}
+                <p>They lose access to: {{ losing_courses }}.</p>
+            {% endif %}
+            {% if gaining_courses %}
+                <p>They gain access to: {{ gaining_courses }}.</p>
+            {% endif %}
+            {% if not losing_courses and not gaining_courses %}
+                <p>Their course access does not change.</p>
+            {% endif %}
+            {% for outcome in progress_outcomes %}
+                <p>{{ outcome.course }}: continues at {{ outcome.progress_percentage }}%</p>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+        <c-button type="button" variant="secondary" x-on:click="requestClose">Cancel</c-button>
+        {% if destination %}
+            <c-button type="submit" variant="primary" loading="true" loading_text="Moving...">Move</c-button>
+        {% else %}
+            <c-button type="submit" variant="primary" disabled="true">Move</c-button>
+        {% endif %}
+    </c-button-group>
+</form>

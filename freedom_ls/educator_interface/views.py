@@ -32,6 +32,7 @@ from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
     EditCohortAction,
     EditLearnerNameAction,
+    MoveToCohortAction,
     RegisterCohortForCourseAction,
     RemoveFromCohortAction,
     ResendSetupEmailAction,
@@ -531,7 +532,7 @@ class LearnerCohortsPanel(DataTablePanel):
         return annotated
 
     def get_actions(self) -> list[PanelAction]:
-        return [RemoveFromCohortAction()]
+        return [RemoveFromCohortAction(), MoveToCohortAction()]
 
     def get_context_data(self) -> dict[str, object]:
         request = cast(OrganisationScopedRequest, self.request)
@@ -737,6 +738,7 @@ class CohortLearnersPanel(DataTablePanel):
             AddExistingLearnersAction(),
             AddLearnersToCohortAction(),
             RemoveFromCohortAction(),
+            MoveToCohortAction(),
         ]
 
     def get_context_data(self) -> dict[str, object]:

@@ -33,6 +33,7 @@ from freedom_ls.learner_management.learner_actions import (
     add_learners,
     add_to_cohort,
     deactivate_learner,
+    move_between_cohorts,
     reactivate_learner,
     remove_from_cohort,
 )
@@ -47,6 +48,7 @@ from freedom_ls.learner_management.queries import (
     cohort_is_empty,
     cohort_learner_count,
     cohorts_visible_to,
+    courses_gaining_access,
     courses_losing_access,
     learners_visible_to,
     members_keeping_access,
@@ -55,6 +57,7 @@ from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
     unregister_cohort_from_course,
 )
+from freedom_ls.learner_progress.utils import move_progress_preview
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.panel_framework.actions import (
     DeleteAction,
@@ -561,6 +564,105 @@ class RemoveFromCohortAction(MembershipAction):
             }
         )
         return context
+
+
+class MoveToCohortAction(MembershipAction):
+    """Moves a learner from the cohort on the row to an active cohort the user
+    may add to. Choosing a destination re-renders the fragment with what the
+    move changes."""
+
+    label = "Move to another cohort"
+    action_name = "move"
+    capability = "freedom_ls_learner_management.delete_cohortmembership"
+    template_name = "educator_interface/modal/move_confirmation.html"
+
+    def _picker(self, ctx: PanelContext, learner: Learner) -> CohortPickerForm:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        if ctx.request.method == "POST":
+            # Wider than the offered set, so a cohort the user may see but not
+            # add to reaches the permission check and is refused as a denial.
+            queryset = Cohort.objects.filter(organisation=scoped.organisation)
+            data: Mapping[str, str] | None = ctx.request.POST
+        else:
+            queryset = cohorts_visible_to(
+                scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
+            ).filter(is_active=True)
+            data = ctx.request.GET if "destination" in ctx.request.GET else None
+        return CohortPickerForm(
+            data,
+            queryset=queryset.exclude(cohortmembership__learner=learner),
+            field_name="destination",
+        )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        learner, source = self._pair(ctx)
+        form = self._picker(ctx, learner)
+        context = super().get_context_data(ctx)
+        if isinstance(ctx.instance, Cohort):
+            other_side = {"name": "learner", "value": str(learner.pk)}
+        else:
+            other_side = {"name": "cohort", "value": str(source.pk)}
+        context.update(
+            {
+                "learner": learner,
+                "cohort": source,
+                "form": form,
+                "other_side": other_side,
+                "action_url": self.get_action_url(ctx),
+            }
+        )
+        if form.is_bound and form.is_valid():
+            destination = cast(Cohort, form.cleaned_data["destination"])
+            context.update(
+                {
+                    "destination": destination,
+                    "losing_courses": join_prose(
+                        [
+                            str(course)
+                            for course in courses_losing_access(
+                                learner, source, destination
+                            )
+                        ]
+                    ),
+                    "gaining_courses": join_prose(
+                        [
+                            str(course)
+                            for course in courses_gaining_access(learner, destination)
+                        ]
+                    ),
+                    "progress_outcomes": move_progress_preview(
+                        learner, source, destination
+                    ),
+                }
+            )
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        learner, source = self._pair(ctx)
+        form = self._picker(ctx, learner)
+        if not form.is_valid():
+            return self._refusal(ctx, "Choose a cohort to move them to.")
+        destination = cast(Cohort, form.cleaned_data["destination"])
+        if not can(ctx.request.user, ADD_COHORTMEMBERSHIP, destination):
+            return denied_response(ctx, self)
+        for cohort in (source, destination):
+            if not cohort.is_active:
+                return inactive_cohort_response(ctx.request, cohort)
+        try:
+            move_between_cohorts(learner, source, destination)
+        except ValueError as error:
+            return self._refusal(ctx, str(error))
+        ids = [str(learner.pk), str(source.pk), str(destination.pk)]
+        response = HttpResponse(status=204)
+        response["HX-Trigger"] = build_hx_trigger(
+            {LEARNER_CHANGED: ids, COHORT_CHANGED: ids}, close_modal=True
+        )
+        return response
+
+    def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
+        context = self.get_context_data(ctx)
+        context["refusal"] = reason
+        return render(ctx.request, self.template_name, context, status=422)
 
 
 ADD_LEARNER = "freedom_ls_learner_management.add_learner"

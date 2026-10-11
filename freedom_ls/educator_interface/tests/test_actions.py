@@ -33,6 +33,7 @@ from freedom_ls.learner_management.models import (
     Learner,
 )
 from freedom_ls.learner_management.role_assignment import assign_role
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.organisations.utils import get_default_organisation
@@ -1813,3 +1814,212 @@ def test_a_cohort_admins_forged_resend_answers_403_and_sends_nothing(
         response = _post(logged_in_client(educator), _resend_url(organisation, learner))
 
     assert (response.status_code, len(mail.outbox)) == (403, 0)
+
+
+# move between cohorts
+
+
+def _move_url_from_learner(
+    organisation: Organisation,
+    learner: Learner,
+    source: Cohort | None = None,
+    destination: Cohort | None = None,
+) -> str:
+    url = _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/cohorts/__actions/move",
+    )
+    params = []
+    if source is not None:
+        params.append(f"cohort={source.pk}")
+    if destination is not None:
+        params.append(f"destination={destination.pk}")
+    return f"{url}?{'&'.join(params)}" if params else url
+
+
+def _move_url_from_cohort(
+    organisation: Organisation, source: Cohort, learner: Learner
+) -> str:
+    url = _cohort_url(organisation, source, "/__tabs/learners/__actions/move")
+    return f"{url}?learner={learner.pk}"
+
+
+def _move_options(client: Client, url: str) -> set[str]:
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    document = lxml.html.fromstring(response.content.decode())
+    return {
+        option.get("value") or ""
+        for option in document.cssselect("select[name='destination'] option")
+        if option.get("value")
+    }
+
+
+@pytest.mark.django_db
+def test_move_fragment_offers_only_active_cohorts_the_learner_is_not_in(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    open_cohort = CohortFactory(organisation=organisation)
+    CohortFactory(organisation=organisation, is_active=False)
+    already_in = CohortFactory(organisation=organisation)
+    CohortMembershipFactory(cohort=already_in, learner=learner)
+
+    options = _move_options(
+        staff_client, _move_url_from_learner(organisation, learner, source)
+    )
+
+    assert options == {str(open_cohort.pk)}
+
+
+@pytest.mark.django_db
+def test_move_fragment_names_courses_lost_gained_and_where_progress_continues(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+    shared = CourseFactory(title="Algebra")
+    lost = CourseFactory(title="Botany")
+    gained = CourseFactory(title="Chemistry")
+    source_registration = CohortCourseRegistrationFactory(cohort=source, course=shared)
+    CohortCourseRegistrationFactory(cohort=source, course=lost)
+    CohortCourseRegistrationFactory(cohort=destination, course=shared)
+    CohortCourseRegistrationFactory(cohort=destination, course=gained)
+    CourseProgressFactory(
+        learner=learner,
+        course=shared,
+        learner_registration=None,
+        cohort_registration=source_registration,
+        progress_percentage=40,
+    )
+
+    text = _get_fragment(
+        staff_client,
+        _move_url_from_learner(organisation, learner, source, destination),
+    )
+
+    assert "They lose access to: Botany." in text
+    assert "They gain access to: Chemistry." in text
+    assert "Algebra: continues at 40%" in text
+
+
+@pytest.mark.django_db
+def test_move_post_moves_the_membership_and_answers_204_with_both_events(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert response.status_code == 204
+    assert set(trigger[COHORT_CHANGED]["ids"]) == {
+        str(learner.pk),
+        str(source.pk),
+        str(destination.pk),
+    }
+    assert str(learner.pk) in trigger[LEARNER_CHANGED]["ids"]
+    assert list(CohortMembership.objects.filter(learner=learner)) == [
+        CohortMembership.objects.get(learner=learner, cohort=destination)
+    ]
+
+
+@pytest.mark.django_db
+def test_move_post_from_the_cohort_page_moves_the_membership(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+
+    response = _post(
+        staff_client,
+        _move_url_from_cohort(organisation, source, learner),
+        {"learner": str(learner.pk), "destination": str(destination.pk)},
+    )
+
+    assert response.status_code == 204
+    assert CohortMembership.objects.filter(learner=learner, cohort=destination).exists()
+
+
+@pytest.mark.django_db
+def test_move_post_to_a_cohort_outside_the_users_grants_answers_403(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    unassigned = CohortFactory(organisation=organisation)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", source)
+
+    response = _post(
+        logged_in_client(educator),
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(unassigned.pk)},
+    )
+
+    assert response.status_code == 403
+    assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_can_move_between_two_assigned_cohorts(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", source)
+    assign_role(grantor, educator, "cohort_admin", destination)
+
+    response = _post(
+        logged_in_client(educator),
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    assert response.status_code == 204
+
+
+@pytest.mark.django_db
+def test_move_post_naming_an_inactive_source_answers_422_and_changes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation, is_active=False)
+    destination = CohortFactory(organisation=organisation)
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    assert response.status_code == 422
+    assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+
+@pytest.mark.django_db
+def test_move_post_naming_an_inactive_destination_answers_422_and_changes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation, is_active=False)
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    assert response.status_code == 422
+    assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()

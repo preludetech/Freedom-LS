@@ -1367,3 +1367,57 @@ def test_the_add_to_cohort_picker_on_a_learners_page_offers_no_inactive_cohort(
     )
 
     assert str(inactive.pk) not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohorts_learners_tab_renders_no_move_control(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
+    _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    assert "__actions/move" not in lxml.html.tostring(document).decode()
+
+
+@pytest.mark.django_db
+def test_a_members_page_renders_an_inactive_cohorts_row_with_no_move(
+    staff_client: Client,
+):
+    cohort = CohortFactory(
+        organisation=OrganisationFactory(), is_active=False, name="Dormant group"
+    )
+    learner = _add_member(cohort)
+
+    document = _learner_page(staff_client, learner)
+
+    (row,) = document.xpath("//tr[contains(., 'Dormant group')]")
+    assert "__actions/move" not in lxml.html.tostring(row).decode()
+
+
+@pytest.mark.django_db
+def test_an_active_cohorts_learners_tab_offers_move_for_each_member(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    member = _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    triggers = {
+        button.get("hx-get")
+        for button in document.cssselect("button[hx-get]")
+        if "__actions/move" in button.get("hx-get")
+    }
+    assert {t.split("?learner=")[1] for t in triggers} == {str(member.pk)}
