@@ -331,16 +331,30 @@ def courses_visible_to(
     )
 
 
+def _registerable_courses() -> QuerySet[Course]:
+    """Published and hidden courses, by title; coming-soon courses cannot be
+    registered for."""
+    return Course.objects.exclude(visibility=CourseVisibility.COMING_SOON).order_by(
+        "title"
+    )
+
+
 def registerable_courses_for(cohort: Cohort) -> QuerySet[Course]:
-    """Published and hidden courses the cohort holds no active
-    registration for. A course with an inactive registration is
-    offered, and registering it reactivates that row."""
-    return (
-        Course.objects.exclude(visibility=CourseVisibility.COMING_SOON)
-        .exclude(
-            cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
+    """Registerable courses the cohort holds no active registration for. A
+    course with an inactive registration is offered, and registering it
+    reactivates that row."""
+    return _registerable_courses().exclude(
+        cohort_registrations__in=cohort.course_registrations.filter(is_active=True)
+    )
+
+
+def registerable_courses_for_learner(learner: Learner) -> QuerySet[Course]:
+    """Registerable courses the learner holds no active individual
+    registration for. A course with an inactive registration is offered."""
+    return _registerable_courses().exclude(
+        learner_registrations__in=learner.learnercourseregistration_set.filter(
+            is_active=True
         )
-        .order_by("title")
     )
 
 

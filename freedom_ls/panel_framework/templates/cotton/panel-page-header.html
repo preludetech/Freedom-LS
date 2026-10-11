@@ -40,6 +40,6 @@ whitespace-only.
         {% if meta.strip %}<div class="text-sm text-muted">{{ meta }}</div>{% endif %}
     </div>
     {% if stats.strip %}<div>{{ stats }}</div>{% endif %}
-    {% if actions.strip %}<c-button-group variant="right" class="ms-auto shrink-0 flex-wrap">{{ actions }}</c-button-group>{% endif %}
+    {% if actions.strip %}<c-button-group variant="right" class="ms-auto max-w-full flex-wrap">{{ actions }}</c-button-group>{% endif %}
 </div>
 {% endwith %}

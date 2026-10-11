@@ -9,6 +9,9 @@
                     <span class="flex items-center gap-2 text-sm text-muted">
                         {{ row.via }}
                         <c-active-status-badge :active="row.is_active" />
+                        {% if row.is_individual and row.is_active and row_action_urls.unregister_from_course %}
+                            <c-modal-trigger url="{{ row_action_urls.unregister_from_course }}?registration={{ row.registration.pk }}" label="Unregister" variant="secondary" />
+                        {% endif %}
                     </span>
                 </li>
             {% endfor %}

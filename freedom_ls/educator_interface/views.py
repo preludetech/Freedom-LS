@@ -34,9 +34,11 @@ from freedom_ls.educator_interface.actions import (
     EditLearnerNameAction,
     MoveToCohortAction,
     RegisterCohortForCourseAction,
+    RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
     ResendSetupEmailAction,
     UnregisterCohortFromCourseAction,
+    UnregisterLearnerFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
     learner_state_actions,
@@ -559,12 +561,19 @@ class RegistrationRow:
     is_active: bool
     registration: LearnerCourseRegistration | CohortCourseRegistration
 
+    @property
+    def is_individual(self) -> bool:
+        return isinstance(self.registration, LearnerCourseRegistration)
+
 
 class LearnerRegistrationsPanel(Panel):
     model = Learner
     title = "Registrations"
     template_name = "educator_interface/panels/learner_registrations.html"
     refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [UnregisterLearnerFromCourseAction()]
 
     def get_context_data(self) -> dict[str, object]:
         learner = cast(Learner, self.instance)
@@ -653,6 +662,7 @@ class LearnerInstanceView(InstanceView):
         return [
             EditLearnerNameAction(cast(Learner, self.instance)),
             AddToCohortAction(),
+            RegisterLearnerForCourseAction(),
             ResendSetupEmailAction(),
             *learner_state_actions(),
         ]

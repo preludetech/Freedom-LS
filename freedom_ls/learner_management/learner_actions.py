@@ -16,7 +16,13 @@ from freedom_ls.accounts.account_setup import (
     match_or_create_user,
     send_account_setup_email,
 )
-from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
+from freedom_ls.content_engine.models import Course
+from freedom_ls.learner_management.models import (
+    Cohort,
+    CohortMembership,
+    Learner,
+    LearnerCourseRegistration,
+)
 from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_management.utils import (
     ensure_learner,
@@ -139,6 +145,41 @@ def move_between_cohorts(learner: Learner, source: Cohort, destination: Cohort) 
         _fire("cohort.member_removed", learner, _cohort_payload(source, move_id))
         _fire("cohort.member_added", learner, _cohort_payload(destination, move_id))
     return move_id
+
+
+def register_for_course(learner: Learner, course: Course) -> bool:
+    """Give the learner an individual registration for the course,
+    reactivating an inactive one; False when an active one already exists.
+    `course.registered` comes from the registration's `post_save` receiver."""
+    with transaction.atomic():
+        registration, created = LearnerCourseRegistration._base_manager.get_or_create(
+            site=learner.site, learner=learner, course=course
+        )
+        if not created and registration.is_active:
+            return False
+        if not created:
+            registration.is_active = True
+            registration.save(update_fields=["is_active"])
+    return True
+
+
+def unregister_from_course(learner: Learner, course: Course) -> bool:
+    """Deactivate the learner's individual registration for the course; False
+    when they hold no active one. Course progress records are kept."""
+    with transaction.atomic():
+        registration = LearnerCourseRegistration._base_manager.filter(
+            learner=learner, course=course, is_active=True
+        ).first()
+        if registration is None:
+            return False
+        registration.is_active = False
+        registration.save(update_fields=["is_active"])
+        _fire(
+            "course.unregistered",
+            learner,
+            {"course_id": str(course.pk), "course_title": course.title},
+        )
+    return True
 
 
 @dataclass(frozen=True)

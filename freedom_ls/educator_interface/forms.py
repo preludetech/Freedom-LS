@@ -11,8 +11,12 @@ from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     Learner,
+    LearnerCourseRegistration,
 )
-from freedom_ls.learner_management.queries import registerable_courses_for
+from freedom_ls.learner_management.queries import (
+    registerable_courses_for,
+    registerable_courses_for_learner,
+)
 from freedom_ls.site_aware_models.forms import ConstraintValidationFormMixin
 
 
@@ -60,6 +64,26 @@ class CohortCourseRegistrationForm(forms.ModelForm):
         super().__init__(data)
         course_field = cast(forms.ModelChoiceField, self.fields["course"])
         course_field.queryset = registerable_courses_for(cohort)
+
+
+class LearnerCourseRegistrationForm(forms.ModelForm):
+    """The course picker for registering a learner.
+
+    A ModelForm only because FormPanelAction types its form that way. Nothing
+    calls save() on it: the chosen course goes to register_for_course, which
+    owns the reuse of an inactive row.
+    """
+
+    class Meta:
+        model = LearnerCourseRegistration
+        fields = ["course"]
+
+    def __init__(
+        self, data: Mapping[str, str] | None = None, *, learner: Learner
+    ) -> None:
+        super().__init__(data)
+        course_field = cast(forms.ModelChoiceField, self.fields["course"])
+        course_field.queryset = registerable_courses_for_learner(learner)
 
 
 class CohortPickerForm(forms.Form):
