@@ -33,6 +33,7 @@ from freedom_ls.course_applications.claims import (
     attach_claimed_application,
     read_claim_token,
 )
+from freedom_ls.course_applications.emails import send_application_claim_email
 from freedom_ls.course_applications.forms import ApplicantDetailsForm
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
@@ -187,6 +188,7 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
     if request.method == "POST":
         app = _start_application(course, anonymous_applicant=applicant)
         record_application_submitted(request, course)
+        send_application_claim_email(request, applicant)
         return redirect("course_applications:status", pk=app.pk)
     return render(
         request,
@@ -358,6 +360,8 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             form_progress.complete()
             record_application_submitted(request, app.course)
             if not app.is_email_verified:
+                if app.anonymous_applicant is not None:
+                    send_application_claim_email(request, app.anonymous_applicant)
                 return redirect("course_applications:status", pk=app.pk)
             messages.success(
                 request,
@@ -438,6 +442,9 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
     ):
         return _render_claim(request, "invalid")
     if link.expired:
+        if request.method == "POST":
+            send_application_claim_email(request, link.applicant)
+            return _render_claim(request, "resent", link.applicant)
         return _render_claim(request, "expired", link.applicant)
     if request.method != "POST":
         return _render_claim(request, "confirm", link.applicant)

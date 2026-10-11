@@ -12,6 +12,7 @@ from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 
 from django.contrib.messages import get_messages
+from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
@@ -2296,3 +2297,65 @@ def test_unclaimed_applicant_leaves_no_user_or_side_effects(client, mock_site_co
             e["name"] == "sign_up" for e in client.session["google_analytics_events"]
         ),
     ) == (0, 0, 0, False)
+
+
+# ---------------------------------------------------------------------------
+# Claim email on the status and expired pages
+# ---------------------------------------------------------------------------
+
+
+def _expired_claim_post(client, application):
+    url = _claim_url(application.anonymous_applicant)
+    days = allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS
+    with time_machine.travel(timezone.now() + timedelta(days=days, hours=1)):
+        return client.post(url)
+
+
+@pytest.mark.django_db
+def test_status_page_of_an_unverified_application_shows_the_emailed_link_sentence(
+    client, gated_course
+):
+    _post_details(client, gated_course)
+    response = client.post(_apply_url(gated_course), follow=True)
+
+    body = response.content.decode()
+    assert "emailed a link to ada@example.com" in body
+
+
+@pytest.mark.django_db
+def test_expired_token_post_sends_one_email_to_the_stored_address(client, claimable):
+    mail.outbox.clear()
+
+    _expired_claim_post(client, claimable)
+
+    assert [message.to for message in mail.outbox] == [
+        [claimable.anonymous_applicant.email]
+    ]
+
+
+@pytest.mark.django_db
+def test_expired_token_post_renders_the_resent_page(client, claimable):
+    response = _expired_claim_post(client, claimable)
+
+    assert response.context["claim_state"] == "resent"
+
+
+@pytest.mark.django_db
+def test_expired_token_post_over_the_limit_sends_nothing(client, claimable):
+    with override_settings(ACCOUNT_RATE_LIMITS={"application_claim_email": "1/h/key"}):
+        cache.clear()
+        _expired_claim_post(client, claimable)
+        mail.outbox.clear()
+        _expired_claim_post(client, claimable)
+
+    assert mail.outbox == []
+
+
+@pytest.mark.django_db
+def test_expired_token_post_over_the_limit_renders_the_resent_page(client, claimable):
+    with override_settings(ACCOUNT_RATE_LIMITS={"application_claim_email": "1/h/key"}):
+        cache.clear()
+        _expired_claim_post(client, claimable)
+        response = _expired_claim_post(client, claimable)
+
+    assert response.context["claim_state"] == "resent"

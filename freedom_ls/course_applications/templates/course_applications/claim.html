@@ -20,6 +20,15 @@
                 <p class="text-muted">
                     Links to finish an application stop working after a few days.
                 </p>
+                <form method="post">
+                    {% csrf_token %}
+                    <c-button type="submit">Send a new link</c-button>
+                </form>
+            {% elif claim_state == "resent" %}
+                <h1>A new link is on its way</h1>
+                <p>
+                    We sent a new link to the address your application was made with.
+                </p>
             {% else %}
                 <h1>This link is invalid or has already been used</h1>
                 <p>

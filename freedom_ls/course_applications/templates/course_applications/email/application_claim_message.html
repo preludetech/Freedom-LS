@@ -1,0 +1,18 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">We received your application for {{ course.title }} on {{ site_name }}.</p>
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">Follow the link below to finish setting up your account. You can then see your application.</p>
+{% endblock %}
+
+{% block cta %}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+  <tr>
+    <td style="background-color: {{ color_primary }}; border-radius: {{ button_radius }};">
+      <a href="{{ claim_url }}" style="display: inline-block; padding: 12px 32px; color: {{ color_on_primary }}; text-decoration: none; font-weight: bold; font-size: 16px;">Finish your application</a>
+    </td>
+  </tr>
+</table>
+<p style="margin: 8px 0 0 0; font-size: 13px; color: {{ color_muted }};">Or copy this link: {{ claim_url }}</p>
+<p style="margin: 16px 0 0 0; font-size: 13px; color: {{ color_muted }};">If you didn't apply, you can ignore this email. Nothing happens unless the link is followed.</p>
+{% endblock %}

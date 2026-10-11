@@ -22,6 +22,10 @@
                     Your application for <strong>{{ application.course.title }}</strong> has been
                     received.
                 </p>
+                <p class="text-muted">
+                    We've emailed a link to {{ application.anonymous_applicant.email }}. Follow it
+                    to finish setting up your account. A reviewer will then look at your application.
+                </p>
             {% endif %}
 
             {% comment %}
