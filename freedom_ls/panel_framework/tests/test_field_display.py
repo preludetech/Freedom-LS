@@ -316,6 +316,48 @@ def test_a_blank_text_attr_renders_the_placeholder_without_a_link() -> None:
     assert "hx-get" not in html
 
 
+def test_a_blank_text_attr_links_the_fallback_text_attr_instead() -> None:
+    row = StubModel(pk=1, name="", kind="b")
+    column = {
+        "url_name": LINK_CELL_URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+        "fallback_text_attr": "kind",
+        "quick_view": True,
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    document = lxml.html.fromstring(html)
+    [link] = document.xpath(
+        '//a[@href="/test-panel/framework/stubs/1"][not(@aria-controls)]'
+    )
+    assert link.text == "b"
+    [trigger] = document.xpath(
+        '//*[@hx-get="/test-panel/framework/stubs/1/__quick-view"]'
+    )
+    assert trigger.get("aria-label") == "Quick view: b"
+
+
+def test_a_present_text_attr_ignores_the_fallback_text_attr() -> None:
+    row = StubModel(pk=1, name="Ada", kind="b")
+    column = {
+        "url_name": LINK_CELL_URL_NAME,
+        "url_path_template": "stubs/{pk}",
+        "text_attr": "name",
+        "fallback_text_attr": "kind",
+    }
+
+    html = render_to_string(
+        "cotton/data-table-cells/link.html", {"object": row, "column": column}
+    )
+
+    [link] = lxml.html.fromstring(html).xpath("//a")
+    assert link.text == "Ada"
+
+
 def test_a_column_without_quick_view_keeps_its_htmx_nav_link() -> None:
     row = StubModel(pk=1, name="Ada")
     column = {

@@ -5,9 +5,11 @@ trigger sits at the cell's end edge and opens the row in the #quick-view
 drawer instead, so both the page and the drawer are reachable from every row
 and the triggers line up down the column whatever each name's length. The
 trigger is labelled by the name it sits beside, and is at least 44px square
-below md, where it sits on a card tapped with a finger.
+below md, where it sits on a card tapped with a finger. A blank name shows
+column.fallback_text_attr instead; with neither, the cell is a plain "-" and
+no link, since an empty link has no accessible name.
 {% endcomment %}
-{% with cell_text=object|getattr_str:column.text_attr %}
+{% link_cell_text object column.text_attr column.fallback_text_attr as cell_text %}
 {% if cell_text|is_blank %}
     -
 {% else %}
@@ -27,4 +29,3 @@ below md, where it sits on a card tapped with a finger.
         <c-icon name="quick_view" class="size-4" />
     </c-quick-view-trigger></span>{% endif %}
 {% endif %}
-{% endwith %}

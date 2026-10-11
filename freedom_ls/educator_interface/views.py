@@ -172,6 +172,7 @@ def _interface_link(
     sortable: bool = False,
     card: Literal["primary", "secondary", "md_only"] = "secondary",
     quick_view: bool = False,
+    fallback_text_attr: str = "",
 ) -> Column:
     """A link column into the educator interface, the shape every table's
     name/title column shares. The link always navigates to the row's page;
@@ -181,6 +182,7 @@ def _interface_link(
         header=header,
         template="cotton/data-table-cells/link.html",
         text_attr=text_attr,
+        fallback_text_attr=fallback_text_attr,
         url_name="educator_interface:interface",
         url_path_template=path_template,
         htmx_nav=True,
@@ -338,6 +340,7 @@ class LearnerDataTable(DataTable):
                 sortable=True,
                 card="primary",
                 quick_view=True,
+                fallback_text_attr="user.email",
             ),
             _interface_link(
                 "Last Name",
@@ -901,6 +904,7 @@ class CourseLearnerRegistrationDataTable(DataTable):
                 "learners/{learner.pk}",
                 card="primary",
                 quick_view=True,
+                fallback_text_attr="learner.user.email",
             ),
             _interface_link(
                 "Last Name",

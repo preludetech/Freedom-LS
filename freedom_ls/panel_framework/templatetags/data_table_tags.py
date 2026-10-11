@@ -42,3 +42,16 @@ def is_blank(value: object) -> bool:
         return True
 
     return not str(value).strip()
+
+
+@register.simple_tag
+def link_cell_text(obj: object, text_attr: str, fallback_text_attr: str = "") -> object:
+    """
+    The link cell's text: text_attr, or fallback_text_attr when that is blank.
+
+    Usage: {% link_cell_text object column.text_attr column.fallback_text_attr as cell_text %}
+    """
+    text = getattr_str(obj, text_attr)
+    if is_blank(text) and fallback_text_attr:
+        return getattr_str(obj, fallback_text_attr)
+    return text

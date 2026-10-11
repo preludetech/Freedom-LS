@@ -146,6 +146,8 @@ class Column:
     template: str
     attr: str = ""
     text_attr: str = ""
+    #: The link cell's text when `text_attr` is blank, so the row stays linked.
+    fallback_text_attr: str = ""
     sortable: bool = False
     sort_field: str = ""
     url_name: str = ""
