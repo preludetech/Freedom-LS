@@ -441,8 +441,111 @@ def test_learners_list_links_a_learner_with_no_name_by_their_email(educator_clie
     document = lxml.html.fromstring(response.content.decode())
     links = document.xpath(f'//a[@href="{learner_path}"][not(@aria-controls)]')
     # The desktop row and the mobile card both link the learner.
-    assert {link.text for link in links} == {"nameless@example.com"}
+    assert {"nameless@example.com" in link.text_content() for link in links} == {True}
     assert document.xpath(
         f'//*[@hx-get="{learner_path}/__quick-view"]'
         '[@aria-label="Quick view: nameless@example.com"]'
     )
+
+
+def _learner_cells(response, learner_path: str):
+    document = lxml.html.fromstring(response.content.decode())
+    return document, document.xpath(f'//a[@href="{learner_path}"][not(@aria-controls)]')
+
+
+@pytest.mark.django_db
+def test_learners_list_cell_links_the_row_and_carries_a_quick_view_trigger(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    learner = _make_learner(organisation=organisation, email="ada@example.com")
+    learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document, links = _learner_cells(response, learner_path)
+    assert links
+    assert "Ada Lovelace" in links[0].text_content()
+    assert "ada@example.com" in links[0].text_content()
+    assert document.xpath(
+        f'//*[@hx-get="{learner_path}/__quick-view"]'
+        '[@aria-label="Quick view: Ada Lovelace"]'
+    )
+
+
+@pytest.mark.django_db
+def test_cohort_learners_tab_cell_links_the_row_and_carries_a_quick_view_trigger(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    cohort = _make_cohort(organisation=organisation)
+    learner = _make_learner(organisation=organisation)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners")
+    )
+
+    document, links = _learner_cells(response, learner_path)
+    assert links
+    assert document.xpath(
+        f'//*[@hx-get="{learner_path}/__quick-view"]'
+        '[@aria-label="Quick view: Ada Lovelace"]'
+    )
+
+
+@pytest.mark.django_db
+def test_course_direct_registrations_cell_links_the_row_and_carries_a_quick_view_trigger(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    course = CourseFactory()
+    learner = _make_learner(organisation=organisation)
+    LearnerCourseRegistrationFactory(learner=learner, course=course, is_active=True)
+    learner_path = _learners_url(organisation.slug, f"learners/{learner.pk}")
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug, f"courses/{course.pk}/__panels/learners")
+    )
+
+    document, links = _learner_cells(response, learner_path)
+    assert links
+    assert document.xpath(
+        f'//*[@hx-get="{learner_path}/__quick-view"]'
+        '[@aria-label="Quick view: Ada Lovelace"]'
+    )
+
+
+@pytest.mark.django_db
+def test_nameless_learner_cell_has_no_secondary_line_and_the_email_is_the_card_primary_line(
+    educator_client,
+):
+    organisation = OrganisationFactory()
+    _make_learner(
+        organisation=organisation,
+        first_name="",
+        last_name="",
+        email="nameless@example.com",
+    )
+
+    response = educator_client(organisation).get(_learners_url(organisation.slug))
+
+    document = lxml.html.fromstring(response.content.decode())
+    (primary_line,) = document.cssselect("[data-card-primary-line]")
+    assert "nameless@example.com" in primary_line.text_content()
+    assert primary_line.text_content().count("nameless@example.com") == 1
+
+
+@pytest.mark.django_db
+def test_learners_list_sorted_by_learner_orders_by_first_name(educator_client):
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation, first_name="Zed", email="z@example.com")
+    _make_learner(organisation=organisation, first_name="Abe", email="a@example.com")
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug), {"sort": "user__first_name"}
+    )
+
+    content = response.content.decode()
+    assert content.index("Abe") < content.index("Zed")

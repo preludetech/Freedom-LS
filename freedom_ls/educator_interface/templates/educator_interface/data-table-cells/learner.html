@@ -1,0 +1,27 @@
+{% load data_table_tags panel_tags %}
+{% comment %}
+A learner as an avatar chip: bold name, with the email under it when the user
+has a name. A nameless user is shown by the email alone, so the link always
+has text. A quick-view trigger sits at the cell's end edge, labelled by the
+name it sits beside, and is at least 44px square below md, where it sits on a
+card tapped with a finger. column.attr names the row's learner; empty means
+the row is the learner.
+{% endcomment %}
+{% with learner=object|getattr_str:column.attr %}
+    {% resolve_url_path_template learner 'educator_interface:interface' 'learners/{pk}' as resolved_url %}
+    <span class="flex items-center justify-between gap-2">
+        <a href="{{ resolved_url }}"
+           class="min-w-0 font-bold text-on-surface no-underline hover:text-primary"
+           hx-get="{{ resolved_url }}"
+           hx-target="#main-content"
+           hx-push-url="true"
+           hx-swap="outerHTML">
+            <c-panel-avatar-chip name="{{ learner.user.display_name }}" user_id="{{ learner.user_id }}" secondary="{% if learner.user.first_name or learner.user.last_name %}{{ learner.user.email }}{% endif %}" />
+        </a>
+        <c-quick-view-trigger href="{{ resolved_url }}" url="{{ resolved_url }}/__quick-view"
+                              aria-label="Quick view: {{ learner.user.display_name }}"
+                              class="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted no-underline transition-colors hover:bg-surface-2 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-ring md:-my-2 md:size-8">
+            <c-icon name="quick_view" class="size-4" />
+        </c-quick-view-trigger>
+    </span>
+{% endwith %}

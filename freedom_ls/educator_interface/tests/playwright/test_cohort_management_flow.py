@@ -52,8 +52,8 @@ def _box(locator: Locator) -> FloatRect:
     return box
 
 
-def _quick_view_trigger_edge(page: Page, first_name: str) -> float:
-    box = _box(page.get_by_role("link", name=f"Quick view: {first_name}", exact=True))
+def _quick_view_trigger_edge(page: Page, name: str) -> float:
+    box = _box(page.get_by_role("link", name=f"Quick view: {name}", exact=True))
     return box["x"] + box["width"]
 
 
@@ -61,8 +61,8 @@ def _assert_quick_view_triggers_line_up(page: Page) -> None:
     """Names of different lengths put every row's trigger at the same edge."""
     assert (
         abs(
-            _quick_view_trigger_edge(page, "Al")
-            - _quick_view_trigger_edge(page, "Christopher")
+            _quick_view_trigger_edge(page, "Al Lovelace")
+            - _quick_view_trigger_edge(page, "Christopher Lovelace")
         )
         < 1
     )
@@ -153,7 +153,7 @@ def test_educator_manages_cohorts_and_learners(
     # Learner quick view.
     page.goto(interface_url(live_server, organisation_a.slug, "learners"))
     _assert_quick_view_triggers_line_up(page)
-    ada_trigger = page.get_by_role("link", name="Quick view: Ada", exact=True)
+    ada_trigger = page.get_by_role("link", name="Quick view: Ada Lovelace", exact=True)
     drawer = _open_drawer(page, ada_trigger)
     expect(page.locator("#quick-view-subtitle")).to_have_text("ada@example.com")
     expect(page.locator("#quick-view-body")).to_contain_text("Year 9 Maths")
@@ -359,7 +359,7 @@ def test_quick_view_and_learners_list_layout_across_viewports(
     page.goto(learners_url)
     page.set_viewport_size({"width": 1400, "height": 900})
     drawer = _open_drawer(
-        page, page.get_by_role("link", name="Quick view: Learner", exact=True).first
+        page, page.get_by_role("link", name=re.compile(r"^Quick view: Learner")).first
     )
     header_box = _box(page.locator("header.header"))
     assert _box(drawer)["y"] >= header_box["y"] + header_box["height"] - 1
