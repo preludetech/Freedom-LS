@@ -81,6 +81,10 @@ class InstanceView:
         """Inline figures under the heading, in order. Empty for none."""
         return []
 
+    def get_subtitle(self) -> str:
+        """One muted line under the heading, or an empty string for none."""
+        return ""
+
     def get_action(self, action_name: str) -> PanelAction | None:
         return _find_action(self.get_actions(), action_name)
 
@@ -704,6 +708,7 @@ def _main_for(
                 "actions": actions,
                 "status_badge": resolved.instance_view.get_status_badge(),
                 "stats": resolved.instance_view.get_stats(),
+                "subtitle": resolved.instance_view.get_subtitle(),
                 "ctx": root.ctx,
             },
             section.get_instance_label(resolved.instance),

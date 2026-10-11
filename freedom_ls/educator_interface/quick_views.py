@@ -18,11 +18,32 @@ from freedom_ls.learner_management.queries import (
     cohorts_visible_to,
 )
 from freedom_ls.learner_progress.models import CourseProgress
-from freedom_ls.learner_progress.queries import registrations_with_progress_for_learner
+from freedom_ls.learner_progress.queries import (
+    LearnerRegistrationProgress,
+    registrations_with_progress_for_learner,
+)
 from freedom_ls.panel_framework.quick_view import QuickView
 
 if TYPE_CHECKING:
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
+
+
+def visible_registrations_with_progress(
+    learner: Learner, request: OrganisationScopedRequest
+) -> list[LearnerRegistrationProgress]:
+    """The learner's active registrations with progress, minus any made
+    through a cohort the educator cannot see: such a row would name that
+    cohort."""
+    visible_cohort_ids = set(
+        cohorts_visible_to(request.user, request.organisation).values_list(
+            "pk", flat=True
+        )
+    )
+    return [
+        registration
+        for registration in registrations_with_progress_for_learner(learner)
+        if registration.cohort is None or registration.cohort.pk in visible_cohort_ids
+    ]
 
 
 class LearnerQuickView(QuickView):
@@ -47,15 +68,7 @@ class LearnerQuickView(QuickView):
         last_active = CourseProgress.objects.filter(learner=learner).aggregate(
             latest=Max("last_accessed_time")
         )["latest"]
-        # A registration through a cohort the educator cannot see would name
-        # that cohort, so only individual ones and visible cohorts' are kept.
-        visible_cohort_ids = set(visible_cohorts.values_list("pk", flat=True))
-        registrations = [
-            registration
-            for registration in registrations_with_progress_for_learner(learner)
-            if registration.cohort is None
-            or registration.cohort.pk in visible_cohort_ids
-        ]
+        registrations = visible_registrations_with_progress(learner, request)
         return {
             "learner": learner,
             "memberships": memberships,

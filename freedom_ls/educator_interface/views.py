@@ -8,7 +8,17 @@ from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Page
-from django.db.models import Count, F, Max, Model, Prefetch, Q, QuerySet
+from django.db.models import (
+    Count,
+    F,
+    Max,
+    Model,
+    OuterRef,
+    Prefetch,
+    Q,
+    QuerySet,
+    Subquery,
+)
 from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
@@ -37,7 +47,11 @@ from freedom_ls.educator_interface.filters import (
     VisibleCourseFilter,
 )
 from freedom_ls.educator_interface.forms import CohortForm
-from freedom_ls.educator_interface.quick_views import CohortQuickView, LearnerQuickView
+from freedom_ls.educator_interface.quick_views import (
+    CohortQuickView,
+    LearnerQuickView,
+    visible_registrations_with_progress,
+)
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -314,7 +328,21 @@ class CohortDataTable(DataTable):
 
 class LearnerCohortDataTable(CohortDataTable):
     """The learner page's cohorts: every cohort the learner belongs to, active
-    or not, with search, sort and pagination but no filters."""
+    or not, with search, sort and pagination but no filters. `joined_at` is
+    annotated by the panel that lists them."""
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            *CohortDataTable.get_columns(),
+            Column(
+                header="Joined",
+                template="cotton/data-table-cells/text.html",
+                attr="joined_at",
+                sortable=True,
+                card="md_only",
+            ),
+        ]
 
     @classmethod
     def get_filters(cls) -> list[TableFilter]:
@@ -441,39 +469,138 @@ class LearnerDataTable(DataTable):
         ]
 
 
-class LearnerDetailsPanel(InstanceDetailsPanel):
+class LearnerDetailsPanel(Panel):
     model = Learner
-    fields = [
-        "user__first_name",
-        "user__last_name",
-        "user__email",
-    ]
+    title = "Details"
+    template_name = "educator_interface/panels/learner_details.html"
     refresh_events = (LEARNER_CHANGED,)
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["learner"] = cast(Learner, self.instance)
+        return context
 
 
 class LearnerCohortsPanel(DataTablePanel):
     title = "Cohorts"
     data_table = LearnerCohortDataTable
     table_key = "cohorts"
-    refresh_events = (LEARNER_CHANGED,)
+    refresh_events = (LEARNER_CHANGED, COHORT_CHANGED)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
-        return (
+        joined_at = Subquery(
+            CohortMembership.objects.filter(
+                cohort=OuterRef("pk"), learner=self.instance
+            ).values("created_at")[:1]
+        )
+        queryset: QuerySet = (
             super()
             .get_queryset(request)
             .filter(cohortmembership__learner=self.instance)
         )
+        annotated: QuerySet = queryset.annotate(joined_at=joined_at)
+        return annotated
 
 
-class LearnerPanelStack(PanelStack):
+@dataclass(frozen=True)
+class RegistrationRow:
+    """One course the learner is registered for on the Registrations card.
+    `via` is "Individual" or "via <cohort name>"."""
+
+    course: Course
+    via: str
+    is_active: bool
+    registration: LearnerCourseRegistration | CohortCourseRegistration
+
+
+class LearnerRegistrationsPanel(Panel):
+    model = Learner
+    title = "Registrations"
+    template_name = "educator_interface/panels/learner_registrations.html"
+    refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
+
+    def get_context_data(self) -> dict[str, object]:
+        learner = cast(Learner, self.instance)
+        request = cast(OrganisationScopedRequest, self.request)
+        visible_cohorts = cohorts_visible_to(request.user, request.organisation)
+        individual = LearnerCourseRegistration.objects.filter(
+            learner=learner
+        ).select_related("course")
+        # A registration through an inactive cohort is not shown at all; the
+        # learner reaches that course only while the cohort is active.
+        through_cohorts = CohortCourseRegistration.objects.filter(
+            cohort__in=visible_cohorts,
+            cohort__is_active=True,
+            cohort__cohortmembership__learner=learner,
+        ).select_related("course", "cohort")
+        rows = [
+            RegistrationRow(r.course, "Individual", r.is_active, r) for r in individual
+        ] + [
+            RegistrationRow(r.course, f"via {r.cohort.name}", r.is_active, r)
+            for r in through_cohorts
+        ]
+        context = super().get_context_data()
+        context["rows"] = sorted(rows, key=lambda row: row.course.title)
+        return context
+
+
+class LearnerOverviewStack(PanelStack):
+    title = "Overview"
+    refresh_events = (LEARNER_CHANGED,)
     children = {
         "details": LearnerDetailsPanel,
         "cohorts": LearnerCohortsPanel,
+        "registrations": LearnerRegistrationsPanel,
+    }
+
+
+class LearnerCoursesPanel(Panel):
+    model = Learner
+    title = "Courses"
+    template_name = "educator_interface/panels/learner_courses.html"
+    refresh_events = (LEARNER_CHANGED, REGISTRATION_CHANGED)
+
+    def get_context_data(self) -> dict[str, object]:
+        learner = cast(Learner, self.instance)
+        request = cast(OrganisationScopedRequest, self.request)
+        context = super().get_context_data()
+        context["entries"] = sorted(
+            visible_registrations_with_progress(learner, request),
+            key=lambda entry: entry.course.title,
+        )
+        return context
+
+
+class LearnerCoursesStack(PanelStack):
+    title = "Courses"
+    refresh_events = (LEARNER_CHANGED,)
+    children = {"courses": LearnerCoursesPanel}
+
+
+class LearnerHistoryPanel(Panel):
+    model = Learner
+    title = "History"
+    template_name = "educator_interface/panels/learner_history.html"
+    refresh_events = (LEARNER_CHANGED,)
+
+
+class LearnerTabSet(TabSet):
+    title = "Learner sections"
+    children = {
+        "overview": LearnerOverviewStack,
+        "courses": LearnerCoursesStack,
+        "history": LearnerHistoryPanel,
     }
 
 
 class LearnerInstanceView(InstanceView):
-    panel = LearnerPanelStack
+    panel = LearnerTabSet
+
+    def get_status_badge(self) -> StatusBadge:
+        return learner_status_badge(cast(Learner, self.instance))
+
+    def get_subtitle(self) -> str:
+        return cast(Learner, self.instance).user.email
 
 
 def _interface_path(organisation: Organisation, path_string: str) -> str:

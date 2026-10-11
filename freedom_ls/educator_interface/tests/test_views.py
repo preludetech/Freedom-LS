@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import cast
 
 import lxml.html
@@ -29,6 +30,7 @@ from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
     CohortMembershipFactory,
+    LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import (
@@ -1088,3 +1090,192 @@ def test_cohort_list_learners_cell_reads_zero_for_a_cohort_with_no_active_learne
     (row,) = document.xpath("//tr[contains(., 'Empty group')]")
     cells = [" ".join(td.text_content().split()) for td in row.xpath("./td")]
     assert "0" in cells
+
+
+def _learner_page(
+    client: Client, learner: Learner, tab: str = ""
+) -> lxml.html.HtmlElement:
+    path = f"learners/{learner.pk}" + (f"/__tabs/{tab}" if tab else "")
+    return _get_document(client, _interface_url(learner.organisation.slug, path))
+
+
+def _region_text(document: lxml.html.HtmlElement) -> str:
+    (region,) = document.cssselect("[data-tab-set]")
+    return str(region.text_content())
+
+
+@pytest.mark.django_db
+def test_the_learner_page_has_overview_courses_and_history_tabs(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+
+    document = _learner_page(staff_client, learner)
+
+    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
+    links = nav.cssselect("a")
+    assert [link.get("href").rsplit("/", 1)[-1] for link in links] == [
+        "overview",
+        "courses",
+        "history",
+    ]
+
+
+@pytest.mark.django_db
+def test_the_learner_page_opens_on_the_overview_tab(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+
+    document = _learner_page(staff_client, learner)
+
+    (nav,) = document.cssselect("nav[aria-label='Learner sections']")
+    (active,) = [a for a in nav.cssselect("a") if a.get("aria-current") == "page"]
+    assert active.text_content().split()[0] == "Overview"
+
+
+@pytest.mark.django_db
+def test_the_learner_header_carries_the_status_badge_and_email_subtitle(
+    staff_client: Client,
+):
+    learner = LearnerFactory(
+        organisation=OrganisationFactory(), user__email="ada@example.com"
+    )
+
+    document = _learner_page(staff_client, learner)
+
+    (title,) = document.cssselect("#instance-title")
+    header = title.xpath("ancestor::div[contains(@class, 'justify-between')][1]")[0]
+    assert "Active" in header.text_content()
+    assert "ada@example.com" in header.text_content()
+
+
+@pytest.mark.django_db
+def test_the_learner_overview_details_card_lists_name_email_status_and_date_added(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    labels = [dt.text_content().strip() for dt in document.cssselect("dl dt")]
+    assert labels == ["Name", "Email", "Status", "Date added"]
+
+
+@pytest.mark.django_db
+def test_the_learner_cohorts_card_shows_the_join_date(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    membership = CohortMembershipFactory(
+        learner=learner, cohort=CohortFactory(organisation=organisation)
+    )
+    CohortMembership.objects.filter(pk=membership.pk).update(
+        created_at=datetime(2024, 3, 5, tzinfo=UTC)
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (table,) = document.cssselect("#cohorts-table")
+    assert "March 5, 2024" in table.text_content()
+
+
+@pytest.mark.django_db
+def test_the_registrations_card_names_an_individual_registration_individual(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    assert "Individual" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_registrations_card_names_the_cohort_of_a_cohort_registration(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation, name="Evening group")
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    assert "via Evening group" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_registrations_card_shows_an_inactive_individual_registration_inactive(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra"), is_active=False
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    (row,) = document.cssselect("[data-testid='registration-row']")
+    assert "Inactive" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_registrations_card_leaves_out_a_course_from_an_inactive_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = LearnerFactory(organisation=organisation)
+    cohort = CohortFactory(organisation=organisation, is_active=False)
+    CohortMembershipFactory(learner=learner, cohort=cohort)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    document = _learner_page(staff_client, learner, "overview")
+
+    assert not document.cssselect("[data-testid='registration-row']")
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_shows_a_percentage(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+    CourseProgressFactory(
+        learner=learner,
+        course=registration.course,
+        learner_registration=registration,
+        progress_percentage=40,
+    )
+
+    document = _learner_page(staff_client, learner, "courses")
+
+    assert "40%" in _region_text(document)
+
+
+@pytest.mark.django_db
+def test_the_courses_tab_reads_never_for_a_registration_without_activity(
+    staff_client: Client,
+):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+    LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+
+    document = _learner_page(staff_client, learner, "courses")
+
+    assert "Never" in _region_text(document)
+
+
+@pytest.mark.django_db
+def test_the_history_tab_renders_its_empty_state(staff_client: Client):
+    learner = LearnerFactory(organisation=OrganisationFactory())
+
+    document = _learner_page(staff_client, learner, "history")
+
+    assert "Nothing has been recorded" in _region_text(document)
