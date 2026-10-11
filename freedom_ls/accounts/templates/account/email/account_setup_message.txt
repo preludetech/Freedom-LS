@@ -1,0 +1,11 @@
+{% extends "emails/base_email.txt" %}
+
+{% block content %}
+An account was made for {{ user.email }} at {{ organisation_name }}.
+
+Set a password to sign in:
+
+{{ setup_url }}
+
+The link expires in {{ expires_in_days }} day{{ expires_in_days|pluralize }}. If it has expired, request a new one from the "Forgot password" page.
+{% endblock %}

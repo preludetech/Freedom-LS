@@ -95,6 +95,30 @@ def long_url_email(mock_site_context):
 
 
 @pytest.mark.django_db
+def test_send_mail_without_a_request_takes_the_users_site_for_branding(
+    mock_site_context: Site, settings
+) -> None:
+    settings.HEADER_TITLE = ""
+    user = UserFactory()
+
+    AccountAdapter().send_mail(
+        "account/email/password_reset_key", user.email, {"user": user}
+    )
+
+    assert mail.outbox[0].subject == f"[{mock_site_context.name}] Reset your password"
+
+
+@pytest.mark.django_db
+def test_send_mail_without_a_request_or_a_user_still_refuses(settings) -> None:
+    settings.HEADER_TITLE = ""
+
+    with pytest.raises(SiteResolutionError):
+        AccountAdapter().send_mail(
+            "account/email/password_reset_key", "a@example.com", {}
+        )
+
+
+@pytest.mark.django_db
 def test_send_mail_emits_at_least_one_body_part(long_url_email) -> None:
     _, parts = long_url_email
     assert parts, "expected at least one text/plain or text/html body part"
