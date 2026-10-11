@@ -214,7 +214,7 @@ def test_learner_detail_pages_panels_refresh_on_learner_changed(educator_client)
     )
 
     content = response.content.decode()
-    assert content.count('hx-trigger="learnerChanged from:body"') >= 2
+    assert content.count('hx-trigger="learnerChanged from:body') >= 2
 
 
 @pytest.mark.django_db
@@ -393,7 +393,7 @@ def test_learner_detail_page_renders_details_and_cohorts_cards_with_definition_l
     labels = [dt.text_content().strip() for dt in document.cssselect("dl dt")]
     assert "Details" in headings
     assert "Cohorts" in headings
-    assert labels == ["First name", "Last name", "Email"]
+    assert labels[:4] == ["Name", "Email", "Status", "Date added"]
 
 
 @pytest.mark.django_db

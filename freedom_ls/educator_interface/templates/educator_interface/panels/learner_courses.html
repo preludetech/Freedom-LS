@@ -1,0 +1,24 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% if entries %}
+        <ul class="flex flex-col gap-4">
+            {% for entry in entries %}
+                <li>
+                    <div class="flex flex-wrap items-baseline justify-between gap-x-4">
+                        <span class="font-medium">{{ entry.course.title }}</span>
+                        <span class="text-sm text-muted">{% if entry.cohort %}via {{ entry.cohort.name }}{% else %}Individual{% endif %}</span>
+                    </div>
+                    {% if entry.progress_percentage is not None %}
+                        <c-panel-progress-bar percentage="{{ entry.progress_percentage }}" label="{{ entry.course.title }} progress" />
+                    {% else %}
+                        <p class="text-sm text-muted">No progress yet</p>
+                    {% endif %}
+                    <p class="text-sm text-muted">Last active: {% if entry.last_accessed_time %}{{ entry.last_accessed_time|date:"j M Y" }}{% else %}Never{% endif %}</p>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <c-panel-empty-state message="This learner has no course registrations." />
+    {% endif %}
+{% endblock panel_body %}

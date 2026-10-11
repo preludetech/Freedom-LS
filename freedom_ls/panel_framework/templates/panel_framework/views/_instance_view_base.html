@@ -10,7 +10,7 @@ root that is not a TabSet.
 {% block page_header_padding %}{% if main.panel.tabs|length > 1 %}pb-0{% else %}pb-5{% endif %}{% endblock page_header_padding %}
 
 {% block page_header %}
-    <c-panel-page-header title="{{ main.title }}" title_id="instance-title" panel_toggle="true">
+    <c-panel-page-header title="{{ main.title }}" title_id="instance-title" subtitle="{{ main.subtitle }}" panel_toggle="true">
         {% if main.status_badge %}<c-slot name="badge"><c-panel-status-badge tone="{{ main.status_badge.tone }}" label="{{ main.status_badge.label }}" /></c-slot>{% endif %}
         {% if main.stats %}
             <c-slot name="stats">

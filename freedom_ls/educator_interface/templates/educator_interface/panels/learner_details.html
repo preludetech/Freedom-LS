@@ -1,0 +1,11 @@
+{% extends "panel_framework/panels/panel.html" %}
+{% load educator_tags %}
+
+{% block panel_body %}
+    <c-panel-definition-list>
+        <c-panel-definition-row label="Name">{{ learner.user.display_name }}</c-panel-definition-row>
+        <c-panel-definition-row label="Email">{{ learner.user.email }}</c-panel-definition-row>
+        <c-panel-definition-row label="Status">{% learner_status_badge learner as badge %}<c-panel-status-badge tone="{{ badge.tone }}" label="{{ badge.label }}" /></c-panel-definition-row>
+        <c-panel-definition-row label="Date added">{{ learner.created_at|date:"j M Y" }}</c-panel-definition-row>
+    </c-panel-definition-list>
+{% endblock panel_body %}

@@ -1,0 +1,19 @@
+{% extends "panel_framework/panels/panel.html" %}
+
+{% block panel_body %}
+    {% if rows %}
+        <ul class="flex flex-col gap-3">
+            {% for row in rows %}
+                <li class="flex flex-wrap items-baseline justify-between gap-x-4" data-testid="registration-row">
+                    <span class="font-medium">{{ row.course.title }}</span>
+                    <span class="flex items-center gap-2 text-sm text-muted">
+                        {{ row.via }}
+                        <c-active-status-badge :active="row.is_active" />
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <c-panel-empty-state message="This learner has no course registrations." />
+    {% endif %}
+{% endblock panel_body %}
