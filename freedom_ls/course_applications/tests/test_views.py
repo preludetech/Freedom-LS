@@ -32,6 +32,7 @@ from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.tests.images import png_bytes
+from freedom_ls.tests.site_context import site_context
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
@@ -2297,6 +2298,294 @@ def test_unclaimed_applicant_leaves_no_user_or_side_effects(client, mock_site_co
             e["name"] == "sign_up" for e in client.session["google_analytics_events"]
         ),
     ) == (0, 0, 0, False)
+
+
+# ---------------------------------------------------------------------------
+# Claiming with an existing account
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def claimable_for_existing_user(mock_site_context):
+    """A submitted application whose address belongs to a same-site account."""
+    user = UserFactory(email="ada@example.com", first_name="Original")
+    application = _submitted_form_less_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ADA@example.com"
+    applicant.first_name = "Different"
+    applicant.save(update_fields=["email", "first_name"])
+    return application, user
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_attaches_the_application(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+
+    _claim(client, application)
+
+    application.refresh_from_db()
+    assert application.user == user
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_attaches_the_applicant(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+
+    _claim(client, application)
+
+    applicant = AnonymousApplicant.objects.get(pk=application.anonymous_applicant.pk)
+    assert (applicant.user, applicant.claimed_at is not None) == (user, True)
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_attaches_the_sitting(
+    client, mock_site_context
+):
+    user = UserFactory(email="ada@example.com")
+    application = _submitted_form_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "Ada@Example.com"
+    applicant.save(update_fields=["email"])
+
+    _claim(client, application)
+
+    application.form_progress.refresh_from_db()
+    assert application.form_progress.user == user
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_writes_no_consent(
+    client, claimable_for_existing_user
+):
+    application, _ = claimable_for_existing_user
+
+    _claim(client, application)
+
+    assert LegalConsent.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_leaves_the_profile_untouched(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+    password_before = user.password
+
+    _claim(client, application)
+
+    user.refresh_from_db()
+    assert (user.first_name, user.password) == ("Original", password_before)
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_changes_the_session_key(
+    client, claimable_for_existing_user
+):
+    application, _ = claimable_for_existing_user
+    client.get(_claim_url(application.anonymous_applicant))
+    session = client.session
+    session["warmup"] = "1"
+    session.save()
+    key_before = client.session.session_key
+
+    _claim(client, application)
+
+    assert client.session.session_key != key_before
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_signs_the_account_in(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+
+    _claim(client, application)
+
+    assert client.session["_auth_user_id"] == str(user.pk)
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_redirects_to_the_status_page(
+    client, claimable_for_existing_user
+):
+    application, _ = claimable_for_existing_user
+
+    response = _claim(client, application)
+
+    assert response.url == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_fires_no_webhook(
+    client, claimable_for_existing_user
+):
+    application, _ = claimable_for_existing_user
+
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
+        _claim(client, application)
+
+    assert fire.call_count == 0
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_queues_no_sign_up_event(
+    client, claimable_for_existing_user
+):
+    application, _ = claimable_for_existing_user
+
+    _claim(client, application)
+
+    assert "google_analytics_events" not in client.session
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_writes_no_attribution(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+
+    _claim(client, application)
+
+    # Reverse accessor of the one-to-one: course_applications does not depend on
+    # referral_tracking, so the model is reached through the user.
+    assert hasattr(user, "signup_attribution") is False
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_existing_account_keeps_an_earlier_application(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+    earlier = CourseApplicationFactory(user=user, course=application.course)
+
+    _claim(client, application)
+
+    assert set(
+        CourseApplication.objects.filter(course=application.course).values_list(
+            "pk", flat=True
+        )
+    ) == {earlier.pk, application.pk}
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_inactive_account_attaches_without_signing_in(
+    client, mock_site_context
+):
+    user = UserFactory(email="ada@example.com", is_active=False)
+    application = _submitted_form_less_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ada@example.com"
+    applicant.save(update_fields=["email"])
+
+    _claim(client, application)
+
+    application.refresh_from_db()
+    assert (application.user, "_auth_user_id" in client.session) == (user, False)
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_inactive_account_redirects_to_login(
+    client, mock_site_context
+):
+    UserFactory(email="ada@example.com", is_active=False)
+    application = _submitted_form_less_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ada@example.com"
+    applicant.save(update_fields=["email"])
+
+    response = _claim(client, application)
+
+    assert response.url == reverse("account_login")
+
+
+@pytest.fixture
+def claimable_for_other_site_user(mock_site_context):
+    """A submitted application whose address belongs to an account on another site."""
+    UserFactory(site=SiteFactory(), email="ada@example.com")
+    application = _submitted_form_less_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ada@example.com"
+    applicant.save(update_fields=["email"])
+    return application
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_other_site_account_renders_the_invalid_page(
+    client, claimable_for_other_site_user
+):
+    response = _claim(client, claimable_for_other_site_user)
+
+    assert response.context["claim_state"] == "invalid"
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_other_site_account_attaches_nothing(
+    client, claimable_for_other_site_user
+):
+    _claim(client, claimable_for_other_site_user)
+
+    claimable_for_other_site_user.refresh_from_db()
+    applicant = AnonymousApplicant.objects.get(
+        pk=claimable_for_other_site_user.anonymous_applicant.pk
+    )
+    assert (
+        claimable_for_other_site_user.user,
+        applicant.user,
+        applicant.claimed_at,
+    ) == (None, None, None)
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_other_site_account_creates_no_user(
+    client, claimable_for_other_site_user
+):
+    users_before = User._base_manager.count()
+
+    _claim(client, claimable_for_other_site_user)
+
+    assert User._base_manager.count() == users_before
+
+
+@pytest.mark.django_db
+def test_claim_post_for_an_other_site_account_leaves_the_client_anonymous(
+    client, claimable_for_other_site_user
+):
+    _claim(client, claimable_for_other_site_user)
+
+    assert "_auth_user_id" not in client.session
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("route", "extra"),
+    [("status", {}), ("form_page", {"page_number": 1}), ("check_answers", {})],
+)
+def test_session_from_one_site_gets_404_on_another_sites_host(
+    client, mock_site_context, route, extra
+):
+    application = _submitted_form_application()
+    session = client.session
+    session[ANONYMOUS_APPLICANTS_SESSION_KEY] = {
+        str(application.course_id): str(application.anonymous_applicant.pk)
+    }
+    session.save()
+    other_site = SiteFactory(domain="other.example.com", name="Other")
+
+    with site_context(other_site):
+        response = client.get(
+            reverse(
+                f"course_applications:{route}",
+                kwargs={"pk": application.pk, **extra},
+            )
+        )
+
+    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------

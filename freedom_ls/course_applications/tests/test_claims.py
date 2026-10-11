@@ -10,7 +10,7 @@ from allauth.account import app_settings as allauth_account_settings
 
 from django.utils import timezone
 
-from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.tests.app_guards import app_not_installed
 
@@ -19,6 +19,7 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.claims import (
     ClaimLink,
+    ClaimOutcome,
     attach_claimed_application,
     claim_token,
     read_claim_token,
@@ -80,8 +81,8 @@ def test_attaching_an_already_claimed_applicant_creates_no_user(mock_site_contex
     assert User._base_manager.count() == users_before
 
 
-def test_attaching_for_an_address_with_an_account_returns_none(mock_site_context, rf):
-    UserFactory(email="taken@example.com")
+def test_attaching_for_an_address_on_another_site_returns_none(mock_site_context, rf):
+    UserFactory(site=SiteFactory(), email="taken@example.com")
     application = CourseApplicationFactory(anonymous=True)
     applicant = application.anonymous_applicant
     applicant.email = "taken@example.com"
@@ -92,10 +93,10 @@ def test_attaching_for_an_address_with_an_account_returns_none(mock_site_context
     assert outcome is None
 
 
-def test_attaching_for_an_address_with_an_account_creates_nothing(
+def test_attaching_for_an_address_on_another_site_creates_nothing(
     mock_site_context, rf
 ):
-    UserFactory(email="taken@example.com")
+    UserFactory(site=SiteFactory(), email="taken@example.com")
     application = CourseApplicationFactory(anonymous=True)
     applicant = application.anonymous_applicant
     applicant.email = "taken@example.com"
@@ -105,3 +106,15 @@ def test_attaching_for_an_address_with_an_account_creates_nothing(
     attach_claimed_application(rf.get("/"), application)
 
     assert User._base_manager.count() == users_before
+
+
+def test_attaching_for_a_same_site_account_returns_that_account(mock_site_context, rf):
+    user = UserFactory(email="taken@example.com")
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    applicant.email = "TAKEN@example.com"
+    applicant.save(update_fields=["email"])
+
+    outcome = attach_claimed_application(rf.get("/"), application)
+
+    assert outcome == ClaimOutcome(user, user_was_created=False)

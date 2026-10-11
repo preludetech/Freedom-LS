@@ -76,9 +76,14 @@ def attach_claimed_application(
 ) -> ClaimOutcome | None:
     """Attach an unverified application to the account that owns its address.
 
+    An address with no account gets a new one. An account on this site is
+    attached as it stands: its profile and password are untouched, no consent
+    is written and no sign-up is announced, because the person already
+    registered.
+
     One transaction, with the applicant row locked, so two clicks on the same
     link converge on one claim. None means nothing changed: the link was
-    already used, or the address belongs to an account this site may not touch.
+    already used, or the address belongs to an account on another site.
     """
     with transaction.atomic():
         applicant = AnonymousApplicant.objects.select_for_update().get(
@@ -89,16 +94,19 @@ def attach_claimed_application(
         # _base_manager: the request's site filter would hide an account on
         # another site, and the globally unique email would then refuse the
         # create with an IntegrityError instead of a quiet refusal.
-        if User._base_manager.filter(email__iexact=applicant.email).exists():
+        existing = User._base_manager.filter(email__iexact=applicant.email).first()
+        if existing is not None and existing.site_id != applicant.site_id:
             return None
-        user = _create_claimed_user(applicant)
-        _write_legal_consents(applicant, user)
+        user = existing if existing is not None else _create_claimed_user(applicant)
+        if existing is None:
+            _write_legal_consents(applicant, user)
         _attach(application, applicant, user)
-    announce_user_registered(request, user)
-    # The attribution receiver listens here; sending the signal keeps its
-    # best-effort handling rather than copying it.
-    user_signed_up.send(sender=User, request=request, user=user)
-    return ClaimOutcome(user, user_was_created=True)
+    if existing is None:
+        announce_user_registered(request, user)
+        # The attribution receiver listens here; sending the signal keeps its
+        # best-effort handling rather than copying it.
+        user_signed_up.send(sender=User, request=request, user=user)
+    return ClaimOutcome(user, user_was_created=existing is None)
 
 
 def _attach(

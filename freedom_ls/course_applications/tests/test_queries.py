@@ -30,6 +30,17 @@ class TestGetApplicationForCourse:
 
         assert get_application_for_course(user=user, course=course) == app
 
+    def test_returns_the_newer_of_two_applications(self, mock_site_context):
+        """An account may hold two applications to one course; the newer is live."""
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+        newer = CourseApplicationFactory(anonymous=True, user=user, course=course)
+
+        assert get_application_for_course(user=user, course=course) == newer
+
     def test_returns_none_when_absent(self, mock_site_context):
         """Returns None when the user has no application to the course."""
         from freedom_ls.course_applications.queries import get_application_for_course

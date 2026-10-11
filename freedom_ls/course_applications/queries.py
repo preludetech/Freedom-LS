@@ -26,13 +26,19 @@ def get_application_for_course(
     """Return this user's application to the given course, or None.
 
     Returns None immediately for anonymous users — no DB query is issued.
-    Site isolation is automatic via SiteAwareManager.
+    Site isolation is automatic via SiteAwareManager. An account may hold two
+    applications for one course once a claim attaches a second, and the newer
+    one is the live one.
     """
     if not user.is_authenticated:
         return None
     from freedom_ls.course_applications.models import CourseApplication
 
-    return CourseApplication.objects.filter(user=user, course=course).first()
+    return (
+        CourseApplication.objects.filter(user=user, course=course)
+        .order_by("-created_at")
+        .first()
+    )
 
 
 def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
