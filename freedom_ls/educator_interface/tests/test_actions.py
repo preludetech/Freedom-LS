@@ -17,8 +17,13 @@ from django.urls import reverse
 from freedom_ls.accounts.config import config
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
-from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    LEARNER_CHANGED,
+    REGISTRATION_CHANGED,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -31,6 +36,7 @@ from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
     CohortMembership,
     Learner,
+    LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.role_assignment import assign_role
 from freedom_ls.learner_progress.factories import CourseProgressFactory
@@ -2023,3 +2029,211 @@ def test_move_post_naming_an_inactive_destination_answers_422_and_changes_nothin
 
     assert response.status_code == 422
     assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+
+# register and unregister a learner individually
+
+
+def _learner_register_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug, f"learners/{learner.pk}/__actions/register_for_course"
+    )
+
+
+def _learner_unregister_url(organisation: Organisation, learner: Learner) -> str:
+    return _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/registrations"
+        "/__actions/unregister_from_course",
+    )
+
+
+@pytest.mark.django_db
+def test_register_fragment_offers_the_registerable_courses(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    open_course = CourseFactory()
+    coming_soon = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    held = LearnerCourseRegistrationFactory(learner=learner, is_active=True).course
+
+    offered = _offered_options(
+        staff_client, _learner_register_url(organisation, learner)
+    )
+
+    assert offered == {str(open_course.pk)}
+    assert str(coming_soon.pk) not in offered
+    assert str(held.pk) not in offered
+
+
+@pytest.mark.django_db
+def test_register_post_creates_the_registration_with_both_events(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    course = CourseFactory()
+
+    response = _post(
+        staff_client,
+        _learner_register_url(organisation, learner),
+        {"course": str(course.pk)},
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    assert response.status_code == 204
+    assert LearnerCourseRegistration.objects.filter(
+        learner=learner, course=course, is_active=True
+    ).exists()
+    assert trigger[REGISTRATION_CHANGED] == {"ids": [str(learner.pk)]}
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+    assert "closeModal" in trigger
+
+
+@pytest.mark.django_db
+def test_register_post_naming_a_coming_soon_course_answers_422_with_no_row(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+    response = _post(
+        staff_client,
+        _learner_register_url(organisation, learner),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 422
+    assert not LearnerCourseRegistration.objects.filter(learner=learner).exists()
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_names_the_cohort_keeping_access(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation, name="Year 10")
+    course = CourseFactory(title="Algebra")
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    text = _get_fragment(
+        staff_client,
+        _learner_unregister_url(organisation, learner)
+        + f"?registration={registration.pk}",
+    )
+
+    assert "They keep access through Year 10." in text
+    assert "Progress is kept." in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_says_the_learner_loses_access_without_a_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner, course=CourseFactory(title="Algebra")
+    )
+
+    text = _get_fragment(
+        staff_client,
+        _learner_unregister_url(organisation, learner)
+        + f"?registration={registration.pk}",
+    )
+
+    assert "They lose access to Algebra." in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_names_self_registration_only_on_the_default_organisation(
+    staff_client: Client, mock_site_context: Site
+):
+    default = get_default_organisation(mock_site_context)
+    learner = cast(Learner, LearnerFactory(organisation=default))
+    registration = LearnerCourseRegistrationFactory(learner=learner)
+
+    text = _get_fragment(
+        staff_client,
+        _learner_unregister_url(default, learner) + f"?registration={registration.pk}",
+    )
+
+    assert "self-register" in text
+
+
+@pytest.mark.django_db
+def test_unregister_fragment_omits_self_registration_on_another_organisation(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory(is_default=False)
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner)
+
+    text = _get_fragment(
+        staff_client,
+        _learner_unregister_url(organisation, learner)
+        + f"?registration={registration.pk}",
+    )
+
+    assert "self-register" not in text
+
+
+@pytest.mark.django_db
+def test_unregister_post_deactivates_the_registration_with_both_events(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    registration = LearnerCourseRegistrationFactory(learner=learner)
+
+    response = _post(
+        staff_client,
+        _learner_unregister_url(organisation, learner),
+        {"registration": str(registration.pk)},
+    )
+
+    registration.refresh_from_db()
+    trigger = json.loads(response["HX-Trigger"])
+    assert (response.status_code, registration.is_active) == (204, False)
+    assert trigger[REGISTRATION_CHANGED] == {"ids": [str(learner.pk)]}
+    assert trigger[LEARNER_CHANGED] == {"ids": [str(learner.pk)]}
+
+
+@pytest.mark.django_db
+def test_a_cohort_admin_can_register_a_learner_in_an_assigned_cohort(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    course = CourseFactory()
+    educator = _cohort_admin_on(organisation, cohort)
+
+    response = _post(
+        logged_in_client(educator),
+        _learner_register_url(organisation, learner),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 204
+    assert LearnerCourseRegistration.objects.filter(
+        learner=learner, course=course
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_forged_register_on_a_learner_outside_their_cohorts_is_refused(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    _, cohort = _membership(organisation)
+    outsider = cast(Learner, LearnerFactory(organisation=organisation))
+    course = CourseFactory()
+    educator = _cohort_admin_on(organisation, cohort)
+
+    response = _post(
+        logged_in_client(educator),
+        _learner_register_url(organisation, outsider),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 404
+    assert not LearnerCourseRegistration.objects.filter(learner=outsider).exists()

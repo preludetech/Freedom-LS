@@ -898,3 +898,40 @@ class TestAddLearnersIsolation:
 
         assert response.status_code == 422
         assert not foreign_cohort.cohortmembership_set.exists()
+
+
+@pytest.mark.django_db
+class TestLearnerRegistrationIsolation:
+    """The registration actions resolve their learner inside the organisation
+    in the URL, so another organisation's learner is a 404."""
+
+    @pytest.mark.parametrize(
+        "path",
+        [
+            "__actions/register_for_course",
+            "__tabs/overview/__panels/registrations/__actions/unregister_from_course",
+        ],
+    )
+    def test_another_organisations_learner_answers_404(
+        self, logged_in_client, path: str
+    ) -> None:
+        organisation_a = OrganisationFactory()
+        organisation_b = OrganisationFactory()
+        foreign_learner = LearnerFactory(organisation=organisation_b)
+        registration = LearnerCourseRegistrationFactory(learner=foreign_learner)
+        educator = UserFactory(staff=True)
+        assign_object_role(educator, organisation_a, "organisation_admin")
+        url = _interface_url(
+            organisation_a.slug, f"learners/{foreign_learner.pk}/{path}"
+        )
+
+        response = logged_in_client(educator).post(
+            url,
+            {
+                "course": str(registration.course_id),
+                "registration": str(registration.pk),
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404

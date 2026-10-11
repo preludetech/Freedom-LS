@@ -4,6 +4,7 @@ import pytest
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
+from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -20,7 +21,9 @@ from freedom_ls.learner_management.learner_actions import (
     deactivate_learner,
     move_between_cohorts,
     reactivate_learner,
+    register_for_course,
     remove_from_cohort,
+    unregister_from_course,
 )
 from freedom_ls.learner_management.models import (
     CohortMembership,
@@ -575,3 +578,74 @@ class TestMoveBetweenCohorts:
 
         with pytest.raises(ValueError, match="not a member of the source"):
             move_between_cohorts(learner, source, destination)
+
+
+@pytest.mark.django_db
+class TestRegisterForCourse:
+    def test_creates_the_registration_and_returns_true(self, mock_site_context):
+        learner = LearnerFactory()
+        course = CourseFactory()
+
+        created = register_for_course(learner, course)
+
+        assert created is True
+        assert LearnerCourseRegistration.objects.filter(
+            learner=learner, course=course, is_active=True
+        ).exists()
+
+    def test_a_repeat_returns_false(self, mock_site_context):
+        learner = LearnerFactory()
+        course = CourseFactory()
+        register_for_course(learner, course)
+
+        assert register_for_course(learner, course) is False
+
+    def test_reactivates_an_inactive_registration(self, mock_site_context):
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+
+        changed = register_for_course(registration.learner, registration.course)
+
+        registration.refresh_from_db()
+        assert (changed, registration.is_active) == (True, True)
+
+
+@pytest.mark.django_db
+class TestUnregisterFromCourse:
+    def test_deactivates_the_registration_and_returns_true(self, mock_site_context):
+        registration = LearnerCourseRegistrationFactory(is_active=True)
+
+        changed = unregister_from_course(registration.learner, registration.course)
+
+        registration.refresh_from_db()
+        assert (changed, registration.is_active) == (True, False)
+
+    def test_records_a_course_unregistered_event_with_the_payload(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=True)
+        learner, course = registration.learner, registration.course
+        WebhookEvent._base_manager.all().delete()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            unregister_from_course(learner, course)
+
+        event = WebhookEvent._base_manager.get(event_type="course.unregistered")
+        assert event.payload == {
+            "user_id": learner.user.pk,
+            "user_email": learner.user.email,
+            "organisation_id": str(learner.organisation_id),
+            "learner_id": str(learner.pk),
+            "course_id": str(course.pk),
+            "course_title": course.title,
+        }
+
+    def test_a_repeat_returns_false_and_records_nothing(
+        self, mock_site_context, django_capture_on_commit_callbacks
+    ):
+        registration = LearnerCourseRegistrationFactory(is_active=False)
+        WebhookEvent._base_manager.all().delete()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            changed = unregister_from_course(registration.learner, registration.course)
+
+        assert (changed, WebhookEvent._base_manager.count()) == (False, 0)

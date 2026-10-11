@@ -20,11 +20,16 @@ from freedom_ls.accounts.account_setup import (
     resend_account_setup_email,
 )
 from freedom_ls.accounts.config import config as accounts_config
-from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
+from freedom_ls.educator_interface.events import (
+    COHORT_CHANGED,
+    LEARNER_CHANGED,
+    REGISTRATION_CHANGED,
+)
 from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
     CohortCourseRegistrationForm,
     CohortPickerForm,
+    LearnerCourseRegistrationForm,
     LearnerNameForm,
     LearnerPickerForm,
 )
@@ -35,12 +40,15 @@ from freedom_ls.learner_management.learner_actions import (
     deactivate_learner,
     move_between_cohorts,
     reactivate_learner,
+    register_for_course,
     remove_from_cohort,
+    unregister_from_course,
 )
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
     Learner,
+    LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
     ADD_COHORTMEMBERSHIP,
@@ -52,6 +60,7 @@ from freedom_ls.learner_management.queries import (
     courses_losing_access,
     learners_visible_to,
     members_keeping_access,
+    other_grants_for,
 )
 from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
@@ -473,6 +482,106 @@ class UnregisterCohortFromCourseAction(RequiresActiveCohortMixin, PanelAction):
         # The courses tab, its count and the header's course stat all
         # re-render, which a panel refresh alone could not do for the header.
         return navigation_response(ctx.page_url)
+
+
+def _registration_changed_response(learner: Learner) -> HttpResponse:
+    ids = [str(learner.pk)]
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = build_hx_trigger(
+        {REGISTRATION_CHANGED: ids, LEARNER_CHANGED: ids}, close_modal=True
+    )
+    return response
+
+
+class RegisterLearnerForCourseAction(FormPanelAction):
+    """Registers the learner on the page for a course they hold no active
+    individual registration for."""
+
+    label = "Register for course"
+    action_name = "register_for_course"
+    capability = "freedom_ls_learner_management.add_learnercourseregistration"
+    submit_buttons = [
+        {"label": "Register", "variant": "primary", "loading_text": "Registering..."}
+    ]
+    _learner: Learner
+
+    def _bind(self, ctx: PanelContext) -> None:
+        self._learner = cast(Learner, ctx.instance)
+        self.form_title = f"Register {self._learner.user.display_name} for a course"
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        self._bind(ctx)
+        return super().get_context_data(ctx)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        self._bind(ctx)
+        return super().handle_submit(ctx)
+
+    def get_form(
+        self, request: HttpRequest, instance: Model | None = None
+    ) -> forms.ModelForm:
+        # On a POST, instance is the learner, which must never reach a
+        # registration form.
+        data = request.POST if request.method == "POST" else None
+        return LearnerCourseRegistrationForm(data, learner=self._learner)
+
+    def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
+        register_for_course(self._learner, form.cleaned_data["course"])
+        return _registration_changed_response(self._learner)
+
+
+class UnregisterLearnerFromCourseAction(PanelAction):
+    """Withdraws one of the learner's active individual registrations, after
+    confirmation. The registration travels as a `registration` parameter, so
+    the action resolves on the registrations card and renders per row there,
+    never as a footer button."""
+
+    label = "Unregister"
+    action_name = "unregister_from_course"
+    variant = "secondary"
+    renders_in_footer = False
+    capability = "freedom_ls_learner_management.change_learnercourseregistration"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "educator_interface/modal/unregister_from_course_confirmation.html"
+
+    def _registration(self, ctx: PanelContext) -> LearnerCourseRegistration:
+        registrations = LearnerCourseRegistration.objects.filter(
+            learner=cast(Learner, ctx.instance), is_active=True
+        ).select_related("course")
+        return cast(
+            LearnerCourseRegistration,
+            get_object_or_404(
+                registrations, pk=_uuid_param(ctx.request, "registration")
+            ),
+        )
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        learner = cast(Learner, ctx.instance)
+        registration = self._registration(ctx)
+        context = super().get_context_data(ctx)
+        context.update(
+            {
+                "learner": learner,
+                "registration": registration,
+                "course": registration.course,
+                "keeping_cohorts": join_prose(
+                    [
+                        cohort.name
+                        for cohort in other_grants_for(learner, registration.course)
+                    ]
+                ),
+                "on_default_organisation": (
+                    learner.organisation_id == get_default_organisation(learner.site).pk
+                ),
+                "confirm_url": self.get_action_url(ctx),
+            }
+        )
+        return context
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        learner = cast(Learner, ctx.instance)
+        unregister_from_course(learner, self._registration(ctx).course)
+        return _registration_changed_response(learner)
 
 
 class MembershipAction(PanelAction):

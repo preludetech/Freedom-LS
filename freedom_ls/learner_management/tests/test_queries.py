@@ -68,6 +68,7 @@ from freedom_ls.learner_management.queries import (
     peers_of,
     peers_through,
     registerable_courses_for,
+    registerable_courses_for_learner,
 )
 from freedom_ls.learner_management.tests.scenario_world import (
     World,
@@ -1468,6 +1469,31 @@ class TestRegisterableCoursesFor:
         registration = CohortCourseRegistrationFactory(is_active=True)
 
         assert list(registerable_courses_for(cohort)) == [registration.course]
+
+
+@pytest.mark.django_db
+class TestRegisterableCoursesForLearner:
+    def test_omits_a_coming_soon_course(self, mock_site_context):
+        learner = LearnerFactory()
+        CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        assert list(registerable_courses_for_learner(learner)) == []
+
+    def test_omits_a_course_the_learner_is_actively_registered_for(
+        self, mock_site_context
+    ):
+        learner = LearnerFactory()
+        LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+
+        assert list(registerable_courses_for_learner(learner)) == []
+
+    def test_includes_a_course_the_learner_holds_inactively(self, mock_site_context):
+        learner = LearnerFactory()
+        registration = LearnerCourseRegistrationFactory(
+            learner=learner, is_active=False
+        )
+
+        assert list(registerable_courses_for_learner(learner)) == [registration.course]
 
 
 @pytest.mark.django_db
