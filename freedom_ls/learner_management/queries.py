@@ -45,6 +45,8 @@ if TYPE_CHECKING:
 VIEW_ORGANISATION = "freedom_ls_organisations.view_organisation"
 VIEW_COHORT = "freedom_ls_learner_management.view_cohort"
 VIEW_LEARNER = "freedom_ls_learner_management.view_learner"
+ADD_COHORTMEMBERSHIP = "freedom_ls_learner_management.add_cohortmembership"
+DELETE_COHORTMEMBERSHIP = "freedom_ls_learner_management.delete_cohortmembership"
 
 
 class ResolvedRegistration(NamedTuple):
@@ -245,11 +247,16 @@ def organisations_accessible_to(user: RequestUser) -> QuerySet[Organisation]:
 
 
 def cohorts_visible_to(
-    user: RequestUser, organisation: Organisation
+    user: RequestUser,
+    organisation: Organisation,
+    *,
+    capability: str = VIEW_COHORT,
 ) -> QuerySet[Cohort]:
     """Cohorts within this organisation visible to this user: every cohort
-    for a role holder whose role grants view_cohort at site or organisation
+    for a role holder whose role grants `capability` at site or organisation
     level, otherwise only the ones carrying a role assignment of their own.
+    The capability defaults to view_cohort; passing another answers "which
+    cohorts may this user do that to".
 
     "An organisation role grants every cohort inside it" is an implication no
     row on the covered cohorts themselves can express -- nothing is written
@@ -263,7 +270,7 @@ def cohorts_visible_to(
         return resolved
     user = cast("User", user)
 
-    roles = roles_granting(VIEW_COHORT, organisation.site)
+    roles = roles_granting(capability, organisation.site)
     if (
         _site_grants(user, roles, organisation.site).exists()
         or _granted_organisations(user, roles).filter(pk=organisation.pk).exists()
@@ -367,6 +374,55 @@ def members_keeping_access(
         .distinct()
         .order_by("user__first_name", "user__last_name")
     )
+
+
+def other_grants_for(
+    learner: Learner, course: Course, *, excluding: Cohort | None = None
+) -> list[Cohort]:
+    """Cohorts the learner belongs to, other than `excluding`, whose
+    access-granting registration is for `course`, ordered by name."""
+    granting = access_granting_cohort_registrations().filter(course=course)
+    cohorts = Cohort.objects.filter(
+        cohortmembership__learner=learner, pk__in=granting.values("cohort_id")
+    )
+    if excluding is not None:
+        cohorts = cohorts.exclude(pk=excluding.pk)
+    return list(cohorts.distinct().order_by("name"))
+
+
+def courses_losing_access(
+    learner: Learner, removing: Cohort, adding: Cohort | None = None
+) -> list[Course]:
+    """Courses the learner stops reaching when `removing` stops covering them,
+    ordered by title. A course is kept when an active individual registration
+    holds it, when another cohort the learner belongs to still grants it, or
+    when `adding` (the cohort they move into) grants it."""
+    granted = Course.objects.filter(
+        pk__in=access_granting_cohort_registrations()
+        .filter(cohort=removing)
+        .values("course_id")
+    ).order_by("title")
+    held_individually = set(
+        LearnerCourseRegistration.objects.filter(
+            learner=learner, is_active=True
+        ).values_list("course_id", flat=True)
+    )
+    added = (
+        set(
+            access_granting_cohort_registrations()
+            .filter(cohort=adding)
+            .values_list("course_id", flat=True)
+        )
+        if adding is not None
+        else set()
+    )
+    return [
+        course
+        for course in granted
+        if course.pk not in held_individually
+        and course.pk not in added
+        and not other_grants_for(learner, course, excluding=removing)
+    ]
 
 
 class CohortCounts(NamedTuple):

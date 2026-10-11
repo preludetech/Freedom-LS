@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from django.db import transaction
 
-from freedom_ls.learner_management.models import Learner
+from freedom_ls.learner_management.models import Cohort, CohortMembership, Learner
 from freedom_ls.learner_management.utils import fire_webhook_event_on_commit
 
 
@@ -48,3 +48,27 @@ def deactivate_learner(learner: Learner) -> bool:
 
 def reactivate_learner(learner: Learner) -> bool:
     return _set_learner_active(learner, True, "learner.reactivated")
+
+
+def _check_cohort(learner: Learner, cohort: Cohort) -> None:
+    if cohort.organisation_id != learner.organisation_id:
+        raise ValueError("The cohort belongs to another organisation.")
+    if not cohort.is_active:
+        raise ValueError("The cohort is inactive.")
+
+
+def _cohort_payload(cohort: Cohort, move_id: str | None = None) -> dict[str, object]:
+    return {"cohort_id": str(cohort.pk), "cohort_name": cohort.name, "move_id": move_id}
+
+
+def remove_from_cohort(learner: Learner, cohort: Cohort) -> bool:
+    """Take the learner out of an active cohort of their organisation; False
+    when they were not a member. Course progress records are kept."""
+    _check_cohort(learner, cohort)
+    with transaction.atomic():
+        deleted, _ = CohortMembership._base_manager.filter(
+            learner=learner, cohort=cohort
+        ).delete()
+        if deleted:
+            _fire("cohort.member_removed", learner, _cohort_payload(cohort))
+    return bool(deleted)

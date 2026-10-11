@@ -15,7 +15,7 @@ from django.urls import reverse
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.actions import cohort_not_empty_sentence
-from freedom_ls.educator_interface.events import LEARNER_CHANGED
+from freedom_ls.educator_interface.events import COHORT_CHANGED, LEARNER_CHANGED
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -26,6 +26,7 @@ from freedom_ls.learner_management.factories import (
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
+    CohortMembership,
     Learner,
 )
 from freedom_ls.learner_management.role_assignment import assign_role
@@ -966,3 +967,223 @@ def test_reactivating_an_active_learner_answers_422(staff_client: Client):
     )
 
     assert response.status_code == 422
+
+
+# remove from a cohort
+
+
+def _remove_url_from_learner(
+    organisation: Organisation, learner: Learner, cohort: Cohort | None = None
+) -> str:
+    url = _interface_url(
+        organisation.slug,
+        f"learners/{learner.pk}/__tabs/overview/__panels/cohorts"
+        "/__actions/remove_from_cohort",
+    )
+    return f"{url}?cohort={cohort.pk}" if cohort is not None else url
+
+
+def _remove_url_from_cohort(
+    organisation: Organisation, cohort: Cohort, learner: Learner | None = None
+) -> str:
+    url = _cohort_url(
+        organisation, cohort, "/__tabs/learners/__actions/remove_from_cohort"
+    )
+    return f"{url}?learner={learner.pk}" if learner is not None else url
+
+
+def _membership(organisation: Organisation, **cohort_fields: object):
+    cohort = cast(Cohort, CohortFactory(organisation=organisation, **cohort_fields))
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return learner, cohort
+
+
+def _remove_triggers(client: Client, url: str) -> list[str]:
+    document = lxml.html.fromstring(client.get(url).content.decode())
+    return [
+        button.get("hx-get") or ""
+        for button in document.cssselect("button[hx-get]")
+        if "remove_from_cohort" in (button.get("hx-get") or "")
+    ]
+
+
+@pytest.mark.django_db
+def test_the_learner_page_renders_with_the_remove_action_registered(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, _ = _membership(organisation)
+
+    response = staff_client.get(
+        _interface_url(organisation.slug, f"learners/{learner.pk}")
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_remove_fragment_from_the_learner_page_names_the_courses_lost(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    text = _get_fragment(
+        staff_client, _remove_url_from_learner(organisation, learner, cohort)
+    )
+
+    assert "They lose access to: Algebra." in text
+    assert "Progress is kept." in text
+
+
+@pytest.mark.django_db
+def test_remove_fragment_says_the_learner_keeps_every_course_through_another_registration(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    course = CourseFactory()
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    text = _get_fragment(
+        staff_client, _remove_url_from_learner(organisation, learner, cohort)
+    )
+
+    assert "keep access to every course through another registration" in text
+
+
+@pytest.mark.django_db
+def test_remove_post_from_the_learner_page_deletes_the_membership(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _remove_url_from_learner(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    assert response.status_code == 204
+    assert not CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_remove_post_sends_both_ids_with_the_learner_and_cohort_events(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _remove_url_from_learner(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    trigger = json.loads(response["HX-Trigger"])
+    ids = {"ids": [str(learner.pk), str(cohort.pk)]}
+    assert (trigger[LEARNER_CHANGED], trigger[COHORT_CHANGED]) == (ids, ids)
+    assert "closeModal" in trigger
+
+
+@pytest.mark.django_db
+def test_remove_fragment_from_the_cohort_page_names_the_courses_lost(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+    CohortCourseRegistrationFactory(
+        cohort=cohort, course=CourseFactory(title="Algebra")
+    )
+
+    text = _get_fragment(
+        staff_client, _remove_url_from_cohort(organisation, cohort, learner)
+    )
+
+    assert "They lose access to: Algebra." in text
+
+
+@pytest.mark.django_db
+def test_remove_post_from_the_cohort_page_deletes_the_membership(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _remove_url_from_cohort(organisation, cohort),
+        {"learner": str(learner.pk)},
+    )
+
+    assert response.status_code == 204
+    assert not CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_a_stale_remove_naming_an_inactive_cohort_answers_422_and_changes_nothing(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation, is_active=False)
+
+    response = _post(
+        staff_client,
+        _remove_url_from_learner(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    assert response.status_code == 422
+    assert "is inactive" in response.content.decode()
+    assert CohortMembership.objects.filter(learner=learner, cohort=cohort).exists()
+
+
+@pytest.mark.django_db
+def test_a_cohort_admins_learner_page_offers_remove_on_the_granted_cohort_only(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, granted = _membership(organisation)
+    other = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=other, learner=learner)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", granted)
+    assign_role(grantor, educator, "cohort_viewer", other)
+
+    triggers = _remove_triggers(
+        logged_in_client(educator),
+        _interface_url(organisation.slug, f"learners/{learner.pk}"),
+    )
+
+    assert {t.split("?cohort=")[1] for t in triggers} == {str(granted.pk)}
+
+
+@pytest.mark.django_db
+def test_a_forged_remove_on_an_unassigned_cohort_answers_403(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, granted = _membership(organisation)
+    other = cast(Cohort, CohortFactory(organisation=organisation))
+    CohortMembershipFactory(cohort=other, learner=learner)
+    grantor = LearnerFactory(user__superuser=True).user
+    educator = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(grantor, educator, "cohort_admin", granted)
+    assign_role(grantor, educator, "cohort_viewer", other)
+
+    response = _post(
+        logged_in_client(educator),
+        _remove_url_from_learner(organisation, learner),
+        {"cohort": str(other.pk)},
+    )
+
+    assert response.status_code == 403
+    assert CohortMembership.objects.filter(learner=learner, cohort=other).exists()

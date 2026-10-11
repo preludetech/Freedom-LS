@@ -1279,3 +1279,57 @@ def test_the_history_tab_renders_its_empty_state(staff_client: Client):
     document = _learner_page(staff_client, learner, "history")
 
     assert "Nothing has been recorded" in _region_text(document)
+
+
+@pytest.mark.django_db
+def test_an_active_cohorts_learners_tab_offers_remove_for_each_member(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    member = _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    triggers = {
+        button.get("hx-get")
+        for button in document.cssselect("button[hx-get]")
+        if "remove_from_cohort" in button.get("hx-get")
+    }
+    assert {t.split("?learner=")[1] for t in triggers} == {str(member.pk)}
+
+
+@pytest.mark.django_db
+def test_an_inactive_cohorts_learners_tab_renders_no_remove_control(
+    staff_client: Client,
+):
+    cohort = CohortFactory(organisation=OrganisationFactory(), is_active=False)
+    _add_member(cohort)
+
+    document = _get_document(
+        staff_client,
+        _interface_url(
+            cohort.organisation.slug, f"cohorts/{cohort.pk}/__tabs/learners"
+        ),
+    )
+
+    assert "remove_from_cohort" not in lxml.html.tostring(document).decode()
+
+
+@pytest.mark.django_db
+def test_a_members_page_renders_an_inactive_cohorts_row_without_any_action(
+    staff_client: Client,
+):
+    cohort = CohortFactory(
+        organisation=OrganisationFactory(), is_active=False, name="Dormant group"
+    )
+    learner = _add_member(cohort)
+
+    document = _learner_page(staff_client, learner)
+
+    (row,) = document.xpath("//tr[contains(., 'Dormant group')]")
+    assert row.cssselect("button") == []

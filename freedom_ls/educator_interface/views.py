@@ -29,6 +29,7 @@ from freedom_ls.educator_interface.actions import (
     EditCohortAction,
     EditLearnerNameAction,
     RegisterCohortForCourseAction,
+    RemoveFromCohortAction,
     UnregisterCohortFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
@@ -63,6 +64,7 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.queries import (
+    DELETE_COHORTMEMBERSHIP,
     LearnerStatus,
     active_organisation_admins,
     cohort_counts,
@@ -344,6 +346,11 @@ class LearnerCohortDataTable(CohortDataTable):
                 sortable=True,
                 card="md_only",
             ),
+            Column(
+                header="",
+                template="educator_interface/data-table-cells/membership_actions.html",
+                card="secondary",
+            ),
         ]
 
     @classmethod
@@ -471,6 +478,21 @@ class LearnerDataTable(DataTable):
         ]
 
 
+class CohortLearnerDataTable(LearnerDataTable):
+    """The cohort page's learners: the learners table plus a Remove cell."""
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            *LearnerDataTable.get_columns(),
+            Column(
+                header="",
+                template="educator_interface/data-table-cells/cohort_member_actions.html",
+                card="secondary",
+            ),
+        ]
+
+
 class LearnerDetailsPanel(Panel):
     model = Learner
     title = "Details"
@@ -502,6 +524,23 @@ class LearnerCohortsPanel(DataTablePanel):
         )
         annotated: QuerySet = queryset.annotate(joined_at=joined_at)
         return annotated
+
+    def get_actions(self) -> list[PanelAction]:
+        return [RemoveFromCohortAction()]
+
+    def get_context_data(self) -> dict[str, object]:
+        request = cast(OrganisationScopedRequest, self.request)
+        context = super().get_context_data()
+        # A grant on only some of the learner's cohorts shows Remove on
+        # those rows alone.
+        context["manageable_cohort_ids"] = set(
+            cohorts_visible_to(
+                request.user,
+                request.organisation,
+                capability=DELETE_COHORTMEMBERSHIP,
+            ).values_list("pk", flat=True)
+        )
+        return context
 
 
 @dataclass(frozen=True)
@@ -682,9 +721,17 @@ class CohortCourseRegistrationDataTable(DataTable):
 
 class CohortLearnersPanel(DataTablePanel):
     title = "Learners"
-    data_table = LearnerDataTable
+    data_table = CohortLearnerDataTable
     table_key = "learners"
     refresh_events = (COHORT_CHANGED,)
+
+    def get_actions(self) -> list[PanelAction]:
+        return [RemoveFromCohortAction()]
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context["cohort_is_active"] = cast(Cohort, self.instance).is_active
+        return context
 
     def get_queryset(self, request: HttpRequest) -> QuerySet:
         return (

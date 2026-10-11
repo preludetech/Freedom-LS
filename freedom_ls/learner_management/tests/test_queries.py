@@ -38,6 +38,7 @@ from freedom_ls.learner_management.models import (
     OrganisationMember,
 )
 from freedom_ls.learner_management.queries import (
+    DELETE_COHORTMEMBERSHIP,
     CohortCounts,
     LearnerStatus,
     ResolvedRegistration,
@@ -51,6 +52,7 @@ from freedom_ls.learner_management.queries import (
     cohort_learner_count,
     cohorts_visible_to,
     colleagues_of,
+    courses_losing_access,
     educators_of,
     holds_registration_for_any_expression,
     is_registered_for_course_expression,
@@ -62,6 +64,7 @@ from freedom_ls.learner_management.queries import (
     members_keeping_access,
     organisation_for_learner_course,
     organisations_accessible_to,
+    other_grants_for,
     peers_of,
     peers_through,
     registerable_courses_for,
@@ -1591,3 +1594,147 @@ def test_holds_registration_without_a_site_matches_the_same_learners_as_with_it(
 
     assert set(without_site) == {through_cohort, individual}
     assert set(with_site) == set(without_site)
+
+
+@pytest.mark.django_db
+def test_cohorts_visible_with_delete_membership_excludes_a_cohort_a_viewer_sees(
+    mock_site_context,
+) -> None:
+    organisation = OrganisationFactory()
+    viewed = _make_cohort(organisation=organisation)
+    managed = _make_cohort(organisation=organisation)
+    user = UserFactory()
+    assign_object_role(user, viewed, "cohort_viewer")
+    assign_object_role(user, managed, "cohort_admin")
+
+    manageable = cohorts_visible_to(
+        user, organisation, capability=DELETE_COHORTMEMBERSHIP
+    )
+
+    assert list(manageable) == [managed]
+
+
+def _member_of(cohort: Cohort) -> Learner:
+    learner = cast(Learner, LearnerFactory(organisation=cohort.organisation))
+    CohortMembershipFactory(cohort=cohort, learner=learner)
+    return learner
+
+
+@pytest.mark.django_db
+def test_other_grants_for_names_an_active_cohorts_registration(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    removing = _make_cohort()
+    other = _make_cohort(organisation=removing.organisation)
+    learner = _member_of(removing)
+    CohortMembershipFactory(cohort=other, learner=learner)
+    CohortCourseRegistrationFactory(cohort=other, course=course)
+
+    assert other_grants_for(learner, course) == [other]
+
+
+@pytest.mark.django_db
+def test_other_grants_for_skips_an_inactive_cohort(mock_site_context) -> None:
+    course = CourseFactory()
+    inactive = cast(Cohort, CohortFactory(is_active=False))
+    learner = _member_of(inactive)
+    CohortCourseRegistrationFactory(cohort=inactive, course=course)
+
+    assert other_grants_for(learner, course) == []
+
+
+@pytest.mark.django_db
+def test_other_grants_for_skips_the_excluded_cohort(mock_site_context) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    learner = _member_of(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+
+    assert other_grants_for(learner, course, excluding=cohort) == []
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_lists_a_course_only_the_removed_cohort_grants(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    learner = _member_of(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+
+    assert courses_losing_access(learner, cohort) == [course]
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_skips_a_course_an_individual_registration_holds(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    learner = _member_of(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    LearnerCourseRegistrationFactory(learner=learner, course=course)
+
+    assert courses_losing_access(learner, cohort) == []
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_skips_a_course_another_active_cohort_grants(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    other = _make_cohort(organisation=cohort.organisation)
+    learner = _member_of(cohort)
+    CohortMembershipFactory(cohort=other, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortCourseRegistrationFactory(cohort=other, course=course)
+
+    assert courses_losing_access(learner, cohort) == []
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_skips_a_course_the_added_cohort_grants(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    destination = _make_cohort(organisation=cohort.organisation)
+    learner = _member_of(cohort)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortCourseRegistrationFactory(cohort=destination, course=course)
+
+    assert courses_losing_access(learner, cohort, destination) == []
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_ignores_an_inactive_cohort_as_another_grant(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    inactive = cast(
+        Cohort, CohortFactory(organisation=cohort.organisation, is_active=False)
+    )
+    learner = _member_of(cohort)
+    CohortMembershipFactory(cohort=inactive, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortCourseRegistrationFactory(cohort=inactive, course=course)
+
+    assert courses_losing_access(learner, cohort) == [course]
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_ignores_an_inactive_registration_as_another_grant(
+    mock_site_context,
+) -> None:
+    course = CourseFactory()
+    cohort = _make_cohort()
+    other = _make_cohort(organisation=cohort.organisation)
+    learner = _member_of(cohort)
+    CohortMembershipFactory(cohort=other, learner=learner)
+    CohortCourseRegistrationFactory(cohort=cohort, course=course)
+    CohortCourseRegistrationFactory(cohort=other, course=course, is_active=False)
+
+    assert courses_losing_access(learner, cohort) == [course]

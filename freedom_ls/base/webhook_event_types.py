@@ -6,9 +6,11 @@ FLS_WEBHOOK_EVENT_TYPES = [
     ("cohort.course_unregistered", "Cohort unregistered from course"),
     ("learner.deactivated", "Learner deactivated"),
     ("learner.reactivated", "Learner reactivated"),
+    ("cohort.member_added", "Learner added to cohort"),
+    ("cohort.member_removed", "Learner removed from cohort"),
 ]
 
-WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str]] = {
+WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str | None]] = {
     "user.registered": {
         "user_id": "sample-uuid-1234",
         "user_email": "test@example.com",
@@ -56,5 +58,23 @@ WEBHOOK_EVENT_TYPE_SAMPLES: dict[str, dict[str, str]] = {
         "user_email": "test@example.com",
         "organisation_id": "sample-organisation-uuid",
         "learner_id": "sample-learner-uuid",
+    },
+    "cohort.member_added": {
+        "user_id": "sample-uuid-1234",
+        "user_email": "test@example.com",
+        "organisation_id": "sample-organisation-uuid",
+        "learner_id": "sample-learner-uuid",
+        "cohort_id": "sample-cohort-uuid",
+        "cohort_name": "Sample Cohort",
+        "move_id": None,
+    },
+    "cohort.member_removed": {
+        "user_id": "sample-uuid-1234",
+        "user_email": "test@example.com",
+        "organisation_id": "sample-organisation-uuid",
+        "learner_id": "sample-learner-uuid",
+        "cohort_id": "sample-cohort-uuid",
+        "cohort_name": "Sample Cohort",
+        "move_id": None,
     },
 }
