@@ -30,6 +30,9 @@ class TestBaseRoles:
         """site_admin has correct display_name."""
         assert BASE_ROLES["site_admin"].display_name == "Site admin"
 
+    def test_site_admin_can_change_users(self) -> None:
+        assert "freedom_ls_accounts.change_user" in BASE_ROLES["site_admin"].permissions
+
     def test_cohort_admin_display_name(self) -> None:
         """cohort_admin has correct display_name."""
         assert BASE_ROLES["cohort_admin"].display_name == "Cohort admin"

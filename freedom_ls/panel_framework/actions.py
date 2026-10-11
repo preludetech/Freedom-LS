@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections import Counter
 from collections.abc import Callable
+from typing import cast
 
 from django import forms
 from django.core.exceptions import NON_FIELD_ERRORS, ImproperlyConfigured
@@ -279,13 +280,22 @@ class EditAction(FormPanelAction):
         self._section = ctx.config
         return super().handle_submit(ctx)
 
+    def event_instance(self, form: forms.ModelForm) -> Model:
+        """The instance the success events and the page title are about.
+
+        The form's own instance by default. An action that edits an object
+        related to the page's instance returns the page's own instance here.
+        """
+        return cast(Model, form.instance)
+
     def form_valid(self, request: HttpRequest, form: forms.ModelForm) -> HttpResponse:
         form.save()
+        instance = self.event_instance(form)
         response = HttpResponse(status=204)
         response["HX-Trigger"] = build_hx_trigger(
-            self.get_success_events(form.instance),
+            self.get_success_events(instance),
             close_modal=True,
-            title=self._section.get_instance_label(form.instance),
+            title=self._section.get_instance_label(instance),
         )
         return response
 

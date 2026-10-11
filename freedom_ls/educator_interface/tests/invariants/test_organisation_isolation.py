@@ -235,6 +235,19 @@ class TestCrossOrganisationIsolation:
 
         assert response.status_code == 404
 
+    def test_edit_name_action_404s_for_a_learner_outside_organisation_a(
+        self, isolation
+    ):
+        response = isolation.client.get(
+            _interface_url(
+                isolation.organisation_a.slug,
+                f"learners/{isolation.learner_b.pk}/__actions/edit_name",
+            ),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert response.status_code == 404
+
     @pytest.mark.parametrize(
         "suffix",
         [

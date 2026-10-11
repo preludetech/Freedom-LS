@@ -27,6 +27,7 @@ from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
     EditCohortAction,
+    EditLearnerNameAction,
     RegisterCohortForCourseAction,
     UnregisterCohortFromCourseAction,
     cohort_not_empty_sentence,
@@ -601,6 +602,9 @@ class LearnerInstanceView(InstanceView):
 
     def get_subtitle(self) -> str:
         return cast(Learner, self.instance).user.email
+
+    def get_actions(self) -> list[PanelAction]:
+        return [EditLearnerNameAction(cast(Learner, self.instance))]
 
 
 def _interface_path(organisation: Organisation, path_string: str) -> str:

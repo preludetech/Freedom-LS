@@ -21,6 +21,7 @@ BASE_ROLES = SiteRolesConfig(
             permissions=frozenset(
                 {
                     # Django built-in permissions
+                    "freedom_ls_accounts.change_user",
                     "freedom_ls_organisations.view_organisation",
                     "freedom_ls_learner_management.view_cohort",
                     "freedom_ls_learner_management.view_learner",
