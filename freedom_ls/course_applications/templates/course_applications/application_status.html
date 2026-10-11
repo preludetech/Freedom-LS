@@ -34,15 +34,9 @@
             (get_available_user_state_transitions).
             {% endcomment %}
 
-            {% if application.is_email_verified %}
-                <c-button href="{% url 'learner_interface:dashboard' %}">
-                    Back to dashboard
-                </c-button>
-            {% else %}
-                <c-button href="{% url 'learner_interface:course_detail' course_slug=application.course.slug %}" variant="secondary">
-                    Back to the course
-                </c-button>
-            {% endif %}
+            <c-button href="{% url 'learner_interface:dashboard' %}">
+                Back to dashboard
+            </c-button>
         </div>
     </c-page>
 {% endblock content %}
