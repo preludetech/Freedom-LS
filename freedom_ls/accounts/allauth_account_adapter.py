@@ -18,6 +18,7 @@ from freedom_ls.accounts.email_utils import (
 )
 from freedom_ls.base.analytics_events import record_sign_up
 from freedom_ls.mail.encoding import set_8bit_encoding
+from freedom_ls.site_aware_models.config import config as site_config
 from freedom_ls.site_aware_models.models import (
     get_cached_site,
     site_display_name,
@@ -45,12 +46,31 @@ def announce_user_registered(request: HttpRequest, user: User) -> None:
 
 
 class AccountAdapter(DefaultAccountAdapter):
+    # get_adapter() builds a new adapter per call, so this lives for one send.
+    _current_site: Site | RequestSite | None = None
+
+    def _site_for(
+        self, request: HttpRequest | None, context: dict
+    ) -> Site | RequestSite:
+        """The tenant a message is sent for.
+
+        A request or a pinned FORCE_SITE_NAME names it. Mail sent with neither
+        (a setup email queued by staff) falls back to the recipient's own site.
+        With no user in context either, get_cached_site refuses as before.
+        """
+        user = context.get("user")
+        if request is None and not site_config.FORCE_SITE_NAME and user is not None:
+            site: Site = user.site
+            return site
+        return get_cached_site(request)
+
     def send_mail(self, template_prefix: str, email: str, context: dict) -> None:
         # Mirrors DefaultAccountAdapter.send_mail() but adds 8bit encoding and
         # injects email_logo_url / email_label for branded email templates.
         # If upgrading allauth, verify this stays in sync with the parent.
         request = allauth_context.request
-        current_site = get_cached_site(request)
+        current_site = self._site_for(request, context)
+        self._current_site = current_site
 
         # asdict(get_email_theme()) keys match the email-template contract
         # (color_primary, font_family, button_radius, ...). Both the branding
@@ -80,7 +100,11 @@ class AccountAdapter(DefaultAccountAdapter):
         """
         prefix: str | None = allauth_account_settings.EMAIL_SUBJECT_PREFIX
         if prefix is None:
-            name = site_display_name_for_request(allauth_context.request)
+            request = allauth_context.request
+            if request is None and self._current_site is not None:
+                name = site_display_name(self._current_site)
+            else:
+                name = site_display_name_for_request(request)
             prefix = f"[{name}] "
         return prefix + force_str(subject)
 

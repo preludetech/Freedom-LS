@@ -1,0 +1,17 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">An account was made for {{ user.email }} at {{ organisation_name }}.</p>
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">Set a password to sign in. The link expires in {{ expires_in_days }} day{{ expires_in_days|pluralize }}. If it has expired, request a new one from the "Forgot password" page.</p>
+{% endblock %}
+
+{% block cta %}
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+  <tr>
+    <td style="background-color: {{ color_primary }}; border-radius: {{ button_radius }};">
+      <a href="{{ setup_url }}" style="display: inline-block; padding: 12px 32px; color: {{ color_on_primary }}; text-decoration: none; font-weight: bold; font-size: 16px;">Set password</a>
+    </td>
+  </tr>
+</table>
+<p style="margin: 8px 0 0 0; font-size: 13px; color: {{ color_muted }};">Or copy this link: {{ setup_url }}</p>
+{% endblock %}
