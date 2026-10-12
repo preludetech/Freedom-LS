@@ -27,16 +27,31 @@ def get_application_for_course(
 
     Returns None immediately for anonymous users — no DB query is issued.
     Site isolation is automatic via SiteAwareManager. An account may hold two
-    applications for one course once a claim attaches a second, and the newer
-    one is the live one.
+    applications for one course once a claim attaches a second. A submitted
+    one is the live one ahead of any draft, because the draft can only be a
+    duplicate of a request already made; among equals the newer wins.
     """
     if not user.is_authenticated:
         return None
+    from django.db.models import Case, IntegerField, Q, Value, When
+
     from freedom_ls.course_applications.models import CourseApplication
 
+    # The same rule as CourseApplication.is_submitted: no sitting, or a
+    # completed one. A no-sitting application has a NULL completed_time through
+    # the join too, so a plain nulls-last ordering cannot express it.
+    submitted_first = Case(
+        When(
+            Q(form_progress__isnull=True)
+            | Q(form_progress__completed_time__isnull=False),
+            then=Value(0),
+        ),
+        default=Value(1),
+        output_field=IntegerField(),
+    )
     return (
         CourseApplication.objects.filter(user=user, course=course)
-        .order_by("-created_at")
+        .order_by(submitted_first, "-created_at")
         .first()
     )
 

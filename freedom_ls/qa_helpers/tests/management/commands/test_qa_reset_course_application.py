@@ -78,3 +78,41 @@ def test_a_reset_keeps_another_addresses_anonymous_application(qa_site):
     _reset("qa.applicant@example.com", course.slug)
 
     assert AnonymousApplicant.objects.filter(pk=other.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_reset_works_for_an_applicant_who_never_claimed(qa_site):
+    course = CourseFactory()
+    applicant = AnonymousApplicantFactory(
+        course=course, email="qa.applicant@example.com"
+    )
+    CourseApplicationFactory(
+        anonymous=True, course=course, anonymous_applicant=applicant
+    )
+
+    _reset("qa.applicant@example.com", course.slug)
+
+    assert not AnonymousApplicant.objects.filter(pk=applicant.pk).exists()
+
+
+@pytest.mark.django_db
+def test_a_reset_withdraws_every_application_the_account_holds(qa_site):
+    user = UserFactory(email="qa.applicant@example.com")
+    course = CourseFactory()
+    CourseApplicationFactory(user=user, course=course)
+    CourseApplicationFactory(anonymous=True, user=user, course=course)
+
+    _reset("qa.applicant@example.com", course.slug)
+
+    assert not CourseApplication.objects.filter(user=user, course=course).exists()
+
+
+@pytest.mark.django_db
+def test_a_reset_finds_the_account_whatever_the_case_of_the_address(qa_site):
+    user = UserFactory(email="QA.Applicant@example.com")
+    course = CourseFactory()
+    CourseApplicationFactory(user=user, course=course)
+
+    _reset("qa.applicant@example.com", course.slug)
+
+    assert not CourseApplication.objects.filter(user=user, course=course).exists()

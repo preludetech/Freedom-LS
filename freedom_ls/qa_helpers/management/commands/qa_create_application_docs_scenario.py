@@ -328,17 +328,15 @@ def command(site_name: str) -> None:
     LearnerCourseRegistration.objects.filter(
         learner__user=learner, course=gated_course, site=site
     ).delete()
-    application, _ = CourseApplication.objects.get_or_create(
+    # filter().first(), not get_or_create: an account may hold two applications
+    # to one course once it claims one started anonymously.
+    application: CourseApplication | None = CourseApplication.objects.filter(
         user=learner, course=gated_course, site=site
-    )
-    if (
-        CourseApplication.objects.filter(
-            user=learner, course=gated_course, site=site
-        ).count()
-        == 0
-    ):
-        application = CourseApplicationFactory(
-            user=learner, course=gated_course, site=site
+    ).first()
+    if application is None:
+        application = cast(
+            CourseApplication,
+            CourseApplicationFactory(user=learner, course=gated_course, site=site),
         )
 
     # Populate the dashboard "in progress" section with the free course.

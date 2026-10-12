@@ -69,13 +69,16 @@ def _get_course(site: Site, course_slug: str) -> Course:
     return course
 
 
-def _erase_anonymous_applicants(email: str, course: Course, dry_run: bool) -> None:
-    """Erase the unverified applicants for this address and course, on any site.
+def _erase_anonymous_applicants(
+    email: str, course: Course, site: Site, dry_run: bool
+) -> None:
+    """Erase the unverified applicants for this address and course on the site.
 
-    _base_manager: outside a request there is no ambient site to filter on.
+    _base_manager: outside a request there is no ambient site to filter on, so
+    the site is named here instead.
     """
     applicants = AnonymousApplicant._base_manager.filter(
-        email=email.strip().lower(), course=course
+        email=email, course=course, site=site, user__isnull=True
     )
     for applicant in applicants:
         if dry_run:
@@ -83,6 +86,51 @@ def _erase_anonymous_applicants(email: str, course: Course, dry_run: bool) -> No
             continue
         erase_anonymous_applicant(applicant)
         click.secho(f"Erased AnonymousApplicant {applicant.pk}", fg="green", bold=True)
+
+
+def _preview_application(application: CourseApplication) -> list[tuple[str, Storage]]:
+    """Print what withdrawing this application removes; return its upload paths.
+
+    The paths are read now because once the rows are gone nothing names them.
+    """
+    click.echo(f"  CourseApplication {application.pk} ({application.applicant_email})")
+    file_paths: list[tuple[str, Storage]] = []
+    form_progress_pk = application.form_progress_id
+    if form_progress_pk is None:
+        click.echo("  (this application names no FormProgress)")
+        return file_paths
+    form_progress = FormProgress._base_manager.select_related("form").get(
+        pk=form_progress_pk
+    )
+    answer_count = QuestionAnswer._base_manager.filter(
+        form_progress=form_progress
+    ).count()
+    answer_files = QuestionAnswerFile._base_manager.filter(
+        answer__form_progress=form_progress
+    )
+    for answer_file in answer_files:
+        if answer_file.file.name:
+            file_paths.append((answer_file.file.name, answer_file.file.storage))
+    click.echo(
+        f"  FormProgress {form_progress.pk} | {form_progress.form.title!r} | "
+        f"completed={form_progress.completed_time} | answers={answer_count}"
+    )
+    for name, storage in file_paths:
+        click.echo(f"    upload {name} (exists={storage.exists(name)})")
+    return file_paths
+
+
+def _withdraw_application(application: CourseApplication) -> None:
+    """Delete the application, then the sitting it named."""
+    form_progress_pk = application.form_progress_id
+    file_paths = _preview_application(application)
+    click.secho(f"Application deleted: {application.delete()}", fg="green", bold=True)
+    if form_progress_pk is not None:
+        # Re-fetched by pk now the RESTRICT no longer applies.
+        deleted = FormProgress._base_manager.get(pk=form_progress_pk).delete()
+        click.secho(f"Sitting deleted:     {deleted}", fg="green", bold=True)
+        for name, storage in file_paths:
+            click.echo(f"  upload {name} exists now: {storage.exists(name)}")
 
 
 @click.command()
@@ -102,76 +150,57 @@ def _erase_anonymous_applicants(email: str, course: Course, dry_run: bool) -> No
     help="Show what would be deleted without deleting it.",
 )
 def command(learner: str, course_slug: str, site_name: str, dry_run: bool) -> None:
-    """Delete a QA applicant's CourseApplication and the FormProgress it names."""
+    """Delete a QA applicant's CourseApplications and the FormProgress each names.
+
+    An applicant who never followed the claim link has no User; their anonymous
+    applications are erased all the same. An account may hold more than one
+    application to the course once it has claimed one, so every one goes.
+    """
     site = _get_site(site_name)
-    user: User | None = User.objects.filter(email=learner).first()
-    if user is None:
-        raise click.ClickException(f"No user with email '{learner}'.")
+    email = learner.strip().lower()
     course = _get_course(site, course_slug)
+    user: User | None = User._base_manager.filter(email__iexact=email).first()
 
     click.secho("\n--- Reset course application ---", fg="cyan", bold=True)
     click.secho(f"Site:      {site.name} ({site.domain}) [id {site.pk}]", fg="cyan")
-    click.secho(f"Applicant: {user.email} [pk {user.pk}]", fg="cyan", bold=True)
+    click.secho(
+        f"Applicant: {email}"
+        + (f" [User pk {user.pk}]" if user is not None else " (no account)"),
+        fg="cyan",
+        bold=True,
+    )
     click.secho(f"Course:    {course.slug}", fg="cyan")
 
-    application: CourseApplication | None = CourseApplication._base_manager.filter(
-        user=user, course=course
-    ).first()
-    if application is None:
-        click.secho("\nNo application to withdraw. Nothing to do.", fg="yellow")
-        _erase_anonymous_applicants(learner, course, dry_run)
-        return
-
-    form_progress_pk = application.form_progress_id
-    click.secho("\nWill remove:", fg="green", bold=True)
-    click.echo(f"  CourseApplication {application.pk} ({user.email} / {course.slug})")
-
-    file_paths: list[tuple[str, Storage]] = []
-    if form_progress_pk is None:
-        click.echo("  (this application names no FormProgress)")
-    else:
-        form_progress = FormProgress._base_manager.select_related("form").get(
-            pk=form_progress_pk
-        )
-        answer_count = QuestionAnswer._base_manager.filter(
-            form_progress=form_progress
-        ).count()
-        answer_files = QuestionAnswerFile._base_manager.filter(
-            answer__form_progress=form_progress
-        )
-        for answer_file in answer_files:
-            if answer_file.file.name:
-                file_paths.append((answer_file.file.name, answer_file.file.storage))
-        click.echo(
-            f"  FormProgress {form_progress.pk} | {form_progress.form.title!r} | "
-            f"completed={form_progress.completed_time} | answers={answer_count}"
-        )
-        for name, storage in file_paths:
-            click.echo(f"    upload {name} (exists={storage.exists(name)})")
+    applications = list(
+        CourseApplication._base_manager.filter(user=user, course=course)
+        if user is not None
+        else CourseApplication._base_manager.none()
+    )
+    if not applications:
+        click.secho("\nNo application to withdraw for this account.", fg="yellow")
 
     if dry_run:
-        _erase_anonymous_applicants(learner, course, dry_run)
+        click.secho("\nWould remove:", fg="green", bold=True)
+        for application in applications:
+            _preview_application(application)
+        _erase_anonymous_applicants(email, course, site, dry_run)
         click.secho("\n--dry-run: nothing was deleted.", fg="yellow", bold=True)
         return
 
-    click.secho(f"\nApplication deleted: {application.delete()}", fg="green", bold=True)
-    if form_progress_pk is not None:
-        # Re-fetched by pk now the RESTRICT no longer applies.
-        deleted = FormProgress._base_manager.get(pk=form_progress_pk).delete()
-        click.secho(f"Sitting deleted:     {deleted}", fg="green", bold=True)
-        for name, storage in file_paths:
-            click.echo(f"  upload {name} exists now: {storage.exists(name)}")
-
-    _erase_anonymous_applicants(learner, course, dry_run)
+    click.secho("\nRemoving:", fg="green", bold=True)
+    for application in applications:
+        _withdraw_application(application)
+    _erase_anonymous_applicants(email, course, site, dry_run)
 
     click.secho("\nVerifying:", fg="cyan", bold=True)
-    remaining = CourseApplication._base_manager.filter(user=user, course=course).count()
-    click.echo(f"  applications for this user+course: {remaining}")
-    if form_progress_pk is not None:
-        click.echo(
-            f"  sitting {form_progress_pk} still present: "
-            f"{FormProgress._base_manager.filter(pk=form_progress_pk).exists()}"
-        )
-    click.secho(
-        f"\n{user.email} can now apply to {course.slug} from scratch.", fg="green"
+    remaining = (
+        CourseApplication._base_manager.filter(user=user, course=course).count()
+        if user is not None
+        else 0
     )
+    click.echo(f"  applications for this account+course: {remaining}")
+    click.echo(
+        "  anonymous applicants left for this address+course: "
+        f"{AnonymousApplicant._base_manager.filter(email=email, course=course, site=site).count()}"
+    )
+    click.secho(f"\n{email} can now apply to {course.slug} from scratch.", fg="green")
