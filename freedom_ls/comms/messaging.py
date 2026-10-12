@@ -12,7 +12,17 @@ from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import Value
+from django.db.models import (
+    BooleanField,
+    Case,
+    F,
+    FilteredRelation,
+    Prefetch,
+    Q,
+    QuerySet,
+    Value,
+    When,
+)
 from django.db.models.functions import Coalesce, Greatest
 from django.utils.translation import gettext_lazy as _
 
@@ -71,6 +81,54 @@ def get_or_create_conversation(
             Conversation.objects.get(site=site, pair_key=pair_key_for(user_a, user_b)),
         )
     return cast("Conversation", conversation)
+
+
+def inbox_for(user: User) -> QuerySet[Conversation]:
+    """The user's conversations, newest activity first, ready to render as rows.
+
+    The read marker comes through a filtered relation on the user's own
+    participant row, so ``viewer_last_read_at`` and ``is_unread`` can never read
+    the other participant's marker. The other participant is prefetched into
+    ``other_participants`` so ``other_participant`` costs no query per row.
+    """
+    queryset = (
+        Conversation.objects.annotate(
+            mine=FilteredRelation("participants", condition=Q(participants__user=user))
+        )
+        .filter(mine__isnull=False)
+        .annotate(viewer_last_read_at=F("mine__last_read_at"))
+        .annotate(
+            # A Case, not the bare Q: comparing against a null marker yields SQL
+            # NULL, and the flag has to be a plain True or False.
+            is_unread=Case(
+                When(
+                    Q(last_message_at__gt=F("viewer_last_read_at"))
+                    | Q(
+                        viewer_last_read_at__isnull=True, last_message_at__isnull=False
+                    ),
+                    then=Value(True),
+                ),
+                default=Value(False),
+                output_field=BooleanField(),
+            )
+        )
+        .prefetch_related(
+            Prefetch(
+                "participants",
+                queryset=ConversationParticipant.objects.exclude(
+                    user=user
+                ).select_related("user"),
+                to_attr="other_participants",
+            )
+        )
+        .order_by(F("last_message_at").desc(nulls_last=True), "-created_at")
+    )
+    return cast("QuerySet[Conversation]", queryset)
+
+
+def unread_conversation_count(user: User) -> int:
+    """How many conversations hold a message the user has not been shown."""
+    return inbox_for(user).filter(Q(is_unread=True)).count()
 
 
 def other_participant(conversation: Conversation, viewer: User) -> User | None:

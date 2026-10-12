@@ -7,16 +7,18 @@ import uuid
 import pytest
 from lxml import html
 
+from django.conf import settings as django_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.messaging import inbox_for, mark_conversation_read
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
     MessagingPolicy,
     MessagingRefusal,
 )
-from freedom_ls.comms.models import Message
+from freedom_ls.comms.models import ConversationParticipant, Message
 from freedom_ls.site_aware_models.models import _thread_locals
 
 
@@ -364,3 +366,190 @@ class TestSendRefused:
         )
 
         assert Message.objects.count() == 0
+
+
+def inbox_url() -> str:
+    return reverse("conversations:inbox")
+
+
+def last_read_at(conversation, user):
+    return ConversationParticipant.objects.get(
+        conversation=conversation, user=user
+    ).last_read_at
+
+
+@pytest.mark.django_db
+class TestInbox:
+    def test_it_lists_the_users_conversations_newest_first(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        older_other = UserFactory(first_name="Older", last_name="Person")
+        newer_other = UserFactory(first_name="Newer", last_name="Person")
+        MessageFactory(conversation=ConversationFactory(between=(user, older_other)))
+        MessageFactory(conversation=ConversationFactory(between=(user, newer_other)))
+
+        content = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert content.index("Newer Person") < content.index("Older Person")
+
+    def test_it_omits_other_peoples_conversations(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, a, b = UserFactory(), UserFactory(), UserFactory()
+        MessageFactory(
+            conversation=ConversationFactory(between=(a, b)), body="Not for you"
+        )
+
+        response = logged_in_client(user).get(inbox_url())
+
+        assert "No conversations yet." in response.content.decode()
+
+    def test_an_unread_row_carries_the_marker_and_a_read_row_does_not(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        message = MessageFactory(conversation=conversation, sender=other)
+
+        unread = logged_in_client(user).get(inbox_url()).content.decode()
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=message.created_at
+        )
+        read = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert "Unread" in unread
+        assert "Unread" not in read
+
+    def test_rows_link_to_their_threads(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        content = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert thread_url(conversation) in content
+
+    def test_a_deleted_participant_shows_as_deleted_user(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        MessageFactory(conversation=ConversationFactory(between=(user, other)))
+        other.delete()
+
+        content = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert "Deleted user" in content
+
+    def test_it_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        assert response.status_code == 404
+
+    def test_an_anonymous_request_redirects_to_login_with_next_set_to_the_inbox(
+        self, client, pair
+    ) -> None:
+        _, _, conversation = pair
+
+        response = client.get(thread_url(conversation))
+
+        assert response.status_code == 302
+        assert response["Location"] == f"{django_settings.LOGIN_URL}?next={inbox_url()}"
+
+    def test_the_fragment_has_no_page_wrapper(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        response = logged_in_client(user).get(inbox_url(), **HTMX)
+
+        content = response.content.decode()
+        assert 'id="conversation-list"' in content
+        assert "<html" not in content
+
+    def test_a_history_restore_gets_the_full_page(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(
+            inbox_url(), **HTMX, HTTP_HX_HISTORY_RESTORE_REQUEST="true"
+        )
+
+        assert "<html" in response.content.decode()
+
+    def test_the_query_count_does_not_grow_with_the_rows(
+        self, mock_site_context, logged_in_client, django_assert_max_num_queries
+    ) -> None:
+        user = UserFactory()
+        for _ in range(8):
+            MessageFactory(
+                conversation=ConversationFactory(between=(user, UserFactory()))
+            )
+        client = logged_in_client(user)
+        client.get(inbox_url())
+
+        with django_assert_max_num_queries(15) as small:
+            client.get(inbox_url())
+        for _ in range(8):
+            MessageFactory(
+                conversation=ConversationFactory(between=(user, UserFactory()))
+            )
+        with django_assert_max_num_queries(len(small.captured_queries)):
+            client.get(inbox_url())
+
+
+@pytest.mark.django_db
+class TestThreadMarksRead:
+    def test_opening_a_thread_marks_the_newest_shown_message_read(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+        newest = MessageFactory(conversation=conversation, sender=other)
+
+        logged_in_client(user).get(thread_url(conversation))
+
+        assert last_read_at(conversation, user) == newest.created_at
+
+    def test_an_empty_thread_leaves_the_marker_alone(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        logged_in_client(user).get(thread_url(conversation))
+
+        assert last_read_at(conversation, user) is None
+
+    def test_a_message_landing_after_the_page_loaded_stays_unread(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+        logged_in_client(user).get(thread_url(conversation))
+
+        MessageFactory(conversation=conversation, sender=other)
+
+        assert inbox_for(user).get(pk=conversation.pk).is_unread is True
+
+    def test_the_thread_lists_the_inbox_and_marks_the_open_row(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        content = logged_in_client(user).get(thread_url(conversation)).content.decode()
+
+        assert 'id="conversation-list"' in content
+        assert 'aria-current="page"' in content
+
+    def test_the_thread_has_a_back_link_to_the_inbox(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        content = logged_in_client(user).get(thread_url(conversation)).content.decode()
+
+        assert f'href="{inbox_url()}"' in content
+        assert "Back to messages" in content

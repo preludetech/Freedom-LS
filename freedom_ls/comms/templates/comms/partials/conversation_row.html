@@ -1,0 +1,29 @@
+{% load comms_tags %}
+{% comment %}
+One inbox row: a single link to the thread, so the whole row is the target.
+The open thread's row carries aria-current.
+{% endcomment %}
+<li>
+    <a href="{% url 'conversations:thread' conversation.pk %}"
+       {% if conversation.pk == current_pk %}aria-current="page"{% endif %}
+       class="flex min-h-12 items-center gap-3 px-4 py-3 text-on-surface no-underline hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-focus-ring)] aria-[current]:bg-surface-2 aria-[current]:shadow-[inset_2px_0_0_var(--color-primary)] {% if conversation.is_unread %}bg-primary/5{% endif %}">
+        {% include "comms/partials/participant_avatar.html" %}
+        <span class="min-w-0 flex-1 truncate {% if conversation.is_unread %}font-semibold{% endif %}">
+            {% if conversation.is_unread %}<span class="sr-only">Unread. </span>{% endif %}
+            {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
+        </span>
+        <span class="flex shrink-0 flex-col items-end gap-1 text-sm text-muted">
+            {% if conversation.last_message_at %}
+                <time datetime="{{ conversation.last_message_at|date:'c' }}"
+                      title="{{ conversation.last_message_at }}">{{ conversation.last_message_at|relative_time }}</time>
+            {% endif %}
+            {% if conversation.is_unread %}
+                <span class="pointer-events-none inline-flex items-center gap-1 text-xs font-semibold text-primary"
+                      aria-hidden="true">
+                    <span class="size-2 rounded-full bg-primary"></span>
+                    Unread
+                </span>
+            {% endif %}
+        </span>
+    </a>
+</li>

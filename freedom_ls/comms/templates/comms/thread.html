@@ -3,7 +3,15 @@
 {% block head_title %}Messages{% endblock head_title %}
 
 {% block content %}
-    <c-page width="narrow" class="py-0 lg:py-0">
-        {% include "comms/partials/thread.html" %}
+    <c-page width="wide" class="py-0 lg:py-0">
+        <div class="flex border-x border-border">
+            <aside aria-label="Conversations"
+                   class="hidden w-80 shrink-0 overflow-y-auto border-r border-border bg-surface md:block">
+                {% include "comms/partials/conversation_list.html" %}
+            </aside>
+            <div class="min-w-0 flex-1">
+                {% include "comms/partials/thread.html" %}
+            </div>
+        </div>
     </c-page>
 {% endblock content %}

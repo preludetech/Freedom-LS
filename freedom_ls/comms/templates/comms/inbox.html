@@ -1,0 +1,12 @@
+{% extends "_base.html" %}
+
+{% block head_title %}Messages{% endblock head_title %}
+
+{% block content %}
+    <c-page width="narrow">
+        <h1>Messages</h1>
+        <div class="mt-6">
+            {% include "comms/partials/conversation_list.html" %}
+        </div>
+    </c-page>
+{% endblock content %}
