@@ -30,15 +30,13 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 - `/sdd:roadmap <dir>` cuts an idea that is too big for one SDD run into ordered sibling specs, each with a decision-complete `idea.md` under `spec_dd/1. next/`, and adds the effort to the roadmap with its build order, its dependency graph and the decisions every child relies on. The cut goes by user-visible outcome, never by line count.
 - "Ready to start" lists the waiting specs whose dependencies are done and that can go straight to `/sdd:start`. "Needs work on main first" lists the ones that can't yet, because something has to happen on main before a worktree branches off, such as a cut. The row's Notes cell says what, starting `Before starting:`.
 - `/sdd:start` warns when a spec has a precursor or its dependencies are not done, flags its row `in progress` and takes it off both start lists. `/sdd:finish_worktree` removes the row, lands the result on `main` and adds any spec it unblocks to the right start list; when the last spec of a cut effort finishes, the effort's section is archived into the parent directory and the parent moves to done.
-- `/sdd:improve_idea` runs on main without starting the spec, so it leaves the roadmap alone.
 
 The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_format.md`.
 
 ## Step 1: Capture the idea
 
 1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
-2. Optionally run `/improve_idea` to research the idea and suggest improvements.
-3. If the work has a design drawn in Claude Design, run `/sdd:register_design [dir] <handoff prompt or claude-design-url>`. On a feature branch it registers the design on that branch's own spec directory and commits it to that branch; on `main` it takes the spec (or a cut effort's parent) you name. It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
+2. If the work has a design drawn in Claude Design, run `/sdd:register_design [dir] <handoff prompt or claude-design-url>`. On a feature branch it registers the design on that branch's own spec directory and commits it to that branch; on `main` it takes the spec (or a cut effort's parent) you name. It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
 
 ## Step 2: Write the spec
 

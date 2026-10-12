@@ -16,7 +16,7 @@ Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 ## What's inside (counted from disk)
 
 ### Commands (15 files)
-Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`, `improve_idea`,
+Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`,
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `next`, `commit_quickly`,
 `make_pr_quickly`, `finish_worktree`, `address_pr_review`.
 

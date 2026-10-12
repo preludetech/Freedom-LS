@@ -231,8 +231,7 @@ Print it. `AskUserQuestion`: accept, adjust (loop back with the changes), or sto
 
 One `idea.md` per child at `spec_dd/1. next/<dir>-N-<slug>/`, to the child header and section
 list in the format file, written per the writing standard and the rules in
-`${CLAUDE_PLUGIN_ROOT}/commands/improve_idea.md` ("An idea is not a specification", "Never write
-these in an idea"). Each is decision-complete: everything settled in C3 that the child needs is
+`${CLAUDE_PLUGIN_ROOT}/resources/idea_standard.md`. Each is decision-complete: everything settled in C3 that the child needs is
 stated as fact under "What is settled", and nothing claimed by a sibling is claimed again.
 
 With more than three children, fan out: one `sdd:sdd-worker` per child writing

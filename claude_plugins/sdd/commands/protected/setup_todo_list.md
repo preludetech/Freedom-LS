@@ -32,7 +32,6 @@ Most of the time an idea (and possibly more) is already in the directory. List t
 | Artifact found in the spec directory | Tick this item |
 |---|---|
 | A file matching `*idea*.md` (e.g. `0. idea.md`, `0.idea.md`, `idea.md`) | "Write the idea file in this directory" |
-| Any file matching `research*.md` (e.g. `research_foo.md`, `research-bar.md`) | "Optionally run `/sdd:improve_idea`…" |
 | `1. spec.md` | "Run `/sdd:spec_from_idea`…" |
 | `2. plan.md` | "Run `/sdd:plan_from_spec`…" |
 | `3. frontend_qa.md` | (also covered by the plan step — `/sdd:plan_from_spec` produces both) |
@@ -61,7 +60,6 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 ## 1. Idea
 
 - [ ] (user) Write the idea file in this directory
-- [ ] (cmd) Optionally run `/sdd:improve_idea` to research and refine the idea
 - [ ] (user) Review the refined idea and edit as needed
 
 ## 2. Spec

@@ -39,8 +39,6 @@ It is the *spec* roadmap. `docs/product/roadmap.md` is the product roadmap and i
    A person writes it by hand for any other job, such as a spec that has to be merged first or a
    draft that has to be split. A `next` row whose dependencies are all done goes under "Needs
    work on main first" if it has a precursor, and under "Ready to start" if it does not.
-   Improving an idea (`/sdd:improve_idea`) happens on main without starting the spec, so it
-   changes neither list.
 8. **The two lists partition the startable rows.** "Ready to start" lists every `next` row with
    all dependencies done and no precursor. "Needs work on main first" lists every `next` row with
    all dependencies done and a precursor. A row is never in both, and an `in progress` row is in
