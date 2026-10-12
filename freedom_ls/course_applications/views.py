@@ -472,6 +472,21 @@ def application_form_page(
     )
 
 
+def _live_application_instead_of(app: CourseApplication) -> CourseApplication | None:
+    """The submitted application that makes this draft a duplicate, if any.
+
+    A draft started while an anonymous application to the same course waited
+    to be claimed is only a repeat of a request already made, so submitting
+    it would file the same request twice.
+    """
+    if app.user is None:
+        return None
+    live = get_application_for_course(user=app.user, course=app.course)
+    if live is None or live.pk == app.pk or not live.is_submitted:
+        return None
+    return live
+
+
 def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Everything the applicant has said, one card per page, and the one place
     they submit from.
@@ -484,6 +499,9 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     required_answers_error = ""
 
     if request.method == "POST" and not submitted:
+        live = _live_application_instead_of(app)
+        if live is not None:
+            return redirect("course_applications:status", pk=live.pk)
         unanswered = unanswered_required_in_form(form_progress)
         if not unanswered:
             form_progress.complete()

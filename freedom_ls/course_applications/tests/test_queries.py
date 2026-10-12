@@ -112,3 +112,33 @@ class TestGetActiveApplications:
             result = list(get_active_applications(AnonymousUser()))
 
         assert result == []
+
+    def test_lists_a_course_once_when_a_draft_and_a_claimed_submission_coexist(
+        self, mock_site_context
+    ):
+        """The dashboard must not call one course pending and incomplete at once."""
+        from freedom_ls.course_applications.queries import get_active_applications
+        from freedom_ls.form_engine.factories import FormProgressFactory
+
+        user = UserFactory()
+        course = CourseFactory()
+        submitted = CourseApplicationFactory(
+            anonymous=True,
+            user=user,
+            course=course,
+            form_progress=FormProgressFactory(user=user, completed_time=timezone.now()),
+        )
+        CourseApplicationFactory(
+            user=user, course=course, form_progress=FormProgressFactory(user=user)
+        )
+
+        assert list(get_active_applications(user)) == [submitted]
+
+    def test_lists_every_course_the_user_applied_to(self, mock_site_context):
+        from freedom_ls.course_applications.queries import get_active_applications
+
+        user = UserFactory()
+        first = CourseApplicationFactory(user=user)
+        second = CourseApplicationFactory(user=user)
+
+        assert set(get_active_applications(user)) == {first, second}
