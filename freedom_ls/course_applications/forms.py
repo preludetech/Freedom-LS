@@ -57,6 +57,11 @@ class ApplicantDetailsForm(forms.ModelForm):
     def clean_email(self) -> str:
         return normalise_email(self.cleaned_data["email"])
 
+    @property
+    def tripped_honeypot(self) -> bool:
+        """Whether the submission filled the field only a bot can see."""
+        return bool(self.cleaned_data.get("fax_number"))
+
     def clean(self) -> dict[str, object]:
         cleaned_data: dict[str, object] = super().clean() or {}
         reject_honeypot(self, self.request, HONEYPOT_APPLICATION_MESSAGE)

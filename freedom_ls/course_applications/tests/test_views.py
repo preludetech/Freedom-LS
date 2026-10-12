@@ -96,7 +96,7 @@ class TestApplyViewGet:
         self, client, mock_site_context
     ):
         """GET apply without login sends a visitor to the details step."""
-        course = CourseFactory()
+        course = CourseFactory(access_config={"access_type": "application_gated"})
         url = reverse("course_applications:apply", kwargs={"course_slug": course.slug})
         response = client.get(url)
 
@@ -1308,7 +1308,7 @@ def test_deferred_login_gated_course_lands_on_apply_page(
 @pytest.mark.django_db
 def test_anonymous_apply_get_creates_no_application(mock_site_context, client):
     """Opening the confirmation page after the details step submits nothing."""
-    course = CourseFactory()
+    course = CourseFactory(access_config={"access_type": "application_gated"})
     _post_details(client, course)
 
     response = client.get(_apply_url(course))
@@ -1490,7 +1490,10 @@ def gated_course(mock_site_context):
 def test_anonymous_apply_on_coming_soon_course_redirects_to_course_detail(
     mock_site_context, client
 ):
-    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    course = CourseFactory(
+        visibility=CourseVisibility.COMING_SOON,
+        access_config={"access_type": "application_gated"},
+    )
 
     response = client.get(_apply_url(course))
 
@@ -1514,7 +1517,10 @@ def test_details_step_get_renders_the_three_fields(client, gated_course):
 def test_details_step_on_coming_soon_course_redirects_to_course_detail(
     mock_site_context, client
 ):
-    course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+    course = CourseFactory(
+        visibility=CourseVisibility.COMING_SOON,
+        access_config={"access_type": "application_gated"},
+    )
 
     response = client.get(_details_url(course))
 
@@ -1744,10 +1750,10 @@ def test_details_step_post_without_the_consent_is_422(
 DETAILS_RATE_LIMITS = {"application_details": "5/m/ip,5/h/key"}
 
 
-def _post_details_from_distinct_clients(client, course, count: int, **overrides: str):
-    """Post the details step `count` times, each from its own IP address."""
+def _post_details_from_distinct_clients(course, count: int, **overrides: str):
+    """Post the details step `count` times, each from a fresh browser and IP."""
     return [
-        client.post(
+        Client().post(
             _details_url(course),
             _details_data(**overrides),
             REMOTE_ADDR=f"10.0.0.{index + 1}",
@@ -1756,24 +1762,26 @@ def _post_details_from_distinct_clients(client, course, count: int, **overrides:
     ]
 
 
-def _post_details_from_one_client(client, course, count: int, **overrides: str):
+def _post_details_from_one_ip(course, count: int):
+    """Post the details step `count` times from one IP, each a fresh browser
+    applying under its own address."""
     return [
-        client.post(
+        Client().post(
             _details_url(course),
-            _details_data(**overrides),
+            _details_data(email=f"applicant{index}@example.com"),
             REMOTE_ADDR="10.9.9.9",
         )
-        for _ in range(count)
+        for index in range(count)
     ]
 
 
 @pytest.mark.django_db
-def test_details_step_sixth_post_from_one_ip_is_rate_limited(client, gated_course):
+def test_details_step_sixth_post_from_one_ip_is_rate_limited(gated_course):
     with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
         cache.clear()
-        _post_details_from_one_client(client, gated_course, 5)
+        _post_details_from_one_ip(gated_course, 5)
 
-        response = client.post(
+        response = Client().post(
             _details_url(gated_course),
             _details_data(email="other@example.com"),
             REMOTE_ADDR="10.9.9.9",
@@ -1784,13 +1792,13 @@ def test_details_step_sixth_post_from_one_ip_is_rate_limited(client, gated_cours
 
 @pytest.mark.django_db
 def test_details_step_sixth_post_for_one_address_from_a_new_ip_is_rate_limited(
-    client, gated_course
+    gated_course,
 ):
     with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
         cache.clear()
-        _post_details_from_distinct_clients(client, gated_course, 5)
+        _post_details_from_distinct_clients(gated_course, 5)
 
-        response = client.post(
+        response = Client().post(
             _details_url(gated_course), _details_data(), REMOTE_ADDR="10.1.1.1"
         )
 
@@ -1799,19 +1807,184 @@ def test_details_step_sixth_post_for_one_address_from_a_new_ip_is_rate_limited(
 
 @pytest.mark.django_db
 def test_details_step_post_for_a_different_address_from_a_new_ip_is_not_limited(
-    client, gated_course
+    gated_course,
 ):
     with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
         cache.clear()
-        _post_details_from_distinct_clients(client, gated_course, 5)
+        _post_details_from_distinct_clients(gated_course, 5)
 
-        response = client.post(
+        response = Client().post(
             _details_url(gated_course),
             _details_data(email="grace@example.com"),
             REMOTE_ADDR="10.1.1.1",
         )
 
     assert response.status_code != 429
+
+
+@pytest.mark.django_db
+def test_details_step_invalid_posts_do_not_spend_the_address_limit(gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details_from_distinct_clients(gated_course, 5, first_name="")
+
+        response = Client().post(
+            _details_url(gated_course), _details_data(), REMOTE_ADDR="10.1.1.1"
+        )
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_details_step_honeypot_trips_spend_the_address_limit(gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details_from_distinct_clients(gated_course, 5, fax_number="bot")
+
+        response = Client().post(
+            _details_url(gated_course), _details_data(), REMOTE_ADDR="10.1.1.1"
+        )
+
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_details_step_name_edits_do_not_spend_the_address_limit(client, gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details(client, gated_course)
+        for name in ("Grace", "Ada", "Grace", "Ada", "Grace"):
+            _post_details(client, gated_course, first_name=name)
+
+        response = _post_details(client, gated_course, first_name="Mary")
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_details_step_changing_the_address_spends_the_new_addresss_limit(
+    client, gated_course
+):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details(client, gated_course)
+        _post_details_from_distinct_clients(gated_course, 4, email="new@example.com")
+        _post_details(client, gated_course, email="new@example.com")
+
+        response = Client().post(
+            _details_url(gated_course),
+            _details_data(email="new@example.com"),
+            REMOTE_ADDR="10.1.1.1",
+        )
+
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_details_step_limited_address_is_refused_before_anything_is_written(
+    gated_course,
+):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details_from_distinct_clients(gated_course, 5)
+        Client().post(
+            _details_url(gated_course), _details_data(), REMOTE_ADDR="10.1.1.1"
+        )
+
+    assert AnonymousApplicant.objects.count() == 5
+
+
+@pytest.mark.django_db
+def test_two_overlapping_first_posts_from_one_browser_make_one_applicant(
+    gated_course,
+):
+    cache.clear()
+    Client().post(_details_url(gated_course), _details_data(), REMOTE_ADDR="10.2.2.2")
+
+    Client().post(_details_url(gated_course), _details_data(), REMOTE_ADDR="10.2.2.2")
+
+    assert AnonymousApplicant.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_the_second_of_two_overlapping_first_posts_is_sent_back_to_the_step(
+    gated_course,
+):
+    cache.clear()
+    Client().post(_details_url(gated_course), _details_data(), REMOTE_ADDR="10.2.2.2")
+
+    response = Client().post(
+        _details_url(gated_course), _details_data(), REMOTE_ADDR="10.2.2.2"
+    )
+
+    assert response["Location"] == _details_url(gated_course)
+
+
+@pytest.mark.django_db
+def test_the_same_address_from_two_networks_makes_two_applicants(gated_course):
+    cache.clear()
+    Client().post(_details_url(gated_course), _details_data(), REMOTE_ADDR="10.2.2.2")
+
+    Client().post(_details_url(gated_course), _details_data(), REMOTE_ADDR="10.3.3.3")
+
+    assert AnonymousApplicant.objects.count() == 2
+
+
+# ---------------------------------------------------------------------------
+# Only application-gated courses take anonymous applications
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def free_course(mock_site_context):
+    return CourseFactory(access_config={"access_type": "free"})
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_on_a_free_course_goes_to_the_auth_page(client, free_course):
+    response = client.get(_apply_url(free_course))
+
+    location = response["Location"]
+    assert (location.split("?")[0], _next_param(location)) == (
+        reverse("account_signup"),
+        _apply_url(free_course),
+    )
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_post_on_a_free_course_creates_nothing(client, free_course):
+    client.post(_apply_url(free_course))
+
+    assert CourseApplication.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_anonymous_details_step_on_a_free_course_goes_to_the_auth_page(
+    client, free_course
+):
+    response = client.get(_details_url(free_course))
+
+    location = response["Location"]
+    assert (location.split("?")[0], _next_param(location)) == (
+        reverse("account_signup"),
+        _details_url(free_course),
+    )
+
+
+@pytest.mark.django_db
+def test_anonymous_details_post_on_a_free_course_creates_no_applicant(
+    client, free_course
+):
+    _post_details(client, free_course)
+
+    assert AnonymousApplicant.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_anonymous_details_step_on_a_gated_course_renders(client, gated_course):
+    response = client.get(_details_url(gated_course))
+
+    assert response.status_code == 200
 
 
 # ---------------------------------------------------------------------------

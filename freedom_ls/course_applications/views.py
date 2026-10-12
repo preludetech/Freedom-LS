@@ -7,10 +7,11 @@ from urllib.parse import urlencode
 from uuid import UUID
 
 from allauth.account.adapter import get_adapter
-from allauth.core.ratelimit import consume_or_429
+from allauth.core import ratelimit
 
 from django.contrib import messages
 from django.contrib.sites.models import Site
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
@@ -18,7 +19,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from freedom_ls.accounts.models import User
+from freedom_ls.accounts.utils import (
+    acquisition_auth_url,
+    get_client_ip,
+    redirect_to_auth,
+)
 from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.course_access import get_course_access_backend
 from freedom_ls.course_access.analytics_events import record_application_submitted
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.anonymous_session import (
@@ -29,6 +36,7 @@ from freedom_ls.course_applications.anonymous_session import (
     remember_anonymous_applicant,
 )
 from freedom_ls.course_applications.applicant_email import email_rate_limit_key
+from freedom_ls.course_applications.backends import APPLICATION_GATED
 from freedom_ls.course_applications.claims import (
     ClaimOwner,
     attach_claimed_application,
@@ -175,7 +183,27 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     )
 
 
+def _anonymous_applications_allowed(course: Course) -> bool:
+    """Only an application-gated course takes applications from a visitor.
+
+    Any other course is entered by signing up, so a visitor applying to one
+    is sent to the auth page the way every acquisition call to action does.
+    """
+    backend = get_course_access_backend()
+    return backend.get_access_type(course=course) == APPLICATION_GATED
+
+
+def _redirect_visitor_to_auth(request: HttpRequest) -> HttpResponse:
+    return redirect_to_auth(
+        request,
+        next_url=request.get_full_path(),
+        auth_url=acquisition_auth_url(request),
+    )
+
+
 def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
+    if not _anonymous_applications_allowed(course):
+        return _redirect_visitor_to_auth(request)
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     applicant = anonymous_applicant_for_course(request, course)
@@ -211,12 +239,31 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
     )
 
 
+DETAILS_RATE_LIMIT_ACTION = "application_details"
+# How long two overlapping first POSTs from one visitor count as one.
+DETAILS_IN_FLIGHT_SECONDS = 10
+
+
+def _details_in_flight_key(request: HttpRequest, course: Course, email: str) -> str:
+    # The address and the IP together: a double click comes from one browser,
+    # and two people sharing an address on different networks are not one.
+    return f"course_applications:details:{course.pk}:{email}:{get_client_ip(request)}"
+
+
 def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
-    """The step before the form that asks an anonymous visitor who they are."""
+    """The step before the form that asks an anonymous visitor who they are.
+
+    The rate limit guards the address that will receive a claim email, so it
+    is spent when an applicant is created or re-addressed, and on a honeypot
+    trip, never on a typo or a name change. An exhausted bucket is still
+    refused before validation, so nothing is written for a limited address.
+    """
     if request.user.is_authenticated:
         return redirect("course_applications:apply", course_slug=course_slug)
     course = get_object_or_404(Course, slug=course_slug)
     raise_404_if_hidden_unregistered(request.user, course)
+    if not _anonymous_applications_allowed(course):
+        return _redirect_visitor_to_auth(request)
     if course.visibility == CourseVisibility.COMING_SOON:
         return redirect("learner_interface:course_detail", course_slug=course.slug)
     applicant = anonymous_applicant_for_course(request, course)
@@ -230,15 +277,34 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         if not isinstance(site, Site):
             # A host that resolves no Site could not save the applicant either.
             raise Http404
-        limited: HttpResponse | None = consume_or_429(
-            request,
-            action="application_details",
-            key=email_rate_limit_key(site, request.POST.get("email", "")),
-        )
-        if limited is not None:
-            return limited
+        key = email_rate_limit_key(site, request.POST.get("email", ""))
+        if not ratelimit.consume(
+            request, action=DETAILS_RATE_LIMIT_ACTION, key=key, dry_run=True
+        ):
+            refused: HttpResponse = ratelimit.respond_429(request)
+            return refused
+        # Read before validation: a ModelForm writes its cleaned data onto the
+        # instance while validating, so afterwards the two always agree.
+        previous_email = applicant.email if applicant is not None else None
         form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
         if form.is_valid():
+            email: str = form.cleaned_data["email"]
+            if email != previous_email:
+                limited: HttpResponse | None = ratelimit.consume_or_429(
+                    request, action=DETAILS_RATE_LIMIT_ACTION, key=key
+                )
+                if limited is not None:
+                    return limited
+            if applicant is None and not cache.add(
+                _details_in_flight_key(request, course, email),
+                1,
+                DETAILS_IN_FLIGHT_SECONDS,
+            ):
+                # A double-clicked Next: the first POST is making the applicant,
+                # and the GET this sends will pick that one up from the session.
+                return redirect(
+                    "course_applications:applicant_details", course_slug=course.slug
+                )
             applicant = form.save()
             remember_anonymous_applicant(request, applicant)
             if course.application_form is None:
@@ -248,6 +314,8 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                 allow_anonymous_form_progress(request, app.form_progress)
                 return redirect(_resume_url(app, app.form_progress))
             return redirect("course_applications:status", pk=app.pk)
+        if form.tripped_honeypot:
+            ratelimit.consume(request, action=DETAILS_RATE_LIMIT_ACTION, key=key)
         status = 422
     else:
         form = ApplicantDetailsForm(request=request, instance=instance)

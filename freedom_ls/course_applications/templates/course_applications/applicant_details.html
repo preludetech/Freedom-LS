@@ -16,7 +16,8 @@
                 </div>
             {% endif %}
 
-            <form method="post" class="space-y-6">
+            {# One submission at a time: a double-clicked Next must not make two applicants. #}
+            <form method="post" class="space-y-6" x-data="{ submitting: false }" x-on:submit="submitting = true">
                 {% csrf_token %}
                 {% for field in form.visible_fields %}
                     {% if field.field.widget.input_type != "checkbox" %}
@@ -63,7 +64,7 @@
                     <c-button href="{% url 'learner_interface:course_detail' course_slug=course.slug %}" variant="secondary" icon_left="previous" class="w-full sm:w-auto">
                         Previous
                     </c-button>
-                    <c-button type="submit" icon_right="next" class="w-full sm:w-auto">
+                    <c-button type="submit" icon_right="next" class="w-full sm:w-auto" x-bind:disabled="submitting">
                         Next
                     </c-button>
                 </div>
