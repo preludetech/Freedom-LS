@@ -53,8 +53,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [x] (user) Decide whether the claim confirm page may say something different when an account already exists for the address (which tells the link holder that account exists) or should use neutral wording for everyone, then fix the 'You will choose a password on the next page' sentence in claim.html to match
 - [x] (user + cmd) Fix QA bug: claim confirm page promises a password step that existing accounts never see (TDD — failing test first, then fix)
-- [ ] (user) Decide whether the status page an anonymous applicant sees right after submitting should link back to the course instead of showing Back to dashboard (the visitor has no account or dashboard yet; the spec is silent, the QA plan expects a button back to the course and no Back to dashboard, the template always renders Back to dashboard), then change application_status.html to match
-- [ ] (user + cmd) Fix QA bug: unverified status page offers Back to dashboard to an anonymous applicant (TDD — failing test first, then fix)
+- [x] (user) Decide whether the status page an anonymous applicant sees right after submitting should link back to the course instead of showing Back to dashboard (the visitor has no account or dashboard yet; the spec is silent, the QA plan expects a button back to the course and no Back to dashboard, the template always renders Back to dashboard), then change application_status.html to match
+- [x] (user + cmd) Fix QA bug: unverified status page offers Back to dashboard to an anonymous applicant (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 
