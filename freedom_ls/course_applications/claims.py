@@ -41,25 +41,23 @@ class ClaimOwner:
 
     user: User
     verified: bool
-    # An allauth signup left the address on the account unverified. Whoever set
-    # that password never proved they owned the mailbox.
-    unverified_signup: bool = False
 
 
 def claim_sets_a_password(owner: ClaimOwner | None) -> bool:
     """Whether the claimant will choose a password once the claim goes through.
 
-    True for an address with no account, and for one whose signup was never
-    verified: in both cases nobody has proven they know a password for it.
+    True for an address with no account, for one that never verified the
+    address (its password was set by somebody who never proved they owned the
+    mailbox, so the claim revokes it) and for one with no usable password (an
+    earlier claim that never reached the set-password page).
     """
-    return owner is None or owner.unverified_signup
+    return owner is None or not owner.verified or not owner.user.has_usable_password()
 
 
 @dataclass(frozen=True)
 class ClaimOutcome:
     user: User
-    # True when the claimant has no password they can be trusted to know: a
-    # brand-new account, or one whose address was registered but never verified.
+    # True when the claimant has no password they can be trusted to know.
     must_set_password: bool
 
 
@@ -110,8 +108,10 @@ def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:
     another site, and the globally unique email would then refuse the create
     with an IntegrityError instead of a quiet refusal.
     """
+    # iexact throughout: an operator can store an address with capitals, and
+    # the applicant's copy is always lowercased.
     verified = (
-        EmailAddress.objects.filter(email=applicant.email, verified=True)
+        EmailAddress.objects.filter(email__iexact=applicant.email, verified=True)
         .select_related("user")
         .first()
     )
@@ -120,11 +120,7 @@ def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:
     login_owner = User._base_manager.filter(email__iexact=applicant.email).first()
     if login_owner is None:
         return None
-    # No verified row exists for the address, so any row here is unverified.
-    has_row = EmailAddress.objects.filter(
-        user=login_owner, email=applicant.email
-    ).exists()
-    return ClaimOwner(login_owner, verified=False, unverified_signup=has_row)
+    return ClaimOwner(login_owner, verified=False)
 
 
 def attach_claimed_application(
@@ -136,9 +132,9 @@ def attach_claimed_application(
     the address is attached as it stands: its profile and password are
     untouched, no consent is written and no sign-up is announced, because the
     person already registered. An account that never verified it has the
-    address verified by this claim; if the address was registered through
-    signup, whoever set that password never proved they owned the mailbox, so
-    the password is revoked and the claimant chooses a new one.
+    address verified by this claim and its password revoked: whoever set that
+    password, through signup or by hand, never proved they owned the mailbox,
+    and the claimant has just done so, so they choose the password.
 
     One transaction, with the applicant row locked, so two clicks on the same
     link converge on one claim. None means nothing changed: the link was
@@ -191,18 +187,25 @@ def attach_to_user(
 def _verify_address_by_claim(owner: ClaimOwner, email: str) -> None:
     """Mark an unverified address verified on the strength of the claim link.
 
-    An account an operator created by hand has no address row and keeps its
-    password. One that came through signup had its password set by somebody who
-    never proved they owned the mailbox, so that password is revoked.
+    The row is matched case-insensitively and kept as spelled, so an account
+    an operator created with capitals in the address ends up with one row,
+    not two. The password is revoked whatever created the account: nobody who
+    set it proved they owned the mailbox.
     """
     with transaction.atomic():
-        address, _ = EmailAddress.objects.update_or_create(
-            user=owner.user, email=email, defaults={"verified": True}
-        )
+        address = EmailAddress.objects.filter(
+            user=owner.user, email__iexact=email
+        ).first()
+        if address is None:
+            address = EmailAddress.objects.create(
+                user=owner.user, email=email, verified=True
+            )
+        else:
+            address.verified = True
+            address.save(update_fields=["verified"])
     address.set_as_primary(conditional=True)
-    if owner.unverified_signup:
-        owner.user.set_unusable_password()
-        owner.user.save(update_fields=["password"])
+    owner.user.set_unusable_password()
+    owner.user.save(update_fields=["password"])
 
 
 def _create_claimed_user(applicant: AnonymousApplicant) -> User:

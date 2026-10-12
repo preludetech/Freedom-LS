@@ -81,6 +81,19 @@ def test_an_adopted_applicant_is_marked_claimed(client, mock_site_context):
     assert (applicant.user, applicant.claimed_at is not None) == (user, True)
 
 
+def test_signing_in_to_a_mixed_case_verified_address_adopts_the_draft(
+    client, mock_site_context
+):
+    application = _start_anonymous_draft(client, "ada@example.com")
+    user = UserFactory(email="Ada@Example.com")
+    EmailAddressFactory(user=user, email="Ada@Example.com")
+
+    client.force_login(user)
+
+    application.refresh_from_db()
+    assert application.user == user
+
+
 def test_signing_in_to_an_unverified_address_adopts_nothing(client, mock_site_context):
     application = _start_anonymous_draft(client, "ada@example.com")
     user = UserFactory(email="ada@example.com")

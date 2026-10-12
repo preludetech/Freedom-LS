@@ -2709,6 +2709,52 @@ def test_claim_post_for_an_existing_account_attaches_the_sitting(
 
 
 @pytest.mark.django_db
+def test_claim_post_for_an_existing_account_adds_no_second_address_row(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+
+    _claim(client, application)
+
+    assert EmailAddress.objects.filter(user=user).count() == 1
+
+
+@pytest.fixture
+def claimable_for_passwordless_user(mock_site_context):
+    """A submitted application whose address belongs to a verified account that
+    never finished choosing a password."""
+    user = UserFactory(email="ada@example.com")
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    EmailAddressFactory(user=user)
+    application = _submitted_form_less_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ada@example.com"
+    applicant.save(update_fields=["email"])
+    return application
+
+
+@pytest.mark.django_db
+def test_claim_get_for_a_passwordless_account_says_a_password_comes_next(
+    client, claimable_for_passwordless_user
+):
+    response = client.get(
+        _claim_url(claimable_for_passwordless_user.anonymous_applicant)
+    )
+
+    assert "choose a password" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_claim_post_for_a_passwordless_account_redirects_to_set_password(
+    client, claimable_for_passwordless_user
+):
+    response = _claim(client, claimable_for_passwordless_user)
+
+    assert response["Location"].startswith(reverse("account_set_password"))
+
+
+@pytest.mark.django_db
 def test_claim_post_for_an_existing_account_writes_no_consent(
     client, claimable_for_existing_user
 ):

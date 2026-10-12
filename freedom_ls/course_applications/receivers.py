@@ -63,7 +63,7 @@ def adopt_anonymous_applications_on_login(
         if application is None:
             continue
         if EmailAddress.objects.filter(
-            user=user, email=applicant.email, verified=True
+            user=user, email__iexact=applicant.email, verified=True
         ).exists():
             attach_to_user(application, applicant, user)
     forget_all_anonymous_applicants(request)

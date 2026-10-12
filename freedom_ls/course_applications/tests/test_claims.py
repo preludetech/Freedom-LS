@@ -209,14 +209,14 @@ def squatted_application(mock_site_context):
     return _anonymous_application_for("victim@example.com"), squatter
 
 
-def test_resolving_a_squatted_address_reports_an_unverified_signup(
+def test_resolving_a_squatted_address_reports_an_unverified_owner(
     squatted_application,
 ):
     application, squatter = squatted_application
 
     owner = resolve_claim_owner(application.anonymous_applicant)
 
-    assert owner == ClaimOwner(squatter, verified=False, unverified_signup=True)
+    assert owner == ClaimOwner(squatter, verified=False)
 
 
 def test_claiming_a_squatted_address_revokes_the_squatters_password(
@@ -247,16 +247,111 @@ def test_claiming_a_squatted_address_asks_for_a_new_password(squatted_applicatio
     assert outcome == ClaimOutcome(squatter, must_set_password=True)
 
 
-def test_an_operator_created_account_keeps_its_password_when_claimed(
+def test_an_operator_created_account_has_its_password_revoked_when_claimed(
     mock_site_context, rf
 ):
+    """Whoever set that password never proved they owned the mailbox either."""
     user = UserFactory(email="staffmade@example.com", password="their-own")
     application = _anonymous_application_for("staffmade@example.com")
+
+    outcome = attach_claimed_application(rf.get("/"), application)
+
+    user.refresh_from_db()
+    assert (user.has_usable_password(), outcome) == (
+        False,
+        ClaimOutcome(user, must_set_password=True),
+    )
+
+
+@pytest.fixture
+def login_synced_application(mock_site_context):
+    """An operator-made account after one login attempt.
+
+    allauth writes an unverified, non-primary row for the login address the
+    first time such an account tries to sign in.
+    """
+    user = UserFactory(email="staffmade@example.com", password="their-own")
+    EmailAddressFactory(user=user, verified=False, primary=False)
+    return _anonymous_application_for("staffmade@example.com"), user
+
+
+def test_claiming_a_login_synced_address_revokes_the_password(
+    login_synced_application, rf
+):
+    application, user = login_synced_application
 
     attach_claimed_application(rf.get("/"), application)
 
     user.refresh_from_db()
-    assert user.check_password("their-own") is True
+    assert user.has_usable_password() is False
+
+
+def test_claiming_a_login_synced_address_verifies_the_one_row(
+    login_synced_application, rf
+):
+    application, user = login_synced_application
+
+    attach_claimed_application(rf.get("/"), application)
+
+    addresses = EmailAddress.objects.filter(user=user)
+    assert [(a.email, a.verified, a.primary) for a in addresses] == [
+        ("staffmade@example.com", True, True)
+    ]
+
+
+def test_a_verified_owner_without_a_usable_password_sets_one_on_claim(
+    mock_site_context, rf
+):
+    """An earlier claim that never reached the set-password page leaves the
+    account with no password anyone knows."""
+    user = UserFactory(email="taken@example.com")
+    user.set_unusable_password()
+    user.save(update_fields=["password"])
+    EmailAddressFactory(user=user)
+    application = _anonymous_application_for("taken@example.com")
+
+    outcome = attach_claimed_application(rf.get("/"), application)
+
+    assert outcome == ClaimOutcome(user, must_set_password=True)
+
+
+def test_resolving_a_verified_address_stored_in_mixed_case_finds_it(
+    mock_site_context,
+):
+    user = UserFactory(email="Ada.Lovelace@example.com")
+    EmailAddressFactory(user=user, email="Ada.Lovelace@example.com")
+    application = _anonymous_application_for("ada.lovelace@example.com")
+
+    owner = resolve_claim_owner(application.anonymous_applicant)
+
+    assert owner == ClaimOwner(user, verified=True)
+
+
+def test_claiming_a_mixed_case_verified_address_adds_no_second_row(
+    mock_site_context, rf
+):
+    user = UserFactory(email="Ada.Lovelace@example.com")
+    EmailAddressFactory(user=user, email="Ada.Lovelace@example.com")
+    application = _anonymous_application_for("ada.lovelace@example.com")
+
+    attach_claimed_application(rf.get("/"), application)
+
+    assert EmailAddress.objects.filter(user=user).count() == 1
+
+
+def test_claiming_a_mixed_case_unverified_address_verifies_that_row(
+    mock_site_context, rf
+):
+    user = UserFactory(email="Ada.Lovelace@example.com")
+    EmailAddressFactory(user=user, email="Ada.Lovelace@example.com", verified=False)
+    application = _anonymous_application_for("ada.lovelace@example.com")
+
+    attach_claimed_application(rf.get("/"), application)
+
+    addresses = EmailAddress.objects.filter(user=user)
+    assert [(a.email, a.verified) for a in addresses] == [
+        ("Ada.Lovelace@example.com", True)
+    ]
 
 
 def test_an_operator_created_account_gains_a_verified_primary_address_when_claimed(
@@ -277,10 +372,12 @@ def test_an_operator_created_account_gains_a_verified_primary_address_when_claim
 
 def test_a_claim_sets_a_password_only_when_nobody_has_proven_one(mock_site_context):
     user = UserFactory()
+    passwordless = UserFactory()
+    passwordless.set_unusable_password()
 
     assert (
         claim_sets_a_password(None),
         claim_sets_a_password(ClaimOwner(user, verified=True)),
         claim_sets_a_password(ClaimOwner(user, verified=False)),
-        claim_sets_a_password(ClaimOwner(user, verified=False, unverified_signup=True)),
-    ) == (True, False, False, True)
+        claim_sets_a_password(ClaimOwner(passwordless, verified=True)),
+    ) == (True, False, True, True)
