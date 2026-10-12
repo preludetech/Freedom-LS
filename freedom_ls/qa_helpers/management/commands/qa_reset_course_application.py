@@ -121,10 +121,21 @@ def _preview_application(application: CourseApplication) -> list[tuple[str, Stor
 
 
 def _withdraw_application(application: CourseApplication) -> None:
-    """Delete the application, then the sitting it named."""
+    """Delete the application, then the sitting it named.
+
+    A claimed application is deleted through its applicant row, which cascades
+    to it: left behind, that row would say the address had applied and claimed
+    when nothing of the application remains.
+    """
     form_progress_pk = application.form_progress_id
     file_paths = _preview_application(application)
-    click.secho(f"Application deleted: {application.delete()}", fg="green", bold=True)
+    if application.anonymous_applicant_id is not None:
+        deleted = AnonymousApplicant._base_manager.filter(
+            pk=application.anonymous_applicant_id
+        ).delete()
+    else:
+        deleted = application.delete()
+    click.secho(f"Application deleted: {deleted}", fg="green", bold=True)
     if form_progress_pk is not None:
         # Re-fetched by pk now the RESTRICT no longer applies.
         deleted = FormProgress._base_manager.get(pk=form_progress_pk).delete()

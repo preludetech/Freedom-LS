@@ -116,3 +116,19 @@ def test_a_reset_finds_the_account_whatever_the_case_of_the_address(qa_site):
     _reset("qa.applicant@example.com", course.slug)
 
     assert not CourseApplication.objects.filter(user=user, course=course).exists()
+
+
+@pytest.mark.django_db
+def test_a_reset_takes_a_claimed_applications_applicant_row_with_it(qa_site):
+    user = UserFactory(email="qa.applicant@example.com")
+    course = CourseFactory()
+    applicant = AnonymousApplicantFactory(
+        course=course, email="qa.applicant@example.com", user=user
+    )
+    CourseApplicationFactory(
+        anonymous=True, user=user, course=course, anonymous_applicant=applicant
+    )
+
+    _reset("qa.applicant@example.com", course.slug)
+
+    assert not AnonymousApplicant.objects.filter(pk=applicant.pk).exists()
