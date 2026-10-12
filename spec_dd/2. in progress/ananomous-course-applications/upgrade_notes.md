@@ -50,17 +50,20 @@ attaches the application. Signed-in apply works as before.
 
 ## Manual steps
 
-1. Run `uv run manage.py migrate`. Three new migrations:
+1. Run `uv run manage.py migrate`. Five new migrations:
    `freedom_ls_accounts` `0002_alter_legalconsent_consent_method` (new `application_details_step`
-   consent method), `freedom_ls_course_applications` `0004_anonymousapplicant_and_more` (the
+   consent method) and `0003_user_email_upper_index` (an index for case-insensitive email
+   lookups), `freedom_ls_course_applications` `0004_anonymousapplicant_and_more` (the
    `AnonymousApplicant` model, nullable `CourseApplication.user`, the conditional constraint) and
+   `0005_anonymousapplicant_claim_email_sent_at` (when the claim email last went out), and
    `freedom_ls_form_engine` `0008_alter_formprogress_user` (nullable `FormProgress.user`).
-2. **If your project sets its own `ACCOUNT_RATE_LIMITS`**, add the two new actions. Without them,
-   the details step and the claim email have no rate limit. FLS's defaults are:
+2. **If your project sets its own `ACCOUNT_RATE_LIMITS`**, add the three new actions. Without them,
+   the details step, the claim email and file uploads have no rate limit. FLS's defaults are:
 
    ```python
    "application_details": "5/m/ip,5/h/key",
    "application_claim_email": "3/h/key",
+   "form_file_upload": "20/m/ip",
    ```
 
    No system check enforces this. Projects that inherit FLS's `ACCOUNT_RATE_LIMITS` need do nothing.

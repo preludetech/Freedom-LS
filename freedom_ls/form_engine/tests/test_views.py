@@ -4,8 +4,10 @@ import re
 
 import pytest
 
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.template.loader import render_to_string
+from django.test import override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
@@ -114,6 +116,54 @@ def test_an_executable_named_png_is_refused_with_422(
     )
 
     assert response.status_code == 422
+
+
+UPLOAD_RATE_LIMIT = {"form_file_upload": "2/m/ip"}
+
+
+@pytest.mark.django_db
+def test_an_upload_past_the_per_ip_limit_is_refused_with_429(
+    mock_site_context, client, sitting
+):
+    form_progress, question = sitting
+    client.force_login(form_progress.user)
+    with override_settings(ACCOUNT_RATE_LIMITS=UPLOAD_RATE_LIMIT):
+        cache.clear()
+        for _ in range(2):
+            client.post(
+                _upload_url(form_progress, question),
+                {"file": SimpleUploadedFile("id.png", png_bytes())},
+            )
+
+        response = client.post(
+            _upload_url(form_progress, question),
+            {"file": SimpleUploadedFile("id.png", png_bytes())},
+        )
+
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+def test_an_upload_past_the_per_ip_limit_stores_nothing_new(
+    mock_site_context, client, sitting
+):
+    form_progress, question = sitting
+    client.force_login(form_progress.user)
+    with override_settings(ACCOUNT_RATE_LIMITS=UPLOAD_RATE_LIMIT):
+        cache.clear()
+        for name in ("one.png", "two.png"):
+            client.post(
+                _upload_url(form_progress, question),
+                {"file": SimpleUploadedFile(name, png_bytes())},
+            )
+
+        client.post(
+            _upload_url(form_progress, question),
+            {"file": SimpleUploadedFile("three.png", png_bytes())},
+        )
+
+    answer_file = QuestionAnswerFile.objects.get(answer__form_progress=form_progress)
+    assert answer_file.original_filename == "two.png"
 
 
 @pytest.mark.django_db

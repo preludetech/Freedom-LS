@@ -28,12 +28,16 @@ from freedom_ls.base.images import (
 
 MAX_UPLOAD_BYTES = 6 * 1024 * 1024
 MAX_UPLOAD_LABEL = "6 MB"
+# Well above any scan of a document, well below Pillow's own ceiling: a PNG
+# that small on disk can still ask for gigabytes once decoded.
+MAX_IMAGE_PIXELS = 25_000_000
 ALLOWED_EXTENSIONS = frozenset({".jpg", ".jpeg", ".png", ".pdf"})
 ALLOWED_IMAGE_FORMATS = {"JPEG": ".jpg", "PNG": ".png"}
 ACCEPT_ATTRIBUTE = ",".join(sorted(ALLOWED_EXTENSIONS))
 PDF_MAGIC = b"%PDF-"
 
 TOO_LARGE = f"That file is larger than {MAX_UPLOAD_LABEL}. Choose a smaller one."
+TOO_MANY_PIXELS = "Image is too large to process safely."
 WRONG_KIND = "Upload a JPEG, PNG or PDF."
 
 
@@ -73,16 +77,21 @@ def validate_and_sanitise(
 def _reencode_image(raw: bytes) -> tuple[ContentFile, str]:
     with bomb_warnings_as_errors():
         try:
+            # The header alone says how big the decoded image would be, so an
+            # oversize one is refused before a single pixel is decoded.
+            header = Image.open(io.BytesIO(raw))
+            if header.width * header.height > MAX_IMAGE_PIXELS:
+                raise ValidationError(TOO_MANY_PIXELS)
             # verify() decodes the whole stream rather than only the header, and
             # destroys the object it is called on -- hence the second open. A
             # header can parse cleanly over a truncated body, and that file would
             # then be stored as an image nothing can draw.
-            Image.open(io.BytesIO(raw)).verify()
+            header.verify()
             opened = Image.open(io.BytesIO(raw))
             image_format = opened.format
             opened.load()
         except BOMB_FAILURES as err:
-            raise ValidationError("Image is too large to process safely.") from err
+            raise ValidationError(TOO_MANY_PIXELS) from err
         except DECODE_FAILURES as err:
             raise ValidationError("File is not a readable image or PDF.") from err
 

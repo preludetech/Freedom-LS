@@ -6,6 +6,8 @@ else, and hands back bytes FLS chose rather than bytes the applicant supplied.
 from __future__ import annotations
 
 import io
+import struct
+import zlib
 
 import pytest
 from PIL import Image
@@ -59,6 +61,34 @@ def test_an_image_past_the_pixel_ceiling_is_rejected(monkeypatch):
 
     with pytest.raises(ValidationError):
         validate_and_sanitise(_upload("huge.png", png_bytes(width=200, height=200)))
+
+
+def _png_claiming(width: int, height: int) -> bytes:
+    """A small PNG whose header declares another size, the shape of a decompression bomb."""
+    png = png_bytes()
+    # IHDR: 8-byte signature, 4-byte length, 4-byte type, then width and height.
+    ihdr_data = struct.pack(">II", width, height) + png[24:29]
+    crc = struct.pack(">I", zlib.crc32(b"IHDR" + ihdr_data) & 0xFFFFFFFF)
+    return png[:16] + ihdr_data + crc + png[33:]
+
+
+def test_an_image_declaring_too_many_pixels_is_rejected_before_it_is_decoded(
+    monkeypatch,
+):
+    bomb = _upload("bomb.png", _png_claiming(9400, 9400))
+    decoded = []
+    monkeypatch.setattr(Image.Image, "load", lambda self: decoded.append(self))
+
+    with pytest.raises(ValidationError, match="too large"):
+        validate_and_sanitise(bomb)
+
+    assert decoded == []
+
+
+def test_an_image_within_the_pixel_ceiling_is_accepted():
+    _content, extension = validate_and_sanitise(_upload("scan.png", png_bytes(40, 40)))
+
+    assert extension == ".png"
 
 
 def test_a_file_over_the_byte_cap_is_rejected():

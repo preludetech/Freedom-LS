@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from allauth.core.ratelimit import consume_or_429
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpRequest, HttpResponse
@@ -80,7 +82,14 @@ def _render_file_widget(
 def partial_question_file_upload(
     request: HttpRequest, progress_pk: str, question_pk: str
 ) -> HttpResponse:
-    """Attach a file to a file question, replacing whatever was there before."""
+    """Attach a file to a file question, replacing whatever was there before.
+
+    Rate-limited before the lookup: an upload is the one write a session can
+    repeat without limit otherwise, and each one costs storage and a decode.
+    """
+    limited: HttpResponse | None = consume_or_429(request, action="form_file_upload")
+    if limited is not None:
+        return limited
     form_progress, question = _owned_file_question(request, progress_pk, question_pk)
     if form_progress.completed_time is not None:
         return HttpResponse(status=409)

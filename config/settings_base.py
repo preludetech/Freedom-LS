@@ -459,6 +459,10 @@ ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
     # keys carry the site so one tenant's traffic cannot exhaust another's.
     "application_details": "5/m/ip,5/h/key",
     "application_claim_email": "3/h/key",
+    # An anonymous sitting can take uploads with no mailbox proven, and each one
+    # is stored until somebody erases it. Per IP, since the sitting's owner is
+    # a browser session.
+    "form_file_upload": "20/m/ip",
 }
 
 
