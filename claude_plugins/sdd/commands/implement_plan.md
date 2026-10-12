@@ -17,8 +17,7 @@ Below, **the plan file** and **the QA file** mean the resolved names, and **`<id
 
 ## Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps.
 
 ## Step 1: Read and Review the Plan
 
@@ -112,6 +111,6 @@ Never start implementation on main/master branch without explicit user consent.
 Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the spec directory
-- `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/implement_plan` to execute the implementation plan"`.
+- `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:implement_plan` to execute the implementation plan"`.
 
 No new items to add.

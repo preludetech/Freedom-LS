@@ -31,13 +31,12 @@ Most of the time an idea (and possibly more) is already in the directory. List t
 
 | Artifact found in the spec directory | Tick this item |
 |---|---|
-| A file matching `*idea*.md` (e.g. `0. idea.md`, `0.idea.md`, `idea.md`) | "Write the idea file in this directory" |
 | `1. spec.md` | "Run `/sdd:spec_from_idea`…" |
 | `2. plan.md` | "Run `/sdd:plan_from_spec`…" |
 | `3. frontend_qa.md` | (also covered by the plan step — `/sdd:plan_from_spec` produces both) |
 | `qa_report.md` | "Run `/fls-dev:do_qa`…" |
 
-Only tick boxes for artifacts that actually exist. Do **not** tick user-review items, threat-model items, worktree/PR/cleanup items, or anything else where presence of a file can't confirm the step was done — those are for the user to tick manually.
+Only tick boxes for artifacts that actually exist. Do **not** tick user-review items, worktree/PR/cleanup items, or anything else where presence of a file can't confirm the step was done — those are for the user to tick manually.
 
 If you're unsure whether a file counts (e.g. an unusually named markdown file that might be an idea, research, or something else), leave the box unchecked rather than guessing.
 
@@ -55,79 +54,33 @@ Every item must have exactly one marker. If a step involves both a manual action
 ```markdown
 # SDD Todo
 
-Checklist for taking this spec from idea to merged PR. Tick items as they are completed. See `claude_plugins/sdd/commands/README.md` for the full workflow description.
+Checklist for taking this spec from idea to merged PR. Commands tick their own item; you tick
+`(user)` items and the two PR commands. See `claude_plugins/sdd/commands/README.md`.
 
-## 1. Idea
+## 1. Spec
 
-- [ ] (user) Write the idea file in this directory
-- [ ] (user) Review the refined idea and edit as needed
+- [ ] (cmd) Run `/sdd:spec_from_idea` to research the idea and write the spec
+- [ ] (user) Review the spec and edit where needed; after substantial hand edits, run `/sdd:spec_review`
 
-## 2. Spec
-
-- [ ] (cmd) Run `/sdd:spec_from_idea` to generate the spec
-- [ ] (user) Review the spec carefully and edit where needed
-- [ ] (cmd) Run `/sdd:spec_review` to sanity-check the spec
-- [ ] (user) Address any issues raised by the review
-
-## 3. Threat model
-
-- [ ] (cmd) Run `/ds:threat-model` against the spec
-- [ ] (user) Update the spec to close any security gaps surfaced
-
-## 4. Plan
+## 2. Plan
 
 - [ ] (cmd) Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan
 - [ ] (user) Review both plans and edit where needed
 
-## 5. Plan security review
-
-- [ ] (cmd) Run `/fls-dev:plan_security_review` to check the plan for insecure design choices before implementation
-- [ ] (user) Address any concerns raised in the plan
-
-## 6. Plan structure review
-
-- [ ] (cmd) Run `/fls-dev:plan_structure_review` to check for new cross-app dependencies
-- [ ] (user) Address any structure concerns raised in the plan
-
-## 7. Implementation
+## 3. Implementation and QA
 
 - [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (user) Spot-check the changes
+- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 
-## 8. Code security review
+## 4. Documentation and pull request
 
-- [ ] (cmd) Run `/ds:security-review` on the pending changes
-- [ ] (user) Address any issues raised
-
-## 9. QA
-
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
-- [ ] (user) Review the QA report
-- [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
-- [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
-
-## 10. Product documentation
-
-- [ ] (cmd) Run `/fls-dev:update_product_docs` to update docs/product/ for this feature
-- [ ] (user) Review the updated documentation
-
-## 11. Upgrade notes
-
-- [ ] (cmd) Run `/fls-dev:update_upgrade_notes` to author the structured upgrade_notes.md for downstream projects
-- [ ] (user) Review the upgrade notes
-
-## 12. Author plugin sync
-
-- [ ] (cmd) Run `/fls-dev:update_claude_plugin_fls_content` to sync the course-author plugin if authoring functionality changed
-
-## 13. Pull request
-
-- [ ] (user) Open a pull request
+- [ ] (cmd) Run `/sdd:document` to run the project's documentation hooks
+- [ ] (cmd) Run `/sdd:make_pr_quickly` to open the pull request
 - [ ] (cmd) Run `/sdd:address_pr_review` as review feedback comes in
-- [ ] (cmd) Once review feedback is addressed, re-run `/fls-dev:update_upgrade_notes` to re-verify the notes against the final code
-- [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward (merging it on GitHub first is also fine)
+- [ ] (user) Confirm the PR is approved; `/sdd:finish_worktree` lands it on main by fast-forward
 
-## 14. Cleanup
+## 5. Cleanup
 
 - [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it

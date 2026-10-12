@@ -7,7 +7,8 @@ that SDD fan-out commands embed in compact form.
 Claude Code's subagent model is **fire-and-forget and one-shot**: task in → single result out, in an
 isolated context, with **no mid-run messaging**, **no user prompting from a subagent**, and **no
 nesting**. Robustness must therefore be **designed into the workflow**, not delegated to a runtime
-feature.
+feature. A command can also run in hook mode: read and followed inline by another command at
+depth 0, told so by `mode: hook`.
 
 ## The recipe (depth-0 orchestrator over units U1…Un)
 

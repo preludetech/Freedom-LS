@@ -37,8 +37,7 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 
 # Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps.
 
 # Step 1: Confirm inputs
 

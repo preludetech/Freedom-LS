@@ -3,12 +3,13 @@ description: Helper — rebase the feature branch onto main and verify it before
 allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent
 ---
 
-This is a helper command. `/sdd:next` follows it inline before dispatching a `(cmd)` item, and every
-feature-branch command follows it as its own Step 0 when invoked directly. It runs at **depth 0**,
+This is a helper command. Every feature-branch command follows this helper as its own Step 0; a
+command run in hook mode skips it. It runs at **depth 0**,
 inline, on the caller's model and tool grants.
 
-Inputs from the caller: `<spec-dir>` and `<todo-path>` when already known; otherwise resolve them the
-way `claude_plugins/sdd/commands/next.md` Step 1 does. Optionally `<tier>`, `targeted` or `full`:
+Inputs from the caller: `<spec-dir>` and `<todo-path>` when already known; otherwise `<spec-dir>` is
+the directory under `spec_dd/2. in progress/` named after the current branch (none or several is
+`status: failed` with the reason), and `<todo-path>` is its `todo.md`. Optionally `<tier>`, `targeted` or `full`:
 the test tier the rebase runs.
 
 ## Step 0: Skip conditions
@@ -167,7 +168,7 @@ status: ok · rebased: yes
 status: paused · reason: upstream-change review awaiting a decision
 ```
 
-When the human later ticks that item through `/sdd:next`, the next pre-step rebase's Pause
+When the human later ticks that item by hand, the next pre-step rebase's Pause
 condition finds no unticked item naming the file, so it proceeds normally. The review file stays
 in the spec directory as a sibling of the spec, like any research file.
 

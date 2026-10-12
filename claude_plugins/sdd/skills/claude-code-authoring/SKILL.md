@@ -50,6 +50,12 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
 - **Inline-execution caveat (critical).** A command/helper file that is *read and followed inline*
   (not invoked as a slash command) keeps the **caller's** model — its own `model:` frontmatter is
   **inert**. So tiering must live on **spawnable agent files**, which always run on their own `model:`.
+- **Hook mode.** A command another command reads and follows inline at depth 0 is told so by a
+  `mode: hook` input. In hook mode it skips its own pre-step rebase and todo tick and keeps its
+  commit step. Every command that can be a hook opens with an "Inputs from the caller" line
+  naming `<spec-dir>`, `<todo-path>` and `mode: hook`; without `mode: hook` it is standalone.
+  Its own frontmatter is inert when inlined, so the calling command's `allowed-tools` is the
+  union of its hooks' needs.
 - **`CLAUDE_CODE_SUBAGENT_MODEL` overrides everything.** If set, it forces one model for *all*
   subagents, flattening every per-agent `model:`. Leave it **unset (or `inherit`)** for normal tiering.
 - **Aliases vs pinned IDs.** Aliases (`haiku`/`sonnet`) read well but advance over time; pin dated

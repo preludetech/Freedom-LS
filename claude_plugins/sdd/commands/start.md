@@ -48,4 +48,4 @@ Print a short, combined summary:
 
 - Path to the new `todo.md`.
 - Path to the new worktree.
-- A one-line reminder that the user should `cd` into the worktree and run `/sdd:next` to continue.
+- A one-line reminder that the user should `cd` into the worktree, open `todo.md` and run `/sdd:spec_from_idea` to continue.

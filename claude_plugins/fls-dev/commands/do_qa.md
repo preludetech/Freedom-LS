@@ -125,8 +125,7 @@ structured bug records it needs in order to brief the fixer.
 
 ## Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps.
 
 ## Step 1: Clean up last QA run
 
@@ -611,7 +610,7 @@ spawning. Pass `<todo-path>`: the `todo.md` in `<spec-dir>`.
 ### The `tick:`
 
 Find the `/fls-dev:do_qa` item naming **this run's** test plan — a `todo.md` often holds one per plan,
-so match on a substring unique to yours (e.g. `3a. seam_qa`) — and pass the line **verbatim** as it
+so match on a substring unique to yours (e.g. `/fls-dev:do_qa`) — and pass the line **verbatim** as it
 appears in the file. Do not reconstruct the wording from memory; it drifts between specs.
 
 ### What may be added — this list is closed
@@ -619,7 +618,7 @@ appears in the file. Do not reconstruct the wording from memory; it drifts betwe
 These five categories, and nothing else:
 
 1. Each **UNRESOLVED** bug, design misses included, green-lane and red-lane alike:
-   `add:"<section>|user + cmd|Fix QA bug: <short title> (TDD — failing test first, then fix)"`.
+   `add:"<section>|user|Decide what to do about QA bug: <short title> (TDD: failing test first, then fix)"`.
 2. A scenario `fls-dev:qa-data-helper` reported **impossible to set up** — not merely absent, which
    Rule 2 required you to fix during the run:
    `add:"<section>|cmd|<what could not be set up, and why>"`.
@@ -636,7 +635,7 @@ These five categories, and nothing else:
 - "Verify X yourself" for anything you could have driven in the browser.
 - An observation with no action attached — it goes in `qa_report.md` under General notes.
 - Anything already fixed this run. **FIXED** bugs live only in `qa_report.md`'s `## Bug status`, with
-  their commit hash; an unchecked item with no follow-up jams a later `/sdd:next`.
+  their commit hash; an unchecked item with no follow-up is a stale checklist line.
 
 ### If there is nothing to add, add nothing
 
@@ -645,9 +644,8 @@ where observations go.
 
 ### The section argument
 
-The `add:` section argument is the todo's heading text. Check what the file actually uses (todo files
-number their sections, e.g. `## 9. QA`) and pass that — `update_todo.md` matches the heading exactly
-and refuses to create new sections.
+The `add:` section argument is the todo's heading text without the `##`: `3. Implementation and QA`.
+`update_todo.md` matches the heading exactly and refuses to create new sections.
 
 ---
 

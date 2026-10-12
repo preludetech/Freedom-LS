@@ -9,8 +9,8 @@ the separate `fls-dev` plugin, and generic stack commands (`app_map`, `threat-mo
 
 Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
-> **Coupling note.** `sdd` is not yet fully standalone: the `setup_todo_list` template and the `next.md`
-> dispatcher name FLS-specific steps (`/fls-dev:*`), and FLS commands spawn the `sdd` agents. Untangling
+> **Coupling note.** `sdd` is not yet fully standalone: the `setup_todo_list` template
+> names FLS-specific steps (`/fls-dev:*`), and FLS commands spawn the `sdd` agents. Untangling
 > this bidirectional `fls-dev` ↔ `sdd` dependency is deferred.
 
 ## What's inside (counted from disk)
@@ -34,11 +34,6 @@ the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `desig
 `move_spec_to_in_progress`, `start_worktree`, `update_todo`, `update_roadmap`, `pre_step_rebase`,
 `run_test_tier`. `run_test_tier` reaches the project's test tier definition through the `Test tiers`
 key under `## Test Hooks` in `.claude/sdd/config.md`; a blank key falls back to the project's plain pytest command.
-
-`/sdd:next` is the workflow driver — it reads the spec's `todo.md`, finds the next unchecked step, and
-dispatches each `(cmd)` item to its owning plugin via a deterministic keep-prefix map
-(`sdd` → this plugin, `fls-dev` → the product plugin, `ds` → the stack plugin). This is why every command
-the generated `todo.md` lists is written fully namespaced.
 
 `/sdd:init` wires this plugin into a project (its own `enabledPlugins` key + `Skill(sdd:*)` permission +
 `.claude/sdd/` config). It is **not** the primary init — it detect-and-skips the shared artifacts

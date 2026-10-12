@@ -26,15 +26,14 @@ other than the current one, even when another worktree holds a spec the design a
 
 ## Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps.
 
 ## Step 1: Resolve the inputs
 
 - **`<spec-dir>`**: a directory under `spec_dd/` in the current worktree. Resolve it in this order:
   1. **On a feature branch**, it is the spec directory the branch is working on: the directory under
-     `spec_dd/2. in progress/` that matches the branch name, found the way
-     `claude_plugins/sdd/commands/next.md` Step 1 finds it. The user may omit it. If the user names a
+     `spec_dd/2. in progress/` that matches the branch name, resolved the way `pre_step_rebase.md`'s
+     "Inputs from the caller" line says. The user may omit it. If the user names a
      different directory, stop and say the design is registered on this branch's spec, not
      elsewhere. If no directory matches the branch, stop and say so.
   2. **On `main` or `master`**, the user names it. It is either one spec, or the parent of a cut

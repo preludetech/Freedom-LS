@@ -36,8 +36,7 @@ This command runs at **depth 0** and fans work out to sub-agents. See the `claud
 
 # Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps.
 
 # Step 1
 
@@ -149,7 +148,7 @@ Delete this run's own scratch files — one `.sdd-work/<phase>_<unit-id>.md` per
 Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
 
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
-- `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/plan_from_spec` to generate the implementation plan and QA plan"`.
+- `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan"`.
 - If you did **not** create the QA file (because the feature has no frontend changes), also pass `add:"QA|user|No QA needed — feature has no frontend changes"`. Otherwise omit `add:`.
 
 # Step 9: Commit and push
