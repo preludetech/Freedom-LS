@@ -68,7 +68,7 @@ Fan-out is only legal at depth 0. The resilient shape (full detail in
 5. **Structured returns:** `ok` done · `failed` retry the same unit (≤2, include prior error) ·
    `blocked` → supply `needs` from code/other units, else `AskUserQuestion`; re-spawn with answers.
 6. **Synthesis is a separate step** that reads the *files* (pass paths, never dump contents).
-7. **Clean up `.sdd-work/` on success**; an abandoned scratch dir is what makes resume cheap.
+7. **Clean up on success**: delete the command's own scratch files by name, never the shared `.sdd-work/` directory; an abandoned scratch dir is what makes resume cheap.
 
 ## Interactive-CLI notes
 

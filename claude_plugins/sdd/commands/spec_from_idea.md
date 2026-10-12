@@ -105,18 +105,7 @@ edit that exact spot.
 
 ## Never write these in a spec
 
-- **The idea's argument, re-run.** The approach was settled upstream. State the outcome and cite the
-  idea by filename. Do not reproduce the reasoning that got there.
-- **A decisions table that repeats the body.** A decision explained where it is implemented does not
-  also get a table row. A decision in the table is not re-explained in the body.
-- **Rejected alternatives at paragraph length.** One sentence naming the alternative and why not, or
-  nothing.
-- **Reasoning about the spec's own drafting.** No "an earlier draft", no "two notes survive from
-  that draft", no "the implementer should not tidy this away".
-- **Success criteria that restate sections.** If you cannot say how someone would check it, it is
-  not a criterion.
-- **Implementation sequencing and work lists.** Ordering constraints belong in the spec only where
-  getting them wrong breaks something; everything else is the plan's job.
+The cut-list is in `${CLAUDE_PLUGIN_ROOT}/resources/spec_review_dimensions.md`, under "Never write these in a spec".
 
 ## Before you finish
 

@@ -26,9 +26,23 @@ feature.
    user will see it). Never ask whether to do the work, to confirm what the source already says,
    or anything with one sensible answer. Quote the line or finding that leaves the question open
    and offer concrete options, recommended one first.
+
+   **When the question is asked.** A command that can ask does so in one batch at the start,
+   while its workers run, up to four per `AskUserQuestion`. Each question carries a recommended
+   answer and one clause on why it matters.
+
+   **When a question comes late.** A question that surfaces after that batch takes the
+   recommended default and is recorded in the artifact so one grep finds every unconfirmed
+   decision: in a spec under `## Open questions` as
+   `- Q: <question>? → A: <default taken> (assumed default: <why safe>. Overrule by editing <section>.)`;
+   in a plan as `> **Assumed default:** <what>. Why: <clause>. To change: <section>.`
+   Review findings that are judgement calls reach the user in one batch at the end of the
+   command, recommended option first, each naming the artifact line it concerns. An unanswered
+   one is recorded as an assumed default. A `blocked` worker is answered from the idea, the code
+   or another worker's file before anything is asked.
 2. **One output path per unit.** Assign a deterministic path. Durable artifacts keep their real
-   names (e.g. `research_<topic>.md`); intermediate outputs go in a scratch dir `.sdd-work/` inside
-   the spec directory, named `<phase>_<unit-id>.md`. *(Pattern A2.)*
+   names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` at the
+   project root, named `<phase>_<unit-id>.md`. *(Pattern A2.)*
 3. **Resume scan (before spawning).** For each unit, if its output file exists **and** ends with
    `status: ok`, skip it. Spawn only missing/not-ok units. *(Pattern A3 — `todo.md` is the manifest.)*
 4. **One subagent per unit**, in parallel, via the `Agent` tool (`subagent_type: "sdd:sdd-worker"`,
@@ -40,13 +54,15 @@ feature.
    - `failed` → retry the **same** unit, ≤2 attempts, including the prior error in the retry brief.
      *(Pattern A5.)*
    - `blocked` → the orchestrator supplies the listed `needs` from the source, the code or another
-     unit's output where it can, and asks via `AskUserQuestion` only where it can't; then it
+     unit's output where it can, and where it can't, asks in the command's question batch when the command can ask; a brief run as
+     a hook of another command is instead recorded as skipped with its need, and the run continues. Then it
      **re-spawns a fresh worker** with the original brief + answers (pointing at any partial file).
      *(B3/B4.)*
 6. **Synthesis is a separate step.** A later step reads the output **files** (pass paths, never dump
    contents into the orchestrator prompt) and produces the artifact — so it can be retried without
    re-running workers. *(Pattern A6 — two-phase fan-in.)*
-7. **Clean up on success.** When the phase artifact is finalised, delete `.sdd-work/`. Durable
+7. **Clean up on success.** When the phase artifact is finalised, delete the command's own scratch
+   files by name, never the `.sdd-work/` directory, which other commands share. Durable
    artifacts are **not** deleted. An abandoned `.sdd-work/` from an interrupted run is **intentional**
    — it is what makes resume (step 3) cheap.
 

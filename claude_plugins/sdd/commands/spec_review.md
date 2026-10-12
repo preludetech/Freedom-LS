@@ -1,97 +1,49 @@
 ---
 description: Check that the spec makes sense
-allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent
+allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Skill, Agent, AskUserQuestion
 ---
 
-You are helping to refine a feature spec. The spec might have problems. You are doing a final check to make sure it can be implemented.
+You are doing the final check on a feature spec before it is planned. Five workers each check one dimension in parallel. You apply the fixes that have one reading and ask the user about the rest.
 
 # Output
 
-- Edit the spec document to overcome all the problems, then tighten it
-- Print a short summary of what you did, including the spec's line and word counts before and after
+- Edit the spec to fix every problem the wave finds.
+- Print a summary with one line per applied fix (what, dimension, evidence) and the spec's line and word counts before and after.
+
+## Fan-out recipe (shared)
+
+This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring` skill for *why* it works this way. Orchestrating units U1…Un:
+
+1. **Start the work; don't ask permission for it.** Never ask whether to review or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what is on disk. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need. Ask once, early, with a default; late questions and review judgement calls follow "When a question comes late" in the `claude-code-authoring` skill's `fanout_recipe.md`.
+2. **One output path per unit.** Intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
+3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
+4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
+5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's output if you can; ask in the end-of-run batch only if you can't. Then re-spawn a fresh worker with the original brief + answers (pointing it at any partial file).
+6. **Synthesis is a separate step.** Read the output *files* (pass paths, never dump contents into the prompt) and edit the artifact; it can be retried without re-running workers.
+7. **Clean up on success.** Delete this command's own scratch files **by name**, never the `.sdd-work/` directory, which is shared with every other SDD command.
 
 # Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `${CLAUDE_PLUGIN_ROOT}/commands/protected/pre_step_rebase.md` and follow its steps.
 
-# Step 1
+# Step 1: Review wave
 
-Read over the spec and look for contradictions. Handle one contradiction at a time.
+Spawn one `sdd:sdd-worker` per row of `${CLAUDE_PLUGIN_ROOT}/resources/spec_review_dimensions.md`, each writing `.sdd-work/spec_review_<id>.md`. Brief each with the spec path, the idea path, the sibling `*.md` files, its row, and the finding format and clear-fix rule from that resource. For `feasibility`, add the `SKILL.md` paths of the skills the spec touches. Apply resume, retry and blocked per the recipe.
 
-For each contradiction:
-- Clearly describe the contradiction, ask for input
-- Edit the spec file to fix the contradiction
+# Step 2: Apply the clear fixes
 
-Keep repeating this process until there are no more contradictions.
+Read the five output files by path. Edit each clear fix into the spec.
 
-# Step 2
+Then re-run only the dimensions that produced an applied fix, once, briefed with the changed sections and writing `.sdd-work/spec_review_<id>_recheck.md` (a new path, so the resume scan never skips the re-check). A re-check finding that is not a regression of an applied fix goes to Step 3. There is no third round.
 
-Read over any implementation details mentioned in the spec and make sure that they adhere to project norms, and that they are technically feasible.
+# Step 3: The end-of-run question batch
 
-Read through all the documentation in ${CLAUDE_PLUGIN_ROOT}/resources/ and make sure the spec does not go against any project norms defined there.
+Put every judgement call to the user as "When a question comes late" in `fanout_recipe.md` describes. Edit each answer into the spec. Write an unanswered one under `## Open questions` in the assumed-default shape. Neither this step nor Step 2 resolves an open question by deleting it.
 
-Check the spec's names against `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`, running the checks it describes on the **Terminology** section, and adding that section where the spec coins or narrows a term and says so nowhere.
+# Step 4: Clean up
 
-Read any mentioned source code files and any related code and look for inconsistencies and problems.
+Delete `.sdd-work/spec_review_<id>.md` and `.sdd-work/spec_review_<id>_recheck.md` for each id, by name, skipping any that does not exist.
 
-A spec that asks a plugin whose README says it is generic to carry project-specific knowledge (a
-project name, path, app or value) is wrong, however the idea phrased it. Rewrite the spec so the
-value reaches the plugin through its per-project configuration, and say so in the summary.
+# Step 5: Commit and push
 
-For each problem you find:
-- Clearly describe the problem, ask for input if the solution if needed
-- Edit the spec file to fix the problem
-
-# Step 3
-
-Return to Step 1 and make sure no new problems were introduced. Repeat the whole process until the spec has no unaddressed problems
-
-# Step 4: Tighten the spec
-
-Correctness is settled by this point, so no effort goes into tightening text that was about to be
-rewritten. Now make the spec say what it says once.
-
-A spec reaches this command by more than one route. `/spec_from_idea` writes the first draft, but
-it is also hand-edited and amended by `/threat-model`, so this is the last gate before planning
-whichever way it arrived.
-
-Apply `${CLAUDE_PLUGIN_ROOT}/resources/writing_standard.md` and the spec cut-list in
-`${CLAUDE_PLUGIN_ROOT}/commands/spec_from_idea.md` under "Never write these in a spec".
-
-**Cutting must not lose a requirement.** Run the completeness pass first: read the idea file and
-every sibling `*.md` beside the spec, and confirm each decision and constraint has exactly one home
-in the spec. Only then cut. If you cannot say where something went, you lost it. Put it back.
-
-The usual finds, in rough order of how much they cost the reader:
-
-- The idea's argument reproduced inside the spec. Cite the idea by filename instead, keeping any
-  sentence that states a requirement rather than a justification.
-- A decision stated in a table, in the section that implements it, and again in the success
-  criteria. Keep one.
-- Drafting history: "an earlier draft", "two notes survive", "the implementer should not tidy this
-  away".
-- Rejected alternatives at paragraph length. A sentence each is enough.
-- Paragraphs proving a point nobody would dispute.
-
-Finish with the two passes from the writing standard: `unslop`, then a re-read.
-
-# Step 5: Update the todo list
-
-Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with:
-
-- `<todo-path>`: the `todo.md` in the same directory as the spec file
-- `tick:"Run `/spec_review` to sanity-check the spec"`
-- For each unresolved question you raised that the user still needs to decide, pass `add:"Spec|user|Decide how to handle <short description of the question>"`. If everything was resolved during the review, omit `add:`.
-
-# Step 6: Commit and push
-
-Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
-steps with `<summary>`: `review and tighten the spec`. Tell it to stage `1. spec.md` and the
-`todo.md` beside it.
-
-# Out of scope
-
-- Do not add technical implementation details to the spec. Just check the ones already included.
-- If there are any technical concerns then raise them in a high level way, don't write unnecessary code
-- Step 4 removes text. It never adds design, and it never resolves an open question by deleting it.
+Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `review the spec`. Tell it to stage `1. spec.md`.
