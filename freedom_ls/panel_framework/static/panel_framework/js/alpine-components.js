@@ -555,6 +555,37 @@ document.addEventListener("alpine:init", () => {
             });
         },
     }));
+
+    // Instance-page header auto-refresh (panel_framework/views/_instance_view_base.html).
+    // The header's stats and tab counts sit outside every panel, so a panel's
+    // own refresh never reaches them. Re-fetch the current page, which keeps
+    // the active tab because the address bar follows tab clicks, and swap in
+    // just the header. The component sits inside the header, so the swap
+    // replaces it with a fresh one.
+    Alpine.data("headerRefresh", () => ({
+        _handlers: [],
+        init() {
+            const events = (this.$el.dataset.headerRefreshEvents || "")
+                .split(/\s+/)
+                .filter(Boolean);
+            events.forEach((eventName) => {
+                const handler = () => {
+                    htmx.ajax("GET", window.location.pathname + window.location.search, {
+                        target: "#instance-header",
+                        select: "#instance-header",
+                        swap: "outerHTML",
+                    });
+                };
+                document.body.addEventListener(eventName, handler);
+                this._handlers.push([eventName, handler]);
+            });
+        },
+        destroy() {
+            this._handlers.forEach(([eventName, handler]) => {
+                document.body.removeEventListener(eventName, handler);
+            });
+        },
+    }));
 });
 
 // A tab link lives outside the region it swaps, so the server-rendered
