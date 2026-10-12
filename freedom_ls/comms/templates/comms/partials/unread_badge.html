@@ -1,0 +1,5 @@
+{% load comms_tags %}
+<span id="messages-button-label" class="sr-only">Messages, {% if unread_count %}{{ unread_count }} unread{% else %}none unread{% endif %}</span>
+<span class="absolute -top-0.5 -right-0.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-error px-1 text-xs font-semibold text-on-error ring-2 ring-header"
+      aria-hidden="true"
+      {% if not unread_count %}hidden{% endif %}>{{ unread_count|badge_count }}</span>
