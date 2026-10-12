@@ -5,6 +5,7 @@ changed_template_paths:
   - freedom_ls/course_applications/templates/course_applications/apply.html
   - freedom_ls/course_applications/templates/course_applications/application_status.html
   - freedom_ls/base/templates/allauth/layouts/manage.html
+  - freedom_ls/base/templates/account/signup.html
 requires_settings_change: true
 changed_settings:
   - ACCOUNT_RATE_LIMITS  # optional: only projects that define their own dict must add three keys
@@ -102,11 +103,16 @@ attaches the application. Signed-in apply works as before.
    - `course_applications/apply.html`: shows a Previous button (`previous_page_url`) in place of
      Cancel when the details step came before it.
    - `course_applications/application_status.html`: new branch for an unverified application that
-     tells the applicant to follow the emailed link.
+     tells the applicant to follow the emailed link, with a "Send the email again" form.
    - `allauth/layouts/manage.html`: narrowed and centred layout.
+   - `account/signup.html`: the Terms and Privacy checkboxes are now rendered by the
+     `<c-consent-checkboxes>` cotton component
+     (`freedom_ls/accounts/templates/cotton/consent-checkboxes.html`), which the details step uses
+     too. An override that copied the old inline checkbox markup still works, but restyling the
+     component restyles both pages.
 
    These templates are new and can be overridden for theming:
-   `course_applications/applicant_details.html`,
+   `cotton/consent-checkboxes.html`, `course_applications/applicant_details.html`,
    `course_applications/partials/applicant_details_field.html`, `course_applications/claim.html`
    and the claim email (`course_applications/email/application_claim_subject.txt`,
    `application_claim_message.txt`, `application_claim_message.html`).
