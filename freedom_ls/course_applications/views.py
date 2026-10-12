@@ -553,13 +553,14 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
         return _render_claim(request, "invalid")
     if link.expired:
         if request.method == "POST":
-            send_application_claim_email(request, link.applicant)
-            return _render_claim(request, "resent", link.applicant)
+            if send_application_claim_email(request, link.applicant):
+                return _render_claim(request, "resent", link.applicant)
+            return _render_claim(request, "expired", link.applicant, resend_failed=True)
         return _render_claim(request, "expired", link.applicant)
+    owner = resolve_claim_owner(link.applicant)
+    if owner is not None and owner.user.site_id != link.applicant.site_id:
+        return _render_claim(request, "invalid")
     if request.method != "POST":
-        owner = resolve_claim_owner(link.applicant)
-        if owner is not None and owner.user.site_id != link.applicant.site_id:
-            return _render_claim(request, "invalid")
         return _render_claim(
             request,
             "confirm",
@@ -572,16 +573,21 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
                 else ""
             ),
         )
+    adapter = get_adapter(request)
+    if _signed_in_as_somebody_else(request, owner):
+        # The confirm page said this would happen. Before the claim, because
+        # signing out empties the session, and the sign-up analytics event a
+        # new account records has to land in the session the claimant keeps.
+        adapter.logout(request)
     outcome = attach_claimed_application(request, application)
     if outcome is None:
         return _render_claim(request, "invalid")
     forget_anonymous_applicant(request, link.applicant)
     if not outcome.user.is_active:
         return redirect("account_login")
-    adapter = get_adapter(request)
     if request.user.is_authenticated and request.user.pk != outcome.user.pk:
-        # The confirm page said this would happen. Explicit, so the hand-over
-        # does not rest on login() noticing a different account in the session.
+        # Only reachable if the owner changed between the two lookups; the
+        # hand-over must not rest on login() noticing the other account.
         adapter.logout(request)
     # Logging in cycles the session key, so the anonymous session's identifier
     # never carries over into the signed-in one.

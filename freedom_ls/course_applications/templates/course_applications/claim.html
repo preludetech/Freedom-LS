@@ -37,6 +37,11 @@
                 <p class="text-muted">
                     Links to finish an application stop working after a few days.
                 </p>
+                {% if resend_failed %}
+                    <p class="text-error" role="alert">
+                        We couldn't send a new link just now. Try again in a little while.
+                    </p>
+                {% endif %}
                 <form method="post">
                     {% csrf_token %}
                     <c-button type="submit">

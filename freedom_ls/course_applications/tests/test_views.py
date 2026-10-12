@@ -2540,6 +2540,37 @@ def test_claim_post_queues_one_sign_up_analytics_event(client, claimable):
 
 
 @pytest.mark.django_db
+def test_claim_post_while_signed_in_as_somebody_else_keeps_the_sign_up_event(
+    client, claimable
+):
+    """Signing the bystander out empties their session; the event must land in
+    the session the claimant keeps."""
+    client.force_login(UserFactory(email="bob@example.com"))
+
+    _claim(client, claimable)
+
+    events = client.session["google_analytics_events"]
+    assert [event["name"] for event in events] == ["sign_up"]
+
+
+@pytest.mark.django_db
+def test_claim_post_while_signed_in_as_somebody_else_on_a_used_link_leaves_them_in(
+    client, claimable
+):
+    """A spent link never reaches the confirm page, so nothing promised a sign-out."""
+    _claim(Client(), claimable)
+    bystander = UserFactory(email="bob@example.com")
+    client.force_login(bystander)
+
+    response = _claim(client, claimable)
+
+    assert (response.context["claim_state"], client.session["_auth_user_id"]) == (
+        "invalid",
+        str(bystander.pk),
+    )
+
+
+@pytest.mark.django_db
 def test_claim_post_writes_one_signup_attribution(client, claimable):
     _claim(client, claimable)
 
@@ -2887,6 +2918,25 @@ def test_claim_post_for_an_inactive_account_attaches_without_signing_in(
 
 
 @pytest.mark.django_db
+def test_claim_post_for_an_inactive_account_signs_a_bystander_out(
+    client, mock_site_context
+):
+    UserFactory(email="ada@example.com", is_active=False)
+    application = _submitted_form_less_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ada@example.com"
+    applicant.save(update_fields=["email"])
+    client.force_login(UserFactory(email="bob@example.com"))
+
+    response = _claim(client, application)
+
+    assert (response.url, "_auth_user_id" in client.session) == (
+        reverse("account_login"),
+        False,
+    )
+
+
+@pytest.mark.django_db
 def test_claim_post_for_an_inactive_account_redirects_to_login(
     client, mock_site_context
 ):
@@ -3147,10 +3197,23 @@ def test_expired_token_post_over_the_limit_sends_nothing(client, claimable):
 
 
 @pytest.mark.django_db
-def test_expired_token_post_over_the_limit_renders_the_resent_page(client, claimable):
+def test_expired_token_post_over_the_limit_says_nothing_was_sent(client, claimable):
     with override_settings(ACCOUNT_RATE_LIMITS={"application_claim_email": "1/h/key"}):
         cache.clear()
         _expired_claim_post(client, claimable)
         response = _expired_claim_post(client, claimable)
 
-    assert response.context["claim_state"] == "resent"
+    assert (response.context["claim_state"], response.context["resend_failed"]) == (
+        "expired",
+        True,
+    )
+
+
+@pytest.mark.django_db
+def test_expired_token_post_over_the_limit_still_offers_the_button(client, claimable):
+    with override_settings(ACCOUNT_RATE_LIMITS={"application_claim_email": "1/h/key"}):
+        cache.clear()
+        _expired_claim_post(client, claimable)
+        response = _expired_claim_post(client, claimable)
+
+    assert "Send a new link" in response.content.decode()
