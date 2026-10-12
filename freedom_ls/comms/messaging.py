@@ -36,6 +36,7 @@ from freedom_ls.comms.messaging_policy import (
     RecipientGroup,
 )
 from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
+from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 
 if TYPE_CHECKING:
     from django.contrib.sites.models import Site
@@ -173,9 +174,16 @@ def reply_decision(*, viewer: User, conversation: Conversation) -> MessagingDeci
 def mark_conversation_read(
     *, user: User, conversation: Conversation, up_to: datetime
 ) -> None:
-    """Advance the user's read marker to ``up_to``; it never moves backwards."""
+    """Advance the user's read marker to ``up_to``; it never moves backwards.
+
+    The conversation's notification is marked read too. The reverse does not
+    hold: reading or unreading a notification leaves the marker alone.
+    """
     ConversationParticipant.objects.filter(conversation=conversation, user=user).update(
         last_read_at=Greatest(Coalesce("last_read_at", Value(up_to)), Value(up_to))
+    )
+    mark_notifications_read(
+        user=user, target=conversation, site_id=conversation.site_id
     )
 
 
@@ -256,6 +264,15 @@ def send_message(
         mark_conversation_read(
             user=sender, conversation=locked, up_to=message.created_at
         )
+        other = other_participant(locked, sender)
+        if other is not None:
+            raise_notification(
+                user=other,
+                category="message.received",
+                target=locked,
+                site_id=locked.site_id,
+                data={"sender_name": sender.display_name},
+            )
     return SendResult(message=message, conversation=locked)
 
 

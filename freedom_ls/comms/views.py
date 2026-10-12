@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Literal, cast
 from uuid import UUID
 
 from django.core.paginator import Paginator
-from django.db.models import Value
-from django.db.models.functions import Coalesce
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -20,6 +18,7 @@ from django.views.decorators.http import require_POST
 from freedom_ls.accounts.utils import redirect_to_auth
 from freedom_ls.comms.config import config
 from freedom_ls.comms.models import Notification
+from freedom_ls.comms.notify import stamp_read
 from freedom_ls.comms.relative_time import day_heading
 
 if TYPE_CHECKING:
@@ -89,13 +88,6 @@ def _unseen_count(request: HttpRequest) -> int:
     view, and the panel and mark responses all call
     this rather than counting separately."""
     return _notifications_for(request).unseen().count()
-
-
-def _stamp_read(queryset: NotificationQuerySet) -> None:
-    """The one place read implies seen: a row marked read and then unread must
-    not come back onto the badge."""
-    now = timezone.now()
-    queryset.update(read_at=now, seen_at=Coalesce("seen_at", Value(now)))
 
 
 def _day_groups(page: Page) -> list[tuple[str, list[Notification]]]:
@@ -258,7 +250,7 @@ def notification_open(request: HttpRequest, pk: UUID) -> HttpResponse:
     can't be used as an open redirect.
     """
     notification = get_object_or_404(_notifications_for(request), pk=pk)
-    _stamp_read(_notifications_for(request).filter(pk=pk, read_at__isnull=True))
+    stamp_read(_notifications_for(request).filter(pk=pk, read_at__isnull=True))
     return redirect(notification.url or reverse("comms:notification_list"))
 
 
@@ -266,7 +258,7 @@ def notification_open(request: HttpRequest, pk: UUID) -> HttpResponse:
 @require_POST
 def notification_mark_read(request: HttpRequest, pk: UUID) -> HttpResponse:
     notification = get_object_or_404(_notifications_for(request), pk=pk)
-    _stamp_read(_notifications_for(request).filter(pk=pk))
+    stamp_read(_notifications_for(request).filter(pk=pk))
     if request.GET.get("filter") == "unread":
         # The row drops out of the Unread view, taking the focused button.
         return _mark_response(request, "row_removed", notification)
@@ -277,14 +269,25 @@ def notification_mark_read(request: HttpRequest, pk: UUID) -> HttpResponse:
 @require_POST
 def notification_mark_unread(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Clears read_at only (Decision 4): the row keeps its seen_at, so it
-    never comes back onto the badge."""
-    get_object_or_404(_notifications_for(request), pk=pk)
-    _notifications_for(request).filter(pk=pk).update(read_at=None)
+    never comes back onto the badge.
+
+    A rollup row is not reopened while another unread row holds its key: the
+    database allows one unread row per key, and the newer row already says there
+    is something to read.
+    """
+    notification = get_object_or_404(_notifications_for(request), pk=pk)
+    rows = _notifications_for(request)
+    if notification.rollup_key is None or not (
+        rows.filter(rollup_key=notification.rollup_key, read_at__isnull=True)
+        .exclude(pk=pk)
+        .exists()
+    ):
+        rows.filter(pk=pk).update(read_at=None)
     return _mark_response(request)
 
 
 @login_required_htmx
 @require_POST
 def notification_mark_all_read(request: HttpRequest) -> HttpResponse:
-    _stamp_read(_notifications_for(request).unread())
+    stamp_read(_notifications_for(request).unread())
     return _mark_response(request, "mark_all")

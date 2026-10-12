@@ -32,6 +32,9 @@ class NotificationCategory:
     message: StrPromise
     url_builder: str | None
     colour: NotificationColour | None = None
+    # A rollup category keeps one unread notification per user and target: further
+    # events update that row instead of adding another.
+    rollup: bool = False
 
 
 FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
@@ -41,5 +44,13 @@ FLS_NOTIFICATION_CATEGORIES: list[NotificationCategory] = [
         icon="course",
         message=_("You've been registered for %(course_title)s"),
         url_builder="freedom_ls.learner_interface.notification_urls.course_home_url",
+    ),
+    NotificationCategory(
+        key="message.received",
+        label=_("Direct message"),
+        icon="message",
+        message=_("New message from %(sender_name)s"),
+        url_builder="freedom_ls.comms.notification_urls.conversation_url",
+        rollup=True,
     ),
 ]
