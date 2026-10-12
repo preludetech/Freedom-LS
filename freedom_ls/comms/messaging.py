@@ -121,6 +121,7 @@ def inbox_for(user: User) -> QuerySet[Conversation]:
                 output_field=BooleanField(),
             )
         )
+        .select_related("site")
         .prefetch_related(
             Prefetch(
                 "participants",
@@ -272,6 +273,32 @@ def refusal_alert_copy(refusal: MessagingRefusal | None, other: User | None) -> 
             "Your text is still in the box."
         )
         % {"name": name}
+    )
+
+
+def closed_note_copy(
+    reason: MessagingRefusal | None, other: User | None
+) -> tuple[str, str]:
+    """The heading and body of the note that stands in for a closed thread's composer."""
+    heading = str(_("Replies are closed"))
+    if other is not None and reason in (
+        MessagingRefusal.CLOSED_BY_CONFIGURATION,
+        MessagingRefusal.NO_RELATIONSHIP,
+    ):
+        name = other.first_name or other.display_name
+        if reason == MessagingRefusal.CLOSED_BY_CONFIGURATION:
+            body = _(
+                "Messaging between you and %(name)s is closed here. "
+                "You can both still read this conversation."
+            )
+        else:
+            body = _(
+                "You can no longer message %(name)s from here. "
+                "You can both still read this conversation."
+            )
+        return heading, str(body % {"name": name})
+    return heading, str(
+        _("This conversation can't take new messages. You can still read it.")
     )
 
 

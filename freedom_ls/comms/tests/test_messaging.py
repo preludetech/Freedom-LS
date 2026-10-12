@@ -18,6 +18,7 @@ from freedom_ls.comms.messaging import (
     BLANK_BODY,
     TOO_LONG_BODY,
     SendResult,
+    closed_note_copy,
     conversation_between,
     get_or_create_conversation,
     inbox_for,
@@ -802,3 +803,95 @@ class TestSearchRecipients:
         )
 
         assert result.count == 0
+
+
+@pytest.mark.django_db
+class TestClosedNoteCopy:
+    def test_the_heading_is_the_same_for_every_reason(self) -> None:
+        headings = {closed_note_copy(reason, None)[0] for reason in MessagingRefusal}
+
+        assert headings == {"Replies are closed"}
+
+    def test_closed_by_configuration_names_the_other_participant(
+        self, mock_site_context
+    ) -> None:
+        other = UserFactory(first_name="Kai")
+
+        _, body = closed_note_copy(MessagingRefusal.CLOSED_BY_CONFIGURATION, other)
+
+        assert body == (
+            "Messaging between you and Kai is closed here. "
+            "You can both still read this conversation."
+        )
+
+    def test_no_relationship_names_the_other_participant(
+        self, mock_site_context
+    ) -> None:
+        other = UserFactory(first_name="Kai")
+
+        _, body = closed_note_copy(MessagingRefusal.NO_RELATIONSHIP, other)
+
+        assert body == (
+            "You can no longer message Kai from here. "
+            "You can both still read this conversation."
+        )
+
+    def test_a_blank_first_name_falls_back_to_the_display_name(
+        self, mock_site_context
+    ) -> None:
+        other = UserFactory(first_name="")
+
+        _, body = closed_note_copy(MessagingRefusal.NO_RELATIONSHIP, other)
+
+        assert other.display_name in body
+
+    @pytest.mark.parametrize(
+        "reason", [MessagingRefusal.INACTIVE_USER, MessagingRefusal.SAME_USER]
+    )
+    def test_inactive_and_same_user_share_the_generic_body(
+        self, reason: MessagingRefusal
+    ) -> None:
+        _, body = closed_note_copy(reason, None)
+
+        assert (
+            body == "This conversation can't take new messages. You can still read it."
+        )
+
+
+@pytest.mark.django_db
+class TestDeletedParticipant:
+    def test_deleting_a_user_keeps_the_conversation_and_nulls_the_sender(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        MessageFactory(conversation=conversation, sender=user)
+        other.delete()
+
+        assert Conversation.objects.filter(pk=conversation.pk).exists()
+        assert Message.objects.filter(conversation=conversation).count() == 2
+        assert (
+            Message.objects.filter(
+                conversation=conversation, sender__isnull=True
+            ).count()
+            == 1
+        )
+
+    def test_a_send_into_the_conversation_stores_nothing(
+        self, mock_site_context, site
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        other.delete()
+
+        result = send_message(
+            sender=user,
+            body="Hello?",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert result.refusal == MessagingRefusal.INACTIVE_USER
+        assert Message.objects.count() == 0

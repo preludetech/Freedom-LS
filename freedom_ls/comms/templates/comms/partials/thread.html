@@ -28,5 +28,9 @@ and the log is the only part that scrolls.
             {% include "comms/partials/message_entry.html" %}
         {% endfor %}
     </ol>
-    {% include "comms/partials/composer.html" %}
+    {% if decision.allowed %}
+        {% include "comms/partials/composer.html" %}
+    {% else %}
+        {% include "comms/partials/closed_note.html" %}
+    {% endif %}
 </section>
