@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import timedelta
+from typing import cast
+from urllib.parse import quote
 
 import pytest
 from lxml import html
 
 from django.conf import settings as django_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
-from freedom_ls.comms.messaging import inbox_for, mark_conversation_read
+from freedom_ls.comms.messaging import (
+    encode_cursor,
+    inbox_for,
+    mark_conversation_read,
+)
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
     MessagingPolicy,
@@ -1187,3 +1195,181 @@ class TestDeletedParticipantViews:
         assert "Deleted user" in row.text_content()
         assert "Unread" in row.text_content()
         assert "Read only" in row.text_content()
+
+
+def older_url(conversation, cursor: str) -> str:
+    base = reverse("conversations:thread_older", kwargs={"pk": conversation.pk})
+    return f"{base}?before={quote(cursor)}"
+
+
+def stamped_message(conversation, sender, at, body="x") -> Message:
+    message = MessageFactory(conversation=conversation, sender=sender, body=body)
+    Message.objects.filter(pk=message.pk).update(created_at=at)
+    return cast("Message", Message.objects.get(pk=message.pk))
+
+
+def older_control(tree):
+    return tree.xpath("//div[@id='thread-older']")[0]
+
+
+@pytest.mark.django_db
+class TestEarlierMessages:
+    @pytest.fixture
+    def long_thread(self, pair, settings):
+        settings.MESSAGE_PAGE_SIZE = 3
+        user, other, conversation = pair
+        base = timezone.now() - timedelta(days=3)
+        messages = [
+            stamped_message(conversation, other, base + timedelta(minutes=i), f"m{i}")
+            for i in range(7)
+        ]
+        return user, conversation, messages
+
+    def test_the_thread_shows_the_control_when_older_messages_exist(
+        self, long_thread, logged_in_client
+    ) -> None:
+        user, conversation, messages = long_thread
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        tree = html.fromstring(response.content)
+        button = older_control(tree).xpath(".//button")[0]
+        assert button.text_content().strip() == "Load earlier messages"
+        assert button.get("hx-target") == "#thread-log"
+        assert button.get("hx-swap") == "afterbegin"
+        assert quote(encode_cursor(messages[4])) in button.get("hx-get")
+        assert not tree.xpath("//ol[@id='thread-log']//*[@id='thread-older']")
+
+    def test_the_thread_has_no_control_when_one_page_holds_everything(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        assert not older_control(html.fromstring(response.content)).xpath(".//button")
+
+    def test_a_page_returns_the_page_size_with_the_next_control(
+        self, long_thread, logged_in_client
+    ) -> None:
+        user, conversation, messages = long_thread
+
+        response = logged_in_client(user).get(
+            older_url(conversation, encode_cursor(messages[4])), **HTMX
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        ids = [li.get("id") for li in tree.xpath("./li[not(@hx-swap-oob)]")]
+        assert ids == [f"msg-{m.pk}" for m in messages[1:4]]
+        control = tree.xpath("./div[@id='thread-older']")[0]
+        assert control.get("hx-swap-oob") == "outerHTML"
+        assert quote(encode_cursor(messages[1])) in control.xpath(".//button")[0].get(
+            "hx-get"
+        )
+
+    def test_an_exactly_full_last_page_returns_an_empty_control(
+        self, long_thread, logged_in_client
+    ) -> None:
+        user, conversation, messages = long_thread
+
+        response = logged_in_client(user).get(
+            older_url(conversation, encode_cursor(messages[3])), **HTMX
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        assert len(tree.xpath("./li[not(@hx-swap-oob)]")) == 3
+        control = tree.xpath("./div[@id='thread-older']")[0]
+        assert not control.xpath(".//button")
+
+    def test_a_malformed_cursor_is_a_400(self, long_thread, logged_in_client) -> None:
+        user, conversation, _ = long_thread
+
+        response = logged_in_client(user).get(older_url(conversation, "junk"), **HTMX)
+
+        assert response.status_code == 400
+
+    def test_a_missing_cursor_is_a_400(self, long_thread, logged_in_client) -> None:
+        user, conversation, _ = long_thread
+        url = reverse("conversations:thread_older", kwargs={"pk": conversation.pk})
+
+        assert logged_in_client(user).get(url, **HTMX).status_code == 400
+
+    def test_a_cursor_with_a_utc_offset_round_trips_through_the_query_string(
+        self, long_thread, logged_in_client
+    ) -> None:
+        user, conversation, messages = long_thread
+        cursor = encode_cursor(messages[4])
+        assert "+00:00" in cursor
+
+        response = logged_in_client(user).get(older_url(conversation, cursor), **HTMX)
+
+        assert response.status_code == 200
+        assert f"msg-{messages[3].pk}" in response.content.decode()
+
+    def test_a_stranger_gets_a_404(self, long_thread, logged_in_client) -> None:
+        _, conversation, messages = long_thread
+
+        response = logged_in_client(UserFactory()).get(
+            older_url(conversation, encode_cursor(messages[4])), **HTMX
+        )
+
+        assert response.status_code == 404
+
+    def test_the_boundary_entry_loses_its_separator_when_the_page_ends_on_its_day(
+        self, pair, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGE_PAGE_SIZE = 2
+        user, other, conversation = pair
+        noon = timezone.now().replace(hour=12, minute=0) - timedelta(days=2)
+        stamped_message(conversation, other, noon, "a")
+        stamped_message(conversation, other, noon + timedelta(minutes=1), "b")
+        boundary = stamped_message(
+            conversation, other, noon + timedelta(minutes=2), "c"
+        )
+        client = logged_in_client(user)
+        page = html.fromstring(client.get(thread_url(conversation)).content)
+        assert (
+            page.xpath(f"//li[@id='msg-{boundary.pk}']//*[@data-day-separator]") == []
+        )
+
+        response = client.get(older_url(conversation, encode_cursor(boundary)), **HTMX)
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        redrawn = tree.xpath(f"./li[@id='msg-{boundary.pk}']")[0]
+        assert redrawn.get("hx-swap-oob") == "outerHTML"
+        assert not redrawn.xpath(".//*[@data-day-separator]")
+        assert not redrawn.xpath(".//time")
+        first = tree.xpath("./li[not(@hx-swap-oob)]")[0]
+        assert first.xpath(".//*[@data-day-separator]")
+
+    def test_the_boundary_entry_keeps_its_separator_across_a_day_change(
+        self, pair, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGE_PAGE_SIZE = 1
+        user, other, conversation = pair
+        noon = timezone.now().replace(hour=12, minute=0) - timedelta(days=3)
+        stamped_message(conversation, other, noon, "a")
+        boundary = stamped_message(conversation, other, noon + timedelta(days=1), "b")
+
+        response = logged_in_client(user).get(
+            older_url(conversation, encode_cursor(boundary)), **HTMX
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        redrawn = tree.xpath(f"./li[@id='msg-{boundary.pk}']")[0]
+        assert redrawn.xpath(".//*[@data-day-separator]")
+
+    def test_a_message_landing_during_the_load_appears_once(
+        self, long_thread, logged_in_client
+    ) -> None:
+        user, conversation, messages = long_thread
+        client = logged_in_client(user)
+        cursor = encode_cursor(messages[4])
+        landed = MessageFactory(conversation=conversation, body="late")
+
+        response = client.get(older_url(conversation, cursor), **HTMX)
+
+        assert f"msg-{landed.pk}" not in response.content.decode()
+        page = client.get(thread_url(conversation)).content.decode()
+        assert page.count(f"msg-{landed.pk}") == 1

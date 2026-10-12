@@ -5,6 +5,8 @@ and the log is the only part that scrolls.
 {% endcomment %}
 <section x-data="conversationThread"
          x-on:resize.window="measure"
+         x-on:htmx:before-swap="rememberScroll"
+         x-on:htmx:after-settle="keepScrollAfterPrepend"
          class="flex h-[calc(100dvh-var(--thread-top,0px))] min-h-0 flex-col bg-surface">
     <header class="flex items-center gap-3 border-b border-border px-4 py-3">
         {% if back_url %}
@@ -19,12 +21,13 @@ and the log is the only part that scrolls.
             {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
         </h1>
     </header>
+    {% include "comms/partials/thread_older.html" %}
     <ol id="thread-log"
         x-ref="log"
         role="log"
         aria-label="Messages with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}"
         class="m-0 min-h-0 flex-1 list-none space-y-3 overflow-y-auto px-4 py-4 [scroll-padding-bottom:5rem]">
-        {% for message in thread_messages %}
+        {% for entry in thread_entries %}
             {% include "comms/partials/message_entry.html" %}
         {% endfor %}
     </ol>

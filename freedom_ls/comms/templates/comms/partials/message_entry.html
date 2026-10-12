@@ -1,19 +1,30 @@
 {% load comms_tags %}
 {% comment %}
-One log entry. A message from the signed-in user sits on the right in the
-primary colour; anyone else's, including a deleted sender's, sits on the left.
+One log entry, from `entry` (a MessageEntry). A message from the signed-in
+user sits on the right in the primary colour; anyone else's, including a
+deleted sender's, sits on the left. The day separator and the sender line sit
+inside the <li> so the entry can be re-rendered on its own when the message
+above it changes. `oob` swaps it over the entry already on screen.
 {% endcomment %}
-<li id="msg-{{ message.pk }}"
-    data-cursor="{{ message.created_at|date:'c' }}~{{ message.pk }}"
-    {% if message.sender_id == request.user.pk %}data-own{% endif %}
-    class="flex flex-col {% if message.sender_id == request.user.pk %}items-end{% else %}items-start{% endif %}">
-    <p class="m-0 mb-1 text-sm text-muted">
-        {% if message.sender_id == request.user.pk %}You{% elif message.sender %}{{ message.sender.display_name }}{% else %}Deleted user{% endif %}
-        &middot;
-        <time datetime="{{ message.created_at|date:'c' }}"
-              title="{{ message.created_at }}">{{ message.created_at|relative_time }}</time>
-    </p>
-    <div class="max-w-[85%] rounded-lg px-3 py-2 [overflow-wrap:anywhere] {% if message.sender_id == request.user.pk %}bg-primary text-on-primary{% else %}border border-border bg-surface text-on-surface{% endif %}">
-        {{ message.body|urlize|linebreaksbr }}
-    </div>
-</li>
+{% with message=entry.message %}
+    <li id="msg-{{ message.pk }}"
+        {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+        {% if message.sender_id == request.user.pk %}data-own{% endif %}
+        class="flex flex-col {% if message.sender_id == request.user.pk %}items-end{% else %}items-start{% endif %}">
+        {% if entry.show_day %}
+            <p class="m-0 mb-3 w-full text-center text-xs font-medium text-muted"
+               data-day-separator>{{ message.created_at|day_heading }}</p>
+        {% endif %}
+        {% if entry.show_sender %}
+            <p class="m-0 mb-1 text-sm text-muted">
+                {% if message.sender_id == request.user.pk %}You{% elif message.sender %}{{ message.sender.display_name }}{% else %}Deleted user{% endif %}
+                &middot;
+                <time datetime="{{ message.created_at|date:'c' }}"
+                      title="{{ message.created_at }}">{{ message.created_at|relative_time }}</time>
+            </p>
+        {% endif %}
+        <div class="max-w-[85%] rounded-lg px-3 py-2 [overflow-wrap:anywhere] {% if message.sender_id == request.user.pk %}bg-primary text-on-primary{% else %}border border-border bg-surface text-on-surface{% endif %}">
+            {{ message.body|urlize|linebreaksbr }}
+        </div>
+    </li>
+{% endwith %}

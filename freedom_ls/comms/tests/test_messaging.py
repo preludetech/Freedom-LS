@@ -5,6 +5,7 @@ from __future__ import annotations
 import threading
 import uuid
 from datetime import timedelta
+from typing import cast
 
 import pytest
 
@@ -20,13 +21,17 @@ from freedom_ls.comms.messaging import (
     SendResult,
     closed_note_copy,
     conversation_between,
+    decode_cursor,
+    encode_cursor,
     get_or_create_conversation,
     inbox_for,
     latest_page,
     mark_conversation_read,
     other_participant,
+    page_before,
     pair_key_for,
     refusal_alert_copy,
+    render_message_entries,
     reply_decision,
     search_recipients,
     send_message,
@@ -539,7 +544,7 @@ class TestConversationQueries:
         first = MessageFactory(conversation=conversation)
         second = MessageFactory(conversation=conversation)
 
-        assert [m.pk for m in latest_page(conversation)] == [first.pk, second.pk]
+        assert [m.pk for m in latest_page(conversation)[0]] == [first.pk, second.pk]
 
     def test_latest_page_holds_only_the_newest_page_size(
         self, mock_site_context, settings
@@ -551,7 +556,7 @@ class TestConversationQueries:
         second = MessageFactory(conversation=conversation)
         third = MessageFactory(conversation=conversation)
 
-        assert [m.pk for m in latest_page(conversation)] == [second.pk, third.pk]
+        assert [m.pk for m in latest_page(conversation)[0]] == [second.pk, third.pk]
 
 
 @pytest.mark.django_db
@@ -895,3 +900,159 @@ class TestDeletedParticipant:
 
         assert result.refusal == MessagingRefusal.INACTIVE_USER
         assert Message.objects.count() == 0
+
+
+def _stamped(conversation, sender, at, body="x") -> Message:
+    message = MessageFactory(conversation=conversation, sender=sender, body=body)
+    Message.objects.filter(pk=message.pk).update(created_at=at)
+    return cast("Message", Message.objects.get(pk=message.pk))
+
+
+@pytest.mark.django_db
+class TestCursor:
+    def test_a_cursor_round_trips(self, mock_site_context) -> None:
+        user, other = UserFactory(), UserFactory()
+        message = MessageFactory(
+            conversation=ConversationFactory(between=(user, other))
+        )
+
+        assert decode_cursor(encode_cursor(message)) == (
+            message.created_at,
+            message.pk,
+        )
+
+    @pytest.mark.parametrize(
+        "value",
+        ["", "garbage", "not-a-date~not-a-uuid", "2026-01-01T00:00:00+00:00~nope"],
+    )
+    def test_a_malformed_cursor_is_none(self, value) -> None:
+        assert decode_cursor(value) is None
+
+
+@pytest.mark.django_db
+class TestPageBefore:
+    @pytest.fixture
+    def thread(self, mock_site_context, settings):
+        settings.MESSAGE_PAGE_SIZE = 3
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        base = timezone.now() - timedelta(days=1)
+        messages = [
+            _stamped(conversation, user, base + timedelta(minutes=i)) for i in range(7)
+        ]
+        return conversation, messages
+
+    def test_the_latest_page_says_older_messages_remain(self, thread) -> None:
+        conversation, messages = thread
+
+        page, has_more = latest_page(conversation)
+
+        assert [m.pk for m in page] == [m.pk for m in messages[4:]]
+        assert has_more is True
+
+    def test_a_page_before_a_cursor_holds_the_page_size_oldest_first(
+        self, thread
+    ) -> None:
+        conversation, messages = thread
+
+        page, has_more = page_before(
+            conversation, decode_cursor(encode_cursor(messages[4]))
+        )
+
+        assert [m.pk for m in page] == [m.pk for m in messages[1:4]]
+        assert has_more is True
+
+    def test_an_exactly_full_last_page_has_nothing_more(self, thread) -> None:
+        conversation, messages = thread
+
+        page, has_more = page_before(
+            conversation, decode_cursor(encode_cursor(messages[3]))
+        )
+
+        assert [m.pk for m in page] == [m.pk for m in messages[0:3]]
+        assert has_more is False
+
+    def test_messages_sharing_a_timestamp_are_neither_skipped_nor_repeated(
+        self, mock_site_context, settings
+    ) -> None:
+        settings.MESSAGE_PAGE_SIZE = 2
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        at = timezone.now() - timedelta(hours=1)
+        same = sorted(
+            (_stamped(conversation, user, at) for _ in range(5)),
+            key=lambda m: m.pk,
+        )
+
+        first, _ = page_before(conversation, (at, same[4].pk))
+        second, _ = page_before(conversation, (at, first[0].pk))
+
+        assert {m.pk for m in first}.isdisjoint({m.pk for m in second})
+        assert [m.pk for m in first] == [m.pk for m in same[2:4]]
+        assert [m.pk for m in second] == [m.pk for m in same[0:2]]
+
+    def test_a_message_landing_after_the_cursor_is_not_in_the_page(
+        self, thread
+    ) -> None:
+        conversation, messages = thread
+        cursor = decode_cursor(encode_cursor(messages[4]))
+        newer = MessageFactory(conversation=conversation)
+
+        page, _ = page_before(conversation, cursor)
+
+        assert newer.pk not in {m.pk for m in page}
+
+
+@pytest.mark.django_db
+class TestRenderMessageEntries:
+    def test_the_first_message_of_a_thread_shows_day_and_sender(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        message = _stamped(conversation, user, timezone.now())
+
+        (entry,) = render_message_entries([message], None)
+
+        assert (entry.show_day, entry.show_sender) == (True, True)
+
+    def test_a_same_day_same_sender_follow_up_shows_neither(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        at = timezone.now().replace(hour=12, minute=0)
+        first = _stamped(conversation, user, at)
+        second = _stamped(conversation, user, at + timedelta(minutes=1))
+
+        entries = render_message_entries([second], first)
+
+        assert (entries[0].show_day, entries[0].show_sender) == (False, False)
+
+    def test_a_new_sender_on_the_same_day_shows_only_the_sender(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        at = timezone.now().replace(hour=12, minute=0)
+        first = _stamped(conversation, user, at)
+        second = _stamped(conversation, other, at + timedelta(minutes=1))
+
+        entries = render_message_entries([second], first)
+
+        assert (entries[0].show_day, entries[0].show_sender) == (False, True)
+
+    def test_a_new_local_day_shows_day_and_sender_even_for_the_same_sender(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        first = _stamped(conversation, user, timezone.now() - timedelta(days=2))
+        second = _stamped(conversation, user, timezone.now() - timedelta(days=1))
+
+        entries = render_message_entries([first, second], None)
+
+        assert [(e.show_day, e.show_sender) for e in entries] == [
+            (True, True),
+            (True, True),
+        ]

@@ -132,6 +132,9 @@ document.addEventListener("alpine:init", () => {
     // so the measurement repeats on window resize (bound with x-on:resize.window
     // on the pane, which Alpine removes with the component).
     Alpine.data("conversationThread", () => ({
+        // The log's scroll position just before earlier messages are
+        // prepended, or null when no prepend is in flight.
+        beforePrepend: null,
         init() {
             this.measure();
             this.scrollToLatest();
@@ -140,6 +143,30 @@ document.addEventListener("alpine:init", () => {
             const header = document.querySelector("header.header");
             const top = header ? header.getBoundingClientRect().height : 0;
             this.$el.style.setProperty("--thread-top", top + "px");
+        },
+        // Only a swap triggered from the load-earlier control prepends; sends
+        // and polls append and should not move the reader.
+        rememberScroll(event) {
+            const log = this.$refs.log;
+            const trigger = event.detail.elt;
+            if (event.detail.target !== log || !trigger.closest("#thread-older")) {
+                return;
+            }
+            this.beforePrepend = {
+                height: log.scrollHeight,
+                top: log.scrollTop,
+            };
+        },
+        // Prepended entries push the reader's place down by their height, so
+        // the scroll offset grows by the same amount to keep it still.
+        keepScrollAfterPrepend() {
+            if (this.beforePrepend === null) {
+                return;
+            }
+            const log = this.$refs.log;
+            log.scrollTop =
+                this.beforePrepend.top + (log.scrollHeight - this.beforePrepend.height);
+            this.beforePrepend = null;
         },
         scrollToLatest() {
             const log = this.$refs.log;

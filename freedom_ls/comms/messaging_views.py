@@ -19,11 +19,16 @@ from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging import (
     SendResult,
     closed_note_copy,
+    decode_cursor,
+    encode_cursor,
+    entry_for_message,
     inbox_for,
     latest_page,
     mark_conversation_read,
     other_participant,
+    page_before,
     refusal_alert_copy,
+    render_message_entries,
     reply_decision,
     search_recipients,
     send_message,
@@ -112,6 +117,7 @@ def thread_context(
     viewer = cast("User", request.user)
     other = other_participant(conversation, viewer)
     decision = reply_decision(viewer=viewer, conversation=conversation)
+    shown, has_older = latest_page(conversation)
     closed_heading, closed_body = ("", "")
     if not decision.allowed:
         closed_heading, closed_body = closed_note_copy(decision.reason, other)
@@ -121,7 +127,9 @@ def thread_context(
         "decision": decision,
         "closed_heading": closed_heading,
         "closed_body": closed_body,
-        "thread_messages": latest_page(conversation),
+        "thread_messages": shown,
+        "thread_entries": render_message_entries(shown, None),
+        "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
         "composer": _composer_context(client_key=uuid4(), conversation=conversation),
         "page_size": config.MESSAGE_PAGE_SIZE,
         "back_url": reverse("conversations:inbox"),
@@ -195,7 +203,7 @@ def _send_response(
             return response
         body = render_to_string(
             "comms/partials/message_entry.html",
-            {"message": result.message, "conversation": sent_to},
+            {"entry": entry_for_message(result.message), "conversation": sent_to},
             request,
         )
         body += render_to_string(
@@ -369,3 +377,47 @@ def partial_recipient_search(request: HttpRequest) -> HttpResponse:
         "comms/partials/recipient_picker.html#results",
         _picker_context(request, request.GET.get("q", "")),
     )
+
+
+@messaging_view
+def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """The page of messages older than ``?before=``, for prepending to the log.
+
+    The first message already on screen is re-rendered out of band, because
+    its day separator and sender line depend on what now sits above it. The
+    load-earlier control is replaced out of band with the next cursor, or with
+    nothing once no older message exists.
+    """
+    conversation = participant_conversation(request, pk)
+    cursor = decode_cursor(request.GET.get("before", ""))
+    if cursor is None:
+        return HttpResponseBadRequest("before must be a cursor")
+    older, has_more = page_before(conversation, cursor)
+    boundary = Message.objects.filter(
+        conversation=conversation, pk=cursor[1], created_at=cursor[0]
+    ).select_related("sender")
+    body = ""
+    for entry in render_message_entries(older, None):
+        body += render_to_string(
+            "comms/partials/message_entry.html", {"entry": entry}, request
+        )
+    boundary_message = boundary.first()
+    if older and boundary_message is not None:
+        body += render_to_string(
+            "comms/partials/message_entry.html",
+            {
+                "entry": render_message_entries([boundary_message], older[-1])[0],
+                "oob": True,
+            },
+            request,
+        )
+    body += render_to_string(
+        "comms/partials/thread_older.html",
+        {
+            "conversation": conversation,
+            "older_cursor": encode_cursor(older[0]) if has_more and older else "",
+            "oob": True,
+        },
+        request,
+    )
+    return HttpResponse(body)
