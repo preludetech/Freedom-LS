@@ -4,7 +4,12 @@
 
 {% block content %}
     <c-page width="narrow">
-        <h1>Messages</h1>
+        <div class="flex items-center justify-between gap-4">
+            <h1 class="m-0">Messages</h1>
+            {% if has_recipients %}
+                <c-button href="{% url 'conversations:start' %}" variant="primary" icon_left="message">New message</c-button>
+            {% endif %}
+        </div>
         <div class="mt-6">
             {% include "comms/partials/conversation_list.html" %}
         </div>

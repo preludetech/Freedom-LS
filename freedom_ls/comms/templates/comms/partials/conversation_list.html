@@ -12,7 +12,11 @@ own as the "conversation-list" partial when htmx asks for just the list.
             </ul>
         {% else %}
             <div class="rounded-lg border border-border bg-surface">
-                <c-panel-empty-state icon="message" message="No conversations yet." />
+                {% if has_recipients %}
+                    <c-panel-empty-state icon="message" message="No conversations yet." />
+                {% else %}
+                    <c-panel-empty-state icon="message" message="Your educators can message you, and you can reply." />
+                {% endif %}
             </div>
         {% endif %}
     </div>

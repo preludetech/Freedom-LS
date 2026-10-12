@@ -6,14 +6,22 @@ restore focus after the swap.
 <form id="composer"
       {% if oob %}hx-swap-oob="outerHTML:#composer"{% endif %}
       method="post"
-      action="{% url 'conversations:send' conversation.pk %}"
-      hx-post="{% url 'conversations:send' conversation.pk %}"
-      hx-target="#thread-log"
-      hx-swap="beforeend"
+      action="{{ composer.action_url }}"
+      hx-post="{{ composer.action_url }}"
+      {% if composer.recipient %}
+          hx-target="this"
+          hx-swap="outerHTML"
+      {% else %}
+          hx-target="#thread-log"
+          hx-swap="beforeend"
+      {% endif %}
       hx-sync="this:drop"
       class="border-t border-border bg-surface px-4 py-3">
     {% csrf_token %}
     <input type="hidden" name="client_key" value="{{ composer.client_key }}" />
+    {% if composer.recipient %}
+        <input type="hidden" name="recipient" value="{{ composer.recipient.pk }}" />
+    {% endif %}
     {% if composer.alert %}
         <div role="alert">
             <c-callout level="error">{{ composer.alert }}</c-callout>
