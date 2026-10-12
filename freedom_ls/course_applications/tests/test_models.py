@@ -210,3 +210,16 @@ def test_an_anonymous_applicants_label_leaves_out_the_address(mock_site_context)
     applicant = AnonymousApplicantFactory(email="secret@example.com")
 
     assert "secret@example.com" not in str(applicant)
+
+
+@pytest.mark.django_db
+def test_an_unclaimed_applications_label_names_the_applicant_not_none(
+    mock_site_context,
+):
+    """An unclaimed application's label printed `None` where the user belongs."""
+    application = CourseApplicationFactory(anonymous=True)
+
+    assert str(application) == (
+        f"CourseApplication(anonymous {application.anonymous_applicant_id}, "
+        f"{application.course_id})"
+    )

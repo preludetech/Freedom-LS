@@ -125,6 +125,13 @@ class CourseApplication(SiteAwareModel):
         ]
 
     def __str__(self) -> str:
+        # Ids only, never the applicant's email or name: the admin logs this
+        # on delete and the log outlives the applicant's erasure.
+        if self.user_id is None and self.anonymous_applicant_id is not None:
+            return (
+                f"CourseApplication(anonymous {self.anonymous_applicant_id}, "
+                f"{self.course_id})"
+            )
         return f"CourseApplication({self.user_id}, {self.course_id})"
 
     @property
