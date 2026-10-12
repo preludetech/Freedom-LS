@@ -39,6 +39,7 @@ from django.db import transaction
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
+from freedom_ls.course_applications.applicant_email import normalise_email
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.models import FormProgress
@@ -132,12 +133,23 @@ def _purge_course_data(user: User) -> list[str]:
     """
     lines: list[str] = []
 
-    # _base_manager: the address may have applied on any site.
-    for applicant in AnonymousApplicant._base_manager.filter(email=user.email.lower()):
+    # _base_manager: the address may have applied on any site. A claimed
+    # applicant is refused by the erasure helper, so its row goes directly:
+    # the application cascades from it, and the sitting it named now belongs
+    # to the user and is removed with the user's other sittings below.
+    applicants = AnonymousApplicant._base_manager.filter(
+        email=normalise_email(user.email)
+    )
+    for applicant in applicants:
+        claimed = applicant.claimed_at is not None
         lines.append(
-            f"AnonymousApplicant {applicant.pk} (course={applicant.course_id})"
+            f"AnonymousApplicant {applicant.pk} "
+            f"(course={applicant.course_id}, {'claimed' if claimed else 'unclaimed'})"
         )
-        erase_anonymous_applicant(applicant)
+        if claimed:
+            applicant.delete()
+        else:
+            erase_anonymous_applicant(applicant)
 
     applications = CourseApplication._base_manager.filter(user=user)
     for application in applications.select_related("course"):

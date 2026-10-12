@@ -41,6 +41,7 @@ from django.core.files.storage import Storage
 
 from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.models import Course
+from freedom_ls.course_applications.applicant_email import normalise_email
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.models import (
@@ -170,7 +171,7 @@ def command(learner: str, course_slug: str, site_name: str, dry_run: bool) -> No
     application to the course once it has claimed one, so every one goes.
     """
     site = _get_site(site_name)
-    email = learner.strip().lower()
+    email = normalise_email(learner)
     course = _get_course(site, course_slug)
     user: User | None = User._base_manager.filter(email__iexact=email).first()
 
