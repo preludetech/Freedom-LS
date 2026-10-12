@@ -8,6 +8,7 @@ from django.http import HttpRequest
 from django.utils import timezone
 
 from freedom_ls.comms.config import config
+from freedom_ls.comms.relative_time import day_heading as _day_heading
 from freedom_ls.comms.relative_time import relative_time as _relative_time
 from freedom_ls.comms.views import _unseen_count
 
@@ -17,6 +18,11 @@ register = template.Library()
 @register.filter(name="relative_time")
 def relative_time_filter(value: datetime) -> str:
     return _relative_time(value, timezone.now())
+
+
+@register.filter(name="day_heading")
+def day_heading_filter(value: datetime) -> str:
+    return _day_heading(timezone.localtime(value).date(), timezone.localdate())
 
 
 @register.filter

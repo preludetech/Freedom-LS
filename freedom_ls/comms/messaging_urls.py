@@ -14,5 +14,10 @@ urlpatterns = [
         name="recipient_search",
     ),
     path("<uuid:pk>/", messaging_views.thread, name="thread"),
+    path(
+        "<uuid:pk>/older/",
+        messaging_views.partial_thread_older,
+        name="thread_older",
+    ),
     path("<uuid:pk>/send/", messaging_views.send, name="send"),
 ]

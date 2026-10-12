@@ -7,7 +7,7 @@ functions here work outside a request (a worker, a shell) as well as inside one.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
@@ -24,6 +24,7 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Coalesce, Greatest
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from freedom_ls.comms.config import config
@@ -302,19 +303,123 @@ def closed_note_copy(
     )
 
 
-def latest_page(conversation: Conversation) -> list[Message]:
-    """The newest page of messages, oldest first.
+def encode_cursor(message: Message) -> str:
+    """A position in the thread, safe to carry in a query string with ``|urlencode``."""
+    return f"{message.created_at.isoformat()}~{message.pk}"
 
-    Fetched newest-first to take the latest page, then reversed because the
-    log reads oldest to newest.
+
+def decode_cursor(value: str) -> tuple[datetime, UUID] | None:
+    """The position ``value`` names, or None when it is not a cursor."""
+    stamp, separator, raw_pk = value.rpartition("~")
+    if not separator:
+        return None
+    try:
+        return datetime.fromisoformat(stamp), UUID(raw_pk)
+    except ValueError:
+        return None
+
+
+def _message_page(
+    conversation: Conversation,
+    *,
+    before: tuple[datetime, UUID] | None = None,
+    after: tuple[datetime, UUID] | None = None,
+    limit: int,
+) -> list[Message]:
+    """Up to ``limit`` messages strictly before or after a position, nearest first.
+
+    Ordered by ``(created_at, id)`` so messages sharing a timestamp keep a
+    stable order and a keyset position never skips or repeats one. With
+    neither bound the newest messages are returned. ``before`` and ``after``
+    are exclusive of the message at the position.
     """
-    newest_first = list(
-        Message.objects.filter(conversation=conversation)
-        .select_related("sender")
-        .order_by("-created_at", "-id")[: config.MESSAGE_PAGE_SIZE]
+    queryset = Message.objects.filter(conversation=conversation).select_related(
+        "sender"
     )
-    newest_first.reverse()
-    return newest_first
+    if before is not None:
+        stamp, pk = before
+        queryset = queryset.filter(
+            Q(created_at__lt=stamp) | Q(created_at=stamp, id__lt=pk)
+        )
+    if after is not None:
+        stamp, pk = after
+        queryset = queryset.filter(
+            Q(created_at__gt=stamp) | Q(created_at=stamp, id__gt=pk)
+        )
+    ordering = ("created_at", "id") if after is not None else ("-created_at", "-id")
+    return list(queryset.order_by(*ordering)[:limit])
+
+
+def _page_with_more(
+    conversation: Conversation, before: tuple[datetime, UUID] | None
+) -> tuple[list[Message], bool]:
+    """A page of messages oldest first, and whether older ones remain.
+
+    One row beyond the page size is fetched to learn whether more exist.
+    """
+    fetched = _message_page(
+        conversation, before=before, limit=config.MESSAGE_PAGE_SIZE + 1
+    )
+    has_more = len(fetched) > config.MESSAGE_PAGE_SIZE
+    page = fetched[: config.MESSAGE_PAGE_SIZE]
+    page.reverse()
+    return page, has_more
+
+
+def latest_page(conversation: Conversation) -> tuple[list[Message], bool]:
+    """The newest page of messages, oldest first, and whether older ones remain."""
+    return _page_with_more(conversation, None)
+
+
+def page_before(
+    conversation: Conversation, cursor: tuple[datetime, UUID]
+) -> tuple[list[Message], bool]:
+    """The page of messages just older than ``cursor``, oldest first, and whether more remain."""
+    return _page_with_more(conversation, cursor)
+
+
+@dataclass(frozen=True, slots=True)
+class MessageEntry:
+    """A message with what its log entry shows around it."""
+
+    message: Message
+    show_day: bool
+    show_sender: bool
+
+
+def render_message_entries(
+    messages: list[Message], previous: Message | None
+) -> list[MessageEntry]:
+    """Entries for ``messages`` (oldest first) judged against the message before them.
+
+    A day separator shows when the local date differs from the previous
+    message's, and the sender line shows when the sender or the day changes.
+    ``previous`` is None for the first message of the thread.
+    """
+    entries: list[MessageEntry] = []
+    for message in messages:
+        if previous is None:
+            show_day = show_sender = True
+        else:
+            show_day = _local_day(message) != _local_day(previous)
+            show_sender = show_day or message.sender_id != previous.sender_id
+        entries.append(MessageEntry(message, show_day, show_sender))
+        previous = message
+    return entries
+
+
+def _local_day(message: Message) -> date:
+    return timezone.localtime(message.created_at).date()
+
+
+def entry_for_message(message: Message) -> MessageEntry:
+    """The entry for one message, judged against the message just before it."""
+    older = _message_page(
+        message.conversation,
+        before=(message.created_at, message.pk),
+        limit=1,
+    )
+    return render_message_entries([message], older[0] if older else None)[0]
 
 
 @dataclass(frozen=True, slots=True)
