@@ -137,8 +137,10 @@ def _withdraw_application(application: CourseApplication) -> None:
         deleted = application.delete()
     click.secho(f"Application deleted: {deleted}", fg="green", bold=True)
     if form_progress_pk is not None:
-        # Re-fetched by pk now the RESTRICT no longer applies.
-        deleted = FormProgress._base_manager.get(pk=form_progress_pk).delete()
+        # Re-fetched by pk now the RESTRICT no longer applies. A user-less
+        # sitting is already gone: the application's post-delete receiver
+        # removed it.
+        deleted = FormProgress._base_manager.filter(pk=form_progress_pk).delete()
         click.secho(f"Sitting deleted:     {deleted}", fg="green", bold=True)
         for name, storage in file_paths:
             click.echo(f"  upload {name} exists now: {storage.exists(name)}")

@@ -9,7 +9,7 @@ from __future__ import annotations
 from allauth.account.models import EmailAddress
 
 from django.contrib.auth.signals import user_logged_in
-from django.db.models.signals import pre_delete
+from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
 from django.http import HttpRequest
 
@@ -21,8 +21,32 @@ from freedom_ls.course_applications.anonymous_session import (
 )
 from freedom_ls.course_applications.claims import attach_to_user
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
-from freedom_ls.course_applications.models import AnonymousApplicant
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.session_access import forget_all_anonymous_form_progress
+
+
+@receiver(post_delete, sender=CourseApplication)
+def erase_the_sitting_nobody_owns(
+    sender: type[CourseApplication], instance: CourseApplication, **kwargs: object
+) -> None:
+    """A deleted application takes its user-less sitting with it.
+
+    The application names the sitting with RESTRICT, so the sitting cannot
+    cascade from it; by the time this runs the application row is gone and
+    the sitting can be removed, which takes its answers and stored files.
+    Without this, deleting the course or the applicant would leave a sitting
+    that no address, applicant or user names, beyond the reach of any erasure.
+    A sitting with a user is reachable through that user and stays.
+
+    _base_manager: a cascade from the admin or a shell runs outside any
+    site context.
+    """
+    if instance.user_id is not None or instance.form_progress_id is None:
+        return
+    FormProgress._base_manager.filter(
+        pk=instance.form_progress_id, user__isnull=True
+    ).delete()
 
 
 @receiver(pre_delete, sender=User)

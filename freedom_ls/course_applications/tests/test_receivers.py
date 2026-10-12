@@ -19,7 +19,9 @@ if app_not_installed("freedom_ls.course_applications"):
 from freedom_ls.course_applications.anonymous_session import (
     ANONYMOUS_APPLICANTS_SESSION_KEY,
 )
+from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
+from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.models import FormProgress, QuestionAnswerFile
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 
@@ -138,6 +140,41 @@ def test_signing_in_empties_both_session_lists(client, mock_site_context):
         client.session.get(ANONYMOUS_APPLICANTS_SESSION_KEY),
         client.session.get(ANONYMOUS_FORM_PROGRESS_SESSION_KEY),
     ) == ({}, [])
+
+
+def test_deleting_a_course_removes_an_unclaimed_applicants_sitting(mock_site_context):
+    """Nothing would name the sitting afterwards, so no erasure could reach it."""
+    unverified = unverified_application_with_file()
+
+    unverified.application.course.delete()
+
+    assert not FormProgress.objects.filter(pk=unverified.sitting.pk).exists()
+
+
+def test_deleting_a_course_removes_an_unclaimed_applicants_stored_file(
+    mock_site_context,
+):
+    unverified = unverified_application_with_file()
+    answer_file = QuestionAnswerFile.objects.get(
+        answer__form_progress=unverified.sitting
+    )
+    storage, name = answer_file.file.storage, answer_file.file.name
+
+    unverified.application.course.delete()
+
+    assert not storage.exists(name)
+
+
+def test_deleting_a_course_keeps_a_signed_in_applicants_sitting(mock_site_context):
+    """A sitting with a user is still reachable through that user."""
+    user = UserFactory()
+    application = CourseApplicationFactory(
+        user=user, form_progress=FormProgressFactory(user=user)
+    )
+
+    application.course.delete()
+
+    assert FormProgress.objects.filter(pk=application.form_progress.pk).exists()
 
 
 def _unclaimed_application_for(email: str, site=None):
