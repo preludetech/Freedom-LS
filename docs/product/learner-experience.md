@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-12_
 
 ## Summary
 
@@ -211,7 +211,7 @@ When the course names an application form, "Apply now" opens the first page of t
 
 ![Applicant details step asking for email, name and consent before the application form](screenshots/learner_applicant_details_step.png)
 
-- **Following the emailed link** and confirming creates their account, or attaches the application to their existing account on the site, and signs them in; see [authentication](./authentication.md#accounts-created-by-claiming-an-application). The link can be used once and expires, and an expired link offers to send a new one to the same address.
+- **Following the emailed link** and confirming creates their account, or attaches the application to their existing account on the site, and signs them in; see [authentication](./authentication.md#accounts-created-by-claiming-an-application). An account holds one application per course: if it already has one for that course, a submitted application is kept over a draft, otherwise the one already on the account stays, and the other is discarded, even when it is the one the applicant just made. The link can be used once and expires, and an expired link offers to send a new one to the same address.
 - **Until the link is followed**, staff can see the application, marked unverified (see [admin interface](./admin-interface.md)). The applicant cannot correct a mistyped email after submitting.
 - **Progress lives in the browser session.** The applicant can leave and come back in the same browser, but cannot pick the application up from another device until they have claimed it.
 
