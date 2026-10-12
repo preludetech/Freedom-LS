@@ -139,8 +139,12 @@ def attach_claimed_application(
     too: any consent already on it was given by whoever set the password.
 
     One transaction, with the applicant row locked, so two clicks on the same
-    link converge on one claim. None means nothing changed: the link was
-    already used, or the address belongs to an account on another site.
+    link converge on one claim. The lock covers one applicant, not the
+    address: a signup, or the claim of another application under the same
+    address, can take the address between the lookup and the create. The
+    account that did is then the owner, and the application goes to it.
+    None means nothing changed: the link was already used, or the address
+    belongs to an account on another site.
     """
     with transaction.atomic():
         applicant = AnonymousApplicant.objects.select_for_update().get(
@@ -151,19 +155,15 @@ def attach_claimed_application(
         owner = resolve_claim_owner(applicant)
         if owner is not None and owner.user.site_id != applicant.site_id:
             return None
-        if owner is None:
-            user = _create_claimed_user(applicant)
-            _write_legal_consents(applicant, user)
-        else:
-            user = owner.user
-            if not owner.verified:
-                try:
-                    _verify_address_by_claim(owner, applicant.email)
-                except IntegrityError:
-                    # Another account verified this address between the lookup
-                    # and the write; the link is unusable rather than half-applied.
-                    return None
-                _write_legal_consents(applicant, user)
+        try:
+            user = _user_for_claim(applicant, owner)
+        except IntegrityError:
+            owner = resolve_claim_owner(applicant)
+            if owner is None or owner.user.site_id != applicant.site_id:
+                return None
+            user = _user_for_claim(applicant, owner)
+        if user is None:
+            return None
         attach_to_user(application, applicant, user)
     if owner is None:
         announce_user_registered(request, user)
@@ -171,6 +171,29 @@ def attach_claimed_application(
         # best-effort handling rather than copying it.
         user_signed_up.send(sender=User, request=request, user=user)
     return ClaimOutcome(user, must_set_password=claim_sets_a_password(owner))
+
+
+def _user_for_claim(
+    applicant: AnonymousApplicant, owner: ClaimOwner | None
+) -> User | None:
+    """The account the claim attaches to: made for the address, or made the
+    claimant's by verifying it.
+
+    Raises IntegrityError when the address gained an account during the
+    create. None when another account verified the address between the
+    lookup and the write; the link is unusable rather than half-applied.
+    """
+    if owner is None:
+        user = _create_claimed_user(applicant)
+        _write_legal_consents(applicant, user)
+        return user
+    if not owner.verified:
+        try:
+            _verify_address_by_claim(owner, applicant.email)
+        except IntegrityError:
+            return None
+        _write_legal_consents(applicant, owner.user)
+    return owner.user
 
 
 def attach_to_user(
@@ -220,11 +243,14 @@ def _create_claimed_user(applicant: AnonymousApplicant) -> User:
     # The applicant chooses a password right after the claim; create_user
     # demands one up front, so the row is built directly.
     user.set_unusable_password()
-    user.save()
-    # Verified by construction: the claim link only ever went to this address.
-    EmailAddress.objects.create(
-        user=user, email=user.email, verified=True, primary=True
-    )
+    # A savepoint, so the unique-address refusal the caller handles leaves
+    # the claim's transaction usable.
+    with transaction.atomic():
+        user.save()
+        # Verified by construction: the claim link only ever went to this address.
+        EmailAddress.objects.create(
+            user=user, email=user.email, verified=True, primary=True
+        )
     return user
 
 

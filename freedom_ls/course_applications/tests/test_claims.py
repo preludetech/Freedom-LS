@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 import time_machine
@@ -10,6 +11,7 @@ from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 
 from django.contrib.sessions.backends.db import SessionStore
+from django.db import IntegrityError
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import EmailAddressFactory, SiteFactory, UserFactory
@@ -168,6 +170,35 @@ def test_an_unverified_secondary_address_makes_nobody_the_owner(mock_site_contex
     owner = resolve_claim_owner(application.anonymous_applicant)
 
     assert owner is None
+
+
+def test_an_account_made_for_the_address_mid_claim_receives_the_application(
+    mock_site_context, rf
+):
+    """The applicant lock does not cover the address. A signup, or the claim of
+    a second application under the same address, can make the account between
+    the owner lookup and the create; the application then goes to that account
+    rather than failing on the unique address."""
+    application = _anonymous_application_for("raced@example.com")
+    racer: list[User] = []
+
+    def _somebody_else_registers_first(applicant):
+        racer.append(UserFactory(email=applicant.email))
+        EmailAddressFactory(user=racer[0], email=applicant.email)
+        raise IntegrityError("duplicate key value violates unique constraint")
+
+    with patch(
+        "freedom_ls.course_applications.claims._create_claimed_user",
+        side_effect=_somebody_else_registers_first,
+    ):
+        outcome = attach_claimed_application(rf.get("/"), application)
+
+    application.refresh_from_db()
+    assert (application.user, outcome) == (
+        racer[0],
+        ClaimOutcome(racer[0], must_set_password=False),
+    )
+    assert User.objects.filter(email="raced@example.com").count() == 1
 
 
 def test_attaching_past_an_unverified_secondary_address_creates_a_new_user(
