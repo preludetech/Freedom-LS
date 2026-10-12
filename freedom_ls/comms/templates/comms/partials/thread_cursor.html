@@ -1,0 +1,9 @@
+{% comment %}
+The newest message the page holds, sent back with every poll so the server
+returns only what is newer. `oob` replaces the input already on the page.
+{% endcomment %}
+<input type="hidden"
+       name="after"
+       id="thread-cursor"
+       value="{{ thread_cursor }}"
+       {% if oob %}hx-swap-oob="outerHTML"{% endif %}>

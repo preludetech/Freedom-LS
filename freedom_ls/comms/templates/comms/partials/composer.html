@@ -4,6 +4,7 @@ send can replace it in place, and the textarea keeps #message-body so htmx can
 restore focus after the swap.
 {% endcomment %}
 <form id="composer"
+      x-data="messageComposer"
       {% if oob %}hx-swap-oob="outerHTML:#composer"{% endif %}
       method="post"
       action="{{ composer.action_url }}"
@@ -19,6 +20,12 @@ restore focus after the swap.
       class="border-t border-border bg-surface px-4 py-3">
     {% csrf_token %}
     <input type="hidden" name="client_key" value="{{ composer.client_key }}" />
+    <input type="hidden" name="composer" value="open" id="composer-state" />
+    <input type="hidden"
+           name="draft"
+           value="{% if composer.draft %}1{% else %}0{% endif %}"
+           id="composer-draft"
+           x-ref="draft" />
     {% if composer.recipient %}
         <input type="hidden" name="recipient" value="{{ composer.recipient.pk }}" />
     {% endif %}
@@ -32,6 +39,8 @@ restore focus after the swap.
     </label>
     <div class="mt-1 flex items-end gap-2">
         <textarea id="message-body"
+                  x-ref="body"
+                  x-on:input="onInput"
                   name="body"
                   rows="2"
                   maxlength="{{ composer.max_length }}"

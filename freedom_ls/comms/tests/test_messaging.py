@@ -27,6 +27,8 @@ from freedom_ls.comms.messaging import (
     inbox_for,
     latest_page,
     mark_conversation_read,
+    messages_after,
+    new_messages_announcement,
     other_participant,
     page_before,
     pair_key_for,
@@ -1001,6 +1003,65 @@ class TestPageBefore:
         page, _ = page_before(conversation, cursor)
 
         assert newer.pk not in {m.pk for m in page}
+
+
+@pytest.mark.django_db
+class TestMessagesAfter:
+    @pytest.fixture
+    def thread(self, mock_site_context):
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        base = timezone.now() - timedelta(days=1)
+        messages = [
+            _stamped(conversation, other, base + timedelta(minutes=i)) for i in range(5)
+        ]
+        return conversation, messages
+
+    def test_it_returns_the_messages_after_the_cursor_oldest_first(
+        self, thread
+    ) -> None:
+        conversation, messages = thread
+
+        found = messages_after(conversation, decode_cursor(encode_cursor(messages[1])))
+
+        assert [m.pk for m in found] == [m.pk for m in messages[2:]]
+
+    def test_it_returns_nothing_at_the_newest_message(self, thread) -> None:
+        conversation, messages = thread
+
+        assert (
+            messages_after(conversation, decode_cursor(encode_cursor(messages[-1])))
+            == []
+        )
+
+    def test_no_cursor_means_the_whole_thread(self, thread) -> None:
+        conversation, messages = thread
+
+        assert [m.pk for m in messages_after(conversation, None)] == [
+            m.pk for m in messages
+        ]
+
+    def test_messages_sharing_the_cursor_timestamp_are_split_by_id(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        at = timezone.now() - timedelta(hours=1)
+        same = sorted(
+            (_stamped(conversation, other, at) for _ in range(4)), key=lambda m: m.pk
+        )
+
+        found = messages_after(conversation, (at, same[1].pk))
+
+        assert [m.pk for m in found] == [m.pk for m in same[2:]]
+
+
+class TestNewMessagesAnnouncement:
+    def test_one_message_is_singular(self) -> None:
+        assert new_messages_announcement(1, "Kai") == "1 new message from Kai"
+
+    def test_several_messages_are_plural(self) -> None:
+        assert new_messages_announcement(3, "Kai") == "3 new messages from Kai"
 
 
 @pytest.mark.django_db

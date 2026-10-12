@@ -19,5 +19,10 @@ urlpatterns = [
         messaging_views.partial_thread_older,
         name="thread_older",
     ),
+    path(
+        "<uuid:pk>/poll/",
+        messaging_views.partial_thread_poll,
+        name="thread_poll",
+    ),
     path("<uuid:pk>/send/", messaging_views.send, name="send"),
 ]

@@ -1373,3 +1373,349 @@ class TestEarlierMessages:
         assert f"msg-{landed.pk}" not in response.content.decode()
         page = client.get(thread_url(conversation)).content.decode()
         assert page.count(f"msg-{landed.pk}") == 1
+
+
+def poll_url(conversation, *, after="", composer="open", draft="0") -> str:
+    base = reverse("conversations:thread_poll", kwargs={"pk": conversation.pk})
+    return f"{base}?after={quote(after)}&composer={composer}&draft={draft}"
+
+
+def poll_tree(response):
+    return html.fromstring(f"<div>{response.content.decode()}</div>")
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestThreadPoll:
+    @pytest.fixture
+    def seen(self, pair):
+        """The pair with one message already on screen, and its cursor."""
+        user, other, conversation = pair
+        first = MessageFactory(conversation=conversation, sender=other, body="First")
+        return user, other, conversation, encode_cursor(first)
+
+    def test_the_thread_carries_the_newest_cursor_and_the_poller(
+        self, seen, logged_in_client, settings
+    ) -> None:
+        user, _, conversation, cursor = seen
+        settings.MESSAGE_THREAD_POLL_SECONDS = 5
+
+        tree = html.fromstring(
+            logged_in_client(user).get(thread_url(conversation)).content
+        )
+
+        assert tree.xpath("//input[@id='thread-cursor']")[0].get("value") == cursor
+        assert tree.xpath("//input[@id='thread-cursor']")[0].get("name") == "after"
+        poller = tree.xpath("//div[@x-data='refreshTimer']")[0]
+        assert poller.get("data-poll-seconds") == "5"
+        target = poller.xpath(".//span[@x-ref='target']")[0]
+        assert target.get("hx-get") == reverse(
+            "conversations:thread_poll", kwargs={"pk": conversation.pk}
+        )
+        assert target.get("hx-target") == "#thread-log"
+        assert target.get("hx-swap") == "beforeend"
+        assert target.get("hx-include") == (
+            "#thread-cursor, #composer-state, #composer-draft"
+        )
+        assert tree.xpath("//*[@id='thread-status'][@role='status']")
+
+    def test_nothing_new_is_204_and_writes_nothing(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+        before = last_read_at(conversation, user)
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor), **HTMX
+        )
+
+        assert response.status_code == 204
+        assert last_read_at(conversation, user) == before
+        assert "HX-Trigger" not in response
+
+    def test_new_messages_come_back_as_entries_with_the_cursor(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, conversation, cursor = seen
+        newer = MessageFactory(conversation=conversation, sender=other, body="Second")
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor), **HTMX
+        )
+
+        tree = poll_tree(response)
+        assert response.status_code == 200
+        assert [li.get("id") for li in tree.xpath("./li")] == [f"msg-{newer.pk}"]
+        cursor_input = tree.xpath("./input[@id='thread-cursor']")[0]
+        assert cursor_input.get("hx-swap-oob") == "outerHTML"
+        assert cursor_input.get("value") == encode_cursor(newer)
+        assert not tree.xpath("//form")
+
+    def test_incoming_messages_mark_the_thread_read_and_announce_themselves(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, conversation, cursor = seen
+        MessageFactory(conversation=conversation, sender=other, body="Second")
+        newest = MessageFactory(conversation=conversation, sender=other, body="Third")
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor), **HTMX
+        )
+
+        status = poll_tree(response).xpath("./*[@id='thread-status']")[0]
+        assert status.get("hx-swap-oob") == "true"
+        assert status.get("role") == "status"
+        assert status.text_content().strip() == (
+            f"2 new messages from {other.display_name}"
+        )
+        assert "Third" not in status.text_content()
+        assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
+        assert last_read_at(conversation, user) >= newest.created_at
+
+    def test_one_incoming_message_is_announced_in_the_singular(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, conversation, cursor = seen
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor), **HTMX
+        )
+
+        status = poll_tree(response).xpath("./*[@id='thread-status']")[0]
+        assert status.text_content().strip() == (
+            f"1 new message from {other.display_name}"
+        )
+
+    def test_the_viewers_own_new_message_is_an_entry_without_an_announcement(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+        mine = MessageFactory(conversation=conversation, sender=user, body="Mine")
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor), **HTMX
+        )
+
+        tree = poll_tree(response)
+        assert tree.xpath(f"./li[@id='msg-{mine.pk}'][@data-own]")
+        assert not tree.xpath("//*[@id='thread-status']")
+        assert "HX-Trigger" not in response
+
+    def test_an_entry_carries_data_own_only_for_the_viewers_messages(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, conversation, cursor = seen
+        theirs = MessageFactory(conversation=conversation, sender=other)
+
+        tree = poll_tree(
+            logged_in_client(user).get(poll_url(conversation, after=cursor), **HTMX)
+        )
+
+        assert not tree.xpath(f"./li[@id='msg-{theirs.pk}'][@data-own]")
+
+    def test_new_entries_are_judged_against_the_cursor_message(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, conversation, cursor = seen
+        MessageFactory(conversation=conversation, sender=other)
+
+        tree = poll_tree(
+            logged_in_client(user).get(poll_url(conversation, after=cursor), **HTMX)
+        )
+
+        assert not tree.xpath("./li//*[@data-day-separator]")
+        assert not tree.xpath("./li//time")
+
+    def test_an_empty_cursor_returns_the_whole_thread(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, _ = seen
+
+        response = logged_in_client(user).get(poll_url(conversation), **HTMX)
+
+        assert len(poll_tree(response).xpath("./li")) == 1
+
+    def test_a_malformed_cursor_is_a_400(self, seen, logged_in_client) -> None:
+        user, _, conversation, _ = seen
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after="junk"), **HTMX
+        )
+
+        assert response.status_code == 400
+
+    def test_a_non_participant_gets_404(
+        self, seen, logged_in_client, mock_site_context
+    ) -> None:
+        _, _, conversation, cursor = seen
+
+        response = logged_in_client(UserFactory()).get(
+            poll_url(conversation, after=cursor), **HTMX
+        )
+
+        assert response.status_code == 404
+
+    def test_an_anonymous_htmx_poll_is_sent_to_login(self, seen, client) -> None:
+        _, _, conversation, cursor = seen
+
+        response = client.get(poll_url(conversation, after=cursor), **HTMX)
+
+        assert response.status_code == 204
+        assert "HX-Redirect" in response
+
+
+@pytest.mark.django_db
+class TestThreadPollComposerFlip:
+    @pytest.fixture
+    def seen(self, pair):
+        user, other, conversation = pair
+        first = MessageFactory(conversation=conversation, sender=other)
+        return user, other, conversation, encode_cursor(first)
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_a_newly_closed_thread_swaps_in_the_note_when_there_is_no_draft(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor, composer="open", draft="0"), **HTMX
+        )
+
+        note = poll_tree(response).xpath("./div[@id='composer']")[0]
+        assert response.status_code == 200
+        assert note.get("hx-swap-oob") == "outerHTML:#composer"
+        assert "Replies are closed" in note.text_content()
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_a_newly_closed_thread_leaves_a_drafted_composer_in_place(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor, composer="open", draft="1"), **HTMX
+        )
+
+        tree = poll_tree(response)
+        assert not tree.xpath("//*[@id='composer']")
+        assert not tree.xpath("//textarea")
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_a_reopened_thread_brings_the_composer_back(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor, composer="closed", draft="0"), **HTMX
+        )
+
+        composer = poll_tree(response).xpath("./form[@id='composer']")[0]
+        assert composer.get("hx-swap-oob") == "outerHTML:#composer"
+        assert composer.xpath(".//textarea")
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_an_open_thread_with_an_open_composer_is_not_flipped(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor, composer="open"), **HTMX
+        )
+
+        assert response.status_code == 204
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_a_closed_thread_with_the_note_showing_is_not_flipped(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, cursor = seen
+
+        response = logged_in_client(user).get(
+            poll_url(conversation, after=cursor, composer="closed"), **HTMX
+        )
+
+        assert response.status_code == 204
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_new_messages_and_a_flip_arrive_in_one_response(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, conversation, cursor = seen
+        newer = MessageFactory(conversation=conversation, sender=other)
+
+        tree = poll_tree(
+            logged_in_client(user).get(
+                poll_url(conversation, after=cursor, composer="open"), **HTMX
+            )
+        )
+
+        assert tree.xpath(f"./li[@id='msg-{newer.pk}']")
+        assert tree.xpath("./div[@id='composer']")
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_a_composer_rendered_with_text_carries_the_draft_flag(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, _ = seen
+        data = {"body": "  ", "client_key": str(uuid.uuid4())}
+
+        response = logged_in_client(user).post(send_url(conversation), data, **HTMX)
+
+        composer = poll_tree(response).xpath("//form[@id='composer']")[0]
+        assert composer.xpath(".//input[@id='composer-draft']")[0].get("value") == "1"
+        assert (
+            composer.xpath(".//input[@id='composer-state']")[0].get("value") == "open"
+        )
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_an_empty_composer_carries_a_zero_draft_flag(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, _ = seen
+
+        tree = html.fromstring(
+            logged_in_client(user).get(thread_url(conversation)).content
+        )
+
+        assert tree.xpath("//input[@id='composer-draft']")[0].get("value") == "0"
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_the_closed_note_carries_the_closed_state(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, _ = seen
+
+        tree = html.fromstring(
+            logged_in_client(user).get(thread_url(conversation)).content
+        )
+
+        assert tree.xpath("//input[@id='composer-state']")[0].get("value") == "closed"
+        assert tree.xpath("//input[@id='composer-state']")[0].get("name") == "composer"
+        assert tree.xpath("//input[@id='composer-draft']")[0].get("value") == "0"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestSendCarriesTheThreadSignals:
+    def test_a_success_sets_the_cursor_and_announces_the_change(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "Hello", "client_key": str(uuid.uuid4())},
+            **HTMX,
+        )
+
+        tree = poll_tree(response)
+        message = Message.objects.get()
+        cursor_input = tree.xpath("//input[@id='thread-cursor']")[0]
+        assert cursor_input.get("hx-swap-oob") == "outerHTML"
+        assert cursor_input.get("value") == encode_cursor(message)
+        assert tree.xpath(f"//li[@id='msg-{message.pk}'][@data-own]")
+        assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import datetime
 from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
@@ -25,6 +26,8 @@ from freedom_ls.comms.messaging import (
     inbox_for,
     latest_page,
     mark_conversation_read,
+    messages_after,
+    new_messages_announcement,
     other_participant,
     page_before,
     refusal_alert_copy,
@@ -42,6 +45,9 @@ from freedom_ls.site_aware_models.models import get_cached_site
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
+
+
+CONVERSATION_CHANGED = json.dumps({"conversationChanged": {}})
 
 
 def participant_conversation(request: HttpRequest, pk: UUID) -> Conversation:
@@ -130,6 +136,8 @@ def thread_context(
         "thread_messages": shown,
         "thread_entries": render_message_entries(shown, None),
         "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
+        "thread_cursor": encode_cursor(shown[-1]) if shown else "",
+        "thread_poll_seconds": config.MESSAGE_THREAD_POLL_SECONDS,
         "composer": _composer_context(client_key=uuid4(), conversation=conversation),
         "page_size": config.MESSAGE_PAGE_SIZE,
         "back_url": reverse("conversations:inbox"),
@@ -207,6 +215,11 @@ def _send_response(
             request,
         )
         body += render_to_string(
+            "comms/partials/thread_cursor.html",
+            {"thread_cursor": encode_cursor(result.message), "oob": True},
+            request,
+        )
+        body += render_to_string(
             "comms/partials/composer.html",
             {
                 "conversation": sent_to,
@@ -216,7 +229,9 @@ def _send_response(
             },
             request,
         )
-        return HttpResponse(body)
+        response = HttpResponse(body)
+        response["HX-Trigger"] = CONVERSATION_CHANGED
+        return response
 
     other = (
         recipient if conversation is None else other_participant(conversation, viewer)
@@ -421,3 +436,102 @@ def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
         request,
     )
     return HttpResponse(body)
+
+
+def _boundary_message(
+    conversation: Conversation, cursor: tuple[datetime, UUID] | None
+) -> Message | None:
+    """The message a cursor names, which new entries are laid out against."""
+    if cursor is None:
+        return None
+    return cast(
+        "Message | None",
+        Message.objects.filter(
+            conversation=conversation, pk=cursor[1], created_at=cursor[0]
+        )
+        .select_related("sender")
+        .first(),
+    )
+
+
+def _incoming_announcement(incoming: list[Message]) -> str:
+    sender = incoming[-1].sender
+    name = sender.display_name if sender is not None else "Deleted user"
+    return new_messages_announcement(len(incoming), name)
+
+
+@messaging_view
+def partial_thread_poll(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """What changed in the thread since the page's cursor, or 204 for nothing.
+
+    The page sends its newest cursor, whether its composer is the form
+    (``composer=open``) or the closed note, and whether the form holds typed
+    text (``draft=1``). New messages answer as entries to append, with the
+    cursor out of band. Incoming ones mark the thread read and carry the
+    screen-reader announcement. When the policy's decision no longer matches
+    the composer on screen, the other one is swapped in, unless a draft sits in
+    the form: replacing it would throw the text away.
+    """
+    conversation = participant_conversation(request, pk)
+    raw_cursor = request.GET.get("after", "")
+    cursor = decode_cursor(raw_cursor)
+    if raw_cursor and cursor is None:
+        return HttpResponseBadRequest("after must be a cursor")
+    viewer = cast("User", request.user)
+    other = other_participant(conversation, viewer)
+    new = messages_after(conversation, cursor)
+    decision = reply_decision(viewer=viewer, conversation=conversation)
+    flipped = decision.allowed != (request.GET.get("composer") == "open")
+    if not new and not flipped:
+        return HttpResponse(status=204)
+
+    body = ""
+    announce = False
+    if new:
+        for entry in render_message_entries(
+            new, _boundary_message(conversation, cursor)
+        ):
+            body += render_to_string(
+                "comms/partials/message_entry.html", {"entry": entry}, request
+            )
+        body += render_to_string(
+            "comms/partials/thread_cursor.html",
+            {"thread_cursor": encode_cursor(new[-1]), "oob": True},
+            request,
+        )
+        incoming = [message for message in new if message.sender_id != viewer.pk]
+        if incoming:
+            mark_conversation_read(
+                user=viewer, conversation=conversation, up_to=new[-1].created_at
+            )
+            body += render_to_string(
+                "comms/partials/thread_status.html",
+                {"announcement": _incoming_announcement(incoming), "oob": True},
+                request,
+            )
+            announce = True
+    if flipped and request.GET.get("draft") == "0":
+        if decision.allowed:
+            body += render_to_string(
+                "comms/partials/composer.html",
+                {
+                    "conversation": conversation,
+                    "other": other,
+                    "composer": _composer_context(
+                        client_key=uuid4(), conversation=conversation
+                    ),
+                    "oob": True,
+                },
+                request,
+            )
+        else:
+            heading, note = closed_note_copy(decision.reason, other)
+            body += render_to_string(
+                "comms/partials/closed_note.html",
+                {"closed_heading": heading, "closed_body": note, "oob": True},
+                request,
+            )
+    response = HttpResponse(body)
+    if announce:
+        response["HX-Trigger"] = CONVERSATION_CHANGED
+    return response
