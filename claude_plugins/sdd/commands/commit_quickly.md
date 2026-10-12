@@ -74,10 +74,8 @@ git diff --cached --name-only
   record of editing any file in this conversation, stop and say so. Never guess at which files
   were yours.
 - `all` — `git add -A`.
-- **No argument** — compare the files you edited in this conversation against the dirty set from
-  `git status --short`. If the two sets are identical, the distinction is moot: `git add -A` and
-  carry on. If they differ, or you have no record of your own edits, ask the user once with
-  `AskUserQuestion` — `mine` or `all` — and then proceed.
+- **No argument** — like `mine`: stage the files you edited or created in this conversation, by
+  name. With no record of your own edits, stop and say so.
 
 Never stage environment files, credential files, or key material, whatever the argument says. If
 `git status` shows one, leave it out and say so in the final report.

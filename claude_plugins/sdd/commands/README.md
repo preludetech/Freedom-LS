@@ -4,21 +4,17 @@ A step-by-step workflow for taking a rough idea all the way to a merged pull req
 
 ## The workflow at a glance
 
-1. **Idea** → write a rough idea file, optionally refine it.
-2. **Spec** → turn the idea into a specification, review it, threat-model it.
-3. **Plan** → turn the spec into an implementation plan and a QA plan, then security-review the plan, then structure-review the plan.
-4. **Implement** → execute the plan.
-5. **Code security review** → review the code diff for security issues.
-6. **QA** → run the QA plan.
-7. **Refresh the app map** → if structure changed, re-run `/app_map`.
-8. **Document** → run `/update_product_docs` to update `docs/product/` for the shipped feature.
-9. **Upgrade notes** → run `/update_upgrade_notes` to produce `upgrade_notes.md` for downstream FLS projects.
-10. **Sync the course-author plugin** → run `/update_claude_plugin_fls_content` to sync the `fls-content` plugin if authoring functionality changed (fast-skips otherwise).
-11. **Ship** → PR, address feedback, finish worktree.
+1. **Spec** → turn the idea into a researched, reviewed specification.
+2. **Plan** → turn the spec into an implementation plan and a QA plan, and review the plan.
+3. **Implementation and QA** → execute the plan, then run the QA plan.
+4. **Documentation and pull request** → run the documentation hooks, open the PR, address review feedback.
+5. **Cleanup** → finish the worktree, then remove the worktree and branch.
+
+These are the five sections of the `todo.md` checklist. Capturing the idea comes before them.
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
 
-> **One-time setup:** before the first SDD run on a project, run `/app_map` to generate `docs/app_structure.md`. The structure review step compares proposed plans against that diagram.
+> **One-time setup:** before the first SDD run on a project, run `/app_map` to generate `docs/app_structure.md`. A plan review brief that compares proposed plans against the app structure reads that diagram.
 
 ---
 
@@ -38,39 +34,36 @@ The format and the row grammar live in `claude_plugins/sdd/resources/roadmap_for
 1. Create an idea file manually (a markdown file describing what you want to build and why). If it is too big for one PR, run `/sdd:roadmap <dir>` first and continue with one of the specs it produces.
 2. If the work has a design drawn in Claude Design, run `/sdd:register_design [dir] <handoff prompt or claude-design-url>`. On a feature branch it registers the design on that branch's own spec directory and commits it to that branch; on `main` it takes the spec (or a cut effort's parent) you name. It takes the handoff prompt Claude Design copies (or a bare link) and writes `design_prompt.md`, `design_source/` and `design_screenshots/` as well as `design.md`, which tells every later step how to read them. The design is a visual reference only: the specs and the existing functionality decide what gets built, and the project's own theme, tokens and icons style it.
 
-## Step 2: Write the spec
+## Step 2: Spec
 
-1. Run `/spec_from_idea` to generate a specification from the idea file.
+1. Run `/sdd:spec_from_idea`. It researches the idea, writes the specification, runs the review wave and commits, all in one run. The review wave runs inside this command.
 2. Review the spec and edit it manually where needed.
-3. Run `/spec_review` to sanity-check the spec.
+3. After substantial hand edits, run `/sdd:spec_review` to run the review wave again. It is not needed otherwise.
 
-## Step 2.5: Threat model
+## Step 3: Plan
 
-1. Run `/threat-model` on the spec to identify security considerations.
-2. Update the spec to close any gaps the threat model surfaced, before moving on to planning.
-
-## Step 3: Build the plan
-
-Run `/plan_from_spec`. This produces:
+Run `/sdd:plan_from_spec`. This produces:
 
 - an implementation plan, and
 - a QA plan.
 
-An optional suffix argument (`/plan_from_spec <spec> 2b`) selects a second plan in the same spec directory: `2b. plan.md` and `3b. frontend_qa.md` instead of `2. plan.md` and `3. frontend_qa.md`.
+The plan review runs the built-in dimensions and the briefs listed under `## Plan Review Hooks` in `.claude/sdd/config.md`. It leaves every callout decided or recorded as an assumed default.
 
-## Step 4: Implement
+An optional suffix argument (`/sdd:plan_from_spec <spec> 2b`) selects a second plan in the same spec directory: `2b. plan.md` and `3b. frontend_qa.md` instead of `2. plan.md` and `3. frontend_qa.md`.
+
+## Step 4: Implementation and QA
+
+### Implement
 
 Run `/implement_plan` to execute the implementation plan. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
 
-## Step 5: Code security review
+The project's own pre-commit checks and Claude Code's `/security-review` cover the code diff ad hoc; no SDD step runs a security review.
 
-Run `/security-review` to check the code diff for security issues. Running this before QA means structural security fixes don't force QA to be re-run.
+### QA
 
-## Step 6: QA
+Run `/fls-dev:do_qa` to execute the QA plan.
 
-Run `/do_qa` to execute the QA plan.
-
-### Reacting to the QA report
+#### Reacting to the QA report
 
 - If tests were skipped because of missing data or fixtures, create the needed test data (the `fls-dev:qa-data-helper` agent is designed for this).
 - If bugs were detected, `/do_qa` now includes a triage → TDD fix → re-verify loop: clear
@@ -79,7 +72,6 @@ Run `/do_qa` to execute the QA plan.
   re-verify the Playwright flow). Bugs that do not meet the triage criteria are left `UNRESOLVED`
   with a human todo added automatically. Check the `## Bug status` section of `qa_report.md` for
   the outcome of each bug: `FIXED (commit: <hash>)` or `UNRESOLVED`.
-- If QA fixes change code significantly, re-run `/security-review`.
 
 ### Deployed wrapper script trust boundary
 
@@ -95,37 +87,20 @@ script placed there must therefore be reviewed with the same care as a new allow
 confirm it validates its arguments, does not write outside the project, and does not execute its
 arguments as shell code.
 
-## Step 7: Refresh the app map
+## Step 5: Document
 
-If implementation ended up adding, removing, or renaming apps, re-run `/app_map` to regenerate `docs/app_structure.md`. Commit the updated file alongside the feature so the diagram stays the authoritative reference for the next structure review.
+Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md` and runs each hook in order, committing per hook. A project that lists no hooks gets a no-op. `claude_plugins/fls-dev/README.md` says what FLS's hooks produce.
 
-If no structural change happened, skip this step.
+## Step 6: Pull request
 
-## Step 8: Update product docs
+1. Run `/sdd:make_pr_quickly` to open the pull request. It uses `gh pr create --fill`, building the title and body from the commits; it reads nothing else.
+2. Run `/sdd:address_pr_review` to work through review feedback.
 
-Run `/update_product_docs` to refresh the product documentation under `docs/product/` for the feature that just shipped. The command reads the spec and plan to identify which docs are affected, fans out one worker per affected doc to draft the updates, applies the edits, and — for features with visible UI — starts a dev server to capture and compress screenshots via Playwright MCP. It ticks its own todo box and cleans up scratch files on completion.
+## Step 7: Cleanup
 
-## Step 8.5: Upgrade notes
+Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
 
-Run `/update_upgrade_notes` to produce `upgrade_notes.md` in the spec directory. The file has a YAML frontmatter block with machine-readable flags (`requires_migrations`, `requires_template_review`, `requires_settings_change`, `requires_package_upgrade`, `requires_npm_install`, `requires_tailwind_rebuild`) plus a short prose body covering breaking changes and manual steps. Downstream FLS projects use this file to know exactly what they need to do after pulling the change.
-
-The command reads the spec, plan, and the actual `git diff main..HEAD` to determine which flags to set. If the feature has no downstream impact, the notes say so plainly — an honest "no action needed" is the right output.
-
-## Step 9: Sync the course-author plugin (if authoring functionality changed)
-
-Run `/update_claude_plugin_fls_content`. The command runs a single `git diff main --name-only | grep` over authoring-relevant paths (the schema sources the plugin mirrors — content-base, content-engine and form-engine — cotton templates, widget allowlist settings, management commands, demo content) — if nothing matched, it ticks its box and exits immediately at zero LLM cost. If something matched, it fans out one `sdd:sdd-worker` to read only the changed authoring-relevant files, drafts scoped edits to the `fls-content` reference skills and the bundled validator, applies them (re-applying the patches the bundled files' own `# Patches applied:` headers list, when a mirrored source changed), and cleans up scratch files on completion.
-
-## Step 10: Ship it
-
-1. Run `/make_pr_quickly` to open the pull request. It builds the title and body from the first 80 lines of the spec plus the `todo.md` checkboxes, so the PR states plainly which SDD steps have run and which have not, then pushes and calls `gh pr create`. It reads nothing else — no plan, no research files, no diff — which is what keeps it fast.
-2. Run `/address_pr_review` to work through review feedback.
-3. Once the PR is approved (or already merged), run `/finish_worktree`. It rebases, archives the
-   spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the
-   main worktree up to date. It stops, changing nothing on `main`, if the main worktree has
-   uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by
-   hand.
-
-`/commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise `mine` (the files Claude touched this conversation) or `all`, and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs the targeted test tier first.
+`/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs the targeted test tier first.
 
 ---
 
@@ -137,7 +112,7 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 4. **Target Claude Code version.** These files target the current **2.1.x** line — per-agent/per-command `model:` frontmatter, `AskUserQuestion`, non-nesting subagents, and "commands merged into skills" all hold here. There is no runtime version check; this is a documented target, not enforced.
 
-5. **Every artifact command commits and pushes itself.** Any command that writes or edits an SDD artifact ends by delegating a commit and push to `sdd:sdd-mechanic`, following `claude_plugins/sdd/resources/commit_and_push.md`. The commit subject always leads with the spec directory name, so `git log` reads as a per-spec history. Nothing is committed on `main`/`master`, and nothing unrelated is staged. The one exception is `spec_dd/` bookkeeping that has no worktree yet (`/sdd:start`'s move to in progress, `/sdd:roadmap`'s edits): that is committed on `main` and not pushed.
+5. **Every artifact command commits and pushes itself.** Any command that writes or edits an SDD artifact ends by delegating a commit and push to `sdd:sdd-mechanic`, following `claude_plugins/sdd/resources/commit_and_push.md`. A command run in hook mode keeps its commit; `/sdd:document` commits for a hook that has no commit step. The commit subject always leads with the spec directory name, so `git log` reads as a per-spec history. Nothing is committed on `main`/`master`, and nothing unrelated is staged. The one exception is `spec_dd/` bookkeeping that has no worktree yet (`/sdd:start`'s move to in progress, `/sdd:roadmap`'s edits): that is committed on `main` and not pushed.
 
 6. **Why it runs this way.** See the **`claude-code-authoring`** skill for the canonical reference on the Claude Code mechanics behind all of the above: no subagent nesting or fan-out, no slash commands from subagents, no `AskUserQuestion` in subagents, model tiering, and file-based hand-off.
 
@@ -145,4 +120,4 @@ Run `/update_claude_plugin_fls_content`. The command runs a single `git diff mai
 
 ## The `todo.md` checklist
 
-`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above. Each SDD command ticks off its own box (and adds follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as its final step. You don't run this helper yourself — the other commands call it for you. The commit-and-push step runs straight after it.
+`/sdd:start` creates a `todo.md` checklist in the spec directory that tracks every step above, in five sections. Commands tick their own item (and add follow-up tasks where relevant) by invoking the protected helper at `claude_plugins/sdd/commands/protected/update_todo.md` as their final step. You don't run this helper yourself. The human ticks the `(user)` items and the two PR commands with the approval item. The commit-and-push step runs straight after it.

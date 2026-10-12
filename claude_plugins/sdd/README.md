@@ -3,22 +3,25 @@
 The portable spec-driven-development (SDD) workflow for Claude Code: the `sdd-worker` / `sdd-mechanic`
 tiering agents, the generic workflow command files, and the authoring/worktree/project-settings skills.
 It carries the *scaffolding* for taking a feature from idea to merged PR; the FreedomLS-specific SDD
-steps (`do_qa`, the `update_*` docs/repo steps) live in
-the separate `fls-dev` plugin, and generic stack commands (`app_map`, `threat-model`, `security-review`,
-`commit`) live in `ds`.
+steps (`do_qa` and the `update_*` steps) live in
+the separate `fls-dev` plugin, and generic stack commands (`app_map` and `commit`) live in `ds`.
 
 Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
 
 > **Coupling note.** `sdd` is not yet fully standalone: the `setup_todo_list` template
-> names FLS-specific steps (`/fls-dev:*`), and FLS commands spawn the `sdd` agents. Untangling
+> names one FLS-specific step (`/fls-dev:do_qa`), and FLS commands spawn the `sdd` agents. Untangling
 > this bidirectional `fls-dev` ↔ `sdd` dependency is deferred.
 
 ## What's inside (counted from disk)
 
-### Commands (15 files)
+### Commands (14 files)
 Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `register_design`, `start`,
-`spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `next`, `commit_quickly`,
+`spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `document`, `commit_quickly`,
 `make_pr_quickly`, `finish_worktree`, `address_pr_review`.
+
+`/sdd:document` runs the project's `## Documentation Hooks` from `.claude/sdd/config.md` in order, in
+hook mode, committing per hook. The plan review in `/sdd:plan_from_spec` runs its built-in dimensions
+plus the project's own briefs, which `## Plan Review Hooks` lists; `sdd` names none.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the
 file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
@@ -51,7 +54,7 @@ bare-repo/worktree mechanics (the FLS per-branch-database delta lives in an `fls
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
 `.claude/settings.local.json`.
 
-### Resources (6)
+### Resources (9)
 `agent_memory_guidelines` — the canonical home for this generic guideline (it is also duplicated into
 `ds` and `fls-dev` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and the agents that read it live in
 different plugins); `launcher_editing` — how to edit `claude.sh` (with `<MAY_CREATE>` false, since
@@ -59,4 +62,6 @@ different plugins); `launcher_editing` — how to edit `claude.sh` (with `<MAY_C
 declare any word that really is new. The project points at its own sources via
 `## Vocabulary Sources` in `.claude/sdd/config.md`; `writing_standard` — the rules every SDD artifact
 obeys; `commit_and_push` — the commit-and-push steps every artifact command ends with;
-`roadmap_format` — the shape, classification rules and row grammar of the spec roadmap.
+`roadmap_format` — the shape, classification rules and row grammar of the spec roadmap;
+`spec_review_dimensions` — the five dimensions of the spec review wave; `plan_review_dimensions` — the
+nine built-in plan review dimensions; `idea_standard` — what an idea must contain before a spec is written from it.

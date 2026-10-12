@@ -29,6 +29,12 @@ Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-i
 Top level: `init`, `do_qa`, `update_claude_plugin_fls_content`, `update_product_docs`,
 `update_upgrade_notes`.
 `concrete/`: `README`, `update_fls`.
+`protected/`: `design_check`, `frontend_check` (helpers read by path, not advertised as slash commands).
+
+The three `update_*` commands (`update_upgrade_notes`, `update_product_docs`,
+`update_claude_plugin_fls_content`) run as hooks of `/sdd:document` through `## Documentation Hooks`
+and stay runnable alone. They produce the upgrade notes for downstream projects, the product docs
+under `docs/product/`, and the sync of the course-author plugin.
 
 `/fls-dev:init` wires up only the `fls-dev` slice (its `enabledPlugins` key, its permissions, the
 `.claude/fls-dev/` config dir, and its dev/DB wrapper scripts) and detect-and-skips the `ds`-owned
@@ -57,12 +63,15 @@ setup and teardown.
 scratch-file teardown. They live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is
 per-plugin and their only callers are the `fls-dev` commands `do_qa` and `update_product_docs`.
 
-### Resources (10)
+### Resources (14)
 
 FLS-specific: `email_templates`, `markdown_content`, `multi_tenant`.
+Plan review briefs, reached through `## Plan Review Hooks`: `plan_review_structure`,
+`plan_review_fls_threats`.
 FLS delta addenda (extend the matching `ds` resource): `admin_interface` (extends `ds`'s
 `admin_unfold` + `admin_guardian`, the pair FLS's config selects), `factory_boy`, `frontend_styling`,
 `templates_and_cotton`, `testing`, `playwright-testing`.
+`launcher_editing` and `wrapper_script_migration` (copies of the procedures `/fls-dev:init` follows).
 `agent_memory_guidelines` (a copy — the canonical home is the `sdd` plugin; duplicated here because
 `${CLAUDE_PLUGIN_ROOT}` is per-plugin and `qa-data-helper` reads it).
 

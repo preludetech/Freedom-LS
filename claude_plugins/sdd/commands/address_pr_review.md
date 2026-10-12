@@ -43,7 +43,7 @@ For each actionable issue that has NOT already been fixed:
 
 1. State the issue clearly
 2. If you think it should be addressed: fix it immediately
-3. If you think it should NOT be addressed: explain why and ask the user for confirmation before skipping
+3. If you think it should NOT be addressed: skip it and record the reason for the Step 7 summary.
 
 ## Step 5: Run the targeted tier
 

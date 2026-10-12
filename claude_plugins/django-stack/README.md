@@ -37,9 +37,9 @@ from the project's own code at the point of use, never assumed.
 `admin-interface`, `alpine-js`, `app-settings`, `frontend-styling`, `htmx`, `playwright-tests`,
 `template`, `testing`, `use-playwright`.
 
-### Commands (12 files)
+### Commands (10 files)
 Top level: `init`, `commit`, `app_map`, `catchup`, `make_github_issue`, `rebase_main`, `tdd_implement`,
-`security-review`, `threat-model`, `placeholder_page`.
+`placeholder_page`.
 `periodic/`: `README`, `dependabot_prs`.
 
 `/ds:init` wires up `ds` and, when they are missing, creates the generic plugin-neutral artifacts any

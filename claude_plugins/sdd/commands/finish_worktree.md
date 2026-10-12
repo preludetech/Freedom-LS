@@ -26,7 +26,7 @@ On `main` or `master`, stop: this command runs in a feature worktree only.
 # Step 0: Pre-step rebase
 
 Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps with `<tier>`:
-`full` (skip this when `/sdd:next` says it already ran this turn). Any status other than `ok` is
+`full`. Any status other than `ok` is
 this command's own status; relay its reason and stop.
 
 Two notes for its conflict resolution:
@@ -61,19 +61,11 @@ Running this before anything is committed means a parked operation on `main` is 
 branch is touched, and it is what keeps Step 7 from needing a second rebase when local `main` was
 ahead of `origin`.
 
-# Step 1: Front-end QA
+# Step 1: Full tier
 
-Only when Step 0 reported `rebased: yes` and there is a `3. frontend_qa.md` for this spec (inside
-`spec_dd/2. in progress/{branch name}/`):
-
-- summarise what the rebase brought in
-- say whether you think the frontend_qa should be run again
-- only if you think it should, ask the user for confirmation before moving forward
-
-When the rebase this turn, whether Step 0 or the one `/sdd:next` ran, reported `tier: full`, the
-branch is proven. Otherwise delegate to `sdd:sdd-mechanic`: read
-`claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `full`,
-returning the summary line and any failing test names. A failure is `status: failed · reason: full
+When Step 0's rebase reported `tier: full`, the branch is proven. Otherwise delegate to
+`sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with
+`<tier>`: `full`, returning the summary line and any failing test names. A failure is `status: failed · reason: full
 run failed before landing: <tests>`; nothing is moved or landed until a human fixes it. A rebased
 branch has also passed pre-commit; there is nothing to re-run for that.
 
