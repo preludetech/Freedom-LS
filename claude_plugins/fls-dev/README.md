@@ -26,8 +26,7 @@ Thin overlays (reference the `ds`/`sdd` skill, add only the FLS delta): `admin-i
 
 ### Commands (9 files)
 
-Top level: `init`, `do_qa`, `plan_security_review`, `plan_structure_review`,
-`update_claude_plugin_fls_content`, `update_product_docs`,
+Top level: `init`, `do_qa`, `update_claude_plugin_fls_content`, `update_product_docs`,
 `update_upgrade_notes`.
 `concrete/`: `README`, `update_fls`.
 

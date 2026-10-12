@@ -320,6 +320,9 @@ Use the same `PLUGINS_ROOT` prefix rule as Step 8 (no `./` prefix when `PLUGINS_
 
 If `.claude/sdd/config.md` exists:
 
+- Ensure `## Plan Review Hooks` exists. If its list is empty, write, in this order:
+  - `Structure: <PLUGINS_ROOT>/claude_plugins/fls-dev/resources/plan_review_structure.md`
+  - `FLS threats: <PLUGINS_ROOT>/claude_plugins/fls-dev/resources/plan_review_fls_threats.md`
 - Ensure `## Review Hooks` exists with both keys. Set a blank `Test standard` to
   `<PLUGINS_ROOT>/claude_plugins/fls-dev/skills/testing/SKILL.md`. Set a blank
   `Comment standard` to `.claude/skills/code-comments/SKILL.md` only when that file exists in

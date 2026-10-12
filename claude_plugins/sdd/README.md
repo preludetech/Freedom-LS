@@ -3,7 +3,7 @@
 The portable spec-driven-development (SDD) workflow for Claude Code: the `sdd-worker` / `sdd-mechanic`
 tiering agents, the generic workflow command files, and the authoring/worktree/project-settings skills.
 It carries the *scaffolding* for taking a feature from idea to merged PR; the FreedomLS-specific SDD
-steps (`do_qa`, `plan_security_review`, `plan_structure_review`, the `update_*` docs/repo steps) live in
+steps (`do_qa`, the `update_*` docs/repo steps) live in
 the separate `fls-dev` plugin, and generic stack commands (`app_map`, `threat-model`, `security-review`,
 `commit`) live in `ds`.
 

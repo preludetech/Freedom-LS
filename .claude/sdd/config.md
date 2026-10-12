@@ -20,7 +20,8 @@
 
 ## Plan Review Hooks
 
--
+- Structure: claude_plugins/fls-dev/resources/plan_review_structure.md
+- FLS threats: claude_plugins/fls-dev/resources/plan_review_fls_threats.md
 
 ## Review Hooks
 

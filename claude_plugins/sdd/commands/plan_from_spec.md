@@ -20,13 +20,12 @@ Below, **the plan file** and **the QA file** mean the resolved names.
 - Print a short summary of what you did
 
 - DO NOT mention the frontend qa in the plan file. We will run the qa process after the plan is complete.
-- DO NOT mention the security review in the plan file. We will run this later on
 
 ## Fan-out recipe (shared)
 
 This command runs at **depth 0** and fans work out to sub-agents. See the `claude-code-authoring` skill for *why* it works this way (no subagent nesting, fan-out only at depth 0, `AskUserQuestion` is orchestrator-only, file-based hand-off, model tiering). Orchestrating units U1…Un:
 
-1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Questions only the user can answer are asked at depth 0 *while* the workers run: as early as possible, batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need.
+1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Questions only the user can answer are asked at depth 0 *while* the workers run: as early as possible, batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need. Ask once, early, with a default; late questions and review judgement calls follow "When a question comes late" in the `claude-code-authoring` skill's `fanout_recipe.md`.
 2. **One output path per unit.** Durable artifacts keep their real names (e.g. `research_<topic>.md`); intermediate outputs go in `.sdd-work/` at the project root, named `<phase>_<unit-id>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
 4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"` (or `"sdd:sdd-mechanic"` for mechanical units). Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
@@ -123,16 +122,9 @@ IMPORTANT: We will be generating a webserver port at random. we wont be using po
 
 # Step 6: Review the plan (fan-out)
 
-The review dimensions below become **one `sdd:sdd-worker` per dimension**, each writing `.sdd-work/plan_review_<dim>.md` (structured status). Apply resume/retry/blocked per the recipe. Then read the findings (files, not dumped contents) and edit the plan file accordingly. Dimensions:
+One `sdd:sdd-worker` per row of `${CLAUDE_PLUGIN_ROOT}/resources/plan_review_dimensions.md`, each writing `.sdd-work/plan_review_<id>.md`. Then read `## Plan Review Hooks` in `.claude/sdd/config.md` (and `config.local.md`; a non-empty list there replaces the whole list). For each bullet `<label>: <path>`, in order, spawn one more `sdd:sdd-worker` briefed to read `<path>` and follow it with the plan path, the spec path and the output path `.sdd-work/plan_review_<file-stem>.md`, where `<file-stem>` is the path's basename without `.md`. Blank list, or absent section or file: no hook workers. Resume, retry and blocked per the recipe; a hook brief returning `blocked` with a need nothing on disk satisfies is recorded as "plan review hook <label> skipped: <need>" for the summary and the run continues.
 
-- All the success criteria will be met by the plan in place
-- The plan is ordered as vertical slices (see Step 3): each slice delivers working, tested behaviour end to end, the first slice is the thinnest one that runs end to end, and no step groups work by layer
-- No step in the plan contradicts any skill
-- No step puts project-specific knowledge (a project name, path, app or value) into a plugin whose README says it is generic; such a value reaches the plugin only through its per-project configuration
-- No step will result in junk files that need to be manually cleaned up
-- All suggested code changes are clean and simple
-- No comment or docstring the plan proposes points at the spec, plan, a slice, a phase, the QA plan or a section number
-- Every noun, and every identifier the plan proposes, matches the spec's vocabulary and the codebase's
+Read every output file by path. A clear fix is edited into the plan. A judgement call becomes a callout at the relevant section, options numbered and the recommended one first. The callout is `> **Security concern:**` for `new_threats` and for a brief whose output opens with `callout: Security concern`, `> **Structure concern:**` for a brief whose output opens with `callout: Structure concern`, and `> **Review concern:**` otherwise. Then put every callout to the user as "When a question comes late" in `fanout_recipe.md` describes; the answer replaces the callout with the decision, and an unanswered callout becomes `> **Assumed default:** <what>. Why: <clause>. To change: <section>.` No callout survives without one or the other.
 
 ### IMPORTANT
 The plan file MUST NOT say that the QA file should be run. We will run that separately.
@@ -141,7 +133,7 @@ The plan also must not create documentation of any kind. It must just be an impl
 
 # Step 7: Clean up
 
-Delete this run's own scratch files — one `.sdd-work/<phase>_<unit-id>.md` per worker you spawned — once the plan file and any QA file are finalised. Name each path explicitly; never remove the `.sdd-work/` directory itself (recipe step 7).
+Once the plan file and any QA file are finalised, delete by name every `.sdd-work/plan_review_<id>.md`, every `.sdd-work/plan_review_<file-stem>.md` and `.sdd-work/plan_skill_scan.md`, skipping any that does not exist. Never remove the `.sdd-work/` directory itself (recipe step 7).
 
 # Step 8: Update the todo list
 
@@ -149,7 +141,6 @@ Invoke the helper at `claude_plugins/sdd/commands/protected/update_todo.md` with
 
 - `<todo-path>`: the `todo.md` in the same directory as the spec file
 - `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:plan_from_spec` to generate the implementation plan and QA plan"`.
-- If you did **not** create the QA file (because the feature has no frontend changes), also pass `add:"QA|user|No QA needed — feature has no frontend changes"`. Otherwise omit `add:`.
 
 # Step 9: Commit and push
 

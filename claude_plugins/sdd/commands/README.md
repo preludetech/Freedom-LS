@@ -58,20 +58,6 @@ Run `/plan_from_spec`. This produces:
 
 An optional suffix argument (`/plan_from_spec <spec> 2b`) selects a second plan in the same spec directory: `2b. plan.md` and `3b. frontend_qa.md` instead of `2. plan.md` and `3. frontend_qa.md`.
 
-## Step 3.5: Plan security review
-
-Run `/plan_security_review` to review the implementation plan for insecure design choices (raw SQL, missing auth, unvalidated input, etc.) before any code is written. This is cheaper than catching the same issues in `/security-review` after implementation, because design-level security problems often require structural rework.
-
-This complements `/threat-model` (which reviews the spec) and `/security-review` (which reviews the code diff).
-
-## Step 3.6: Plan structure review
-
-Run `/plan_structure_review` to check whether the plan introduces any new cross-app dependencies. The command reads `docs/app_structure.md` (the authoritative dependency diagram) and compares it against the imports the plan implies. Any new edge becomes a `> **Structure concern:**` callout that the user must resolve — either by accepting the edge (with a rationale, and regenerating the diagram after implementation) or by restructuring to avoid it.
-
-This complements `/plan_security_review`: same callout-and-approval pattern, different concern. Catching structural drift at plan time is cheaper than unpicking it after the code is written.
-
-If `docs/app_structure.md` doesn't exist yet, run `/app_map` first. `/app_map` is a general command (not SDD-specific) that walks `apps.py`-containing directories, extracts cross-app `ImportFrom` edges via `ast`, and writes a mermaid diagram plus a dependency table. Re-run it whenever an approved structural change lands, then commit the updated file.
-
 ## Step 4: Implement
 
 Run `/implement_plan` to execute the implementation plan. An optional suffix argument (`/implement_plan 2b`) selects the plan `2b. plan.md`, commits its batches as `[batch 2b.N]` and resumes only from those commits. Without a suffix, it runs `2. plan.md` with `[batch N]` commits. After each slice that builds a designed screen, it runs the design check through the `Design check` hook in `.claude/sdd/config.md`, and sends any design misses (unmet lines of the plan's design checklist) to fix batches.
@@ -111,7 +97,7 @@ arguments as shell code.
 
 ## Step 7: Refresh the app map
 
-If `/plan_structure_review` surfaced any structure concerns that were accepted (i.e. the plan intentionally introduced new cross-app edges), or if implementation ended up adding, removing, or renaming apps, re-run `/app_map` to regenerate `docs/app_structure.md`. Commit the updated file alongside the feature so the diagram stays the authoritative reference for the next structure review.
+If implementation ended up adding, removing, or renaming apps, re-run `/app_map` to regenerate `docs/app_structure.md`. Commit the updated file alongside the feature so the diagram stays the authoritative reference for the next structure review.
 
 If no structural change happened, skip this step.
 
