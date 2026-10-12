@@ -128,12 +128,68 @@ document.addEventListener("alpine:init", () => {
     //
     // Keeps the hidden "draft" flag at 1 while the box holds text. The thread
     // poll sends the flag so it never swaps out a form with unsent text.
+    //
+    // Also counts the characters left once the text nears the limit, submits
+    // on Ctrl/Cmd+Enter, and offers a retry when the request never reached the
+    // server (a refusal is a server reply and shows the server's own alert).
     Alpine.data("messageComposer", () => ({
+        maxLength: 0,
+        counterFrom: 0,
+        length: 0,
+        failed: false,
+        hint: "Ctrl+Enter to send",
         init() {
+            this.maxLength = Number(this.$root.dataset.maxLength);
+            this.counterFrom = Number(this.$root.dataset.counterFrom);
+            if (/Mac|iPhone|iPad/.test(navigator.platform)) {
+                this.hint = "⌘+Enter to send";
+            }
             this.onInput();
         },
+        get remaining() {
+            return Math.abs(this.maxLength - this.length);
+        },
+        get over() {
+            return this.length > this.maxLength;
+        },
+        get showCounter() {
+            return this.length >= this.counterFrom;
+        },
+        get counterText() {
+            if (this.over) {
+                return this.remaining + " over the limit";
+            }
+            return this.remaining + (this.remaining === 1 ? " character left" : " characters left");
+        },
+        get counterClass() {
+            return this.over ? "text-error" : "text-muted";
+        },
         onInput() {
-            this.$refs.draft.value = this.$refs.body.value === "" ? "0" : "1";
+            const text = this.$refs.body.value;
+            this.length = text.length;
+            this.$refs.draft.value = text === "" ? "0" : "1";
+        },
+        onKeydown(event) {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                this.$root.requestSubmit();
+            }
+        },
+        onFailed() {
+            this.failed = true;
+        },
+        onBeforeRequest() {
+            this.failed = false;
+        },
+        retry() {
+            htmx.trigger(this.$root, "submit");
+        },
+        // The form keeps its id, so htmx restores focus itself when a swap
+        // replaces it; this covers the out-of-band replacement, which it skips.
+        onAfterSettle() {
+            if (document.activeElement !== this.$refs.body) {
+                this.$refs.body.focus();
+            }
         },
     }));
 

@@ -47,6 +47,9 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
 
+# The composer's character counter appears this many characters before the limit.
+COUNTER_MARGIN = 200
+
 CONVERSATION_CHANGED = json.dumps({"conversationChanged": {}})
 
 
@@ -120,6 +123,7 @@ def _composer_context(
         "draft": draft,
         "alert": alert,
         "max_length": config.MESSAGE_MAX_LENGTH,
+        "counter_from": max(0, config.MESSAGE_MAX_LENGTH - COUNTER_MARGIN),
         "action_url": action_url,
         "recipient": recipient,
     }

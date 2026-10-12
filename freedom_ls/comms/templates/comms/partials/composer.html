@@ -17,6 +17,13 @@ restore focus after the swap.
           hx-swap="beforeend"
       {% endif %}
       hx-sync="this:drop"
+      data-max-length="{{ composer.max_length }}"
+      data-counter-from="{{ composer.counter_from }}"
+      x-on:keydown="onKeydown"
+      x-on:htmx:send-error="onFailed"
+      x-on:htmx:timeout="onFailed"
+      x-on:htmx:before-request="onBeforeRequest"
+      x-on:htmx:after-settle="onAfterSettle"
       class="border-t border-border bg-surface px-4 py-3">
     {% csrf_token %}
     <input type="hidden" name="client_key" value="{{ composer.client_key }}" />
@@ -34,6 +41,14 @@ restore focus after the swap.
             <c-callout level="error">{{ composer.alert }}</c-callout>
         </div>
     {% endif %}
+    <div x-show="failed" x-cloak x-transition>
+        <div role="alert">
+            <c-callout level="error">
+                Not sent. Check your connection and try again.
+                <c-button type="button" variant="secondary" x-on:click="retry">Retry</c-button>
+            </c-callout>
+        </div>
+    </div>
     <label for="message-body" class="block text-sm font-medium text-on-surface">
         Message to {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
     </label>
@@ -52,5 +67,14 @@ restore focus after the swap.
                   aria-label="Send">
             <span class="hidden sm:inline">Send</span>
         </c-button>
+    </div>
+    <div class="mt-1 flex items-center justify-between gap-2 text-sm text-muted">
+        <span x-text="hint">Ctrl+Enter to send</span>
+        <span x-show="showCounter"
+              x-cloak
+              x-transition
+              aria-live="polite"
+              x-bind:class="counterClass"
+              x-text="counterText"></span>
     </div>
 </form>
