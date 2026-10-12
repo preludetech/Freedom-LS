@@ -47,6 +47,7 @@ from freedom_ls.learner_management.learner_actions import (
 from freedom_ls.learner_management.models import (
     Cohort,
     CohortCourseRegistration,
+    CohortMembership,
     Learner,
     LearnerCourseRegistration,
 )
@@ -756,8 +757,11 @@ class MoveToCohortAction(MembershipAction):
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner, source = self._pair(ctx)
-        form = self._picker(ctx, learner)
         context = super().get_context_data(ctx)
+        if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
+            context.update({"learner": learner, "cohort": source, "not_a_member": True})
+            return context
+        form = self._picker(ctx, learner)
         if isinstance(ctx.instance, Cohort):
             other_side = {"name": "learner", "value": str(learner.pk)}
         else:
@@ -799,6 +803,13 @@ class MoveToCohortAction(MembershipAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         learner, source = self._pair(ctx)
+        if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
+            return render(
+                ctx.request,
+                self.template_name,
+                self.get_context_data(ctx),
+                status=422,
+            )
         form = self._picker(ctx, learner)
         if not form.is_valid():
             return self._refusal(ctx, "Choose a cohort to move them to.")

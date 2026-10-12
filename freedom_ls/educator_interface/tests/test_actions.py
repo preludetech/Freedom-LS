@@ -2055,6 +2055,49 @@ def test_move_422_rerender_offers_the_same_destinations_as_the_fresh_dialog(
     assert (response.status_code, options) == (422, {str(open_cohort.pk)})
 
 
+@pytest.mark.django_db
+def test_stale_move_dialog_for_a_departed_member_gives_the_reason_and_no_form(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    CohortMembership.objects.filter(learner=learner, cohort=source).delete()
+    CohortFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _move_url_from_learner(organisation, learner, source), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert (
+        response.status_code,
+        len(document.cssselect("form")),
+        "is no longer a member of" in response.content.decode(),
+    ) == (200, 0, True)
+
+
+@pytest.mark.django_db
+def test_stale_move_post_for_a_departed_member_answers_422_with_the_reason(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+    CohortMembership.objects.filter(learner=learner, cohort=source).delete()
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    assert (
+        response.status_code,
+        "is no longer a member of" in response.content.decode(),
+        CohortMembership.objects.filter(learner=learner).exists(),
+    ) == (422, True, False)
+
+
 # register and unregister a learner individually
 
 
