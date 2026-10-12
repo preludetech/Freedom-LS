@@ -22,6 +22,7 @@ from freedom_ls.comms.messaging import (
     other_participant,
     refusal_alert_copy,
     send_message,
+    unread_conversation_count,
 )
 from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.comms.views import messaging_view
@@ -198,3 +199,13 @@ def send(request: HttpRequest, pk: UUID) -> HttpResponse:
         conversation=conversation,
     )
     return _send_response(request, result, conversation, draft, client_key)
+
+
+@messaging_view
+def partial_unread_badge(request: HttpRequest) -> HttpResponse:
+    """The header Messages badge content: the sr-only label and the count."""
+    return render(
+        request,
+        "comms/partials/unread_badge.html",
+        {"unread_count": unread_conversation_count(cast("User", request.user))},
+    )

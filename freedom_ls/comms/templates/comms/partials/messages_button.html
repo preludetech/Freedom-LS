@@ -1,0 +1,25 @@
+{% if enabled %}
+<div class="relative">
+    <a href="{% url 'conversations:inbox' %}"
+       aria-labelledby="messages-button-label"
+       class="relative inline-flex h-10 items-center justify-center gap-2 rounded-full px-2 text-on-header hover:bg-header-action hover:text-on-header-action focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 sm:px-3">
+        <c-icon name="message" class="size-6" />
+        <span class="hidden text-sm font-medium sm:inline" aria-hidden="true">Messages</span>
+    </a>
+    {% comment %}
+    The count is not rendered with the page: the badge fetches itself on load, so
+    no page render pays for the unread query. The label span inside it is the
+    link's accessible name until the first response replaces it.
+    {% endcomment %}
+    <span id="messages-badge"
+          role="status"
+          x-data="refreshTimer"
+          data-poll-seconds="{{ poll_seconds }}"
+          hx-get="{% url 'conversations:unread_badge' %}"
+          hx-trigger="load, refresh, conversationChanged from:body"
+          hx-target="this"
+          hx-swap="innerHTML">
+        <span id="messages-button-label" class="sr-only">Messages</span>
+    </span>
+</div>
+{% endif %}

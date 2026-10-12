@@ -34,3 +34,12 @@ def notification_bell(context: template.Context) -> dict[str, object]:
         "unseen_count": _unseen_count(request),
         "poll_seconds": config.NOTIFICATION_BADGE_POLL_SECONDS,
     }
+
+
+@register.inclusion_tag("comms/partials/messages_button.html")
+def messages_button() -> dict[str, object]:
+    """The header Messages button. The unread count is not computed here: the
+    badge loads itself after the page renders, so no page pays for the query."""
+    if not config.MESSAGING_ENABLED:
+        return {"enabled": False}
+    return {"enabled": True, "poll_seconds": config.MESSAGE_INBOX_POLL_SECONDS}

@@ -19,6 +19,7 @@
     <nav class="flex-shrink-0 ml-2 sm:ml-4">
         {% if user.is_authenticated %}
             <div class="flex items-center gap-2">
+                {% messages_button %}
                 {% notification_bell %}
                 {% include "partials/header_bar_user_menu.html" %}
             </div>

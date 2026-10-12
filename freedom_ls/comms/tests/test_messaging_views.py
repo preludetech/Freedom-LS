@@ -553,3 +553,57 @@ class TestThreadMarksRead:
 
         assert f'href="{inbox_url()}"' in content
         assert "Back to messages" in content
+
+
+def unread_badge_url() -> str:
+    return reverse("conversations:unread_badge")
+
+
+@pytest.mark.django_db
+class TestUnreadBadge:
+    def test_it_shows_the_unread_count(self, pair, logged_in_client) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+
+        content = (
+            logged_in_client(user).get(unread_badge_url(), **HTMX).content.decode()
+        )
+
+        assert "Messages, 1 unread" in content
+
+    def test_it_says_none_unread_when_everything_is_read(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, _ = pair
+
+        content = (
+            logged_in_client(user).get(unread_badge_url(), **HTMX).content.decode()
+        )
+
+        assert "Messages, none unread" in content
+        assert "hidden" in content
+
+    def test_it_caps_the_displayed_count(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        for _ in range(100):
+            other = UserFactory()
+            MessageFactory(
+                conversation=ConversationFactory(between=(user, other)), sender=other
+            )
+
+        content = (
+            logged_in_client(user).get(unread_badge_url(), **HTMX).content.decode()
+        )
+
+        assert "99+" in content
+
+    def test_it_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(unread_badge_url(), **HTMX)
+
+        assert response.status_code == 404

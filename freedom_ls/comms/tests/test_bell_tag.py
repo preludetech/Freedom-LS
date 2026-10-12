@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import pytest
 
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -95,3 +97,60 @@ class TestBellWhenNotificationsDisabled:
         response = client.get(reverse("learner_interface:dashboard"))
 
         assert BELL_MARKER not in response.content.decode()
+
+
+MESSAGES_MARKER = 'aria-labelledby="messages-button-label"'
+
+
+@pytest.mark.django_db
+class TestMessagesButton:
+    def test_it_renders_nothing_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(
+            reverse("learner_interface:dashboard")
+        )
+
+        assert MESSAGES_MARKER not in response.content.decode()
+
+    def test_it_links_to_the_inbox_when_messaging_is_on(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = True
+
+        response = logged_in_client(UserFactory()).get(
+            reverse("learner_interface:dashboard")
+        )
+
+        content = response.content.decode()
+        assert MESSAGES_MARKER in content
+        assert f'href="{reverse("conversations:inbox")}"' in content
+
+    def test_the_badge_element_loads_lazily_and_carries_the_poll_seconds(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = True
+        settings.MESSAGE_INBOX_POLL_SECONDS = 7
+
+        response = logged_in_client(UserFactory()).get(
+            reverse("learner_interface:dashboard")
+        )
+
+        content = response.content.decode()
+        assert 'x-data="refreshTimer"' in content
+        assert 'data-poll-seconds="7"' in content
+        assert f'hx-get="{reverse("conversations:unread_badge")}"' in content
+        assert 'hx-trigger="load, refresh, conversationChanged from:body"' in content
+
+    def test_a_page_render_runs_no_conversation_query(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = True
+        client = logged_in_client(UserFactory())
+
+        with CaptureQueriesContext(connection) as queries:
+            client.get(reverse("learner_interface:dashboard"))
+
+        assert not [q for q in queries if "comms_conversation" in q["sql"]]
