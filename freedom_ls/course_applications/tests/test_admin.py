@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from django.contrib.admin.models import LogEntry
 from django.contrib.auth.models import Permission
 from django.test import Client, RequestFactory
 from django.urls import reverse
@@ -514,6 +515,93 @@ def test_applicant_admin_allows_delete(mock_site_context):
     request = _admin_request(UserFactory(superuser=True))
 
     assert model_admin.has_delete_permission(request, applicant) is True
+
+
+def test_applicant_admin_denies_delete_of_a_claimed_applicant(mock_site_context):
+    model_admin = AnonymousApplicantAdmin(AnonymousApplicant, None)
+    applicant = AnonymousApplicantFactory(user=UserFactory(), claimed_at=timezone.now())
+
+    request = _admin_request(UserFactory(superuser=True))
+
+    assert model_admin.has_delete_permission(request, applicant) is False
+
+
+def _claimed(unverified):
+    """Hand an unverified application to a user, the way a claim does."""
+    user = UserFactory()
+    unverified.application.user = user
+    unverified.application.save()
+    unverified.applicant.user = user
+    unverified.applicant.claimed_at = timezone.now()
+    unverified.applicant.save()
+    unverified.sitting.user = user
+    unverified.sitting.save()
+    return unverified
+
+
+def test_deleting_a_claimed_applicant_is_refused(staff_client):
+    claimed = _claimed(unverified_application_with_file())
+    url = reverse(APPLICANT_DELETE, args=[claimed.applicant.pk])
+
+    response = staff_client.post(url, {"post": "yes"})
+
+    assert response.status_code == 403
+
+
+def test_deleting_a_claimed_applicant_leaves_the_users_application(staff_client):
+    claimed = _claimed(unverified_application_with_file())
+    url = reverse(APPLICANT_DELETE, args=[claimed.applicant.pk])
+
+    staff_client.post(url, {"post": "yes"})
+
+    assert CourseApplication.objects.filter(pk=claimed.application.pk).exists()
+
+
+def test_bulk_delete_with_a_claimed_applicant_deletes_nothing(staff_client):
+    unclaimed = unverified_application_with_file()
+    claimed = _claimed(unverified_application_with_file())
+
+    staff_client.post(
+        reverse(APPLICANT_CHANGELIST),
+        {
+            "action": "delete_selected",
+            "_selected_action": [
+                str(unclaimed.applicant.pk),
+                str(claimed.applicant.pk),
+            ],
+            "post": "yes",
+        },
+    )
+
+    assert (
+        CourseApplication.objects.filter(
+            pk__in=[unclaimed.application.pk, claimed.application.pk]
+        ).count()
+        == 2
+    )
+
+
+def test_bulk_delete_confirmation_names_the_claimed_applicant_as_protected(
+    staff_client,
+):
+    claimed = _claimed(unverified_application_with_file())
+
+    response = staff_client.post(
+        reverse(APPLICANT_CHANGELIST),
+        {"action": "delete_selected", "_selected_action": [str(claimed.applicant.pk)]},
+    )
+
+    assert f"{claimed.applicant} (claimed)" in response.content.decode()
+
+
+def test_deleting_an_applicant_keeps_their_address_out_of_the_admin_log(staff_client):
+    unverified = unverified_application_with_file()
+    url = reverse(APPLICANT_DELETE, args=[unverified.applicant.pk])
+
+    staff_client.post(url, {"post": "yes"})
+
+    entry = LogEntry.objects.get(object_id=str(unverified.applicant.pk))
+    assert unverified.applicant.email not in entry.object_repr
 
 
 def test_applicant_changelist_searches_by_email(staff_client):

@@ -352,3 +352,10 @@ def test_a_file_on_a_user_less_sitting_is_stored_under_the_anonymous_prefix(
     assert str(answer_file.file.name).startswith(
         f"user_uploads/anonymous/{form_progress.pk}/form_answers/"
     )
+
+
+@pytest.mark.django_db
+def test_a_user_less_sitting_is_labelled_anonymous(mock_site_context):
+    sitting = FormProgressFactory(user=None)
+
+    assert str(sitting).startswith("Anonymous - ")

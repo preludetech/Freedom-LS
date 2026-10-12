@@ -230,7 +230,9 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
 
     Deleting an applicant takes their application, sitting, answers and stored
     files with it, which is how a right-to-erasure request for an address that
-    never became an account is carried out.
+    never became an account is carried out. A claimed applicant is protected:
+    its application belongs to a user now, and deleting the user is the one
+    path that takes a user's application away.
     """
 
     list_display = [
@@ -274,16 +276,36 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
     ) -> bool:
         return False
 
+    def has_delete_permission(
+        self, request: HttpRequest, obj: AnonymousApplicant | None = None
+    ) -> bool:
+        if obj is not None and obj.claimed_at is not None:
+            return False
+        allowed: bool = super().has_delete_permission(request, obj)
+        return allowed
+
     def get_deleted_objects(
-        self, objs: QuerySet[AnonymousApplicant], request: HttpRequest
+        self,
+        objs: QuerySet[AnonymousApplicant] | list[AnonymousApplicant],
+        request: HttpRequest,
     ) -> tuple[list[object], dict[str, int], set[str], list[object]]:
+        # A list from the single-object delete view, a queryset from the bulk
+        # action. Claimed applicants are reported as protected, which makes the
+        # confirmation page refuse the whole selection and name them.
+        applicants = list(objs)
+        unclaimed = [a for a in applicants if a.claimed_at is None]
         to_delete, model_count, perms_needed, protected = super().get_deleted_objects(
-            objs, request
+            unclaimed, request
         )
         # The application admin denies delete to everyone, yet the confirmation
         # page lists the application the erasure takes along.
         perms_needed.discard(str(CourseApplication._meta.verbose_name))
-        return to_delete, model_count, perms_needed, protected
+        claimed = [
+            f"{applicant} (claimed): delete the user instead"
+            for applicant in applicants
+            if applicant.claimed_at is not None
+        ]
+        return to_delete, model_count, perms_needed, [*protected, *claimed]
 
     def delete_model(self, request: HttpRequest, obj: AnonymousApplicant) -> None:
         erase_anonymous_applicant(obj)
@@ -291,7 +313,7 @@ class AnonymousApplicantAdmin(SiteAwareModelAdmin):
     def delete_queryset(
         self, request: HttpRequest, queryset: QuerySet[AnonymousApplicant]
     ) -> None:
-        for applicant in queryset:
+        for applicant in queryset.filter(claimed_at__isnull=True):
             erase_anonymous_applicant(applicant)
 
     @admin.display(boolean=True, description="Claimed", ordering="claimed_at")

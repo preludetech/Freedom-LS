@@ -17,6 +17,7 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import (
+    AnonymousApplicantFactory,
     CourseApplicationFactory,
 )
 from freedom_ls.course_applications.models import CourseApplication
@@ -195,3 +196,10 @@ class TestAnonymousApplications:
         application.anonymous_applicant.delete()
 
         assert not CourseApplication.objects.filter(pk=application.pk).exists()
+
+
+@pytest.mark.django_db
+def test_an_anonymous_applicants_label_leaves_out_the_address(mock_site_context):
+    applicant = AnonymousApplicantFactory(email="secret@example.com")
+
+    assert "secret@example.com" not in str(applicant)

@@ -271,7 +271,7 @@ class FormProgress(SiteAwareModel):
         verbose_name_plural = "Form progress records"
 
     def __str__(self):
-        return f"{self.user} - {self.form.title}"
+        return f"{self.user or 'Anonymous'} - {self.form.title}"
 
     def quiz_percentage(self) -> int:
         if self.form.strategy != FormStrategy.QUIZ:

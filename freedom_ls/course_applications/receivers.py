@@ -9,6 +9,7 @@ from __future__ import annotations
 from allauth.account.models import EmailAddress
 
 from django.contrib.auth.signals import user_logged_in
+from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 from django.http import HttpRequest
 
@@ -19,7 +20,28 @@ from freedom_ls.course_applications.anonymous_session import (
     remembered_anonymous_applicants,
 )
 from freedom_ls.course_applications.claims import attach_to_user
+from freedom_ls.course_applications.erasure import erase_anonymous_applicant
+from freedom_ls.course_applications.models import AnonymousApplicant
 from freedom_ls.form_engine.session_access import forget_all_anonymous_form_progress
+
+
+@receiver(pre_delete, sender=User)
+def erase_unclaimed_applicants_with_the_users_address(
+    sender: type[User], instance: User, **kwargs: object
+) -> None:
+    """Erasing a person means their unclaimed applications too.
+
+    The cascade only reaches applicants a claim linked to the account. Ones
+    the same address applied with and never claimed are tied to the person by
+    nothing but that address, so they are found by it here, on the user's own
+    site. _base_manager: inside a request the default manager filters on the
+    request's site, not the user's.
+    """
+    applicants = AnonymousApplicant._base_manager.filter(
+        site_id=instance.site_id, email=instance.email.lower(), user__isnull=True
+    )
+    for applicant in applicants:
+        erase_anonymous_applicant(applicant)
 
 
 @receiver(user_logged_in)

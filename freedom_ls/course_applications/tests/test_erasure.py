@@ -6,6 +6,9 @@ from typing import cast
 
 import pytest
 
+from django.utils import timezone
+
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
@@ -48,3 +51,15 @@ def test_erasing_an_applicant_removes_the_answer_file_row_and_stored_object(
 
     assert not QuestionAnswerFile.objects.filter(pk=answer_file.pk).exists()
     assert not storage.exists(name)
+
+
+def test_erasing_a_claimed_applicant_is_refused(mock_site_context):
+    unverified = unverified_application_with_file()
+    unverified.applicant.user = UserFactory()
+    unverified.applicant.claimed_at = timezone.now()
+    unverified.applicant.save()
+
+    with pytest.raises(ValueError, match="claimed"):
+        erase_anonymous_applicant(unverified.applicant)
+
+    assert CourseApplication.objects.filter(pk=unverified.application.pk).exists()

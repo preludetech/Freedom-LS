@@ -6,7 +6,11 @@ import pytest
 
 from django.urls import reverse
 
-from freedom_ls.accounts.factories import EmailAddressFactory, UserFactory
+from freedom_ls.accounts.factories import (
+    EmailAddressFactory,
+    SiteFactory,
+    UserFactory,
+)
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -16,10 +20,10 @@ from freedom_ls.course_applications.anonymous_session import (
     ANONYMOUS_APPLICANTS_SESSION_KEY,
 )
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
-from freedom_ls.form_engine.models import FormProgress
+from freedom_ls.form_engine.models import FormProgress, QuestionAnswerFile
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 
-from .helpers import gated_course_with_form
+from .helpers import gated_course_with_form, unverified_application_with_file
 
 pytestmark = pytest.mark.django_db
 
@@ -121,3 +125,63 @@ def test_signing_in_empties_both_session_lists(client, mock_site_context):
         client.session.get(ANONYMOUS_APPLICANTS_SESSION_KEY),
         client.session.get(ANONYMOUS_FORM_PROGRESS_SESSION_KEY),
     ) == ({}, [])
+
+
+def _unclaimed_application_for(email: str, site=None):
+    unverified = unverified_application_with_file()
+    unverified.applicant.email = email
+    if site is not None:
+        unverified.applicant.site = site
+    unverified.applicant.save()
+    return unverified
+
+
+def test_deleting_a_user_erases_their_unclaimed_applications(mock_site_context):
+    user = UserFactory(email="ada@example.com")
+    unverified = _unclaimed_application_for("ada@example.com")
+
+    user.delete()
+
+    assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
+
+
+def test_deleting_a_user_removes_their_unclaimed_applications_files(mock_site_context):
+    user = UserFactory(email="ada@example.com")
+    unverified = _unclaimed_application_for("ada@example.com")
+    answer_file = QuestionAnswerFile.objects.get(
+        answer__form_progress=unverified.sitting
+    )
+    storage, name = answer_file.file.storage, answer_file.file.name
+
+    user.delete()
+
+    assert not storage.exists(name)
+
+
+def test_deleting_a_user_matches_their_address_regardless_of_case(mock_site_context):
+    user = UserFactory(email="Ada@Example.com")
+    unverified = _unclaimed_application_for("ada@example.com")
+
+    user.delete()
+
+    assert not AnonymousApplicant.objects.filter(pk=unverified.applicant.pk).exists()
+
+
+def test_deleting_a_user_leaves_another_sites_applicant_with_that_address(
+    mock_site_context,
+):
+    user = UserFactory(email="ada@example.com")
+    elsewhere = _unclaimed_application_for("ada@example.com", site=SiteFactory())
+
+    user.delete()
+
+    assert AnonymousApplicant._base_manager.filter(pk=elsewhere.applicant.pk).exists()
+
+
+def test_deleting_a_user_leaves_another_addresses_applicant(mock_site_context):
+    user = UserFactory(email="ada@example.com")
+    other = _unclaimed_application_for("bob@example.com")
+
+    user.delete()
+
+    assert AnonymousApplicant.objects.filter(pk=other.applicant.pk).exists()
