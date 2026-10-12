@@ -84,6 +84,12 @@ attaches the application. Signed-in apply works as before.
    one network address do not share a bucket; keep the `/key` suffix. A refused upload re-renders
    the file widget with the reason at HTTP 422. No system check enforces this. Projects that
    inherit FLS's `ACCOUNT_RATE_LIMITS` need do nothing.
+
+   The two per-address buckets are shared by everyone who posts that address, so anyone who
+   knows an address can spend them and hold it off the details step and the claim email for the
+   rest of the hour. The details step only checks its bucket on a POST that would spend it, so an
+   applicant correcting their name is never refused. Shorten the windows if that lockout matters
+   more to you than inbox flooding.
 3. In production, make sure `CACHES` points to a cache that all processes share (for example
    `DATABASE_CACHES` from `freedom_ls/deployment/settings_defaults.py`). A per-process local-memory
    cache lets each worker count separately, so the limits are not enforced as configured.

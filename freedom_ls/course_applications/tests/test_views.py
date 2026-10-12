@@ -1987,6 +1987,28 @@ def test_details_step_name_edits_do_not_spend_the_address_limit(client, gated_co
 
 
 @pytest.mark.django_db
+def test_details_step_name_edit_on_an_exhausted_address_is_not_refused(
+    client, gated_course
+):
+    """Anyone can post an address and spend its bucket; the applicant who
+    already holds that address is still allowed to correct their name."""
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        _post_details(client, gated_course)
+        _post_details_from_distinct_clients(gated_course, 5)
+
+        response = _post_details(client, gated_course, first_name="Mary")
+
+    assert response.status_code == 302
+    assert (
+        AnonymousApplicant.objects.get(
+            pk=client.session[ANONYMOUS_APPLICANTS_SESSION_KEY][str(gated_course.pk)]
+        ).first_name
+        == "Mary"
+    )
+
+
+@pytest.mark.django_db
 def test_details_step_changing_the_address_spends_the_new_addresss_limit(
     client, gated_course
 ):

@@ -37,7 +37,10 @@ from freedom_ls.course_applications.anonymous_session import (
     owned_applications,
     remember_anonymous_applicant,
 )
-from freedom_ls.course_applications.applicant_email import email_rate_limit_key
+from freedom_ls.course_applications.applicant_email import (
+    email_rate_limit_key,
+    normalise_email,
+)
 from freedom_ls.course_applications.backends import APPLICATION_GATED
 from freedom_ls.course_applications.claims import (
     ClaimOwner,
@@ -299,8 +302,11 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
 
     The rate limit guards the address that will receive a claim email, so it
     is spent when an applicant is created or re-addressed, and on a honeypot
-    trip, never on a typo or a name change. An exhausted bucket is still
-    refused before validation, so nothing is written for a limited address.
+    trip, never on a typo or a name change. A POST that would spend an
+    exhausted bucket is refused before validation, so nothing is written for
+    a limited address. A POST that would not spend it is never refused: the
+    bucket is shared by everyone who posts that address, and the applicant
+    who already holds it must still be able to correct their name.
     """
     if request.user.is_authenticated:
         return redirect("course_applications:apply", course_slug=course_slug)
@@ -323,15 +329,17 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         if not isinstance(site, Site):
             # A host that resolves no Site could not save the applicant either.
             raise Http404
-        key = email_rate_limit_key(site, request.POST.get("email", ""))
-        if not ratelimit.consume(
+        posted_email = request.POST.get("email", "")
+        key = email_rate_limit_key(site, posted_email)
+        # Read before validation: a ModelForm writes its cleaned data onto the
+        # instance while validating, so afterwards the two always agree.
+        previous_email = applicant.email if applicant is not None else None
+        would_spend = normalise_email(posted_email) != previous_email
+        if would_spend and not ratelimit.consume(
             request, action=DETAILS_RATE_LIMIT_ACTION, key=key, dry_run=True
         ):
             refused: HttpResponse = ratelimit.respond_429(request)
             return refused
-        # Read before validation: a ModelForm writes its cleaned data onto the
-        # instance while validating, so afterwards the two always agree.
-        previous_email = applicant.email if applicant is not None else None
         form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
         if form.is_valid():
             email: str = form.cleaned_data["email"]
