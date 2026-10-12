@@ -34,6 +34,7 @@ SEMANTIC_ICON_NAMES: set[str] = {
     "settings",
     "edit",
     "add",
+    "send",
     # Content types
     "topic",
     "form",

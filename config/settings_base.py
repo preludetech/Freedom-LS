@@ -512,6 +512,10 @@ NOTIFICATION_CATEGORIES = FLS_NOTIFICATION_CATEGORIES
 # Shows the notification bell in the header.
 NOTIFICATIONS_ENABLED = False
 
+# Turns on direct messaging between users: the inbox, threads and the header
+# Messages button.
+MESSAGING_ENABLED = False
+
 
 # Content Security Policy (report-only mode)
 # googletagmanager.com and *.google-analytics.com/*.analytics.google.com are GA4's

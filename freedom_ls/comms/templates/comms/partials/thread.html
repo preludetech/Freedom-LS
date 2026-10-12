@@ -1,0 +1,29 @@
+{% comment %}
+The thread pane: header, log and composer in one column-flex block whose
+height is the viewport below the site header, so the composer stays in view
+and the log is the only part that scrolls.
+{% endcomment %}
+<section class="flex h-[calc(100dvh-var(--thread-top,0px))] min-h-0 flex-col bg-surface">
+    <header class="flex items-center gap-3 border-b border-border px-4 py-3">
+        {% if back_url %}
+            <a href="{{ back_url }}"
+               class="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface-2 md:hidden"
+               aria-label="Back to messages">
+                <c-icon name="previous" class="size-5" />
+            </a>
+        {% endif %}
+        {% include "comms/partials/participant_avatar.html" %}
+        <h1 class="m-0 min-w-0 truncate text-lg font-semibold">
+            {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
+        </h1>
+    </header>
+    <ol id="thread-log"
+        role="log"
+        aria-label="Messages with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}"
+        class="m-0 min-h-0 flex-1 list-none space-y-3 overflow-y-auto px-4 py-4 [scroll-padding-bottom:5rem]">
+        {% for message in thread_messages %}
+            {% include "comms/partials/message_entry.html" %}
+        {% endfor %}
+    </ol>
+    {% include "comms/partials/composer.html" %}
+</section>

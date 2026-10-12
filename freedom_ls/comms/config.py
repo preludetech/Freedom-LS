@@ -13,6 +13,9 @@ class CommsConfig(AppSettings):
     NOTIFICATION_DELIVERY_BACKENDS: list[str]
     NOTIFICATION_BADGE_POLL_SECONDS: int
     MESSAGING_POLICY: str
+    MESSAGING_ENABLED: bool
+    MESSAGE_MAX_LENGTH: int
+    MESSAGE_PAGE_SIZE: int
 
     declared_settings = {
         "NOTIFICATIONS_ENABLED": Setting(default=False),
@@ -22,6 +25,9 @@ class CommsConfig(AppSettings):
         "MESSAGING_POLICY": Setting(
             default="freedom_ls.messaging_policy.policy.LayeredMessagingPolicy"
         ),
+        "MESSAGING_ENABLED": Setting(default=False),
+        "MESSAGE_MAX_LENGTH": Setting(default=2000),
+        "MESSAGE_PAGE_SIZE": Setting(default=30),
     }
 
 

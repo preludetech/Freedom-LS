@@ -1,0 +1,565 @@
+"""The messaging service: pairing, sending, idempotency and read state."""
+
+from __future__ import annotations
+
+import threading
+import uuid
+from datetime import timedelta
+
+import pytest
+
+from django.db import connection
+from django.utils import timezone
+
+from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.messaging import (
+    BLANK_BODY,
+    TOO_LONG_BODY,
+    SendResult,
+    conversation_between,
+    get_or_create_conversation,
+    latest_page,
+    mark_conversation_read,
+    other_participant,
+    pair_key_for,
+    refusal_alert_copy,
+    reply_decision,
+    send_message,
+)
+from freedom_ls.comms.messaging_policy import (
+    MessagingDecision,
+    MessagingPolicy,
+    MessagingRefusal,
+)
+from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
+from freedom_ls.site_aware_models.models import _thread_locals
+
+
+class AllowPolicy(MessagingPolicy):
+    def can_start(self, *, sender, recipient, site):
+        return MessagingDecision.allow()
+
+    def can_reply(self, *, sender, recipient, site, conversation):
+        return MessagingDecision.allow()
+
+
+class ClosedPolicy(MessagingPolicy):
+    def can_start(self, *, sender, recipient, site):
+        return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
+
+    def can_reply(self, *, sender, recipient, site, conversation):
+        return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
+
+
+def stored(result: SendResult) -> Message:
+    assert result.message is not None
+    return result.message
+
+
+def stored_conversation(result: SendResult) -> Conversation:
+    assert result.conversation is not None
+    return result.conversation
+
+
+@pytest.fixture
+def allow_policy(settings) -> None:
+    settings.MESSAGING_POLICY = f"{__name__}.AllowPolicy"
+
+
+@pytest.fixture
+def closed_policy(settings) -> None:
+    settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
+
+
+@pytest.fixture(autouse=True)
+def _length_limit(settings) -> None:
+    settings.MESSAGE_MAX_LENGTH = 2000
+
+
+@pytest.mark.django_db
+class TestPairing:
+    def test_pair_key_is_the_same_in_both_orders(self, mock_site_context) -> None:
+        user_a = UserFactory()
+        user_b = UserFactory()
+
+        assert pair_key_for(user_a, user_b) == pair_key_for(user_b, user_a)
+
+    def test_pair_key_lists_the_lower_pk_first(self, mock_site_context) -> None:
+        user_a = UserFactory()
+        user_b = UserFactory()
+
+        assert pair_key_for(user_b, user_a) == f"{user_a.pk}:{user_b.pk}"
+
+    def test_get_or_create_returns_one_conversation_in_both_orders(
+        self, mock_site_context, site
+    ) -> None:
+        user_a = UserFactory()
+        user_b = UserFactory()
+
+        first = get_or_create_conversation(user_a=user_a, user_b=user_b, site=site)
+        second = get_or_create_conversation(user_a=user_b, user_b=user_a, site=site)
+
+        assert first.pk == second.pk
+
+    def test_get_or_create_adds_both_participants(
+        self, mock_site_context, site
+    ) -> None:
+        user_a = UserFactory()
+        user_b = UserFactory()
+
+        conversation = get_or_create_conversation(
+            user_a=user_a, user_b=user_b, site=site
+        )
+
+        assert set(
+            ConversationParticipant.objects.filter(
+                conversation=conversation
+            ).values_list("user_id", flat=True)
+        ) == {user_a.pk, user_b.pk}
+
+    def test_the_same_pair_on_another_site_gets_its_own_conversation(
+        self, mock_site_context, site
+    ) -> None:
+        other_site = SiteFactory()
+        user_a = UserFactory()
+        user_b = UserFactory()
+
+        here = get_or_create_conversation(user_a=user_a, user_b=user_b, site=site)
+        there = get_or_create_conversation(
+            user_a=user_a, user_b=user_b, site=other_site
+        )
+
+        assert here.pk != there.pk
+
+    def test_conversation_between_is_none_for_a_stranger_pair(
+        self, mock_site_context, site
+    ) -> None:
+        assert conversation_between(UserFactory(), UserFactory(), site) is None
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_rows_created_with_no_request_carry_the_site(
+        self, mock_site_context, site
+    ) -> None:
+        user_a = UserFactory()
+        user_b = UserFactory()
+        saved_request = _thread_locals.request
+        del _thread_locals.request
+        try:
+            conversation = get_or_create_conversation(
+                user_a=user_a, user_b=user_b, site=site
+            )
+            result = send_message(
+                sender=user_a,
+                recipient=user_b,
+                body="Hello",
+                client_key=uuid.uuid4(),
+                site=site,
+                conversation=conversation,
+            )
+        finally:
+            _thread_locals.request = saved_request
+
+        sites = {
+            conversation.site_id,
+            *ConversationParticipant.objects.filter(
+                conversation=conversation
+            ).values_list("site_id", flat=True),
+            stored(result).site_id,
+        }
+        assert sites == {site.pk}
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_first_messages_create_one_conversation(site) -> None:
+    user_a = UserFactory(site=site)
+    user_b = UserFactory(site=site)
+    barrier = threading.Barrier(2)
+    pks: list[uuid.UUID] = []
+
+    def create() -> None:
+        try:
+            barrier.wait()
+            pks.append(
+                get_or_create_conversation(user_a=user_a, user_b=user_b, site=site).pk
+            )
+        finally:
+            connection.close()
+
+    threads = [threading.Thread(target=create) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(pks) == 2
+    assert len(set(pks)) == 1
+    assert Conversation._base_manager.filter(site=site).count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestSendMessage:
+    def test_sending_on_a_conversation_stores_the_message(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body="Hi there",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert stored(result).body == "Hi there"
+        assert stored(result).sender == sender
+
+    def test_sending_to_a_recipient_starts_the_conversation(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+
+        result = send_message(
+            sender=sender,
+            recipient=recipient,
+            body="Hi",
+            client_key=uuid.uuid4(),
+            site=site,
+        )
+
+        assert stored_conversation(result).pair_key == pair_key_for(sender, recipient)
+
+    def test_sending_sets_last_message_at_and_the_senders_last_read_at(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body="Hi",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        conversation.refresh_from_db()
+        participant = ConversationParticipant.objects.get(
+            conversation=conversation, user=sender
+        )
+        assert conversation.last_message_at == stored(result).created_at
+        assert participant.last_read_at == stored(result).created_at
+
+    def test_the_recipients_last_read_at_is_untouched(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        send_message(
+            sender=sender,
+            body="Hi",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert (
+            ConversationParticipant.objects.get(
+                conversation=conversation, user=recipient
+            ).last_read_at
+            is None
+        )
+
+    def test_a_repeated_client_key_returns_the_original(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        key = uuid.uuid4()
+        first = send_message(
+            sender=sender,
+            body="Hi",
+            client_key=key,
+            site=site,
+            conversation=conversation,
+        )
+
+        second = send_message(
+            sender=sender,
+            body="Hi",
+            client_key=key,
+            site=site,
+            conversation=conversation,
+        )
+
+        assert stored(second).pk == stored(first).pk
+        assert Message.objects.filter(conversation=conversation).count() == 1
+
+    def test_the_same_key_from_the_other_participant_is_a_new_message(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        key = uuid.uuid4()
+        send_message(
+            sender=sender,
+            body="Hi",
+            client_key=key,
+            site=site,
+            conversation=conversation,
+        )
+
+        send_message(
+            sender=recipient,
+            body="Hi back",
+            client_key=key,
+            site=site,
+            conversation=conversation,
+        )
+
+        assert Message.objects.filter(conversation=conversation).count() == 2
+
+    @pytest.mark.parametrize("body", ["", "   ", "\n\n"])
+    def test_a_blank_body_is_refused(self, mock_site_context, site, body) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body=body,
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert result.body_error == BLANK_BODY
+        assert Message.objects.count() == 0
+
+    def test_a_body_over_the_limit_is_refused(self, mock_site_context, site) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body="a" * 2001,
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert result.body_error == TOO_LONG_BODY % {"limit": 2000}
+        assert Message.objects.count() == 0
+
+    def test_a_body_at_the_limit_is_accepted(self, mock_site_context, site) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body="a" * 2000,
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert result.message is not None
+
+    def test_windows_line_endings_are_normalised(self, mock_site_context, site) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body="one\r\ntwo",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert stored(result).body == "one\ntwo"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("closed_policy")
+class TestSendRefused:
+    def test_a_refused_start_stores_nothing(self, mock_site_context, site) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+
+        result = send_message(
+            sender=sender,
+            recipient=recipient,
+            body="Hi",
+            client_key=uuid.uuid4(),
+            site=site,
+        )
+
+        assert result.refusal == MessagingRefusal.CLOSED_BY_CONFIGURATION
+        assert Conversation.objects.count() == 0
+        assert Message.objects.count() == 0
+
+    def test_a_refused_reply_stores_nothing(self, mock_site_context, site) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        result = send_message(
+            sender=sender,
+            body="Hi",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert result.refusal == MessagingRefusal.CLOSED_BY_CONFIGURATION
+        assert Message.objects.count() == 0
+
+    def test_a_repeat_after_the_policy_closed_returns_the_original_on_the_conversation(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        key = uuid.uuid4()
+        original = MessageFactory(
+            conversation=conversation, sender=sender, client_key=key
+        )
+
+        result = send_message(
+            sender=sender,
+            body="Hi",
+            client_key=key,
+            site=site,
+            conversation=conversation,
+        )
+
+        assert stored(result).pk == original.pk
+        assert result.refusal is None
+
+    def test_a_repeat_after_the_policy_closed_returns_the_original_on_the_recipient_path(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        key = uuid.uuid4()
+        original = MessageFactory(
+            conversation=conversation, sender=sender, client_key=key
+        )
+
+        result = send_message(
+            sender=sender,
+            recipient=recipient,
+            body="Hi",
+            client_key=key,
+            site=site,
+        )
+
+        assert stored(result).pk == original.pk
+
+
+@pytest.mark.django_db
+class TestReadState:
+    def test_mark_read_sets_last_read_at(self, mock_site_context) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        moment = timezone.now()
+
+        mark_conversation_read(user=user, conversation=conversation, up_to=moment)
+
+        assert (
+            ConversationParticipant.objects.get(
+                conversation=conversation, user=user
+            ).last_read_at
+            == moment
+        )
+
+    def test_mark_read_never_moves_last_read_at_backwards(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        later = timezone.now()
+        mark_conversation_read(user=user, conversation=conversation, up_to=later)
+
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=later - timedelta(hours=1)
+        )
+
+        assert (
+            ConversationParticipant.objects.get(
+                conversation=conversation, user=user
+            ).last_read_at
+            == later
+        )
+
+
+@pytest.mark.django_db
+class TestConversationQueries:
+    def test_other_participant_is_the_other_user(self, mock_site_context) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+
+        assert other_participant(conversation, user) == other
+
+    def test_other_participant_is_none_once_the_other_account_is_deleted(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        other.delete()
+
+        assert other_participant(conversation, user) is None
+
+    def test_reply_decision_refuses_inactive_user_without_asking_the_policy(
+        self, mock_site_context, settings
+    ) -> None:
+        settings.MESSAGING_POLICY = f"{__name__}.MessagingPolicy"
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        other.delete()
+
+        decision = reply_decision(viewer=user, conversation=conversation)
+
+        assert decision.reason == MessagingRefusal.INACTIVE_USER
+
+    def test_latest_page_reads_oldest_to_newest(self, mock_site_context) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        first = MessageFactory(conversation=conversation)
+        second = MessageFactory(conversation=conversation)
+
+        assert [m.pk for m in latest_page(conversation)] == [first.pk, second.pk]
+
+    def test_latest_page_holds_only_the_newest_page_size(
+        self, mock_site_context, settings
+    ) -> None:
+        settings.MESSAGE_PAGE_SIZE = 2
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation)
+        second = MessageFactory(conversation=conversation)
+        third = MessageFactory(conversation=conversation)
+
+        assert [m.pk for m in latest_page(conversation)] == [second.pk, third.pk]
+
+
+@pytest.mark.django_db
+class TestRefusalAlertCopy:
+    def test_names_the_other_participant(self, mock_site_context) -> None:
+        other = UserFactory(first_name="Kai")
+
+        copy = refusal_alert_copy(MessagingRefusal.CLOSED_BY_CONFIGURATION, other)
+
+        assert copy == (
+            "Not sent. Kai can't receive messages from you here. "
+            "Your text is still in the box."
+        )
+
+    def test_without_another_participant_it_is_generic(self) -> None:
+        copy = refusal_alert_copy(MessagingRefusal.INACTIVE_USER, None)
+
+        assert copy == (
+            "Not sent. This conversation can't take new messages. "
+            "Your text is still in the box."
+        )

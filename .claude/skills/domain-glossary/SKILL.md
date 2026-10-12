@@ -137,6 +137,11 @@ resolves attempts through `learner_progress/attempts.py`, never through `FormPro
 | Term | Defined at | Means |
 | --- | --- | --- |
 | `MessagingDecision`, `MessagingRefusal`, `MessagingPolicy` | `comms/messaging_policy.py` | Whether one user may message another. `MessagingDecision` follows the `*Decision` suffix, the house pattern for a policy's return value; read `.allowed`, never its truthiness. |
+| `Conversation` | `comms/models.py` | The one direct-message exchange between exactly two users on a site, keyed by `pair_key`. Not a group chat and not a notification. |
+| `ConversationParticipant` | `comms/models.py` | One user's membership in a `Conversation`, holding their `last_read_at`. |
+| `Message` | `comms/models.py` | One text a participant sent in a `Conversation`. `sender` is null once the sender's account is deleted. Distinct from Django's `messages` framework. |
+| **inbox** | `comms/messaging.py` `inbox_for` | A user's list of their `Conversation` rows, newest activity first. |
+| **thread** | `comms/messaging_views.py` | The page showing one `Conversation`'s messages with its composer. |
 | **educator of a learner** (coined) | `learner_management/queries.py` `educators_of` | An active user holding an active grant, through a role granting `VIEW_LEARNER`, that reaches a `Learner` row: a site grant, an organisation grant on the learner's organisation, or a cohort grant on a cohort the learner belongs to. The inverse of `learners_visible_to` without its superuser branch. |
 | **colleague** (coined) | `learner_management/queries.py` `colleagues_of` | An active user, other than the given one, holding an organisation- or cohort-scoped role granting `VIEW_LEARNER` in an organisation where the given user holds one too. A site-scoped role makes nobody a colleague. |
 | **peer** (coined) | `learner_management/queries.py` `peers_of` | Another user's active `Learner` row in the same organisation that shares a cohort with the given learner, or a course both hold an active registration for (individually or through a cohort). Course peers stay inside the organisation because a course is not owned by one. |

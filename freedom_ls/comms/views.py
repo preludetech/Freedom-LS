@@ -9,7 +9,7 @@ from uuid import UUID
 from django.core.paginator import Paginator
 from django.db.models import Value
 from django.db.models.functions import Coalesce
-from django.http import HttpRequest, HttpResponse
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -18,6 +18,7 @@ from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.utils import redirect_to_auth
+from freedom_ls.comms.config import config
 from freedom_ls.comms.models import Notification
 from freedom_ls.comms.relative_time import day_heading
 
@@ -28,22 +29,46 @@ if TYPE_CHECKING:
     from freedom_ls.comms.models import NotificationQuerySet
 
 
-def login_required_htmx(
-    view: Callable[..., HttpResponse],
-) -> Callable[..., HttpResponse]:
+def login_required_htmx_to(
+    next_url_name: str,
+) -> Callable[[Callable[..., HttpResponse]], Callable[..., HttpResponse]]:
     """Like login_required, but an expired session under HTMX gets a 204 with
     HX-Redirect instead of a 302 htmx would try to swap into the calling
-    element."""
+    element. The visitor returns to ``next_url_name`` after signing in."""
+
+    def decorator(view: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
+        @wraps(view)
+        def wrapper(
+            request: HttpRequest, *args: object, **kwargs: object
+        ) -> HttpResponse:
+            if not request.user.is_authenticated:
+                return redirect_to_auth(request, next_url=reverse(next_url_name))
+            return view(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+login_required_htmx = login_required_htmx_to("comms:notification_list")
+
+
+def messaging_view(
+    view: Callable[..., HttpResponse],
+) -> Callable[..., HttpResponse]:
+    """Login handling for a messaging view, and a 404 while messaging is off.
+
+    Every messaging view carries this decorator alone, so none can skip the
+    switch.
+    """
 
     @wraps(view)
-    def wrapper(request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
-        if not request.user.is_authenticated:
-            return redirect_to_auth(
-                request, next_url=reverse("comms:notification_list")
-            )
+    def gated(request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
+        if not config.MESSAGING_ENABLED:
+            raise Http404
         return view(request, *args, **kwargs)
 
-    return wrapper
+    return login_required_htmx_to("conversations:inbox")(gated)
 
 
 def _notifications_for(request: HttpRequest) -> NotificationQuerySet:
