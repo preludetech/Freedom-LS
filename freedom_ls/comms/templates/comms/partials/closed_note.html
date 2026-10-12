@@ -1,0 +1,13 @@
+{% comment %}
+Stands in for the composer on a thread that takes no new messages. It keeps
+the id #composer so the thread has one place for "what happens next".
+{% endcomment %}
+<div id="composer"
+     role="status"
+     class="flex items-start gap-3 border-t border-border bg-surface-2 px-4 py-3 text-on-surface">
+    <c-icon name="locked" class="size-5 shrink-0" />
+    <div>
+        <p class="m-0 font-semibold">{{ closed_heading }}</p>
+        <p class="m-0 text-sm">{{ closed_body }}</p>
+    </div>
+</div>

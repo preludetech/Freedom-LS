@@ -7,7 +7,7 @@ own as the "conversation-list" partial when htmx asks for just the list.
         {% if inbox_rows %}
             <ul class="m-0 list-none divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface p-0">
                 {% for row in inbox_rows %}
-                    {% include "comms/partials/conversation_row.html" with conversation=row.conversation other=row.other %}
+                    {% include "comms/partials/conversation_row.html" with conversation=row.conversation other=row.other can_reply=row.can_reply %}
                 {% endfor %}
             </ul>
         {% else %}

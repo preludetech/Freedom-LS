@@ -70,6 +70,15 @@ def closed_policy(settings) -> None:
     settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
 
 
+@pytest.fixture
+def no_relationship_policy(settings) -> None:
+    settings.MESSAGING_POLICY = f"{__name__}.NoRelationshipReplyPolicy"
+
+
+def name_of(user: User) -> str:
+    return str(user.first_name or user.display_name)
+
+
 def thread_url(conversation) -> str:
     return reverse("conversations:thread", kwargs={"pk": conversation.pk})
 
@@ -171,6 +180,7 @@ class TestThreadPage:
 
         assert "Welcome aboard" in response.content.decode()
 
+    @pytest.mark.usefixtures("allow_policy")
     def test_the_composer_posts_once_per_click(self, pair, logged_in_client) -> None:
         user, _, conversation = pair
 
@@ -183,6 +193,7 @@ class TestThreadPage:
         assert button.get("hx-disabled-elt") == "this"
         assert button.get("aria-label") == "Send"
 
+    @pytest.mark.usefixtures("allow_policy")
     def test_the_composer_is_labelled_with_the_name(
         self, pair, logged_in_client
     ) -> None:
@@ -502,6 +513,7 @@ class TestInbox:
 
         assert "<html" in response.content.decode()
 
+    @pytest.mark.usefixtures("allow_policy")
     def test_the_query_count_does_not_grow_with_the_rows(
         self, mock_site_context, logged_in_client, django_assert_max_num_queries
     ) -> None:
@@ -1020,3 +1032,158 @@ def test_the_start_page_renders_the_results_region_once(
     tree = html.fromstring(response.content)
     assert len(tree.xpath("//*[@id='recipient-results']")) == 1
     assert len(tree.xpath("//a[contains(., 'Kai Ngata')]")) == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("closed_policy")
+class TestClosedThread:
+    def test_the_note_replaces_the_composer(self, pair, logged_in_client) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other, body="Earlier")
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        tree = html.fromstring(response.content)
+        note = tree.xpath("//*[@id='composer']")[0]
+        assert not tree.xpath("//form[@id='composer']")
+        assert not tree.xpath("//textarea")
+        assert note.get("role") == "status"
+        assert "Replies are closed" in note.text_content()
+        assert f"Messaging between you and {name_of(other)} is closed here." in (
+            note.text_content()
+        )
+        assert "Earlier" in response.content.decode()
+
+    def test_a_refused_send_still_shows_the_alert_and_the_draft(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "Draft", "client_key": str(uuid.uuid4())},
+            **HTMX,
+        )
+
+        content = response.content.decode()
+        assert response.status_code == 422
+        assert f"Not sent. {name_of(other)} can&#x27;t receive messages" in content
+        assert "Draft" in content
+
+    def test_the_inbox_row_is_tagged_read_only_and_keeps_its_state(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        row = tree.xpath(f"//li[.//a[@href='{thread_url(conversation)}']]")[0]
+        assert "Read only" in row.text_content()
+        assert "Unread" in row.text_content()
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("no_relationship_policy")
+class TestClosedThreadNoRelationship:
+    def test_a_no_relationship_refusal_uses_its_own_body(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+
+        content = logged_in_client(user).get(thread_url(conversation)).content.decode()
+
+        assert f"You can no longer message {name_of(other)} from here." in content
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestOpenThread:
+    def test_an_open_thread_has_the_composer_and_no_note(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        tree = html.fromstring(
+            logged_in_client(user).get(thread_url(conversation)).content
+        )
+
+        assert tree.xpath("//form[@id='composer']")
+        assert "Replies are closed" not in tree.text_content()
+
+    def test_an_open_inbox_row_has_no_read_only_tag(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, _ = pair
+
+        content = logged_in_client(user).get(inbox_url()).content.decode()
+
+        assert "Read only" not in content
+
+
+class NoRelationshipReplyPolicy(AllowPolicy):
+    def can_reply(self, *, sender, recipient, site, conversation):
+        return MessagingDecision.refuse(MessagingRefusal.NO_RELATIONSHIP)
+
+
+class ExplodingPolicy(AllowPolicy):
+    def can_reply(self, *, sender, recipient, site, conversation):
+        raise AssertionError("the policy must not be asked about a deleted user")
+
+
+@pytest.mark.django_db
+class TestDeletedParticipantViews:
+    @pytest.fixture(autouse=True)
+    def _exploding_policy(self, settings) -> None:
+        settings.MESSAGING_POLICY = f"{__name__}.ExplodingPolicy"
+
+    def test_the_thread_renders_with_the_generic_closed_note(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other, body="Bye")
+        other.delete()
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        content = response.content.decode()
+        assert response.status_code == 200
+        assert "Deleted user" in content
+        assert "Bye" in content
+        assert "This conversation can&#x27;t take new messages." in content
+        assert "<textarea" not in content
+
+    def test_a_send_shows_the_deleted_variant_and_stores_nothing(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        other.delete()
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "Hello?", "client_key": str(uuid.uuid4())},
+            **HTMX,
+        )
+
+        assert response.status_code == 422
+        assert "Not sent. This conversation can&#x27;t take new messages." in (
+            response.content.decode()
+        )
+        assert Message.objects.count() == 0
+
+    def test_the_survivors_inbox_keeps_the_unread_state(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+        other.delete()
+
+        row = html.fromstring(logged_in_client(user).get(inbox_url()).content).xpath(
+            f"//li[.//a[@href='{thread_url(conversation)}']]"
+        )[0]
+
+        assert "Deleted user" in row.text_content()
+        assert "Unread" in row.text_content()
+        assert "Read only" in row.text_content()

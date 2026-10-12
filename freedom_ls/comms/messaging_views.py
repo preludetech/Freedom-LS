@@ -18,11 +18,13 @@ from freedom_ls.accounts.models import User
 from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging import (
     SendResult,
+    closed_note_copy,
     inbox_for,
     latest_page,
     mark_conversation_read,
     other_participant,
     refusal_alert_copy,
+    reply_decision,
     search_recipients,
     send_message,
     unread_conversation_count,
@@ -52,10 +54,19 @@ def participant_conversation(request: HttpRequest, pk: UUID) -> Conversation:
 class InboxRow:
     conversation: Conversation
     other: User | None
+    can_reply: bool
 
 
 def inbox_rows(user: User) -> list[InboxRow]:
-    return [InboxRow(row, other_participant(row, user)) for row in inbox_for(user)]
+    rows: list[InboxRow] = []
+    for conversation in inbox_for(user):
+        decision = reply_decision(viewer=user, conversation=conversation)
+        rows.append(
+            InboxRow(
+                conversation, other_participant(conversation, user), decision.allowed
+            )
+        )
+    return rows
 
 
 def _inbox_context(
@@ -99,9 +110,17 @@ def thread_context(
     request: HttpRequest, conversation: Conversation
 ) -> dict[str, object]:
     viewer = cast("User", request.user)
+    other = other_participant(conversation, viewer)
+    decision = reply_decision(viewer=viewer, conversation=conversation)
+    closed_heading, closed_body = ("", "")
+    if not decision.allowed:
+        closed_heading, closed_body = closed_note_copy(decision.reason, other)
     return {
         "conversation": conversation,
-        "other": other_participant(conversation, viewer),
+        "other": other,
+        "decision": decision,
+        "closed_heading": closed_heading,
+        "closed_body": closed_body,
         "thread_messages": latest_page(conversation),
         "composer": _composer_context(client_key=uuid4(), conversation=conversation),
         "page_size": config.MESSAGE_PAGE_SIZE,

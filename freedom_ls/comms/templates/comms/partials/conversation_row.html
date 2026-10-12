@@ -17,6 +17,9 @@ The open thread's row carries aria-current.
                 <time datetime="{{ conversation.last_message_at|date:'c' }}"
                       title="{{ conversation.last_message_at }}">{{ conversation.last_message_at|relative_time }}</time>
             {% endif %}
+            {% if not can_reply %}
+                <c-chip variant="muted" size="xs" icon="locked">Read only</c-chip>
+            {% endif %}
             {% if conversation.is_unread %}
                 <span class="pointer-events-none inline-flex items-center gap-1 text-xs font-semibold text-primary"
                       aria-hidden="true">
