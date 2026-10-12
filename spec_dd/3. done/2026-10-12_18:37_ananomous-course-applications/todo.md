@@ -79,5 +79,5 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 14. Cleanup
 
-- [ ] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
+- [x] (cmd) Run `/sdd:finish_worktree` to close out the worktree and land it on main
 - [ ] (user) Remove the worktree and delete the branch once main has it
