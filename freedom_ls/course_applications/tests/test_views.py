@@ -12,6 +12,7 @@ from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 
 from django.contrib.messages import get_messages
+from django.contrib.sessions.backends.db import SessionStore
 from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -44,6 +45,7 @@ from freedom_ls.course_applications.anonymous_session import (
 from freedom_ls.course_applications.claims import claim_token
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
+from freedom_ls.course_applications.views import _details_in_flight_key
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
@@ -1502,6 +1504,79 @@ def test_anonymous_apply_on_coming_soon_course_redirects_to_course_detail(
     )
 
 
+def _coming_soon_gated_course():
+    return CourseFactory(
+        visibility=CourseVisibility.COMING_SOON,
+        access_config={"access_type": "application_gated"},
+    )
+
+
+@pytest.mark.django_db
+def test_anonymous_apply_on_coming_soon_course_with_an_application_reaches_status(
+    mock_site_context, client
+):
+    """An applicant on a course later flipped to coming-soon still reaches their
+    status page, where the only way to resend the claim email lives."""
+    course = _coming_soon_gated_course()
+    course.visibility = CourseVisibility.PUBLISHED
+    course.save(update_fields=["visibility"])
+    _post_details(client, course)
+    client.post(_apply_url(course))
+    application = CourseApplication.objects.get(course=course)
+    course.visibility = CourseVisibility.COMING_SOON
+    course.save(update_fields=["visibility"])
+
+    response = client.get(_apply_url(course))
+
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+@override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True)
+def test_anonymous_apply_honours_the_visibility_preview_override(
+    mock_site_context, client
+):
+    course = _coming_soon_gated_course()
+
+    response = client.get(_apply_url(course))
+
+    assert response["Location"] == _details_url(course)
+
+
+@pytest.mark.django_db
+@override_settings(OVERRIDE_COURSE_VISIBILITY_TO_VISIBLE=True)
+def test_details_step_honours_the_visibility_preview_override(
+    mock_site_context, client
+):
+    course = _coming_soon_gated_course()
+
+    response = client.get(_details_url(course))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_details_step_on_coming_soon_course_with_an_application_reaches_status(
+    mock_site_context, client
+):
+    course = _coming_soon_gated_course()
+    course.visibility = CourseVisibility.PUBLISHED
+    course.save(update_fields=["visibility"])
+    _post_details(client, course)
+    client.post(_apply_url(course))
+    application = CourseApplication.objects.get(course=course)
+    course.visibility = CourseVisibility.COMING_SOON
+    course.save(update_fields=["visibility"])
+
+    response = client.get(_details_url(course))
+
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
 @pytest.mark.django_db
 def test_details_step_get_renders_the_three_fields(client, gated_course):
     response = client.get(_details_url(gated_course))
@@ -1918,6 +1993,37 @@ def test_the_second_of_two_overlapping_first_posts_is_sent_back_to_the_step(
     )
 
     assert response["Location"] == _details_url(gated_course)
+
+
+@pytest.mark.django_db
+def test_a_long_valid_address_still_makes_an_applicant(gated_course):
+    """The in-flight key used to carry the address verbatim, and a long one
+    pushed it past what the cache table could store."""
+    cache.clear()
+    long_email = "a@" + ".".join(["b" * 60] * 3) + ".com"
+
+    Client().post(
+        _details_url(gated_course),
+        _details_data(email=long_email),
+        REMOTE_ADDR="10.2.2.2",
+    )
+
+    assert AnonymousApplicant.objects.filter(email=long_email).exists()
+
+
+@pytest.mark.django_db
+def test_the_in_flight_key_carries_neither_the_address_nor_the_ip(gated_course, rf):
+    """The production cache is a database table whose rows outlive expiry."""
+    request = rf.post(_details_url(gated_course), REMOTE_ADDR="10.2.2.2")
+    request.session = SessionStore()
+
+    key = _details_in_flight_key(request, gated_course, "ada@example.com")
+
+    assert ("ada@example.com" in key, "10.2.2.2" in key, len(key) < 250) == (
+        False,
+        False,
+        True,
+    )
 
 
 @pytest.mark.django_db

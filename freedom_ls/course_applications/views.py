@@ -17,6 +17,7 @@ from django.db.models import prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.crypto import salted_hmac
 
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import (
@@ -24,9 +25,10 @@ from freedom_ls.accounts.utils import (
     get_client_ip,
     redirect_to_auth,
 )
-from freedom_ls.content_engine.models import Course, CourseVisibility
+from freedom_ls.content_engine.models import Course
 from freedom_ls.course_access import get_course_access_backend
 from freedom_ls.course_access.analytics_events import record_application_submitted
+from freedom_ls.course_access.overrides import is_coming_soon_for_display
 from freedom_ls.course_access.visibility import raise_404_if_hidden_unregistered
 from freedom_ls.course_applications.anonymous_session import (
     anonymous_applicant_for_course,
@@ -135,10 +137,9 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     if existing_app is not None:
         return redirect("course_applications:status", pk=existing_app.pk)
 
-    # Coming-soon courses are not enrollable — route to the detail page's
-    # express-interest CTA instead of creating an application.
-    if course.visibility == CourseVisibility.COMING_SOON:
-        return redirect("learner_interface:course_detail", course_slug=course.slug)
+    coming_soon = _coming_soon_redirect(course)
+    if coming_soon is not None:
+        return coming_soon
 
     if course.application_form is not None or request.method == "POST":
         app = _start_application(course, user=user)
@@ -218,21 +219,33 @@ def _redirect_visitor_to_auth(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _coming_soon_redirect(course: Course) -> HttpResponse | None:
+    """Coming-soon courses are not enrollable: the detail page's express-interest
+    call to action is the only thing on offer. Honours the dev/staging override
+    that previews such a course as visible."""
+    if not is_coming_soon_for_display(course):
+        return None
+    return redirect("learner_interface:course_detail", course_slug=course.slug)
+
+
 def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
     if not _anonymous_applications_allowed(course):
         return _redirect_visitor_to_auth(request)
-    if course.visibility == CourseVisibility.COMING_SOON:
-        return redirect("learner_interface:course_detail", course_slug=course.slug)
     applicant = anonymous_applicant_for_course(request, course)
-    if applicant is None:
-        return redirect(
-            "course_applications:applicant_details", course_slug=course.slug
-        )
-    app = application_of(applicant)
+    app = application_of(applicant) if applicant is not None else None
+    # An existing application is always reachable, so this precedes the
+    # coming-soon redirect just as it does for a signed-in applicant.
     if app is not None:
         if not app.is_submitted and app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
         return redirect("course_applications:status", pk=app.pk)
+    coming_soon = _coming_soon_redirect(course)
+    if coming_soon is not None:
+        return coming_soon
+    if applicant is None:
+        return redirect(
+            "course_applications:applicant_details", course_slug=course.slug
+        )
     if course.application_form is not None or request.method == "POST":
         app = _start_application(course, anonymous_applicant=applicant)
         if app.form_progress is not None:
@@ -262,9 +275,26 @@ DETAILS_IN_FLIGHT_SECONDS = 10
 
 
 def _details_in_flight_key(request: HttpRequest, course: Course, email: str) -> str:
-    # The address and the IP together: a double click comes from one browser,
-    # and two people sharing an address on different networks are not one.
-    return f"course_applications:details:{course.pk}:{email}:{get_client_ip(request)}"
+    """One cache key per visitor-and-address pair, with nothing readable in it.
+
+    The address, the IP and the session together: a double click comes from
+    one browser, and two people sharing an address on different networks are
+    not one. Hashed because the production cache is a database table whose
+    rows outlive their expiry, so the plain pair would sit there in clear
+    text, and because a long address would push the key past the column.
+    """
+    fingerprint = ":".join(
+        (
+            str(course.pk),
+            email,
+            get_client_ip(request),
+            request.session.session_key or "",
+        )
+    )
+    digest = salted_hmac(
+        "course_applications.details_in_flight", fingerprint
+    ).hexdigest()
+    return f"course_applications:details:{digest[:32]}"
 
 
 def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
@@ -281,12 +311,14 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     raise_404_if_hidden_unregistered(request.user, course)
     if not _anonymous_applications_allowed(course):
         return _redirect_visitor_to_auth(request)
-    if course.visibility == CourseVisibility.COMING_SOON:
-        return redirect("learner_interface:course_detail", course_slug=course.slug)
     applicant = anonymous_applicant_for_course(request, course)
     app = application_of(applicant) if applicant is not None else None
     if app is not None and app.is_submitted:
         return redirect("course_applications:status", pk=app.pk)
+    if app is None:
+        coming_soon = _coming_soon_redirect(course)
+        if coming_soon is not None:
+            return coming_soon
     instance = applicant if applicant is not None else AnonymousApplicant(course=course)
     status = 200
     if request.method == "POST":
