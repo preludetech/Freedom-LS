@@ -14,7 +14,7 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) Review the spec carefully and edit where needed
 - [x] (cmd) Run `/sdd:spec_review` to sanity-check the spec
 - [ ] (user) Address any issues raised by the review
-- [ ] (user) Decide how to handle user deletion: the spec now deletes a whole conversation when either participant is deleted (Decision 12), rather than leaving the survivor a half-conversation that stays unread forever
+- [x] (user) Decide how to handle user deletion: keep the conversation and every message, and show the deleted person as "Deleted user" (Decision 12)
 
 ## 3. Threat model
 
