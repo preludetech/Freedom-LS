@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from allauth.core.ratelimit import consume_or_429
+from allauth.core import ratelimit
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -84,15 +84,27 @@ def partial_question_file_upload(
 ) -> HttpResponse:
     """Attach a file to a file question, replacing whatever was there before.
 
-    Rate-limited before the lookup: an upload is the one write a session can
-    repeat without limit otherwise, and each one costs storage and a decode.
+    Rate-limited per sitting: an upload is the one write a session can repeat
+    without limit otherwise, and each one costs storage and a decode. Keyed
+    on the sitting rather than the address so that a room of learners behind
+    one network address do not share a bucket. A refusal re-renders the widget
+    with the reason at 422, the one error status the page swaps in.
     """
-    limited: HttpResponse | None = consume_or_429(request, action="form_file_upload")
-    if limited is not None:
-        return limited
     form_progress, question = _owned_file_question(request, progress_pk, question_pk)
     if form_progress.completed_time is not None:
         return HttpResponse(status=409)
+    allowed: bool = ratelimit.consume(
+        request, action="form_file_upload", key=str(form_progress.pk)
+    )
+    if not allowed:
+        return _render_file_widget(
+            request,
+            form_progress,
+            question,
+            None,
+            error="Too many uploads in a row. Wait a minute and try again.",
+            status=422,
+        )
 
     uploaded = request.FILES.get("file")
     # Read before validating, and truncated rather than rejected: the name is

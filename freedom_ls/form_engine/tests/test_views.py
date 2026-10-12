@@ -118,33 +118,82 @@ def test_an_executable_named_png_is_refused_with_422(
     assert response.status_code == 422
 
 
-UPLOAD_RATE_LIMIT = {"form_file_upload": "2/m/ip"}
+UPLOAD_RATE_LIMIT = {"form_file_upload": "2/m/key"}
+
+
+def _spend_the_upload_limit(client, form_progress, question) -> None:
+    for name in ("one.png", "two.png"):
+        client.post(
+            _upload_url(form_progress, question),
+            {"file": SimpleUploadedFile(name, png_bytes())},
+        )
 
 
 @pytest.mark.django_db
-def test_an_upload_past_the_per_ip_limit_is_refused_with_429(
+def test_an_upload_past_the_sittings_limit_re_renders_the_widget_with_422(
     mock_site_context, client, sitting
 ):
+    """422 is the one error status the page swaps in, so the applicant sees why."""
     form_progress, question = sitting
     client.force_login(form_progress.user)
     with override_settings(ACCOUNT_RATE_LIMITS=UPLOAD_RATE_LIMIT):
         cache.clear()
-        for _ in range(2):
-            client.post(
-                _upload_url(form_progress, question),
-                {"file": SimpleUploadedFile("id.png", png_bytes())},
-            )
+        _spend_the_upload_limit(client, form_progress, question)
 
         response = client.post(
             _upload_url(form_progress, question),
             {"file": SimpleUploadedFile("id.png", png_bytes())},
         )
 
-    assert response.status_code == 429
+    assert (response.status_code, "Too many uploads" in response.content.decode()) == (
+        422,
+        True,
+    )
 
 
 @pytest.mark.django_db
-def test_an_upload_past_the_per_ip_limit_stores_nothing_new(
+def test_another_sitting_behind_the_same_address_has_its_own_upload_limit(
+    mock_site_context, client, sitting
+):
+    """A room of learners behind one network address are not one uploader."""
+    form_progress, question = sitting
+    other_progress = FormProgressFactory(form=form_progress.form)
+    client.force_login(form_progress.user)
+    with override_settings(ACCOUNT_RATE_LIMITS=UPLOAD_RATE_LIMIT):
+        cache.clear()
+        _spend_the_upload_limit(client, form_progress, question)
+        client.force_login(other_progress.user)
+
+        response = client.post(
+            _upload_url(other_progress, question),
+            {"file": SimpleUploadedFile("id.png", png_bytes())},
+        )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_stranger_cannot_spend_a_sittings_upload_limit(
+    mock_site_context, client, sitting
+):
+    """The limit is consumed after the ownership check, so a 404 costs nothing."""
+    form_progress, question = sitting
+    client.force_login(UserFactory())
+    with override_settings(ACCOUNT_RATE_LIMITS=UPLOAD_RATE_LIMIT):
+        cache.clear()
+        _spend_the_upload_limit(client, form_progress, question)
+        client.force_login(form_progress.user)
+
+        response = client.post(
+            _upload_url(form_progress, question),
+            {"file": SimpleUploadedFile("id.png", png_bytes())},
+        )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_an_upload_past_the_sittings_limit_stores_nothing_new(
     mock_site_context, client, sitting
 ):
     form_progress, question = sitting

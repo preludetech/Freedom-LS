@@ -460,9 +460,11 @@ ACCOUNT_RATE_LIMITS: dict[str, str] | bool = {
     "application_details": "5/m/ip,5/h/key",
     "application_claim_email": "3/h/key",
     # An anonymous sitting can take uploads with no mailbox proven, and each one
-    # is stored until somebody erases it. Per IP, since the sitting's owner is
-    # a browser session.
-    "form_file_upload": "20/m/ip",
+    # is stored until somebody erases it. Per sitting (the key), not per IP: a
+    # room of signed-in learners behind one address is not one uploader, and
+    # an anonymous visitor cannot start sittings faster than the details step
+    # lets them.
+    "form_file_upload": "20/m/key",
 }
 
 
