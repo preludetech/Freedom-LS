@@ -219,6 +219,18 @@ access_config:
 application is reviewed, written **relative to this `course.md`**. It is optional: a gated
 course without one just takes the application and shows the applicant a status page.
 
+FLS collects the applicant's personal details itself, before the first page of the form. A
+signed-in learner's come from their account, and a visitor without an account fills in a
+details step. Do **not** ask for any of these in an application form, because the applicant
+would be giving them twice:
+
+- email address
+- first name, last name or full name
+- agreement to the site's terms and conditions or privacy policy
+
+Ask only for what the course needs beyond that, such as experience, motivation, availability
+or supporting documents.
+
 Two rules the host enforces at content-load:
 
 - The path must resolve to a FORM that is loaded in the same run. Point it at a topic, or at

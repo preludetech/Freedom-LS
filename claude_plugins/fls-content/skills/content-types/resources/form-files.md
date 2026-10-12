@@ -48,7 +48,9 @@ title: Course Feedback Survey
 ### Unscored (UNSCORED) example
 
 `UNSCORED` records answers without producing a score or a pass/fail outcome. This is the strategy an
-application form uses — see the course access configuration section of `course-files.md`.
+application form uses — see the course access configuration section of `course-files.md`. An
+application form never asks for the applicant's email, name or agreement to the site's terms:
+FLS collects those itself, and that section lists them.
 
 ```yaml
 ---
