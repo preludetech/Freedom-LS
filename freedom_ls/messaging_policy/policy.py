@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from operator import attrgetter
+from collections.abc import Mapping, Sequence
+from operator import attrgetter, itemgetter
 from typing import TYPE_CHECKING, NamedTuple
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import BooleanField, ExpressionWrapper, F, Q, Value
+from django.utils.translation import gettext as _
 
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
     MessagingPolicy,
     MessagingRefusal,
+    RecipientGroup,
 )
 from freedom_ls.learner_management.capabilities import roles_granting
 from freedom_ls.learner_management.models import (
@@ -24,8 +26,11 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     VIEW_LEARNER,
+    all_cohorts_visible_to,
+    cohorts_visible_to,
     colleagues_of,
     educators_of,
+    holds_registration_for_any_expression,
     peers_through,
     registrations_of,
     visible_learners_expression,
@@ -41,10 +46,15 @@ from freedom_ls.messaging_policy.resolver import (
     resolved_flag_expression,
 )
 from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from django.contrib.sites.models import Site
     from django.db.models import Model, QuerySet
+
+    from freedom_ls.comms.models import Conversation
 
 
 def offered_roles_for(
@@ -114,7 +124,7 @@ class LayeredMessagingPolicy(MessagingPolicy):
         return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
 
     def can_reply(
-        self, *, sender: User, recipient: User, site: Site, conversation: Model
+        self, *, sender: User, recipient: User, site: Site, conversation: Conversation
     ) -> MessagingDecision:
         # Reply rights are symmetric: whichever direction may start now keeps the
         # conversation open, so the conversation itself is not consulted.
@@ -129,6 +139,102 @@ class LayeredMessagingPolicy(MessagingPolicy):
             # can_start refuses every pair for an inactive sender.
             return User.objects.none()
         return self._related_users(sender, self._resolve(sender, site), open_only=True)
+
+    def group_recipients(
+        self,
+        *,
+        sender: User,
+        site: Site,
+        recipients: Sequence[User],
+        scope: Model | None = None,
+    ) -> list[RecipientGroup]:
+        """Group ``recipients`` by the context that connects them to the sender.
+
+        A person is listed once, under the first group that claims them, in this
+        order: offered educator roles, the sender's courses, the cohorts the
+        sender can see, colleagues, then anyone left over. Each group is one query over the
+        recipients' ids, so the query count follows the number of groups, never
+        the number of people.
+        """
+        ids = [user.pk for user in recipients]
+        groups: list[RecipientGroup] = []
+        placed: set[int] = set()
+
+        def place(label: str, members: QuerySet[User]) -> None:
+            # A person is listed once, under the first group that claims them.
+            claimed = set(
+                members.filter(pk__in=ids)
+                .exclude(pk__in=placed)
+                .values_list("pk", flat=True)
+            )
+            found = [user for user in recipients if user.pk in claimed]
+            if not found:
+                return
+            placed.update(user.pk for user in found)
+            groups.append(RecipientGroup(label=label, users=found))
+
+        resolution = self._resolve(sender, site)
+        if resolution.rows:
+            # A learner looks for their educators first, so those groups come
+            # before peers.
+            roles = get_role_config(site.name)
+            for role_key in sorted(offered_roles_for(site, resolution.site_config)):
+                holders = Q()
+                for row in resolution.rows:
+                    holders |= Q(
+                        pk__in=educators_of(row, roles=frozenset({role_key})).values(
+                            "pk"
+                        )
+                    )
+                place(
+                    roles[role_key].display_name,
+                    User.objects.filter(site=site).filter(holders),
+                )
+            for course_title, course_ids in self._courses_of(resolution.rows):
+                holders_of_course = Learner.objects.filter(
+                    site=site, is_active=True
+                ).filter(holds_registration_for_any_expression(site, course_ids))
+                place(
+                    course_title,
+                    User.objects.filter(pk__in=holders_of_course.values("user_id")),
+                )
+        cohorts = (
+            cohorts_visible_to(sender, scope)
+            if isinstance(scope, Organisation)
+            else all_cohorts_visible_to(sender)
+        )
+        for cohort in cohorts.order_by("name"):
+            members = Learner.objects.filter(
+                site=site, is_active=True, cohortmembership__cohort=cohort
+            )
+            place(cohort.name, User.objects.filter(pk__in=members.values("user_id")))
+        place(_("Colleagues"), colleagues_of(sender, site))
+        # Anyone the policy offers but no group above claimed still appears.
+        place(_("Others"), User.objects.filter(site=site))
+        return groups
+
+    def _courses_of(self, rows: list[Learner]) -> list[tuple[str, QuerySet]]:
+        """Each course any of the sender's rows is registered for, by title, as
+        its title and a values("course_id") queryset naming just that course.
+
+        The queryset comes from the sender's own registration, so it matches
+        whichever registration path (individual or through a cohort) put the
+        sender on the course.
+        """
+        courses: dict[UUID, tuple[str, QuerySet]] = {}
+        for row in rows:
+            for registrations in registrations_of(row):
+                for registration in registrations.select_related("course"):
+                    courses.setdefault(
+                        registration.course_id,
+                        (
+                            registration.course.title,
+                            registrations.filter(
+                                course_id=registration.course_id
+                            ).values("course_id"),
+                        ),
+                    )
+        return sorted(courses.values(), key=itemgetter(0))
 
     def _resolve(self, sender: User, site: Site) -> _Resolution:
         rows = list(

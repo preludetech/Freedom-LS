@@ -1,0 +1,52 @@
+{% comment %}
+The recipient picker: a search field and the grouped results. It is rendered
+whole inside #recipient-picker on the new-message page, and as just the
+"results" partial when the search field asks for fresh matches. Each result
+links to choose_url with the person's id.
+{% endcomment %}
+<form id="recipient-search"
+      method="get"
+      action="{{ choose_url }}"
+      hx-get="{{ search_url }}"
+      hx-trigger="submit, input changed delay:300ms from:#recipient-q, search from:#recipient-q"
+      hx-sync="this:replace"
+      hx-target="#recipient-results"
+      hx-swap="outerHTML">
+    <c-panel-search-field name="q" id="recipient-q" value="{{ term }}" label="To" placeholder="Search by name" hx-preserve />
+</form>
+{% partialdef results inline %}
+    <div id="recipient-results" class="mt-4">
+        {% if search.needs_term %}
+            <p class="text-muted">Keep typing to find someone. Enter at least two characters.</p>
+        {% else %}
+            {% for group in search.groups %}
+                <div role="group" {% if group.label %}aria-labelledby="recipient-group-{{ forloop.counter }}"{% endif %} class="mb-4">
+                    {% if group.label %}
+                        <h2 id="recipient-group-{{ forloop.counter }}"
+                            class="text-xs font-semibold uppercase tracking-wide text-muted">{{ group.label }}</h2>
+                    {% endif %}
+                    <ul class="m-0 mt-1 list-none divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface p-0">
+                        {% for user in group.users %}
+                            <li>
+                                <a href="{{ choose_url }}?recipient={{ user.pk }}"
+                                   class="block min-h-6 px-3 py-2 hover:bg-surface-2">
+                                    <c-panel-avatar-chip name="{{ user.display_name }}"
+                                                         user_id="{{ user.pk }}"
+                                                         secondary="{% if include_email %}{{ user.email }}{% endif %}" />
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% empty %}
+                <p class="text-muted">No one you can message matches "{{ term }}".</p>
+            {% endfor %}
+            {% if search.truncated %}
+                <p class="text-muted">Keep typing to narrow the list.</p>
+            {% endif %}
+        {% endif %}
+        <p role="status" aria-live="polite" class="sr-only">
+            {% if not search.needs_term %}{{ search.count }} {% if search.count == 1 %}person{% else %}people{% endif %} found{% endif %}
+        </p>
+    </div>
+{% endpartialdef %}

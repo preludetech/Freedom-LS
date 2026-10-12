@@ -14,7 +14,9 @@
                 {% include "comms/partials/composer.html" %}
             </div>
         {% else %}
-            <div id="recipient-picker" class="mt-6"></div>
+            <div id="recipient-picker" class="mt-6">
+                {% include "comms/partials/recipient_picker.html" %}
+            </div>
         {% endif %}
     </c-page>
 {% endblock content %}

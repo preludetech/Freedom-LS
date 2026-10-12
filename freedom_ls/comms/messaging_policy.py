@@ -7,10 +7,13 @@ from enum import StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from django.contrib.sites.models import Site
     from django.db.models import Model, QuerySet
 
     from freedom_ls.accounts.models import User
+    from freedom_ls.comms.models import Conversation
 
 
 class MessagingRefusal(StrEnum):
@@ -48,6 +51,14 @@ class MessagingDecision:
         return cls(allowed=False, reason=reason)
 
 
+@dataclass(frozen=True, slots=True)
+class RecipientGroup:
+    """A labelled run of people in the recipient picker; an empty label is no heading."""
+
+    label: str
+    users: list[User]
+
+
 class MessagingPolicy:
     """Answers "may this user message that user?" for every messaging surface.
 
@@ -62,11 +73,25 @@ class MessagingPolicy:
         raise NotImplementedError
 
     def can_reply(
-        self, *, sender: User, recipient: User, site: Site, conversation: Model
+        self, *, sender: User, recipient: User, site: Site, conversation: Conversation
     ) -> MessagingDecision:
-        # `conversation` is typed Model because the conversation model lives in an app
-        # that depends on this one.
         raise NotImplementedError
 
     def recipients_for(self, *, sender: User, site: Site) -> QuerySet[User]:
         raise NotImplementedError
+
+    def group_recipients(
+        self,
+        *,
+        sender: User,
+        site: Site,
+        recipients: Sequence[User],
+        scope: Model | None = None,
+    ) -> list[RecipientGroup]:
+        """Arrange ``recipients`` under headings for the picker.
+
+        ``scope`` narrows the headings to one context, such as an organisation.
+        The base policy has no structure to group by, so it returns one group
+        with no heading.
+        """
+        return [RecipientGroup(label="", users=list(recipients))]
