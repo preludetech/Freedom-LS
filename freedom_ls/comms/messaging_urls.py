@@ -6,6 +6,7 @@ app_name = "conversations"
 
 urlpatterns = [
     path("", messaging_views.inbox, name="inbox"),
+    path("poll/", messaging_views.partial_inbox_poll, name="inbox_poll"),
     path("unread-badge/", messaging_views.partial_unread_badge, name="unread_badge"),
     path("new/", messaging_views.start, name="start"),
     path(

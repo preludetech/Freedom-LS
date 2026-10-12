@@ -1406,7 +1406,9 @@ class TestThreadPoll:
 
         assert tree.xpath("//input[@id='thread-cursor']")[0].get("value") == cursor
         assert tree.xpath("//input[@id='thread-cursor']")[0].get("name") == "after"
-        poller = tree.xpath("//div[@x-data='refreshTimer']")[0]
+        poller = tree.xpath("//div[@x-data='refreshTimer'][.//span[@x-ref='target']]")[
+            0
+        ]
         assert poller.get("data-poll-seconds") == "5"
         target = poller.xpath(".//span[@x-ref='target']")[0]
         assert target.get("hx-get") == reverse(
@@ -1719,3 +1721,118 @@ class TestSendCarriesTheThreadSignals:
         assert cursor_input.get("value") == encode_cursor(message)
         assert tree.xpath(f"//li[@id='msg-{message.pk}'][@data-own]")
         assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
+
+
+def inbox_poll_url(*, since="", current="") -> str:
+    base = reverse("conversations:inbox_poll")
+    return f"{base}?since={quote(since)}&current={current}"
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestInboxPoll:
+    @pytest.fixture
+    def seen(self, pair):
+        """The pair with one message already listed, and the inbox's marker."""
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+        conversation.refresh_from_db()
+        return user, other, conversation, conversation.last_message_at.isoformat()
+
+    def test_the_inbox_carries_the_poller_and_the_marker(
+        self, seen, logged_in_client, settings
+    ) -> None:
+        user, _, _, since = seen
+        settings.MESSAGE_INBOX_POLL_SECONDS = 7
+
+        tree = html.fromstring(logged_in_client(user).get(inbox_url()).content)
+
+        poller = tree.xpath("//div[@x-data='refreshTimer']")[0]
+        assert poller.get("data-poll-seconds") == "7"
+        listing = poller.xpath(".//*[@id='conversation-list']")[0]
+        assert listing.get("x-ref") == "target"
+        assert listing.get("hx-get") == reverse("conversations:inbox_poll")
+        assert "conversationChanged from:body" in listing.get("hx-trigger")
+        assert listing.get("hx-target") == "this"
+        assert listing.get("hx-swap") == "outerHTML"
+        assert tree.xpath("//input[@id='inbox-since']")[0].get("value") == since
+        assert tree.xpath("//input[@id='inbox-since']")[0].get("name") == "since"
+
+    def test_nothing_changed_is_204_and_writes_nothing(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, since = seen
+        before = Conversation.objects.get(pk=conversation.pk).last_message_at
+
+        response = logged_in_client(user).get(inbox_poll_url(since=since), **HTMX)
+
+        assert response.status_code == 204
+        assert Conversation.objects.get(pk=conversation.pk).last_message_at == before
+
+    def test_a_new_message_rerenders_the_list_with_its_row_first(
+        self, seen, logged_in_client
+    ) -> None:
+        user, other, _, since = seen
+        third = UserFactory(first_name="Newest", last_name="Sender")
+        MessageFactory(conversation=ConversationFactory(between=(user, third)))
+
+        response = logged_in_client(user).get(inbox_poll_url(since=since), **HTMX)
+
+        assert response.status_code == 200
+        content = response.content.decode()
+        assert content.index("Newest Sender") < content.index(other.display_name)
+        assert "<html" not in content
+        marker = poll_tree(response).xpath("//input[@id='inbox-since']")[0]
+        assert marker.get("hx-swap-oob") == "outerHTML"
+        assert marker.get("value") != since
+
+    @pytest.mark.parametrize("since", ["", "not-a-date", "2026-01-01T00:00:00"])
+    def test_a_missing_or_malformed_marker_rerenders(
+        self, seen, logged_in_client, since
+    ) -> None:
+        user, *_ = seen
+
+        response = logged_in_client(user).get(inbox_poll_url(since=since), **HTMX)
+
+        assert response.status_code == 200
+        assert 'id="conversation-list"' in response.content.decode()
+
+    def test_the_open_threads_row_keeps_aria_current(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, _ = seen
+
+        response = logged_in_client(user).get(
+            inbox_poll_url(current=str(conversation.pk)), **HTMX
+        )
+
+        links = poll_tree(response).xpath("//a[@aria-current='page']")
+        assert [link.get("href") for link in links] == [thread_url(conversation)]
+
+    def test_the_thread_page_tells_the_poll_which_thread_is_open(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, _ = seen
+
+        tree = html.fromstring(
+            logged_in_client(user).get(thread_url(conversation)).content
+        )
+
+        current = tree.xpath("//input[@id='inbox-current']")[0]
+        assert current.get("name") == "current"
+        assert current.get("value") == str(conversation.pk)
+        listing = tree.xpath("//*[@id='conversation-list']")[0]
+        assert "#inbox-current" in listing.get("hx-include")
+
+    def test_another_users_conversation_is_not_listed(
+        self, seen, logged_in_client
+    ) -> None:
+        user, *_ = seen
+        a, b = UserFactory(), UserFactory()
+        MessageFactory(
+            conversation=ConversationFactory(between=(a, b)), body="Not for you"
+        )
+
+        response = logged_in_client(user).get(inbox_poll_url(), **HTMX)
+
+        assert a.display_name not in response.content.decode()

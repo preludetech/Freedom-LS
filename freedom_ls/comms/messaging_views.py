@@ -83,8 +83,16 @@ def inbox_rows(user: User) -> list[InboxRow]:
 def _inbox_context(
     request: HttpRequest, current: Conversation | None = None
 ) -> dict[str, object]:
+    rows = inbox_rows(cast("User", request.user))
+    stamps = [
+        row.conversation.last_message_at
+        for row in rows
+        if row.conversation.last_message_at is not None
+    ]
     return {
-        "inbox_rows": inbox_rows(cast("User", request.user)),
+        "inbox_rows": rows,
+        "inbox_since": max(stamps).isoformat() if stamps else "",
+        "inbox_poll_seconds": config.MESSAGE_INBOX_POLL_SECONDS,
         "current_pk": current.pk if current is not None else None,
     }
 
@@ -173,13 +181,55 @@ def inbox(request: HttpRequest) -> HttpResponse:
         if is_fragment
         else "comms/inbox.html"
     )
+    context = _inbox_context(request)
+    context["has_recipients"] = _has_recipients(request)
+    return render(request, template_name, context)
+
+
+def _has_recipients(request: HttpRequest) -> bool:
     viewer = cast("User", request.user)
     site = cast("Site", get_cached_site(request))
-    context = _inbox_context(request)
-    context["has_recipients"] = (
-        get_messaging_policy().recipients_for(sender=viewer, site=site).exists()
+    return get_messaging_policy().recipients_for(sender=viewer, site=site).exists()
+
+
+@messaging_view
+def partial_inbox_poll(request: HttpRequest) -> HttpResponse:
+    """The refreshed conversation list, or 204 when nothing is newer.
+
+    The page sends the newest ``last_message_at`` its list shows (``since``) and
+    the pk of the open thread (``current``), which keeps ``aria-current`` on
+    that row. A missing or malformed ``since`` re-renders the list.
+    """
+    viewer = cast("User", request.user)
+    try:
+        since = datetime.fromisoformat(request.GET.get("since", ""))
+    except ValueError:
+        since = None
+    if (
+        since is not None
+        and since.tzinfo is not None
+        and not inbox_for(viewer).filter(last_message_at__gt=since).exists()
+    ):
+        return HttpResponse(status=204)
+
+    try:
+        current_pk = UUID(request.GET.get("current", ""))
+    except ValueError:
+        current_pk = None
+    current = (
+        inbox_for(viewer).filter(pk=current_pk).first()
+        if current_pk is not None
+        else None
     )
-    return render(request, template_name, context)
+    context = _inbox_context(request, current)
+    context["has_recipients"] = _has_recipients(request)
+    body = render_to_string(
+        "comms/partials/conversation_list.html#conversation-list", context, request
+    )
+    body += render_to_string(
+        "comms/partials/inbox_since.html", {**context, "oob": True}, request
+    )
+    return HttpResponse(body)
 
 
 def _send_response(
