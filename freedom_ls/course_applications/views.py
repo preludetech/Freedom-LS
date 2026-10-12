@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.contrib.sites.models import Site
 from django.core.cache import cache
 from django.db import transaction
-from django.db.models import prefetch_related_objects
+from django.db.models import QuerySet, prefetch_related_objects
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -159,8 +159,9 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Applicant status page.
 
     Shows a static plain-language "received and pending review" confirmation.
-    Only the application owner may view this page — non-owners get 404. Ownership
-    covers an anonymous session's own unverified application.
+    Only the application owner may view this page: another user gets 404 and a
+    visitor is sent to log in. Ownership covers an anonymous session's own
+    unverified application.
 
     An application whose form is still unfinished is sent back to it: there is
     nothing to say about a request that has not been made yet.
@@ -173,12 +174,16 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
       reviewer message, withdraw action via get_available_user_state_transitions)
       goes here.
     """
-    app = get_object_or_404(
+    found = _owned_application(
+        request,
         owned_applications(request).select_related(
             "course", "form_progress", "anonymous_applicant"
         ),
-        pk=pk,
+        pk,
     )
+    if isinstance(found, HttpResponse):
+        return found
+    app = found
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))
     if request.method == "POST":
@@ -376,9 +381,26 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
 
 
+def _owned_application(
+    request: HttpRequest, queryset: QuerySet[CourseApplication], pk: UUID
+) -> CourseApplication | HttpResponse:
+    """The applicant's own application, or the response that stands in for it.
+
+    A signed-in user who owns no such application gets 404. A visitor is sent
+    to log in instead, whether or not the application exists: an owner whose
+    session has ended is the usual case, and the login page returns them here.
+    """
+    app = queryset.filter(pk=pk).first()
+    if app is not None:
+        return app
+    if request.user.is_authenticated:
+        raise Http404
+    return redirect_to_auth(request, next_url=request.get_full_path())
+
+
 def _owned_application_with_form(
     request: HttpRequest, pk: UUID
-) -> tuple[CourseApplication, Form, FormProgress]:
+) -> tuple[CourseApplication, Form, FormProgress] | HttpResponse:
     """The applicant's own application, and the form sitting it actually has.
 
     Returns all three because an application with no sitting has no form pages
@@ -388,12 +410,16 @@ def _owned_application_with_form(
     submitted, the answers and files wait for whoever follows the claim link,
     not for the next person at the same computer.
     """
-    app: CourseApplication = get_object_or_404(
+    found = _owned_application(
+        request,
         owned_applications(request).select_related(
             "course", "form_progress__form", "anonymous_applicant"
         ),
-        pk=pk,
+        pk,
     )
+    if isinstance(found, HttpResponse):
+        return found
+    app = found
     if app.form_progress is None or (app.user_id is None and app.is_submitted):
         raise Http404
     return app, app.form_progress.form, app.form_progress
@@ -430,7 +456,10 @@ def application_form_page(
     A submitted application is read-only: its pages still render, so the
     applicant can re-read what they said, but nothing more is written to it.
     """
-    app, form, form_progress = _owned_application_with_form(request, pk)
+    owned = _owned_application_with_form(request, pk)
+    if isinstance(owned, HttpResponse):
+        return owned
+    app, form, form_progress = owned
     current = resolve_page(form, page_number)
     read_only = form_progress.completed_time is not None
     # The page form posts to its own URL, query string included, so the marker
@@ -494,7 +523,10 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     The whole-form check is what catches a required question on a page they
     never visited -- the per-page check cannot see those.
     """
-    app, form, form_progress = _owned_application_with_form(request, pk)
+    owned = _owned_application_with_form(request, pk)
+    if isinstance(owned, HttpResponse):
+        return owned
+    app, form, form_progress = owned
     submitted = form_progress.completed_time is not None
     required_answers_error = ""
 

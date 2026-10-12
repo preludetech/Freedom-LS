@@ -345,15 +345,18 @@ class TestApplicationStatusView:
 
         assert response.status_code == 404
 
-    def test_unauthenticated_gets_404(self, client, mock_site_context):
-        """A visitor whose session holds no such application gets 404."""
+    def test_unauthenticated_redirects_to_login(self, client, mock_site_context):
+        """A visitor whose session holds no such application is sent to log in,
+        with next set to the status URL: an owner whose session has ended is the
+        usual case."""
         owner = UserFactory()
         app = CourseApplicationFactory(user=owner)
 
         url = reverse("course_applications:status", kwargs={"pk": app.pk})
         response = client.get(url)
 
-        assert response.status_code == 404
+        assert response.status_code == 302
+        assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 # ---------------------------------------------------------------------------
@@ -1484,10 +1487,11 @@ def test_anonymous_access_to_hidden_course_initiate_redirects_to_signup_not_404(
 
 
 @pytest.mark.django_db
-def test_anonymous_access_to_status_for_hidden_course_application_is_404(
+def test_anonymous_access_to_status_for_hidden_course_application_redirects_to_login(
     mock_site_context,
 ):
-    """A session that holds no such application gets 404 on its status page."""
+    """A session that holds no such application is sent to log in, the same as
+    for a visible course, so the redirect says nothing about the course."""
     course = CourseFactory(visibility=CourseVisibility.HIDDEN)
     owner = UserFactory()
     app = CourseApplicationFactory(user=owner, course=course)
@@ -1496,7 +1500,8 @@ def test_anonymous_access_to_status_for_hidden_course_application_is_404(
     url = reverse("course_applications:status", kwargs={"pk": app.pk})
     response = client.get(url, follow=False)
 
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 # ---------------------------------------------------------------------------
@@ -1752,14 +1757,14 @@ def test_status_page_renders_for_the_applying_session(client, gated_course):
 
 
 @pytest.mark.django_db
-def test_status_page_is_404_for_a_fresh_client(client, gated_course):
+def test_status_page_sends_a_fresh_client_to_log_in(client, gated_course):
     application = CourseApplicationFactory(course=gated_course, anonymous=True)
+    url = reverse("course_applications:status", kwargs={"pk": application.pk})
 
-    response = Client().get(
-        reverse("course_applications:status", kwargs={"pk": application.pk})
-    )
+    response = Client().get(url)
 
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 @pytest.mark.django_db
@@ -2356,7 +2361,7 @@ def test_submitting_an_anonymous_application_changes_no_course_progress(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("target", ["page", "check", "status"])
-def test_a_fresh_client_gets_404_on_an_anonymous_applications_urls(
+def test_a_fresh_client_is_sent_to_log_in_on_an_anonymous_applications_urls(
     mock_site_context, client, target
 ):
     _course, _form, application = _anonymous_form_applicant(client)
@@ -2368,7 +2373,8 @@ def test_a_fresh_client_gets_404_on_an_anonymous_applications_urls(
 
     response = Client().get(urls[target])
 
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={urls[target]}"
 
 
 @pytest.mark.django_db
@@ -2743,9 +2749,11 @@ def test_claim_of_a_form_less_application_succeeds(client, claimable):
     ("route", "extra"),
     [("status", {}), ("form_page", {"page_number": 1}), ("check_answers", {})],
 )
-def test_pre_claim_anonymous_client_gets_404_after_the_claim(
+def test_pre_claim_anonymous_client_is_sent_to_log_in_after_the_claim(
     client, mock_site_context, route, extra
 ):
+    """Once claimed, the application belongs to an account; the browser that
+    applied is asked to sign in to it."""
     application = _submitted_form_application()
     session = client.session
     session[ANONYMOUS_APPLICANTS_SESSION_KEY] = {
@@ -2754,11 +2762,13 @@ def test_pre_claim_anonymous_client_gets_404_after_the_claim(
     session.save()
     _claim(Client(), application)
 
-    response = client.get(
-        reverse(f"course_applications:{route}", kwargs={"pk": application.pk, **extra})
+    url = reverse(
+        f"course_applications:{route}", kwargs={"pk": application.pk, **extra}
     )
+    response = client.get(url)
 
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
 
 
 @pytest.mark.django_db
@@ -3164,9 +3174,11 @@ def test_claim_post_for_an_other_site_account_leaves_the_client_anonymous(
     ("route", "extra"),
     [("status", {}), ("form_page", {"page_number": 1}), ("check_answers", {})],
 )
-def test_session_from_one_site_gets_404_on_another_sites_host(
+def test_session_from_one_site_resolves_nothing_on_another_sites_host(
     client, mock_site_context, route, extra
 ):
+    """Another host's session reaches nothing: it gets the same login redirect
+    as a session that holds no application at all."""
     application = _submitted_form_application()
     session = client.session
     session[ANONYMOUS_APPLICANTS_SESSION_KEY] = {
@@ -3183,7 +3195,8 @@ def test_session_from_one_site_gets_404_on_another_sites_host(
             )
         )
 
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response["Location"].startswith(f"{reverse('account_login')}?next=")
 
 
 # ---------------------------------------------------------------------------
@@ -3297,12 +3310,15 @@ def test_resend_post_returns_to_the_status_page(client, gated_course):
 
 
 @pytest.mark.django_db
-def test_resend_post_from_another_session_is_404(client, gated_course):
+def test_resend_post_from_another_session_sends_nothing(client, gated_course):
     url = _unverified_status_url(client, gated_course)
+    sent_before = len(mail.outbox)
 
     response = Client().post(url)
 
-    assert response.status_code == 404
+    assert response.status_code == 302
+    assert response["Location"] == f"{reverse('account_login')}?next={url}"
+    assert len(mail.outbox) == sent_before
 
 
 @pytest.mark.django_db
