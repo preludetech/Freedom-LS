@@ -68,6 +68,7 @@ INSTALLED_APPS = [
 DEV_TOOLS_ENABLED = True
 
 NOTIFICATIONS_ENABLED = True
+MESSAGING_ENABLED = True
 
 _template_options = TEMPLATES[0]["OPTIONS"]  # noqa: F405
 _context_processors: list[str] = _template_options["context_processors"]  # type: ignore[index]

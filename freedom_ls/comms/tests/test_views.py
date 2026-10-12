@@ -1188,3 +1188,14 @@ class TestRowMarkup:
 
         assert row.cssselect("a") == []
         assert row.cssselect("p span")
+
+
+@pytest.mark.django_db
+class TestLoginRequiredHtmx:
+    def test_an_anonymous_visitor_is_sent_back_to_the_notification_list(
+        self,
+    ) -> None:
+        response = Client().get(reverse(LIST_URL_NAME))
+
+        assert response.status_code == 302
+        assert response["Location"].endswith(f"next={reverse(LIST_URL_NAME)}")

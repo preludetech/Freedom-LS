@@ -1,0 +1,39 @@
+{% comment %}
+The composer form. It keeps the id #composer through every swap so a refused
+send can replace it in place, and the textarea keeps #message-body so htmx can
+restore focus after the swap.
+{% endcomment %}
+<form id="composer"
+      {% if oob %}hx-swap-oob="outerHTML:#composer"{% endif %}
+      method="post"
+      action="{% url 'conversations:send' conversation.pk %}"
+      hx-post="{% url 'conversations:send' conversation.pk %}"
+      hx-target="#thread-log"
+      hx-swap="beforeend"
+      hx-sync="this:drop"
+      class="border-t border-border bg-surface px-4 py-3">
+    {% csrf_token %}
+    <input type="hidden" name="client_key" value="{{ composer.client_key }}" />
+    {% if composer.alert %}
+        <div role="alert">
+            <c-callout level="error">{{ composer.alert }}</c-callout>
+        </div>
+    {% endif %}
+    <label for="message-body" class="block text-sm font-medium text-on-surface">
+        Message to {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
+    </label>
+    <div class="mt-1 flex items-end gap-2">
+        <textarea id="message-body"
+                  name="body"
+                  rows="2"
+                  maxlength="{{ composer.max_length }}"
+                  class="min-h-[2.5rem] flex-1 rounded-lg border border-border bg-surface px-3 py-2">{{ composer.draft }}</textarea>
+        <c-button type="submit"
+                  variant="primary"
+                  icon_left="send"
+                  hx-disabled-elt="this"
+                  aria-label="Send">
+            <span class="hidden sm:inline">Send</span>
+        </c-button>
+    </div>
+</form>

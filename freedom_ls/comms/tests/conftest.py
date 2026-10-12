@@ -10,3 +10,9 @@ import pytest_django.fixtures
 def _enable_notifications(settings: pytest_django.fixtures.SettingsWrapper) -> None:
     """The bell is off by default; comms tests exercise it switched on."""
     settings.NOTIFICATIONS_ENABLED = True
+
+
+@pytest.fixture(autouse=True)
+def _enable_messaging(settings: pytest_django.fixtures.SettingsWrapper) -> None:
+    """Direct messaging is off by default; comms tests exercise it switched on."""
+    settings.MESSAGING_ENABLED = True

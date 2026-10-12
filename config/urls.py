@@ -83,6 +83,7 @@ urlpatterns = [
     *_blog_urlpatterns,
     path("", include("freedom_ls.learner_interface.urls")),
     path("notifications/", include("freedom_ls.comms.urls")),
+    path("messages/", include("freedom_ls.comms.messaging_urls")),
     path("applications/", include("freedom_ls.course_applications.urls")),
     path("forms/", include("freedom_ls.form_engine.urls")),
     path("interest/", include("freedom_ls.course_interest.urls")),

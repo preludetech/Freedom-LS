@@ -140,3 +140,88 @@ class Notification(SiteAwareModel):
         if builder is None or self.target is None:
             return None
         return cast(str, import_string(builder)(self.target))
+
+
+class Conversation(SiteAwareModel):
+    """The one direct-message exchange between a pair of users on a site."""
+
+    # "<low user pk>:<high user pk>", written only by get_or_create_conversation.
+    pair_key = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_message_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site", "pair_key"], name="comms_conversation_pair_per_site"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Conversation {self.pair_key}"
+
+
+class ConversationParticipant(SiteAwareModel):
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="participants"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="conversation_participants",
+    )
+    # The created_at of the newest message this participant was shown, never "now",
+    # so a message that lands between render and mark stays unread.
+    last_read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["conversation", "user"],
+                name="comms_participant_once_per_conversation",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["user", "site"], name="comms_part_user_site_idx")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user} in {self.conversation}"
+
+
+class Message(SiteAwareModel):
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    # Null once the sender's account is deleted; the text stays for the other
+    # participant.
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_messages",
+    )
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    # Chosen by the composer per send, so a retried or double-clicked send is
+    # recognised and stored once.
+    client_key = models.UUIDField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["conversation", "sender", "client_key"],
+                condition=Q(client_key__isnull=False),
+                name="comms_message_client_key_once",
+            )
+        ]
+        indexes = [
+            models.Index(
+                fields=["conversation", "created_at", "id"],
+                name="comms_message_cursor_idx",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"Message in {self.conversation}"
