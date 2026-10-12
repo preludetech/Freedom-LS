@@ -21,8 +21,8 @@ from django.utils.crypto import salted_hmac
 
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import (
-    acquisition_auth_url,
     get_client_ip,
+    redirect_to_acquisition_auth,
     redirect_to_auth,
 )
 from freedom_ls.content_engine.models import Course
@@ -216,14 +216,6 @@ def _anonymous_applications_allowed(course: Course) -> bool:
     return backend.get_access_type(course=course) == APPLICATION_GATED
 
 
-def _redirect_visitor_to_auth(request: HttpRequest) -> HttpResponse:
-    return redirect_to_auth(
-        request,
-        next_url=request.get_full_path(),
-        auth_url=acquisition_auth_url(request),
-    )
-
-
 def _coming_soon_redirect(course: Course) -> HttpResponse | None:
     """Coming-soon courses are not enrollable: the detail page's express-interest
     call to action is the only thing on offer. Honours the dev/staging override
@@ -235,7 +227,7 @@ def _coming_soon_redirect(course: Course) -> HttpResponse | None:
 
 def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
     if not _anonymous_applications_allowed(course):
-        return _redirect_visitor_to_auth(request)
+        return redirect_to_acquisition_auth(request)
     applicant = anonymous_applicant_for_course(request, course)
     app = application_of(applicant) if applicant is not None else None
     # An existing application is always reachable, so this precedes the
@@ -315,7 +307,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     course = get_object_or_404(Course, slug=course_slug)
     raise_404_if_hidden_unregistered(request.user, course)
     if not _anonymous_applications_allowed(course):
-        return _redirect_visitor_to_auth(request)
+        return redirect_to_acquisition_auth(request)
     applicant = anonymous_applicant_for_course(request, course)
     app = application_of(applicant) if applicant is not None else None
     if app is not None and app.is_submitted:

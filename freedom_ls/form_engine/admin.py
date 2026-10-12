@@ -32,6 +32,22 @@ from .queries import answer_groups
 from .typed_answers import format_answer
 
 
+def _with_applicant_select_related(
+    list_select_related: tuple[str, ...] | list[str], sitting_path: str
+) -> list[str]:
+    """The changelist's select_related, plus the sitting's applicant when the
+    app that owns applications is installed.
+
+    A string path, because that app sits above this one and may be absent.
+    `sitting_path` is the lookup from the admin's model to the FormProgress,
+    "" when the model is the sitting itself.
+    """
+    related = list(list_select_related)
+    if apps.is_installed("freedom_ls.course_applications"):
+        related.append(f"{sitting_path}course_application__anonymous_applicant")
+    return related
+
+
 class QuestionOptionInline(admin.TabularInline):
     """Inline for question options."""
 
@@ -319,12 +335,7 @@ class FormProgressAdmin(SiteAwareModelAdmin):
     change_form_template = "admin/form_engine/answers_change_form.html"
 
     def get_list_select_related(self, request: HttpRequest) -> list[str]:
-        related = list(self.list_select_related)
-        if apps.is_installed("freedom_ls.course_applications"):
-            # A string path, because the app that owns the application sits
-            # above this one and may not be installed.
-            related.append("course_application__anonymous_applicant")
-        return related
+        return _with_applicant_select_related(self.list_select_related, "")
 
     fieldsets = (
         (None, {"fields": ("user", "form")}),
@@ -463,12 +474,9 @@ class QuestionAnswerFileAdmin(SiteAwareModelAdmin):
     list_filter = ["created_at"]
 
     def get_list_select_related(self, request: HttpRequest) -> list[str]:
-        related = list(self.list_select_related)
-        if apps.is_installed("freedom_ls.course_applications"):
-            related.append(
-                "answer__form_progress__course_application__anonymous_applicant"
-            )
-        return related
+        return _with_applicant_select_related(
+            self.list_select_related, "answer__form_progress__"
+        )
 
     readonly_fields = [
         "answer",

@@ -151,3 +151,17 @@ def redirect_to_auth(
         response["HX-Redirect"] = target
         return response
     return redirect(target)
+
+
+def redirect_to_acquisition_auth(request: HttpRequest) -> HttpResponse:
+    """Send an anonymous visitor to the acquisition auth page and back again.
+
+    What an acquisition call to action does with a visitor: acquisition_auth_url
+    with next set to the page they were on, through redirect_to_auth so an
+    htmx request gets its HX-Redirect.
+    """
+    return redirect_to_auth(
+        request,
+        next_url=request.get_full_path(),
+        auth_url=acquisition_auth_url(request),
+    )

@@ -7,7 +7,7 @@ from functools import wraps
 
 from django.http import HttpRequest, HttpResponse
 
-from .utils import acquisition_auth_url, redirect_to_auth
+from .utils import redirect_to_acquisition_auth
 
 
 def acquisition_login_required(
@@ -15,19 +15,14 @@ def acquisition_login_required(
 ) -> Callable[..., HttpResponse]:
     """login_required for acquisition calls to action.
 
-    Same contract as login_required, but an anonymous visitor lands on
-    acquisition_auth_url with next set, and an htmx request gets the
-    HX-Redirect that redirect_to_auth produces.
+    Same contract as login_required, but an anonymous visitor gets what
+    redirect_to_acquisition_auth produces.
     """
 
     @wraps(view_func)
     def _wrapped(request: HttpRequest, *args: object, **kwargs: object) -> HttpResponse:
         if request.user.is_authenticated:
             return view_func(request, *args, **kwargs)
-        return redirect_to_auth(
-            request,
-            next_url=request.get_full_path(),
-            auth_url=acquisition_auth_url(request),
-        )
+        return redirect_to_acquisition_auth(request)
 
     return _wrapped
