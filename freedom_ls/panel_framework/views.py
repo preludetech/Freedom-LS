@@ -66,6 +66,9 @@ class InstanceView:
     """
 
     panel: type[Panel]
+    #: Domain events that make the page header (stats and tab counts)
+    #: re-fetch itself.
+    header_refresh_events: tuple[str, ...] = ()
 
     def __init__(self, instance: Model):
         self.instance = instance
@@ -700,6 +703,9 @@ def _main_for(
                 "actions": actions,
                 "status_badge": resolved.instance_view.get_status_badge(),
                 "stats": resolved.instance_view.get_stats(),
+                "header_refresh_events": " ".join(
+                    resolved.instance_view.header_refresh_events
+                ),
                 "subtitle": resolved.instance_view.get_subtitle(),
                 "ctx": root.ctx,
             },

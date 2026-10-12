@@ -10,6 +10,10 @@ root that is not a TabSet.
 {% block page_header_padding %}{% if main.panel.tabs|length > 1 %}pb-0{% else %}pb-5{% endif %}{% endblock page_header_padding %}
 
 {% block page_header %}
+    <div id="instance-header">
+    {% if main.header_refresh_events %}
+        <div x-data="headerRefresh" data-header-refresh-events="{{ main.header_refresh_events }}"></div>
+    {% endif %}
     <c-panel-page-header title="{{ main.title }}" title_id="instance-title" subtitle="{{ main.subtitle }}" panel_toggle="true">
         {% if main.status_badge %}<c-slot name="badge"><c-panel-status-badge tone="{{ main.status_badge.tone }}" label="{{ main.status_badge.label }}" /></c-slot>{% endif %}
         {% if main.stats %}
@@ -24,6 +28,7 @@ root that is not a TabSet.
     {% if main.panel.tabs|length > 1 %}
         {% include "panel_framework/panels/_tab_nav.html" with tabs=main.panel.tabs title=main.panel.title region_id=main.panel.region_id in_band=True only %}
     {% endif %}
+    </div>
 {% endblock page_header %}
 
 {% block main %}

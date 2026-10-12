@@ -716,6 +716,20 @@ def test_cohort_header_shows_learner_and_course_counts(staff_client: Client):
 
 
 @pytest.mark.django_db
+def test_cohort_header_refreshes_its_counts_when_the_cohort_changes(
+    staff_client: Client,
+):
+    """The header stats and tab counts stayed stale after a membership change
+    because nothing re-fetched them when the cohort-changed event fired."""
+    cohort = CohortFactory(organisation=OrganisationFactory())
+
+    document = _cohort_page(staff_client, cohort)
+
+    (refresher,) = document.cssselect("#instance-header [data-header-refresh-events]")
+    assert refresher.get("data-header-refresh-events") == COHORT_CHANGED
+
+
+@pytest.mark.django_db
 def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client):
     cohort = CohortFactory(organisation=OrganisationFactory())
 

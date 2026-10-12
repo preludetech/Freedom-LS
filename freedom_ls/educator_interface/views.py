@@ -917,6 +917,7 @@ class CohortTabSet(TabSet):
 
 class CohortInstanceView(InstanceView):
     panel = CohortTabSet
+    header_refresh_events = (COHORT_CHANGED,)
 
     def get_status_badge(self) -> StatusBadge:
         return active_status_badge(cast(Cohort, self.instance).is_active)
