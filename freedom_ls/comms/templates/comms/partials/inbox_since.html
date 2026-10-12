@@ -1,0 +1,10 @@
+{% comment %}
+The newest last_message_at the list shows, sent back with every inbox poll so
+the server answers only when something is newer. `oob` replaces the input
+already on the page.
+{% endcomment %}
+<input type="hidden"
+       name="since"
+       id="inbox-since"
+       value="{{ inbox_since }}"
+       {% if oob %}hx-swap-oob="outerHTML"{% endif %}>
