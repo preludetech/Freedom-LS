@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
+from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
     MessagingPolicy,
     MessagingRefusal,
+    RecipientGroup,
 )
 
 
@@ -59,3 +64,19 @@ def test_base_can_reply_is_not_implemented() -> None:
 def test_base_recipients_for_is_not_implemented() -> None:
     with pytest.raises(NotImplementedError):
         MessagingPolicy().recipients_for(sender=None, site=None)
+
+
+@pytest.mark.django_db
+def test_the_base_group_recipients_returns_one_unlabelled_group(
+    mock_site_context,
+) -> None:
+    first = cast(User, UserFactory())
+    second = cast(User, UserFactory())
+
+    groups = MessagingPolicy().group_recipients(
+        sender=cast(User, UserFactory()),
+        site=mock_site_context,
+        recipients=[first, second],
+    )
+
+    assert groups == [RecipientGroup(label="", users=[first, second])]

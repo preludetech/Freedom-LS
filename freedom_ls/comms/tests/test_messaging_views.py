@@ -658,14 +658,14 @@ class TestStartPage:
             other.pk
         )
 
-    def test_without_a_recipient_it_renders_an_empty_picker_region(
+    def test_without_a_recipient_it_renders_the_picker_and_no_composer(
         self, mock_site_context, logged_in_client
     ) -> None:
         response = logged_in_client(UserFactory()).get(start_url())
 
         tree = html.fromstring(response.content)
         assert response.status_code == 200
-        assert tree.get_element_by_id("recipient-picker").text_content().strip() == ""
+        assert tree.get_element_by_id("recipient-picker").xpath(".//form")
         assert not tree.xpath("//form[@id='composer']")
 
     def test_a_recipient_outside_the_recipients_is_404(
@@ -890,3 +890,133 @@ class TestInboxNewMessage:
         content = response.content.decode()
         assert "No conversations yet." in content
         assert "Your educators can message you" not in content
+
+
+def search_url() -> str:
+    return reverse("conversations:recipient_search")
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestRecipientPicker:
+    def test_the_start_page_fills_the_picker_with_a_search_form_and_results(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        tree = html.fromstring(response.content)
+        picker = tree.get_element_by_id("recipient-picker")
+        form = picker.xpath(".//form")[0]
+        assert form.get("hx-get") == search_url()
+        assert form.get("hx-sync") == "this:replace"
+        assert "delay:300ms" in form.get("hx-trigger")
+        assert form.xpath(".//label[@for='recipient-q']")[0].text.strip() == "To"
+        assert picker.xpath(".//*[@id='recipient-results']")
+
+    def test_results_are_grouped_and_link_to_the_composer_for_that_person(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        kai = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "kai"})
+
+        tree = html.fromstring(response.content)
+        assert tree.xpath("//*[@role='group']")
+        link = tree.xpath("//a[contains(normalize-space(.), 'Kai Ngata')]")[0]
+        assert link.get("href") == f"{start_url()}?recipient={kai.pk}"
+
+    def test_the_search_fragment_has_no_page_wrapper(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai")
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "kai"})
+
+        content = response.content.decode()
+        assert "<html" not in content
+        assert content.lstrip().startswith("<div")
+        assert 'id="recipient-results"' in content
+
+    def test_an_email_is_not_shown_in_the_shared_picker(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai", email="kai-private@example.com")
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "kai"})
+
+        assert "kai-private@example.com" not in response.content.decode()
+
+    def test_no_match_says_so_with_the_term(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "zzzz"})
+
+        assert 'No one you can message matches "zzzz"' in response.content.decode()
+
+    def test_a_long_list_asks_for_a_term(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory.create_batch(16)
+
+        response = logged_in_client(UserFactory()).get(search_url())
+
+        assert "Keep typing" in response.content.decode()
+
+    def test_truncated_results_say_to_keep_typing(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory.create_batch(21, first_name="Match")
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "match"})
+
+        assert "Keep typing to narrow the list." in response.content.decode()
+
+    def test_the_match_count_is_announced_politely(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        UserFactory(first_name="Kai")
+
+        response = logged_in_client(UserFactory()).get(search_url(), {"q": "kai"})
+
+        status = html.fromstring(response.content).xpath("//*[@role='status']")[0]
+        assert status.get("aria-live") == "polite"
+        assert status.text_content().strip() == "1 person found"
+
+    def test_the_search_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(search_url())
+
+        assert response.status_code == 404
+
+    def test_the_search_never_offers_someone_outside_the_recipients(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        user, other = UserFactory(), UserFactory(first_name="Kai", last_name="Allowed")
+        UserFactory(first_name="Kai", last_name="Refused")
+        OnlyPolicy.only_pk = other.pk
+        settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
+
+        response = logged_in_client(user).get(search_url(), {"q": "kai"})
+
+        content = response.content.decode()
+        assert "Kai Allowed" in content
+        assert "Refused" not in content
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+def test_the_start_page_renders_the_results_region_once(
+    mock_site_context, logged_in_client
+) -> None:
+    UserFactory(first_name="Kai", last_name="Ngata")
+
+    response = logged_in_client(UserFactory()).get(start_url())
+
+    tree = html.fromstring(response.content)
+    assert len(tree.xpath("//*[@id='recipient-results']")) == 1
+    assert len(tree.xpath("//a[contains(., 'Kai Ngata')]")) == 1

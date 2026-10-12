@@ -12,6 +12,7 @@ from django.db import connection
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import (
     BLANK_BODY,
@@ -26,6 +27,7 @@ from freedom_ls.comms.messaging import (
     pair_key_for,
     refusal_alert_copy,
     reply_decision,
+    search_recipients,
     send_message,
     unread_conversation_count,
 )
@@ -44,6 +46,11 @@ class AllowPolicy(MessagingPolicy):
 
     def can_reply(self, *, sender, recipient, site, conversation):
         return MessagingDecision.allow()
+
+
+class NoneOfThemPolicy(MessagingPolicy):
+    def recipients_for(self, *, sender, site):
+        return User.objects.none()
 
 
 class ClosedPolicy(MessagingPolicy):
@@ -658,3 +665,140 @@ class TestUnreadConversationCount:
 
         with django_assert_num_queries(1):
             unread_conversation_count(user)
+
+
+@pytest.mark.django_db
+class TestSearchRecipients:
+    @pytest.fixture
+    def sender(self, mock_site_context):
+        return UserFactory()
+
+    def search(self, sender, site, term, candidates, include_email=False):
+        return search_recipients(
+            sender=sender,
+            site=site,
+            term=term,
+            candidates=candidates,
+            include_email=include_email,
+        )
+
+    def names(self, result) -> list[str]:
+        return [user.display_name for g in result.groups for user in g.users]
+
+    def test_it_lists_everyone_without_a_term_at_fifteen_or_fewer(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory.create_batch(15)
+
+        result = self.search(
+            sender, mock_site_context, "", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert not result.needs_term
+        assert result.count == 15
+
+    def test_it_asks_for_a_term_above_fifteen_candidates(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory.create_batch(16)
+
+        result = self.search(
+            sender, mock_site_context, "", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert result.needs_term
+        assert result.groups == []
+
+    def test_a_one_character_term_needs_more(self, sender, mock_site_context) -> None:
+        UserFactory(first_name="Kai")
+
+        result = self.search(
+            sender, mock_site_context, "k", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert result.needs_term
+
+    def test_it_matches_first_or_last_name_ignoring_case(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Ngata")
+        UserFactory(first_name="Ana", last_name="Kaiser")
+        UserFactory(first_name="Zed", last_name="Other")
+
+        result = self.search(
+            sender, mock_site_context, "KAI", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert self.names(result) == ["Ana Kaiser", "Kai Ngata"]
+
+    def test_it_caps_at_twenty_and_flags_truncation(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory.create_batch(21, first_name="Match")
+
+        result = self.search(
+            sender, mock_site_context, "match", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert result.count == 20
+        assert result.truncated
+
+    def test_twenty_matches_are_not_truncated(self, sender, mock_site_context) -> None:
+        UserFactory.create_batch(20, first_name="Match")
+
+        result = self.search(
+            sender, mock_site_context, "match", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert result.count == 20
+        assert not result.truncated
+
+    def test_email_matches_only_when_asked(self, sender, mock_site_context) -> None:
+        UserFactory(first_name="Kai", email="zzunique@example.com")
+        candidates = User.objects.exclude(pk=sender.pk)
+
+        without = self.search(sender, mock_site_context, "zzunique", candidates)
+        with_email = self.search(
+            sender, mock_site_context, "zzunique", candidates, include_email=True
+        )
+
+        assert without.count == 0
+        assert with_email.count == 1
+
+    def test_it_never_returns_a_user_outside_the_candidates(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory(first_name="Kai", last_name="Allowed")
+        refused = UserFactory(first_name="Kai", last_name="Refused")
+
+        result = self.search(
+            sender,
+            mock_site_context,
+            "kai",
+            User.objects.exclude(pk__in=[sender.pk, refused.pk]),
+        )
+
+        assert self.names(result) == ["Kai Allowed"]
+
+    def test_a_refused_name_looks_the_same_as_an_absent_one(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory(first_name="Ghost", last_name="Refused")
+        candidates = User.objects.none()
+
+        refused = self.search(sender, mock_site_context, "ghost", candidates)
+        absent = self.search(sender, mock_site_context, "nobodyhere", candidates)
+
+        assert refused == absent
+
+    def test_it_defaults_candidates_to_the_policys_recipients(
+        self, sender, mock_site_context, settings
+    ) -> None:
+        settings.MESSAGING_POLICY = f"{__name__}.NoneOfThemPolicy"
+        UserFactory(first_name="Kai")
+
+        result = search_recipients(
+            sender=sender, site=mock_site_context, term="kai", include_email=False
+        )
+
+        assert result.count == 0

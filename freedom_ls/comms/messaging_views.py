@@ -23,6 +23,7 @@ from freedom_ls.comms.messaging import (
     mark_conversation_read,
     other_participant,
     refusal_alert_copy,
+    search_recipients,
     send_message,
     unread_conversation_count,
 )
@@ -262,10 +263,31 @@ def _offered_recipients(request: HttpRequest) -> QuerySet[User]:
     )
 
 
+def _picker_context(request: HttpRequest, term: str) -> dict[str, object]:
+    """What the picker partial needs: the search outcome and the URLs it links to."""
+    site = cast("Site", get_cached_site(request))
+    return {
+        "search": search_recipients(
+            sender=cast("User", request.user),
+            site=site,
+            term=term,
+            include_email=False,
+        ),
+        "term": term.strip(),
+        "include_email": False,
+        "search_url": reverse("conversations:recipient_search"),
+        "choose_url": reverse("conversations:start"),
+    }
+
+
 def _start_get(request: HttpRequest) -> HttpResponse:
     raw = request.GET.get("recipient")
     if raw is None:
-        return render(request, "comms/start.html", {"recipient": None})
+        return render(
+            request,
+            "comms/start.html",
+            {"recipient": None, **_picker_context(request, request.GET.get("q", ""))},
+        )
     recipient = get_object_or_404(_offered_recipients(request), pk=_user_pk(raw))
     return render(
         request,
@@ -317,4 +339,14 @@ def partial_unread_badge(request: HttpRequest) -> HttpResponse:
         request,
         "comms/partials/unread_badge.html",
         {"unread_count": unread_conversation_count(cast("User", request.user))},
+    )
+
+
+@messaging_view
+def partial_recipient_search(request: HttpRequest) -> HttpResponse:
+    """The picker's result list for the typed term, without a page around it."""
+    return render(
+        request,
+        "comms/partials/recipient_picker.html#results",
+        _picker_context(request, request.GET.get("q", "")),
     )

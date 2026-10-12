@@ -50,6 +50,8 @@ from freedom_ls.messaging_policy.tests.messaging_world import (
     allowed_pairs,
     recipients_pairs,
 )
+from freedom_ls.organisations.models import Organisation
+from freedom_ls.role_based_permissions.loader import get_role_config
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     remove_object_role,
@@ -83,6 +85,7 @@ QUERIES_RECIPIENTS = 4
 QUERIES_ALLOWED = 4
 QUERIES_CLOSED = 4
 QUERIES_NO_RELATIONSHIP = 4
+QUERIES_GROUPS = 11
 
 
 def open_course_peers(settings: SettingsWrapper) -> None:
@@ -1258,3 +1261,144 @@ def test_a_stored_offered_role_unknown_to_the_site_is_ignored(
     )
 
     assert decision.reason == MessagingRefusal.CLOSED_BY_CONFIGURATION
+
+
+def _everyone(policy: LayeredMessagingPolicy, sender: User, site: Site) -> list[User]:
+    return list(policy.recipients_for(sender=sender, site=site))
+
+
+def _groups(
+    policy: LayeredMessagingPolicy,
+    sender: User,
+    site: Site,
+    scope: Organisation | None = None,
+) -> dict[str, set[User]]:
+    groups = policy.group_recipients(
+        sender=sender,
+        site=site,
+        recipients=_everyone(policy, sender, site),
+        scope=scope,
+    )
+    return {group.label: set(group.users) for group in groups}
+
+
+def test_an_educators_groups_name_only_cohorts_they_can_see(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    groups = _groups(policy, world.role_holders["c1_admin"], world.site)
+
+    assert world.cohorts["c1"].name in groups
+    assert world.cohorts["c2"].name not in groups
+    assert world.cohorts["c3"].name not in groups
+    assert groups[world.cohorts["c1"].name] == {
+        world.learners["in_c1"].user,
+        world.learners["in_c1_and_c2"].user,
+    }
+
+
+def test_a_person_is_listed_under_one_group_only(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    sender = world.role_holders["c1_c2_admin"]
+    recipients = _everyone(policy, sender, world.site)
+
+    groups = policy.group_recipients(
+        sender=sender, site=world.site, recipients=recipients
+    )
+
+    listed = [user for group in groups for user in group.users]
+    assert len(listed) == len(set(listed))
+    assert world.learners["in_c1_and_c2"].user in listed
+
+
+def test_an_educator_sender_gets_a_colleagues_group(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    groups = _groups(policy, world.role_holders["c1_admin"], world.site)
+
+    assert world.role_holders["o1_admin"] in groups["Colleagues"]
+
+
+def test_scope_narrows_cohort_groups_to_one_organisation(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    sender = world.role_holders["site_admin"]
+
+    scoped = _groups(policy, sender, world.site, scope=world.organisations["o2"])
+
+    assert world.cohorts["c3"].name in scoped
+    assert world.cohorts["c1"].name not in scoped
+
+
+def test_a_learners_educators_are_labelled_with_the_role_display_name_and_come_first(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_educators(settings, ["cohort_admin"])
+    sender = world.learners["in_c1"].user
+
+    groups = policy.group_recipients(
+        sender=sender, site=world.site, recipients=_everyone(policy, sender, world.site)
+    )
+
+    assert (
+        groups[0].label == get_role_config(world.site.name)["cohort_admin"].display_name
+    )
+    assert world.role_holders["c1_admin"] in groups[0].users
+
+
+def test_a_learners_course_peers_are_grouped_under_the_course_title(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_course_peers(settings)
+    sender = world.learners["in_c1"].user
+    course = LearnerCourseRegistration.objects.get(
+        learner=world.learners["no_cohort"]
+    ).course
+
+    groups = _groups(policy, sender, world.site)
+
+    assert groups[course.title] == {world.learners["no_cohort"].user}
+
+
+def test_group_recipients_runs_a_fixed_number_of_queries_whatever_the_world_size(
+    policy: LayeredMessagingPolicy,
+    scaled_world: World,
+    settings: SettingsWrapper,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    open_educators(settings, ["cohort_admin"])
+    settings.MESSAGING_DEFAULT_FLAGS = {
+        "learner_to_educator": "open",
+        "learner_to_cohort_peer": "open",
+        "learner_to_course_peer": "open",
+    }
+    _warm_content_types(scaled_world)
+    sender = scaled_world.learners["in_c1"].user
+    recipients = _everyone(policy, sender, scaled_world.site)
+
+    with django_assert_num_queries(QUERIES_GROUPS):
+        policy.group_recipients(
+            sender=sender, site=scaled_world.site, recipients=recipients
+        )
+
+
+def test_a_course_the_sender_holds_through_a_cohort_groups_its_individual_registrants(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_course_peers(settings)
+    sender = world.learners["in_c1"].user
+    course = CohortCourseRegistration.objects.get(cohort=world.cohorts["c1"]).course
+
+    groups = _groups(policy, sender, world.site)
+
+    assert groups[course.title] == {world.learners["in_c1_and_c2"].user}
+
+
+def test_a_recipient_no_group_claims_still_appears_under_others(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    sender = world.role_holders["o1_admin"]
+
+    groups = _groups(policy, sender, world.site)
+
+    assert world.learners["no_cohort"].user in groups["Others"]
