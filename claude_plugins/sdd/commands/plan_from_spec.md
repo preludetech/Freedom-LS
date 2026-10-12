@@ -83,7 +83,7 @@ Required when a `design.md` applies. It holds one transcription per design state
 
 Transcribe only the elements the spec builds; omit every other drawn element silently. Where the screenshot and the CSS disagree, transcribe the screenshot.
 
-**Token mapping.** A table `Design treatment | FLS token / component / icon | Lost`, with a row for every tint, tile, weight, text treatment and icon the transcriptions use. Follow the shape of the "Token mapping" section in `spec_dd/3. done/2026-09-08_17:31_better-form-start-page/research_design_source.md`. Map to the project's existing theme tokens, cotton components and semantic icons only. Ignore the design's own colours, fonts and icons. Never propose a new theme, theme token, font or colour, and never propose an icon that does not fit the project's icon set. "Lost" records styling the theme cannot express, which is dropped; it is never something to add.
+**Token mapping.** A table `Design treatment | Project token / component / icon | Lost`, with a row for every tint, tile, weight, text treatment and icon the transcriptions use: the first column names the treatment as the design draws it, the second the project's own token, component or icon that renders it, the third whatever the project cannot express. Map to the project's existing theme tokens, cotton components and semantic icons only. Ignore the design's own colours, fonts and icons. Never propose a new theme, theme token, font or colour, and never propose an icon that does not fit the project's icon set. "Lost" records styling the theme cannot express, which is dropped; it is never something to add.
 
 # Step 4: Skills/MCP scan (fan-out)
 
@@ -103,10 +103,9 @@ A QA test that maps to a design state names that state's design screenshot path 
 
 If this plan is created then reference it in the plan file as a final step.
 
-IMPORTANT: We will be generating a webserver port at random. we wont be using port 8000 (the default django runserver port). Don't talk about port 8000 in the test.
-- `PORT=$(.claude/ds/scripts/find_available_port.sh)`
+IMPORTANT: The QA command picks a free webserver port at run time. Never name a port in the test, and never port 8000 (the default django runserver port).
 - We run the runserver command like this: `uv run python manage.py runserver $PORT`
-- Base ul is `http://127.0.0.1:$PORT`
+- Base url is `http://127.0.0.1:$PORT`
 
 ## Notes
 

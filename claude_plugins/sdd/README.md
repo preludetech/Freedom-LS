@@ -2,15 +2,12 @@
 
 The portable spec-driven-development (SDD) workflow for Claude Code: the `sdd-worker` / `sdd-mechanic`
 tiering agents, the generic workflow command files, and the authoring/worktree/project-settings skills.
-It carries the *scaffolding* for taking a feature from idea to merged PR; the FreedomLS-specific SDD
-steps (`do_qa` and the `update_*` steps) live in
-the separate `fls-dev` plugin, and generic stack commands (`app_map` and `commit`) live in `ds`.
+It carries the *scaffolding* for taking a feature from idea to merged PR. It is independent: anything
+project-specific reaches it only through the project's configuration in `.claude/sdd/config.md`
+(worktree scripts, rebase, design, test, plan review, review, documentation, QA and PR hooks, and
+vocabulary sources). `/sdd:init` documents every key.
 
 Manifest name: `sdd`. Namespace: `/sdd:*`, `Skill(sdd:*)`.
-
-> **Coupling note.** `sdd` is not yet fully standalone: the `setup_todo_list` template
-> names one FLS-specific step (`/fls-dev:do_qa`), and FLS commands spawn the `sdd` agents. Untangling
-> this bidirectional `fls-dev` ↔ `sdd` dependency is deferred.
 
 ## What's inside (counted from disk)
 
@@ -20,9 +17,12 @@ Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `regis
 `make_pr_quickly`, `finish_worktree`, `address_pr_review`.
 
 `/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
-`.claude/sdd/config.md`, in order, in hook mode. Each hook runs as its own plugin's skill and commits
+`.claude/sdd/config.md`, in order, in hook mode. Each hook is a skill that commits
 its own work, or names the files it changed for `/sdd:document` to commit. The plan review in `/sdd:plan_from_spec` runs its built-in dimensions
 plus the project's own briefs, which `## Plan Review Hooks` lists; `sdd` names none.
+`/sdd:address_pr_review` fetches review comments through the `Fetch PR comments` script under
+`## PR Hooks`, or with `gh` directly when the key is blank. `/sdd:start` writes the `QA command`
+under `## QA Hooks` into the checklist as the QA step, or a by-hand item when there is none.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the
 file with the spec directories; with a directory it cuts a big idea into ordered sibling specs and
@@ -40,8 +40,8 @@ the consuming specs at it. `spec_from_idea` and `plan_from_spec` read any `desig
 key under `## Test Hooks` in `.claude/sdd/config.md`; a blank key falls back to the project's plain pytest command.
 
 `/sdd:init` wires this plugin into a project (its own `enabledPlugins` key + `Skill(sdd:*)` permission +
-`.claude/sdd/` config). It is **not** the primary init — it detect-and-skips the shared artifacts
-(`claude.sh`, the `SessionStart` hook, the `.gitignore` `settings.local.json` line) that `/ds:init` owns.
+`.claude/sdd/` config). It does not create the shared launcher artifacts
+(`claude.sh`, the `SessionStart` hook, the `.gitignore` `settings.local.json` line); it expects them to exist.
 
 ### Agents (2)
 `sdd-worker` (Sonnet) — one non-interactive unit of fan-out work (research topic / review dimension /
@@ -51,15 +51,13 @@ one per unit from a depth-0 SDD command. Model tiering lives in each agent's `mo
 ### Skills (3)
 `claude-code-authoring` (+4 resources: `subagents`, `model_tiering`, `fanout_recipe`, `interactive_cli`) —
 how Claude Code commands/skills/agents actually behave (targets 2.1.x); `git-worktree-setup` — the generic
-bare-repo/worktree mechanics (the FLS per-branch-database delta lives in an `fls-dev` overlay);
+bare-repo/worktree mechanics;
 `update-claude-project-settings` — audits `.claude/settings.json` and promotes useful permissions from
 `.claude/settings.local.json`.
 
 ### Resources (9)
-`agent_memory_guidelines` — the canonical home for this generic guideline (it is also duplicated into
-`ds` and `fls-dev` because `${CLAUDE_PLUGIN_ROOT}` is per-plugin and the agents that read it live in
-different plugins); `launcher_editing` — how to edit `claude.sh` (with `<MAY_CREATE>` false, since
-`/ds:init` owns the launcher skeleton); `domain_vocabulary` — use the project's existing words, and
+`agent_memory_guidelines` — how agents treat memory; `launcher_editing` — how to edit `claude.sh`
+(with `<MAY_CREATE>` false: `sdd` adds its line to an existing launcher and never creates one); `domain_vocabulary` — use the project's existing words, and
 declare any word that really is new. The project points at its own sources via
 `## Vocabulary Sources` in `.claude/sdd/config.md`; `writing_standard` — the rules every SDD artifact
 obeys; `commit_and_push` — the commit-and-push steps every artifact command ends with;

@@ -35,6 +35,14 @@
 - Product docs: fls-dev:update_product_docs
 - Course-author plugin: fls-dev:update_claude_plugin_fls_content
 
+## QA Hooks
+
+- QA command: fls-dev:do_qa
+
+## PR Hooks
+
+- Fetch PR comments: .claude/ds/scripts/fetch_pr_comments.sh
+
 ## Vocabulary Sources
 
 - .claude/skills/domain-glossary/SKILL.md

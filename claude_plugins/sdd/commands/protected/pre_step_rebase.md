@@ -71,7 +71,7 @@ Resolve `PLUGINS_ROOT` the way sdd's `init.md` does ("The `PLUGINS_ROOT` rule"),
 first step that yields a value:
 
 1. The `PLUGINS_ROOT="…"` line in `claude.sh` at the project root.
-2. The `PLUGINS_ROOT="…"` (or legacy `FLS_PATH="…"`) line in any `.sh` under `.claude/*/scripts/`
+2. The `PLUGINS_ROOT="…"` line in any `.sh` under `.claude/*/scripts/`
    whose value is not `__PLUGINS_ROOT__`. If two disagree → `status: failed · reason: conflicting
    PLUGINS_ROOT values` and stop.
 3. Otherwise `.`.

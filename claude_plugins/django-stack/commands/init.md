@@ -86,8 +86,8 @@ same way.
 
 ## The `PLUGINS_ROOT` rule
 
-This section is identical in every plugin's init except the directory name in step 4. Edit all copies
-together.
+This section is shared with every other plugin's init, except the directory name in step 4 and any
+legacy variable name a plugin's own migration still accepts. Edit all copies together.
 
 `PLUGINS_ROOT` is the relative path **from the project root** to the checkout that holds
 `claude_plugins/`. It is baked into `claude.sh` and into every wrapper script so they can find the
@@ -97,14 +97,9 @@ yields a value. **Never prompt the user. Never guess a project-specific path.**
 1. **The launcher wins.** If `claude.sh` exists at the project root and contains a line matching
    `^PLUGINS_ROOT="(.*)"$`, the captured value is `PLUGINS_ROOT`.
 2. **A wrapper script is the second source.** Otherwise, if any `.sh` under `.claude/*/scripts/`
-   contains a line matching `^(PLUGINS_ROOT|FLS_PATH)="(.*)"$` whose value is not the literal
+   contains a line matching `^PLUGINS_ROOT="(.*)"$` whose value is not the literal
    `__PLUGINS_ROOT__`, and every such line agrees, use that value. If two disagree, **STOP** and
    print both — a project cannot have two plugin roots.
-
-   `FLS_PATH` is matched here because it is the pre-split name for this same variable. On a
-   pre-split project **every** wrapper still uses it, so omitting it would make this whole step dead
-   on exactly the projects that need it — and a project whose checkout is a submodule would silently
-   fall through to the `.` default and bake the wrong root into every generated file.
 3. **Otherwise the value is `.`** — the project root itself holds `./claude_plugins/`. This is the
    only default, and it is the only candidate any init offers. **No init names a second candidate or
    an example path.** A hint present in one init and absent from another is exactly how two inits

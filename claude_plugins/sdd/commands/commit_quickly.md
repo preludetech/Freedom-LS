@@ -6,9 +6,9 @@ argument-hint: "[mine|all]"
 
 Commit what is currently in flight. Fast.
 
-This is the quick counterpart to `/ds:commit`, which runs the targeted test tier first. Use this one
-mid-implementation, when you already know the state of the work and want it recorded. Use `/ds:commit`
-when the commit is a checkpoint you have not verified.
+This is the quick path: it runs no tests. Use it mid-implementation, when you already know the state
+of the work and want it recorded. When the commit is a checkpoint you have not verified, use a
+commit command that runs the targeted test tier first, if the project has one.
 
 This command runs at **depth 0**, inline. It spawns no subagents.
 
@@ -116,7 +116,7 @@ On each failure, classify what you got:
 | --- | --- |
 | A formatter rewrote files (`ruff-format`, `trailing-whitespace`, `end-of-file-fixer`) | `git add -u` the files it touched and retry. No thinking required. |
 | A check reported fixable errors (`mypy`, `ruff check`, `bandit`, `shellcheck`) | **Fix them.** Read only the files named in the output, make the minimal correct change, `git add -u`, retry. |
-| `detect-secrets` / `detect-private-key` flagged a line | Read the line. If it is a **real** credential, stop immediately and tell the user — never work around it. If it is plainly a false positive (a fixture name, a doc example, a reserved-domain URL), prefer removing the literal; where the wording cannot avoid it, append the tool's own `pragma: allowlist secret` marker, as `.claude/fls-dev/config.md` already does. |
+| `detect-secrets` / `detect-private-key` flagged a line | Read the line. If it is a **real** credential, stop immediately and tell the user — never work around it. If it is plainly a false positive (a fixture name, a doc example, a reserved-domain URL), prefer removing the literal; where the wording cannot avoid it, append the tool's own `pragma: allowlist secret` marker. |
 | The failure is in a file you neither created nor modified in this conversation, and unrelated to this commit | Pre-existing breakage. Stop and report it — do not fix unrelated code. Note that the `mypy` hook is whole-repo (`pass_filenames: false`), so this can happen. |
 
 **Hard rules for the loop:**

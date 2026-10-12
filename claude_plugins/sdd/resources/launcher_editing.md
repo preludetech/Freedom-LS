@@ -7,7 +7,7 @@
 | Parameter | Value in this copy |
 |---|---|
 | `<PLUGIN_DIR_NAME>` | `sdd` |
-| `<MAY_CREATE>` | **false** — `/ds:init` owns the launcher skeleton |
+| `<MAY_CREATE>` | **false** — `sdd` adds its line to an existing launcher and never creates one |
 
 `claude.sh` is a shared file. This procedure changes exactly one thing: it makes sure **one**
 `--plugin-dir` line for `<PLUGIN_DIR_NAME>` is present, in the canonical form. It never adds,

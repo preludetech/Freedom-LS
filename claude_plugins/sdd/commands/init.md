@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Bash, Glob
 
 Set up the `sdd` Claude Code plugin for this project. `sdd` provides the portable
 spec-driven-development workflow (worker/mechanic agents, workflow commands, authoring skills). It
-needs very little per-project config beyond the generic shared bits that `ds:init` creates.
+needs very little per-project config beyond the shared launcher it expects to exist.
 
 ## Two rules that override every step below
 
@@ -27,8 +27,9 @@ permission and writes only its own `.claude/sdd/` config dir. Into the shared pr
 `claude.sh` it adds **only its own** `--plugin-dir` line; it never touches another plugin's.
 
 The generic, plugin-neutral artifacts — the `claude.sh` skeleton, the `SessionStart` hook, and the
-`.claude/settings.local.json` line in `.gitignore` — are created by `ds:init`. This command requires
-them to exist (Step 0) and otherwise reports on them.
+`.claude/settings.local.json` line in `.gitignore` — are created by whatever initialised the
+project's shared Claude Code setup. This command requires them to exist (Step 0) and otherwise
+reports on them.
 
 ## Hard requirements — do not regress
 
@@ -36,17 +37,17 @@ them to exist (Step 0) and otherwise reports on them.
   to `enabledPlugins` (only this key — never another plugin's). **"Missing" means no byte-identical string is
   already in the list** — never "no entry semantically covers this". A redundant allow entry is
   harmless; removing one is a permission change this command is not entitled to make. **Never touch the `hooks` section**;
-  the `SessionStart` hook is `ds`-owned. Mutate the file's own parsed object and write it back —
+  `sdd` does not own the `SessionStart` hook. Mutate the file's own parsed object and write it back —
   never rebuild it from a template.
 - **`.claude/sdd/config.md`** — create when absent, otherwise extend (add any key the default defines
   but the file lacks; preserve every existing value, comment, and ordering).
 - **`.gitignore`** — append its own `.claude/sdd/config.local.md` line only. Never remove or reorder,
-  and never touch the `ds`-owned `.claude/settings.local.json` line.
+  and never touch the shared `.claude/settings.local.json` line, which `sdd` does not own.
 
 ## The `PLUGINS_ROOT` rule
 
-This section is identical in every plugin's init except the directory name in step 4. Edit all copies
-together.
+This section is shared with every other plugin's init, except the directory name in step 4 and any
+legacy variable name a plugin's own migration still accepts. Edit all copies together.
 
 `PLUGINS_ROOT` is the relative path **from the project root** to the checkout that holds
 `claude_plugins/`. It is baked into `claude.sh` and into every wrapper script so they can find the
@@ -56,14 +57,9 @@ yields a value. **Never prompt the user. Never guess a project-specific path.**
 1. **The launcher wins.** If `claude.sh` exists at the project root and contains a line matching
    `^PLUGINS_ROOT="(.*)"$`, the captured value is `PLUGINS_ROOT`.
 2. **A wrapper script is the second source.** Otherwise, if any `.sh` under `.claude/*/scripts/`
-   contains a line matching `^(PLUGINS_ROOT|FLS_PATH)="(.*)"$` whose value is not the literal
+   contains a line matching `^PLUGINS_ROOT="(.*)"$` whose value is not the literal
    `__PLUGINS_ROOT__`, and every such line agrees, use that value. If two disagree, **STOP** and
    print both — a project cannot have two plugin roots.
-
-   `FLS_PATH` is matched here because it is the pre-split name for this same variable. On a
-   pre-split project **every** wrapper still uses it, so omitting it would make this whole step dead
-   on exactly the projects that need it — and a project whose checkout is a submodule would silently
-   fall through to the `.` default and bake the wrong root into every generated file.
 3. **Otherwise the value is `.`** — the project root itself holds `./claude_plugins/`. This is the
    only default, and it is the only candidate any init offers. **No init names a second candidate or
    an example path.** A hint present in one init and absent from another is exactly how two inits
@@ -85,25 +81,25 @@ anything in this step or before it completes.
 
 | # | Check | Verdict |
 |---|---|---|
-| P1 | `claude.sh` exists at the project root | **STOP** → "`/sdd:init` adds its `--plugin-dir` line to a launcher `/ds:init` owns. Run `/ds:init` first, then re-run `/sdd:init`. Nothing has been changed." |
-| P2 | `.claude/settings.json` exists | **STOP** → same message. The base settings file is `ds`-owned; this command will not create a partial one. |
+| P1 | `claude.sh` exists at the project root | **STOP** → "`/sdd:init` adds its `--plugin-dir` line to an existing launcher and never creates one. Create the launcher and `.claude/settings.json` with whatever initialises this project's shared Claude Code setup, then re-run `/sdd:init`. Nothing has been changed." |
+| P2 | `.claude/settings.json` exists | **STOP** → same message. The base settings file is shared; this command will not create a partial one. |
 | P3 | It parses as JSON | **STOP** → "hand-fix the JSON, then re-run. Nothing has been changed." |
-| P3b | `"ds": true` is in `enabledPlugins` | **STOP** → "`/sdd:init` adds a `--plugin-dir` line to a launcher `/ds:init` owns, and cannot repair a launcher that still points at a pre-split plugin. Run `/ds:init` first, then re-run `/sdd:init`. Nothing has been changed." |
+| P3b | Every `--plugin-dir` argument in `claude.sh` has a path containing the segment `/claude_plugins/` | **STOP** → "the launcher still points at a plugin directory outside `claude_plugins/`, and `/sdd:init` cannot repair it. Fix the launcher first, then re-run `/sdd:init`. Nothing has been changed." |
 | P4 | Resolve `PLUGINS_ROOT` by the rule above, including its step-4 validation | **STOP** if invalid |
 | P5 | Classify `claude.sh` per rule **L0** of `${CLAUDE_PLUGIN_ROOT}/resources/launcher_editing.md` | **STOP** if it has zero, or more than one, non-comment line invoking `claude` (P1 already stopped on an absent file) |
-| P6 | `SessionStart` hook present and checking `$CLAUDE_PLUGINS_LOADED` | **WARN** → "run `/ds:init` to add or migrate it" |
-| P7 | `.claude/settings.local.json` listed in `.gitignore` | **WARN** → "`/ds:init` adds it" |
+| P6 | `SessionStart` hook present and checking `$CLAUDE_PLUGINS_LOADED` | **WARN** → "add or migrate it by hand, or with whatever owns the launcher" |
+| P7 | `.claude/settings.local.json` listed in `.gitignore` | **WARN** → "add it by hand, or with whatever owns the launcher" |
 | P8 | `git status --porcelain --` on `claude.sh` and `.claude/settings.json` | **WARN** if dirty |
 
 P1–P3b are STOPs rather than warnings so this command can never write `.claude/sdd/config.md` and a
 `.gitignore` line and *then* discover it cannot finish.
 
-**P3b exists because P1 and P2 are not sufficient.** A pre-split project already *has* a `claude.sh`
-and a `.claude/settings.json` — they are just the `fls`-era ones — so file-existence checks pass and
+**P3b exists because P1 and P2 are not sufficient.** A project that predates the `claude_plugins/`
+layout already *has* a `claude.sh` and a `.claude/settings.json`, so file-existence checks pass and
 this command would run to completion, adding its own `--plugin-dir` line to a launcher still pointing
-at a plugin directory the split deleted. With `<MAY_CREATE>` false it skips L4 and cannot retire that
-argument, so it would leave a launcher broken in a way only `/ds:init` can repair. Testing that `ds`
-has actually *initialised* — not merely that files exist — is the only check that catches this.
+at a plugin directory that no longer exists. With `<MAY_CREATE>` false it skips L4 and cannot retire
+that argument, so it would leave the launcher broken. Checking the arguments themselves — not merely
+that files exist — is the only check that catches this.
 
 ## Step 1: Merge the `sdd` permission and enabledPlugins key
 
@@ -114,7 +110,7 @@ has actually *initialised* — not merely that files exist — is the only check
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads eight sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads ten sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
 teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
@@ -126,7 +122,9 @@ here for the project's own definitions of its domain words. **Plan Review Hooks*
 review dimensions. **Review Hooks**: `/sdd:implement_plan` looks here for the comment standard and
 test standard its implementer reads and its batch review checks. **Documentation Hooks**:
 `/sdd:document` looks here for the skills it invokes, in order, after implementation and QA.
-They can come from any plugin.
+They can come from any plugin. **QA Hooks**: `protected/setup_todo_list.md` looks here for the
+command that executes the QA plan, and writes it into the checklist. **PR Hooks**:
+`/sdd:address_pr_review` looks here for the script that fetches a pull request's review comments.
 Everything else in this dir exists for
 parity and future settings.
 
@@ -171,6 +169,14 @@ parity and future settings.
 
    -
 
+   ## QA Hooks
+
+   - QA command:
+
+   ## PR Hooks
+
+   - Fetch PR comments:
+
    ## Vocabulary Sources
 
    -
@@ -209,6 +215,16 @@ parity and future settings.
    project's comment rules, and a **Test standard** value points at a file that states its test
    rules. A blank key skips that half of the batch review. `sdd` names no product here either.
 
+   A **QA command** value is a skill name, `<plugin>:<skill>`, that executes a spec's QA plan.
+   `protected/setup_todo_list.md` writes it into `todo.md` as the QA step's slash command. Blank
+   means "this project has no QA command", and the checklist tells the user to run the QA plan by
+   hand. `sdd` names no product here; if another plugin owns that command, the user names it.
+
+   A **Fetch PR comments** value points at a script, run from the project root, that prints a
+   pull request's comments as JSON (`issue_comments`, `reviews`, `inline_comments` with an
+   `is_outdated` field). Blank means "this project has no such script", and
+   `/sdd:address_pr_review` fetches them with `gh` directly.
+
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
    Write the heading with an empty list; each source later becomes one bullet holding a path, most
@@ -216,15 +232,15 @@ parity and future settings.
    not guess them by scanning the repo. With the list empty the commands still work: they fall back
    to the code, where model class names and field names are the vocabulary of last resort.
 3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
-   `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks` and `## Vocabulary Sources`
-   sections, and any key only if missing, using the blank default. Preserve every existing value,
+   `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks`, `## QA Hooks`, `## PR Hooks`
+   and `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
 ## Step 3: Update `.gitignore`
 
 1. If `.claude/sdd/config.local.md` is not listed, add it.
-2. Do **not** add the `.claude/settings.local.json` line — that one is `ds`-owned.
+2. Do **not** add the `.claude/settings.local.json` line — that one is shared and not `sdd`'s to add.
 
 ## Step 4: Ensure the `sdd` `--plugin-dir` line
 
@@ -251,18 +267,23 @@ in-place edits.
 8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and
    `Test standard` keys (blank values are valid).
 9. `.claude/sdd/config.md` has a `## Documentation Hooks` section (an empty list is valid).
-10. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
-11. `.claude/sdd/config.local.md` is listed in `.gitignore`.
-12. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
-13. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
+10. `.claude/sdd/config.md` has a `## QA Hooks` section with a `QA command` key (a blank value is
+   valid).
+11. `.claude/sdd/config.md` has a `## PR Hooks` section with a `Fetch PR comments` key (a blank
+   value is valid).
+12. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
+13. `.claude/sdd/config.local.md` is listed in `.gitignore`.
+14. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
+15. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
    that line expands `$PLUGINS_ROOT` only if a `PLUGINS_ROOT=` assignment exists in the file.
-14. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
-15. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-16. Report every issue found.
+16. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
+17. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
+18. Report every issue found.
 
 ## Step 6: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, and anything Step 5 flagged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths,
 the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, the Plan Review Hooks and Documentation Hooks lists, the Review
-Hooks Comment standard and Test standard paths, and to list the project's Vocabulary Sources.
+Hooks Comment standard and Test standard paths, the QA Hooks QA command, the PR Hooks Fetch PR
+comments path, and to list the project's Vocabulary Sources.

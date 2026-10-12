@@ -34,15 +34,22 @@ Most of the time an idea (and possibly more) is already in the directory. List t
 | `1. spec.md` | "Run `/sdd:spec_from_idea`…" |
 | `2. plan.md` | "Run `/sdd:plan_from_spec`…" |
 | `3. frontend_qa.md` | (also covered by the plan step — `/sdd:plan_from_spec` produces both) |
-| `qa_report.md` | "Run `/fls-dev:do_qa`…" |
+| `qa_report.md` | the item that executes the QA plan (see Step 4) |
 
 Only tick boxes for artifacts that actually exist. Do **not** tick user-review items, worktree/PR/cleanup items, or anything else where presence of a file can't confirm the step was done — those are for the user to tick manually.
 
 If you're unsure whether a file counts (e.g. an unusually named markdown file that might be an idea, research, or something else), leave the box unchecked rather than guessing.
 
-## Step 4: Write todo.md
+## Step 4: Read the QA command
 
-Create `todo.md` in the target directory with the checklist below, applying the tick marks determined in Step 3. Preserve the structure exactly — later commands and the user both rely on it.
+Read `.claude/sdd/config.md` (and `.claude/sdd/config.local.md` if it exists — its values take precedence). Under the **QA Hooks** section, look at the **QA command** value:
+
+- A non-blank value is a skill name such as `<plugin>:<skill>`. The QA item in the checklist becomes `- [ ] (cmd) Run \`/<QA command>\` to execute the QA plan`.
+- A blank value, or an absent section or file, means the project has no QA command. The QA item becomes `- [ ] (user) Execute the QA plan by hand`.
+
+## Step 5: Write todo.md
+
+Create `todo.md` in the target directory with the checklist below, applying the tick marks determined in Step 3 and the QA item from Step 4 in place of `<QA item>`. Preserve the structure exactly — later commands and the user both rely on it.
 
 Each item is marked with who does it:
 
@@ -70,7 +77,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [ ] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+<QA item>
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
 
 ## 4. Documentation and pull request
@@ -86,7 +93,7 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 - [ ] (user) Remove the worktree and delete the branch once main has it
 ```
 
-## Step 5: Report back
+## Step 6: Report back
 
 Print a short summary that includes:
 

@@ -14,7 +14,7 @@ These are the five sections of the `todo.md` checklist. Capturing the idea comes
 
 > `/sdd:start` is the entry point: it creates the `todo.md` checklist next to the spec/idea **and** sets up an isolated worktree for the work. Run it once, then do everything else inside the worktree.
 
-> **One-time setup:** before the first SDD run on a project, run `/app_map` to generate `docs/app_structure.md`. A plan review brief that compares proposed plans against the app structure reads that diagram.
+> **One-time setup:** any setup a project's hooks need before the first SDD run (for example a diagram a plan review brief reads) is documented by that hook, not here.
 
 ---
 
@@ -61,31 +61,12 @@ The project's own pre-commit checks and Claude Code's `/security-review` cover t
 
 ### QA
 
-Run `/fls-dev:do_qa` to execute the QA plan.
+Run the project's QA command: the `QA command` key under `## QA Hooks` in `.claude/sdd/config.md`.
+`/sdd:start` writes it into `todo.md` as the QA step. A project with no QA command runs the QA plan
+by hand.
 
-#### Reacting to the QA report
-
-- If tests were skipped because of missing data or fixtures, create the needed test data (the `fls-dev:qa-data-helper` agent is designed for this).
-- If bugs were detected, `/do_qa` now includes a triage → TDD fix → re-verify loop: clear
-  functional regressions that are unit-testable, single-app, and not security-adjacent are
-  auto-fixed by the `fls-dev:qa-bugfixer` agent using TDD (failing test → fix → targeted tier → commit →
-  re-verify the Playwright flow). Bugs that do not meet the triage criteria are left `UNRESOLVED`
-  with a human todo added automatically. Check the `## Bug status` section of `qa_report.md` for
-  the outcome of each bug: `FIXED (commit: <hash>)` or `UNRESOLVED`.
-
-### Deployed wrapper script trust boundary
-
-The `.claude/settings.json` allow-list uses wildcard entries `Bash(.claude/ds/scripts/*.sh:*)` and
-`Bash(.claude/fls-dev/scripts/*.sh:*)` so that QA helper scripts (`find_available_port.sh`,
-`kill_runserver.sh`, `qa_cleanup.sh`, `qa_collect_screenshots.sh`, `compress_screenshots.sh`,
-`delete_sdd_work_files.sh`) run prompt-free during a QA session.
-
-**Adding any script under `.claude/ds/scripts/` or `.claude/fls-dev/scripts/` is equivalent to
-adding it to the allow-list.** That script will be granted prompt-free execution with arbitrary
-arguments in every QA session, with no requirement to re-review the allow-list explicitly. Any new
-script placed there must therefore be reviewed with the same care as a new allow-list entry:
-confirm it validates its arguments, does not write outside the project, and does not execute its
-arguments as shell code.
+How the QA command handles skipped tests, missing test data or the bugs it finds is its own
+business: read its documentation, and check `qa_report.md` for the outcome.
 
 ## Step 5: Document
 
@@ -94,13 +75,13 @@ Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md
 ## Step 6: Pull request
 
 1. Run `/sdd:make_pr_quickly` to open the pull request. It uses `gh pr create --fill`, building the title and body from the commits; it reads nothing else.
-2. Run `/sdd:address_pr_review` to work through review feedback.
+2. Run `/sdd:address_pr_review` to work through review feedback. It fetches the comments through the `Fetch PR comments` script under `## PR Hooks` in `.claude/sdd/config.md`, or with `gh` directly when that key is blank.
 
 ## Step 7: Cleanup
 
 Once the PR is approved (or already merged), run `/sdd:finish_worktree`. It rebases, archives the spec and its roadmap row, lands the close-out on `main` by fast-forward push and brings the main worktree up to date. It stops, changing nothing on `main`, if the main worktree has uncommitted work or an operation in progress. Nobody runs `git merge` in the main worktree by hand. Then remove the worktree and delete the branch.
 
-`/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. Use `/ds:commit` instead when the commit is a checkpoint you have not verified — that one runs the targeted test tier first.
+`/sdd:commit_quickly` is the fast commit path for use during implementation: it stages the already-staged index if there is one, otherwise the files Claude touched this conversation (`mine`; `all` stages everything), and commits without running the test suite. When the commit is a checkpoint you have not verified, use a commit command that runs the targeted test tier first, if the project has one.
 
 ---
 

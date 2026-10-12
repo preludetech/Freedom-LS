@@ -74,8 +74,8 @@ and fills the `Plan Review Hooks`, `Review Hooks` and `Documentation Hooks` sect
 
 ## The `PLUGINS_ROOT` rule
 
-This section is identical in every plugin's init except the directory name in step 4. Edit all copies
-together.
+This section is shared with every other plugin's init, except the directory name in step 4 and any
+legacy variable name a plugin's own migration still accepts. Edit all copies together.
 
 `PLUGINS_ROOT` is the relative path **from the project root** to the checkout that holds
 `claude_plugins/`. It is baked into `claude.sh` and into every wrapper script so they can find the

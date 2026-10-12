@@ -6,15 +6,20 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
 
 ## Step 1: Fetch all review comments
 
-Run the script to fetch all PR comments:
+Read `Fetch PR comments` under `## PR Hooks` in `.claude/sdd/config.md` (`config.local.md` wins).
 
-```
-.claude/ds/scripts/fetch_pr_comments.sh
-```
+- A non-blank value is a script path: run it from the project root. It prints the JSON described
+  below.
+- A blank value, or an absent section or file, means the project has no such script. Fetch the
+  comments with `gh` directly: `gh pr view --json number,headRepository,headRepositoryOwner` for
+  the PR number and repo, then `gh api repos/<owner>/<repo>/issues/<n>/comments`,
+  `gh api repos/<owner>/<repo>/pulls/<n>/reviews` and
+  `gh api repos/<owner>/<repo>/pulls/<n>/comments`. An inline comment whose `position` is null
+  is outdated.
 
-If the script reports no PR found, tell the user and stop.
+If there is no PR for the current branch, tell the user and stop.
 
-The script outputs JSON containing:
+Either way you end up with JSON containing:
 - `issue_comments` — general PR conversation comments
 - `reviews` — top-level review summaries (APPROVED, CHANGES_REQUESTED, COMMENTED)
 - `inline_comments` — comments on specific lines of code, with an `is_outdated` field

@@ -34,7 +34,8 @@ Top level: `init`, `do_qa`, `update_claude_plugin_fls_content`, `update_product_
 The three `update_*` commands (`update_upgrade_notes`, `update_product_docs`,
 `update_claude_plugin_fls_content`) run as hooks of `/sdd:document`: `## Documentation Hooks` in
 `.claude/sdd/config.md` names them as skills (`fls-dev:update_upgrade_notes`, …), after
-`ds:app_map`. They stay runnable alone. They produce the upgrade notes for downstream projects, the product docs
+`ds:app_map`. They stay runnable alone. `do_qa` reaches SDD the same way: `## QA Hooks` in
+`.claude/sdd/config.md` names it as the `QA command`, which `/sdd:start` writes into `todo.md`. They produce the upgrade notes for downstream projects, the product docs
 under `docs/product/`, and the sync of the course-author plugin.
 
 `/fls-dev:init` wires up only the `fls-dev` slice (its `enabledPlugins` key, its permissions, the
@@ -63,6 +64,13 @@ setup and teardown.
 `delete_sdd_work_files.sh` — QA-run artifact cleanup, screenshot collection and compression, and
 scratch-file teardown. They live here rather than in `sdd` because `${CLAUDE_PLUGIN_ROOT}` is
 per-plugin and their only callers are the `fls-dev` commands `do_qa` and `update_product_docs`.
+
+The project's `.claude/settings.json` allow-list names every script under `.claude/ds/scripts/`
+and `.claude/fls-dev/scripts/` so they run prompt-free during a QA session. **Adding a script
+there and listing it is equivalent to granting it prompt-free execution with arbitrary arguments
+in every QA session.** Review any new script with the same care as a new allow-list entry: confirm
+it validates its arguments, does not write outside the project, and does not execute its
+arguments as shell code.
 
 ### Resources (14)
 

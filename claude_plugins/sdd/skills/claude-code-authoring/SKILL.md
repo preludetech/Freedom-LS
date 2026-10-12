@@ -94,5 +94,4 @@ Fan-out is only legal at depth 0. The resilient shape (full detail in
 ## Living examples in this repo
 
 - `claude_plugins/sdd/commands/README.md` — how the SDD workflow applies all of the above.
-- `claude_plugins/sdd/agents/sdd-mechanic.md` (Haiku) and `sdd-worker.md` (Sonnet) — the tiering agents.
-- `claude_plugins/django-stack/agents/code-reviewer.md` and `claude_plugins/fls-dev/agents/qa-data-helper.md` — existing `model: opus` agents.
+- `claude_plugins/sdd/agents/sdd-mechanic.md` (Haiku) and `sdd-worker.md` (Sonnet) — the tiering agents. An agent that needs the strongest model sets `model: opus` in its frontmatter the same way.
