@@ -40,7 +40,8 @@ its contents between `.claude/fls-dev/` and `.claude/ds/scripts/`, because the p
 both plugins' wrappers. Step 2 does that relocation and nothing else in `.claude/ds/`.
 
 It has one more reach outside that slice: it sets sdd's `Design check` key in `.claude/sdd/config.md`
-(Step 8).
+and fills the `Plan Review Hooks`, `Review Hooks` and `Documentation Hooks` sections there
+(Steps 8 and 8b).
 
 `/ds:init` must have run first — Step 0 enforces it.
 
@@ -56,8 +57,9 @@ It has one more reach outside that slice: it sets sdd's `Design check` key in `.
 - **`.claude/fls-dev/config.md` / `config.local.md`** — create when absent, otherwise extend. Add any
   option the template defines but the file lacks; preserve every existing value, comment, and
   ordering. Never overwrite or delete existing config.
-- **`.claude/sdd/config.md`** — set `Design check` only when it is blank or absent. Never overwrite a
-  value and never touch another key.
+- **`.claude/sdd/config.md`** — set `Design check`, and the `Review Hooks` keys, only when blank or
+  absent, and fill the `Plan Review Hooks` and `Documentation Hooks` lists only when empty. Never
+  overwrite a value, never add to a non-empty list and never touch another key.
 - **`.gitignore`** — append only the `fls-dev`-owned line. Never remove or reorder, and leave the
   `ds`-owned `.claude/settings.local.json` line alone.
 - **Wrapper scripts** — install a template only when the destination does not exist. An existing
@@ -312,6 +314,31 @@ action.
 Done when the key holds that path or carries a non-blank value that was already there, or the
 outstanding action is listed.
 
+## Step 8b: Fill the sdd review and documentation hooks
+
+Use the same `PLUGINS_ROOT` prefix rule as Step 8 (no `./` prefix when `PLUGINS_ROOT` is `.`).
+
+If `.claude/sdd/config.md` exists:
+
+- Ensure `## Review Hooks` exists with both keys. Set a blank `Test standard` to
+  `<PLUGINS_ROOT>/claude_plugins/fls-dev/skills/testing/SKILL.md`. Set a blank
+  `Comment standard` to `.claude/skills/code-comments/SKILL.md` only when that file exists in
+  the project; otherwise leave it blank and list "add a comment standard and point
+  `Comment standard` at it" as an outstanding action.
+- Ensure `## Documentation Hooks` exists. If its list is empty, write, in this order:
+  - `App map: <PLUGINS_ROOT>/claude_plugins/django-stack/commands/app_map.md`
+  - `Upgrade notes: <PLUGINS_ROOT>/claude_plugins/fls-dev/commands/update_upgrade_notes.md`
+  - `Product docs: <PLUGINS_ROOT>/claude_plugins/fls-dev/commands/update_product_docs.md`
+  - `Course-author plugin: <PLUGINS_ROOT>/claude_plugins/fls-dev/commands/update_claude_plugin_fls_content.md`
+
+A non-blank key and a non-empty list are left exactly as they are.
+
+If the file does not exist, list "run `/sdd:init`, then `/fls-dev:init` again" as an outstanding
+action.
+
+Done when each key and list holds those values or what was already there, or the outstanding action
+is listed.
+
 ## Step 9: Validate the setup
 
 1. `fls-dev` is in `enabledPlugins`, and `.claude/settings.json` is valid JSON.
@@ -346,12 +373,13 @@ outstanding action is listed.
     and every `--plugin-dir` path in it resolves to a directory that exists.
 11. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
 12. `Design check` in `.claude/sdd/config.md` holds a path that exists, or the Step 8 outstanding
-    action is listed.
+    action is listed. Each path under `## Review Hooks` and `## Documentation Hooks` exists, or the
+    Step 8b outstanding action is listed.
 13. Report every issue found.
 
 ## Step 10: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, every `CONFLICT` and `KEEP`
 from Step 2, every `KEEP-AND-HAND-OFF`, the "run `/ds:init` again" instruction if any file moved, and
-every report-only finding from **Step 1, item 5**. Name the `Design check` key and its value. Point the user at `.claude/fls-dev/config.md` for the dev
+every report-only finding from **Step 1, item 5**. Name the `Design check` key, the `Review Hooks` keys and the `Documentation Hooks` list, with their values. Point the user at `.claude/fls-dev/config.md` for the dev
 credentials and base URL, and at `.claude/fls-dev/config.local.md` for local overrides.

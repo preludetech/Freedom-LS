@@ -114,14 +114,19 @@ has actually *initialised* — not merely that files exist — is the only check
 
 ## Step 2: Create or extend `.claude/sdd/config.md`
 
-`sdd` reads five sections here at runtime. **Worktree Scripts**: the worktree helpers
+`sdd` reads eight sections here at runtime. **Worktree Scripts**: the worktree helpers
 (`protected/start_worktree.md`, `finish_worktree.md`) look here for the per-worktree setup and
 teardown scripts to run. **Rebase Hooks**: the pre-step rebase helper
 (`protected/pre_step_rebase.md`) looks here for the rebase command and front-end check it follows
 before a feature-branch SDD step runs. **Design Hooks**: `/sdd:implement_plan` looks here for the
 design check it follows after each slice that builds a designed screen. **Test Hooks**:
 `protected/run_test_tier.md` looks here for the file that defines the test tiers. **Vocabulary Sources**: the idea, spec and plan commands look
-here for the project's own definitions of its domain words. Everything else in this dir exists for
+here for the project's own definitions of its domain words. **Plan Review Hooks**:
+`/sdd:plan_from_spec` looks here for project-owned review briefs it spawns after its built-in
+review dimensions. **Review Hooks**: `/sdd:implement_plan` looks here for the comment standard and
+test standard its implementer reads and its batch review checks. **Documentation Hooks**:
+`/sdd:document` looks here for the commands it runs, in order, after implementation and QA.
+Everything else in this dir exists for
 parity and future settings.
 
 **Do not prompt the user for these values.** Write blank defaults and say where the file is.
@@ -152,6 +157,19 @@ parity and future settings.
 
    - Test tiers:
 
+   ## Plan Review Hooks
+
+   -
+
+   ## Review Hooks
+
+   - Comment standard:
+   - Test standard:
+
+   ## Documentation Hooks
+
+   -
+
    ## Vocabulary Sources
 
    -
@@ -178,14 +196,25 @@ parity and future settings.
    falls back to the project's plain pytest command. `sdd` is portable and names no product here;
    if another plugin owns that file in this project, the user points this key at it.
 
+   **Plan Review Hooks** and **Documentation Hooks** are ordered lists of `<label>: <path>`
+   bullets. The label is for reporting and the order is the contract. An empty list means "this
+   project has no such hooks", and a non-empty list in `config.local.md` replaces the whole list.
+   `sdd` is portable and names no product here; if another plugin owns those files in this project,
+   the user lists them.
+
+   **Review Hooks** is keyed. A **Comment standard** value points at a file that states the
+   project's comment rules, and a **Test standard** value points at a file that states its test
+   rules. A blank key skips that half of the batch review. `sdd` names no product here either.
+
    **Vocabulary Sources** is what the idea, spec and plan commands consult before coining a word for
    a concept the project already names (see `${CLAUDE_PLUGIN_ROOT}/resources/domain_vocabulary.md`).
    Write the heading with an empty list; each source later becomes one bullet holding a path, most
    authoritative first. Naming this project's actual sources is the user's job — do
    not guess them by scanning the repo. With the list empty the commands still work: they fall back
    to the code, where model class names and field names are the vocabulary of last resort.
-3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks` and
-   `## Vocabulary Sources` sections, and any key only if missing, using the blank default. Preserve every existing value,
+3. If it already exists, add the `## Worktree Scripts`, `## Rebase Hooks`, `## Design Hooks`, `## Test Hooks`,
+   `## Plan Review Hooks`, `## Review Hooks`, `## Documentation Hooks` and `## Vocabulary Sources`
+   sections, and any key only if missing, using the blank default. Preserve every existing value,
    comment, and ordering.
 4. Tell the user in the summary to fill in the paths and the vocabulary sources themselves.
 
@@ -215,18 +244,22 @@ in-place edits.
    is valid).
 6. `.claude/sdd/config.md` has a `## Test Hooks` section with a `Test tiers` key (a blank value
    is valid).
-7. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
-8. `.claude/sdd/config.local.md` is listed in `.gitignore`.
-9. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
-10. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
+7. `.claude/sdd/config.md` has a `## Plan Review Hooks` section (an empty list is valid).
+8. `.claude/sdd/config.md` has a `## Review Hooks` section with both `Comment standard` and
+   `Test standard` keys (blank values are valid).
+9. `.claude/sdd/config.md` has a `## Documentation Hooks` section (an empty list is valid).
+10. `.claude/sdd/config.md` has a `## Vocabulary Sources` section (an empty list is valid).
+11. `.claude/sdd/config.local.md` is listed in `.gitignore`.
+12. `<PLUGINS_ROOT>/claude_plugins/sdd/` exists.
+13. `claude.sh` contains exactly **one** `--plugin-dir` line whose final path segment is `sdd`, and
    that line expands `$PLUGINS_ROOT` only if a `PLUGINS_ROOT=` assignment exists in the file.
-11. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
-12. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
-13. Report every issue found.
+14. Every `--plugin-dir` path in `claude.sh` resolves to a directory that exists.
+15. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
+16. Report every issue found.
 
 ## Step 6: Summary and outstanding actions
 
 Print what was done, then the outstanding actions: every Step 0 WARN, and anything Step 5 flagged.
 Point the user at `.claude/sdd/config.md` to fill in the Worktree Scripts Setup and Teardown paths,
-the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, and to list the project's Vocabulary
-Sources.
+the Rebase Hooks Rebase command and Front-end check paths, the Design Hooks Design check path, the Test Hooks Test tiers path, the Plan Review Hooks and Documentation Hooks lists, the Review
+Hooks Comment standard and Test standard paths, and to list the project's Vocabulary Sources.

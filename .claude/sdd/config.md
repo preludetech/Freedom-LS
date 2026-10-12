@@ -18,6 +18,22 @@
 
 - Test tiers: claude_plugins/django-stack/resources/test_tiers.md
 
+## Plan Review Hooks
+
+-
+
+## Review Hooks
+
+- Comment standard: .claude/skills/code-comments/SKILL.md
+- Test standard: claude_plugins/fls-dev/skills/testing/SKILL.md
+
+## Documentation Hooks
+
+- App map: claude_plugins/django-stack/commands/app_map.md
+- Upgrade notes: claude_plugins/fls-dev/commands/update_upgrade_notes.md
+- Product docs: claude_plugins/fls-dev/commands/update_product_docs.md
+- Course-author plugin: claude_plugins/fls-dev/commands/update_claude_plugin_fls_content.md
+
 ## Vocabulary Sources
 
 - .claude/skills/domain-glossary/SKILL.md
