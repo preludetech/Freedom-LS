@@ -15,7 +15,7 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
-from freedom_ls.course_applications.models import CourseApplication
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.queries import page_questions
 
 from .helpers import gated_course_with_form
@@ -33,14 +33,14 @@ def _apply_url(course) -> str:
     return reverse("course_applications:apply", kwargs={"course_slug": course.slug})
 
 
-def _post_details(client, course, **overrides: str):
+def _post_details(client, course, ip: str = "10.0.0.1", **overrides: str):
     data = {
         "email": "  Ada@Example.com ",
         "first_name": "Ada",
         "last_name": "Lovelace",
     }
     data.update(overrides)
-    return client.post(_details_url(course), data)
+    return client.post(_details_url(course), data, REMOTE_ADDR=ip)
 
 
 @pytest.fixture
@@ -48,8 +48,10 @@ def gated_course(mock_site_context):
     return CourseFactory(access_config={"access_type": "application_gated"})
 
 
-def _apply_form_less(client, course):
-    _post_details(client, course)
+def _apply_form_less(client, course, ip: str = "10.0.0.1"):
+    """Apply from one browser. A second browser applying under the same address
+    must come from another IP, or the details step treats it as a double click."""
+    _post_details(client, course, ip=ip)
     return client.post(_apply_url(course))
 
 
@@ -121,7 +123,7 @@ def test_second_send_for_one_address_over_the_limit_adds_nothing(client, gated_c
     with override_settings(ACCOUNT_RATE_LIMITS=ONE_CLAIM_EMAIL_AN_HOUR):
         cache.clear()
         _apply_form_less(client, gated_course)
-        _apply_form_less(Client(), gated_course)
+        _apply_form_less(Client(), gated_course, ip="10.0.0.2")
 
     assert len(mail.outbox) == 1
 
@@ -131,6 +133,39 @@ def test_skipped_send_leaves_the_response_unchanged(client, gated_course):
     with override_settings(ACCOUNT_RATE_LIMITS=ONE_CLAIM_EMAIL_AN_HOUR):
         cache.clear()
         first = _apply_form_less(client, gated_course)
-        second = _apply_form_less(Client(), gated_course)
+        second = _apply_form_less(Client(), gated_course, ip="10.0.0.2")
 
     assert second.status_code == first.status_code
+
+
+@pytest.mark.django_db
+def test_a_sent_email_stamps_the_applicant(client, gated_course):
+    _apply_form_less(client, gated_course)
+
+    applicant = AnonymousApplicant.objects.get()
+    assert applicant.claim_email_sent_at is not None
+
+
+@pytest.mark.django_db
+def test_a_skipped_send_leaves_the_applicant_unstamped(client, gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS=ONE_CLAIM_EMAIL_AN_HOUR):
+        cache.clear()
+        _apply_form_less(client, gated_course)
+        _apply_form_less(Client(), gated_course, ip="10.0.0.2")
+
+    second = AnonymousApplicant.objects.order_by("created_at").last()
+    assert second is not None
+    assert second.claim_email_sent_at is None
+
+
+@pytest.mark.django_db
+def test_email_subject_keeps_an_ampersand_in_the_course_title(
+    client, mock_site_context
+):
+    course = CourseFactory(
+        title="Arts & Crafts", access_config={"access_type": "application_gated"}
+    )
+
+    _apply_form_less(client, course)
+
+    assert "Arts & Crafts" in mail.outbox[0].subject

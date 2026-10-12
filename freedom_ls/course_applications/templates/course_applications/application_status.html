@@ -22,10 +22,30 @@
                     Your application for <strong>{{ application.course.title }}</strong> has been
                     received.
                 </p>
-                <p class="text-muted">
-                    We've emailed a link to {{ application.anonymous_applicant.email }}. Follow it
-                    to finish setting up your account. A reviewer will then look at your application.
-                </p>
+                {% if application.anonymous_applicant.claim_email_sent_at %}
+                    <p class="text-muted">
+                        We've emailed a link to {{ application.anonymous_applicant.email }}. Follow it
+                        to finish setting up your account. A reviewer will then look at your application.
+                    </p>
+                    <form method="post" class="flex flex-wrap items-center gap-3">
+                        {% csrf_token %}
+                        <span class="text-muted">Didn't get it?</span>
+                        <c-button type="submit" variant="secondary">
+                            Send the email again
+                        </c-button>
+                    </form>
+                {% else %}
+                    <p class="text-muted">
+                        We couldn't email {{ application.anonymous_applicant.email }} just now. Try again
+                        in a little while.
+                    </p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <c-button type="submit" variant="secondary">
+                            Send the email again
+                        </c-button>
+                    </form>
+                {% endif %}
             {% endif %}
 
             {% comment %}

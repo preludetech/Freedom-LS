@@ -50,9 +50,14 @@ class AnonymousApplicant(SiteAwareModel, TimestampedModel):
     )
     # Set once. A claim link whose applicant carries this is already used.
     claimed_at = models.DateTimeField(null=True, blank=True)
+    # When the claim email last went out. Null means every send so far was
+    # skipped by the rate limit or failed, so the status page offers another.
+    claim_email_sent_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self) -> str:
-        return f"AnonymousApplicant({self.email}, {self.course_id})"
+        # No email here: the admin writes this into its log on delete, and the
+        # log outlives the erasure of the applicant.
+        return f"Anonymous applicant {self.pk}"
 
 
 class CourseApplication(SiteAwareModel):

@@ -2952,6 +2952,18 @@ def _expired_claim_post(client, application):
 
 
 @pytest.mark.django_db
+def test_a_resent_claim_email_greets_nobody_by_the_signed_in_users_name(
+    client, claimable
+):
+    bystander = UserFactory(first_name="Alice")
+    client.force_login(bystander)
+
+    _expired_claim_post(client, claimable)
+
+    assert "Alice" not in mail.outbox[0].body
+
+
+@pytest.mark.django_db
 def test_status_page_of_an_unverified_application_shows_the_emailed_link_sentence(
     client, gated_course
 ):
@@ -2960,6 +2972,103 @@ def test_status_page_of_an_unverified_application_shows_the_emailed_link_sentenc
 
     body = response.content.decode()
     assert "emailed a link to ada@example.com" in body
+
+
+def _unverified_status_url(client, course) -> str:
+    _post_details(client, course)
+    client.post(_apply_url(course))
+    application = CourseApplication.objects.get(course=course)
+    return reverse("course_applications:status", kwargs={"pk": application.pk})
+
+
+@pytest.mark.django_db
+def test_status_page_offers_to_send_the_email_again(client, gated_course):
+    url = _unverified_status_url(client, gated_course)
+
+    body = client.get(url).content.decode()
+
+    assert ("Didn't get it?" in body, "Send the email again" in body) == (True, True)
+
+
+@pytest.mark.django_db
+def test_status_page_says_when_no_email_went_out(client, gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS={"application_claim_email": "0/h/key"}):
+        cache.clear()
+        url = _unverified_status_url(client, gated_course)
+
+    body = client.get(url).content.decode()
+
+    assert (
+        "We couldn't email ada@example.com just now" in body,
+        "emailed a link" in body,
+    ) == (
+        True,
+        False,
+    )
+
+
+@pytest.mark.django_db
+def test_resend_post_sends_the_email_again(client, gated_course):
+    url = _unverified_status_url(client, gated_course)
+
+    client.post(url)
+
+    assert len(mail.outbox) == 2
+
+
+@pytest.mark.django_db
+def test_resend_post_confirms_with_a_message(client, gated_course):
+    url = _unverified_status_url(client, gated_course)
+
+    response = client.post(url)
+
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        "We've emailed a link to ada@example.com."
+    ]
+
+
+@pytest.mark.django_db
+def test_resend_post_over_the_limit_says_so(client, gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS={"application_claim_email": "1/h/key"}):
+        cache.clear()
+        url = _unverified_status_url(client, gated_course)
+
+        response = client.post(url)
+
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        "We couldn't email ada@example.com just now. Try again in a little while."
+    ]
+
+
+@pytest.mark.django_db
+def test_resend_post_returns_to_the_status_page(client, gated_course):
+    url = _unverified_status_url(client, gated_course)
+
+    response = client.post(url)
+
+    assert response["Location"] == url
+
+
+@pytest.mark.django_db
+def test_resend_post_from_another_session_is_404(client, gated_course):
+    url = _unverified_status_url(client, gated_course)
+
+    response = Client().post(url)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_resend_post_on_a_verified_application_is_404(client, mock_site_context):
+    user = UserFactory()
+    application = CourseApplicationFactory(user=user)
+    client.force_login(user)
+
+    response = client.post(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert response.status_code == 404
 
 
 @pytest.mark.django_db

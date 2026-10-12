@@ -207,7 +207,7 @@ When the course names an application form, "Apply now" opens the first page of t
 
 ![Check-your-answers page with one card per form page and an Edit link on each](screenshots/learner_application_check_answers.png)
 
-**Applying without an account.** An anonymous visitor who clicks "Apply now" first reaches an applicant details step asking for their email and name, and for acceptance of the terms of service and privacy policy where the site's signup policy requires it. They then apply exactly as a signed-in learner would, with no password and no account yet. After submitting, the status page says the application was received and that a link has been emailed to them.
+**Applying without an account.** An anonymous visitor who clicks "Apply now" first reaches an applicant details step asking for their email and name, and for acceptance of the terms of service and privacy policy where the site's signup policy requires it. They then apply exactly as a signed-in learner would, with no password and no account yet. After submitting, the status page says the application was received and that a link has been emailed to them, with a "Send the email again" button for an email that never arrived. If the email could not be sent, because the address has had several in the last hour or the mail server refused it, the page says so and offers the same button.
 
 ![Applicant details step asking for email, name and consent before the application form](screenshots/learner_applicant_details_step.png)
 

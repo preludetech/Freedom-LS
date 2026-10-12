@@ -164,6 +164,10 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     An application whose form is still unfinished is sent back to it: there is
     nothing to say about a request that has not been made yet.
 
+    POST, for an unverified application, sends the claim email again. The
+    page says whether an email has gone out at all, so an applicant whose
+    first one was skipped or lost is never left waiting for it.
+
     NOTE: when application review lands, dynamic state rendering (state badge,
       reviewer message, withdraw action via get_available_user_state_transitions)
       goes here.
@@ -176,6 +180,19 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     )
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))
+    if request.method == "POST":
+        if app.anonymous_applicant is None or app.is_email_verified:
+            raise Http404
+        applicant = app.anonymous_applicant
+        if send_application_claim_email(request, applicant):
+            messages.success(request, f"We've emailed a link to {applicant.email}.")
+        else:
+            messages.error(
+                request,
+                f"We couldn't email {applicant.email} just now. "
+                "Try again in a little while.",
+            )
+        return redirect("course_applications:status", pk=app.pk)
     return render(
         request,
         "course_applications/application_status.html",

@@ -1,1 +1,1 @@
-Finish your application for {{ course.title }}
+{% autoescape off %}Finish your application for {{ course.title }}{% endautoescape %}
