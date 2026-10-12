@@ -1,98 +1,130 @@
-# Frontend QA report: anonymous course applications
+# QA report: anonymous course applications
 
-Summary: 27 test records ran across three viewports.
-
-- Desktop: 24 tests, 23 passed, 1 failed (3.3).
-- Mobile: 2 tests, 2 passed.
-- Tablet: 1 test, 1 passed.
-- Distinct bugs: 1 (B1).
+The run recorded 27 test results (including three viewport passes of the layout section). 25 passed and 2 failed (1.4 and 6.3). Two bugs were documented: B1 (the unverified status page offers Back to dashboard to an anonymous applicant) and B2 (the admin labels an unclaimed application as `CourseApplication(None, <course uuid>)`). The smoke gate passed.
 
 ## Methodology
 
-- Manual browser walkthrough via Playwright MCP against a dev server on port 8052.
-- Viewports: desktop 1920x1080 (section 7 desktop at 1280), mobile 375x812, tablet 768x1024.
-- A fresh browser context was used for every "fresh anonymous browser" step.
-- Mailpit was read through its API.
-- The dev DB was empty at start. It was seeded per §0.2 by the QA data helper (create_demo_data, content_save, qa_create_course_access_types, factories).
-- The expired claim token was produced by signing with a timestamp 4 days old. No settings change and no server restart.
-- Screenshots were collected into `screenshots/` beside this report, and every referenced image exists there.
+The run drove the dev server on port 8784 with Playwright MCP at 1920x1080 for the functional sections and at 375x812, 768x1024 and 1280x800 for the layout section. Mailpit was read through its API. Screenshots were collected into `spec_dd/2. in progress/ananomous-course-applications/screenshots/`, and every referenced image exists beside this report.
+
+Two URL substitutions were made against the test plan. The plan's `/courses/<slug>/` URL is the login-required resume redirector, and the public page is `/courses/<slug>/detail/`. The plan's URLs also omit the `/applications/` prefix, so that prefix was added.
+
+Native `required` attributes block an empty submit in the browser, so the server-side 422 branches were exercised with the form set to `noValidate`.
 
 ## Diff scoping
 
-Class: FULL, triggered by the changed templates (applicant_details.html, application_status.html, apply.html, claim.html, email/*, partials/applicant_details_field.html, plus 57 .py / .md files across accounts, course_applications, form_engine, qa_helpers, config). Nothing was skipped: desktop, mobile and tablet all ran.
+Class: FULL. Files that triggered it:
+
+- `freedom_ls/course_applications/templates/course_applications/applicant_details.html`
+- `freedom_ls/course_applications/templates/course_applications/application_status.html`
+- `freedom_ls/course_applications/templates/course_applications/apply.html`
+- `freedom_ls/course_applications/templates/course_applications/claim.html`
+- `freedom_ls/course_applications/templates/course_applications/email/*`
+- `freedom_ls/course_applications/templates/course_applications/partials/applicant_details_field.html`
+- `freedom_ls/accounts/templates/cotton/consent-checkboxes.html`
+- `freedom_ls/base/templates/account/signup.html`
+- `freedom_ls/base/templates/allauth/layouts/manage.html`
+- `freedom_ls/course_applications/views.py`
+- `freedom_ls/course_applications/claims.py`
+- `freedom_ls/course_applications/admin.py`
+- `freedom_ls/form_engine/views.py`
+- `freedom_ls/form_engine/admin.py`
+- `freedom_ls/accounts/forms.py`
+- `freedom_ls/accounts/models.py`
+- plus tests, migrations, docs and qa_helpers
+
+Desktop, mobile and tablet passes all ran. Nothing was skipped.
 
 ## Smoke gate
 
-Pass. Pages checked:
+Status: pass. Pages checked:
 
-- http://127.0.0.1:8052/
-- http://127.0.0.1:8052/courses/functionality-demo-application-gated-course/
+- `http://127.0.0.1:8784/` (anonymous home with the branch badge `ananomous-course-applications`; signed in as the claimed applicant it rendered the dashboard with the application listed)
+- `http://127.0.0.1:8784/applications/apply/functionality-demo-application-gated-course/your-details/` (primary changed page, 200 with the details form)
+- `http://127.0.0.1:8784/admin/` (signed in as demodev@email.com)
 
-## Results
+## Test results
 
-| Test | Viewport | Status | Screenshot | Note |
-|---|---|---|---|---|
-| 1.1 | desktop | pass | ![](screenshots/page-2026-10-11T08-27-10-443Z.png) | Apply now lands on the details step; fields, consent links, Previous/Next, no password, honeypot hidden |
-| 1.2 | desktop | pass | ![](screenshots/page-2026-10-11T08-28-06-370Z.png) | 422 errors for empty, bad email, unticked consent and honeypot; no applicant row for honeypot |
-| 1.3 | desktop | pass | ![](screenshots/page-2026-10-11T08-28-41-666Z.png) | Email trimmed and lowercased; page 1 reached; Previous/Next keep the same application |
-| 1.4 | desktop | pass | ![](screenshots/page-2026-10-11T08-29-42-465Z.png) | Upload/replace/remove/download, check answers, submit, status page, one Mailpit message; see also ![](screenshots/page-2026-10-11T08-30-05-503Z.png) ![](screenshots/page-2026-10-11T08-30-10-976Z.png) |
-| 1.5 | desktop | pass | — | Fresh context and signed-in other user get 404 on status, page, answers and file |
-| 3.1 | desktop | pass | ![](screenshots/page-2026-10-11T08-30-52-304Z.png) | Claim GET shows single Confirm; reload does not consume; no user created |
-| 3.2 | desktop | pass | ![](screenshots/page-2026-10-11T08-31-53-035Z.png) | Confirm, set password, status, dashboard, consents; reuse gives invalid page ![](screenshots/page-2026-10-11T08-32-13-599Z.png) |
-| 2 | desktop | pass | ![](screenshots/page-2026-10-11T08-32-28-104Z.png) | Form-less course flow; one email; replay lands on the same status |
-| 3.3 | desktop | fail | — | Flow works, but the claim confirm copy promises a password step that existing accounts never see (B1) |
-| 3.4 | desktop | pass | — | Other-site email gets the invalid-link page; no user created |
-| 3.5 | desktop | pass | — | Inactive user redirected to login, not signed in |
-| 3.6 | desktop | pass | ![](screenshots/page-2026-10-11T08-34-11-006Z.png) | Tampered gives invalid; expired gives resend, see ![](screenshots/page-2026-10-11T08-34-16-533Z.png) |
-| 4 | desktop | pass | — | Signed-in user resumes page 1; CTA reads "View my application" on form-less course |
-| 5 | desktop | pass | — | Policy variants respected and restored |
-| 6.1 | desktop | pass | ![](screenshots/page-2026-10-11T08-35-26-613Z.png) | Email verified column correct |
-| 6.2 | desktop | pass | — | Unverified filter and search work |
-| 6.3 | desktop | pass | ![](screenshots/page-2026-10-11T08-35-44-730Z.png) | Summary rows correct; raw __str__ cosmetics noted |
-| 6.4 | desktop | pass | — | Form progress admin shows Unverified applicant |
-| 6.5 | desktop | pass | — | Question answer files show Unverified; downloads return 200 |
-| 6.6 | desktop | pass | — | Anonymous applicants admin is view-only |
-| 6.7 | desktop | pass | ![](screenshots/page-2026-10-11T08-37-10-744Z.png) | Delete works; redirects to admin index |
-| 6.8 | desktop | pass | — | Bulk delete removes applications, progress and files |
-| 6.9 | desktop | pass | — | Legal consents inline correct; user delete cascades |
-| 7 | desktop (1280) | pass | — | No horizontal overflow on all checked pages |
-| 7 | mobile | pass | ![](screenshots/page-2026-10-11T08-39-04-905Z.png) | No overflow; see also ![](screenshots/page-2026-10-11T08-39-18-380Z.png) ![](screenshots/page-2026-10-11T08-39-19-666Z.png); dev badge overlaps Previous |
-| 1.1 | mobile | pass | ![](screenshots/page-2026-10-11T08-39-04-905Z.png) | Fields full-width; touch targets 40-42px |
-| 7 | tablet | pass | ![](screenshots/page-2026-10-11T08-39-40-994Z.png) | No overflow; footer on one row |
+| Test | Viewport | Status | Notes |
+|---|---|---|---|
+| 1.1 | desktop | pass | Apply now on the public detail page goes to the details step with no login or signup. Fields, two consent checkboxes linking to terms and privacy (target=_blank), no password field, honeypot hidden. ![](screenshots/page-2026-10-12T13-50-05-354Z.png) |
+| 1.2 | desktop | pass | With noValidate the server returns 422 with required errors on Email, First name and both consents; invalid email message shown; typed values kept; no Mailpit message and no AnonymousApplicant created. ![](screenshots/page-2026-10-12T13-50-44-358Z.png) |
+| 1.2-honeypot | desktop | pass | `fax_number=x` returns 422 with the callout "We could not process this application…". Plan expected "sign-up" wording (see General notes). No AnonymousApplicant created. ![](screenshots/page-2026-10-12T13-51-06-137Z.png) |
+| 1.3 | desktop | pass | Valid details (email trimmed and lowercased) land on page 1 of the application with page links 1 2 3. Previous shows the details prefilled, checkboxes unticked; Next returns to the same application. ![](screenshots/page-2026-10-12T13-51-26-098Z.png) |
+| 1.4 | desktop | **fail** | Pages, upload (download, remove, re-upload), check-your-answers, edit and submit all work; status page shows received copy and emailed-link sentence; one correct Mailpit message; apply and details URLs redirect to status. FAIL: the status page shows a Back to dashboard button (href `/`) for an anonymous visitor; the plan expects a back-to-course button instead (B1). Reopening page 1 of the submitted application gives 404 (see General notes). ![](screenshots/page-2026-10-12T13-53-25-123Z.png) |
+| 1.5 | desktop | pass | Fresh context: status, page 1 and check-your-answers 302 to login; file URL 404. Signed-in non-owner: status 404, file 404. Nothing exposed. |
+| 3.1 | desktop | pass | GET on the claim link renders the confirm page with one Confirm button, Cache-Control no-store; reloads identical; no User created by the GETs. ![](screenshots/page-2026-10-12T13-55-24-235Z.png) |
+| 3.2 | desktop | pass | Confirm signs in and redirects to set-password with next=status; status shows pending-review copy; dashboard lists the application; user, verified email and two LegalConsent rows exist. Reopened claim link shows invalid. ![](screenshots/page-2026-10-12T13-55-40-575Z.png) ![](screenshots/page-2026-10-12T13-55-58-762Z.png) |
+| 2 | desktop | pass | Form-less course: details step, confirmation page (Submit application, Previous), status page with emailed-link sentence. Back button and a second POST both land on the same status page; one email, one application row. ![](screenshots/page-2026-10-12T13-56-24-989Z.png) |
+| 3.3 | desktop | pass | Existing-user email: Confirm signs in directly on the status page with no set-password; first name unchanged; no new LegalConsent rows; application attached and verified. |
+| 3.4 | desktop | pass | Other-site email behaves like section 2; the claim link renders the invalid page already on GET (no Confirm); visitor stays signed out; no user created; application stays unverified. |
+| 3.5 | desktop | pass | Inactive user: Confirm redirects to login, still signed out; application attached to the inactive user, verified, claimed_at set. ![](screenshots/page-2026-10-12T13-57-47-856Z.png) |
+| 3.6 | desktop | pass | Tampered token shows invalid; four-day-old token shows expired with Send a new link; pressing it sends one new email; the new link confirms as in 3.2. ![](screenshots/page-2026-10-12T13-58-37-053Z-expired.png) |
+| 4 | desktop | pass | Signed-in applicant: Apply now goes straight to page 1 with no details step and an empty left footer slot; details URL redirects into the application; the form-less course shows View my application. |
+| 5 | desktop | pass | With require_name and require_terms_acceptance off the details step drops the checkboxes and makes first name optional; with allow_signups off the details step is unchanged while `/accounts/signup/` shows Sign Up Closed. Policy restored. ![](screenshots/page-2026-10-12T13-59-37-644Z-policy.png) |
+| 6.1 | desktop | pass | Applications changelist shows an Email verified column with ticks and crosses and the anonymous applicant in the Applicant columns. ![](screenshots/page-2026-10-12T14-00-24-162Z.png) |
+| 6.2 | desktop | pass | Email verified filter (Verified / Unverified) works; search by email finds the row. |
+| 6.3 | desktop | **fail** | Change page shows the expected summary rows. FAIL (cosmetic): page title, breadcrumb and delete-confirmation listings label the application `CourseApplication(None, 53fc7929-...)` (B2). |
+| 6.4 | desktop | pass | Form progress records changelist shows Applicant = Unverified: email; change page has summary row and Application link. Search box does not match the anonymous email (see General notes). ![](screenshots/page-2026-10-12T14-02-25-420Z-form-progress-change.png) |
+| 6.5 | desktop | pass | Question answer files changelist shows the unverified applicant; Download returns 200 image/png. |
+| 6.6 | desktop | pass | Anonymous applicants changelist has the expected columns, no Add button, search works; change page is read-only with a Delete link. ![](screenshots/page-2026-10-12T14-02-21-311Z-anon-applicant-change.png) |
+| 6.7 | desktop | pass | Single delete confirmation lists 1 applicant and 1 application; delete succeeds and both are gone. ![](screenshots/page-2026-10-12T14-02-55-452Z-anon-delete-confirm.png) |
+| 6.8 | desktop | pass | Bulk delete lists 2 applicants and 2 applications; after confirming, applicants, applications, form progress record and file are all gone. ![](screenshots/page-2026-10-12T14-03-25-721Z-bulk-delete-confirm.png) |
+| 6.9 | desktop | pass | Deleting the claimed user lists and removes form progress, answers, file, consents, signup attribution, applicant, application and email address. User change page showed the two Legal consents rows. ![](screenshots/page-2026-10-12T14-03-32-205Z-user-delete-confirm.png) ![](screenshots/page-2026-10-12T14-02-54-389Z-user-change-consents.png) |
+| 7 | mobile (375x812) | pass | No horizontal scroll on the five pages; footer buttons stack full width with Next above Previous; consent labels on one line. The status page shows Back to dashboard (B1). ![](screenshots/page-2026-10-12T14-05-00-839Z-mobile-details-errors.png) ![](screenshots/page-2026-10-12T14-05-01-357Z-mobile-claim-confirm.png) ![](screenshots/page-2026-10-12T14-05-01-763Z-mobile-claim-expired.png) ![](screenshots/page-2026-10-12T14-05-02-270Z-mobile-claim-invalid.png) ![](screenshots/page-2026-10-12T14-05-02-649Z-mobile-status-unverified.png) |
+| 7 | tablet (768x1024) | pass | No horizontal scroll on any of the five pages; Previous and Next on one row; consent labels on one line. ![](screenshots/page-2026-10-12T14-05-03-618Z-tablet-details-errors.png) ![](screenshots/page-2026-10-12T14-05-04-164Z-tablet-claim-confirm.png) ![](screenshots/page-2026-10-12T14-05-04-522Z-tablet-claim-expired.png) ![](screenshots/page-2026-10-12T14-05-04-927Z-tablet-claim-invalid.png) ![](screenshots/page-2026-10-12T14-05-05-377Z-tablet-status-unverified.png) |
+| 7 | desktop (1280x800) | pass | No horizontal scroll on any of the five pages; footer buttons on one row; consent labels on one line. ![](screenshots/page-2026-10-12T14-05-06-257Z-desktop1280-details-errors.png) ![](screenshots/page-2026-10-12T14-05-06-868Z-desktop1280-claim-confirm.png) ![](screenshots/page-2026-10-12T14-05-07-320Z-desktop1280-claim-expired.png) ![](screenshots/page-2026-10-12T14-05-07-687Z-desktop1280-claim-invalid.png) ![](screenshots/page-2026-10-12T14-05-08-098Z-desktop1280-status-unverified.png) |
 
 ## Design check
 
-No design states tested.
+no design states tested
 
-## B1: Claim confirm page promises a password step that existing accounts never see
+### B1 Unverified status page offers Back to dashboard to an anonymous applicant
 
-Manifestations: 3.3 (desktop), 7 (mobile).
+Manifestations:
 
-![](screenshots/page-2026-10-11T08-30-52-304Z.png)
-![](screenshots/page-2026-10-11T08-39-18-380Z.png)
+- Test 1.4, desktop
+- Test 7, mobile
 
-- Expected: the claim confirm copy is accurate for whoever follows the link. An existing same-site account goes straight to the status page signed in, so it should not be told it will choose a password.
-- Actual: `claim.html` always says "You will choose a password on the next page." For qa_existing_applicant@email.com, Confirm lands directly on the status page with no password page. The other-site and inactive cases go to the invalid-link or login page.
+![](screenshots/page-2026-10-12T13-53-25-123Z.png)
+![](screenshots/page-2026-10-12T14-05-02-649Z-mobile-status-unverified.png)
+
+Expected: Per the test plan, the status page an anonymous applicant sees after submitting has a button back to the course and no Back to dashboard button (the visitor has no account and no dashboard).
+
+Actual: `application_status.html` always renders the Back to dashboard button (href `/`), which takes the signed-out visitor to the public home page. The spec is silent on this button, so the plan and the code disagree.
+
+### B2 Admin labels an unclaimed application as CourseApplication(None, <course uuid>)
+
+Manifestations:
+
+- Test 6.3, desktop
+
+![](screenshots/page-2026-10-12T14-02-55-452Z-anon-delete-confirm.png)
+![](screenshots/page-2026-10-12T14-03-25-721Z-bulk-delete-confirm.png)
+
+Expected: The admin change page title, breadcrumb and delete-confirmation listings identify an unverified application without printing None. The label must stay free of the email: `AnonymousApplicant.__str__` omits it on purpose because the admin log outlives erasure.
+
+Actual: `CourseApplication.__str__` returns `f"CourseApplication({self.user_id}, {self.course_id})"` and `user_id` is None before the claim, so every admin label reads `CourseApplication(None, 53fc7929-...)`.
 
 ## Bug status
 
-| Bug | Status |
-|---|---|
-| B1 | **RESOLVED** — Claim confirm page promises a password step that existing accounts never see. Decision: neutral wording for everyone, so the page never reveals whether an account exists for the address. The sentence now reads "You can then follow your application's progress while signed in." Guarded by `test_claim_get_does_not_promise_a_password_step`. |
+**UNRESOLVED** — Unverified status page offers Back to dashboard to an anonymous applicant (reason: product decision; the spec is silent, the test plan expects a button back to the course and no Back to dashboard, and the template always renders Back to dashboard. Decide which, then change `application_status.html` to match)
+**FIXED** (commit: 2b303f3f) — Admin labels an unclaimed application as CourseApplication(None, <course uuid>). `CourseApplication.__str__` now prints `CourseApplication(anonymous <applicant id>, <course id>)` for an unclaimed application and keeps `CourseApplication(<user id>, <course id>)` for a claimed one; the label stays free of the email. Re-verified in the browser on the change page and on the anonymous-applicant delete confirmation:
+
+![](screenshots/page-2026-10-12T14-11-05-138Z-B2-reverify-delete-confirm.png)
 
 ## General notes
 
-- The plan's course URLs `/courses/<slug>/` are the pre-existing login-required `course_home` view. Anonymous visitors must use `/courses/<slug>/detail/` (unchanged by this branch). The app's URLs are also prefixed `/applications/` (e.g. `/applications/apply/<slug>/your-details/`, `/applications/status/<uuid>/`, `/applications/claim/<token>/`) where the plan wrote `/apply/…`, `/status/…`, `/claim/…`. The plan should be updated.
-- Browser-native `required` validation blocks an empty details submit before the server. The 422 path was exercised with `novalidate`.
-- Honeypot copy reads "We couldn't process this application…" (the plan quoted the sign-up wording). The application wording fits the context.
-- The "A new link is on its way" page is rendered as the POST response with no redirect, so a reload re-posts and sends another email.
-- Admin cosmetics:
-  - The course application title/breadcrumb read `CourseApplication(None, <course uuid>)`.
-  - The Applicant link reads `AnonymousApplicant(<email>, <course uuid>)` (raw `__str__`).
-  - After deleting an anonymous applicant the admin redirects to the admin index rather than the changelist.
-  - The bulk-delete confirmation lists applicants and applications but not the form progress records and files that are also removed (they are removed).
-- The details step creates an AnonymousApplicant row before submission (qa_consent appeared in the admin without submitting).
-- Rate limits were not checked (off in dev settings). They are covered by the test suite.
-- The dev-only branch badge overlaps the Previous button corner at 375px.
+None of these is a bug.
 
-status: ok · reason: 1 bug — 0 fixed, 1 unresolved; report rendered, screenshots verified
+- Honeypot copy: the live message says "We couldn't process this application…" where the plan expected "We couldn't process this sign-up…"; the application wording fits the context.
+- The plan expects strangers to get 404 on the status / page / check-your-answers URLs; a cookie-less visitor is instead 302-redirected to the login page whether or not the application exists (documented in `_owned_application`), which discloses nothing. A signed-in non-owner gets 404 as expected.
+- Plan step 1.4.8 expects a submitted anonymous application's page 1 to render read-only in the owning session; the code returns 404 on purpose (a visitor session reaches the sitting only while it is a draft).
+- The other-site claim link renders the invalid page already on GET, so there is no Confirm to press (stricter than the plan).
+- The Form progress records admin search box does not match an anonymous applicant's email.
+- The bulk-delete confirmation page itemises the applicants and applications but not the form progress record and file that the receiver removes; they were gone afterwards.
+- After a single anonymous-applicant delete the admin redirected to the admin index rather than the changelist.
+- Rate limits were not tested (`ACCOUNT_RATE_LIMITS` is off in `settings_dev.py`), per the plan.
+- Residue this run left in the dev database: unclaimed anonymous applicants qa_consent@email.com, qa_closed_signup@email.com and qa_layout@email.com, claimed applications for qa_existing_applicant, qa_inactive and qa_resend, and an unsubmitted form-course application for qa_existing_applicant. Mailpit was emptied at the start of the run.
+
+status: ok
+reason: 2 bugs — 1 fixed (2b303f3f), 1 unresolved (product decision); report rendered, screenshots verified
