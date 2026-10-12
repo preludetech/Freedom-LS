@@ -1,0 +1,9 @@
+{% comment %}
+The polite announcement for messages that arrive while the thread is open. It
+sits outside the log so it is read once, and names the sender and the count
+only, never the text. `oob` replaces the region already on the page.
+{% endcomment %}
+<div id="thread-status"
+     role="status"
+     class="sr-only"
+     {% if oob %}hx-swap-oob="true"{% endif %}>{{ announcement }}</div>

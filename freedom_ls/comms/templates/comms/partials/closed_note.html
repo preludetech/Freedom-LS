@@ -3,8 +3,11 @@ Stands in for the composer on a thread that takes no new messages. It keeps
 the id #composer so the thread has one place for "what happens next".
 {% endcomment %}
 <div id="composer"
+     {% if oob %}hx-swap-oob="outerHTML:#composer"{% endif %}
      role="status"
      class="flex items-start gap-3 border-t border-border bg-surface-2 px-4 py-3 text-on-surface">
+    <input type="hidden" name="composer" value="closed" id="composer-state">
+    <input type="hidden" name="draft" value="0" id="composer-draft">
     <c-icon name="locked" class="size-5 shrink-0" />
     <div>
         <p class="m-0 font-semibold">{{ closed_heading }}</p>

@@ -17,6 +17,7 @@ class CommsConfig(AppSettings):
     MESSAGE_MAX_LENGTH: int
     MESSAGE_PAGE_SIZE: int
     MESSAGE_INBOX_POLL_SECONDS: int
+    MESSAGE_THREAD_POLL_SECONDS: int
 
     declared_settings = {
         "NOTIFICATIONS_ENABLED": Setting(default=False),
@@ -30,6 +31,7 @@ class CommsConfig(AppSettings):
         "MESSAGE_MAX_LENGTH": Setting(default=2000),
         "MESSAGE_PAGE_SIZE": Setting(default=30),
         "MESSAGE_INBOX_POLL_SECONDS": Setting(default=45),
+        "MESSAGE_THREAD_POLL_SECONDS": Setting(default=8),
     }
 
 

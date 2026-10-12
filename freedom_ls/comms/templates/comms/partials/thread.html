@@ -22,15 +22,44 @@ and the log is the only part that scrolls.
         </h1>
     </header>
     {% include "comms/partials/thread_older.html" %}
-    <ol id="thread-log"
-        x-ref="log"
-        role="log"
-        aria-label="Messages with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}"
-        class="m-0 min-h-0 flex-1 list-none space-y-3 overflow-y-auto px-4 py-4 [scroll-padding-bottom:5rem]">
-        {% for entry in thread_entries %}
-            {% include "comms/partials/message_entry.html" %}
-        {% endfor %}
-    </ol>
+    <div class="relative flex min-h-0 flex-1 flex-col">
+        <ol id="thread-log"
+            x-ref="log"
+            x-on:scroll="onScroll"
+            role="log"
+            aria-label="Messages with {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}"
+            class="m-0 min-h-0 flex-1 list-none space-y-3 overflow-y-auto px-4 py-4 [scroll-padding-bottom:5rem]">
+            {% for entry in thread_entries %}
+                {% include "comms/partials/message_entry.html" %}
+            {% endfor %}
+        </ol>
+        <div class="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+            <c-button variant="primary"
+                      size="small"
+                      type="button"
+                      class="pointer-events-auto"
+                      x-show="hasNew"
+                      x-cloak
+                      x-transition
+                      x-on:click="showNew">
+                New messages
+            </c-button>
+        </div>
+    </div>
+    {% include "comms/partials/thread_status.html" %}
+    {% include "comms/partials/thread_cursor.html" %}
+    {% comment %}
+    The poll asks for what is newer than the cursor and carries the composer's
+    state and draft flag, so a swap never replaces a form that holds typed text.
+    {% endcomment %}
+    <div x-data="refreshTimer" data-poll-seconds="{{ thread_poll_seconds }}">
+        <span x-ref="target"
+              hx-get="{% url 'conversations:thread_poll' conversation.pk %}"
+              hx-trigger="refresh"
+              hx-include="#thread-cursor, #composer-state, #composer-draft"
+              hx-target="#thread-log"
+              hx-swap="beforeend"></span>
+    </div>
     {% if decision.allowed %}
         {% include "comms/partials/composer.html" %}
     {% else %}

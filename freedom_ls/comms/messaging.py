@@ -7,7 +7,7 @@ functions here work outside a request (a worker, a shell) as well as inside one.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, cast
 from uuid import UUID
 
@@ -26,6 +26,7 @@ from django.db.models import (
 from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import ngettext
 
 from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging_loader import get_messaging_policy
@@ -376,6 +377,35 @@ def page_before(
 ) -> tuple[list[Message], bool]:
     """The page of messages just older than ``cursor``, oldest first, and whether more remain."""
     return _page_with_more(conversation, cursor)
+
+
+# Sorts before every real message, so no cursor means "from the first message".
+_START_OF_THREAD = (datetime.min.replace(tzinfo=UTC), UUID(int=0))
+
+
+def messages_after(
+    conversation: Conversation, cursor: tuple[datetime, UUID] | None
+) -> list[Message]:
+    """The messages strictly newer than ``cursor``, oldest first.
+
+    At most one page is returned; a longer backlog arrives over the next polls,
+    each of which moves the cursor to the last message it carried. ``None``
+    starts from the first message of the thread.
+    """
+    return _message_page(
+        conversation,
+        after=cursor if cursor is not None else _START_OF_THREAD,
+        limit=config.MESSAGE_PAGE_SIZE,
+    )
+
+
+def new_messages_announcement(count: int, sender_name: str) -> str:
+    """The polite screen-reader line for messages that arrived while the thread was open."""
+    return ngettext(
+        "%(count)d new message from %(name)s",
+        "%(count)d new messages from %(name)s",
+        count,
+    ) % {"count": count, "name": sender_name}
 
 
 @dataclass(frozen=True, slots=True)

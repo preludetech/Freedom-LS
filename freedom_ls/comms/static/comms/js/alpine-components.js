@@ -124,6 +124,19 @@ document.addEventListener("alpine:init", () => {
         };
     });
 
+    // The composer form (comms/partials/composer.html).
+    //
+    // Keeps the hidden "draft" flag at 1 while the box holds text. The thread
+    // poll sends the flag so it never swaps out a form with unsent text.
+    Alpine.data("messageComposer", () => ({
+        init() {
+            this.onInput();
+        },
+        onInput() {
+            this.$refs.draft.value = this.$refs.body.value === "" ? "0" : "1";
+        },
+    }));
+
     // The thread pane (comms/partials/thread.html).
     //
     // Sizes the pane to the viewport below the site header, so the composer
@@ -131,13 +144,38 @@ document.addEventListener("alpine:init", () => {
     // at its newest message. The header's height changes across breakpoints,
     // so the measurement repeats on window resize (bound with x-on:resize.window
     // on the pane, which Alpine removes with the component).
+    //
+    // Entries appended by a send or a poll follow the reader only when they
+    // were already at the bottom or the entry is their own send; otherwise a
+    // "New messages" button counts what arrived below.
     Alpine.data("conversationThread", () => ({
         // The log's scroll position just before earlier messages are
         // prepended, or null when no prepend is in flight.
         beforePrepend: null,
+        // The log's last entry just before an append, or undefined when no
+        // append is in flight (null is an empty log).
+        beforeAppend: undefined,
+        atBottom: true,
+        newCount: 0,
+        reduceMotion: false,
         init() {
+            this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
             this.measure();
             this.scrollToLatest();
+        },
+        get hasNew() {
+            return this.newCount > 0;
+        },
+        onScroll() {
+            const log = this.$refs.log;
+            this.atBottom = log.scrollHeight - log.scrollTop - log.clientHeight <= 48;
+            if (this.atBottom) {
+                this.newCount = 0;
+            }
+        },
+        showNew() {
+            this.scrollToLatest(true);
+            this.newCount = 0;
         },
         measure() {
             const header = document.querySelector("header.header");
@@ -148,8 +186,11 @@ document.addEventListener("alpine:init", () => {
         // and polls append and should not move the reader.
         rememberScroll(event) {
             const log = this.$refs.log;
-            const trigger = event.detail.elt;
-            if (event.detail.target !== log || !trigger.closest("#thread-older")) {
+            if (event.detail.target !== log) {
+                return;
+            }
+            if (!event.detail.elt.closest("#thread-older")) {
+                this.beforeAppend = log.lastElementChild;
                 return;
             }
             this.beforePrepend = {
@@ -157,9 +198,37 @@ document.addEventListener("alpine:init", () => {
                 top: log.scrollTop,
             };
         },
+        // Entries after the one that ended the log before the swap are new.
+        // Follow them when the reader was at the bottom or sent one; else
+        // count the others from the sender as unseen.
+        followAppended() {
+            if (this.beforeAppend === undefined) {
+                return;
+            }
+            const log = this.$refs.log;
+            let entry = this.beforeAppend
+                ? this.beforeAppend.nextElementSibling
+                : log.firstElementChild;
+            this.beforeAppend = undefined;
+            let own = false;
+            let incoming = 0;
+            for (; entry; entry = entry.nextElementSibling) {
+                if (entry.hasAttribute("data-own")) {
+                    own = true;
+                } else {
+                    incoming += 1;
+                }
+            }
+            if (this.atBottom || own) {
+                this.scrollToLatest(true);
+            } else {
+                this.newCount += incoming;
+            }
+        },
         // Prepended entries push the reader's place down by their height, so
         // the scroll offset grows by the same amount to keep it still.
         keepScrollAfterPrepend() {
+            this.followAppended();
             if (this.beforePrepend === null) {
                 return;
             }
@@ -168,9 +237,14 @@ document.addEventListener("alpine:init", () => {
                 this.beforePrepend.top + (log.scrollHeight - this.beforePrepend.height);
             this.beforePrepend = null;
         },
-        scrollToLatest() {
+        // The first scroll on load is instant; later ones glide unless the
+        // reader asked for reduced motion.
+        scrollToLatest(animate = false) {
             const log = this.$refs.log;
-            log.scrollTop = log.scrollHeight;
+            log.scrollTo({
+                top: log.scrollHeight,
+                behavior: animate && !this.reduceMotion ? "smooth" : "auto",
+            });
         },
     }));
 });

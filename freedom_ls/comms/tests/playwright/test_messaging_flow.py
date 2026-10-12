@@ -122,3 +122,44 @@ def test_picker_search_choose_and_send_on_a_phone(
         page.set_viewport_size(viewport)
         page.goto(reverse_url(live_server, "conversations:start"))
         assert_no_horizontal_overflow(page)
+
+
+def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    settings.MESSAGE_THREAD_POLL_SECONDS = 1
+    page = logged_in_page
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    conversation = ConversationFactory(between=(logged_in_user, kai))
+    MessageFactory(conversation=conversation, sender=kai, body="Welcome to the course")
+    page.goto(
+        reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
+    )
+    box = page.get_by_label("Message to Kai Ngata")
+    expect(page.get_by_text("Welcome to the course")).to_be_visible()
+
+    # A message arrives while a reply is half typed.
+    box.fill("Half a reply")
+    MessageFactory(
+        conversation=conversation, sender=kai, body="Did you see the new topic?"
+    )
+
+    # The poll appends it and leaves the draft alone.
+    expect(page.get_by_text("Did you see the new topic?")).to_be_visible()
+    expect(box).to_have_value("Half a reply")
+
+    # The announcement names the sender and the count, never the text.
+    status = page.locator("#thread-status")
+    expect(status).to_have_text("1 new message from Kai Ngata")
+    assert "Did you see" not in (status.text_content() or "")
+
+    # Layout: no horizontal overflow at any viewport.
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        assert_no_horizontal_overflow(page)
