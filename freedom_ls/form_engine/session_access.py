@@ -31,10 +31,23 @@ def allow_anonymous_form_progress(
     request.session[ANONYMOUS_FORM_PROGRESS_SESSION_KEY] = [*_allowed_pks(request), pk]
 
 
+def forget_all_anonymous_form_progress(request: HttpRequest) -> None:
+    """Drop every sitting this session was allowed.
+
+    For the moment the session gains a user: whatever it was allowed as a
+    visitor must not carry over to whoever has just signed in.
+    """
+    request.session[ANONYMOUS_FORM_PROGRESS_SESSION_KEY] = []
+
+
 def owned_form_progress(request: HttpRequest) -> QuerySet[FormProgress]:
     """The sittings this request may act on: the signed-in user's, or the
     user-less ones this session was allowed. A sitting that gains a user drops
-    out of the anonymous branch at once."""
+    out of the anonymous branch at once, and so does one that is completed:
+    a visitor's answers are theirs to write, not to read back later from the
+    same shared computer."""
     if request.user.is_authenticated:
         return FormProgress.objects.filter(user=request.user)
-    return FormProgress.objects.filter(user__isnull=True, pk__in=_allowed_pks(request))
+    return FormProgress.objects.filter(
+        user__isnull=True, completed_time__isnull=True, pk__in=_allowed_pks(request)
+    )

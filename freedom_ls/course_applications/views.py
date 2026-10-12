@@ -188,8 +188,13 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
         if not app.is_submitted and app.form_progress is not None:
             return redirect(_resume_url(app, app.form_progress))
         return redirect("course_applications:status", pk=app.pk)
-    if request.method == "POST":
+    if course.application_form is not None or request.method == "POST":
         app = _start_application(course, anonymous_applicant=applicant)
+        if app.form_progress is not None:
+            # The course gained a form after the details step, so there is a
+            # sitting to fill in before anything is submitted.
+            allow_anonymous_form_progress(request, app.form_progress)
+            return redirect(_resume_url(app, app.form_progress))
         record_application_submitted(request, course)
         send_application_claim_email(request, applicant)
         return redirect("course_applications:status", pk=app.pk)
@@ -261,6 +266,10 @@ def _owned_application_with_form(
 
     Returns all three because an application with no sitting has no form pages
     to show, and 404 is the honest answer for a URL that names one.
+
+    A visitor's session reaches the sitting only while it is a draft. Once
+    submitted, the answers and files wait for whoever follows the claim link,
+    not for the next person at the same computer.
     """
     app: CourseApplication = get_object_or_404(
         owned_applications(request).select_related(
@@ -268,7 +277,7 @@ def _owned_application_with_form(
         ),
         pk=pk,
     )
-    if app.form_progress is None:
+    if app.form_progress is None or (app.user_id is None and app.is_submitted):
         raise Http404
     return app, app.form_progress.form, app.form_progress
 

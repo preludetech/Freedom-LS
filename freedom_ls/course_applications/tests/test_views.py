@@ -1885,6 +1885,103 @@ def _submit_anonymous_application(client, form, application):
     return client.post(_check_url(application))
 
 
+def _attach_file(client, form, application):
+    file_question = _questions_on(form, 2)[0]
+    client.post(
+        reverse(
+            "form_engine:question_file_upload",
+            kwargs={
+                "progress_pk": application.form_progress.pk,
+                "question_pk": file_question.pk,
+            },
+        ),
+        {"file": SimpleUploadedFile("id-scan.png", png_bytes())},
+    )
+    return application.form_progress.answers.get(question=file_question).answer_file
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("route", "extra"),
+    [("form_page", {"page_number": 1}), ("check_answers", {})],
+)
+def test_a_submitted_anonymous_application_hides_its_answers_from_the_session(
+    mock_site_context, client, route, extra
+):
+    _course, form, application = _anonymous_form_applicant(client)
+    _submit_anonymous_application(client, form, application)
+
+    response = client.get(
+        reverse(f"course_applications:{route}", kwargs={"pk": application.pk, **extra})
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_submitted_anonymous_application_hides_its_files_from_the_session(
+    mock_site_context, client
+):
+    _course, form, application = _anonymous_form_applicant(client)
+    answer_file = _attach_file(client, form, application)
+    _submit_anonymous_application(client, form, application)
+
+    response = client.get(
+        reverse(
+            "form_engine:own_question_answer_file", kwargs={"file_pk": answer_file.pk}
+        )
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_a_submitted_anonymous_application_still_shows_its_status_to_the_session(
+    mock_site_context, client
+):
+    _course, form, application = _anonymous_form_applicant(client)
+    _submit_anonymous_application(client, form, application)
+
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_a_course_that_gains_a_form_after_the_details_step_sends_the_visitor_into_it(
+    mock_site_context, client
+):
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    _post_details(client, course)
+    _with_form, form = gated_course_with_form()
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+
+    response = client.post(_apply_url(course))
+
+    application = CourseApplication.objects.get(course=course)
+    assert (response["Location"], len(mail.outbox)) == (_page_url(application, 1), 0)
+
+
+@pytest.mark.django_db
+def test_a_sitting_started_from_the_apply_step_is_allowed_to_the_session(
+    mock_site_context, client
+):
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    _post_details(client, course)
+    _with_form, form = gated_course_with_form()
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+    client.post(_apply_url(course))
+    application = CourseApplication.objects.get(course=course)
+
+    response = client.get(_page_url(application, 1))
+
+    assert response.status_code == 200
+
+
 @pytest.mark.django_db
 def test_submitting_an_anonymous_application_stamps_the_sitting(
     mock_site_context, client

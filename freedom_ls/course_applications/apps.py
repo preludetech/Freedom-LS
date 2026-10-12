@@ -7,5 +7,5 @@ class CourseApplicationsConfig(AppConfig):
     verbose_name = "Course applications"
 
     def ready(self) -> None:
-        # No signals yet; application review will add them.
-        pass
+        # NOTE: application review will add its own signals here.
+        from freedom_ls.course_applications import receivers  # noqa: F401

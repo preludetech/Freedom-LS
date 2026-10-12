@@ -186,15 +186,20 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
     expect(page.get_by_text("id-scan.png")).to_be_visible()
     page.get_by_role("button", name="Next").click()
 
-    page.get_by_role("button", name="Submit application").click()
-    expect(page.get_by_text("has been received")).to_be_visible()
-    status_url = page.url
-
+    # Before the submit: once it is in, the session can no longer open the
+    # form pages, only the status page.
+    check_url = page.url
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         page.goto(details_url)
         assert_no_horizontal_overflow(page)
         page.goto(form_page_url)
         assert_no_horizontal_overflow(page)
-        page.goto(status_url)
+    page.goto(check_url)
+
+    page.get_by_role("button", name="Submit application").click()
+    expect(page.get_by_text("has been received")).to_be_visible()
+
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)

@@ -13,6 +13,7 @@ from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.form_engine.session_access import (
     ANONYMOUS_FORM_PROGRESS_SESSION_KEY,
     allow_anonymous_form_progress,
+    forget_all_anonymous_form_progress,
     owned_form_progress,
 )
 
@@ -71,3 +72,24 @@ def test_allowing_a_sitting_twice_stores_it_once(mock_site_context):
     allow_anonymous_form_progress(request, sitting)
 
     assert request.session[ANONYMOUS_FORM_PROGRESS_SESSION_KEY] == [str(sitting.pk)]
+
+
+@pytest.mark.django_db
+def test_an_allowed_sitting_that_was_completed_is_no_longer_owned(mock_site_context):
+    sitting = FormProgressFactory(user=None)
+    request = _anonymous_request()
+    allow_anonymous_form_progress(request, sitting)
+    sitting.complete()
+
+    assert list(owned_form_progress(request)) == []
+
+
+@pytest.mark.django_db
+def test_forgetting_all_sittings_leaves_the_session_owning_none(mock_site_context):
+    request = _anonymous_request()
+    allow_anonymous_form_progress(request, FormProgressFactory(user=None))
+    allow_anonymous_form_progress(request, FormProgressFactory(user=None))
+
+    forget_all_anonymous_form_progress(request)
+
+    assert list(owned_form_progress(request)) == []

@@ -37,6 +37,20 @@ def forget_anonymous_applicant(
     }
 
 
+def forget_all_anonymous_applicants(request: HttpRequest) -> None:
+    """Drop every applicant this session holds, for the moment it gains a user."""
+    request.session[ANONYMOUS_APPLICANTS_SESSION_KEY] = {}
+
+
+def remembered_anonymous_applicants(
+    request: HttpRequest,
+) -> QuerySet[AnonymousApplicant]:
+    """Every unclaimed applicant this session holds, across courses."""
+    return AnonymousApplicant.objects.filter(
+        pk__in=list(_session_map(request).values()), user__isnull=True
+    ).select_related("course_application__form_progress")
+
+
 def anonymous_applicant_for_course(
     request: HttpRequest, course: Course
 ) -> AnonymousApplicant | None:
