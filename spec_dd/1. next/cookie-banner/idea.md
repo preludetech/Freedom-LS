@@ -1,0 +1,1 @@
+We need a cookie banner that tells people that they are being tracked in different ways. When they close the banner then we should store that in the session or somewhere so that we don't keep displaying it and annoying people.
