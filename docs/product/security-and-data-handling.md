@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-12_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -101,7 +101,7 @@ Removing an uploaded file, deleting the applicant's account, and erasing an anon
 
 ### Anonymous Course Applications (built)
 
-An [application-gated course](./learner-experience.md#applying-to-a-course) can be applied for before the visitor has an account, so FLS holds their name, email, consent evidence, answers and uploaded files with no user to own them. That data is site-scoped and reachable only from the browser session that created it; once the visitor claims the application by email, only the signed-in owner can reach it. Uploaded files follow the same rules as [applicant uploads](#applicant-uploads-built).
+An [application-gated course](./learner-experience.md#applying-to-a-course) can be applied for before the visitor has an account, so FLS holds their name, email, consent evidence, answers and uploaded files with no user to own them. That data is site-scoped and reachable only from the browser session that created it; once the visitor claims the application by email, only the signed-in owner can reach it. Uploaded files follow the same rules as [applicant uploads](#applicant-uploads-built). Deleting the course or the application takes an unclaimed applicant's form sitting, answers and uploads with it, so nothing is left behind that no address or account names.
 
 The details step gives the same response whether or not the email is already registered, so it cannot be used to find out who has an account. The emailed claim link is signed, expires, works once, and takes effect only after the recipient confirms on the page, so a mail scanner opening the link does not trigger it. Details submissions, claim emails and file uploads are rate limited; there is no CAPTCHA. An image whose header declares more than 25 million pixels is refused before it is decoded, so a small file cannot ask the server for gigabytes of memory. Account creation on claim is described in [authentication](./authentication.md#accounts-created-by-claiming-an-application), and the admin's unverified flag in [admin interface](./admin-interface.md).
 

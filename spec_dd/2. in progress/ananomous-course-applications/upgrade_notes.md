@@ -7,7 +7,7 @@ changed_template_paths:
   - freedom_ls/base/templates/allauth/layouts/manage.html
 requires_settings_change: true
 changed_settings:
-  - ACCOUNT_RATE_LIMITS  # optional: only projects that define their own dict must add two keys
+  - ACCOUNT_RATE_LIMITS  # optional: only projects that define their own dict must add three keys
 requires_package_upgrade: false
 changed_packages: []
 requires_npm_install: false
@@ -33,8 +33,22 @@ attaches the application. Signed-in apply works as before.
   of application, plus a new `anonymous_applicant` one-to-one to `AnonymousApplicant`.
 - **The `unique_application_per_site_user_course` constraint is now conditional.** It covers only
   applications with no `anonymous_applicant`. A user can therefore hold two applications for the
-  same course after a claim. `get_application_for_course` now returns the newest one. Code that
-  calls `CourseApplication.objects.get(user=…, course=…)` can raise `MultipleObjectsReturned`.
+  same course after a claim. `get_application_for_course` returns a submitted one ahead of any
+  draft, and the newer among equals; `get_active_applications` lists each course once by the same
+  rule, and the check-your-answers page sends a draft that a claimed submission has superseded to
+  that submission's status page. Code that calls `CourseApplication.objects.get(user=…, course=…)`
+  can raise `MultipleObjectsReturned`.
+- **A claim onto an account that never verified the address revokes its password.** The claim
+  verifies the address, revokes whatever password the account had, and sends the claimant to set
+  a new one. This applies to an unconfirmed signup and to an account an operator created by hand,
+  since neither password was set by someone who had proven they owned the mailbox. An account that
+  had verified the address keeps its password. A verified account with no usable password is also
+  sent to set one.
+- **Deleting a `CourseApplication` deletes its user-less `FormProgress`.** A post-delete receiver
+  removes the sitting, its answers and its stored files when the application had no user, so a
+  course or applicant deletion no longer leaves an orphaned sitting behind. A sitting with a user
+  is left alone. Downstream code that deleted such sittings by hand should use
+  `filter(pk=…).delete()` rather than `get(pk=…)`, which now raises `DoesNotExist` for them.
 - **Anonymous visitors are no longer redirected to signup by Apply now.** `apply`,
   `application_status`, `application_form_page`, `application_check_answers` and the form_engine
   file endpoints no longer use `login_required`. Access is limited to the requester's own
@@ -63,10 +77,13 @@ attaches the application. Signed-in apply works as before.
    ```python
    "application_details": "5/m/ip,5/h/key",
    "application_claim_email": "3/h/key",
-   "form_file_upload": "20/m/ip",
+   "form_file_upload": "20/m/key",
    ```
 
-   No system check enforces this. Projects that inherit FLS's `ACCOUNT_RATE_LIMITS` need do nothing.
+   The upload limit is keyed on the sitting, not the client address, so a room of learners behind
+   one network address do not share a bucket; keep the `/key` suffix. A refused upload re-renders
+   the file widget with the reason at HTTP 422. No system check enforces this. Projects that
+   inherit FLS's `ACCOUNT_RATE_LIMITS` need do nothing.
 3. In production, make sure `CACHES` points to a cache that all processes share (for example
    `DATABASE_CACHES` from `freedom_ls/deployment/settings_defaults.py`). A per-process local-memory
    cache lets each worker count separately, so the limits are not enforced as configured.
