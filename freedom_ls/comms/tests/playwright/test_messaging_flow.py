@@ -7,13 +7,21 @@ to the inbox with the row no longer unread, and the layout at each viewport.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 from playwright.sync_api import Page, expect
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
-from freedom_ls.comms.messaging_policy import MessagingDecision, MessagingPolicy
+from freedom_ls.comms.messaging_loader import get_messaging_policy
+from freedom_ls.comms.messaging_policy import (
+    MessagingDecision,
+    MessagingPolicy,
+    MessagingRefusal,
+)
+from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.conftest import reverse_url
 from freedom_ls.tests.playwright_helpers import (
     QA_VIEWPORTS,
@@ -38,6 +46,13 @@ class OpenPolicy(MessagingPolicy):
 
     def recipients_for(self, *, sender, site):
         return User.objects.filter(site=site).exclude(pk=sender.pk)
+
+
+class ClosedPolicy(OpenPolicy):
+    """Refuses every reply."""
+
+    def can_reply(self, *, sender, recipient, site, conversation):
+        return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
 
 
 def test_inbox_to_thread_and_back_on_a_phone(
@@ -163,3 +178,130 @@ def test_thread_receives_a_polled_message_and_keeps_the_typed_draft(
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+
+
+def _open_thread(live_server, page: Page, user: User, settings) -> Conversation:
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    conversation = cast("Conversation", ConversationFactory(between=(user, kai)))
+    MessageFactory(conversation=conversation, sender=kai, body="Welcome to the course")
+    page.goto(
+        reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
+    )
+    expect(page.get_by_text("Welcome to the course")).to_be_visible()
+    return conversation
+
+
+def _sent_bodies(conversation: Conversation) -> list[str]:
+    return list(
+        Message.objects.filter(conversation=conversation)
+        .exclude(body="Welcome to the course")
+        .values_list("body", flat=True)
+    )
+
+
+def test_a_double_click_on_send_posts_once_and_focus_returns_to_the_box(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    page = logged_in_page
+    conversation = _open_thread(live_server, page, logged_in_user, settings)
+
+    box = page.get_by_label("Message to Kai Ngata")
+    box.fill("Only once")
+    page.get_by_role("button", name="Send").dblclick()
+
+    expect(page.get_by_text("Only once")).to_have_count(1)
+    expect(box).to_be_focused()
+    assert _sent_bodies(conversation) == ["Only once"]
+
+
+def test_ctrl_enter_sends_the_message(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    page = logged_in_page
+    conversation = _open_thread(live_server, page, logged_in_user, settings)
+
+    expect(page.get_by_text("Ctrl+Enter to send")).to_be_visible()
+    box = page.get_by_label("Message to Kai Ngata")
+    box.fill("From the keyboard")
+    box.press("Control+Enter")
+
+    expect(page.get_by_text("From the keyboard")).to_be_visible()
+    assert _sent_bodies(conversation) == ["From the keyboard"]
+
+
+def test_a_refused_send_keeps_the_draft_and_shows_the_reason(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    page = logged_in_page
+    conversation = _open_thread(live_server, page, logged_in_user, settings)
+    settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
+    get_messaging_policy.cache_clear()
+
+    box = page.get_by_label("Message to Kai Ngata")
+    box.fill("Still my draft")
+    page.get_by_role("button", name="Send").click()
+
+    expect(page.locator("#composer").get_by_role("alert")).to_be_visible()
+    expect(page.get_by_label("Message to Kai Ngata")).to_have_value("Still my draft")
+    assert _sent_bodies(conversation) == []
+
+
+def test_the_counter_appears_near_the_limit(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    page = logged_in_page
+    _open_thread(live_server, page, logged_in_user, settings)
+
+    box = page.get_by_label("Message to Kai Ngata")
+    box.fill("a" * 1799)
+    counter = page.locator("#composer [aria-live=polite]")
+    expect(counter).to_be_hidden()
+    box.fill("a" * 1850)
+    expect(counter).to_have_text("150 characters left")
+
+
+def test_a_network_failure_offers_retry_that_sends_once_with_the_same_key(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    page = logged_in_page
+    conversation = _open_thread(live_server, page, logged_in_user, settings)
+    key = page.locator("#composer input[name=client_key]").input_value()
+
+    page.route("**/messages/*/send/", lambda route: route.abort())
+    box = page.get_by_label("Message to Kai Ngata")
+    box.fill("Flaky network")
+    page.get_by_role("button", name="Send").click()
+
+    alert = page.get_by_role("alert").filter(has_text="Not sent. Check your connection")
+    expect(alert).to_be_visible()
+    assert _sent_bodies(conversation) == []
+
+    page.unroute("**/messages/*/send/")
+    alert.get_by_role("button", name="Retry").click()
+
+    expect(page.get_by_text("Flaky network")).to_have_count(1)
+    expect(alert).to_be_hidden()
+    assert _sent_bodies(conversation) == ["Flaky network"]
+    assert page.locator("#composer input[name=client_key]").input_value() != key

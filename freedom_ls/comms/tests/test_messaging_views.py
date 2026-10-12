@@ -214,6 +214,45 @@ class TestThreadPage:
         label = html.fromstring(response.content).xpath("//label[@for='message-body']")
         assert label[0].text_content().strip() == "Message to Kai"
 
+    @pytest.mark.usefixtures("allow_policy")
+    def test_the_composer_carries_the_limit_and_counter_threshold(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        composer = html.fromstring(response.content).get_element_by_id("composer")
+        assert composer.get("data-max-length") == "2000"
+        assert composer.get("data-counter-from") == "1800"
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_the_composer_shows_the_shortcut_hint(self, pair, logged_in_client) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        composer = html.fromstring(response.content).get_element_by_id("composer")
+        assert "Ctrl+Enter to send" in composer.text_content()
+
+    @pytest.mark.usefixtures("allow_policy")
+    def test_the_composer_has_a_hidden_counter_and_network_alert(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).get(thread_url(conversation))
+
+        composer = html.fromstring(response.content).get_element_by_id("composer")
+        counter = composer.xpath(".//*[@aria-live='polite'][@x-show='showCounter']")
+        assert counter
+        failed = composer.xpath(".//*[@x-show='failed']")[0]
+        assert failed.xpath(".//*[@role='alert']")
+        assert "Not sent. Check your connection and try again." in (
+            failed.text_content()
+        )
+        assert failed.xpath(".//button[normalize-space()='Retry']")
+
     @pytest.mark.parametrize(
         ("body", "absent"),
         [
