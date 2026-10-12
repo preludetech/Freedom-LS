@@ -19,6 +19,7 @@ from freedom_ls.comms.messaging import (
     SendResult,
     conversation_between,
     get_or_create_conversation,
+    inbox_for,
     latest_page,
     mark_conversation_read,
     other_participant,
@@ -26,6 +27,7 @@ from freedom_ls.comms.messaging import (
     refusal_alert_copy,
     reply_decision,
     send_message,
+    unread_conversation_count,
 )
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
@@ -563,3 +565,96 @@ class TestRefusalAlertCopy:
             "Not sent. This conversation can't take new messages. "
             "Your text is still in the box."
         )
+
+
+@pytest.mark.django_db
+class TestInboxFor:
+    def test_each_viewer_gets_their_own_read_marker(self, mock_site_context) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        message = MessageFactory(conversation=conversation, sender=other)
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=message.created_at
+        )
+
+        mine = inbox_for(user).get(pk=conversation.pk)
+        theirs = inbox_for(other).get(pk=conversation.pk)
+
+        assert mine.viewer_last_read_at == message.created_at
+        assert mine.is_unread is False
+        assert theirs.viewer_last_read_at is None
+        assert theirs.is_unread is True
+
+    def test_only_the_viewers_conversations_are_listed(self, mock_site_context) -> None:
+        user, other, stranger = UserFactory(), UserFactory(), UserFactory()
+        mine = ConversationFactory(between=(user, other))
+        ConversationFactory(between=(other, stranger))
+
+        assert list(inbox_for(user)) == [mine]
+
+    def test_newest_activity_comes_first_and_empty_conversations_last(
+        self, mock_site_context
+    ) -> None:
+        user = UserFactory()
+        empty = ConversationFactory(between=(user, UserFactory()))
+        older = ConversationFactory(between=(user, UserFactory()))
+        newer = ConversationFactory(between=(user, UserFactory()))
+        MessageFactory(conversation=older)
+        MessageFactory(conversation=newer)
+
+        assert list(inbox_for(user)) == [newer, older, empty]
+
+    def test_a_conversation_with_no_messages_is_not_unread(
+        self, mock_site_context
+    ) -> None:
+        user = UserFactory()
+        conversation = ConversationFactory(between=(user, UserFactory()))
+
+        assert inbox_for(user).get(pk=conversation.pk).is_unread is False
+
+    def test_other_participants_are_prefetched(
+        self, mock_site_context, django_assert_num_queries
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        ConversationFactory(between=(user, other))
+        conversations = list(inbox_for(user))
+
+        with django_assert_num_queries(0):
+            assert other_participant(conversations[0], user) == other
+
+    def test_a_message_created_after_the_mark_stays_unread(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        shown = MessageFactory(conversation=conversation, sender=other)
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=shown.created_at
+        )
+
+        MessageFactory(conversation=conversation, sender=other)
+
+        assert inbox_for(user).get(pk=conversation.pk).is_unread is True
+
+
+@pytest.mark.django_db
+class TestUnreadConversationCount:
+    def test_it_counts_conversations_not_messages(self, mock_site_context) -> None:
+        user = UserFactory()
+        busy = ConversationFactory(between=(user, UserFactory()))
+        for _ in range(3):
+            MessageFactory(conversation=busy)
+        quiet = ConversationFactory(between=(user, UserFactory()))
+        MessageFactory(conversation=quiet)
+        ConversationFactory(between=(user, UserFactory()))
+
+        assert unread_conversation_count(user) == 2
+
+    def test_it_runs_one_query(
+        self, mock_site_context, django_assert_num_queries
+    ) -> None:
+        user = UserFactory()
+        MessageFactory(conversation=ConversationFactory(between=(user, UserFactory())))
+
+        with django_assert_num_queries(1):
+            unread_conversation_count(user)

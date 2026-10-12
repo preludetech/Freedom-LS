@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
@@ -9,17 +10,20 @@ from django.contrib.sites.models import Site
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from freedom_ls.comms.config import config
 from freedom_ls.comms.messaging import (
     SendResult,
+    inbox_for,
     latest_page,
+    mark_conversation_read,
     other_participant,
     refusal_alert_copy,
     send_message,
 )
-from freedom_ls.comms.models import Conversation
+from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.comms.views import messaging_view
 from freedom_ls.site_aware_models.models import get_cached_site
 
@@ -34,11 +38,27 @@ def participant_conversation(request: HttpRequest, pk: UUID) -> Conversation:
     another site is a 404 as well.
     """
     return cast(
-        "Conversation",
-        get_object_or_404(
-            Conversation.objects.filter(participants__user=request.user), pk=pk
-        ),
+        "Conversation", get_object_or_404(inbox_for(cast("User", request.user)), pk=pk)
     )
+
+
+@dataclass(frozen=True, slots=True)
+class InboxRow:
+    conversation: Conversation
+    other: User | None
+
+
+def inbox_rows(user: User) -> list[InboxRow]:
+    return [InboxRow(row, other_participant(row, user)) for row in inbox_for(user)]
+
+
+def _inbox_context(
+    request: HttpRequest, current: Conversation | None = None
+) -> dict[str, object]:
+    return {
+        "inbox_rows": inbox_rows(cast("User", request.user)),
+        "current_pk": current.pk if current is not None else None,
+    }
 
 
 def _composer_context(
@@ -62,13 +82,40 @@ def thread_context(
         "thread_messages": latest_page(conversation),
         "composer": _composer_context(client_key=uuid4()),
         "page_size": config.MESSAGE_PAGE_SIZE,
+        "back_url": reverse("conversations:inbox"),
     }
 
 
 @messaging_view
 def thread(request: HttpRequest, pk: UUID) -> HttpResponse:
     conversation = participant_conversation(request, pk)
-    return render(request, "comms/thread.html", thread_context(request, conversation))
+    context = thread_context(request, conversation)
+    shown = cast("list[Message]", context["thread_messages"])
+    if shown:
+        # Marked up to the newest message on the page, not to now, so a message
+        # that lands between this render and the mark stays unread.
+        mark_conversation_read(
+            user=cast("User", request.user),
+            conversation=conversation,
+            up_to=shown[-1].created_at,
+        )
+    context.update(_inbox_context(request, conversation))
+    return render(request, "comms/thread.html", context)
+
+
+@messaging_view
+def inbox(request: HttpRequest) -> HttpResponse:
+    """The conversation list. A history-restore request needs the full page."""
+    is_fragment = (
+        request.headers.get("HX-Request") == "true"
+        and request.headers.get("HX-History-Restore-Request") != "true"
+    )
+    template_name = (
+        "comms/partials/conversation_list.html#conversation-list"
+        if is_fragment
+        else "comms/inbox.html"
+    )
+    return render(request, template_name, _inbox_context(request))
 
 
 def _send_response(
@@ -117,7 +164,11 @@ def _send_response(
         return render(
             request,
             "comms/thread.html",
-            {**thread_context(request, conversation), **context},
+            {
+                **thread_context(request, conversation),
+                **_inbox_context(request, conversation),
+                **context,
+            },
             status=422,
         )
     response = HttpResponse(

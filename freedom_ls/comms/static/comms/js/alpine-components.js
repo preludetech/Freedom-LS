@@ -99,4 +99,27 @@ document.addEventListener("alpine:init", () => {
             document.removeEventListener("visibilitychange", this._onVisibility);
         },
     }));
+
+    // The thread pane (comms/partials/thread.html).
+    //
+    // Sizes the pane to the viewport below the site header, so the composer
+    // stays in view and the log is the only scrolling part, and opens the log
+    // at its newest message. The header's height changes across breakpoints,
+    // so the measurement repeats on window resize (bound with x-on:resize.window
+    // on the pane, which Alpine removes with the component).
+    Alpine.data("conversationThread", () => ({
+        init() {
+            this.measure();
+            this.scrollToLatest();
+        },
+        measure() {
+            const header = document.querySelector("header.header");
+            const top = header ? header.getBoundingClientRect().height : 0;
+            this.$el.style.setProperty("--thread-top", top + "px");
+        },
+        scrollToLatest() {
+            const log = this.$refs.log;
+            log.scrollTop = log.scrollHeight;
+        },
+    }));
 });
