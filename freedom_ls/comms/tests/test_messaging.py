@@ -14,7 +14,11 @@ from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.factories import (
+    ConversationFactory,
+    MessageFactory,
+    NotificationFactory,
+)
 from freedom_ls.comms.messaging import (
     BLANK_BODY,
     TOO_LONG_BODY,
@@ -44,7 +48,12 @@ from freedom_ls.comms.messaging_policy import (
     MessagingPolicy,
     MessagingRefusal,
 )
-from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
+from freedom_ls.comms.models import (
+    Conversation,
+    ConversationParticipant,
+    Message,
+    Notification,
+)
 from freedom_ls.site_aware_models.models import _thread_locals
 
 
@@ -1117,3 +1126,118 @@ class TestRenderMessageEntries:
             (True, True),
             (True, True),
         ]
+
+
+def _message_notifications(user, conversation):
+    return Notification.objects.filter(
+        user=user, category="message.received", object_id=str(conversation.pk)
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestSendRaisesNotification:
+    def test_the_recipient_is_notified_and_the_sender_is_not(
+        self, mock_site_context, site, django_capture_on_commit_callbacks
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        with django_capture_on_commit_callbacks(execute=True):
+            send_message(
+                sender=sender,
+                body="Hi",
+                client_key=uuid.uuid4(),
+                site=site,
+                conversation=conversation,
+            )
+
+        notification = _message_notifications(recipient, conversation).get()
+        assert notification.data == {"sender_name": sender.display_name}
+        assert notification.site_id == site.pk
+        assert not Notification.objects.filter(user=sender).exists()
+
+    def test_two_sends_leave_one_unread_notification(
+        self, mock_site_context, site, django_capture_on_commit_callbacks
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+
+        with django_capture_on_commit_callbacks(execute=True):
+            for _ in range(2):
+                send_message(
+                    sender=sender,
+                    body="Hi",
+                    client_key=uuid.uuid4(),
+                    site=site,
+                    conversation=conversation,
+                )
+
+        assert _message_notifications(recipient, conversation).count() == 1
+
+    def test_a_repeated_client_key_raises_nothing_more(
+        self, mock_site_context, site, django_capture_on_commit_callbacks
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        key = uuid.uuid4()
+        with django_capture_on_commit_callbacks(execute=True):
+            send_message(
+                sender=sender,
+                body="Hi",
+                client_key=key,
+                site=site,
+                conversation=conversation,
+            )
+        Notification.objects.update(read_at=timezone.now())
+
+        with django_capture_on_commit_callbacks(execute=True):
+            send_message(
+                sender=sender,
+                body="Hi",
+                client_key=key,
+                site=site,
+                conversation=conversation,
+            )
+
+        assert _message_notifications(recipient, conversation).count() == 1
+
+    def test_a_deleted_other_participant_raises_nothing(
+        self, mock_site_context, site, django_capture_on_commit_callbacks
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        recipient.delete()
+
+        with django_capture_on_commit_callbacks(execute=True):
+            send_message(
+                sender=sender,
+                body="Hi",
+                client_key=uuid.uuid4(),
+                site=site,
+                conversation=conversation,
+            )
+
+        assert not Notification.objects.exists()
+
+
+@pytest.mark.django_db
+class TestMarkConversationReadClearsNotification:
+    def test_marking_the_conversation_read_reads_its_notification(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        notification = NotificationFactory(
+            user=user,
+            category="message.received",
+            target=conversation,
+            data={"sender_name": "Sam"},
+        )
+
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=timezone.now()
+        )
+
+        notification.refresh_from_db()
+        assert notification.read_at is not None

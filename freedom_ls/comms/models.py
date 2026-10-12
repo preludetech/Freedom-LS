@@ -96,9 +96,15 @@ class Notification(SiteAwareModel):
     object_id = models.CharField(max_length=255)
     target = GenericForeignKey("content_type", "object_id")
     data = models.JSONField(default=dict)
+    # On a rollup row this is when the row last changed, not when it was first written.
     created_at = models.DateTimeField(auto_now_add=True)
     seen_at = models.DateTimeField(null=True, blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
+    # "<content type pk>:<target pk>" on a rollup category's row, null otherwise. Null,
+    # not blank, because the unique constraint must skip rows that are not rollups.
+    rollup_key = models.CharField(  # noqa: DJ001
+        max_length=64, null=True, blank=True
+    )
 
     objects = NotificationManager()
 
@@ -110,6 +116,13 @@ class Notification(SiteAwareModel):
                 fields=["user", "site"],
                 name="comms_notification_unseen_idx",
                 condition=Q(read_at__isnull=True, seen_at__isnull=True),
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "site", "rollup_key"],
+                condition=Q(read_at__isnull=True, rollup_key__isnull=False),
+                name="comms_notification_one_unread_rollup",
             ),
         ]
 

@@ -13,7 +13,13 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
-from freedom_ls.comms.factories import CourseFactory, NotificationFactory
+from freedom_ls.comms.factories import (
+    ConversationFactory,
+    CourseFactory,
+    MessageFactory,
+    NotificationFactory,
+)
+from freedom_ls.comms.messaging import mark_conversation_read, unread_conversation_count
 from freedom_ls.comms.models import Notification
 
 BADGE_URL_NAME = "comms:notification_badge"
@@ -1199,3 +1205,132 @@ class TestLoginRequiredHtmx:
 
         assert response.status_code == 302
         assert response["Location"].endswith(f"next={reverse(LIST_URL_NAME)}")
+
+
+def _message_notification(user, conversation, **extra):
+    return NotificationFactory(
+        user=user,
+        category="message.received",
+        target=conversation,
+        data={"sender_name": "Sam"},
+        **extra,
+    )
+
+
+@pytest.mark.django_db
+class TestMarkUnreadRollup:
+    def test_mark_unread_is_a_no_op_when_another_unread_row_shares_the_key(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        read_row = _message_notification(user, conversation, rollup_key="k")
+        read_row.read_at = timezone.now()
+        read_row.save()
+        unread_row = _message_notification(user, conversation, rollup_key="k")
+
+        response = logged_in_client(user).post(
+            reverse(MARK_UNREAD_URL_NAME, kwargs={"pk": read_row.pk}),
+            HTTP_HX_REQUEST="true",
+        )
+
+        read_row.refresh_from_db()
+        unread_row.refresh_from_db()
+        assert response.status_code == 200
+        assert read_row.read_at is not None
+        assert unread_row.read_at is None
+
+    def test_mark_unread_works_when_no_other_unread_row_shares_the_key(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        row = _message_notification(user, conversation, rollup_key="k")
+        row.read_at = timezone.now()
+        row.save()
+
+        logged_in_client(user).post(
+            reverse(MARK_UNREAD_URL_NAME, kwargs={"pk": row.pk}),
+            HTTP_HX_REQUEST="true",
+        )
+
+        row.refresh_from_db()
+        assert row.read_at is None
+
+
+@pytest.mark.django_db
+class TestNotificationAndConversationReadStateAreIndependent:
+    def test_marking_a_notification_read_leaves_the_conversation_unread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        row = _message_notification(user, conversation)
+
+        logged_in_client(user).post(
+            reverse(MARK_READ_URL_NAME, kwargs={"pk": row.pk}),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert unread_conversation_count(user) == 1
+
+    def test_marking_a_notification_unread_leaves_the_conversation_read(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        message = MessageFactory(conversation=conversation, sender=other)
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=message.created_at
+        )
+        row = _message_notification(user, conversation)
+        Notification.objects.filter(pk=row.pk).update(read_at=timezone.now())
+
+        logged_in_client(user).post(
+            reverse(MARK_UNREAD_URL_NAME, kwargs={"pk": row.pk}),
+            HTTP_HX_REQUEST="true",
+        )
+
+        assert unread_conversation_count(user) == 0
+
+
+@pytest.mark.django_db
+class TestOpeningAThreadReadsItsNotification:
+    @pytest.fixture(autouse=True)
+    def _allow_policy(self, settings) -> None:
+        settings.MESSAGING_POLICY = (
+            "freedom_ls.comms.tests.test_messaging_views.AllowPolicy"
+        )
+
+    def test_opening_the_thread_marks_the_notification_read(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        row = _message_notification(user, conversation)
+
+        logged_in_client(user).get(
+            reverse("conversations:thread", kwargs={"pk": conversation.pk})
+        )
+
+        row.refresh_from_db()
+        assert row.read_at is not None
+
+    def test_a_poll_with_incoming_messages_marks_the_notification_read(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        MessageFactory(conversation=conversation, sender=other)
+        row = _message_notification(user, conversation)
+
+        logged_in_client(user).get(
+            reverse("conversations:thread_poll", kwargs={"pk": conversation.pk})
+            + "?after=&composer=open&draft=0",
+            HTTP_HX_REQUEST="true",
+        )
+
+        row.refresh_from_db()
+        assert row.read_at is not None

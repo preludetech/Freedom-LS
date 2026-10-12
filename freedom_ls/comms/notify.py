@@ -2,8 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db import transaction
+from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError, transaction
+from django.db.models import Value
+from django.db.models.functions import Coalesce
 from django.tasks import default_task_backend
+from django.utils import timezone
 
 from freedom_ls.base.notification_categories import FLS_NOTIFICATION_CATEGORIES
 from freedom_ls.comms.config import config
@@ -15,7 +19,7 @@ from freedom_ls.comms.models import (
 from freedom_ls.comms.tasks import deliver_notification
 
 if TYPE_CHECKING:
-    from django.db.models import Model
+    from django.db.models import Model, QuerySet
 
     from freedom_ls.accounts.models import User
 
@@ -52,9 +56,14 @@ def raise_notification(
             f"Notification data is missing {sorted(missing)} for {category!r}"
         )
 
-    def write() -> None:
+    def create_and_enqueue(rollup_key: str | None) -> None:
         notification = Notification.objects.create(
-            user=user, category=category, target=target, site_id=site_id, data=data
+            user=user,
+            category=category,
+            target=target,
+            site_id=site_id,
+            data=data,
+            rollup_key=rollup_key,
         )
         for backend_path in config.NOTIFICATION_DELIVERY_BACKENDS:
             default_task_backend.enqueue(
@@ -63,4 +72,46 @@ def raise_notification(
                 kwargs={},
             )
 
+    def update_unread_rollup(rollup_key: str) -> bool:
+        # An update re-surfaces the row and re-lights the badge; it enqueues no delivery.
+        return bool(
+            Notification.objects.filter(
+                user=user, site_id=site_id, rollup_key=rollup_key, read_at__isnull=True
+            ).update(data=data, created_at=timezone.now(), seen_at=None)
+        )
+
+    def write() -> None:
+        if not notification_category.rollup:
+            create_and_enqueue(rollup_key=None)
+            return
+        rollup_key = f"{ContentType.objects.get_for_model(target).pk}:{target.pk}"
+        if update_unread_rollup(rollup_key):
+            return
+        try:
+            with transaction.atomic():
+                create_and_enqueue(rollup_key=rollup_key)
+        except IntegrityError:
+            # A concurrent raise created the unread row first; this event folds into it.
+            update_unread_rollup(rollup_key)
+
     transaction.on_commit(write, robust=True)
+
+
+def stamp_read(queryset: QuerySet[Notification]) -> None:
+    """The one place read implies seen: a row marked read and then unread must
+    not come back onto the badge."""
+    now = timezone.now()
+    queryset.update(read_at=now, seen_at=Coalesce("seen_at", Value(now)))
+
+
+def mark_notifications_read(*, user: User, target: Model, site_id: int) -> None:
+    """Mark the user's unread notifications about ``target`` read."""
+    stamp_read(
+        Notification._base_manager.filter(
+            user=user,
+            site_id=site_id,
+            content_type=ContentType.objects.get_for_model(target),
+            object_id=str(target.pk),
+            read_at__isnull=True,
+        )
+    )
