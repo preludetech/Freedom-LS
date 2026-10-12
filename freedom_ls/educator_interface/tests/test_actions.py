@@ -2031,6 +2031,30 @@ def test_move_post_naming_an_inactive_destination_answers_422_and_changes_nothin
     assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
 
 
+@pytest.mark.django_db
+def test_move_422_rerender_offers_the_same_destinations_as_the_fresh_dialog(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    open_cohort = CohortFactory(organisation=organisation)
+    CohortFactory(organisation=organisation, is_active=False)
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": ""},
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    options = {
+        option.get("value")
+        for option in document.cssselect("select[name='destination'] option")
+        if option.get("value")
+    }
+    assert (response.status_code, options) == (422, {str(open_cohort.pk)})
+
+
 # register and unregister a learner individually
 
 

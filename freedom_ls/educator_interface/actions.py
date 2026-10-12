@@ -728,6 +728,16 @@ class MoveToCohortAction(MembershipAction):
     capability = "freedom_ls_learner_management.delete_cohortmembership"
     template_name = "educator_interface/modal/move_confirmation.html"
 
+    def _offered(self, ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        return (
+            cohorts_visible_to(
+                scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
+            )
+            .filter(is_active=True)
+            .exclude(cohortmembership__learner=learner)
+        )
+
     def _picker(self, ctx: PanelContext, learner: Learner) -> CohortPickerForm:
         scoped = cast("OrganisationScopedRequest", ctx.request)
         if ctx.request.method == "POST":
@@ -736,9 +746,7 @@ class MoveToCohortAction(MembershipAction):
             queryset = Cohort.objects.filter(organisation=scoped.organisation)
             data: Mapping[str, str] | None = ctx.request.POST
         else:
-            queryset = cohorts_visible_to(
-                scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
-            ).filter(is_active=True)
+            queryset = self._offered(ctx, learner)
             data = ctx.request.GET if "destination" in ctx.request.GET else None
         return CohortPickerForm(
             data,
@@ -814,6 +822,12 @@ class MoveToCohortAction(MembershipAction):
     def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
         context = self.get_context_data(ctx)
         context["refusal"] = reason
+        # The re-rendered select offers what the fresh dialog offered.
+        form = cast(CohortPickerForm, context["form"])
+        learner, _ = self._pair(ctx)
+        cast(
+            forms.ModelChoiceField, form.fields["destination"]
+        ).queryset = self._offered(ctx, learner)
         return render(ctx.request, self.template_name, context, status=422)
 
 
