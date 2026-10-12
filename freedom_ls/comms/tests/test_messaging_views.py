@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 
 import pytest
@@ -11,6 +12,7 @@ from django.conf import settings as django_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.comms.factories import ConversationFactory, MessageFactory
 from freedom_ls.comms.messaging import inbox_for, mark_conversation_read
 from freedom_ls.comms.messaging_policy import (
@@ -18,7 +20,7 @@ from freedom_ls.comms.messaging_policy import (
     MessagingPolicy,
     MessagingRefusal,
 )
-from freedom_ls.comms.models import ConversationParticipant, Message
+from freedom_ls.comms.models import Conversation, ConversationParticipant, Message
 from freedom_ls.site_aware_models.models import _thread_locals
 
 
@@ -29,6 +31,9 @@ class AllowPolicy(MessagingPolicy):
     def can_reply(self, *, sender, recipient, site, conversation):
         return MessagingDecision.allow()
 
+    def recipients_for(self, *, sender, site):
+        return User.objects.exclude(pk=sender.pk)
+
 
 class ClosedPolicy(MessagingPolicy):
     def can_start(self, *, sender, recipient, site):
@@ -36,6 +41,23 @@ class ClosedPolicy(MessagingPolicy):
 
     def can_reply(self, *, sender, recipient, site, conversation):
         return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
+
+    def recipients_for(self, *, sender, site):
+        return User.objects.none()
+
+
+class OnlyPolicy(AllowPolicy):
+    """Allows messaging one chosen user: the class attribute ``only_pk``."""
+
+    only_pk: int | None = None
+
+    def can_start(self, *, sender, recipient, site):
+        if recipient.pk != self.only_pk:
+            return MessagingDecision.refuse(MessagingRefusal.NO_RELATIONSHIP)
+        return MessagingDecision.allow()
+
+    def recipients_for(self, *, sender, site):
+        return User.objects.filter(pk=self.only_pk)
 
 
 @pytest.fixture
@@ -394,7 +416,7 @@ class TestInbox:
         assert content.index("Newer Person") < content.index("Older Person")
 
     def test_it_omits_other_peoples_conversations(
-        self, mock_site_context, logged_in_client
+        self, mock_site_context, logged_in_client, allow_policy
     ) -> None:
         user, a, b = UserFactory(), UserFactory(), UserFactory()
         MessageFactory(
@@ -607,3 +629,264 @@ class TestUnreadBadge:
         response = logged_in_client(UserFactory()).get(unread_badge_url(), **HTMX)
 
         assert response.status_code == 404
+
+
+def start_url() -> str:
+    return reverse("conversations:start")
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestStartPage:
+    def test_a_known_recipient_shows_the_to_line_and_composer(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user = UserFactory()
+        other = UserFactory(first_name="Kai", last_name="Ngata")
+
+        response = logged_in_client(user).get(start_url(), {"recipient": other.pk})
+
+        tree = html.fromstring(response.content)
+        assert response.status_code == 200
+        assert tree.xpath("//main//h1")[0].text_content().strip() == "New message"
+        assert "To Kai Ngata" in " ".join(tree.text_content().split())
+        change = tree.xpath("//a[normalize-space()='Change']")[0]
+        assert change.get("href") == start_url()
+        composer = tree.get_element_by_id("composer")
+        assert composer.get("action") == start_url()
+        assert composer.xpath(".//input[@name='recipient']")[0].get("value") == str(
+            other.pk
+        )
+
+    def test_without_a_recipient_it_renders_an_empty_picker_region(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        tree = html.fromstring(response.content)
+        assert response.status_code == 200
+        assert tree.get_element_by_id("recipient-picker").text_content().strip() == ""
+        assert not tree.xpath("//form[@id='composer']")
+
+    def test_a_recipient_outside_the_recipients_is_404(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        user, other, stranger = UserFactory(), UserFactory(), UserFactory()
+        OnlyPolicy.only_pk = other.pk
+        settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
+
+        response = logged_in_client(user).get(start_url(), {"recipient": stranger.pk})
+
+        assert response.status_code == 404
+
+    def test_a_non_numeric_recipient_is_404(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(start_url(), {"recipient": "x"})
+
+        assert response.status_code == 404
+
+    def test_the_page_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = logged_in_client(UserFactory()).get(start_url())
+
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestStartSend:
+    def post(self, client, other, **extra):
+        data = {
+            "recipient": other.pk,
+            "body": "Hello there",
+            "client_key": str(uuid.uuid4()),
+        }
+        return client.post(start_url(), data, **extra)
+
+    def test_an_htmx_post_creates_the_conversation_and_answers_hx_location(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+
+        response = self.post(logged_in_client(user), other, **HTMX)
+
+        message = Message.objects.get()
+        assert response.status_code == 204
+        assert json.loads(response["HX-Location"]) == {
+            "path": thread_url(message.conversation)
+        }
+        assert message.sender == user
+        assert message.body == "Hello there"
+
+    def test_a_plain_post_redirects_to_the_thread(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+
+        response = self.post(logged_in_client(user), other)
+
+        assert response.status_code == 302
+        assert response["Location"] == thread_url(Message.objects.get().conversation)
+
+    def test_a_second_post_for_the_pair_reuses_the_conversation(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        client = logged_in_client(user)
+
+        self.post(client, other, **HTMX)
+        self.post(client, other, **HTMX)
+
+        assert Conversation.objects.count() == 1
+        assert Message.objects.count() == 2
+
+    def test_a_bad_client_key_is_400(self, mock_site_context, logged_in_client) -> None:
+        other = UserFactory()
+        data = {
+            "recipient": other.pk,
+            "body": "Hi",
+            "client_key": "nope",  # pragma: allowlist secret
+        }
+
+        response = logged_in_client(UserFactory()).post(start_url(), data, **HTMX)
+
+        assert response.status_code == 400
+
+    def test_a_blank_body_returns_422_with_the_composer(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        data = {"recipient": other.pk, "body": " ", "client_key": str(uuid.uuid4())}
+
+        response = logged_in_client(user).post(start_url(), data, **HTMX)
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        assert response.status_code == 422
+        assert response["HX-Retarget"] == "#composer"
+        assert response["HX-Reswap"] == "outerHTML"
+        composer = tree.xpath("//form[@id='composer']")[0]
+        assert composer.get("action") == start_url()
+        assert composer.xpath(".//input[@name='recipient']")[0].get("value") == str(
+            other.pk
+        )
+        assert composer.xpath(".//*[@role='alert']")
+        assert Conversation.objects.count() == 0
+
+    def test_a_post_to_an_unknown_recipient_is_404(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        data = {"recipient": 999999, "body": "Hi", "client_key": str(uuid.uuid4())}
+
+        response = logged_in_client(UserFactory()).post(start_url(), data, **HTMX)
+
+        assert response.status_code == 404
+
+    def test_a_post_is_404_when_messaging_is_off(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        settings.MESSAGING_ENABLED = False
+
+        response = self.post(logged_in_client(UserFactory()), UserFactory(), **HTMX)
+
+        assert response.status_code == 404
+
+
+@pytest.mark.django_db
+class TestStartRefused:
+    def test_can_start_is_asked_again_and_a_refusal_returns_422_with_the_draft(
+        self, mock_site_context, logged_in_client, closed_policy
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        key = str(uuid.uuid4())
+        data = {"recipient": other.pk, "body": "My draft", "client_key": key}
+
+        response = logged_in_client(user).post(start_url(), data, **HTMX)
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        composer = tree.xpath("//form[@id='composer']")[0]
+        assert response.status_code == 422
+        assert response["HX-Retarget"] == "#composer"
+        assert composer.xpath(".//textarea")[0].text == "My draft"
+        assert composer.xpath(".//input[@name='client_key']")[0].get("value") == key
+        assert composer.xpath(".//*[@role='alert']")
+        assert Message.objects.count() == 0
+
+    def test_a_recipient_outside_the_recipients_is_refused(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        user, other, stranger = UserFactory(), UserFactory(), UserFactory()
+        OnlyPolicy.only_pk = other.pk
+        settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
+        data = {
+            "recipient": stranger.pk,
+            "body": "Hi",
+            "client_key": str(uuid.uuid4()),
+        }
+
+        response = logged_in_client(user).post(start_url(), data, **HTMX)
+
+        assert response.status_code == 422
+        assert Message.objects.count() == 0
+
+    def test_a_plain_refusal_renders_the_start_page_at_422(
+        self, mock_site_context, logged_in_client, closed_policy
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        data = {
+            "recipient": other.pk,
+            "body": "Draft",
+            "client_key": str(uuid.uuid4()),
+        }
+
+        response = logged_in_client(user).post(start_url(), data)
+
+        tree = html.fromstring(response.content)
+        assert response.status_code == 422
+        assert tree.xpath("//main//h1")[0].text_content().strip() == "New message"
+        assert tree.xpath("//textarea")[0].text == "Draft"
+
+
+@pytest.mark.django_db
+class TestInboxNewMessage:
+    def test_the_button_shows_when_the_user_has_recipients(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        UserFactory()
+
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        assert tree.xpath(f"//a[@href='{start_url()}']")
+
+    def test_the_button_is_absent_without_recipients(
+        self, mock_site_context, logged_in_client, closed_policy
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        tree = html.fromstring(response.content)
+        assert not tree.xpath(f"//main//a[@href='{start_url()}']")
+
+    def test_no_recipients_reads_the_educators_copy(
+        self, mock_site_context, logged_in_client, closed_policy
+    ) -> None:
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        assert (
+            "Your educators can message you, and you can reply."
+            in response.content.decode()
+        )
+
+    def test_recipients_read_no_conversations_yet(
+        self, mock_site_context, logged_in_client, allow_policy
+    ) -> None:
+        UserFactory()
+
+        response = logged_in_client(UserFactory()).get(inbox_url())
+
+        content = response.content.decode()
+        assert "No conversations yet." in content
+        assert "Your educators can message you" not in content

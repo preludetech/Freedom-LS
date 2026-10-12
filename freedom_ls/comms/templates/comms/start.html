@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+
+{% block head_title %}New message{% endblock head_title %}
+
+{% block content %}
+    <c-page width="narrow">
+        <h1>New message</h1>
+        {% if recipient %}
+            <p class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>To <span class="font-semibold">{{ recipient.display_name }}</span></span>
+                <a href="{% url 'conversations:start' %}">Change</a>
+            </p>
+            <div class="mt-4 overflow-hidden rounded-lg border border-border">
+                {% include "comms/partials/composer.html" %}
+            </div>
+        {% else %}
+            <div id="recipient-picker" class="mt-6"></div>
+        {% endif %}
+    </c-page>
+{% endblock content %}
