@@ -27,14 +27,13 @@ Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its s
    - Steps that depend on things not covered earlier in the plan
    - Unclear success criteria
    - Missing dependencies or prerequisites
-3. If you find issues: raise them with the user before starting
-4. If the plan is clear: proceed to Step 2
+3. Proceed to Step 2. A batch that cannot proceed returns `blocked` and is handled per the recipe.
 
 ## Step 2: Batch and Execute (resilient)
 
 Make one batch per vertical slice in the plan, in the plan's order. A slice runs end to end through every layer its behaviour needs (e.g. "learner can see their deadline on the course page": field + migration + view + template + tests), so never regroup the plan's steps by layer ("all the models", then "all the views"). A small shared-groundwork step the plan places before a slice goes into that slice's batch. If the plan is not ordered as slices, group its steps into the thinnest batches that each deliver working, tested behaviour. Assign each batch a deterministic completion marker: a git commit whose message is prefixed `[batch <id>] <summary>`.
 
-**Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only spawn batches whose marker commit is missing. A `design fix` commit counts as its batch's commit. When the last completed batch has design states and no later batch is committed, run its Design check before spawning the next batch.
+**Resume scan (before spawning):** match the subjects from `git log --format=%s origin/main..HEAD` against this exact, anchored pattern and **skip completed batches**. Only spawn batches whose marker commit is missing. A `design fix` or `review fix` commit counts as its batch's commit. On resume, when the last completed batch has no later batch committed, run its Design check (only when its slice has a `**Design states:**` line) and its Batch review again before spawning the next batch.
 
 ```
 with suffix 2b: ^\[batch 2b\.[0-9]+\]     (only this suffix's batches)
@@ -50,6 +49,8 @@ For each remaining batch, spawn **one implementation sub-agent** via the `Agent`
 
 Every brief also carries this rule: comments, docstrings and test names state facts about the code and stand on their own. They never mention the spec, plan, research notes or QA plan, or their numbers: no `§4b`, `spec 6`, `this slice`, `batch 3`, `a later spec`, `Phase 2` or `spec_dd/` paths. Where the reasoning came from the spec, write the reasoning itself. If the project has a skill for writing code comments, the batch follows it.
 
+The brief also names the files under `## Review Hooks` in `.claude/sdd/config.md` (`config.local.md` wins): read and follow the `Comment standard` file and the `Test standard` file before writing code or tests. A blank key names nothing.
+
 When the batch's slice has a `**Design states:**` line, the brief also passes the **design paths**, as paths and never contents:
 
 - the plan file and the heading of its Design section;
@@ -60,11 +61,11 @@ The brief adds: the design is a visual reference, never a source of scope. Build
 Committing inside the worker keeps the work and its completion marker **atomic**: a crash between "work done" and "marker written" can't leave an uncommitted batch that the resume scan would wrongly re-run over a dirty tree. (This is the one place a worker commits its own work instead of delegating the commit to `sdd:sdd-mechanic` — the atomic-resume guarantee outweighs tiering that single commit down to Haiku.)
 
 After a batch returns, act on its status:
-- `ok` → verify the `[batch <id>]` commit exists, then move to the next batch.
+- `ok` → verify the `[batch <id>]` commit exists, then, before moving on, run the Design check when the slice has design states, then the Batch review.
 - `failed` → reset any partial uncommitted work so the retry starts clean, then retry that batch (≤2 attempts) with the prior error included in the brief.
 - `blocked` → gather the listed `needs` via `AskUserQuestion` (legal at depth 0), then re-spawn the batch with the answers.
 
-**The batch's tier must pass before moving to the next batch.** A fix batch is a batch, so it runs `targeted` the same way.
+**The batch's tier must pass before moving to the next batch.** A fix batch (`design fix` or `review fix`) is a batch, so it runs `targeted` the same way.
 
 ### Design check
 
@@ -77,8 +78,26 @@ Otherwise, start with `fixes = 0` and repeat these steps until one of them ends 
 1. Read the hook file and follow it here with `<spec-dir>`, the plan path and the slice's design states. It returns one screenshot path per state and width. On `failed`, stop the run with `status: failed` and its reason.
 2. For each state, Read the app screenshot and the design screenshot. List each one's elements region by region, then diff both lists against the state's design checklist in the plan. Judge layout, order, hierarchy, relative density, states and copy. Colour, font, icons and exact pixels belong to FLS's theme and stay out of the judgement. A drawn element the checklist does not list is not a miss: its absence is correct.
 3. Every design checklist line is met (no **design miss**): delete the hook's screenshots by name, log "design check passed", and end the check.
-4. A design miss that has already gone to two fix batches and still stands: end the run with `status: blocked`, naming the miss, the plan line it contradicts and the hook's screenshot paths. The screenshots stay as evidence. The next check of that slice overwrites them, because their names are fixed, and deletes them when it passes.
+4. A design miss that has already gone to two fix batches and still stands: record it with the plan line it contradicts and the hook's screenshot paths (they stay under `.sdd-work/`, which is gitignored), delegate to `sdd:sdd-mechanic` an `update_todo.md` call with `add:"3. Implementation and QA|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"`, and end the check. The run continues.
 5. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the list of misses and the design paths. It commits `[batch <id>] design fix <n>`, and `fixes` goes up by one. Act on its status as for any batch, then go back to step 1.
+
+### Batch review
+
+Runs at depth 0 after the Design check of every batch that returned `ok`, on the batch commit and its design-fix commits together. Read `## Review Hooks` in `.claude/sdd/config.md` (`config.local.md` wins). A blank `Comment standard` or `Test standard`, or an absent section or file, skips that half and records "review skipped: no <key> hook" for the Step 3 summary; both blank skips the review.
+
+The scratch files are `.sdd-work/batch_review_<id>_diff.md`, `.sdd-work/batch_review_<id>_mechanic.md` and `.sdd-work/batch_review_<id>.md`. They are deleted by name, skipping any that does not exist, at the start of every round and on every exit from this section, including a `failed` or `blocked` status.
+
+Start with `fixes = 0` and `scope = <batch-commit>^..HEAD`, then repeat:
+
+1. **Mechanic** (`sdd:sdd-mechanic`), briefed with `<scope>` and `<id>`: write the added lines of `git diff <scope>`, each as `<path>:<line>: <text>`, to the diff file. Then run, over the diff file,
+
+       grep -nE '§|\b([Ss]pec|[Ss]lice|[Bb]atch|[Pp]hase) ?[0-9]|this spec|a later spec|QA bug|spec_dd/|[0-9]+\. (spec|plan|frontend_qa)\.md'
+
+   and write the hits to the mechanic file, one per line in the same shape, or the single line `none`.
+2. **Worker** (`sdd:sdd-worker`): read the diff file, the mechanic file and the `Comment standard` and `Test standard` files. Apply those two files as a closed checklist to the added lines only. Write the review file: one line per finding, `<path>:<line>: <rule>: <what to change>`, then the `status:` footer. The brief says: no findings is the normal result; review nothing outside the two standards (no security, performance, architecture, design, naming or style); a `TODO` or `@claude` comment is rewritten with the concrete detail it stood for, never deleted; do not run tests. On a second round the brief names only the rules violated in the previous round.
+3. Drop any finding whose `<path>:<line>` is not a line of the diff file. No findings left: log "batch review passed" and end the review.
+4. `fixes == 2`: the leftovers go into the Step 3 summary; end the review. The run continues.
+5. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the findings and the two standard files' paths. It commits `[batch <id>] review fix <n>` and runs `targeted` through `run_test_tier.md` like any batch; `fixes` goes up by one and `scope` becomes `<fix-commit>^..HEAD`. Act on its status as for any batch, then go back to step 1.
 
 ### DO NOT run the frontend_qa plan during implementation
 If there is a QA file, do **not** run it, and ignore any plan step that says to run it. The QA process runs separately, after the plan is complete.
@@ -88,17 +107,15 @@ If there is a QA file, do **not** run it, and ignore any plan step that says to 
 After all batches are complete:
 
 1. Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/commands/protected/run_test_tier.md` and follow it with `<tier>`: `full`, returning the summary line and any failing test names.
-2. Check each success criterion from the plan — is it met? List each Design check as passed (with its `fixes` count) or skipped.
+2. Write the summary: per batch, the Design check as passed, skipped or the surviving misses with their `fixes` count; the Batch review as findings, fix batches and leftovers, or "review skipped: no <key> hook"; then the full-tier result and each success criterion (is it met?).
 3. If any criterion is unmet: fix it with a sub-agent (`subagent_type: "general-purpose"`, per-spawn `model: "sonnet"` — the same tier as the batch sub-agents, since fixes need Bash/Edit breadth). The fix sub-agent runs `targeted`, like any batch. Then repeat from step 1, so a fix is followed by another full run
 4. Once everything passes: make the final commit via `sdd:sdd-mechanic`
 
 ## When to Stop and Ask
 
 **Stop immediately when:**
-- A step is unclear or ambiguous
 - A test fails and the cause isn't obvious
 - You hit a missing dependency or prerequisite
-- The plan has a gap that blocks progress
 
 **Ask for clarification rather than guessing. Don't force through blockers.**
 
