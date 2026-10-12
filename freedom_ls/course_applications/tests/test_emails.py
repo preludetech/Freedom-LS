@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import smtplib
+from unittest.mock import patch
+
 import pytest
 
 from django.core import mail
@@ -9,7 +12,9 @@ from django.core.cache import cache
 from django.test import Client, override_settings
 from django.urls import reverse
 
+from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.mail.backends import QueuedEmailNotSentError
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -156,6 +161,51 @@ def test_a_skipped_send_leaves_the_applicant_unstamped(client, gated_course):
     second = AnonymousApplicant.objects.order_by("created_at").last()
     assert second is not None
     assert second.claim_email_sent_at is None
+
+
+def _refuse_every_send(*args: object, **kwargs: object) -> None:
+    raise smtplib.SMTPRecipientsRefused({})
+
+
+@pytest.mark.django_db
+def test_a_refused_send_still_lands_on_the_status_page(client, gated_course):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        response = _apply_form_less(client, gated_course)
+
+    application = CourseApplication.objects.get()
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+def test_a_refused_send_leaves_the_applicant_unstamped(client, gated_course):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        _apply_form_less(client, gated_course)
+
+    applicant = AnonymousApplicant.objects.get()
+    assert applicant.claim_email_sent_at is None
+
+
+@pytest.mark.django_db
+def test_a_refused_send_is_reported_on_the_status_page(client, gated_course):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        response = _apply_form_less(client, gated_course)
+
+    status_page = client.get(response["Location"])
+    assert "couldn't email" in status_page.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_queued_send_that_fails_is_reported_as_not_sent(client, gated_course):
+    def fail_the_queue(*args: object, **kwargs: object) -> None:
+        raise QueuedEmailNotSentError("upstream refused")
+
+    with patch.object(AccountAdapter, "send_mail", fail_the_queue):
+        _apply_form_less(client, gated_course)
+
+    applicant = AnonymousApplicant.objects.get()
+    assert applicant.claim_email_sent_at is None
 
 
 @pytest.mark.django_db
