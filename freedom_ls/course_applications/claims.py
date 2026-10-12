@@ -134,7 +134,9 @@ def attach_claimed_application(
     person already registered. An account that never verified it has the
     address verified by this claim and its password revoked: whoever set that
     password, through signup or by hand, never proved they owned the mailbox,
-    and the claimant has just done so, so they choose the password.
+    and the claimant has just done so, so they choose the password. The
+    consent the claimant gave at the details step is written to that account
+    too: any consent already on it was given by whoever set the password.
 
     One transaction, with the applicant row locked, so two clicks on the same
     link converge on one claim. None means nothing changed: the link was
@@ -161,6 +163,7 @@ def attach_claimed_application(
                     # Another account verified this address between the lookup
                     # and the write; the link is unusable rather than half-applied.
                     return None
+                _write_legal_consents(applicant, user)
         attach_to_user(application, applicant, user)
     if owner is None:
         announce_user_registered(request, user)

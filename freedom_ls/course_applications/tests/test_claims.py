@@ -13,7 +13,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import EmailAddressFactory, SiteFactory, UserFactory
-from freedom_ls.accounts.models import User
+from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -245,6 +245,30 @@ def test_claiming_a_squatted_address_asks_for_a_new_password(squatted_applicatio
     outcome = attach_claimed_application(rf.get("/"), application)
 
     assert outcome == ClaimOutcome(squatter, must_set_password=True)
+
+
+def test_claiming_a_squatted_address_writes_the_claimants_consent(
+    squatted_application, rf
+):
+    """The squatter's password goes, so their consent is not the claimant's."""
+    application, squatter = squatted_application
+    applicant = application.anonymous_applicant
+    applicant.terms_version = "1.2"
+    applicant.terms_git_hash = "a" * 40
+    applicant.privacy_version = "2.0"
+    applicant.privacy_git_hash = "b" * 40
+    applicant.consent_ip_address = "203.0.113.9"
+    applicant.save()
+
+    attach_claimed_application(rf.get("/"), application)
+
+    consents = LegalConsent.objects.filter(
+        user=squatter, consent_method="application_details_step"
+    )
+    assert sorted(consents.values_list("document_type", "document_version")) == [
+        ("privacy", "2.0"),
+        ("terms", "1.2"),
+    ]
 
 
 def test_an_operator_created_account_has_its_password_revoked_when_claimed(
