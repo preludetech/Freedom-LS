@@ -30,8 +30,11 @@ from freedom_ls.course_applications.anonymous_session import (
 )
 from freedom_ls.course_applications.applicant_email import email_rate_limit_key
 from freedom_ls.course_applications.claims import (
+    ClaimOwner,
     attach_claimed_application,
+    claim_sets_a_password,
     read_claim_token,
+    resolve_claim_owner,
 )
 from freedom_ls.course_applications.emails import send_application_claim_email
 from freedom_ls.course_applications.forms import ApplicantDetailsForm
@@ -414,15 +417,26 @@ def _render_claim(
     request: HttpRequest,
     claim_state: str,
     applicant: AnonymousApplicant | None = None,
+    **extra: object,
 ) -> HttpResponse:
-    return render(
+    response = render(
         request,
         "course_applications/claim.html",
         {
             "claim_state": claim_state,
             "course": applicant.course if applicant is not None else None,
+            **extra,
         },
     )
+    # The URL is a login token; nothing on this page may be cached against it.
+    response["Cache-Control"] = "no-store"
+    return response
+
+
+def _signed_in_as_somebody_else(request: HttpRequest, owner: ClaimOwner | None) -> bool:
+    if not request.user.is_authenticated:
+        return False
+    return owner is None or owner.user.pk != request.user.pk
 
 
 def claim_application(request: HttpRequest, token: str) -> HttpResponse:
@@ -430,7 +444,9 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
 
     GET changes nothing because mail scanners fetch links. Every way the link
     can be unusable renders the same page, so a guessed or reused token learns
-    nothing about who applied.
+    nothing about who applied. The confirm page names the address and what
+    confirming does to it, because the holder of the link already has the
+    email it arrived in.
     """
     link = read_claim_token(token)
     application = application_of(link.applicant) if link is not None else None
@@ -447,18 +463,37 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
             return _render_claim(request, "resent", link.applicant)
         return _render_claim(request, "expired", link.applicant)
     if request.method != "POST":
-        return _render_claim(request, "confirm", link.applicant)
+        owner = resolve_claim_owner(link.applicant)
+        if owner is not None and owner.user.site_id != link.applicant.site_id:
+            return _render_claim(request, "invalid")
+        return _render_claim(
+            request,
+            "confirm",
+            link.applicant,
+            applicant_email=link.applicant.email,
+            sets_password=claim_sets_a_password(owner),
+            signed_in_as=(
+                cast(User, request.user).email
+                if _signed_in_as_somebody_else(request, owner)
+                else ""
+            ),
+        )
     outcome = attach_claimed_application(request, application)
     if outcome is None:
         return _render_claim(request, "invalid")
     forget_anonymous_applicant(request, link.applicant)
     if not outcome.user.is_active:
         return redirect("account_login")
+    adapter = get_adapter(request)
+    if request.user.is_authenticated and request.user.pk != outcome.user.pk:
+        # The confirm page said this would happen. Explicit, so the hand-over
+        # does not rest on login() noticing a different account in the session.
+        adapter.logout(request)
     # Logging in cycles the session key, so the anonymous session's identifier
     # never carries over into the signed-in one.
-    get_adapter(request).login(request, outcome.user)
+    adapter.login(request, outcome.user)
     status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
-    if outcome.user_was_created:
+    if outcome.must_set_password:
         return redirect(
             f"{reverse('account_set_password')}?{urlencode({'next': status_url})}"
         )

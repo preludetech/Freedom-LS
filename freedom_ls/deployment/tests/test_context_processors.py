@@ -1,7 +1,7 @@
 import pytest
 
 from django.test import Client, RequestFactory, override_settings
-from django.urls import resolve, reverse
+from django.urls import ResolverMatch, resolve, reverse
 
 from freedom_ls.deployment.context_processors import analytics_enabled, posthog_config
 
@@ -65,6 +65,35 @@ class TestAnalyticsEnabled:
         result = analytics_enabled(request)
 
         assert result["analytics_enabled"] is False
+
+    def test_false_for_the_application_claim_link(self) -> None:
+        factory = RequestFactory()
+        request = factory.get("/applications/claim/some-token/")
+        # Built by hand: the gate must hold whether or not course_applications
+        # is installed, and the view name is what it keys on.
+        request.resolver_match = ResolverMatch(
+            lambda r: None,
+            (),
+            {},
+            url_name="claim",
+            app_names=["course_applications"],
+            namespaces=["course_applications"],
+        )
+
+        result = analytics_enabled(request)
+
+        assert result["analytics_enabled"] is False
+
+    def test_true_for_an_unrelated_route_named_claim(self) -> None:
+        factory = RequestFactory()
+        request = factory.get("/claim/")
+        request.resolver_match = ResolverMatch(
+            lambda r: None, (), {}, url_name="claim", namespaces=["other"]
+        )
+
+        result = analytics_enabled(request)
+
+        assert result["analytics_enabled"] is True
 
     def test_true_when_resolver_match_is_none(self) -> None:
         factory = RequestFactory()

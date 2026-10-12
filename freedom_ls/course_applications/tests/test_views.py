@@ -22,6 +22,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import (
+    EmailAddressFactory,
     SiteFactory,
     SiteSignupPolicyFactory,
     UserFactory,
@@ -2015,12 +2016,82 @@ def test_claim_get_renders_the_confirm_page(client, claimable):
 
 
 @pytest.mark.django_db
-def test_claim_get_does_not_promise_a_password_step(client, claimable):
-    """The confirm copy is the same for every address, so it must not describe
-    a step that only new accounts see."""
+def test_claim_get_names_the_address_being_verified(client, claimable):
     response = client.get(_claim_url(claimable.anonymous_applicant))
 
-    assert b"choose a password" not in response.content
+    assert claimable.anonymous_applicant.email in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_claim_get_for_a_new_address_says_a_password_comes_next(client, claimable):
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert "choose a password for your new account" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_claim_get_for_an_existing_account_says_it_signs_in(
+    client, claimable_for_existing_user
+):
+    application, _ = claimable_for_existing_user
+
+    response = client.get(_claim_url(application.anonymous_applicant))
+
+    body = response.content.decode()
+    assert ("signed in to your account" in body, "choose a password" in body) == (
+        True,
+        False,
+    )
+
+
+@pytest.mark.django_db
+def test_claim_get_is_never_cached(client, claimable):
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert response["Cache-Control"] == "no-store"
+
+
+@pytest.mark.django_db
+@override_settings(POSTHOG_API_KEY="phc_test")  # pragma: allowlist secret
+def test_claim_get_loads_no_analytics_snippet(client, claimable):
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert "posthog.init(" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_claim_get_while_signed_in_as_somebody_else_says_so(client, claimable):
+    bystander = UserFactory(email="bob@example.com")
+    client.force_login(bystander)
+
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    assert "signed in as bob@example.com" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_claim_get_while_signed_in_as_the_owner_says_nothing_about_signing_out(
+    client, claimable_for_existing_user
+):
+    application, user = claimable_for_existing_user
+    client.force_login(user)
+
+    response = client.get(_claim_url(application.anonymous_applicant))
+
+    assert "sign you out" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_claim_post_while_signed_in_as_somebody_else_signs_the_claimant_in(
+    client, claimable
+):
+    bystander = UserFactory(email="bob@example.com")
+    client.force_login(bystander)
+
+    _claim(client, claimable)
+
+    claimant = User.objects.get(email=claimable.anonymous_applicant.email)
+    assert client.session["_auth_user_id"] == str(claimant.pk)
 
 
 @pytest.mark.django_db
@@ -2318,6 +2389,7 @@ def test_unclaimed_applicant_leaves_no_user_or_side_effects(client, mock_site_co
 def claimable_for_existing_user(mock_site_context):
     """A submitted application whose address belongs to a same-site account."""
     user = UserFactory(email="ada@example.com", first_name="Original")
+    EmailAddressFactory(user=user)
     application = _submitted_form_less_application()
     applicant = application.anonymous_applicant
     applicant.email = "ADA@example.com"

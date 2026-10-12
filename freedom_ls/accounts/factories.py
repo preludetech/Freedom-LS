@@ -1,6 +1,7 @@
 """Factories for accounts models."""
 
 import factory
+from allauth.account.models import EmailAddress
 
 from django.contrib.sites.models import Site
 
@@ -86,3 +87,20 @@ class LegalConsentFactory(SiteAwareFactory):
     document_type = "terms"
     document_version = "1.0"
     git_hash = factory.Sequence(lambda n: f"hash{n:08d}")
+
+
+class EmailAddressFactory(factory.django.DjangoModelFactory):
+    """Factory for allauth's EmailAddress.
+
+    Verified and primary by default: the shape a completed signup leaves
+    behind. Pass ``verified=False`` for a signup nobody confirmed, or
+    ``primary=False`` for an extra address added on the email page.
+    """
+
+    class Meta:
+        model = EmailAddress
+
+    user = factory.SubFactory(UserFactory)
+    email = factory.LazyAttribute(lambda obj: obj.user.email)
+    verified = True
+    primary = True

@@ -10,7 +10,7 @@ from allauth.account.models import EmailAddress
 from allauth.account.signals import user_signed_up
 
 from django.core import signing
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
@@ -30,9 +30,37 @@ class ClaimLink:
 
 
 @dataclass(frozen=True)
+class ClaimOwner:
+    """The account an applicant's address already belongs to.
+
+    `verified` is whether that account has proven it owns the address. An
+    account that has not (an allauth signup nobody confirmed, or an account an
+    operator created by hand) still owns the address for login purposes, but
+    the claim is the first proof that the mailbox is really theirs.
+    """
+
+    user: User
+    verified: bool
+    # An allauth signup left the address on the account unverified. Whoever set
+    # that password never proved they owned the mailbox.
+    unverified_signup: bool = False
+
+
+def claim_sets_a_password(owner: ClaimOwner | None) -> bool:
+    """Whether the claimant will choose a password once the claim goes through.
+
+    True for an address with no account, and for one whose signup was never
+    verified: in both cases nobody has proven they know a password for it.
+    """
+    return owner is None or owner.unverified_signup
+
+
+@dataclass(frozen=True)
 class ClaimOutcome:
     user: User
-    user_was_created: bool
+    # True when the claimant has no password they can be trusted to know: a
+    # brand-new account, or one whose address was registered but never verified.
+    must_set_password: bool
 
 
 def claim_token(applicant: AnonymousApplicant) -> str:
@@ -71,15 +99,46 @@ def read_claim_token(token: str) -> ClaimLink | None:
     return None if applicant is None else ClaimLink(applicant, expired)
 
 
+def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:
+    """The account that already holds the applicant's address, on any site.
+
+    Ownership is a verified allauth address or the address an account logs in
+    with. An unverified secondary address is neither: anyone can add one to
+    their account, so it must not hand them someone else's application.
+
+    _base_manager, because the request's site filter would hide an account on
+    another site, and the globally unique email would then refuse the create
+    with an IntegrityError instead of a quiet refusal.
+    """
+    verified = (
+        EmailAddress.objects.filter(email=applicant.email, verified=True)
+        .select_related("user")
+        .first()
+    )
+    if verified is not None:
+        return ClaimOwner(verified.user, verified=True)
+    login_owner = User._base_manager.filter(email__iexact=applicant.email).first()
+    if login_owner is None:
+        return None
+    # No verified row exists for the address, so any row here is unverified.
+    has_row = EmailAddress.objects.filter(
+        user=login_owner, email=applicant.email
+    ).exists()
+    return ClaimOwner(login_owner, verified=False, unverified_signup=has_row)
+
+
 def attach_claimed_application(
     request: HttpRequest, application: CourseApplication
 ) -> ClaimOutcome | None:
     """Attach an unverified application to the account that owns its address.
 
-    An address with no account gets a new one. An account on this site is
-    attached as it stands: its profile and password are untouched, no consent
-    is written and no sign-up is announced, because the person already
-    registered.
+    An address with no account gets a new one. An account that has verified
+    the address is attached as it stands: its profile and password are
+    untouched, no consent is written and no sign-up is announced, because the
+    person already registered. An account that never verified it has the
+    address verified by this claim; if the address was registered through
+    signup, whoever set that password never proved they owned the mailbox, so
+    the password is revoked and the claimant chooses a new one.
 
     One transaction, with the applicant row locked, so two clicks on the same
     link converge on one claim. None means nothing changed: the link was
@@ -91,27 +150,34 @@ def attach_claimed_application(
         )
         if applicant.claimed_at is not None:
             return None
-        # _base_manager: the request's site filter would hide an account on
-        # another site, and the globally unique email would then refuse the
-        # create with an IntegrityError instead of a quiet refusal.
-        existing = User._base_manager.filter(email__iexact=applicant.email).first()
-        if existing is not None and existing.site_id != applicant.site_id:
+        owner = resolve_claim_owner(applicant)
+        if owner is not None and owner.user.site_id != applicant.site_id:
             return None
-        user = existing if existing is not None else _create_claimed_user(applicant)
-        if existing is None:
+        if owner is None:
+            user = _create_claimed_user(applicant)
             _write_legal_consents(applicant, user)
-        _attach(application, applicant, user)
-    if existing is None:
+        else:
+            user = owner.user
+            if not owner.verified:
+                try:
+                    _verify_address_by_claim(owner, applicant.email)
+                except IntegrityError:
+                    # Another account verified this address between the lookup
+                    # and the write; the link is unusable rather than half-applied.
+                    return None
+        attach_to_user(application, applicant, user)
+    if owner is None:
         announce_user_registered(request, user)
         # The attribution receiver listens here; sending the signal keeps its
         # best-effort handling rather than copying it.
         user_signed_up.send(sender=User, request=request, user=user)
-    return ClaimOutcome(user, user_was_created=existing is None)
+    return ClaimOutcome(user, must_set_password=claim_sets_a_password(owner))
 
 
-def _attach(
+def attach_to_user(
     application: CourseApplication, applicant: AnonymousApplicant, user: User
 ) -> None:
+    """Hand an anonymous application, its sitting and its applicant to an account."""
     application.user = user
     application.save(update_fields=["user", "updated_at"])
     if application.form_progress is not None:
@@ -120,6 +186,23 @@ def _attach(
     applicant.user = user
     applicant.claimed_at = timezone.now()
     applicant.save(update_fields=["user", "claimed_at", "updated_at"])
+
+
+def _verify_address_by_claim(owner: ClaimOwner, email: str) -> None:
+    """Mark an unverified address verified on the strength of the claim link.
+
+    An account an operator created by hand has no address row and keeps its
+    password. One that came through signup had its password set by somebody who
+    never proved they owned the mailbox, so that password is revoked.
+    """
+    with transaction.atomic():
+        address, _ = EmailAddress.objects.update_or_create(
+            user=owner.user, email=email, defaults={"verified": True}
+        )
+    address.set_as_primary(conditional=True)
+    if owner.unverified_signup:
+        owner.user.set_unusable_password()
+        owner.user.save(update_fields=["password"])
 
 
 def _create_claimed_user(applicant: AnonymousApplicant) -> User:

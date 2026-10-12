@@ -11,6 +11,7 @@ from django.contrib.auth.models import (
 )
 from django.contrib.sites.models import Site
 from django.db import models
+from django.db.models.functions import Upper
 
 from freedom_ls.base.initials import two_or_one
 from freedom_ls.site_aware_models.models import (
@@ -79,6 +80,14 @@ class User(SiteAwareModelBase, TimestampedModel, AbstractBaseUser, PermissionsMi
     is_superuser = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
+
+    class Meta:
+        # Case-insensitive lookups compile to UPPER(email) on PostgreSQL; this
+        # is what lets them use an index instead of scanning every account.
+        indexes = [
+            models.Index(Upper("email"), name="accounts_user_email_upper_idx"),
+        ]
+
     EMAIL_FIELD = "email"
     # The fields required when user is created. Email and password are required by default
     REQUIRED_FIELDS = []

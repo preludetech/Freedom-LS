@@ -12,8 +12,18 @@
                     Finish your application for {{ course.title }}
                 </h1>
                 <p>
-                    Click "Confirm" to verify your email. You will then be asked to set a password.
+                    Press Confirm to verify <strong>{{ applicant_email }}</strong>.
+                    {% if sets_password %}
+                        You'll then choose a password for your new account.
+                    {% else %}
+                        You'll then be signed in to your account.
+                    {% endif %}
                 </p>
+                {% if signed_in_as %}
+                    <p>
+                        You're signed in as {{ signed_in_as }}. Pressing Confirm will sign you out of that account.
+                    </p>
+                {% endif %}
                 <form method="post">
                     {% csrf_token %}
                     <c-button type="submit">
@@ -44,9 +54,12 @@
                 <h1>
                     This link is invalid or has already been used
                 </h1>
-                <p>
-                    <a href="{% url 'learner_interface:courses' %}">Browse courses</a>
-                </p>
+                {% url 'learner_interface:courses' as courses_url %}
+                {% if courses_url %}
+                    <p>
+                        <a href="{{ courses_url }}">Browse courses</a>
+                    </p>
+                {% endif %}
             {% endif %}
         </div>
     </c-page>
