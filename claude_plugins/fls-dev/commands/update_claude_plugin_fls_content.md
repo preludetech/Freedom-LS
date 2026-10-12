@@ -5,10 +5,12 @@ allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 
 Sync the `claude_plugins/fls-content/` course-author Claude Code plugin to reflect any changes to FLS authoring functionality made by this SDD run. This command is a **fast no-op** when nothing authoring-relevant changed.
 
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
+you inline. Without `mode: hook` you are standalone.
+
 ## Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this in hook mode).
 
 ## Step 1: Detect authoring-relevant changes (zero-token)
 
@@ -19,7 +21,7 @@ git diff main --name-only | grep -qE \
   '(freedom_ls/(content_base|content_engine|form_engine)/schema\.py|freedom_ls/form_engine/(enums|typed_answers)\.py|freedom_ls/content_engine/validate\.py|freedom_ls/content_engine/templates/cotton/|freedom_ls/learner_interface/templates/cotton/course-card\.html|config/settings_base\.py|freedom_ls/content_engine/management/commands/content_(save|validate)\.py|demo_content/)'
 ```
 
-- **Exit code 1 (no match):** print `No authoring-relevant changes` and go directly to Step 4 (tick). No LLM, no fan-out.
+- **Exit code 1 (no match):** print `No authoring-relevant changes` and stop: nothing to commit. No LLM, no fan-out.
 - **Exit code 0 (match):** note the list of changed authoring-relevant files and proceed to Step 2.
 
 ## Step 2: Draft the plugin update (fan-out — on a match only)
@@ -62,20 +64,10 @@ so a concurrent SDD command's scratch files survive and the prune is skipped wit
 wipe `.sdd-work/` wholesale: it is shared with other SDD commands, and a recursive force-delete is
 blocked by the `security-guard` PreToolUse hook.
 
-## Step 4: Tick the todo
-
-Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
-
-> Read the helper file at `claude_plugins/sdd/commands/protected/update_todo.md` and follow its steps with:
-> - `<todo-path>`: the `todo.md` in the spec directory for the current feature
-> - `tick:"Run \`/update_claude_plugin_fls_content\` to sync the course-author plugin if authoring functionality changed"`
-
-The mechanic edits `todo.md` directly.
-
-## Step 5: Commit and push
+## Step 4: Commit and push
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `sync the fls-content author plugin`. Tell it to stage the edited files under
-`claude_plugins/fls-content/` and the `todo.md` in the spec directory.
+`claude_plugins/fls-content/`.
 
-If Step 1 found no authoring-relevant changes, there is nothing to stage beyond the todo tick.
+If Step 1 found no authoring-relevant changes, there is nothing to stage.

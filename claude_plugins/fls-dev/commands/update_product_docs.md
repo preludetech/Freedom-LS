@@ -5,6 +5,9 @@ allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, mcp__playwrigh
 
 Update the product documentation under `docs/product/` to reflect the feature that was just implemented — **if** it changed something a product reader would act on. Plenty of features do not, and for those the correct output is no edit at all.
 
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
+you inline. Without `mode: hook` you are standalone.
+
 ## Purpose and audience
 
 `docs/product/` is high-level **product documentation**, not developer or API reference. Its readers evaluate, operate, or integrate FLS — technical decision-makers, downstream integrators, and operators — and need to know *what the product does and what can be configured*, not how it is implemented.
@@ -46,22 +49,22 @@ Write to that audience and at that altitude:
 
 This command runs at **depth 0** and fans work out to sub-agents.
 
-1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents can't use `AskUserQuestion`, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Questions only the user can answer are asked at depth 0 *while* the workers run: as early as possible, batched up to four per `AskUserQuestion`. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need.
+1. **Start the work; don't ask permission for it.** Never ask whether to research, scan or fan out: spawn the workers. Subagents cannot ask the user, so bake into each prompt everything the worker needs from what the user has already said and what is on disk. Never ask what a worker or the code will answer, and never hold a worker back for an answer it doesn't need.
 2. **One output path per unit.** Durable artifacts keep their real names; intermediate outputs go in `.sdd-work/` at the project root, named `<doc>.md`.
 3. **Resume scan.** Skip any unit whose output file already exists and ends with `status: ok`; spawn only missing/not-ok units.
 4. **One worker per unit**, in parallel, via the `Agent` tool with `subagent_type: "sdd:sdd-worker"`. Pass the exact output path and the baked-in inputs. Never one worker looping over the batch.
-5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's output if they can; ask via `AskUserQuestion` only if they can't. Then re-spawn a fresh worker with the original brief + answers.
+5. **Collect structured returns:** `ok` → done; `failed` → retry the same unit (≤2 attempts, include the prior error); `blocked` → supply the listed `needs` from the source, the code or another unit's output if they can; if they can't, record the doc as failed and report why. Otherwise re-spawn a fresh worker with the original brief + answers.
 6. **Synthesis is a separate step** — read the output *files* (pass paths, never dump contents into the prompt) and apply edits to the real docs.
 7. **Clean up on success.** Once all edits are applied, delete this command's own scratch files **by name** — never the `.sdd-work/` directory itself, which is shared with every other SDD command. Step 5 has the exact invocation.
 
 ## Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this in hook mode).
 
 ## Step 1: Decide whether any doc changes — and which
 
-Read the current feature's spec file (`spec_dd/2. in progress/<feature>/1. spec.md`) and plan file (`spec_dd/2. in progress/<feature>/2. plan.md`) to understand what the feature added or changed. If the spec or plan path is ambiguous, use `AskUserQuestion` to confirm which feature directory to use before proceeding.
+Find the spec directory: in hook mode `<spec-dir>` is the input; otherwise resolve it the way `pre_step_rebase.md`'s
+"Inputs from the caller" line says. Read its spec file (`1. spec.md`) and plan file (`2. plan.md`) to understand what the feature added or changed.
 
 **Relevance gate — apply this before naming any doc.** A doc is affected only if the feature changed something one of *its* readers — an evaluator, an operator, or an integrator — would act on: a capability they can now use or must now account for, a configuration surface they can now reach, or a stated limitation that has moved. Internal refactors, test-only work, error-reporting plumbing, developer ergonomics and pure upgrade mechanics fail the gate even when they are the entire point of the feature. Content that fails the gate usually has a proper home — route it per the *wrong artifact* prong above rather than mirroring it here.
 
@@ -198,20 +201,10 @@ so a concurrent SDD command's scratch files survive and the prune is skipped wit
 wipe `.sdd-work/` wholesale: it is shared with other SDD commands, and a recursive force-delete is
 blocked by the `security-guard` PreToolUse hook.
 
-## Step 6: Tick the todo
-
-Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
-
-> Read the helper file at `claude_plugins/sdd/commands/protected/update_todo.md` and follow its steps with:
-> - `<todo-path>`: the `todo.md` in the spec directory for the current feature
-> - `tick:"Run \`/update_product_docs\` to update docs/product/ for this feature"`
-
-The mechanic edits `todo.md` directly. It does not depend on `.sdd-work/`, so running it after the step-5 cleanup is correct.
-
-## Step 7: Commit and push
+## Step 6: Commit and push
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
 steps with `<summary>`: `update the product docs`. Tell it to stage the edited files under
-`docs/product/`, any screenshots copied in there, and the `todo.md` in the spec directory.
+`docs/product/`, and any screenshots copied in there.
 
-If Step 1 concluded no doc changes were needed, there is nothing to stage beyond the todo tick.
+If Step 1 concluded no doc changes were needed, there is nothing to stage.

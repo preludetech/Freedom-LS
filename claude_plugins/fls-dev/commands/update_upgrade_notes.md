@@ -5,6 +5,9 @@ allowed-tools: Read, Write, Glob, Grep, Edit, Bash, Skill, Agent
 
 Author `upgrade_notes.md` for the current feature, so downstream projects that extend FLS know what they need to do after pulling the change.
 
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
+you inline. Without `mode: hook` you are standalone.
+
 This command runs at **depth 0**. It reads the spec, plan, and actual git diff to produce a single structured artifact. No fan-out is needed for a single output file — keep it lean.
 
 ## upgrade_notes.md schema
@@ -54,16 +57,12 @@ Every unused list stays `[]` and every unused flag stays `false`; a list you pop
 
 ## Step 0: Pre-step rebase
 
-Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this
-when `/sdd:next` says it already ran this turn).
+Read `claude_plugins/sdd/commands/protected/pre_step_rebase.md` and follow its steps (skip this in hook mode).
 
 ## Step 1: Locate the spec directory
 
-Find the spec directory for the current feature. In order:
-
-1. If the caller named a path, use it.
-2. Match the current branch name to a directory under `spec_dd/2. in progress/`.
-3. If ambiguous, use `AskUserQuestion` to confirm before proceeding.
+Find the spec directory for the current feature: in hook mode `<spec-dir>` is the input; otherwise resolve it the way `pre_step_rebase.md`'s
+"Inputs from the caller" line says.
 
 The spec directory is the directory that contains `1. spec.md` (and usually `2. plan.md`).
 
@@ -130,18 +129,7 @@ This step earns its keep on a re-run. `upgrade_notes.md` is authored before the 
 review fixes delete and rename things. If the file already exists, read it and correct it against
 HEAD rather than trusting what it already says.
 
-## Step 5: Tick the todo
-
-Delegate the todo tick to `sdd:sdd-mechanic`. Spawn the mechanic with this instruction:
-
-> Read the helper file at `claude_plugins/sdd/commands/protected/update_todo.md` and follow its steps with:
-> - `<todo-path>`: the `todo.md` in the spec directory for the current feature
-> - `tick:"Run \`/update_upgrade_notes\` to author the structured upgrade_notes.md for downstream projects"`
-
-The mechanic edits `todo.md` directly.
-
-## Step 6: Commit and push
+## Step 5: Commit and push
 
 Delegate to `sdd:sdd-mechanic`: read `claude_plugins/sdd/resources/commit_and_push.md` and follow its
-steps with `<summary>`: `write the upgrade notes`. Tell it to stage `upgrade_notes.md` and the
-`todo.md` beside it.
+steps with `<summary>`: `write the upgrade notes`. Tell it to stage `upgrade_notes.md`.
