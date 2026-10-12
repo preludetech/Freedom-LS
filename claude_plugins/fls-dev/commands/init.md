@@ -329,10 +329,12 @@ If `.claude/sdd/config.md` exists:
   the project; otherwise leave it blank and list "add a comment standard and point
   `Comment standard` at it" as an outstanding action.
 - Ensure `## Documentation Hooks` exists. If its list is empty, write, in this order:
-  - `App map: <PLUGINS_ROOT>/claude_plugins/django-stack/commands/app_map.md`
-  - `Upgrade notes: <PLUGINS_ROOT>/claude_plugins/fls-dev/commands/update_upgrade_notes.md`
-  - `Product docs: <PLUGINS_ROOT>/claude_plugins/fls-dev/commands/update_product_docs.md`
-  - `Course-author plugin: <PLUGINS_ROOT>/claude_plugins/fls-dev/commands/update_claude_plugin_fls_content.md`
+  - `App map: ds:app_map`
+  - `Upgrade notes: fls-dev:update_upgrade_notes`
+  - `Product docs: fls-dev:update_product_docs`
+  - `Course-author plugin: fls-dev:update_claude_plugin_fls_content`
+
+  These are skill names, not paths: `/sdd:document` invokes each with the `Skill` tool.
 
 A non-blank key and a non-empty list are left exactly as they are.
 
@@ -376,8 +378,9 @@ is listed.
     and every `--plugin-dir` path in it resolves to a directory that exists.
 11. `hooks` in `.claude/settings.json` is unchanged from before this command ran.
 12. `Design check` in `.claude/sdd/config.md` holds a path that exists, or the Step 8 outstanding
-    action is listed. Each path under `## Review Hooks` and `## Documentation Hooks` exists, or the
-    Step 8b outstanding action is listed.
+    action is listed. Each path under `## Review Hooks` exists, and each `## Documentation Hooks` skill
+    `<plugin>:<command>` resolves to `<PLUGINS_ROOT>/claude_plugins/<plugin dir>/commands/<command>.md`
+    (`ds` is `django-stack`), or the Step 8b outstanding action is listed.
 13. Report every issue found.
 
 ## Step 10: Summary and outstanding actions

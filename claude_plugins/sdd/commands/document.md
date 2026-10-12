@@ -1,12 +1,10 @@
 ---
 description: Run the project's documentation hooks for the current spec, in config order
-allowed-tools: Read, Write, Edit, Glob, Grep, Bash, Skill, Agent, ToolSearch, mcp__playwright__*, mcp__plugin_ds_playwright__*
+allowed-tools: Read, Glob, Bash, Skill, Agent
 ---
 
-Runs at depth 0. Each hook is read and followed inline, so it runs on this command's model and
-tool grants, and any worker or mechanic it spawns uses this command's `Agent` tool. The tool
-list is the union of what the project's hooks need; the browser tools are here because a
-documentation hook may take screenshots.
+Runs at depth 0. Each hook is a skill from whichever plugin owns it, invoked with the `Skill`
+tool, so it runs with its own plugin root and its own tool grants.
 
 ## Step 0: Pre-step rebase
 
@@ -21,22 +19,29 @@ line says.
 
 Read `## Documentation Hooks` in `.claude/sdd/config.md` (and `config.local.md`; a non-empty
 list there replaces the whole list). An empty list, or an absent section or file, means no
-hooks: report that and go to Step 3. For each bullet `<label>: <path>`, in order:
+hooks: report that and go to Step 3. Each bullet is `<label>: <skill>`. For each, in order:
 
-1. Record `git status --porcelain`.
-2. Read `<path>` and follow it here with `<spec-dir>`, `<todo-path>` and `mode: hook`.
-3. Record its status. A `failed` hook is reported with its reason and the next one runs.
-4. Run `git status --porcelain` again. The paths that are new or changed since item 1 are the
-   hook's; when there are none, the hook committed its own work or changed nothing. Otherwise
-   delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md`
-   and follow it with `<summary>`: `<label>`, staging exactly those paths.
+1. Invoke `<skill>` with the `Skill` tool, with
+   `args: "spec-dir=<spec-dir> todo-path=<todo-path> mode: hook"`, and follow it to the end.
+2. In hook mode a hook ends in one of these ways:
+   - it committed its own work, or changed nothing;
+   - it ends its report with `changed: <path> …`: delegate to `sdd:sdd-mechanic` to read
+     `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow it with `<summary>`:
+     `<label>`, staging exactly those paths and nothing else;
+   - `status: needs-approval` with a reason: commit nothing, and keep the reason and the files it
+     names for Step 4;
+   - `status: failed` with a reason.
+3. A `failed` or `needs-approval` hook does not stop the run; the next hook runs.
 
 ## Step 3: Tick and commit
 
-Delegate to `sdd:sdd-mechanic`: invoke `${CLAUDE_PLUGIN_ROOT}/commands/protected/update_todo.md`
-with `<todo-path>` and `tick:"Run `/sdd:document`"`, then `commit_and_push.md` with
-`<summary>`: `run the documentation hooks`, staging `todo.md`.
+Read `<todo-path>`. If it has an unchecked item naming `/sdd:document`, delegate to
+`sdd:sdd-mechanic`: invoke `${CLAUDE_PLUGIN_ROOT}/commands/protected/update_todo.md` with
+`<todo-path>` and `tick:"Run `/sdd:document`"`, then `commit_and_push.md` with `<summary>`:
+`run the documentation hooks`, staging `todo.md`. A checklist from an older layout has no such
+item: skip the tick and say so in Step 4.
 
 ## Step 4: Report
 
-One line per hook: `<label>: ok|failed · <what it changed, or "no change">`.
+One line per hook: `<label>: ok|failed|needs-approval · <what it changed, or "no change">`. For
+each `needs-approval` hook, give its reason and the uncommitted files the user has to decide on.

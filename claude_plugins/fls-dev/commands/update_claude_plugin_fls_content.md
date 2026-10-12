@@ -5,8 +5,9 @@ allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent
 
 Sync the `claude_plugins/fls-content/` course-author Claude Code plugin to reflect any changes to FLS authoring functionality made by this SDD run. This command is a **fast no-op** when nothing authoring-relevant changed.
 
-Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
-you inline. Without `mode: hook` you are standalone.
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
+when another command runs you as a hook. Without `mode: hook` you are standalone. In hook mode you
+still commit your own work.
 
 ## Step 0: Pre-step rebase
 
@@ -40,7 +41,7 @@ Apply the standard resume/retry/blocked recipe:
 
 - **Resume:** skip this unit if `.sdd-work/fls_content_sync.md` already exists and ends `status: ok`.
 - **Retry (≤2):** on `status: failed`, re-spawn the same worker including the prior error.
-- **Blocked:** on `status: blocked`, gather the listed `needs` via `AskUserQuestion`, then re-spawn with answers baked in.
+- **Blocked:** on `status: blocked`, supply the listed `needs` from the code or the changed files if they can be. Otherwise, standalone, gather them via `AskUserQuestion` and re-spawn with the answers baked in; in hook mode, end with `status: failed` and the unmet needs as the reason, and commit nothing.
 
 ## Step 3: Apply the edits (depth-0 synthesis)
 

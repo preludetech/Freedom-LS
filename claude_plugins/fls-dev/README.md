@@ -32,8 +32,9 @@ Top level: `init`, `do_qa`, `update_claude_plugin_fls_content`, `update_product_
 `protected/`: `design_check`, `frontend_check` (helpers read by path, not advertised as slash commands).
 
 The three `update_*` commands (`update_upgrade_notes`, `update_product_docs`,
-`update_claude_plugin_fls_content`) run as hooks of `/sdd:document` through `## Documentation Hooks`
-and stay runnable alone. They produce the upgrade notes for downstream projects, the product docs
+`update_claude_plugin_fls_content`) run as hooks of `/sdd:document`: `## Documentation Hooks` in
+`.claude/sdd/config.md` names them as skills (`fls-dev:update_upgrade_notes`, …), after
+`ds:app_map`. They stay runnable alone. They produce the upgrade notes for downstream projects, the product docs
 under `docs/product/`, and the sync of the course-author plugin.
 
 `/fls-dev:init` wires up only the `fls-dev` slice (its `enabledPlugins` key, its permissions, the

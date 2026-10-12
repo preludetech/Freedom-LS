@@ -30,10 +30,10 @@
 
 ## Documentation Hooks
 
-- App map: claude_plugins/django-stack/commands/app_map.md
-- Upgrade notes: claude_plugins/fls-dev/commands/update_upgrade_notes.md
-- Product docs: claude_plugins/fls-dev/commands/update_product_docs.md
-- Course-author plugin: claude_plugins/fls-dev/commands/update_claude_plugin_fls_content.md
+- App map: ds:app_map
+- Upgrade notes: fls-dev:update_upgrade_notes
+- Product docs: fls-dev:update_product_docs
+- Course-author plugin: fls-dev:update_claude_plugin_fls_content
 
 ## Vocabulary Sources
 

@@ -78,7 +78,7 @@ Otherwise, start with `fixes = 0` and repeat these steps until one of them ends 
 1. Read the hook file and follow it here with `<spec-dir>`, the plan path and the slice's design states. It returns one screenshot path per state and width. On `failed`, stop the run with `status: failed` and its reason.
 2. For each state, Read the app screenshot and the design screenshot. List each one's elements region by region, then diff both lists against the state's design checklist in the plan. Judge layout, order, hierarchy, relative density, states and copy. Colour, font, icons and exact pixels belong to FLS's theme and stay out of the judgement. A drawn element the checklist does not list is not a miss: its absence is correct.
 3. Every design checklist line is met (no **design miss**): delete the hook's screenshots by name, log "design check passed", and end the check.
-4. A design miss that has already gone to two fix batches and still stands: record it with the plan line it contradicts and the hook's screenshot paths (they stay under `.sdd-work/`, which is gitignored), delegate to `sdd:sdd-mechanic` an `update_todo.md` call with `add:"3. Implementation and QA|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"`, and end the check. The run continues.
+4. A design miss that has already gone to two fix batches and still stands: record it with the plan line it contradicts and the hook's screenshot paths (they stay under `.sdd-work/`, which is gitignored), add it to the run's list of surviving design misses, and end the check. The run continues; Step 4 files the list in `todo.md`. Nothing writes `todo.md` while batches run, so a batch commit or a failed batch's reset can't take the item with it.
 5. Otherwise spawn one fix batch (`subagent_type: "general-purpose"`, `model: "sonnet"`) with the list of misses and the design paths. It commits `[batch <id>] design fix <n>`, and `fixes` goes up by one. Act on its status as for any batch, then go back to step 1.
 
 ### Batch review
@@ -129,5 +129,6 @@ Delegate to `sdd:sdd-mechanic`: invoke the helper at `claude_plugins/sdd/command
 
 - `<todo-path>`: the `todo.md` in the spec directory
 - `tick:` the unticked item that names this command. With a suffix, that is the item that also names the suffix. Without one, it is `"Run `/sdd:implement_plan` to execute the implementation plan"`.
+- one `add:"<section>|user|Decide what to do about design miss: <miss> (screenshots: <paths>)"` per surviving design miss, where `<section>` is the heading text, without the `##`, of the section holding the ticked item (`3. Implementation and QA` in the current layout, `7. Implementation` in older checklists).
 
-No new items to add.
+With no surviving design misses there is nothing to add.

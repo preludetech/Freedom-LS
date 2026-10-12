@@ -5,8 +5,8 @@ allowed-tools: Read, Bash
 
 This command regenerates `docs/app_structure.md`, the authoritative picture of inter-app dependencies in this project. The file serves as both documentation for human readers and a reference for reviewing whether an implementation plan introduces new cross-app dependencies.
 
-Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
-you inline. Without `mode: hook` you are standalone.
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
+when another command runs you as a hook. Without `mode: hook` you are standalone.
 
 The diagram is generated deterministically from `ast` — it reflects what the code actually imports, not what we wish it imported. If the output surprises you, the code is what's wrong.
 
@@ -56,5 +56,13 @@ Print a short summary:
 - The path to `docs/app_structure.md`.
 - The diff summary from Step 2.
 - The reminder from Step 3, if applicable.
+
+In hook mode, end the report with one of:
+
+- `status: needs-approval` when Step 3 found **added** edges, with the added edges as the reason.
+  Commit nothing: whether a new edge is intended is the user's call.
+- `changed: <path> …` otherwise, listing whichever of `docs/app_structure.md` and the contracts
+  file (the `import_contracts` path in `[tool.test_organisation]` in `pyproject.toml`) this run
+  changed (`git status --porcelain -- <both paths>` says which). Leave the commit to the caller. Nothing changed: no `changed:` line.
 
 Do not edit the generated file by hand. Do not call `update_todo`.

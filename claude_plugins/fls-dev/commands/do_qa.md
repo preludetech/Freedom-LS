@@ -610,7 +610,7 @@ spawning. Pass `<todo-path>`: the `todo.md` in `<spec-dir>`.
 ### The `tick:`
 
 Find the `/fls-dev:do_qa` item naming **this run's** test plan — a `todo.md` often holds one per plan,
-so match on a substring unique to yours (e.g. `/fls-dev:do_qa`) — and pass the line **verbatim** as it
+so match on a substring unique to yours (e.g. the plan's file name, `3b. frontend_qa`) — and pass the line **verbatim** as it
 appears in the file. Do not reconstruct the wording from memory; it drifts between specs.
 
 ### What may be added — this list is closed
@@ -644,8 +644,9 @@ where observations go.
 
 ### The section argument
 
-The `add:` section argument is the todo's heading text without the `##`: `3. Implementation and QA`.
-`update_todo.md` matches the heading exactly and refuses to create new sections.
+The `add:` section argument is the heading text, without the `##`, of the section that holds the
+item you tick: `3. Implementation and QA` in the current layout, `9. QA` in older checklists. Read it
+from the file. `update_todo.md` matches the heading exactly and refuses to create new sections.
 
 ---
 

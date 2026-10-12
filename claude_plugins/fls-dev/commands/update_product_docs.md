@@ -5,8 +5,9 @@ allowed-tools: Read, Glob, Grep, Write, Edit, Bash, Skill, Agent, mcp__playwrigh
 
 Update the product documentation under `docs/product/` to reflect the feature that was just implemented — **if** it changed something a product reader would act on. Plenty of features do not, and for those the correct output is no edit at all.
 
-Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
-you inline. Without `mode: hook` you are standalone.
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
+when another command runs you as a hook. Without `mode: hook` you are standalone. In hook mode you
+still commit your own work.
 
 ## Purpose and audience
 

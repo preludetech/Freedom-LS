@@ -55,7 +55,10 @@ For the *why* and the source citations behind each rule, see the `resources/` fi
   commit step. Every command that can be a hook opens with an "Inputs from the caller" line
   naming `<spec-dir>`, `<todo-path>` and `mode: hook`; without `mode: hook` it is standalone.
   Its own frontmatter is inert when inlined, so the calling command's `allowed-tools` is the
-  union of its hooks' needs.
+  union of its hooks' needs. A hook from **another plugin** is invoked with the `Skill` tool
+  instead, never read by path: inlined, its `${CLAUDE_PLUGIN_ROOT}` would resolve to the caller's
+  plugin. Invoked as a skill it keeps its own plugin root and grants, takes its inputs as `args`,
+  and either commits its own work or ends with `changed: <paths>` for the caller to commit.
 - **`CLAUDE_CODE_SUBAGENT_MODEL` overrides everything.** If set, it forces one model for *all*
   subagents, flattening every per-agent `model:`. Leave it **unset (or `inherit`)** for normal tiering.
 - **Aliases vs pinned IDs.** Aliases (`haiku`/`sonnet`) read well but advance over time; pin dated

@@ -30,7 +30,7 @@ Read `${CLAUDE_PLUGIN_ROOT}/commands/protected/pre_step_rebase.md` and follow it
 
 # Step 1: Research fan-out
 
-Read the idea carefully, then spawn the research straight away, in the background: one `sdd:sdd-worker` per topic, each writing `research_<topic>.md` beside the idea file (atomically, with a `status:` footer and reference URLs for web-sourced findings). Apply resume/retry/blocked per the recipe. A topic whose file exists and ends `status: ok` is skipped.
+Read the idea carefully, then spawn the research straight away, in the background: one `sdd:sdd-worker` per topic, each writing `research_<topic>.md` beside the idea file (atomically, with a `status:` footer and reference URLs for web-sourced findings). Apply resume/retry/blocked per the recipe. A topic whose file exists and ends `status: ok` is skipped. So is a topic whose file exists with no `status:` footer: it was written by a person or an older command, so it is that topic's research and is never overwritten.
 
 Each brief names the topic's question in one sentence and says the idea file is never rewritten.
 
@@ -121,7 +121,7 @@ answers from Step 2, then the earning-its-place pass, then `unslop` and a re-rea
 and word counts.
 # Step 4: Commit `write the spec`
 
-Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the six `research_*.md` files.
+Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and each `research_*.md` beside the idea that exists.
 
 # Step 5: Review wave
 

@@ -19,8 +19,9 @@ Flat under `commands/`: `README` (the workflow guide), `init`, `roadmap`, `regis
 `spec_from_idea`, `spec_review`, `plan_from_spec`, `implement_plan`, `document`, `commit_quickly`,
 `make_pr_quickly`, `finish_worktree`, `address_pr_review`.
 
-`/sdd:document` runs the project's `## Documentation Hooks` from `.claude/sdd/config.md` in order, in
-hook mode, committing per hook. The plan review in `/sdd:plan_from_spec` runs its built-in dimensions
+`/sdd:document` invokes the skills the project lists under `## Documentation Hooks` in
+`.claude/sdd/config.md`, in order, in hook mode. Each hook runs as its own plugin's skill and commits
+its own work, or names the files it changed for `/sdd:document` to commit. The plan review in `/sdd:plan_from_spec` runs its built-in dimensions
 plus the project's own briefs, which `## Plan Review Hooks` lists; `sdd` names none.
 
 `/sdd:roadmap` owns the spec roadmap, `spec_dd/1. next/roadmap.md`: with no argument it syncs the

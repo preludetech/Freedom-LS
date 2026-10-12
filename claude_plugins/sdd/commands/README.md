@@ -89,7 +89,7 @@ arguments as shell code.
 
 ## Step 5: Document
 
-Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md` and runs each hook in order, committing per hook. A project that lists no hooks gets a no-op. `claude_plugins/fls-dev/README.md` says what FLS's hooks produce.
+Run `/sdd:document`. It reads `## Documentation Hooks` in `.claude/sdd/config.md` and invokes each listed skill in order, committing per hook. A project that lists no hooks gets a no-op.
 
 ## Step 6: Pull request
 

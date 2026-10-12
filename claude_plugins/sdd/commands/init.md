@@ -125,7 +125,8 @@ here for the project's own definitions of its domain words. **Plan Review Hooks*
 `/sdd:plan_from_spec` looks here for project-owned review briefs it spawns after its built-in
 review dimensions. **Review Hooks**: `/sdd:implement_plan` looks here for the comment standard and
 test standard its implementer reads and its batch review checks. **Documentation Hooks**:
-`/sdd:document` looks here for the commands it runs, in order, after implementation and QA.
+`/sdd:document` looks here for the skills it invokes, in order, after implementation and QA.
+They can come from any plugin.
 Everything else in this dir exists for
 parity and future settings.
 
@@ -196,11 +197,13 @@ parity and future settings.
    falls back to the project's plain pytest command. `sdd` is portable and names no product here;
    if another plugin owns that file in this project, the user points this key at it.
 
-   **Plan Review Hooks** and **Documentation Hooks** are ordered lists of `<label>: <path>`
-   bullets. The label is for reporting and the order is the contract. An empty list means "this
-   project has no such hooks", and a non-empty list in `config.local.md` replaces the whole list.
-   `sdd` is portable and names no product here; if another plugin owns those files in this project,
-   the user lists them.
+   **Plan Review Hooks** is an ordered list of `<label>: <path>` bullets, and **Documentation
+   Hooks** an ordered list of `<label>: <skill>` bullets, where `<skill>` is a plugin skill name
+   such as `<plugin>:<command>`. `/sdd:document` invokes each with the `Skill` tool, so the hook
+   runs with its own plugin root and tool grants. The label is for reporting and the order is the
+   contract. An empty list means "this project has no such hooks", and a non-empty list in
+   `config.local.md` replaces the whole list. `sdd` is portable and names no product here; if
+   another plugin owns those hooks in this project, the user lists them.
 
    **Review Hooks** is keyed. A **Comment standard** value points at a file that states the
    project's comment rules, and a **Test standard** value points at a file that states its test

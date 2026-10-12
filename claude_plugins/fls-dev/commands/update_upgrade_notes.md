@@ -5,8 +5,9 @@ allowed-tools: Read, Write, Glob, Grep, Edit, Bash, Skill, Agent
 
 Author `upgrade_notes.md` for the current feature, so downstream projects that extend FLS know what they need to do after pulling the change.
 
-Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook` when another command runs
-you inline. Without `mode: hook` you are standalone.
+Inputs from the caller: `<spec-dir>`, `<todo-path>`, and `mode: hook`, passed as `Skill` args
+when another command runs you as a hook. Without `mode: hook` you are standalone. In hook mode you
+still commit your own work.
 
 This command runs at **depth 0**. It reads the spec, plan, and actual git diff to produce a single structured artifact. No fan-out is needed for a single output file — keep it lean.
 

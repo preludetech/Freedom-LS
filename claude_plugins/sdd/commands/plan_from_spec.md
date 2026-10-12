@@ -122,7 +122,7 @@ IMPORTANT: We will be generating a webserver port at random. we wont be using po
 
 # Step 6: Review the plan (fan-out)
 
-One `sdd:sdd-worker` per row of `${CLAUDE_PLUGIN_ROOT}/resources/plan_review_dimensions.md`, each writing `.sdd-work/plan_review_<id>.md`. Then read `## Plan Review Hooks` in `.claude/sdd/config.md` (and `config.local.md`; a non-empty list there replaces the whole list). For each bullet `<label>: <path>`, in order, spawn one more `sdd:sdd-worker` briefed to read `<path>` and follow it with the plan path, the spec path and the output path `.sdd-work/plan_review_<file-stem>.md`, where `<file-stem>` is the path's basename without `.md`. Blank list, or absent section or file: no hook workers. Resume, retry and blocked per the recipe; a hook brief returning `blocked` with a need nothing on disk satisfies is recorded as "plan review hook <label> skipped: <need>" for the summary and the run continues.
+One `sdd:sdd-worker` per row of `${CLAUDE_PLUGIN_ROOT}/resources/plan_review_dimensions.md`, each writing `.sdd-work/plan_review_<id>.md`. Then read `## Plan Review Hooks` in `.claude/sdd/config.md` (and `config.local.md`; a non-empty list there replaces the whole list). For each bullet `<label>: <path>`, in order, spawn one more `sdd:sdd-worker` briefed to read `<path>` and follow it with the plan path, the spec path and the output path `.sdd-work/plan_review_hook_<n>.md`, where `<n>` is the bullet's 1-based position in the list, so no two hooks and no dimension share a file. Blank list, or absent section or file: no hook workers. Resume, retry and blocked per the recipe; a hook brief returning `blocked` with a need nothing on disk satisfies is recorded as "plan review hook <label> skipped: <need>" for the summary and the run continues.
 
 Read every output file by path. A clear fix is edited into the plan. A judgement call becomes a callout at the relevant section, options numbered and the recommended one first. The callout is `> **Security concern:**` for `new_threats` and for a brief whose output opens with `callout: Security concern`, `> **Structure concern:**` for a brief whose output opens with `callout: Structure concern`, and `> **Review concern:**` otherwise. Then put every callout to the user as "When a question comes late" in `fanout_recipe.md` describes; the answer replaces the callout with the decision, and an unanswered callout becomes `> **Assumed default:** <what>. Why: <clause>. To change: <section>.` No callout survives without one or the other.
 
@@ -133,7 +133,7 @@ The plan also must not create documentation of any kind. It must just be an impl
 
 # Step 7: Clean up
 
-Once the plan file and any QA file are finalised, delete by name every `.sdd-work/plan_review_<id>.md`, every `.sdd-work/plan_review_<file-stem>.md` and `.sdd-work/plan_skill_scan.md`, skipping any that does not exist. Never remove the `.sdd-work/` directory itself (recipe step 7).
+Once the plan file and any QA file are finalised, delete by name every `.sdd-work/plan_review_<id>.md`, every `.sdd-work/plan_review_hook_<n>.md` and `.sdd-work/plan_skill_scan.md`, skipping any that does not exist. Never remove the `.sdd-work/` directory itself (recipe step 7).
 
 # Step 8: Update the todo list
 
