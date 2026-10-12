@@ -275,8 +275,8 @@ def test_an_operator_created_account_gains_a_verified_primary_address_when_claim
     )
 
 
-def test_a_claim_sets_a_password_only_when_nobody_has_proven_one():
-    user = UserFactory.build()
+def test_a_claim_sets_a_password_only_when_nobody_has_proven_one(mock_site_context):
+    user = UserFactory()
 
     assert (
         claim_sets_a_password(None),
