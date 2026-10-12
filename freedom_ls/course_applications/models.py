@@ -117,11 +117,10 @@ class CourseApplication(SiteAwareModel):
             models.UniqueConstraint(
                 fields=["site", "user", "course"],
                 name="unique_application_per_site_user_course",
-                # Covers only applications started while signed in: an account
-                # that already applied may later claim one started
-                # anonymously, so the same (user, course) pair can legitimately
-                # appear twice.
-                condition=models.Q(anonymous_applicant__isnull=True),
+                # One application per account per course, however it began.
+                # A claim or a login that would make a second resolves it
+                # first (see claims.attach_to_user). Rows with no user are
+                # unverified applications and never collide.
             )
         ]
 

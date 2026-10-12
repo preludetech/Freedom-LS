@@ -96,6 +96,23 @@ def test_signing_in_to_a_mixed_case_verified_address_adopts_the_draft(
     assert application.user == user
 
 
+def test_signing_in_drops_a_draft_for_a_course_the_account_already_applied_to(
+    client, mock_site_context
+):
+    """The account's submission stays; the anonymous draft could only repeat
+    it, so it is erased with its applicant and sitting rather than adopted."""
+    application = _start_anonymous_draft(client, "ada@example.com")
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+    held = CourseApplicationFactory(user=user, course=application.course)
+
+    client.force_login(user)
+
+    assert list(CourseApplication.objects.filter(course=application.course)) == [held]
+    assert not AnonymousApplicant.objects.filter(email="ada@example.com").exists()
+    assert FormProgress.objects.count() == 0
+
+
 def test_signing_in_to_an_unverified_address_adopts_nothing(client, mock_site_context):
     application = _start_anonymous_draft(client, "ada@example.com")
     user = UserFactory(email="ada@example.com")

@@ -87,10 +87,16 @@ def _start_application(
     with transaction.atomic():
         # get_or_create is race-safe (savepoint + IntegrityError catch +
         # re-get), so concurrent requests that both pass the existing-application
-        # check still converge on one row.
+        # check still converge on one row. An account holds one application
+        # per course however it began, so a user's lookup is by course alone.
         app: CourseApplication
         app, _ = CourseApplication.objects.get_or_create(
-            user=user, anonymous_applicant=anonymous_applicant, course=course
+            course=course,
+            **(
+                {"user": user}
+                if user is not None
+                else {"anonymous_applicant": anonymous_applicant}
+            ),
         )
         # Locked before the sitting check: without it two overlapping calls
         # both see no sitting, each creates one, and the loser's sitting is
@@ -505,21 +511,6 @@ def application_form_page(
     )
 
 
-def _live_application_instead_of(app: CourseApplication) -> CourseApplication | None:
-    """The submitted application that makes this draft a duplicate, if any.
-
-    A draft started while an anonymous application to the same course waited
-    to be claimed is only a repeat of a request already made, so submitting
-    it would file the same request twice.
-    """
-    if app.user is None:
-        return None
-    live = get_application_for_course(user=app.user, course=app.course)
-    if live is None or live.pk == app.pk or not live.is_submitted:
-        return None
-    return live
-
-
 def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Everything the applicant has said, one card per page, and the one place
     they submit from.
@@ -535,9 +526,6 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
     required_answers_error = ""
 
     if request.method == "POST" and not submitted:
-        live = _live_application_instead_of(app)
-        if live is not None:
-            return redirect("course_applications:status", pk=live.pk)
         unanswered = unanswered_required_in_form(form_progress)
         if not unanswered:
             form_progress.complete()
@@ -678,7 +666,9 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
     # Logging in cycles the session key, so the anonymous session's identifier
     # never carries over into the signed-in one.
     adapter.login(request, outcome.user)
-    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+    status_url = reverse(
+        "course_applications:status", kwargs={"pk": outcome.application.pk}
+    )
     if outcome.must_set_password:
         return redirect(
             f"{reverse('account_set_password')}?{urlencode({'next': status_url})}"

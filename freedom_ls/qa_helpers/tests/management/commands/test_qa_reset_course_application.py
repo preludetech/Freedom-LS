@@ -96,10 +96,9 @@ def test_a_reset_works_for_an_applicant_who_never_claimed(qa_site):
 
 
 @pytest.mark.django_db
-def test_a_reset_withdraws_every_application_the_account_holds(qa_site):
+def test_a_reset_withdraws_a_claimed_application(qa_site):
     user = UserFactory(email="qa.applicant@example.com")
     course = CourseFactory()
-    CourseApplicationFactory(user=user, course=course)
     CourseApplicationFactory(anonymous=True, user=user, course=course)
 
     _reset("qa.applicant@example.com", course.slug)

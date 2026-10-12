@@ -328,8 +328,6 @@ def command(site_name: str) -> None:
     LearnerCourseRegistration.objects.filter(
         learner__user=learner, course=gated_course, site=site
     ).delete()
-    # filter().first(), not get_or_create: an account may hold two applications
-    # to one course once it claims one started anonymously.
     application: CourseApplication | None = CourseApplication.objects.filter(
         user=learner, course=gated_course, site=site
     ).first()

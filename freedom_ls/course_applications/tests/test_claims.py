@@ -32,6 +32,9 @@ from freedom_ls.course_applications.claims import (
     resolve_claim_owner,
 )
 from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
+from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.form_engine.models import FormProgress
 
 pytestmark = pytest.mark.django_db
 
@@ -130,7 +133,9 @@ def test_attaching_for_a_same_site_account_returns_that_account(mock_site_contex
 
     outcome = attach_claimed_application(rf.get("/"), application)
 
-    assert outcome == ClaimOutcome(user, must_set_password=False)
+    assert outcome == ClaimOutcome(
+        user, application=application, must_set_password=False
+    )
 
 
 def test_resolving_an_address_held_as_a_verified_secondary_names_that_account(
@@ -156,7 +161,9 @@ def test_attaching_for_a_verified_secondary_address_attaches_without_a_new_user(
 
     outcome = attach_claimed_application(rf.get("/"), application)
 
-    assert outcome == ClaimOutcome(user, must_set_password=False)
+    assert outcome == ClaimOutcome(
+        user, application=application, must_set_password=False
+    )
 
 
 def test_an_unverified_secondary_address_makes_nobody_the_owner(mock_site_context):
@@ -196,7 +203,7 @@ def test_an_account_made_for_the_address_mid_claim_receives_the_application(
     application.refresh_from_db()
     assert (application.user, outcome) == (
         racer[0],
-        ClaimOutcome(racer[0], must_set_password=False),
+        ClaimOutcome(racer[0], application=application, must_set_password=False),
     )
     assert User.objects.filter(email="raced@example.com").count() == 1
 
@@ -230,6 +237,47 @@ def test_attaching_for_an_address_verified_on_another_site_returns_none(
     outcome = attach_claimed_application(rf.get("/"), application)
 
     assert outcome is None
+
+
+def test_a_claim_over_a_draft_on_the_account_replaces_the_draft(mock_site_context, rf):
+    """The draft could only repeat a request already made, so it goes, and
+    its sitting with it."""
+    user = UserFactory(email="taken@example.com")
+    EmailAddressFactory(user=user)
+    application = _anonymous_application_for("taken@example.com")
+    draft = CourseApplicationFactory(
+        user=user,
+        course=application.course,
+        form_progress=FormProgressFactory(user=user),
+    )
+    draft_sitting_pk = draft.form_progress_id
+
+    outcome = attach_claimed_application(rf.get("/"), application)
+
+    application.refresh_from_db()
+    assert outcome == ClaimOutcome(
+        user, application=application, must_set_password=False
+    )
+    assert application.user == user
+    assert not CourseApplication.objects.filter(pk=draft.pk).exists()
+    assert not FormProgress.objects.filter(pk=draft_sitting_pk).exists()
+
+
+def test_a_claim_over_a_submission_on_the_account_keeps_that_one(mock_site_context, rf):
+    """Between two submissions the account's own stays; the claimed one is
+    erased with its applicant and the claimant lands on the one that stays."""
+    user = UserFactory(email="taken@example.com")
+    EmailAddressFactory(user=user)
+    application = _anonymous_application_for("taken@example.com")
+    applicant_pk = application.anonymous_applicant_id
+    held = CourseApplicationFactory(user=user, course=application.course)
+
+    outcome = attach_claimed_application(rf.get("/"), application)
+
+    assert outcome == ClaimOutcome(user, application=held, must_set_password=False)
+    assert not CourseApplication.objects.filter(pk=application.pk).exists()
+    assert not AnonymousApplicant.objects.filter(pk=applicant_pk).exists()
+    assert list(CourseApplication.objects.filter(user=user)) == [held]
 
 
 @pytest.fixture
@@ -275,7 +323,9 @@ def test_claiming_a_squatted_address_asks_for_a_new_password(squatted_applicatio
 
     outcome = attach_claimed_application(rf.get("/"), application)
 
-    assert outcome == ClaimOutcome(squatter, must_set_password=True)
+    assert outcome == ClaimOutcome(
+        squatter, application=application, must_set_password=True
+    )
 
 
 def test_claiming_a_squatted_address_writes_the_claimants_consent(
@@ -314,7 +364,7 @@ def test_an_operator_created_account_has_its_password_revoked_when_claimed(
     user.refresh_from_db()
     assert (user.has_usable_password(), outcome) == (
         False,
-        ClaimOutcome(user, must_set_password=True),
+        ClaimOutcome(user, application=application, must_set_password=True),
     )
 
 
@@ -367,7 +417,9 @@ def test_a_verified_owner_without_a_usable_password_sets_one_on_claim(
 
     outcome = attach_claimed_application(rf.get("/"), application)
 
-    assert outcome == ClaimOutcome(user, must_set_password=True)
+    assert outcome == ClaimOutcome(
+        user, application=application, must_set_password=True
+    )
 
 
 def test_resolving_a_verified_address_stored_in_mixed_case_finds_it(

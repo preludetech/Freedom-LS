@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.allauth_account_adapter import announce_user_registered
 from freedom_ls.accounts.models import LegalConsent, User
+from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 
 # A namespace for the signature, not a secret.
@@ -57,6 +58,9 @@ def claim_sets_a_password(owner: ClaimOwner | None) -> bool:
 @dataclass(frozen=True)
 class ClaimOutcome:
     user: User
+    # The application the account holds for the course after the claim: the
+    # claimed one, or the one it already held when that one wins.
+    application: CourseApplication
     # True when the claimant has no password they can be trusted to know.
     must_set_password: bool
 
@@ -164,13 +168,15 @@ def attach_claimed_application(
             user = _user_for_claim(applicant, owner)
         if user is None:
             return None
-        attach_to_user(application, applicant, user)
+        held = attach_to_user(application, applicant, user)
     if owner is None:
         announce_user_registered(request, user)
         # The attribution receiver listens here; sending the signal keeps its
         # best-effort handling rather than copying it.
         user_signed_up.send(sender=User, request=request, user=user)
-    return ClaimOutcome(user, must_set_password=claim_sets_a_password(owner))
+    return ClaimOutcome(
+        user, application=held, must_set_password=claim_sets_a_password(owner)
+    )
 
 
 def _user_for_claim(
@@ -198,16 +204,56 @@ def _user_for_claim(
 
 def attach_to_user(
     application: CourseApplication, applicant: AnonymousApplicant, user: User
-) -> None:
-    """Hand an anonymous application, its sitting and its applicant to an account."""
-    application.user = user
-    application.save(update_fields=["user", "updated_at"])
-    if application.form_progress is not None:
-        application.form_progress.user = user
-        application.form_progress.save(update_fields=["user", "last_updated_time"])
-    applicant.user = user
-    applicant.claimed_at = timezone.now()
-    applicant.save(update_fields=["user", "claimed_at", "updated_at"])
+) -> CourseApplication:
+    """Hand an anonymous application, its sitting and its applicant to an account.
+
+    Returns the application the account holds for the course afterwards. An
+    account holds one application per course, so when it already holds one,
+    one of the two goes: a submitted application beats a draft, and between
+    two of a kind the one already on the account stays. A draft the account
+    loses goes with its sitting. An incoming application that loses goes with
+    its applicant, as if it had never been made; the consent it carried was
+    already written to the account by the caller.
+
+    One transaction, with the account's row locked, so two attachments for
+    one course cannot both find the account empty.
+    """
+    with transaction.atomic():
+        held: CourseApplication | None = (
+            CourseApplication.objects.select_for_update(of=("self",))
+            .select_related("form_progress")
+            .filter(user=user, course_id=application.course_id)
+            .exclude(pk=application.pk)
+            .first()
+        )
+        if held is not None:
+            if held.is_submitted or not application.is_submitted:
+                erase_anonymous_applicant(applicant)
+                return held
+            _discard_draft(held)
+        application.user = user
+        application.save(update_fields=["user", "updated_at"])
+        if application.form_progress is not None:
+            application.form_progress.user = user
+            application.form_progress.save(update_fields=["user", "last_updated_time"])
+        applicant.user = user
+        applicant.claimed_at = timezone.now()
+        applicant.save(update_fields=["user", "claimed_at", "updated_at"])
+    return application
+
+
+def _discard_draft(draft: CourseApplication) -> None:
+    """Delete a draft with the sitting it owns.
+
+    The application goes first, because the sitting is RESTRICT. The sitting
+    is deleted here rather than by the application's post-delete receiver,
+    which leaves a sitting with a user for that user to reach; this one is
+    about to have nothing reaching it.
+    """
+    sitting = draft.form_progress
+    draft.delete()
+    if sitting is not None:
+        sitting.delete()
 
 
 def _verify_address_by_claim(owner: ClaimOwner, email: str) -> None:

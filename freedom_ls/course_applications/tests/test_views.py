@@ -809,51 +809,6 @@ class TestCheckYourAnswers:
         app.form_progress.refresh_from_db()
         assert app.form_progress.completed_time is not None
 
-    def _draft_behind_a_claimed_submission(self, client):
-        """A complete draft started before an anonymous application to the
-        same course was claimed onto the account."""
-        course, form = gated_course_with_form()
-        draft = _applied(client, course)
-        name = _questions_on(form, 1)[0]
-        client.post(_page_url(draft, 1), {f"question_{name.id}": "Ada"})
-        submitted = CourseApplicationFactory(
-            anonymous=True, user=draft.user, course=course
-        )
-        return draft, submitted
-
-    def test_submitting_a_draft_behind_a_claimed_submission_goes_to_that_one(
-        self, client, mock_site_context
-    ):
-        draft, submitted = self._draft_behind_a_claimed_submission(client)
-
-        response = client.post(_check_url(draft))
-
-        assert response["Location"] == reverse(
-            "course_applications:status", kwargs={"pk": submitted.pk}
-        )
-
-    def test_submitting_a_draft_behind_a_claimed_submission_stamps_nothing(
-        self, client, mock_site_context
-    ):
-        draft, _submitted = self._draft_behind_a_claimed_submission(client)
-
-        client.post(_check_url(draft))
-
-        draft.form_progress.refresh_from_db()
-        assert draft.form_progress.completed_time is None
-
-    def test_submitting_a_draft_behind_a_claimed_submission_records_no_event(
-        self, client, mock_site_context
-    ):
-        draft, _submitted = self._draft_behind_a_claimed_submission(client)
-
-        with patch(
-            "freedom_ls.course_applications.views.record_application_submitted"
-        ) as record:
-            client.post(_check_url(draft))
-
-        record.assert_not_called()
-
     def test_submitting_lands_on_the_dashboard(self, client, mock_site_context):
         course, form = gated_course_with_form()
         app = _applied(client, course)
@@ -3117,19 +3072,25 @@ def test_claim_post_for_an_existing_account_writes_no_attribution(
 
 
 @pytest.mark.django_db
-def test_claim_post_for_an_existing_account_keeps_an_earlier_application(
+def test_claim_post_over_an_earlier_submission_lands_on_that_one(
     client, claimable_for_existing_user
 ):
+    """An account holds one application per course: the one it already
+    submitted stays, the claimed one goes, and the claimant is shown the one
+    that stays."""
     application, user = claimable_for_existing_user
     earlier = CourseApplicationFactory(user=user, course=application.course)
 
-    _claim(client, application)
+    response = _claim(client, application)
 
-    assert set(
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": earlier.pk}
+    )
+    assert list(
         CourseApplication.objects.filter(course=application.course).values_list(
             "pk", flat=True
         )
-    ) == {earlier.pk, application.pk}
+    ) == [earlier.pk]
 
 
 @pytest.mark.django_db

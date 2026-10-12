@@ -410,26 +410,6 @@ class TestGetDashboardContributions:
 
         assert app in apps
 
-    def test_a_course_with_a_draft_and_a_claimed_submission_appears_once(
-        self, mock_site_context
-    ):
-        from freedom_ls.course_applications.backends import (
-            ApplicationCourseAccessBackend,
-        )
-        from freedom_ls.form_engine.factories import FormProgressFactory
-
-        user = UserFactory()
-        course = CourseFactory()
-        CourseApplicationFactory(anonymous=True, user=user, course=course)
-        CourseApplicationFactory(
-            user=user, course=course, form_progress=FormProgressFactory(user=user)
-        )
-
-        backend = ApplicationCourseAccessBackend()
-        contributions = backend.get_dashboard_contributions(user=user)
-
-        assert len(contributions[0].context["applications"]) == 1
-
     def test_returns_empty_list_when_no_applications(self, mock_site_context):
         """get_dashboard_contributions returns empty list when learner has no applications."""
         from freedom_ls.course_applications.backends import (

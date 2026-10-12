@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
-from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
@@ -31,49 +30,15 @@ class TestGetApplicationForCourse:
 
         assert get_application_for_course(user=user, course=course) == app
 
-    def test_returns_the_newer_of_two_applications(self, mock_site_context):
-        """An account may hold two applications to one course; the newer is live."""
+    def test_returns_a_claimed_application(self, mock_site_context):
+        """An application that began anonymously is the account's once claimed."""
         from freedom_ls.course_applications.queries import get_application_for_course
 
         user = UserFactory()
         course = CourseFactory()
-        CourseApplicationFactory(user=user, course=course)
-        newer = CourseApplicationFactory(anonymous=True, user=user, course=course)
+        claimed = CourseApplicationFactory(anonymous=True, user=user, course=course)
 
-        assert get_application_for_course(user=user, course=course) == newer
-
-    def test_a_submitted_application_outranks_a_newer_draft(self, mock_site_context):
-        """A draft started while the anonymous one waited to be claimed is only a
-        duplicate of a request already made."""
-        from freedom_ls.course_applications.queries import get_application_for_course
-        from freedom_ls.form_engine.factories import FormProgressFactory
-
-        user = UserFactory()
-        course = CourseFactory()
-        submitted = CourseApplicationFactory(
-            anonymous=True,
-            user=user,
-            course=course,
-            form_progress=FormProgressFactory(user=user, completed_time=timezone.now()),
-        )
-        CourseApplicationFactory(
-            user=user, course=course, form_progress=FormProgressFactory(user=user)
-        )
-
-        assert get_application_for_course(user=user, course=course) == submitted
-
-    def test_a_form_less_application_counts_as_submitted(self, mock_site_context):
-        from freedom_ls.course_applications.queries import get_application_for_course
-        from freedom_ls.form_engine.factories import FormProgressFactory
-
-        user = UserFactory()
-        course = CourseFactory()
-        form_less = CourseApplicationFactory(anonymous=True, user=user, course=course)
-        CourseApplicationFactory(
-            user=user, course=course, form_progress=FormProgressFactory(user=user)
-        )
-
-        assert get_application_for_course(user=user, course=course) == form_less
+        assert get_application_for_course(user=user, course=course) == claimed
 
     def test_returns_none_when_absent(self, mock_site_context):
         """Returns None when the user has no application to the course."""
@@ -112,27 +77,6 @@ class TestGetActiveApplications:
             result = list(get_active_applications(AnonymousUser()))
 
         assert result == []
-
-    def test_lists_a_course_once_when_a_draft_and_a_claimed_submission_coexist(
-        self, mock_site_context
-    ):
-        """The dashboard must not call one course pending and incomplete at once."""
-        from freedom_ls.course_applications.queries import get_active_applications
-        from freedom_ls.form_engine.factories import FormProgressFactory
-
-        user = UserFactory()
-        course = CourseFactory()
-        submitted = CourseApplicationFactory(
-            anonymous=True,
-            user=user,
-            course=course,
-            form_progress=FormProgressFactory(user=user, completed_time=timezone.now()),
-        )
-        CourseApplicationFactory(
-            user=user, course=course, form_progress=FormProgressFactory(user=user)
-        )
-
-        assert list(get_active_applications(user)) == [submitted]
 
     def test_lists_every_course_the_user_applied_to(self, mock_site_context):
         from freedom_ls.course_applications.queries import get_active_applications

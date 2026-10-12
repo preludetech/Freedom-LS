@@ -31,13 +31,15 @@ attaches the application. Signed-in apply works as before.
   on `FormProgress`, admin customisations and reports. `CourseApplication` has new
   `applicant_email`, `applicant_name` and `is_email_verified` properties that work for both kinds
   of application, plus a new `anonymous_applicant` one-to-one to `AnonymousApplicant`.
-- **The `unique_application_per_site_user_course` constraint is now conditional.** It covers only
-  applications with no `anonymous_applicant`. A user can therefore hold two applications for the
-  same course after a claim. `get_application_for_course` returns a submitted one ahead of any
-  draft, and the newer among equals; `get_active_applications` lists each course once by the same
-  rule, and the check-your-answers page sends a draft that a claimed submission has superseded to
-  that submission's status page. Code that calls `CourseApplication.objects.get(user=…, course=…)`
-  can raise `MultipleObjectsReturned`.
+- **An account still holds one application per course.** The
+  `unique_application_per_site_user_course` constraint is unchanged and unconditional; rows with
+  no user never collide. When a claim or a login adoption would give an account a second
+  application for a course, `claims.attach_to_user` resolves it before setting `user`: a submitted
+  application beats a draft, and between two of a kind the one already on the account stays. A
+  draft the account loses is deleted with its sitting and uploads; an incoming application that
+  loses is erased with its applicant, and the claimant lands on the application the account
+  already held. `ClaimOutcome` carries that `application`. Downstream code that reads
+  `CourseApplication.objects.get(user=…, course=…)` keeps working.
 - **A claim onto an account that never verified the address revokes its password.** The claim
   verifies the address, revokes whatever password the account had, and sends the claimant to set
   a new one. This applies to an unconfirmed signup and to an account an operator created by hand,
@@ -68,9 +70,11 @@ attaches the application. Signed-in apply works as before.
    `freedom_ls_accounts` `0002_alter_legalconsent_consent_method` (new `application_details_step`
    consent method) and `0003_user_email_upper_index` (an index for case-insensitive email
    lookups), `freedom_ls_course_applications` `0004_anonymousapplicant_and_more` (the
-   `AnonymousApplicant` model, nullable `CourseApplication.user`, the conditional constraint) and
-   `0005_anonymousapplicant_claim_email_sent_at` (when the claim email last went out), and
-   `freedom_ls_form_engine` `0008_alter_formprogress_user` (nullable `FormProgress.user`).
+   `AnonymousApplicant` model, nullable `CourseApplication.user`),
+   `0005_anonymousapplicant_claim_email_sent_at` (when the claim email last went out) and
+   `0006_unconditional_unique_application_per_site_user_course` (the constraint `0004` made
+   conditional, unconditional again), and `freedom_ls_form_engine` `0008_alter_formprogress_user`
+   (nullable `FormProgress.user`).
 2. **If your project sets its own `ACCOUNT_RATE_LIMITS`**, add the three new actions. Without them,
    the details step, the claim email and file uploads have no rate limit. FLS's defaults are:
 

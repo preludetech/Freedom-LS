@@ -38,6 +38,25 @@ class TestCourseApplicationUniqueConstraint:
         with pytest.raises(IntegrityError):
             CourseApplicationFactory(user=user, course=course)
 
+    def test_a_claimed_application_counts_as_the_users_one_for_the_course(
+        self, mock_site_context
+    ):
+        """How the application began makes no difference to the constraint."""
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(user=user, course=course)
+
+        with pytest.raises(IntegrityError):
+            CourseApplicationFactory(anonymous=True, user=user, course=course)
+
+    def test_unverified_applications_never_collide(self, mock_site_context):
+        """Two visitors applying to one course have no user to collide on."""
+        course = CourseFactory()
+        first = CourseApplicationFactory(anonymous=True, course=course)
+        second = CourseApplicationFactory(anonymous=True, course=course)
+
+        assert first.pk != second.pk
+
     def test_different_users_can_apply_to_same_course(self, mock_site_context):
         """Different users may each have one application for the same course."""
         course = CourseFactory()
@@ -177,18 +196,6 @@ class TestAnonymousApplications:
         CourseApplicationFactory(course=course, anonymous=True)
 
         assert CourseApplication.objects.filter(course=course).count() == 2
-
-    def test_anonymous_and_signed_in_application_for_one_user_and_course_coexist(
-        self, mock_site_context
-    ):
-        user = UserFactory()
-        course = CourseFactory()
-        CourseApplicationFactory(user=user, course=course)
-        anonymous = CourseApplicationFactory(course=course, anonymous=True)
-        anonymous.user = user
-        anonymous.save()
-
-        assert CourseApplication.objects.filter(user=user, course=course).count() == 2
 
     def test_deleting_an_applicant_removes_its_application(self, mock_site_context):
         application = CourseApplicationFactory(anonymous=True)
