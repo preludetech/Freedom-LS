@@ -92,6 +92,10 @@ def _start_application(
         app, _ = CourseApplication.objects.get_or_create(
             user=user, anonymous_applicant=anonymous_applicant, course=course
         )
+        # Locked before the sitting check: without it two overlapping calls
+        # both see no sitting, each creates one, and the loser's sitting is
+        # left with no user and no application to reach it by.
+        app = CourseApplication.objects.select_for_update().get(pk=app.pk)
         if course.application_form is not None and app.form_progress is None:
             app.form_progress = FormProgress.objects.create(
                 user=user, form=course.application_form

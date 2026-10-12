@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from datetime import timedelta
 from unittest.mock import patch
 from urllib.parse import urlencode
@@ -45,14 +47,17 @@ from freedom_ls.course_applications.anonymous_session import (
 from freedom_ls.course_applications.claims import claim_token
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
-from freedom_ls.course_applications.views import _details_in_flight_key
+from freedom_ls.course_applications.views import (
+    _details_in_flight_key,
+    _start_application,
+)
 from freedom_ls.form_engine.factories import (
     FormFactory,
     FormPageFactory,
     FormProgressFactory,
     FormQuestionFactory,
 )
-from freedom_ls.form_engine.models import FormStrategy
+from freedom_ls.form_engine.models import FormProgress, FormStrategy
 from freedom_ls.form_engine.queries import page_questions
 from freedom_ls.form_engine.session_access import ANONYMOUS_FORM_PROGRESS_SESSION_KEY
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
@@ -2409,6 +2414,49 @@ def test_a_second_details_post_resumes_without_a_second_application(
 
     assert response["Location"] == _page_url(application, 1)
     assert CourseApplication.objects.filter(course=course).count() == 1
+
+
+@pytest.mark.django_db(transaction=True)
+def test_overlapping_starts_of_one_application_make_one_sitting(mock_site_context):
+    """Two requests start the same application at once: the second waits on
+    the first's row lock, then finds the sitting the first made. Without the
+    lock each makes a sitting and the loser's is reachable by nothing.
+
+    transaction=True, because a second connection has to see the first's
+    commit, and each thread opens its own connection."""
+    site = mock_site_context
+    course, _form = gated_course_with_form()
+    application = CourseApplicationFactory(anonymous=True, course=course)
+    applicant = application.anonymous_applicant
+    first_holds_the_lock = threading.Event()
+    original_create = FormProgress.objects.create
+    failures: list[BaseException] = []
+
+    def slow_create(**kwargs):
+        first_holds_the_lock.set()
+        time.sleep(0.5)
+        return original_create(**kwargs)
+
+    def start() -> None:
+        try:
+            with site_context(site):
+                _start_application(course, anonymous_applicant=applicant)
+        except BaseException as exc:
+            failures.append(exc)
+        finally:
+            connection.close()
+
+    with patch.object(FormProgress.objects, "create", side_effect=slow_create):
+        first = threading.Thread(target=start)
+        first.start()
+        assert first_holds_the_lock.wait(timeout=5)
+        second = threading.Thread(target=start)
+        second.start()
+        first.join(timeout=10)
+        second.join(timeout=10)
+
+    assert failures == []
+    assert FormProgress.objects.count() == 1
 
 
 # ---------------------------------------------------------------------------
