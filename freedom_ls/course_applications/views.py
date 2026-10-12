@@ -463,8 +463,10 @@ def application_form_page(
 ) -> HttpResponse:
     """One page of the application form.
 
-    A submitted application is read-only: its pages still render, so the
-    applicant can re-read what they said, but nothing more is written to it.
+    A submitted application is read-only for its signed-in owner: its pages
+    still render, so they can re-read what they said, but nothing more is
+    written to it. A visitor's session reaches only a draft (see
+    `_owned_application_with_form`).
     """
     owned = _owned_application_with_form(request, pk)
     if isinstance(owned, HttpResponse):

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import threading
+import time
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -11,12 +13,14 @@ from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 
 from django.contrib.sessions.backends.db import SessionStore
-from django.db import IntegrityError
+from django.db import IntegrityError, connection
+from django.test import RequestFactory
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import EmailAddressFactory, SiteFactory, UserFactory
 from freedom_ls.accounts.models import LegalConsent, User
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.site_context import site_context
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
@@ -278,6 +282,62 @@ def test_a_claim_over_a_submission_on_the_account_keeps_that_one(mock_site_conte
     assert not CourseApplication.objects.filter(pk=application.pk).exists()
     assert not AnonymousApplicant.objects.filter(pk=applicant_pk).exists()
     assert list(CourseApplication.objects.filter(user=user)) == [held]
+
+
+@pytest.mark.django_db(transaction=True)
+def test_two_claims_for_one_address_and_course_at_once_leave_one_application(
+    mock_site_context,
+):
+    """Two applications under one address to one course, both claim links
+    confirmed at the same moment. Each transaction locks its own applicant,
+    so the account's row is the lock both wait on: the second claim then
+    finds what the first attached instead of failing on the unique
+    (site, user, course).
+
+    transaction=True, because each thread needs its own connection and the
+    second has to see the first's commit."""
+    site = mock_site_context
+    user = UserFactory(email="twice@example.com")
+    EmailAddressFactory(user=user)
+    first_application = _anonymous_application_for("twice@example.com")
+    second_application = CourseApplicationFactory(
+        anonymous=True, course=first_application.course
+    )
+    second_application.anonymous_applicant.email = "twice@example.com"
+    second_application.anonymous_applicant.save(update_fields=["email"])
+    first_is_mid_attach = threading.Event()
+    real_now = timezone.now
+    failures: list[BaseException] = []
+
+    def slow_first_now():
+        # Called once per attach, after the application row is written and
+        # before the transaction commits.
+        if not first_is_mid_attach.is_set():
+            first_is_mid_attach.set()
+            time.sleep(0.5)
+        return real_now()
+
+    def claim(application) -> None:
+        request = RequestFactory().get("/")
+        try:
+            with site_context(site):
+                attach_claimed_application(request, application)
+        except BaseException as exc:
+            failures.append(exc)
+        finally:
+            connection.close()
+
+    with patch("freedom_ls.course_applications.claims.timezone.now", slow_first_now):
+        first = threading.Thread(target=claim, args=(first_application,))
+        first.start()
+        assert first_is_mid_attach.wait(timeout=5)
+        second = threading.Thread(target=claim, args=(second_application,))
+        second.start()
+        first.join(timeout=10)
+        second.join(timeout=10)
+
+    assert failures == []
+    assert CourseApplication.objects.filter(user=user).count() == 1
 
 
 @pytest.fixture

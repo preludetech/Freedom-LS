@@ -32,8 +32,9 @@ attaches the application. Signed-in apply works as before.
   `applicant_email`, `applicant_name` and `is_email_verified` properties that work for both kinds
   of application, plus a new `anonymous_applicant` one-to-one to `AnonymousApplicant`.
 - **An account still holds one application per course.** The
-  `unique_application_per_site_user_course` constraint is unchanged and unconditional; rows with
-  no user never collide. When a claim or a login adoption would give an account a second
+  `unique_application_per_site_user_course` constraint ends up as it was: migration `0004` made
+  it conditional and `0006` makes it unconditional again, so `migrate` rebuilds the index once.
+  Rows with no user never collide. When a claim or a login adoption would give an account a second
   application for a course, `claims.attach_to_user` resolves it before setting `user`: a submitted
   application beats a draft, and between two of a kind the one already on the account stays. A
   draft the account loses is deleted with its sitting and uploads; an incoming application that

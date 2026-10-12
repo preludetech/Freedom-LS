@@ -216,9 +216,13 @@ def attach_to_user(
     already written to the account by the caller.
 
     One transaction, with the account's row locked, so two attachments for
-    one course cannot both find the account empty.
+    one course cannot both find the account empty: the second waits, then
+    finds what the first attached.
     """
     with transaction.atomic():
+        # The lookup below locks the held application, which is nothing when
+        # the account holds none; the user row is the one lock both see.
+        list(User._base_manager.filter(pk=user.pk).select_for_update())
         held: CourseApplication | None = (
             CourseApplication.objects.select_for_update(of=("self",))
             .select_related("form_progress")
