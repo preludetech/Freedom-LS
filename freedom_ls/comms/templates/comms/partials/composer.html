@@ -23,6 +23,7 @@ restore focus after the swap.
           hx-swap="beforeend"
       {% endif %}
       hx-sync="this:drop"
+      hx-disabled-elt="find button[type=submit]"
       data-max-length="{{ composer.max_length }}"
       data-counter-from="{{ composer.counter_from }}"
       x-on:keydown="onKeydown"
@@ -69,7 +70,6 @@ restore focus after the swap.
         <c-button type="submit"
                   variant="primary"
                   icon_left="send"
-                  hx-disabled-elt="this"
                   aria-label="Send">
             <span class="hidden sm:inline">Send</span>
         </c-button>

@@ -198,7 +198,7 @@ class TestThreadPage:
         composer = tree.get_element_by_id("composer")
         button = composer.xpath(".//button[@type='submit']")[0]
         assert composer.get("hx-sync") == "this:drop"
-        assert button.get("hx-disabled-elt") == "this"
+        assert composer.get("hx-disabled-elt") == "find button[type=submit]"
         assert button.get("aria-label") == "Send"
 
     @pytest.mark.usefixtures("allow_policy")
