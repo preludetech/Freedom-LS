@@ -2419,3 +2419,180 @@ def test_a_cohort_viewers_forged_reregister_answers_403(
 
     registration.refresh_from_db()
     assert (response.status_code, registration.is_active) == (403, False)
+
+
+# empty pickers
+
+
+def _empty_picker_text(client: Client, url: str) -> str:
+    """The text of a picker dialog that has nothing to offer, after checking
+    it shows no select, no submit button and a Close button."""
+    response = client.get(url, HTTP_HX_REQUEST="true")
+    assert response.status_code == 200
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("select") == []
+    assert document.cssselect("button[type='submit']") == []
+    assert "Close" in [
+        button.text_content().strip() for button in document.cssselect("button")
+    ]
+    return " ".join(document.text_content().split())
+
+
+@pytest.mark.django_db
+def test_an_empty_learner_picker_says_everyone_is_already_in_the_cohort(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    _, cohort = _membership(organisation, name="Cohort A")
+    educator = _cohort_admin_on(organisation, cohort)
+
+    text = _empty_picker_text(
+        logged_in_client(educator), _add_learners_url(organisation, cohort)
+    )
+
+    assert (
+        "Everyone in your other cohorts is already in Cohort A. To add someone new, "
+        "ask an organisation admin." in text
+    )
+
+
+@pytest.mark.django_db
+def test_a_stale_learner_picker_post_naming_a_member_answers_422_and_adds_nothing(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    member, cohort = _membership(organisation)
+    educator = _cohort_admin_on(organisation, cohort)
+
+    response = logged_in_client(educator).post(
+        _add_learners_url(organisation, cohort),
+        {"learners": [str(member.pk)]},
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert response.status_code == 422
+    assert CohortMembership.objects.filter(learner=member).count() == 1
+
+
+@pytest.mark.django_db
+def test_an_empty_add_to_cohort_picker_says_the_learner_is_in_every_cohort(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, _ = _membership(organisation)
+    learner.user.first_name, learner.user.last_name = "Ada", "Lovelace"
+    learner.user.save()
+
+    text = _empty_picker_text(staff_client, _add_to_cohort_url(organisation, learner))
+
+    assert (
+        "Ada Lovelace is already in every active cohort you can add learners to."
+        in text
+    )
+
+
+@pytest.mark.django_db
+def test_a_stale_add_to_cohort_post_naming_a_cohort_they_are_in_answers_422(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner, cohort = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _add_to_cohort_url(organisation, learner),
+        {"cohort": str(cohort.pk)},
+    )
+
+    assert response.status_code == 422
+    assert CohortMembership.objects.filter(learner=learner).count() == 1
+
+
+@pytest.mark.django_db
+def test_an_empty_register_picker_says_there_is_no_course_to_register_for(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user__first_name="",
+            user__last_name="",
+            user__email="pick@example.com",
+        ),
+    )
+    LearnerCourseRegistrationFactory(learner=learner, is_active=True)
+
+    text = _empty_picker_text(
+        staff_client, _learner_register_url(organisation, learner)
+    )
+
+    assert "There is no course pick@example.com can be registered for right now." in (
+        text
+    )
+
+
+@pytest.mark.django_db
+def test_a_stale_register_post_naming_a_held_course_answers_422(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    course = LearnerCourseRegistrationFactory(learner=learner, is_active=True).course
+
+    response = _post(
+        staff_client,
+        _learner_register_url(organisation, learner),
+        {"course": str(course.pk)},
+    )
+
+    assert response.status_code == 422
+    assert LearnerCourseRegistration.objects.filter(learner=learner).count() == 1
+
+
+@pytest.mark.django_db
+def test_an_empty_move_picker_says_there_is_no_other_cohort(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    learner.user.first_name, learner.user.last_name = "Ada", "Lovelace"
+    learner.user.save()
+    CohortFactory(organisation=organisation, is_active=False)
+
+    text = _empty_picker_text(
+        staff_client, _move_url_from_learner(organisation, learner, source)
+    )
+
+    assert "There is no other active cohort you can move Ada Lovelace to." in text
+
+
+@pytest.mark.django_db
+def test_a_stale_move_post_with_no_other_cohort_answers_422(staff_client: Client):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+
+    response = _post(
+        staff_client,
+        _move_url_from_cohort(organisation, source, learner),
+        {"learner": str(learner.pk), "destination": str(source.pk)},
+    )
+
+    assert response.status_code == 422
+    assert CohortMembership.objects.filter(learner=learner, cohort=source).exists()
+
+
+@pytest.mark.django_db
+def test_a_picker_with_something_to_offer_keeps_its_submit_button(
+    staff_client: Client,
+):
+    organisation = OrganisationFactory()
+    learner = cast(Learner, LearnerFactory(organisation=organisation))
+    CohortFactory(organisation=organisation)
+
+    response = staff_client.get(
+        _add_to_cohort_url(organisation, learner), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert document.cssselect("select[name='cohort']")
+    assert document.cssselect("button[type='submit']")

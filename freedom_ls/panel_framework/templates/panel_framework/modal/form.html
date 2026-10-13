@@ -1,7 +1,17 @@
 {% comment %}
 The modal fragment a FormPanelAction's GET returns. Context: form,
-field_error_count, form_title, form_url, submit_buttons.
+field_error_count, form_title, form_url, submit_buttons. empty_message, when
+set, replaces the form with that sentence and a Close button.
 {% endcomment %}
+{% if empty_message %}
+<c-modal-header focus_title="true">{{ form_title }}</c-modal-header>
+<div class="max-w-prose px-6 py-4 text-sm">
+    <p>{{ empty_message }}</p>
+</div>
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button type="button" variant="secondary" x-on:click="cancel">Close</c-button>
+</c-button-group>
+{% else %}
 <c-modal-header>{{ form_title }}</c-modal-header>
 
 <form hx-post="{{ form_url }}"
@@ -49,3 +59,4 @@ field_error_count, form_title, form_url, submit_buttons.
         {% endfor %}
     </c-button-group>
 </form>
+{% endif %}

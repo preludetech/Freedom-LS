@@ -135,6 +135,7 @@ def form_fragment_context(
     form_title: str,
     form_url: str,
     submit_buttons: list[dict[str, str]],
+    empty_message: str | None = None,
 ) -> dict[str, object]:
     """Mark the form's first visible field for autofocus and build the
     context `modal/form.html` renders.
@@ -142,6 +143,9 @@ def form_fragment_context(
     Skipped when the form carries errors: a browser moves focus to a
     freshly-inserted `autofocus` field as soon as it renders, which would
     override the error-summary focus appModal sets for a 422 re-render.
+
+    `empty_message`, when set, replaces the form with that sentence and a
+    Close button, for a picker with nothing to offer.
     """
     fields = form.visible_fields()
     if fields and not form.errors:
@@ -152,6 +156,7 @@ def form_fragment_context(
         "form_title": form_title,
         "form_url": form_url,
         "submit_buttons": submit_buttons,
+        "empty_message": empty_message,
     }
 
 

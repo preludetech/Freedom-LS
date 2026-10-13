@@ -5,13 +5,16 @@ hidden input), action_url. Once a destination is chosen: destination,
 losing_courses and gaining_courses (prose lists, empty when none) and
 progress_outcomes. refusal carries the reason a 422 re-render gives.
 not_a_member (with learner and cohort only) replaces the form when the learner
-has left the source cohort since the page was drawn.
+has left the source cohort since the page was drawn. empty_message (with
+form_title) replaces the form when there is no cohort to move them to.
 {% endcomment %}
 {% if not_a_member %}
 <c-modal-header focus_title="true">{{ learner.user.display_name }} is no longer in {{ cohort }}</c-modal-header>
 <div class="max-w-prose px-6 py-4 text-sm">
     <p>Nothing changed. {{ learner.user.display_name }} is no longer a member of {{ cohort }}, so they cannot be moved from it.</p>
 </div>
+{% elif empty_message %}
+{% include "panel_framework/modal/form.html" %}
 {% else %}
 <c-modal-header>Move {{ learner.user.display_name }} from {{ cohort }}</c-modal-header>
 
