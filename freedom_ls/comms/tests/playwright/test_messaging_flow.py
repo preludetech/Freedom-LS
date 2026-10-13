@@ -376,3 +376,48 @@ def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
     page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
     top_after = reading.evaluate(OFFSET_IN_LOG)
     assert abs(top_after - top_before) < 2
+
+
+COMPOSER_VIEWPORTS = [
+    {"width": 1920, "height": 1080},
+    {"width": 1280, "height": 800},
+    {"width": 768, "height": 1024},
+    PHONE,
+]
+
+
+def test_composer_stays_inside_the_viewport_on_the_thread_page(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    """The site footer and page spacing were stacked on top of a viewport-tall
+    pane, so the document scrolled and pushed the composer below the fold."""
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    page = logged_in_page
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    conversation = ConversationFactory(between=(logged_in_user, kai))
+    for number in range(1, 36):
+        MessageFactory(
+            conversation=conversation, sender=kai, body=f"Entry {number:02d}"
+        )
+    thread_url = reverse_url(
+        live_server, "conversations:thread", kwargs={"pk": conversation.pk}
+    )
+
+    for viewport in COMPOSER_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(thread_url)
+        expect(page.get_by_text("Entry 35", exact=True)).to_be_visible()
+        send = page.get_by_role("button", name="Send")
+        expect(send).to_be_visible()
+        hint_bottom = page.get_by_text("Ctrl+Enter").first.evaluate(
+            "el => el.getBoundingClientRect().bottom"
+        )
+        send_bottom = send.evaluate("el => el.getBoundingClientRect().bottom")
+        scroll_height = page.evaluate("document.documentElement.scrollHeight")
+        assert max(hint_bottom, send_bottom) <= viewport["height"], viewport
+        assert scroll_height <= viewport["height"], viewport
