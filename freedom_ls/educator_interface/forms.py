@@ -104,10 +104,18 @@ class CohortPickerForm(forms.Form):
         cast(forms.ModelChoiceField, self.fields[field_name]).queryset = queryset
 
 
+class LearnerMultipleChoiceField(forms.ModelMultipleChoiceField):
+    """Labels each learner by their display name, which falls back to their
+    email."""
+
+    def label_from_instance(self, obj: Learner) -> str:
+        return obj.user.display_name
+
+
 class LearnerPickerForm(forms.Form):
     """Picks any number of learners from the queryset the action offers."""
 
-    learners = forms.ModelMultipleChoiceField(
+    learners = LearnerMultipleChoiceField(
         queryset=Learner.objects.none(), widget=forms.SelectMultiple
     )
 
@@ -115,9 +123,7 @@ class LearnerPickerForm(forms.Form):
         self, data: QueryDict | None = None, *, queryset: QuerySet[Learner]
     ) -> None:
         super().__init__(data)
-        cast(
-            forms.ModelMultipleChoiceField, self.fields["learners"]
-        ).queryset = queryset
+        cast(LearnerMultipleChoiceField, self.fields["learners"]).queryset = queryset
 
 
 MAX_ADD_LEARNERS = 50
