@@ -2,21 +2,39 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.sites.models import Site
 from django.core.paginator import Page
 from django.db.models import Count, F, Model, Prefetch, Q, QuerySet
-from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseBadRequest,
+    StreamingHttpResponse,
+)
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from freedom_ls.accounts.models import User
 from freedom_ls.comms.config import config as comms_config
-from freedom_ls.comms.messaging import inbox_for, other_participant, reply_decisions
-from freedom_ls.comms.messaging_views import thread_context
+from freedom_ls.comms.messaging import (
+    inbox_for,
+    other_participant,
+    refusal_alert_copy,
+    reply_decisions,
+    search_recipients,
+    send_message,
+)
+from freedom_ls.comms.messaging_loader import get_messaging_policy
+from freedom_ls.comms.messaging_views import (
+    composer_context,
+    thread_context,
+)
 from freedom_ls.comms.models import Conversation
 from freedom_ls.comms.templatetags.comms_tags import badge_count
 from freedom_ls.content_engine.models import Course
@@ -66,7 +84,9 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.actions import (
     CreateInstanceAction,
     PanelAction,
+    navigation_response,
 )
+from freedom_ls.panel_framework.context import PanelContext
 from freedom_ls.panel_framework.filters import TableFilter
 from freedom_ls.panel_framework.panels import (
     DataTablePanel,
@@ -87,6 +107,7 @@ from freedom_ls.panel_framework.views import (
     panel_framework_view,
     sections_by_url_name,
 )
+from freedom_ls.site_aware_models.models import get_cached_site
 
 #: Session key remembering the educator's last-visited organisation, used
 #: only to pick a default for the bare /educator/ redirect. Re-authorised on
@@ -809,8 +830,122 @@ class ConversationThreadPanel(Panel):
         return context
 
 
+class NewMessageAction(PanelAction):
+    """Starts a conversation with a learner of the organisation, in the app modal.
+
+    The picker offers only learners the sender can see in this organisation
+    and the policy lets them message, so a learner elsewhere looks the same as
+    a name that does not exist.
+    """
+
+    label = "New message"
+    action_name = "new_message"
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+    template_name = "educator_interface/modal/new_message.html"
+
+    def _candidates(self, ctx: PanelContext) -> QuerySet[User]:
+        user = cast(User, ctx.request.user)
+        organisation = cast(OrganisationScopedRequest, ctx.request).organisation
+        site = cast(Site, get_cached_site(ctx.request))
+        return (
+            get_messaging_policy()
+            .recipients_for(sender=user, site=site)
+            .filter(pk__in=learners_visible_to(user, organisation).values("user_id"))
+        )
+
+    def _modal_context(
+        self,
+        ctx: PanelContext,
+        recipient: User | None,
+        *,
+        client_key: UUID | None = None,
+        draft: str = "",
+        alert: str = "",
+    ) -> dict[str, object]:
+        action_url = self.get_action_url(ctx)
+        context: dict[str, object] = {
+            "recipient": recipient,
+            "other": recipient,
+            "search_url": action_url,
+            "choose_url": action_url,
+            "include_email": True,
+            "in_modal": True,
+        }
+        if recipient is None:
+            term = ctx.request.GET.get("q", "")
+            context["term"] = term.strip()
+            context["search"] = search_recipients(
+                sender=cast(User, ctx.request.user),
+                site=cast(Site, get_cached_site(ctx.request)),
+                term=term,
+                candidates=self._candidates(ctx),
+                include_email=True,
+                scope=cast(OrganisationScopedRequest, ctx.request).organisation,
+            )
+        else:
+            context["composer"] = composer_context(
+                client_key=client_key or uuid4(),
+                draft=draft,
+                alert=alert,
+                recipient=recipient,
+                action_url=action_url,
+                in_modal=True,
+            )
+        return context
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        raw = ctx.request.GET.get("recipient")
+        if raw is None:
+            return self._modal_context(ctx, None)
+        recipient = get_object_or_404(self._candidates(ctx), pk=_recipient_pk(raw))
+        return self._modal_context(ctx, recipient)
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        request = ctx.request
+        recipient = get_object_or_404(
+            self._candidates(ctx), pk=_recipient_pk(request.POST.get("recipient"))
+        )
+        try:
+            client_key = UUID(request.POST.get("client_key", ""))
+        except ValueError:
+            return HttpResponseBadRequest("client_key must be a UUID")
+        draft = request.POST.get("body", "")
+        result = send_message(
+            sender=cast(User, request.user),
+            body=draft,
+            client_key=client_key,
+            site=cast(Site, get_cached_site(request)),
+            recipient=recipient,
+        )
+        if result.message is not None:
+            organisation = cast(OrganisationScopedRequest, request).organisation
+            conversation = cast(Conversation, result.conversation)
+            return navigation_response(
+                _interface_path(organisation, f"messages/{conversation.pk}")
+            )
+        alert = result.body_error or refusal_alert_copy(result.refusal, recipient)
+        return render(
+            request,
+            self.template_name,
+            self._modal_context(
+                ctx, recipient, client_key=client_key, draft=draft, alert=alert
+            ),
+            status=422,
+        )
+
+
+def _recipient_pk(raw: str | None) -> int:
+    try:
+        return int(raw or "")
+    except ValueError:
+        raise Http404("recipient must be a user id") from None
+
+
 class ConversationInstanceView(InstanceView):
     panel = ConversationThreadPanel
+
+    def get_actions(self) -> list[PanelAction]:
+        return [NewMessageAction()]
 
 
 class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
@@ -821,6 +956,10 @@ class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
     list_view = ConversationDataTable
     table_key = "conversations"
     instance_view = ConversationInstanceView
+
+    @classmethod
+    def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
+        return [NewMessageAction()]
 
     @classmethod
     def is_available(cls, request: HttpRequest) -> bool:
