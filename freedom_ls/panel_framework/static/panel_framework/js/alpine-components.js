@@ -56,6 +56,45 @@ function focusTriggerOrMain(trigger) {
     if (main) main.focus();
 }
 
+// Tracks whether the first form inside a container differs from what it held
+// at the last snapshot(), so a field edited and then changed back reads clean.
+// Both FormData objects come from the same form element, so their entries()
+// order is stable and the joined pairs are safe to compare as strings.
+// `ignore` is a selector for fields that never count as an edit (hidden
+// inputs a script rewrites on its own). snapshot() takes the names of fields
+// to record as empty: used when the server hands back text the user has not
+// sent, so that text still reads as an edit.
+function dirtyTracker(container, ignore = "") {
+    let baseline = null;
+
+    function read(form) {
+        const data = new FormData(form);
+        if (ignore) {
+            form.querySelectorAll(ignore).forEach((field) => data.delete(field.name));
+        }
+        return data;
+    }
+
+    function serialise(formData) {
+        if (!formData) return "";
+        return Array.from(formData.entries())
+            .map(([name, value]) => `${name}=${value}`)
+            .join("&");
+    }
+
+    return {
+        snapshot(blankFields = []) {
+            const form = container.querySelector("form");
+            baseline = form ? read(form) : null;
+            if (baseline) blankFields.forEach((name) => baseline.set(name, ""));
+        },
+        isDirty() {
+            const form = container.querySelector("form");
+            return form !== null && serialise(read(form)) !== serialise(baseline);
+        },
+    };
+}
+
 document.addEventListener("alpine:init", () => {
     // The one shared modal <dialog> (partials/modal_host.html) every panel
     // action's fragment loads into. It sits inside sidePanel's x-data scope
@@ -69,11 +108,11 @@ document.addEventListener("alpine:init", () => {
     Alpine.data("appModal", () => ({
         _trigger: null,
         _handlers: [],
-        _snapshot: null,
         dirty: false,
         init() {
             this._dialog = this.$el;
             this._body = document.getElementById("app-modal-body");
+            this._tracker = dirtyTracker(this._body);
 
             // hx-disabled-elt blurs the trigger before showModal() runs, so
             // native focus return cannot be relied on — the trigger is
@@ -110,7 +149,7 @@ document.addEventListener("alpine:init", () => {
 
             trackListener(this._handlers, this._dialog, "close", () => {
                 this._hideDiscardPrompt();
-                this._snapshot = null;
+                this._tracker.snapshot();
                 this.dirty = false;
                 focusTriggerOrMain(this._trigger);
             });
@@ -226,22 +265,11 @@ document.addEventListener("alpine:init", () => {
             this._trigger = null;
         },
         _snapshotForm() {
-            const form = this._body.querySelector("form");
-            this._snapshot = form ? new FormData(form) : null;
+            this._tracker.snapshot();
             this.dirty = false;
         },
         _checkDirty() {
-            const form = this._body.querySelector("form");
-            this.dirty = form !== null && this._serialiseForm(new FormData(form)) !== this._serialiseForm(this._snapshot);
-        },
-        // Both FormData objects come from the same form element, so their
-        // entries() order is stable and the joined pairs are safe to compare
-        // as strings.
-        _serialiseForm(formData) {
-            if (!formData) return "";
-            return Array.from(formData.entries())
-                .map(([name, value]) => `${name}=${value}`)
-                .join("&");
+            this.dirty = this._tracker.isDirty();
         },
         // The prompt takes the fragment's place, and the dialog's
         // accessible name moves to the prompt's heading with it.
@@ -277,6 +305,8 @@ document.addEventListener("alpine:init", () => {
         _qvTrigger: null,
         _shownUrl: null,
         _stale: false,
+        _qvDirty: false,
+        _pendingAction: null,
         _entityId: null,
         _refreshHandlers: [],
         _lastUrl: null,
@@ -292,6 +322,13 @@ document.addEventListener("alpine:init", () => {
                 "[data-quick-view-skeleton]",
             );
             this._errorTemplate = this._qvDialog.querySelector("[data-quick-view-error]");
+            this._discardPrompt = this._qvDialog.querySelector(
+                "[data-quick-view-discard-prompt]",
+            );
+            // Hidden inputs (the composer's draft flag and send key) are
+            // rewritten by scripts and by every send; only fields a person
+            // edits count towards an unsent draft.
+            this._qvTracker = dirtyTracker(this._qvBody, "input[type=hidden]");
 
             // htmx only leaves modifier-key clicks alone on boosted anchors.
             // This trigger is a plain hx-get anchor, so without this it would
@@ -331,7 +368,7 @@ document.addEventListener("alpine:init", () => {
                 const url = event.detail.path;
                 if (url === this._shownUrl && this._qvDialog.open) {
                     event.preventDefault();
-                    this._close();
+                    this._requestClose();
                     return;
                 }
                 if (url === this._shownUrl && !this._stale) {
@@ -339,13 +376,33 @@ document.addEventListener("alpine:init", () => {
                     this._open(trigger);
                     return;
                 }
+                if (this._qvDialog.open && this._qvDirty) {
+                    // Hold the request until the prompt is answered.
+                    event.preventDefault();
+                    this._showDiscardPrompt(() => {
+                        this._open(trigger);
+                        this._startLoading(trigger, url);
+                        event.detail.issueRequest(true);
+                    });
+                    return;
+                }
                 this._open(trigger);
                 this._startLoading(trigger, url);
             });
 
+            // A fragment is dirty when its form no longer matches the snapshot
+            // taken as it swapped in.
+            trackListener(this._qvHandlers, this._qvBody, "input", () => this._checkDirty());
+            trackListener(this._qvHandlers, this._qvBody, "change", () => this._checkDirty());
+
             trackListener(this._qvHandlers, document, "htmx:afterSwap", (event) => {
                 if (event.detail.target === this._qvBody) {
                     this._afterBodySwap(event);
+                } else if (this._isBoxSwap(event.detail.target)) {
+                    // A send replaces the form inside the body without
+                    // reloading the drawer: what is on screen is the new
+                    // baseline, except text the server returned unsent.
+                    this._snapshotBody(event.detail.xhr.status === 422 ? ["body"] : []);
                 }
                 // Any swap can recreate a trigger (e.g. a table refetch), so
                 // this runs unconditionally rather than only for the body.
@@ -362,6 +419,9 @@ document.addEventListener("alpine:init", () => {
             // Single point every dismiss route (Esc, requestClose()) funnels
             // through.
             trackListener(this._qvHandlers, this._qvDialog, "close", () => {
+                this._hideDiscardPrompt();
+                this._qvTracker.snapshot();
+                this._qvDirty = false;
                 this._syncExpanded();
                 focusTriggerOrMain(this._qvTrigger);
             });
@@ -381,7 +441,7 @@ document.addEventListener("alpine:init", () => {
                 if (!this._qvDialog.open) return;
                 if (document.querySelector("dialog[open]:modal")) return;
                 if (event.defaultPrevented) return;
-                this._close();
+                this._requestClose();
             });
 
             // htmx caches the outgoing page's DOM before pushing the new
@@ -400,7 +460,21 @@ document.addEventListener("alpine:init", () => {
             });
         },
         requestClose() {
-            this._close();
+            this._requestClose();
+        },
+        // Brings the draft back in place of the discard prompt.
+        keepDraft() {
+            this._hideDiscardPrompt();
+            const field = this._qvBody.querySelector("textarea, input:not([type=hidden]), select");
+            if (field) field.focus();
+        },
+        // The prompt has already confirmed the loss of the draft, so the
+        // action it held runs without the guard.
+        discardDraft() {
+            const action = this._pendingAction;
+            this._hideDiscardPrompt();
+            this._qvDirty = false;
+            if (action) action();
         },
         retry() {
             this._fetchBody(this._lastUrl);
@@ -439,6 +513,7 @@ document.addEventListener("alpine:init", () => {
             const title = (frame && frame.dataset.quickViewTitle) || "";
             this._title.textContent = title;
             this._subtitle.textContent = (frame && frame.dataset.quickViewSubtitle) || "";
+            this._snapshotBody();
             this._entityId = frame ? frame.dataset.entityId : null;
             this._shownUrl = event.detail.pathInfo.requestPath;
             this._stale = false;
@@ -480,11 +555,51 @@ document.addEventListener("alpine:init", () => {
         _handleRefreshEvent(event) {
             const ids = (event.detail && event.detail.ids) || [];
             if (!ids.includes(this._entityId)) return;
-            if (this._qvDialog.open) {
+            // A refetch would replace a draft the reader has not sent.
+            if (this._qvDialog.open && !this._qvDirty) {
                 this._fetchBody(this._shownUrl);
             } else {
                 this._stale = true;
             }
+        },
+        _isBoxSwap(target) {
+            return (
+                !!target && (target.id === "quick-view-message-box" || this._qvBody.contains(target))
+            );
+        },
+        _snapshotBody(blankFields = []) {
+            this._qvTracker.snapshot(blankFields);
+            this._qvDirty = false;
+            if (blankFields.length) this._checkDirty();
+        },
+        _checkDirty() {
+            this._qvDirty = this._qvTracker.isDirty();
+        },
+        // Esc, the close control and a second click on the shown row all
+        // ask first when the drawer holds an unsent draft.
+        _requestClose() {
+            if (this._qvDialog.open && this._qvDirty) {
+                this._showDiscardPrompt(() => this._close());
+                return;
+            }
+            this._close();
+        },
+        // The prompt takes the body's place; pendingAction runs on Discard.
+        _showDiscardPrompt(pendingAction) {
+            if (!this._discardPrompt) {
+                pendingAction();
+                return;
+            }
+            this._pendingAction = pendingAction;
+            this._qvBody.hidden = true;
+            this._discardPrompt.hidden = false;
+            const keepButton = this._discardPrompt.querySelector("[autofocus]");
+            if (keepButton) keepButton.focus();
+        },
+        _hideDiscardPrompt() {
+            this._pendingAction = null;
+            if (this._discardPrompt) this._discardPrompt.hidden = true;
+            this._qvBody.hidden = false;
         },
         _fetchBody(url) {
             htmx.ajax("GET", url, {
