@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from uuid import UUID
 
     from django.contrib.sites.models import Site
     from django.db.models import Model, QuerySet
@@ -76,6 +77,31 @@ class MessagingPolicy:
         self, *, sender: User, recipient: User, site: Site, conversation: Conversation
     ) -> MessagingDecision:
         raise NotImplementedError
+
+    def can_reply_many(
+        self,
+        *,
+        sender: User,
+        pairs: Sequence[tuple[Conversation, User]],
+        site: Site,
+    ) -> dict[UUID, MessagingDecision]:
+        """Answer ``can_reply`` for each (conversation, recipient) pair, keyed by
+        the conversation's pk.
+
+        Surfaces that list many conversations at once call this instead of
+        looping over ``can_reply``. The base implementation loops, so a policy
+        that only defines ``can_reply`` keeps working; a policy whose answers
+        cost queries overrides it to answer every pair in a fixed number.
+        """
+        return {
+            conversation.pk: self.can_reply(
+                sender=sender,
+                recipient=recipient,
+                site=site,
+                conversation=conversation,
+            )
+            for conversation, recipient in pairs
+        }
 
     def recipients_for(self, *, sender: User, site: Site) -> QuerySet[User]:
         raise NotImplementedError

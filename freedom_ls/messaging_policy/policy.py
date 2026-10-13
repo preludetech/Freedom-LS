@@ -134,6 +134,142 @@ class LayeredMessagingPolicy(MessagingPolicy):
         backward = self.can_start(sender=recipient, recipient=sender, site=site)
         return MessagingDecision.allow() if backward.allowed else forward
 
+    def can_reply_many(
+        self,
+        *,
+        sender: User,
+        pairs: Sequence[tuple[Conversation, User]],
+        site: Site,
+    ) -> dict[UUID, MessagingDecision]:
+        """``can_reply`` for every pair in a number of queries that does not depend
+        on how many pairs there are.
+
+        The sender is resolved once and the forward direction is answered by one
+        query over all recipients. Recipients it refused for want of an open
+        route get the backward direction as well: one query for the educator and
+        colleague routes, one for their learner rows, and one reading a column
+        per recipient that has rows.
+        """
+        recipients = {recipient.pk: recipient for _, recipient in pairs}
+        forward = self._start_many(sender, list(recipients.values()), site)
+        reversible = [
+            recipients[pk]
+            for pk, decision in forward.items()
+            if not decision.allowed
+            and decision.reason
+            in (
+                MessagingRefusal.NO_RELATIONSHIP,
+                MessagingRefusal.CLOSED_BY_CONFIGURATION,
+            )
+        ]
+        backward = self._start_many_towards(sender, reversible, site)
+        answers = {
+            pk: MessagingDecision.allow() if pk in backward else decision
+            for pk, decision in forward.items()
+        }
+        return {
+            conversation.pk: answers[recipient.pk] for conversation, recipient in pairs
+        }
+
+    def _start_many(
+        self, sender: User, recipients: list[User], site: Site
+    ) -> dict[int, MessagingDecision]:
+        """``can_start`` from ``sender`` to each recipient, keyed by recipient pk."""
+        decisions: dict[int, MessagingDecision] = {}
+        reachable: list[User] = []
+        for recipient in recipients:
+            if sender == recipient:
+                decisions[recipient.pk] = MessagingDecision.refuse(
+                    MessagingRefusal.SAME_USER
+                )
+            elif not (sender.is_active and recipient.is_active):
+                decisions[recipient.pk] = MessagingDecision.refuse(
+                    MessagingRefusal.INACTIVE_USER
+                )
+            else:
+                reachable.append(recipient)
+        if not reachable:
+            return decisions
+        resolution = self._resolve(sender, site)
+        by_role = self._role_condition(sender, resolution)
+        reaches_open = by_role | self._candidate_condition(resolution, open_only=True)
+        reaches_any = by_role | self._candidate_condition(resolution, open_only=False)
+        open_by_pk = dict(
+            self._users_on_site(sender, site)
+            .filter(pk__in=[recipient.pk for recipient in reachable])
+            .filter(reaches_any)
+            .annotate(
+                is_open=ExpressionWrapper(reaches_open, output_field=BooleanField())
+            )
+            .values_list("pk", "is_open")
+        )
+        for recipient in reachable:
+            is_open = open_by_pk.get(recipient.pk)
+            if is_open is None:
+                decisions[recipient.pk] = MessagingDecision.refuse(
+                    MessagingRefusal.NO_RELATIONSHIP
+                )
+            elif is_open:
+                decisions[recipient.pk] = MessagingDecision.allow()
+            else:
+                decisions[recipient.pk] = MessagingDecision.refuse(
+                    MessagingRefusal.CLOSED_BY_CONFIGURATION
+                )
+        return decisions
+
+    def _start_many_towards(
+        self, target: User, starters: list[User], site: Site
+    ) -> set[int]:
+        """The pks among ``starters`` who may start a conversation with ``target``.
+
+        Each starter's route to ``target`` is the one ``can_start`` would build
+        with the starter as sender. The educator and colleague routes are read
+        from the target's side (the target's learner rows and colleagues), which
+        needs no per-starter grant lookup; the rest are per starter, as columns
+        of one query over the target.
+        """
+        if not starters or not target.is_active or target.site_id != site.pk:
+            return set()
+        target_resolution = self._resolve(target, site)
+        via_role = Q(pk__in=colleagues_of(target, site).values("pk"))
+        for row in target_resolution.rows:
+            via_role |= Q(pk__in=educators_of(row).values("pk"))
+        starter_pks = [starter.pk for starter in starters]
+        allowed = set(
+            self._users_on_site(target, site)
+            .filter(pk__in=starter_pks)
+            .filter(via_role)
+            .values_list("pk", flat=True)
+        )
+        remaining = [pk for pk in starter_pks if pk not in allowed]
+        rows_by_user: dict[int, list[Learner]] = {}
+        starter_rows = Learner.objects.filter(
+            user_id__in=remaining, site=site, is_active=True
+        ).select_related("messaging_config", "organisation__messaging_config", "site")
+        for row in starter_rows:
+            rows_by_user.setdefault(row.user_id, []).append(row)
+        columns = {
+            f"starter_{pk}": ExpressionWrapper(
+                self._candidate_condition(
+                    _Resolution(site, rows, target_resolution.site_config),
+                    open_only=True,
+                ),
+                output_field=BooleanField(),
+            )
+            for pk, rows in rows_by_user.items()
+        }
+        if columns:
+            answer = (
+                User.objects.filter(pk=target.pk, site=site, is_active=True)
+                .annotate(**columns)
+                .values(*columns)
+                .first()
+            )
+            allowed.update(
+                pk for pk in rows_by_user if answer and answer[f"starter_{pk}"]
+            )
+        return allowed
+
     def recipients_for(self, *, sender: User, site: Site) -> QuerySet[User]:
         if not sender.is_active:
             # can_start refuses every pair for an inactive sender.

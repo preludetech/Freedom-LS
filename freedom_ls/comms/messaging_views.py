@@ -33,6 +33,7 @@ from freedom_ls.comms.messaging import (
     refusal_alert_copy,
     render_message_entries,
     reply_decision,
+    reply_decisions,
     search_recipients,
     send_message,
     unread_conversation_count,
@@ -72,15 +73,16 @@ class InboxRow:
 
 
 def inbox_rows(user: User) -> list[InboxRow]:
-    rows: list[InboxRow] = []
-    for conversation in inbox_for(user):
-        decision = reply_decision(viewer=user, conversation=conversation)
-        rows.append(
-            InboxRow(
-                conversation, other_participant(conversation, user), decision.allowed
-            )
+    conversations = list(inbox_for(user))
+    decisions = reply_decisions(viewer=user, conversations=conversations)
+    return [
+        InboxRow(
+            conversation,
+            other_participant(conversation, user),
+            decisions[conversation.pk].allowed,
         )
-    return rows
+        for conversation in conversations
+    ]
 
 
 def _inbox_context(
