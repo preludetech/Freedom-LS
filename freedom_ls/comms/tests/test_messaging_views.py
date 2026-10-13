@@ -247,10 +247,8 @@ class TestThreadPage:
         counter = composer.xpath(".//*[@aria-live='polite'][@x-show='showCounter']")
         assert counter
         failed = composer.xpath(".//*[@x-show='failed']")[0]
-        assert failed.xpath(".//*[@role='alert']")
-        assert "Not sent. Check your connection and try again." in (
-            failed.text_content()
-        )
+        assert failed.get("role") == "alert"
+        assert "Not sent. Check your connection." in failed.text_content()
         assert failed.xpath(".//button[normalize-space()='Retry']")
 
     @pytest.mark.parametrize(
@@ -433,7 +431,7 @@ class TestSendRefused:
         assert response["HX-Reswap"] == "outerHTML"
         assert composer.xpath(".//textarea")[0].text == "Draft text"
         assert composer.xpath(".//input[@name='client_key']")[0].get("value") == key
-        assert composer.xpath(".//*[@role='alert']")
+        assert composer.xpath(".//*[@role='alert'][not(@x-show)]")
         assert not tree.xpath("//li")
 
     def test_a_refusal_stores_nothing(self, pair, logged_in_client) -> None:
@@ -832,7 +830,7 @@ class TestStartSend:
         assert composer.xpath(".//input[@name='recipient']")[0].get("value") == str(
             other.pk
         )
-        assert composer.xpath(".//*[@role='alert']")
+        assert composer.xpath(".//*[@role='alert'][not(@x-show)]")
         assert Conversation.objects.count() == 0
 
     def test_a_post_to_an_unknown_recipient_is_404(
@@ -871,7 +869,7 @@ class TestStartRefused:
         assert response["HX-Retarget"] == "#composer"
         assert composer.xpath(".//textarea")[0].text == "My draft"
         assert composer.xpath(".//input[@name='client_key']")[0].get("value") == key
-        assert composer.xpath(".//*[@role='alert']")
+        assert composer.xpath(".//*[@role='alert'][not(@x-show)]")
         assert Message.objects.count() == 0
 
     def test_a_recipient_outside_the_recipients_is_refused(
@@ -1908,6 +1906,24 @@ class TestSendFromTheQuickViewBox:
         assert new_key != old_key
         assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
 
+    def test_send_sits_under_the_textarea_rather_than_beside_it(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "Hello", "client_key": str(uuid.uuid4())},
+            **QUICK_VIEW,
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        composer = tree.xpath("//form[@id='composer']")[0]
+        textarea = composer.xpath(".//textarea")[0]
+        send = composer.xpath(".//button[@type='submit']")[0]
+        assert textarea.getparent() is not send.getparent()
+        assert send.getparent() in textarea.getparent().itersiblings()
+
     def test_the_box_holds_only_the_latest_three_entries(
         self, pair, logged_in_client
     ) -> None:
@@ -1964,7 +1980,8 @@ class TestSendFromTheQuickViewBox:
         assert response.status_code == 422
         assert "HX-Retarget" not in response
         box = tree.xpath("//div[@id='quick-view-message-box']")[0]
-        assert box.xpath(".//div[@role='alert']")
+        assert box.xpath(".//*[@role='alert'][not(@x-show)]")
+        assert box.xpath(".//textarea")[0].get("aria-invalid") == "true"
         assert box.xpath(".//input[@name='client_key']")[0].get("value") == key
 
 

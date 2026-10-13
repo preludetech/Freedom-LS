@@ -1812,7 +1812,7 @@ def test_posting_a_refused_new_message_returns_the_modal_at_422_with_the_draft(
 
     assert response.status_code == 422
     page = lxml.html.fromstring(response.content.decode())
-    assert page.xpath("//*[@role='alert']")
+    assert page.xpath("//*[@role='alert'][not(@x-show)]")
     assert "Welcome aboard" in page.xpath("//textarea[@name='body']")[0].text_content()
     assert not inbox_for(educator).exists()
 
