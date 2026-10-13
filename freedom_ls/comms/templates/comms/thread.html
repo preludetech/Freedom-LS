@@ -3,7 +3,7 @@
 {% block head_title %}Messages{% endblock head_title %}
 
 {% block content %}
-    <c-page width="wide" class="py-0 lg:py-0">
+    <c-page width="wide" class="py-0!">
         <div class="flex border-x border-border">
             <aside aria-label="Conversations"
                    class="hidden w-80 shrink-0 overflow-y-auto border-r border-border bg-surface md:block">
@@ -15,3 +15,10 @@
         </div>
     </c-page>
 {% endblock content %}
+
+{% comment %}
+The pane fills the viewport below the header, so the footer would sit below
+the fold and make the document scroll alongside the log.
+{% endcomment %}
+{% block footer %}
+{% endblock footer %}
