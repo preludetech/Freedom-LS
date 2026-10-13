@@ -9,7 +9,10 @@ restore focus after the swap.
       method="post"
       action="{{ composer.action_url }}"
       hx-post="{{ composer.action_url }}"
-      {% if composer.recipient %}
+      {% if composer.in_modal %}
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+      {% elif composer.recipient %}
           hx-target="this"
           hx-swap="outerHTML"
       {% else %}

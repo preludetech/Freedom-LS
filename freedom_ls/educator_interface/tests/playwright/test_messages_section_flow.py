@@ -124,3 +124,65 @@ def test_list_to_thread_reply_and_back_on_a_phone(
         )
         expect(page.get_by_text("On it, thanks")).to_be_visible()
         assert_no_horizontal_overflow(page)
+
+
+def test_new_message_from_the_top_bar_on_a_phone(
+    live_server,
+    educator_logged_in_page: Page,
+    educator_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    page = educator_logged_in_page
+    page.set_viewport_size(PHONE)
+    organisation = OrganisationFactory()
+    grantor = LearnerFactory(user__superuser=True).user
+    assign_role(grantor, educator_user, "organisation_admin", organisation)
+    LearnerFactory(
+        organisation=organisation,
+        user=UserFactory(
+            first_name="Kai", last_name="Ngata", email="kai.ngata@example.com"
+        ),
+    )
+
+    # New message is reachable from the list and opens the modal as a bottom sheet.
+    page.goto(_section_url(live_server, organisation.slug, "messages"))
+    page.get_by_role("button", name="New message").locator("visible=true").click()
+    dialog = page.get_by_role("dialog", name="New message")
+    expect(dialog).to_be_visible()
+    box = dialog.bounding_box()
+    assert box is not None
+    assert box["x"] == 0
+    assert box["width"] == PHONE["width"]
+    assert_no_horizontal_overflow(page)
+
+    # Searching lists the matching learner with the email, in a row tall enough to tap.
+    dialog.get_by_label("To").fill("Ka")
+    row = dialog.get_by_role("link", name="Kai Ngata")
+    expect(row).to_be_visible()
+    expect(row).to_contain_text("kai.ngata@example.com")
+    row_box = row.bounding_box()
+    assert row_box is not None
+    assert row_box["height"] >= 24
+    assert_no_horizontal_overflow(page)
+
+    # Choosing the learner shows the composer; sending lands on the thread.
+    row.click()
+    expect(dialog.get_by_text("To Kai Ngata", exact=True)).to_be_visible()
+    dialog.get_by_label("Message to Kai Ngata").fill("Welcome to the course")
+    dialog.get_by_role("button", name="Send").click()
+    expect(page.get_by_role("link", name="Back to messages")).to_be_visible()
+    expect(
+        page.locator("#thread-log").get_by_text("Welcome to the course")
+    ).to_be_visible()
+    expect(dialog).to_be_hidden()
+
+    # Layout: the modal has no horizontal overflow at any viewport.
+    for viewport in QA_VIEWPORTS:
+        page.set_viewport_size(viewport)
+        page.goto(_section_url(live_server, organisation.slug, "messages"))
+        page.get_by_role("button", name="New message").locator("visible=true").click()
+        expect(page.get_by_role("dialog", name="New message")).to_be_visible()
+        assert_no_horizontal_overflow(page)

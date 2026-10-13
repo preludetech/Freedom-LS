@@ -102,24 +102,30 @@ def _inbox_context(
     }
 
 
-def _composer_context(
+def composer_context(
     *,
     client_key: UUID,
     draft: str = "",
     alert: str = "",
     conversation: Conversation | None = None,
     recipient: User | None = None,
+    action_url: str | None = None,
+    in_modal: bool = False,
 ) -> dict[str, object]:
     """What the composer partial needs.
 
     A composer for an existing conversation posts to its ``send`` URL and
     appends the new message to the log. A composer for a first message posts to
-    ``start`` with the recipient, and replaces itself when refused.
+    ``start`` with the recipient, and replaces itself when refused. ``action_url``
+    posts somewhere else instead, and ``in_modal`` makes the answer replace the
+    whole app modal body, which is where a first message composed in the modal
+    sends its refusal.
     """
-    if conversation is not None:
-        action_url = reverse("conversations:send", kwargs={"pk": conversation.pk})
-    else:
-        action_url = reverse("conversations:start")
+    if action_url is None:
+        if conversation is not None:
+            action_url = reverse("conversations:send", kwargs={"pk": conversation.pk})
+        else:
+            action_url = reverse("conversations:start")
     return {
         "client_key": client_key,
         "draft": draft,
@@ -128,6 +134,7 @@ def _composer_context(
         "counter_from": max(0, config.MESSAGE_MAX_LENGTH - COUNTER_MARGIN),
         "action_url": action_url,
         "recipient": recipient,
+        "in_modal": in_modal,
     }
 
 
@@ -161,7 +168,7 @@ def thread_context(
         "older_cursor": encode_cursor(shown[0]) if has_older and shown else "",
         "thread_cursor": encode_cursor(shown[-1]) if shown else "",
         "thread_poll_seconds": config.MESSAGE_THREAD_POLL_SECONDS,
-        "composer": _composer_context(client_key=uuid4(), conversation=conversation),
+        "composer": composer_context(client_key=uuid4(), conversation=conversation),
         "page_size": config.MESSAGE_PAGE_SIZE,
         "back_url": reverse("conversations:inbox"),
     }
@@ -280,7 +287,7 @@ def _send_response(
             {
                 "conversation": sent_to,
                 "other": other_participant(sent_to, viewer),
-                "composer": _composer_context(client_key=uuid4(), conversation=sent_to),
+                "composer": composer_context(client_key=uuid4(), conversation=sent_to),
                 "oob": True,
             },
             request,
@@ -297,7 +304,7 @@ def _send_response(
         "conversation": conversation,
         "other": other,
         "recipient": recipient,
-        "composer": _composer_context(
+        "composer": composer_context(
             client_key=client_key,
             draft=draft,
             alert=alert,
@@ -393,7 +400,7 @@ def _start_get(request: HttpRequest) -> HttpResponse:
         {
             "recipient": recipient,
             "other": recipient,
-            "composer": _composer_context(client_key=uuid4(), recipient=recipient),
+            "composer": composer_context(client_key=uuid4(), recipient=recipient),
         },
     )
 
@@ -573,7 +580,7 @@ def partial_thread_poll(request: HttpRequest, pk: UUID) -> HttpResponse:
                 {
                     "conversation": conversation,
                     "other": other,
-                    "composer": _composer_context(
+                    "composer": composer_context(
                         client_key=uuid4(), conversation=conversation
                     ),
                     "oob": True,
