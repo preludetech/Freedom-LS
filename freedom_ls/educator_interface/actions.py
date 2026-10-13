@@ -512,7 +512,14 @@ class RegisterLearnerForCourseAction(FormPanelAction):
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         self._bind(ctx)
-        return super().get_context_data(ctx)
+        context = super().get_context_data(ctx)
+        context["empty_message"] = _empty_message(
+            cast(forms.BaseForm, context["form"]),
+            "course",
+            f"There is no course {self._learner.user.display_name} can be "
+            "registered for right now.",
+        )
+        return context
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         self._bind(ctx)
@@ -761,6 +768,16 @@ class MoveToCohortAction(MembershipAction):
         if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
             context.update({"learner": learner, "cohort": source, "not_a_member": True})
             return context
+        if not self._offered(ctx, learner).exists():
+            name = learner.user.display_name
+            context.update(
+                {
+                    "form_title": f"Move {name} from {source}",
+                    "empty_message": "There is no other active cohort you can "
+                    f"move {name} to.",
+                }
+            )
+            return context
         form = self._picker(ctx, learner)
         if isinstance(ctx.instance, Cohort):
             other_side = {"name": "learner", "value": str(learner.pk)}
@@ -832,6 +849,8 @@ class MoveToCohortAction(MembershipAction):
 
     def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
         context = self.get_context_data(ctx)
+        if context.get("empty_message"):
+            return render(ctx.request, self.template_name, context, status=422)
         context["refusal"] = reason
         # The re-rendered select offers what the fresh dialog offered.
         form = cast(CohortPickerForm, context["form"])
@@ -843,6 +862,12 @@ class MoveToCohortAction(MembershipAction):
 
 
 ADD_LEARNER = "freedom_ls_learner_management.add_learner"
+
+
+def _empty_message(form: forms.BaseForm, field_name: str, message: str) -> str | None:
+    """`message` when the picker's field offers nothing, otherwise None."""
+    queryset = cast(forms.ModelChoiceField, form.fields[field_name]).queryset
+    return None if queryset is not None and queryset.exists() else message
 
 
 def _picker_fragment(
@@ -913,11 +938,18 @@ class AddToCohortAction(PanelAction):
         return f"Add {cast(Learner, ctx.instance).user.display_name} to a cohort"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        form = self._form(ctx)
+        name = cast(Learner, ctx.instance).user.display_name
         return form_fragment_context(
-            self._form(ctx),
+            form,
             form_title=self._title(ctx),
             form_url=self.get_action_url(ctx),
             submit_buttons=[self._BUTTON],
+            empty_message=_empty_message(
+                form,
+                "cohort",
+                f"{name} is already in every active cohort you can add learners to.",
+            ),
         )
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
@@ -972,11 +1004,18 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
         return f"Add learners to {cast(Cohort, ctx.instance)}"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        form = self._form(ctx)
         return form_fragment_context(
-            self._form(ctx),
+            form,
             form_title=self._title(ctx),
             form_url=self.get_action_url(ctx),
             submit_buttons=[self._BUTTON],
+            empty_message=_empty_message(
+                form,
+                "learners",
+                f"Everyone in your other cohorts is already in {ctx.instance}. "
+                "To add someone new, ask an organisation admin.",
+            ),
         )
 
     def handle_active_submit(self, ctx: PanelContext) -> HttpResponse:
