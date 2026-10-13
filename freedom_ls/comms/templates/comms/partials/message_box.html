@@ -1,0 +1,17 @@
+{% comment %}
+The learner quick-view message box: the conversation's newest messages and the
+composer. A send from the box replaces this whole element, so the drawer around
+it stays open. `data-conversation-pk` is empty until a conversation exists.
+The entries are not a live region: the box does not poll.
+{% endcomment %}
+<div id="quick-view-message-box"
+     data-conversation-pk="{% if conversation %}{{ conversation.pk }}{% endif %}">
+    {% if box_entries %}
+        <ul class="m-0 flex list-none flex-col gap-3 p-0 py-3" aria-label="Latest messages">
+            {% for entry in box_entries %}
+                {% include "comms/partials/message_entry.html" %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% include "comms/partials/composer.html" %}
+</div>
