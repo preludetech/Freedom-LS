@@ -305,3 +305,48 @@ def test_a_network_failure_offers_retry_that_sends_once_with_the_same_key(
     expect(alert).to_be_hidden()
     assert _sent_bodies(conversation) == ["Flaky network"]
     assert page.locator("#composer input[name=client_key]").input_value() != key
+
+
+OFFSET_IN_LOG = (
+    "el => el.getBoundingClientRect().top"
+    " - document.querySelector('#thread-log').getBoundingClientRect().top"
+)
+
+
+def test_loading_earlier_messages_from_the_top_keeps_the_readers_place(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    """Prepending older messages with the log scrolled to the top used to
+    leave scrollTop at 0, jumping the reader to the oldest message."""
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_POLICY = f"{__name__}.OpenPolicy"
+    page = logged_in_page
+    kai = UserFactory(first_name="Kai", last_name="Ngata")
+    conversation = ConversationFactory(between=(logged_in_user, kai))
+    for number in range(1, 36):
+        MessageFactory(
+            conversation=conversation, sender=kai, body=f"Entry {number:02d}"
+        )
+    page.goto(
+        reverse_url(live_server, "conversations:thread", kwargs={"pk": conversation.pk})
+    )
+    log = page.locator("#thread-log")
+    reading = page.get_by_text("Entry 06", exact=True)
+    expect(reading).to_be_visible()
+
+    # The reader sits at the top of the log, looking at the oldest loaded entry.
+    log.evaluate("el => { el.scrollTop = 0; }")
+    top_before = reading.evaluate(OFFSET_IN_LOG)
+
+    page.get_by_role("button", name="Load earlier messages").click()
+    expect(page.get_by_text("Entry 01", exact=True)).to_be_attached()
+
+    # The log scrolled by the height of the prepended entries, so the entry
+    # the reader was looking at has not moved.
+    page.wait_for_function("() => document.querySelector('#thread-log').scrollTop > 0")
+    top_after = reading.evaluate(OFFSET_IN_LOG)
+    assert abs(top_after - top_before) < 2
