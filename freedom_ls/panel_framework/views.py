@@ -119,6 +119,20 @@ class SectionConfigBase:
         return None
 
     @classmethod
+    def get_menu_count_url(cls, request: HttpRequest) -> str | None:
+        """A URL returning the menu count as an HTML fragment, or None.
+
+        When set, the sidebar renders a self-polling element that fetches the
+        count from this URL instead of rendering `get_menu_count` with the
+        page, so navigating never pays for the count query."""
+        return None
+
+    @classmethod
+    def get_menu_count_poll_seconds(cls) -> int:
+        """Seconds between polls of `get_menu_count_url`."""
+        return 60
+
+    @classmethod
     def get_instance_label(cls, instance: Model) -> str:
         """How the page heading, the sidebar sub-item and the back link name
         one of this section's instances. `str(instance)` by default; a
@@ -940,6 +954,13 @@ def _build_menu_items(
                     ),
                     "icon": section.icon,
                     "count": section.get_menu_count(request),
+                    "url_name": section.url_name,
+                    # Part of the polled count element's id, so switching scope
+                    # (for example organisation) yields a fresh element rather
+                    # than a preserved one holding the old scope's count.
+                    "scope_key": "-".join(extra_url_kwargs.values()),
+                    "count_url": section.get_menu_count_url(request),
+                    "count_poll_seconds": section.get_menu_count_poll_seconds(),
                     "active": is_active,
                     "aria_current": aria_current,
                 }

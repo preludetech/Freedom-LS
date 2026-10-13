@@ -8,6 +8,11 @@ urlpatterns = [
     # Must come first: without an organisation segment, "" would otherwise
     # be swallowed by the catch-all path_string below.
     re_path(r"^$", views.interface_root, name="root"),
+    re_path(
+        r"^organisations/(?P<organisation_slug>[-\w]+)/messages/unread-count/$",
+        views.messages_unread_count,
+        name="messages_unread_count",
+    ),
     # Django's slug path converters belong to path(), which cannot express a
     # trailing catch-all — so the class is spelled out here instead. It matches
     # the unicode converter rather than the ASCII one, because an organisation

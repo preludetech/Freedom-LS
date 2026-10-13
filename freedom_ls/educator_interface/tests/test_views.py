@@ -1422,3 +1422,147 @@ def test_the_section_is_available_only_while_messaging_is_on(settings):
     assert MessagesConfig.is_available(request) is True
     settings.MESSAGING_ENABLED = False
     assert MessagesConfig.is_available(request) is False
+
+
+def _count_url(organisation: Organisation) -> str:
+    return reverse(
+        "educator_interface:messages_unread_count",
+        kwargs={"organisation_slug": organisation.slug},
+    )
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_count_view_counts_unread_conversations_of_the_organisation(
+    msg_client_for,
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    for _ in range(2):
+        learner = _msg_learner(organisation)
+        MessageFactory(
+            conversation=_msg_conversation(educator, learner.user),
+            sender=learner.user,
+        )
+    read_learner = _msg_learner(organisation)
+    _msg_conversation(educator, read_learner.user)
+    foreign_learner = _msg_learner(OrganisationFactory())
+    MessageFactory(
+        conversation=_msg_conversation(educator, foreign_learner.user),
+        sender=foreign_learner.user,
+    )
+
+    response = msg_client_for(educator).get(_count_url(organisation))
+
+    assert response.status_code == 200
+    assert response.content.decode().strip() == "2"
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_count_view_is_empty_when_nothing_is_unread(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    _msg_conversation(educator, _msg_learner(organisation).user)
+
+    response = msg_client_for(educator).get(_count_url(organisation))
+
+    assert response.status_code == 200
+    assert response.content.decode().strip() == ""
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_count_view_caps_a_large_count(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    for _ in range(100):
+        learner = _msg_learner(organisation)
+        MessageFactory(
+            conversation=_msg_conversation(educator, learner.user),
+            sender=learner.user,
+        )
+
+    response = msg_client_for(educator).get(_count_url(organisation))
+
+    assert response.content.decode().strip() == "99+"
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_count_view_404s_for_an_inaccessible_organisation(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+
+    response = msg_client_for(educator).get(_count_url(OrganisationFactory()))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_count_view_404s_when_messaging_is_off(msg_client_for, settings):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    settings.MESSAGING_ENABLED = False
+
+    response = msg_client_for(educator).get(_count_url(organisation))
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@messages_section
+def test_rendering_the_interface_runs_no_unread_count_query(
+    msg_client_for, monkeypatch
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+
+    def _fail(*args: object, **kwargs: object) -> None:
+        raise AssertionError("the unread count was queried during navigation")
+
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.views.conversations_in_organisation", _fail
+    )
+
+    response = msg_client_for(educator).get(_msg_url(organisation, "dashboard"))
+
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_sidebar_carries_a_preserved_self_polling_count_fragment(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+
+    page = lxml.html.fromstring(
+        msg_client_for(educator)
+        .get(_msg_url(organisation, "dashboard"))
+        .content.decode()
+    )
+
+    [span] = page.xpath(f"//*[@id='menu-count-messages-{organisation.slug}']")
+    assert span.get("hx-preserve") is not None
+    assert span.get("hx-get") == _count_url(organisation)
+    assert span.get("hx-push-url") == "false"
+    assert span.get("x-data") == "refreshTimer"
+    assert span.get("data-poll-seconds") == "45"
+    assert "conversationChanged from:body" in span.get("hx-trigger")
+
+
+@pytest.mark.django_db
+@messages_section
+def test_a_section_without_a_count_url_renders_no_count_fragment(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+
+    page = lxml.html.fromstring(
+        msg_client_for(educator)
+        .get(_msg_url(organisation, "dashboard"))
+        .content.decode()
+    )
+
+    ids = page.xpath("//*[starts-with(@id, 'menu-count-')]/@id")
+    assert ids == [f"menu-count-messages-{organisation.slug}"]
