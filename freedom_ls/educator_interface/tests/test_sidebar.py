@@ -62,6 +62,7 @@ def test_sidebar_lists_the_five_sections_each_with_an_icon(
         "Cohorts",
         "Learners",
         "Courses",
+        "Messages",
         "Members",
     ]
     assert all(link.cssselect("svg") for link in links)

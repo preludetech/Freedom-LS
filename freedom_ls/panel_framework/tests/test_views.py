@@ -5,6 +5,7 @@ checks and breadcrumbs."""
 from __future__ import annotations
 
 import re
+from typing import cast
 
 import pytest
 
@@ -24,6 +25,8 @@ from freedom_ls.panel_framework.views import (
     NavGroup,
     ObjectViewConfig,
     _build_breadcrumbs,
+    _build_menu_items,
+    _resolve_path,
     panel_framework_view,
 )
 
@@ -1070,3 +1073,59 @@ class TestListRootActions:
         )
 
         assert response.status_code == 204
+
+
+# Tests for SectionConfigBase.is_available.
+
+
+class _HiddenSectionConfig(ListViewConfig):
+    url_name = "hidden"
+    menu_label = "Hidden"
+    model = StubModel
+    instance_view = _StubInstanceView
+
+    @classmethod
+    def is_available(cls, request: HttpRequest) -> bool:
+        return False
+
+
+class TestSectionAvailability:
+    def test_a_section_is_available_by_default(self) -> None:
+        assert _CrumbCohortsConfig.is_available(RequestFactory().get("/")) is True
+
+    def test_the_menu_lists_available_sections_and_skips_unavailable_ones(self) -> None:
+        groups = _build_menu_items(
+            [NavGroup("Group", [_CrumbCohortsConfig, _HiddenSectionConfig])],
+            INTERFACE_URL_NAME,
+            RequestFactory().get("/"),
+        )
+
+        items = cast("list[dict[str, str]]", groups[0]["items"])
+        assert [item["label"] for item in items] == ["Cohorts"]
+
+    def test_a_group_whose_sections_are_all_unavailable_is_left_out(self) -> None:
+        groups = _build_menu_items(
+            [NavGroup("Group", [_HiddenSectionConfig])],
+            INTERFACE_URL_NAME,
+            RequestFactory().get("/"),
+        )
+
+        assert groups == []
+
+    def test_an_unavailable_section_path_is_a_404(self) -> None:
+        with pytest.raises(Http404):
+            _resolve_path(
+                ["hidden"],
+                {"hidden": _HiddenSectionConfig},
+                RequestFactory().get("/"),
+                "/test-panel/hidden",
+            )
+
+    def test_an_unavailable_sections_instance_path_is_a_404(self) -> None:
+        with pytest.raises(Http404):
+            _resolve_path(
+                ["hidden", "anything"],
+                {"hidden": _HiddenSectionConfig},
+                RequestFactory().get("/"),
+                "/test-panel/hidden",
+            )

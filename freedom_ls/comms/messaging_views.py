@@ -134,6 +134,11 @@ def _composer_context(
 def thread_context(
     request: HttpRequest, conversation: Conversation
 ) -> dict[str, object]:
+    """What the thread partial needs, and marks the conversation read.
+
+    The marker moves to the newest message on the page, not to now, so a message
+    that lands between this render and the mark stays unread.
+    """
     viewer = cast("User", request.user)
     other = other_participant(conversation, viewer)
     decision = reply_decision(viewer=viewer, conversation=conversation)
@@ -141,6 +146,10 @@ def thread_context(
     closed_heading, closed_body = ("", "")
     if not decision.allowed:
         closed_heading, closed_body = closed_note_copy(decision.reason, other)
+    if shown:
+        mark_conversation_read(
+            user=viewer, conversation=conversation, up_to=shown[-1].created_at
+        )
     return {
         "conversation": conversation,
         "other": other,
@@ -162,15 +171,6 @@ def thread_context(
 def thread(request: HttpRequest, pk: UUID) -> HttpResponse:
     conversation = participant_conversation(request, pk)
     context = thread_context(request, conversation)
-    shown = cast("list[Message]", context["thread_messages"])
-    if shown:
-        # Marked up to the newest message on the page, not to now, so a message
-        # that lands between this render and the mark stays unread.
-        mark_conversation_read(
-            user=cast("User", request.user),
-            conversation=conversation,
-            up_to=shown[-1].created_at,
-        )
     context.update(_inbox_context(request, conversation))
     return render(request, "comms/thread.html", context)
 

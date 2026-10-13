@@ -1,13 +1,15 @@
 {% comment %}
 The thread pane: header, log and composer in one column-flex block whose
 height is the viewport below the site header, so the composer stays in view
-and the log is the only part that scrolls.
+and the log is the only part that scrolls. A host that embeds the pane in a
+page of its own passes pane_height (a height class) and heading_tag, so the
+pane fits its card and does not add a second h1.
 {% endcomment %}
 <section x-data="conversationThread"
          x-on:resize.window="measure"
          x-on:htmx:before-swap="rememberScroll"
          x-on:htmx:after-settle="keepScrollAfterPrepend"
-         class="flex h-[calc(100dvh-var(--thread-top,0px))] min-h-0 flex-col bg-surface">
+         class="flex {% firstof pane_height 'h-[calc(100dvh-var(--thread-top,0px))]' %} min-h-0 flex-col bg-surface">
     <header class="flex items-center gap-3 border-b border-border px-4 py-3">
         {% if back_url %}
             <a href="{{ back_url }}"
@@ -17,9 +19,9 @@ and the log is the only part that scrolls.
             </a>
         {% endif %}
         {% include "comms/partials/participant_avatar.html" %}
-        <h1 class="m-0 min-w-0 truncate text-lg font-semibold">
+        <{% firstof heading_tag 'h1' %} class="m-0 min-w-0 truncate text-lg font-semibold">
             {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
-        </h1>
+        </{% firstof heading_tag 'h1' %}>
     </header>
     {% include "comms/partials/thread_older.html" %}
     <div class="relative flex min-h-0 flex-1 flex-col">
