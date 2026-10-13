@@ -1875,3 +1875,123 @@ class TestInboxPoll:
         response = logged_in_client(user).get(inbox_poll_url(), **HTMX)
 
         assert a.display_name not in response.content.decode()
+
+
+QUICK_VIEW = {**HTMX, "HTTP_HX_TARGET": "quick-view-message-box"}
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("allow_policy")
+class TestSendFromTheQuickViewBox:
+    def test_a_send_returns_the_box_with_the_entry_a_fresh_composer_and_the_pk(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+        old_key = str(uuid.uuid4())
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "Hello", "client_key": old_key},
+            **QUICK_VIEW,
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        message = Message.objects.get()
+        box = tree.xpath("//div[@id='quick-view-message-box']")[0]
+        assert response.status_code == 200
+        assert box.get("data-conversation-pk") == str(conversation.pk)
+        assert box.xpath(f".//li[@id='msg-{message.pk}']")
+        composer = box.xpath(".//form[@id='composer']")[0]
+        assert composer.get("hx-swap-oob") is None
+        assert composer.get("hx-target") == "#quick-view-message-box"
+        new_key = composer.xpath(".//input[@name='client_key']")[0].get("value")
+        assert new_key != old_key
+        assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
+
+    def test_the_box_holds_only_the_latest_three_entries(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        for body in ("one", "two", "three"):
+            MessageFactory(conversation=conversation, sender=other, body=body)
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "four", "client_key": str(uuid.uuid4())},
+            **QUICK_VIEW,
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        assert len(tree.xpath("//li[starts-with(@id, 'msg-')]")) == 3
+        assert "one" not in tree.text_content()
+
+    def test_a_first_message_returns_the_box_for_the_new_conversation(
+        self, logged_in_client, mock_site_context
+    ) -> None:
+        user, recipient = UserFactory(), UserFactory()
+
+        response = logged_in_client(user).post(
+            reverse("conversations:start"),
+            {
+                "body": "Hi",
+                "client_key": str(uuid.uuid4()),
+                "recipient": recipient.pk,
+            },
+            **QUICK_VIEW,
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        conversation = Conversation.objects.get()
+        box = tree.xpath("//div[@id='quick-view-message-box']")[0]
+        assert response.status_code == 200
+        assert "HX-Location" not in response
+        assert box.get("data-conversation-pk") == str(conversation.pk)
+        assert box.xpath(".//li[starts-with(@id, 'msg-')]")
+        form = box.xpath(".//form[@id='composer']")[0]
+        assert form.get("hx-post") == send_url(conversation)
+
+    def test_a_422_keeps_the_draft_and_the_box_as_the_target(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+        key = str(uuid.uuid4())
+
+        response = logged_in_client(user).post(
+            send_url(conversation), {"body": "  ", "client_key": key}, **QUICK_VIEW
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        assert response.status_code == 422
+        assert "HX-Retarget" not in response
+        box = tree.xpath("//div[@id='quick-view-message-box']")[0]
+        assert box.xpath(".//div[@role='alert']")
+        assert box.xpath(".//input[@name='client_key']")[0].get("value") == key
+
+
+@pytest.mark.django_db
+@pytest.mark.usefixtures("closed_policy")
+class TestRefusedFromTheQuickViewBox:
+    def test_a_refused_first_message_keeps_the_draft_in_the_box(
+        self, logged_in_client, mock_site_context
+    ) -> None:
+        user, recipient = UserFactory(), UserFactory()
+
+        response = logged_in_client(user).post(
+            reverse("conversations:start"),
+            {
+                "body": "Please read",
+                "client_key": str(uuid.uuid4()),
+                "recipient": recipient.pk,
+            },
+            **QUICK_VIEW,
+        )
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        box = tree.xpath("//div[@id='quick-view-message-box']")[0]
+        assert response.status_code == 422
+        assert box.get("data-conversation-pk") == ""
+        assert box.xpath(".//textarea")[0].text_content() == "Please read"
+        assert box.xpath(".//input[@name='recipient']")[0].get("value") == str(
+            recipient.pk
+        )
+        assert Message.objects.count() == 0

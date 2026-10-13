@@ -419,6 +419,13 @@ def latest_page(conversation: Conversation) -> tuple[list[Message], bool]:
     return _page_with_more(conversation, None)
 
 
+def latest_messages(conversation: Conversation, limit: int) -> list[Message]:
+    """The newest ``limit`` messages, oldest first."""
+    messages = _message_page(conversation, limit=limit)
+    messages.reverse()
+    return messages
+
+
 def page_before(
     conversation: Conversation, cursor: tuple[datetime, UUID]
 ) -> tuple[list[Message], bool]:

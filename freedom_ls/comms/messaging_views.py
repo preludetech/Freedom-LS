@@ -24,6 +24,7 @@ from freedom_ls.comms.messaging import (
     encode_cursor,
     entry_for_message,
     inbox_for,
+    latest_messages,
     latest_page,
     mark_conversation_read,
     messages_after,
@@ -52,6 +53,13 @@ if TYPE_CHECKING:
 COUNTER_MARGIN = 200
 
 CONVERSATION_CHANGED = json.dumps({"conversationChanged": {}})
+
+# The id of the region a quick-view composer swaps, which is also the value
+# htmx sends in ``HX-Target`` when a send comes from there.
+QUICK_VIEW_BOX_ID = "quick-view-message-box"
+
+# How many of the conversation's newest messages the quick-view box shows.
+QUICK_VIEW_MESSAGE_COUNT = 3
 
 
 def participant_conversation(request: HttpRequest, pk: UUID) -> Conversation:
@@ -111,6 +119,7 @@ def composer_context(
     recipient: User | None = None,
     action_url: str | None = None,
     in_modal: bool = False,
+    in_quick_view: bool = False,
 ) -> dict[str, object]:
     """What the composer partial needs.
 
@@ -119,7 +128,8 @@ def composer_context(
     ``start`` with the recipient, and replaces itself when refused. ``action_url``
     posts somewhere else instead, and ``in_modal`` makes the answer replace the
     whole app modal body, which is where a first message composed in the modal
-    sends its refusal.
+    sends its refusal. ``in_quick_view`` makes the answer replace the quick-view
+    box instead, so the drawer around it stays open.
     """
     if action_url is None:
         if conversation is not None:
@@ -135,6 +145,41 @@ def composer_context(
         "action_url": action_url,
         "recipient": recipient,
         "in_modal": in_modal,
+        "in_quick_view": in_quick_view,
+    }
+
+
+def message_box_context(
+    *,
+    conversation: Conversation | None,
+    other: User | None,
+    client_key: UUID,
+    draft: str = "",
+    alert: str = "",
+    recipient: User | None = None,
+) -> dict[str, object]:
+    """What the quick-view message box partial needs.
+
+    The box shows the conversation's newest messages and a composer. Without a
+    conversation yet the composer starts one with ``recipient``.
+    """
+    messages = (
+        latest_messages(conversation, QUICK_VIEW_MESSAGE_COUNT)
+        if conversation is not None
+        else []
+    )
+    return {
+        "conversation": conversation,
+        "other": other,
+        "box_entries": render_message_entries(messages, None),
+        "composer": composer_context(
+            client_key=client_key,
+            draft=draft,
+            alert=alert,
+            conversation=conversation,
+            recipient=recipient,
+            in_quick_view=True,
+        ),
     }
 
 
@@ -245,6 +290,50 @@ def partial_inbox_poll(request: HttpRequest) -> HttpResponse:
     return HttpResponse(body)
 
 
+def _quick_view_box_response(
+    request: HttpRequest,
+    result: SendResult,
+    conversation: Conversation | None,
+    draft: str,
+    client_key: UUID,
+    recipient: User | None,
+) -> HttpResponse:
+    """The answer to a send from the quick-view box: the box itself, replaced.
+
+    A stored message answers 200 with the newest messages and a fresh composer,
+    and tells the page the conversation changed. A refusal or body error answers
+    422 with the box holding the draft and the reason. The request already
+    targets the box, so no retarget header is needed and the drawer stays open.
+    """
+    viewer = cast("User", request.user)
+    if result.message is not None:
+        conversation = cast("Conversation", result.conversation)
+        other = other_participant(conversation, viewer)
+        context = message_box_context(
+            conversation=conversation, other=other, client_key=uuid4()
+        )
+        response = HttpResponse(
+            render_to_string("comms/partials/message_box.html", context, request)
+        )
+        response["HX-Trigger"] = CONVERSATION_CHANGED
+        return response
+    other = (
+        recipient if conversation is None else other_participant(conversation, viewer)
+    )
+    context = message_box_context(
+        conversation=conversation,
+        other=other,
+        client_key=client_key,
+        draft=draft,
+        alert=result.body_error or refusal_alert_copy(result.refusal, other),
+        recipient=recipient,
+    )
+    return HttpResponse(
+        render_to_string("comms/partials/message_box.html", context, request),
+        status=422,
+    )
+
+
 def _send_response(
     request: HttpRequest,
     result: SendResult,
@@ -263,6 +352,10 @@ def _send_response(
     """
     viewer = cast("User", request.user)
     is_htmx = request.headers.get("HX-Request") == "true"
+    if is_htmx and request.headers.get("HX-Target") == QUICK_VIEW_BOX_ID:
+        return _quick_view_box_response(
+            request, result, conversation, draft, client_key, recipient
+        )
     if result.message is not None:
         sent_to = cast("Conversation", result.conversation)
         thread_url = reverse("conversations:thread", kwargs={"pk": sent_to.pk})

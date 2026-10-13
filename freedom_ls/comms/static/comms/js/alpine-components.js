@@ -193,6 +193,31 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
+    // The learner quick-view message box (comms/partials/message_box.html).
+    //
+    // The Open conversation link appears once a conversation exists. The box
+    // replaces itself after every send, so the pk is read from the box that was
+    // just swapped in and the link's address is filled from the URL template
+    // the server rendered.
+    Alpine.data("messageBox", () => ({
+        hasConversation: false,
+        openUrl: "",
+        urlTemplate: "",
+        init() {
+            this.urlTemplate = this.$root.dataset.openUrlTemplate;
+            this.sync();
+        },
+        sync() {
+            const box = this.$root.querySelector("#quick-view-message-box");
+            const pk = box ? box.dataset.conversationPk : "";
+            this.hasConversation = pk !== "";
+            this.openUrl = this.hasConversation ? this.urlTemplate.replace("{pk}", pk) : "";
+        },
+        onAfterSwap() {
+            this.sync();
+        },
+    }));
+
     // The thread pane (comms/partials/thread.html).
     //
     // Sizes the pane to the viewport below the site header, so the composer

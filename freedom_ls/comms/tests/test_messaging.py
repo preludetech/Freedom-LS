@@ -29,6 +29,7 @@ from freedom_ls.comms.messaging import (
     encode_cursor,
     get_or_create_conversation,
     inbox_for,
+    latest_messages,
     latest_page,
     mark_conversation_read,
     messages_after,
@@ -588,6 +589,16 @@ class TestConversationQueries:
         decisions = reply_decisions(viewer=user, conversations=[conversation])
 
         assert decisions[conversation.pk].allowed is True
+
+    def test_latest_messages_are_the_newest_few_oldest_first(
+        self, mock_site_context
+    ) -> None:
+        conversation = ConversationFactory(between=(UserFactory(), UserFactory()))
+        messages = [MessageFactory(conversation=conversation) for _ in range(4)]
+
+        assert [m.pk for m in latest_messages(conversation, 3)] == [
+            m.pk for m in messages[1:]
+        ]
 
     def test_latest_page_reads_oldest_to_newest(self, mock_site_context) -> None:
         user, other = UserFactory(), UserFactory()
