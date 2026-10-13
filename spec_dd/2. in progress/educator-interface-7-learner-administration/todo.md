@@ -52,8 +52,10 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
 - [ ] (user + cmd) Fix QA bug: the cohort-scoped Add learners dialog renders a bare 'Cohort:' label for its hidden cohort input (TDD — failing test first, then fix)
-- [ ] (user) Decide whether a cohort admin's Add learners picker on a cohort's Learners tab should offer organisation learners outside their cohorts (spec R5 says only learners they can already see; test plan §2.10 expects Sol Solo, who is in no cohort) and what the picker shows when nobody is eligible, then update the spec or the test plan to match
-- [ ] (user + cmd) Fix QA bug: a cohort admin's Add learners picker shows an empty multi-select with no message, and labels options 'email - Organisation' instead of the learner's name (TDD — failing test first, then fix)
+- [x] (user) Decide whether a cohort admin's Add learners picker on a cohort's Learners tab should offer organisation learners outside their cohorts: keep spec R5 (only learners they can already see); test plan §2.10 rewritten to pick Pat Pick from Cohort B
+- [x] (user) Decide what a cohort admin's Add learners picker shows when nobody is eligible, then add it to the spec's cohort learners tab: a sentence, Close and no submit, for all four pickers (spec R6, Empty pickers)
+- [x] (user + cmd) Fix QA bug: the four pickers (cohort Add learners, Add to cohort, Register for course, Move) show an empty select with no message; give each the spec R6 "Empty pickers" sentence (TDD — failing test first, then fix)
+- [x] (user + cmd) Fix QA bug: a cohort admin's Add learners picker labels options 'email - Organisation' instead of the learner's Decision 14 text (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

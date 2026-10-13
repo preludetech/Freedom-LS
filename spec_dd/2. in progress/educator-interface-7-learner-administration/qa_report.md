@@ -196,7 +196,7 @@ Manifestations: 2.10 (desktop).
 - B2: **UNRESOLVED** — Bare 'Cohort:' label for a hidden input in the cohort-scoped Add learners dialog (reason: fix budget exhausted this run)
 - B3: **FIXED** (commit: 63412e83) — Stale Move dialog renders a form instead of a reason. Re-verified: a stale GET or POST answers "Ada Lovelace is no longer in Cohort B. Nothing changed."; a fresh Move still offers Cohort B and Cohort C.
 - B4: **FIXED** (commit: 0e0b486f) — Move 422 re-render offers inactive cohorts and the source cohort. Re-verified: the 422 re-render offers only Cohort B and Cohort C, the same as the GET.
-- B5: **UNRESOLVED** — Cohort admin's Add learners picker offers nobody and shows an empty multi-select (reason: product decision; spec R5 limits a cohort admin's picker to learners they can already see, but the test plan expects organisation learners outside their cohorts, and what an empty picker should show is unspecified)
+- B5: **FIXED** (commits: 9532cef7, d4b375cf) — Spec R5 kept (decided). An empty picker now shows the spec R6 sentence and a Close button with no submit (all four pickers), and the learner picker's options read as the learner's display name. Covered by tests; not re-verified in a browser.
 
 ## General notes
 
