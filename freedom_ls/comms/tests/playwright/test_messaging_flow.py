@@ -220,6 +220,32 @@ def test_a_double_click_on_send_posts_once_and_focus_returns_to_the_box(
     assert _sent_bodies(conversation) == ["Only once"]
 
 
+def test_send_button_is_disabled_while_the_send_is_in_flight(
+    live_server,
+    logged_in_page: Page,
+    logged_in_user: User,
+    mock_site_context,
+    settings,
+) -> None:
+    """The Send button stayed enabled for the whole request because the form, not the button, issues it."""
+    page = logged_in_page
+    conversation = _open_thread(live_server, page, logged_in_user, settings)
+
+    def delay_then_continue(route) -> None:
+        page.wait_for_timeout(1500)
+        route.continue_()
+
+    page.route("**/messages/*/send/", delay_then_continue)
+    page.get_by_label("Message to Kai Ngata").fill("Slow send")
+    send = page.get_by_role("button", name="Send")
+    send.click()
+
+    expect(send).to_be_disabled()
+    expect(page.get_by_text("Slow send")).to_have_count(1)
+    expect(send).to_be_enabled()
+    assert _sent_bodies(conversation) == ["Slow send"]
+
+
 def test_ctrl_enter_sends_the_message(
     live_server,
     logged_in_page: Page,
