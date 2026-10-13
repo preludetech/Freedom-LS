@@ -39,6 +39,7 @@ from freedom_ls.comms.messaging import (
     refusal_alert_copy,
     render_message_entries,
     reply_decision,
+    reply_decisions,
     search_recipients,
     send_message,
     unread_conversation_count,
@@ -548,6 +549,45 @@ class TestConversationQueries:
         decision = reply_decision(viewer=user, conversation=conversation)
 
         assert decision.reason == MessagingRefusal.INACTIVE_USER
+
+    def test_reply_decisions_refuses_inactive_user_without_asking_the_policy(
+        self, mock_site_context, settings
+    ) -> None:
+        settings.MESSAGING_POLICY = f"{__name__}.MessagingPolicy"
+        user, other = UserFactory(), UserFactory()
+        conversation = cast("Conversation", ConversationFactory(between=(user, other)))
+        other.delete()
+
+        decisions = reply_decisions(viewer=user, conversations=[conversation])
+
+        assert decisions[conversation.pk].reason == MessagingRefusal.INACTIVE_USER
+
+    def test_reply_decisions_asks_the_policy_about_the_remaining_conversations(
+        self, mock_site_context, closed_policy
+    ) -> None:
+        user, gone, kept = UserFactory(), UserFactory(), UserFactory()
+        with_gone = cast("Conversation", ConversationFactory(between=(user, gone)))
+        with_kept = cast("Conversation", ConversationFactory(between=(user, kept)))
+        gone.delete()
+
+        decisions = reply_decisions(viewer=user, conversations=[with_gone, with_kept])
+
+        assert (decisions[with_gone.pk].reason, decisions[with_kept.pk].reason) == (
+            MessagingRefusal.INACTIVE_USER,
+            MessagingRefusal.CLOSED_BY_CONFIGURATION,
+        )
+
+    def test_a_policy_that_only_defines_can_reply_answers_in_bulk(
+        self, mock_site_context, allow_policy
+    ) -> None:
+        user = UserFactory()
+        conversation = cast(
+            "Conversation", ConversationFactory(between=(user, UserFactory()))
+        )
+
+        decisions = reply_decisions(viewer=user, conversations=[conversation])
+
+        assert decisions[conversation.pk].allowed is True
 
     def test_latest_page_reads_oldest_to_newest(self, mock_site_context) -> None:
         user, other = UserFactory(), UserFactory()

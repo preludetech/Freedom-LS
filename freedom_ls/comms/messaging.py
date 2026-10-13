@@ -39,6 +39,8 @@ from freedom_ls.comms.models import Conversation, ConversationParticipant, Messa
 from freedom_ls.comms.notify import mark_notifications_read, raise_notification
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from django.contrib.sites.models import Site
     from django.db.models import Model
 
@@ -169,6 +171,34 @@ def reply_decision(*, viewer: User, conversation: Conversation) -> MessagingDeci
         site=conversation.site,
         conversation=conversation,
     )
+
+
+def reply_decisions(
+    *, viewer: User, conversations: Sequence[Conversation]
+) -> dict[UUID, MessagingDecision]:
+    """``reply_decision`` for each conversation, keyed by pk, in one policy call.
+
+    A conversation whose other participant was deleted refuses without asking
+    the policy; the rest go to the policy together, so the number of queries does
+    not follow the number of conversations.
+    """
+    decisions: dict[UUID, MessagingDecision] = {}
+    pairs: list[tuple[Conversation, User]] = []
+    for conversation in conversations:
+        other = other_participant(conversation, viewer)
+        if other is None:
+            decisions[conversation.pk] = MessagingDecision.refuse(
+                MessagingRefusal.INACTIVE_USER
+            )
+        else:
+            pairs.append((conversation, other))
+    if pairs:
+        decisions.update(
+            get_messaging_policy().can_reply_many(
+                sender=viewer, pairs=pairs, site=pairs[0][0].site
+            )
+        )
+    return decisions
 
 
 def mark_conversation_read(

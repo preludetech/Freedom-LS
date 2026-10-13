@@ -6,17 +6,24 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from typing import NamedTuple, cast
+from uuid import UUID, uuid4
 
 import pytest
 from pytest_django.fixtures import DjangoAssertNumQueries, SettingsWrapper
 
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
+from django.db import connection
 from django.db.models import Model
+from django.test import Client
+from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
 
 from freedom_ls.accounts.factories import SiteFactory, UserFactory
 from freedom_ls.accounts.models import User
-from freedom_ls.comms.messaging_policy import MessagingRefusal
+from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.messaging_policy import MessagingDecision, MessagingRefusal
+from freedom_ls.comms.models import Conversation
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -49,6 +56,7 @@ from freedom_ls.messaging_policy.tests.messaging_world import (
     add_configuration_rows,
     allowed_pairs,
     recipients_pairs,
+    world_users,
 )
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
@@ -1402,3 +1410,139 @@ def test_a_recipient_no_group_claims_still_appears_under_others(
     groups = _groups(policy, sender, world.site)
 
     assert world.learners["no_cohort"].user in groups["Others"]
+
+
+REPLY_FLAG_SETTINGS = {
+    "all_closed": ALL_CLOSED,
+    "cohort_peers_open": {**ALL_CLOSED, "learner_to_cohort_peer": "open"},
+    "educators_open": {**ALL_CLOSED, "learner_to_educator": "open"},
+}
+
+
+def _decisions_both_ways(
+    policy: LayeredMessagingPolicy, world: World
+) -> tuple[
+    dict[tuple[str, str], MessagingDecision], dict[tuple[str, str], MessagingDecision]
+]:
+    """The bulk and the single answer for every ordered pair of users in the world,
+    plus an inactive user, each keyed by (sender name, recipient name)."""
+    users = {**world_users(world), "inactive": UserFactory(is_active=False)}
+    bulk: dict[tuple[str, str], MessagingDecision] = {}
+    single: dict[tuple[str, str], MessagingDecision] = {}
+    for sender_name, sender in users.items():
+        conversations = {name: Conversation(pk=uuid4()) for name in users}
+        by_pk = policy.can_reply_many(
+            sender=sender,
+            pairs=[(conversations[name], user) for name, user in users.items()],
+            site=world.site,
+        )
+        for recipient_name, recipient in users.items():
+            conversation = conversations[recipient_name]
+            bulk[(sender_name, recipient_name)] = by_pk[conversation.pk]
+            single[(sender_name, recipient_name)] = policy.can_reply(
+                sender=sender,
+                recipient=recipient,
+                site=world.site,
+                conversation=conversation,
+            )
+    return bulk, single
+
+
+@pytest.mark.parametrize("flags", REPLY_FLAG_SETTINGS.values(), ids=REPLY_FLAG_SETTINGS)
+def test_can_reply_many_matches_can_reply_for_every_pair(
+    policy: LayeredMessagingPolicy,
+    world: World,
+    settings: SettingsWrapper,
+    flags: dict[str, str],
+) -> None:
+    settings.MESSAGING_DEFAULT_FLAGS = flags
+    settings.MESSAGING_OFFERED_EDUCATOR_ROLES = ["cohort_admin"]
+    add_configuration_rows(world)
+
+    bulk, single = _decisions_both_ways(policy, world)
+
+    assert bulk == single
+
+
+def test_can_reply_many_covers_allowed_and_refused_pairs(
+    policy: LayeredMessagingPolicy, world: World, settings: SettingsWrapper
+) -> None:
+    open_cohort_peers(settings)
+
+    bulk, _ = _decisions_both_ways(policy, world)
+
+    reasons = {decision.reason for decision in bulk.values()}
+    assert reasons >= {
+        None,
+        MessagingRefusal.SAME_USER,
+        MessagingRefusal.INACTIVE_USER,
+        MessagingRefusal.NO_RELATIONSHIP,
+        MessagingRefusal.CLOSED_BY_CONFIGURATION,
+    }
+
+
+def _bulk_reply_for_all(
+    policy: LayeredMessagingPolicy, world: World
+) -> dict[UUID, MessagingDecision]:
+    sender = world.learners["in_c1"].user
+    pairs = [
+        (Conversation(pk=uuid4()), user)
+        for name, user in world_users(world).items()
+        if user != sender
+    ]
+    return policy.can_reply_many(sender=sender, pairs=pairs, site=world.site)
+
+
+QUERIES_REPLY_MANY = 9
+
+
+def test_can_reply_many_runs_a_fixed_number_of_queries_whatever_the_world_size(
+    policy: LayeredMessagingPolicy,
+    scaled_world: World,
+    settings: SettingsWrapper,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    open_cohort_peers(settings)
+    add_configuration_rows(scaled_world)
+    _warm_content_types(scaled_world)
+
+    with django_assert_num_queries(QUERIES_REPLY_MANY):
+        _bulk_reply_for_all(policy, scaled_world)
+
+
+def _converse_with_new_learners(
+    world: World, user: User, *, related: int, unrelated: int
+) -> None:
+    """Start a conversation with `related` new cohort peers and `unrelated` new
+    users in the same organisation who share nothing with `user`."""
+    cohort = world.cohorts["c1"]
+    for index in range(related + unrelated):
+        learner = LearnerFactory(organisation=cohort.organisation)
+        if index < related:
+            CohortMembershipFactory(cohort=cohort, learner=learner)
+        MessageFactory(conversation=ConversationFactory(between=(user, learner.user)))
+
+
+def _inbox_query_count(client: Client) -> int:
+    with CaptureQueriesContext(connection) as captured:
+        response = client.get(reverse("conversations:inbox"))
+    assert response.status_code == 200
+    return len(captured)
+
+
+def test_the_inbox_query_count_under_the_shipped_policy_does_not_grow_with_the_rows(
+    world: World,
+    settings: SettingsWrapper,
+    logged_in_client: type[Client],
+) -> None:
+    settings.MESSAGING_ENABLED = True
+    settings.MESSAGING_DEFAULT_FLAGS = {**ALL_CLOSED, "learner_to_cohort_peer": "open"}
+    user = world.learners["in_c1"].user
+    client = logged_in_client(user)
+    _converse_with_new_learners(world, user, related=2, unrelated=1)
+    _inbox_query_count(client)
+    few = _inbox_query_count(client)
+
+    _converse_with_new_learners(world, user, related=4, unrelated=3)
+
+    assert _inbox_query_count(client) == few
