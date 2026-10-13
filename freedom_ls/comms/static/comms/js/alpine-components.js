@@ -270,7 +270,7 @@ document.addEventListener("alpine:init", () => {
             if (event.detail.target !== log) {
                 return;
             }
-            if (!event.detail.elt.closest("#thread-older")) {
+            if (!event.detail.requestConfig.elt.closest("#thread-older")) {
                 this.beforeAppend = log.lastElementChild;
                 return;
             }
