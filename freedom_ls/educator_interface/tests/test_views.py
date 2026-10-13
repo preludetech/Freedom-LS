@@ -2855,6 +2855,37 @@ def test_new_message_search_field_is_labelled_to_and_selects_the_results(
 
 @pytest.mark.django_db
 @messages_section
+def test_new_message_focuses_the_to_search_field(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+
+    content = (
+        msg_client_for(educator).get(_new_message_url(organisation)).content.decode()
+    )
+
+    page = lxml.html.fromstring(content)
+    assert [el.get("id") for el in page.xpath("//*[@autofocus]")] == ["recipient-q"]
+
+
+@pytest.mark.django_db
+@messages_section
+def test_new_message_with_a_recipient_focuses_the_message_box(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    learner = _msg_learner(organisation)
+
+    content = (
+        msg_client_for(educator)
+        .get(_new_message_url(organisation, recipient=str(learner.user.pk)))
+        .content.decode()
+    )
+
+    page = lxml.html.fromstring(content)
+    assert [el.get("id") for el in page.xpath("//*[@autofocus]")] == ["message-body"]
+
+
+@pytest.mark.django_db
+@messages_section
 def test_new_message_never_lists_a_learner_of_another_organisation(msg_client_for):
     organisation = OrganisationFactory()
     educator = _msg_educator(organisation)

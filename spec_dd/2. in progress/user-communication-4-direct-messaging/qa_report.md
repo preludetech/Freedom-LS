@@ -166,7 +166,7 @@ Manifestations: 5.1.1 (desktop).
 - **FIXED** (commit: b0996f99) — B2 Send button is not disabled while a send is in flight. Re-verified on the shared thread and the quick-view box: disabled mid-flight, enabled after.
 - **UNRESOLVED** — B3 New message modal loses the typed draft when the recipient stops being messageable (reason: security-adjacent. Returning a 422 that names the recipient for a pk outside the sender's candidate set would let pk enumeration reveal names, so a human has to decide how to keep the draft without that leak).
 - **FIXED** (commit: 518f5a71) — B4 Shared thread page scrolls and pushes the composer below the fold. Re-verified at 1920x1080, 1280x800, 768x1024 and 375x812: the document no longer scrolls and the composer and hint are fully in view. Note that the fix removes the site footer (Terms and Privacy links) from the thread page. After the fix: ![](screenshots/page-2026-10-13T07-17-46-538Z-b4-1280.png) ![](screenshots/page-2026-10-13T07-17-50-086Z-b4-375.png)
-- **UNRESOLVED** — B5 New message modal focuses the heading, not the To search field (reason: UX decision. The template deliberately uses `focus_title="true"`, the plan expects the To field, and the spec is silent).
+- **FIXED** — B5 New message modal focuses the heading, not the To search field. Decision: focus the To field, since the modal header's `focus_title` is meant for fragments with no field to focus. The modal now focuses `#recipient-q` when it opens and the message box once a recipient is chosen.
 
 ## General notes
 

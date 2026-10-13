@@ -14,7 +14,7 @@ chosen state into the app modal body instead of navigating.
       hx-target="#recipient-results"
       hx-select="#recipient-results"
       hx-swap="outerHTML">
-    <c-panel-search-field name="q" id="recipient-q" value="{{ term }}" label="To" placeholder="Search by name" hx-preserve />
+    <c-panel-search-field name="q" id="recipient-q" value="{{ term }}" label="To" placeholder="Search by name" autofocus="{% if in_modal %}true{% endif %}" hx-preserve />
 </form>
 {% partialdef results inline %}
     <div id="recipient-results" class="mt-4">

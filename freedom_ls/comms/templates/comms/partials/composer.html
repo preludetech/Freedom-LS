@@ -66,6 +66,7 @@ restore focus after the swap.
                   name="body"
                   rows="2"
                   maxlength="{{ composer.max_length }}"
+                  {% if composer.in_modal %}autofocus{% endif %}
                   class="min-h-[2.5rem] flex-1 rounded-lg border border-border bg-surface px-3 py-2">{{ composer.draft }}</textarea>
         <c-button type="submit"
                   variant="primary"
