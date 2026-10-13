@@ -4,6 +4,8 @@ one of its instance pages, is marked with a tinted fill, primary text and
 icon, and a 2px primary bar drawn as an inset shadow so it follows the
 rounded corner. The group headings share the overline treatment of the
 organisation switcher's label, so the two read as one system.
+The polled count sits inside the link, so it sets hx-push-url="false" to stop
+inheriting the link's push: a poll must not change the address bar.
 {% endcomment %}
 <nav id="sidebar-nav" class="mt-2" aria-label="Sections"
      {% if oob %}hx-swap-oob="true"{% endif %}>
@@ -21,7 +23,8 @@ organisation switcher's label, so the two read as one system.
                        class="group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-on-surface no-underline transition-colors hover:bg-surface-2 aria-[current]:bg-surface-2 aria-[current]:text-primary aria-[current]:font-semibold aria-[current]:shadow-[inset_2px_0_0_var(--color-primary)]">
                         {% if item.icon %}<span class="shrink-0 text-muted group-hover:text-on-surface group-aria-[current]:text-primary"><c-icon :name="item.icon" class="size-4" /></span>{% endif %}
                         <span>{{ item.label }}</span>
-                        {% if item.count is not None %}<span class="ml-auto font-mono text-xs text-muted tabular-nums">{{ item.count }}</span>{% endif %}
+                        {% if item.count_url %}<span id="menu-count-{{ item.url_name }}-{{ item.scope_key }}" hx-preserve x-data="refreshTimer" data-poll-seconds="{{ item.count_poll_seconds }}" hx-get="{{ item.count_url }}" hx-trigger="load, refresh, conversationChanged from:body" hx-target="this" hx-swap="innerHTML" hx-push-url="false" class="ml-auto font-mono text-xs text-muted tabular-nums"></span>
+                        {% elif item.count is not None %}<span class="ml-auto font-mono text-xs text-muted tabular-nums">{{ item.count }}</span>{% endif %}
                     </a>
                 </li>
             {% endfor %}

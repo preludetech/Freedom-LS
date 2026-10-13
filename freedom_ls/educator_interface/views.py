@@ -28,6 +28,7 @@ from freedom_ls.comms.config import config as comms_config
 from freedom_ls.comms.messaging import inbox_for, other_participant, reply_decisions
 from freedom_ls.comms.messaging_views import thread_context
 from freedom_ls.comms.models import Conversation
+from freedom_ls.comms.templatetags.comms_tags import badge_count
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
@@ -1145,6 +1146,18 @@ class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
         return comms_config.MESSAGING_ENABLED
 
     @classmethod
+    def get_menu_count_url(cls, request: HttpRequest) -> str | None:
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        return reverse(
+            "educator_interface:messages_unread_count",
+            kwargs={"organisation_slug": organisation.slug},
+        )
+
+    @classmethod
+    def get_menu_count_poll_seconds(cls) -> int:
+        return comms_config.MESSAGE_INBOX_POLL_SECONDS
+
+    @classmethod
     def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
         """The instance view over the educator's own copy of the conversation.
 
@@ -1557,6 +1570,36 @@ def interface_root(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _resolve_organisation(user: User, organisation_slug: str) -> Organisation:
+    """The organisation named by `organisation_slug`, if `user` can access it.
+
+    "No such slug" and "slug exists but you have no access" both 404
+    identically.
+    """
+    organisation = get_object_or_404(Organisation, slug=organisation_slug)
+    if not organisations_accessible_to(user).filter(pk=organisation.pk).exists():
+        raise Http404
+    return organisation
+
+
+@login_required
+def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpResponse:
+    """The Messages nav item's count: the unread conversations of the organisation.
+
+    The body is empty for zero so the sidebar shows no badge.
+    """
+    if not comms_config.MESSAGING_ENABLED:
+        raise Http404
+    user = cast(User, request.user)
+    organisation = _resolve_organisation(user, organisation_slug)
+    unread = (
+        conversations_in_organisation(user, organisation)
+        .filter(Q(is_unread=True))
+        .count()
+    )
+    return HttpResponse(badge_count(unread) if unread else "")
+
+
 @login_required
 def interface(
     request: HttpRequest, organisation_slug: str, path_string: str = ""
@@ -1570,13 +1613,7 @@ def interface(
     403 would confirm the slug is real and let an attacker enumerate a
     Site's organisation names.
     """
-    organisation = get_object_or_404(Organisation, slug=organisation_slug)
-    if (
-        not organisations_accessible_to(request.user)
-        .filter(pk=organisation.pk)
-        .exists()
-    ):
-        raise Http404
+    organisation = _resolve_organisation(cast(User, request.user), organisation_slug)
     scoped_request = cast(OrganisationScopedRequest, request)
     scoped_request.organisation = organisation
     scoped_request.panel_scope_name = organisation.name
