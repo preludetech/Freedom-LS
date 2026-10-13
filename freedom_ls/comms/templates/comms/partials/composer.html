@@ -1,7 +1,8 @@
 {% comment %}
 The composer form. It keeps the id #composer through every swap so a refused
 send can replace it in place, and the textarea keeps #message-body so htmx can
-restore focus after the swap.
+restore focus after the swap. In the narrow quick view, Send sits under the
+textarea so the textarea gets the full width.
 {% endcomment %}
 <form id="composer"
       x-data="messageComposer"
@@ -43,45 +44,82 @@ restore focus after the swap.
     {% if composer.recipient %}
         <input type="hidden" name="recipient" value="{{ composer.recipient.pk }}" />
     {% endif %}
-    {% if composer.alert %}
-        <div role="alert">
-            <c-callout level="error">{{ composer.alert }}</c-callout>
-        </div>
-    {% endif %}
-    <div x-show="failed" x-cloak x-transition>
-        <div role="alert">
-            <c-callout level="error">
-                Not sent. Check your connection and try again.
-                <c-button type="button" variant="secondary" x-on:click="retry">Retry</c-button>
-            </c-callout>
-        </div>
-    </div>
     <label for="message-body" class="block text-sm font-medium text-on-surface">
         Message to {% if other %}{{ other.display_name }}{% else %}Deleted user{% endif %}
     </label>
-    <div class="mt-1 flex items-end gap-2">
-        <textarea id="message-body"
-                  x-ref="body"
-                  x-on:input="onInput"
-                  name="body"
-                  rows="2"
-                  maxlength="{{ composer.max_length }}"
-                  {% if composer.in_modal %}autofocus{% endif %}
-                  class="min-h-[2.5rem] flex-1 rounded-lg border border-border bg-surface px-3 py-2">{{ composer.draft }}</textarea>
-        <c-button type="submit"
-                  variant="primary"
-                  icon_left="send"
-                  aria-label="Send">
-            <span class="hidden sm:inline">Send</span>
-        </c-button>
-    </div>
-    <div class="mt-1 flex items-center justify-between gap-2 text-sm text-muted">
-        <span x-text="hint">Ctrl+Enter to send</span>
-        <span x-show="showCounter"
-              x-cloak
-              x-transition
-              aria-live="polite"
-              x-bind:class="counterClass"
-              x-text="counterText"></span>
-    </div>
+    {% if composer.in_quick_view %}
+        <div class="mt-1">{% partial body %}</div>
+        {% partial error %}
+        <div class="mt-1 flex items-center gap-3">
+            <div class="flex flex-1 items-center justify-between gap-2 text-sm text-muted">
+                {% partial hint %}
+            </div>
+            {% partial send %}
+        </div>
+    {% else %}
+        <div class="mt-1 flex items-end gap-2">
+            {% partial body %}
+            {% partial send %}
+        </div>
+        {% partial error %}
+        <div class="mt-1 flex items-center justify-between gap-2 text-sm text-muted">
+            {% partial hint %}
+        </div>
+    {% endif %}
 </form>
+
+{% partialdef body %}
+<textarea id="message-body"
+          x-ref="body"
+          x-on:input="onInput"
+          name="body"
+          rows="2"
+          maxlength="{{ composer.max_length }}"
+          aria-describedby="composer-error"
+          {% if composer.alert %}aria-invalid="true"{% endif %}
+          x-bind:aria-invalid="failed || {{ composer.alert|yesno:'true,false' }}"
+          {% if composer.in_modal %}autofocus{% endif %}
+          class="min-h-[2.5rem] w-full flex-1 rounded-lg border border-border bg-surface px-3 py-2 aria-invalid:border-error aria-invalid:ring-1 aria-invalid:ring-error">{{ composer.draft }}</textarea>
+{% endpartialdef %}
+
+{% partialdef error %}
+<div id="composer-error">
+    {% if composer.alert %}
+        <p role="alert" class="m-0 mt-1 flex items-center gap-1 text-sm text-error">
+            <c-icon name="error" class="size-4 shrink-0" />
+            <span>{{ composer.alert }}</span>
+        </p>
+    {% endif %}
+    <p x-show="failed" x-cloak role="alert" class="m-0 mt-1 flex items-center gap-1 text-sm text-error">
+        <c-icon name="error" class="size-4 shrink-0" />
+        <span>Not sent. Check your connection.</span>
+        <button type="button"
+                x-on:click="retry"
+                title="Retry"
+                class="inline-flex size-7 items-center justify-center rounded-full text-error hover:bg-error-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)]">
+            <c-icon name="retry" class="size-4" />
+            <span class="sr-only">Retry</span>
+        </button>
+    </p>
+</div>
+{% endpartialdef %}
+
+{% partialdef hint %}
+<span x-text="hint">Ctrl+Enter to send</span>
+<span x-show="showCounter"
+      x-cloak
+      x-transition
+      aria-live="polite"
+      x-bind:class="counterClass"
+      x-text="counterText"></span>
+{% endpartialdef %}
+
+{% partialdef send %}
+<c-button type="submit"
+          variant="primary"
+          icon_left="send"
+          size="{% if composer.in_quick_view %}small{% endif %}"
+          aria-label="Send">
+    <span class="{% if not composer.in_quick_view %}hidden sm:inline{% endif %}">Send</span>
+</c-button>
+{% endpartialdef %}
