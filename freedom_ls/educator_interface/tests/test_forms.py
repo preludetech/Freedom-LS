@@ -9,13 +9,15 @@ from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.forms import (
     AddLearnersForm,
     CohortCourseRegistrationForm,
+    LearnerPickerForm,
 )
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
+    LearnerFactory,
 )
 from freedom_ls.learner_management.learner_actions import LearnerEntry
-from freedom_ls.learner_management.models import Cohort
+from freedom_ls.learner_management.models import Cohort, Learner
 from freedom_ls.learner_management.queries import registerable_courses_for
 
 
@@ -99,3 +101,22 @@ def test_add_learners_form_keeps_an_invalid_address_for_the_results():
 
     assert form.is_valid()
     assert form.cleaned_data["entries"] == [LearnerEntry("not-an-email")]
+
+
+@pytest.mark.django_db
+def test_learner_picker_labels_each_learner_by_display_name(mock_site_context):
+    named = LearnerFactory(
+        user__first_name="Ada",
+        user__last_name="Lovelace",
+        user__email="ada@example.com",
+    )
+    unnamed = LearnerFactory(
+        user__first_name="", user__last_name="", user__email="pick@example.com"
+    )
+
+    form = LearnerPickerForm(
+        queryset=Learner.objects.filter(pk__in=[named.pk, unnamed.pk])
+    )
+
+    labels = {label for _, label in form.fields["learners"].choices}
+    assert labels == {"Ada Lovelace", "pick@example.com"}
