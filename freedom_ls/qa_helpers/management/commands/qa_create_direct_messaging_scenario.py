@@ -1,6 +1,6 @@
-"""Seed the browser-QA data set for direct messaging (frontend_qa.md §0.2).
+"""Seed the browser-QA data set for direct messaging.
 
-Organisations, cohorts and personas follow §0.2: Northside (Cohort A with
+Organisations, cohorts and personas: Northside (Cohort A with
 l1/l2/l3 registered for one published demo course, Cohort B with b1, the
 deactivated learner gone@), Southside (Cohort S with s1), and the educator
 personas edu, edu2, viewer and south.admin. Every persona's password is its
