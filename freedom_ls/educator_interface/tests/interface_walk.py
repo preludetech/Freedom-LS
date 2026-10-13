@@ -14,6 +14,9 @@ from django.http import HttpRequest
 from django.test import RequestFactory
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.comms.factories import ConversationFactory
+from freedom_ls.comms.models import Conversation
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.views import interface_config
@@ -54,10 +57,13 @@ class WalkedAction(NamedTuple):
 type Walked = WalkedPanel | WalkedAction
 
 
-def _seed_instance(model: type[Model] | None, organisation: Organisation) -> Model:
+def _seed_instance(
+    model: type[Model] | None, organisation: Organisation, user: User
+) -> Model:
     """One instance of the model, living inside `organisation` where the
     model supports that. A Course does not: a published course is visible in
-    every organisation, so it needs no organisation of its own.
+    every organisation, so it needs no organisation of its own. A Conversation
+    is the walking user's own, with a learner of the organisation.
 
     factory_boy's metaclass makes mypy see these factories as returning the
     factory class rather than the model, per pyproject's mypy override --
@@ -69,6 +75,9 @@ def _seed_instance(model: type[Model] | None, organisation: Organisation) -> Mod
         return cast(Model, LearnerFactory(organisation=organisation))
     if model is Course:
         return cast(Model, CourseFactory())
+    if model is Conversation:
+        learner = cast(Learner, LearnerFactory(organisation=organisation))
+        return cast(Model, ConversationFactory(between=(user, learner.user)))
     raise NotImplementedError(
         f"interface_walk has no instance seeder for {model}; "
         "add one alongside the new config."
@@ -145,7 +154,9 @@ def walk_interface(organisation: Organisation) -> list[Walked]:
                 )
                 for action in section.get_actions(request)
             )
-            instance = _seed_instance(section.model, organisation)
+            instance = _seed_instance(
+                section.model, organisation, cast(User, request.user)
+            )
             detail = f"{url_name}/{instance.pk}"
         else:
             assert issubclass(section, ObjectViewConfig)

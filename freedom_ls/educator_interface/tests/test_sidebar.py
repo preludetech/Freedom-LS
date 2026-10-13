@@ -50,7 +50,7 @@ def test_sidebar_groups_its_sections_under_a_teaching_heading(
 
 
 @pytest.mark.django_db
-def test_sidebar_lists_the_four_sections_each_with_an_icon(
+def test_sidebar_lists_the_five_sections_each_with_an_icon(
     sidebar: tuple[lxml.html.HtmlElement, str],
 ) -> None:
     nav, _page = sidebar
@@ -62,6 +62,7 @@ def test_sidebar_lists_the_four_sections_each_with_an_icon(
         "Cohorts",
         "Learners",
         "Courses",
+        "Messages",
     ]
     assert all(link.cssselect("svg") for link in links)
 

@@ -163,30 +163,9 @@ name = "educator_interface tests import only educator_interface' runtime deps"
 type = "forbidden"
 allow_indirect_imports = true
 source_modules = ["freedom_ls.educator_interface.tests"]
-forbidden_modules = ["freedom_ls.accounts", "freedom_ls.base", "freedom_ls.blog", "freedom_ls.comms", "freedom_ls.content_base", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.form_engine", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.icons", "freedom_ls.learner_interface", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.tiktok_pixel", "freedom_ls.webhooks", "freedom_ls.xapi_learning_record_store"]
+forbidden_modules = ["freedom_ls.base", "freedom_ls.blog", "freedom_ls.content_base", "freedom_ls.course_access", "freedom_ls.course_applications", "freedom_ls.course_interest", "freedom_ls.course_recommendations", "freedom_ls.deployment", "freedom_ls.dev_tools", "freedom_ls.form_engine", "freedom_ls.google_tag", "freedom_ls.health", "freedom_ls.hr_attributes", "freedom_ls.icons", "freedom_ls.learner_interface", "freedom_ls.mail", "freedom_ls.markdown_rendering", "freedom_ls.messaging_policy", "freedom_ls.meta_pixel", "freedom_ls.qa_helpers", "freedom_ls.referral_tracking", "freedom_ls.reports", "freedom_ls.role_based_permissions", "freedom_ls.tiktok_pixel", "freedom_ls.webhooks", "freedom_ls.xapi_learning_record_store"]
 ignore_imports = [
-    # allowance: the user-model app's factories
-    "freedom_ls.educator_interface.tests.interface_walk -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.invariants.test_config_authorisation -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.invariants.test_organisation_isolation -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.invariants.test_permission_matrix -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.playwright.conftest -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.playwright.test_cohort_management_flow -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.playwright.test_mobile_navigation_flow -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_create_cohort_action -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_dashboard -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_denied_experience -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_document_title -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_interface_urls -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_learner_section -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_organisation_switcher -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_quick_views -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_sidebar -> freedom_ls.accounts.factories",
-    "freedom_ls.educator_interface.tests.test_views -> freedom_ls.accounts.factories",
     # baseline
-    "freedom_ls.educator_interface.tests.playwright.conftest -> freedom_ls.accounts.models",
     "freedom_ls.educator_interface.tests.playwright.test_cohort_management_flow -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.playwright.test_mobile_navigation_flow -> freedom_ls.role_based_permissions.utils",
     "freedom_ls.educator_interface.tests.test_cohort_delete_action -> freedom_ls.role_based_permissions.utils",

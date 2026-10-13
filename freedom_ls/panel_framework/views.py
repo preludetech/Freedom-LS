@@ -108,6 +108,12 @@ class SectionConfigBase:
     required_request_attrs: tuple[str, ...] = ()
 
     @classmethod
+    def is_available(cls, request: HttpRequest) -> bool:
+        """Whether this section exists for `request`. An unavailable section
+        has no menu entry and every path under it is a 404."""
+        return True
+
+    @classmethod
     def get_menu_count(cls, request: HttpRequest) -> int | None:
         """A number to show beside the menu label, or None to show none."""
         return None
@@ -457,6 +463,8 @@ def _resolve_path(
         section = sections[parts[0]]
     except KeyError as err:
         raise Http404(f"Unknown path segment '{parts[0]}'") from err
+    if not section.is_available(request):
+        raise Http404(f"Section '{parts[0]}' is not available")
 
     root, instance_view, i = _bind_root(request, section, parts, section_url)
     if not root.is_shown():
@@ -912,6 +920,8 @@ def _build_menu_items(
     for group in config:
         items: list[dict[str, object]] = []
         for section in group.sections:
+            if not section.is_available(request):
+                continue
             is_active = section.url_name == active_section
             # The section stays marked on its own instance pages, but only
             # its list is the page itself.

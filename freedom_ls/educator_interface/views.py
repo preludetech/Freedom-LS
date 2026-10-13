@@ -13,6 +13,11 @@ from django.http import Http404, HttpRequest, HttpResponse, StreamingHttpRespons
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
 
+from freedom_ls.accounts.models import User
+from freedom_ls.comms.config import config as comms_config
+from freedom_ls.comms.messaging import inbox_for, other_participant, reply_decisions
+from freedom_ls.comms.messaging_views import thread_context
+from freedom_ls.comms.models import Conversation
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     DeleteEmptyCohortAction,
@@ -34,6 +39,10 @@ from freedom_ls.educator_interface.filters import (
     VisibleCourseFilter,
 )
 from freedom_ls.educator_interface.forms import CohortForm
+from freedom_ls.educator_interface.messaging import (
+    ConversationRow,
+    conversations_in_organisation,
+)
 from freedom_ls.educator_interface.quick_views import CohortQuickView, LearnerQuickView
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.models import (
@@ -728,6 +737,123 @@ class LearnerConfig(OrganisationSectionConfig, ListViewConfig):
             raise OrganisationScopeDenied
 
 
+class ConversationDataTable(DataTable):
+    """The educator's conversations with learners of the organisation.
+
+    Rows are ConversationRow objects: the Status column needs each row's reply
+    decision, which is decided for the whole page in one policy call so the
+    query count does not follow the number of rows.
+    """
+
+    @staticmethod
+    def get_queryset(request: HttpRequest) -> QuerySet:
+        scoped = cast(OrganisationScopedRequest, request)
+        return conversations_in_organisation(
+            cast(User, request.user), scoped.organisation
+        )
+
+    @staticmethod
+    def get_columns() -> list[Column]:
+        return [
+            Column(
+                header="With",
+                template="educator_interface/data-table-cells/conversation_with.html",
+                text_attr="other.display_name",
+                url_name="educator_interface:interface",
+                url_path_template="messages/{conversation.pk}",
+                htmx_nav=True,
+                card="primary",
+            ),
+            Column(
+                header="Last message",
+                template="educator_interface/data-table-cells/conversation_last_message.html",
+            ),
+            Column(
+                header="Status",
+                template="educator_interface/data-table-cells/conversation_state.html",
+            ),
+        ]
+
+    @classmethod
+    def get_rows(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> Page:
+        page = super().get_rows(request, queryset, query)
+        viewer = cast(User, request.user)
+        conversations = list(page.object_list)
+        decisions = reply_decisions(viewer=viewer, conversations=conversations)
+        page.object_list = [
+            ConversationRow(
+                conversation=conversation,
+                other=other_participant(conversation, viewer),
+                can_reply=decisions[conversation.pk].allowed,
+            )
+            for conversation in conversations
+        ]
+        return page
+
+
+class ConversationThreadPanel(Panel):
+    """The conversation's thread, with its composer, inside the interface card."""
+
+    model = Conversation
+    template_name = "educator_interface/panels/conversation_thread.html"
+    card_flush = True
+
+    def get_context_data(self) -> dict[str, object]:
+        context = super().get_context_data()
+        context.update(thread_context(self.request, cast(Conversation, self.instance)))
+        organisation = cast(OrganisationScopedRequest, self.request).organisation
+        context["back_url"] = _interface_path(organisation, "messages")
+        return context
+
+
+class ConversationInstanceView(InstanceView):
+    panel = ConversationThreadPanel
+
+
+class MessagesConfig(OrganisationSectionConfig, ListViewConfig):
+    url_name = "messages"
+    menu_label = "Messages"
+    icon = "message"
+    model = Conversation
+    list_view = ConversationDataTable
+    table_key = "conversations"
+    instance_view = ConversationInstanceView
+
+    @classmethod
+    def is_available(cls, request: HttpRequest) -> bool:
+        return comms_config.MESSAGING_ENABLED
+
+    @classmethod
+    def get_instance_view(cls, request: HttpRequest, pk: str) -> InstanceView:
+        """The instance view over the educator's own copy of the conversation.
+
+        Loaded through the inbox query after authorisation, so the other
+        participant is already on the instance for the heading and the thread.
+        """
+        authorised = super().get_instance_view(request, pk)
+        conversation = inbox_for(cast(User, request.user)).get(
+            pk=authorised.instance.pk
+        )
+        return cls.instance_view(conversation)
+
+    @classmethod
+    def get_instance_label(cls, instance: Model) -> str:
+        participants = getattr(instance, "other_participants", None)
+        return participants[0].user.display_name if participants else "Deleted user"
+
+    @classmethod
+    def authorise_instance(cls, request: HttpRequest, instance: Model) -> None:
+        organisation = cast(OrganisationScopedRequest, request).organisation
+        if (
+            not conversations_in_organisation(cast(User, request.user), organisation)
+            .filter(pk=instance.pk)
+            .exists()
+        ):
+            raise OrganisationScopeDenied
+
+
 class CourseDataTable(DataTable):
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -975,7 +1101,10 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 
 
 interface_config = [
-    NavGroup("Teaching", [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig]),
+    NavGroup(
+        "Teaching",
+        [DashboardConfig, CohortConfig, LearnerConfig, CourseConfig, MessagesConfig],
+    ),
 ]
 
 

@@ -18,13 +18,23 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
+from freedom_ls.comms.factories import ConversationFactory, MessageFactory
+from freedom_ls.comms.messaging import inbox_for, unread_conversation_count
+from freedom_ls.comms.messaging_policy import MessagingDecision, MessagingRefusal
+from freedom_ls.comms.models import Conversation
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.events import COHORT_CHANGED
+from freedom_ls.educator_interface.messaging import ConversationRow
 from freedom_ls.educator_interface.tests.interface_walk import (
     WalkedPanel,
     walk_interface,
 )
-from freedom_ls.educator_interface.views import CohortDataTable
+from freedom_ls.educator_interface.views import (
+    CohortDataTable,
+    ConversationDataTable,
+    MessagesConfig,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -1068,3 +1078,347 @@ def test_cohort_list_learners_cell_reads_zero_for_a_cohort_with_no_active_learne
     (row,) = document.xpath("//tr[contains(., 'Empty group')]")
     cells = [" ".join(td.text_content().split()) for td in row.xpath("./td")]
     assert "0" in cells
+
+
+# The Messages section: the educator's own conversations with learners of the
+# organisation, and the thread page each one opens.
+
+
+@pytest.fixture
+def _messaging_on(settings) -> None:
+    settings.MESSAGING_ENABLED = True
+
+
+messages_section = pytest.mark.usefixtures("mock_site_context", "_messaging_on")
+
+
+def _msg_educator(organisation: Organisation) -> User:
+    educator = cast(User, UserFactory(staff=True))
+    _grant(educator, "organisation_admin", organisation)
+    return educator
+
+
+def _grant(user: User, role: str, target: Organisation | Cohort | Site) -> None:
+    """Give `user` a role on `target`, granted by a superuser."""
+    grantor = cast(User, UserFactory(superuser=True))
+    assign_role(grantor, user, role, target)
+
+
+def _msg_learner(organisation: Organisation, **user_fields: str) -> Learner:
+    return cast(
+        Learner,
+        LearnerFactory(
+            organisation=organisation,
+            user=UserFactory(
+                **{"first_name": "Ada", "last_name": "Lovelace"} | user_fields
+            ),
+        ),
+    )
+
+
+def _msg_conversation(user: User, other: User) -> Conversation:
+    return cast(Conversation, ConversationFactory(between=(user, other)))
+
+
+def _msg_url(organisation: Organisation, path_string: str = "messages") -> str:
+    return reverse(
+        "educator_interface:interface",
+        kwargs={"organisation_slug": organisation.slug, "path_string": path_string},
+    )
+
+
+@pytest.fixture
+def msg_client_for(logged_in_client):
+    return lambda user: cast(Client, logged_in_client(user))
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_list_shows_the_educators_conversation_with_a_learner_and_links_to_it(
+    msg_client_for,
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(organisation).user)
+
+    response = msg_client_for(educator).get(_msg_url(organisation))
+
+    assert response.status_code == 200
+    page = lxml.html.fromstring(response.content.decode())
+    links = page.xpath(
+        f"//a[@href='{_msg_url(organisation, f'messages/{conversation.pk}')}']"
+    )
+    assert links
+    assert "Ada Lovelace" in links[0].text_content()
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_list_leaves_out_a_colleagues_conversation_and_a_foreign_learners(
+    msg_client_for,
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    _msg_conversation(educator, _msg_learner(organisation).user)
+    _msg_conversation(
+        _msg_educator(organisation),
+        _msg_learner(organisation, first_name="Colleague", last_name="Pupil").user,
+    )
+    _msg_conversation(
+        educator,
+        _msg_learner(
+            OrganisationFactory(), first_name="Foreign", last_name="Pupil"
+        ).user,
+    )
+
+    content = msg_client_for(educator).get(_msg_url(organisation)).content.decode()
+
+    assert "Ada Lovelace" in content
+    assert "Colleague" not in content
+    assert "Foreign" not in content
+
+
+@pytest.mark.django_db
+@messages_section
+def test_a_site_admin_sees_only_their_own_conversations(
+    msg_client_for, mock_site_context
+):
+    organisation = OrganisationFactory()
+    learner = _msg_learner(organisation)
+    site_admin = cast(User, UserFactory(staff=True))
+    _grant(site_admin, "site_admin", mock_site_context)
+    _msg_conversation(_msg_educator(organisation), learner.user)
+    mine = _msg_conversation(
+        site_admin,
+        _msg_learner(organisation, first_name="Grace", last_name="Hopper").user,
+    )
+
+    content = msg_client_for(site_admin).get(_msg_url(organisation)).content.decode()
+
+    assert str(mine.pk) in content
+    assert "Grace Hopper" in content
+    assert "Ada Lovelace" not in content
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_status_column_shows_the_unread_marker(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    learner = _msg_learner(organisation)
+    conversation = _msg_conversation(educator, learner.user)
+    MessageFactory(conversation=conversation, sender=learner.user)
+
+    content = msg_client_for(educator).get(_msg_url(organisation)).content.decode()
+
+    assert "Unread" in content
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_status_column_shows_read_only_when_the_policy_refuses_a_reply(
+    msg_client_for, monkeypatch
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(organisation).user)
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.views.reply_decisions",
+        lambda *, viewer, conversations: {
+            c.pk: MessagingDecision.refuse(MessagingRefusal.NO_RELATIONSHIP)
+            for c in conversations
+        },
+    )
+
+    content = msg_client_for(educator).get(_msg_url(organisation)).content.decode()
+
+    assert str(conversation.pk) in content
+    assert "Read only" in content
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_lists_query_count_does_not_grow_with_the_rows(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    client = msg_client_for(educator)
+    for _ in range(2):
+        _msg_conversation(educator, _msg_learner(organisation).user)
+    client.get(_msg_url(organisation))
+
+    with CaptureQueriesContext(connection) as few:
+        assert client.get(_msg_url(organisation)).status_code == 200
+
+    for _ in range(6):
+        _msg_conversation(educator, _msg_learner(organisation).user)
+    with CaptureQueriesContext(connection) as many:
+        assert client.get(_msg_url(organisation)).status_code == 200
+
+    assert len(many) == len(few)
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_table_names_a_row_by_the_msg_learner():
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(organisation).user)
+    row = ConversationRow(
+        conversation=inbox_for(educator).get(pk=conversation.pk),
+        other=conversation.participants.exclude(user=educator).get().user,
+        can_reply=True,
+    )
+
+    assert ConversationDataTable.get_row_label(row) == "Ada Lovelace"
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_thread_page_carries_the_back_control_and_posts_to_send(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(organisation).user)
+
+    response = msg_client_for(educator).get(
+        _msg_url(organisation, f"messages/{conversation.pk}")
+    )
+
+    assert response.status_code == 200
+    page = lxml.html.fromstring(response.content.decode())
+    back = page.xpath("//a[@aria-label='Back to messages']")
+    assert back
+    assert back[0].get("href") == _msg_url(organisation)
+    send_url = reverse("conversations:send", kwargs={"pk": conversation.pk})
+    assert page.xpath(f"//form[@hx-post='{send_url}']")
+    assert page.xpath("//*[@id='thread-cursor']")
+    assert page.xpath("//*[@id='composer']")
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_thread_header_names_the_learner_as_a_second_level_heading(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(organisation).user)
+
+    content = (
+        msg_client_for(educator)
+        .get(_msg_url(organisation, f"messages/{conversation.pk}"))
+        .content.decode()
+    )
+
+    page = lxml.html.fromstring(content)
+    pane = page.xpath("//section[@x-data='conversationThread']")[0]
+    assert [h.text_content().strip() for h in pane.xpath(".//h2")] == ["Ada Lovelace"]
+    assert not pane.xpath(".//h1")
+
+
+@pytest.mark.django_db
+@messages_section
+def test_opening_the_thread_marks_it_read(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    learner = _msg_learner(organisation)
+    conversation = _msg_conversation(educator, learner.user)
+    MessageFactory(conversation=conversation, sender=learner.user)
+    assert unread_conversation_count(educator) == 1
+
+    msg_client_for(educator).get(_msg_url(organisation, f"messages/{conversation.pk}"))
+
+    assert unread_conversation_count(educator) == 0
+
+
+@pytest.mark.django_db
+@messages_section
+def test_a_conversation_with_a_learner_of_another_organisation_is_a_404(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(OrganisationFactory()).user)
+
+    response = msg_client_for(educator).get(
+        _msg_url(organisation, f"messages/{conversation.pk}")
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@messages_section
+def test_a_colleagues_conversation_is_a_404(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(
+        _msg_educator(organisation), _msg_learner(organisation).user
+    )
+
+    response = msg_client_for(educator).get(
+        _msg_url(organisation, f"messages/{conversation.pk}")
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+@messages_section
+def test_a_conversation_whose_learner_was_deleted_leaves_the_list_and_404s(
+    msg_client_for,
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    gone = _msg_learner(organisation, first_name="Gone", last_name="Soon")
+    conversation = _msg_conversation(educator, gone.user)
+    _msg_conversation(educator, _msg_learner(organisation).user)
+    gone.user.delete()
+    client = msg_client_for(educator)
+
+    listing = client.get(_msg_url(organisation)).content.decode()
+    thread = client.get(_msg_url(organisation, f"messages/{conversation.pk}"))
+
+    assert "Ada Lovelace" in listing
+    assert "Gone Soon" not in listing
+    assert thread.status_code == 404
+
+
+@pytest.mark.django_db
+@messages_section
+def test_messaging_off_hides_the_nav_item_and_404s_the_paths(msg_client_for, settings):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    conversation = _msg_conversation(educator, _msg_learner(organisation).user)
+    client = msg_client_for(educator)
+    assert "aria-current" in client.get(_msg_url(organisation)).content.decode()
+
+    settings.MESSAGING_ENABLED = False
+
+    dashboard = client.get(_msg_url(organisation, "dashboard")).content.decode()
+    assert f'href="{_msg_url(organisation)}"' not in dashboard
+    assert client.get(_msg_url(organisation)).status_code == 404
+    assert (
+        client.get(_msg_url(organisation, f"messages/{conversation.pk}")).status_code
+        == 404
+    )
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_messages_nav_item_is_listed_when_messaging_is_on(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+
+    dashboard = (
+        msg_client_for(educator)
+        .get(_msg_url(organisation, "dashboard"))
+        .content.decode()
+    )
+
+    assert f'href="{_msg_url(organisation)}"' in dashboard
+
+
+@pytest.mark.django_db
+@messages_section
+def test_the_section_is_available_only_while_messaging_is_on(settings):
+    settings.MESSAGING_ENABLED = True
+    request = RequestFactory().get("/")
+    assert MessagesConfig.is_available(request) is True
+    settings.MESSAGING_ENABLED = False
+    assert MessagesConfig.is_available(request) is False
