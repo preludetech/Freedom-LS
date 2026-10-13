@@ -1012,7 +1012,7 @@ class TestRecipientPicker:
     ) -> None:
         response = logged_in_client(UserFactory()).get(search_url(), {"q": "zzzz"})
 
-        assert 'No one you can message matches "zzzz"' in response.content.decode()
+        assert "No one you can message matches 'zzzz'" in response.content.decode()
 
     def test_a_long_list_asks_for_a_term(
         self, mock_site_context, logged_in_client
