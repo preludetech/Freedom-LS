@@ -367,3 +367,63 @@ def test_reopening_a_row_whose_load_failed_requests_it_again(
     trigger.click()
     expect(page.locator("[data-stub-quick-view]")).to_have_text("Alpha")
     assert attempts["count"] == 2
+
+
+def test_unsent_draft_asks_before_the_drawer_is_left(
+    page: Page,
+    live_server: pytest_django.live_server_helper.LiveServer,
+    live_server_site: Site,
+    mock_site_context: None,
+) -> None:
+    make_stub(name="Alpha")
+    make_stub(name="Beta")
+    quick_view = page.locator("#quick-view")
+    content = page.locator("[data-stub-quick-view]")
+    prompt = page.locator("[data-quick-view-discard-prompt]")
+    note = page.get_by_label("Note")
+    page.set_viewport_size(QA_VIEWPORTS[2])
+    page.goto(f"{live_server.url}{_LIST_PATH}")
+
+    # Nothing typed: Esc and another row go through without asking.
+    _trigger(page, "Alpha").click()
+    expect(content).to_have_text("Alpha")
+    page.keyboard.press("Escape")
+    expect(quick_view).to_be_hidden()
+    _trigger(page, "Alpha").click()
+    expect(content).to_have_text("Alpha")
+    _trigger(page, "Beta").click()
+    expect(content).to_have_text("Beta")
+    expect(prompt).to_be_hidden()
+
+    # A typed note makes Esc ask; Keep editing keeps the note.
+    note.fill("half a thought")
+    page.keyboard.press("Escape")
+    expect(prompt).to_be_visible()
+    expect(prompt.get_by_text("Discard your message?")).to_be_visible()
+    expect(quick_view).to_be_visible()
+    prompt.get_by_role("button", name="Keep editing").click()
+    expect(prompt).to_be_hidden()
+    expect(note).to_have_value("half a thought")
+
+    # Another row asks too; Discard moves on and loads it.
+    _trigger(page, "Alpha").click()
+    expect(prompt).to_be_visible()
+    expect(content).to_have_text("Beta")
+    prompt.get_by_role("button", name="Discard").click()
+    expect(prompt).to_be_hidden()
+    expect(content).to_have_text("Alpha")
+    expect(note).to_have_value("")
+
+    # A note typed and then emptied again is not a draft.
+    note.fill("x")
+    note.fill("")
+    page.keyboard.press("Escape")
+    expect(quick_view).to_be_hidden()
+
+    # Discard on the close control closes the drawer.
+    _trigger(page, "Alpha").click()
+    note.fill("again")
+    page.get_by_role("button", name="Close").click()
+    expect(prompt).to_be_visible()
+    prompt.get_by_role("button", name="Discard").click()
+    expect(quick_view).to_be_hidden()
