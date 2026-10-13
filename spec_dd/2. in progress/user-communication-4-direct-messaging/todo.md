@@ -48,10 +48,12 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 
 ## 9. QA
 
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan (missing test data will be created automatically via the `fls-dev:qa-data-helper` agent)
 - [ ] (user) Review the QA report
 - [ ] (user) If bugs were found, fix them using TDD (failing test first, then fix)
 - [ ] (user) If QA fixes changed code significantly, re-run `/ds:security-review` and address any new issues
+- [ ] (user + cmd) Fix QA bug: New message modal loses the typed draft when the recipient stops being messageable — NewMessageAction.handle_submit 404s before the 422 refusal path; keep the draft without letting a 422 reveal names by pk enumeration (TDD — failing test first, then fix)
+- [ ] (user) Decide whether the New message modal should focus the To search field or the heading (focus_title="true" today; test plan 5.1 expects the field), then change the template or the test plan to match
 
 ## 10. Product documentation
 
