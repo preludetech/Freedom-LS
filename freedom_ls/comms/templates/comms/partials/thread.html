@@ -53,12 +53,14 @@ pane fits its card and does not add a second h1.
     {% comment %}
     The poll asks for what is newer than the cursor and carries the composer's
     state and draft flag, so a swap never replaces a form that holds typed text.
+    It skips a turn while a send is in flight: the send's answer covers it.
     {% endcomment %}
     <div x-data="refreshTimer" data-poll-seconds="{{ thread_poll_seconds }}">
         <span x-ref="target"
               hx-get="{% url 'conversations:thread_poll' conversation.pk %}"
               hx-trigger="refresh"
               hx-include="#thread-cursor, #composer-state, #composer-draft"
+              hx-sync="#thread-log:drop"
               hx-target="#thread-log"
               hx-swap="beforeend"></span>
     </div>

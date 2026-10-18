@@ -364,8 +364,10 @@ def _send_response(
 ) -> HttpResponse:
     """The answer to a send, shared by every view that posts a message.
 
-    A stored message in an existing thread answers with its log entry plus a
-    fresh composer swapped in out of band. A first message (``recipient`` set)
+    A stored message in an existing thread answers with every entry newer than
+    the page's cursor (``after``), so a message that arrived since the last
+    poll is not skipped, plus a fresh composer swapped in out of band. Without
+    a cursor it answers with the new message's entry alone. A first message (``recipient`` set)
     answers by loading the new thread. A refusal or body error answers 422 with
     the composer holding the draft, the same key and the reason; the retarget
     headers point the global 422 swap at the composer instead of the log.
@@ -385,16 +387,21 @@ def _send_response(
             response = HttpResponse(status=204)
             response["HX-Location"] = json.dumps({"path": thread_url})
             return response
-        body = render_to_string(
-            "comms/partials/message_entry.html",
-            {"entry": entry_for_message(result.message), "conversation": sent_to},
-            request,
-        )
-        body += render_to_string(
-            "comms/partials/thread_cursor.html",
-            {"thread_cursor": encode_cursor(result.message), "oob": True},
-            request,
-        )
+        cursor = decode_cursor(request.POST.get("after", ""))
+        new = messages_after(sent_to, cursor) if cursor is not None else []
+        if new:
+            body, _ = _appended_entries(request, sent_to, new, cursor)
+        else:
+            body = render_to_string(
+                "comms/partials/message_entry.html",
+                {"entry": entry_for_message(result.message), "conversation": sent_to},
+                request,
+            )
+            body += render_to_string(
+                "comms/partials/thread_cursor.html",
+                {"thread_cursor": encode_cursor(result.message), "oob": True},
+                request,
+            )
         body += render_to_string(
             "comms/partials/composer.html",
             {
@@ -640,6 +647,43 @@ def _incoming_announcement(incoming: list[Message]) -> str:
     return new_messages_announcement(len(incoming), name)
 
 
+def _appended_entries(
+    request: HttpRequest,
+    conversation: Conversation,
+    new: list[Message],
+    cursor: tuple[datetime, UUID] | None,
+) -> tuple[str, bool]:
+    """Log entries for ``new``, which follow the message ``cursor`` names.
+
+    The cursor moves out of band to the last of them. When some came from the
+    other participant, the thread is marked read up to the last one and the
+    screen-reader announcement is swapped in; the flag says whether it was.
+    """
+    viewer = cast("User", request.user)
+    body = ""
+    for entry in render_message_entries(new, _boundary_message(conversation, cursor)):
+        body += render_to_string(
+            "comms/partials/message_entry.html", {"entry": entry}, request
+        )
+    body += render_to_string(
+        "comms/partials/thread_cursor.html",
+        {"thread_cursor": encode_cursor(new[-1]), "oob": True},
+        request,
+    )
+    incoming = [message for message in new if message.sender_id != viewer.pk]
+    if not incoming:
+        return body, False
+    mark_conversation_read(
+        user=viewer, conversation=conversation, up_to=new[-1].created_at
+    )
+    body += render_to_string(
+        "comms/partials/thread_status.html",
+        {"announcement": _incoming_announcement(incoming), "oob": True},
+        request,
+    )
+    return body, True
+
+
 @messaging_view
 def partial_thread_poll(request: HttpRequest, pk: UUID) -> HttpResponse:
     """What changed in the thread since the page's cursor, or 204 for nothing.
@@ -668,28 +712,7 @@ def partial_thread_poll(request: HttpRequest, pk: UUID) -> HttpResponse:
     body = ""
     announce = False
     if new:
-        for entry in render_message_entries(
-            new, _boundary_message(conversation, cursor)
-        ):
-            body += render_to_string(
-                "comms/partials/message_entry.html", {"entry": entry}, request
-            )
-        body += render_to_string(
-            "comms/partials/thread_cursor.html",
-            {"thread_cursor": encode_cursor(new[-1]), "oob": True},
-            request,
-        )
-        incoming = [message for message in new if message.sender_id != viewer.pk]
-        if incoming:
-            mark_conversation_read(
-                user=viewer, conversation=conversation, up_to=new[-1].created_at
-            )
-            body += render_to_string(
-                "comms/partials/thread_status.html",
-                {"announcement": _incoming_announcement(incoming), "oob": True},
-                request,
-            )
-            announce = True
+        body, announce = _appended_entries(request, conversation, new, cursor)
     if flipped and request.GET.get("draft") == "0":
         if decision.allowed:
             body += render_to_string(

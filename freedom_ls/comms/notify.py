@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
-from django.db.models import Value
+from django.db.models import Q, Value
 from django.db.models.functions import Coalesce
 from django.tasks import default_task_backend
 from django.utils import timezone
@@ -104,10 +104,17 @@ def stamp_read(queryset: QuerySet[Notification]) -> None:
     queryset.update(read_at=now, seen_at=Coalesce("seen_at", Value(now)))
 
 
-def mark_notifications_read(*, user: User, target: Model, site_id: int) -> None:
-    """Mark the user's unread notifications about ``target`` read."""
+def mark_notifications_read(
+    *, user: User, target: Model, site_id: int, condition: Q | None = None
+) -> None:
+    """Mark the user's unread notifications about ``target`` read.
+
+    ``condition`` narrows which rows are marked; it is applied in the same
+    UPDATE, so a row that stops matching before the write is left alone.
+    """
     stamp_read(
         Notification._base_manager.filter(
+            condition or Q(),
             user=user,
             site_id=site_id,
             content_type=ContentType.objects.get_for_model(target),

@@ -209,7 +209,7 @@ class TestThreadPage:
         tree = html.fromstring(response.content)
         composer = tree.get_element_by_id("composer")
         button = composer.xpath(".//button[@type='submit']")[0]
-        assert composer.get("hx-sync") == "this:drop"
+        assert composer.get("hx-sync") == "#thread-log:replace"
         assert composer.get("hx-disabled-elt") == "find button[type=submit]"
         assert button.get("aria-label") == "Send"
 
@@ -1805,6 +1805,68 @@ class TestSendCarriesTheThreadSignals:
         assert cursor_input.get("value") == encode_cursor(message)
         assert tree.xpath(f"//li[@id='msg-{message.pk}'][@data-own]")
         assert json.loads(response["HX-Trigger"]) == {"conversationChanged": {}}
+
+    def test_a_send_brings_back_what_arrived_after_the_page_cursor(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        on_screen = MessageFactory(conversation=conversation, sender=other)
+        missed = MessageFactory(conversation=conversation, sender=other, body="Missed")
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {
+                "body": "Hello",
+                "client_key": str(uuid.uuid4()),
+                "after": encode_cursor(on_screen),
+            },
+            **HTMX,
+        )
+
+        tree = poll_tree(response)
+        sent = Message.objects.get(sender=user)
+        ids = [li.get("id") for li in tree.xpath("//li")]
+        assert ids == [f"msg-{missed.pk}", f"msg-{sent.pk}"]
+        cursor_input = tree.xpath("//input[@id='thread-cursor']")[0]
+        assert cursor_input.get("value") == encode_cursor(sent)
+        status = tree.xpath("//*[@id='thread-status']")[0]
+        assert other.display_name in status.text_content()
+        assert last_read_at(conversation, user) == sent.created_at
+
+    def test_a_send_without_a_cursor_returns_only_the_new_entry(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+
+        response = logged_in_client(user).post(
+            send_url(conversation),
+            {"body": "Hello", "client_key": str(uuid.uuid4())},
+            **HTMX,
+        )
+
+        sent = Message.objects.get(sender=user)
+        ids = [li.get("id") for li in poll_tree(response).xpath("//li")]
+        assert ids == [f"msg-{sent.pk}"]
+
+    def test_the_composer_posts_the_cursor_and_shares_a_sync_scope_with_the_poll(
+        self, pair, logged_in_client
+    ) -> None:
+        user, _, conversation = pair
+
+        tree = html.fromstring(
+            logged_in_client(user).get(thread_url(conversation)).content
+        )
+
+        composer = tree.xpath("//form[@id='composer']")[0]
+        assert composer.get("hx-include") == "#thread-cursor"
+        assert composer.get("hx-sync") == "#thread-log:replace"
+        poll = tree.xpath(
+            "//span[@hx-get='"
+            + reverse("conversations:thread_poll", kwargs={"pk": conversation.pk})
+            + "']"
+        )[0]
+        assert poll.get("hx-sync") == "#thread-log:drop"
 
 
 def inbox_poll_url(*, since="", current="") -> str:

@@ -3,6 +3,11 @@ The composer form. It keeps the id #composer through every swap so a refused
 send can replace it in place, and the textarea keeps #message-body so htmx can
 restore focus after the swap. In the narrow quick view, Send sits under the
 textarea so the textarea gets the full width.
+
+In a thread the send carries the page's cursor, so its answer holds whatever
+arrived since the last poll as well, and it shares the log's sync scope with
+the poll: a send aborts a poll in flight, so the two never append the same
+message.
 {% endcomment %}
 <form id="composer"
       x-data="messageComposer"
@@ -22,8 +27,9 @@ textarea so the textarea gets the full width.
       {% else %}
           hx-target="#thread-log"
           hx-swap="beforeend"
+          hx-include="#thread-cursor"
       {% endif %}
-      hx-sync="this:drop"
+      hx-sync="{% if composer.in_quick_view or composer.in_modal or composer.recipient %}this:drop{% else %}#thread-log:replace{% endif %}"
       hx-disabled-elt="find button[type=submit]"
       data-max-length="{{ composer.max_length }}"
       data-counter-from="{{ composer.counter_from }}"

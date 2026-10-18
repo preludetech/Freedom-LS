@@ -281,6 +281,28 @@ class TestSendMessage:
         assert conversation.last_message_at == stored(result).created_at
         assert participant.last_read_at == stored(result).created_at
 
+    def test_an_unread_incoming_message_keeps_the_senders_marker_where_it_was(
+        self, mock_site_context, site
+    ) -> None:
+        sender, recipient = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(sender, recipient))
+        MessageFactory(conversation=conversation, sender=recipient)
+
+        send_message(
+            sender=sender,
+            body="Hi",
+            client_key=uuid.uuid4(),
+            site=site,
+            conversation=conversation,
+        )
+
+        assert (
+            ConversationParticipant.objects.get(
+                conversation=conversation, user=sender
+            ).last_read_at
+            is None
+        )
+
     def test_the_recipients_last_read_at_is_untouched(
         self, mock_site_context, site
     ) -> None:
@@ -1304,3 +1326,24 @@ class TestMarkConversationReadClearsNotification:
 
         notification.refresh_from_db()
         assert notification.read_at is not None
+
+    def test_a_newer_incoming_message_keeps_the_notification_unread(
+        self, mock_site_context
+    ) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        shown = MessageFactory(conversation=conversation, sender=other)
+        MessageFactory(conversation=conversation, sender=other)
+        notification = NotificationFactory(
+            user=user,
+            category="message.received",
+            target=conversation,
+            data={"sender_name": "Sam"},
+        )
+
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=shown.created_at
+        )
+
+        notification.refresh_from_db()
+        assert notification.read_at is None

@@ -15,6 +15,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import (
     BooleanField,
     Case,
+    Exists,
     F,
     FilteredRelation,
     Prefetch,
@@ -206,15 +207,36 @@ def mark_conversation_read(
 ) -> None:
     """Advance the user's read marker to ``up_to``; it never moves backwards.
 
-    The conversation's notification is marked read too. The reverse does not
-    hold: reading or unreading a notification leaves the marker alone.
+    The conversation's notification is marked read too, unless a message from
+    someone else is newer than ``up_to``: that message has refreshed the
+    notification and has not been shown. The reverse does not hold: reading or
+    unreading a notification leaves the marker alone.
     """
     ConversationParticipant.objects.filter(conversation=conversation, user=user).update(
         last_read_at=Greatest(Coalesce("last_read_at", Value(up_to)), Value(up_to))
     )
+    newer_incoming = Message.objects.filter(
+        conversation=conversation, created_at__gt=up_to
+    ).exclude(sender=user)
     mark_notifications_read(
-        user=user, target=conversation, site_id=conversation.site_id
+        user=user,
+        target=conversation,
+        site_id=conversation.site_id,
+        condition=~Q(Exists(newer_incoming)),
     )
+
+
+def _has_unread_incoming(conversation: Conversation, user: User) -> bool:
+    """Whether a message from someone else is newer than the user's read marker."""
+    last_read_at = (
+        ConversationParticipant.objects.filter(conversation=conversation, user=user)
+        .values_list("last_read_at", flat=True)
+        .first()
+    )
+    incoming = Message.objects.filter(conversation=conversation).exclude(sender=user)
+    if last_read_at is not None:
+        incoming = incoming.filter(created_at__gt=last_read_at)
+    return incoming.exists()
 
 
 def normalise_body(body: str) -> str:
@@ -291,9 +313,12 @@ def send_message(
         )
         locked.last_message_at = message.created_at
         locked.save(update_fields=["last_message_at"])
-        mark_conversation_read(
-            user=sender, conversation=locked, up_to=message.created_at
-        )
+        # The sender has read their own message, but not one that arrived
+        # since they last looked: that stays unread until something shows it.
+        if not _has_unread_incoming(locked, sender):
+            mark_conversation_read(
+                user=sender, conversation=locked, up_to=message.created_at
+            )
         other = other_participant(locked, sender)
         if other is not None:
             raise_notification(
