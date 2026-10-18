@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -94,18 +95,28 @@ def inbox_rows(user: User) -> list[InboxRow]:
     ]
 
 
+def inbox_state(rows: list[InboxRow]) -> str:
+    """A token that changes whenever a row would render differently.
+
+    It covers each row's newest message, its unread flag and whether the
+    viewer can reply, so a read marker moving or a conversation closing
+    refreshes the list as well as a new message does.
+    """
+    parts = [
+        f"{row.conversation.pk}:{row.conversation.last_message_at}:"
+        f"{getattr(row.conversation, 'is_unread', False)}:{row.can_reply}"
+        for row in rows
+    ]
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()[:16]
+
+
 def _inbox_context(
     request: HttpRequest, current: Conversation | None = None
 ) -> dict[str, object]:
     rows = inbox_rows(cast("User", request.user))
-    stamps = [
-        row.conversation.last_message_at
-        for row in rows
-        if row.conversation.last_message_at is not None
-    ]
     return {
         "inbox_rows": rows,
-        "inbox_since": max(stamps).isoformat() if stamps else "",
+        "inbox_state": inbox_state(rows),
         "inbox_poll_seconds": config.MESSAGE_INBOX_POLL_SECONDS,
         "current_pk": current.pk if current is not None else None,
     }
@@ -253,24 +264,13 @@ def _has_recipients(request: HttpRequest) -> bool:
 
 @messaging_view
 def partial_inbox_poll(request: HttpRequest) -> HttpResponse:
-    """The refreshed conversation list, or 204 when nothing is newer.
+    """The refreshed conversation list, or 204 when no row changed.
 
-    The page sends the newest ``last_message_at`` its list shows (``since``) and
-    the pk of the open thread (``current``), which keeps ``aria-current`` on
-    that row. A missing or malformed ``since`` re-renders the list.
+    The page sends the state token of the list it shows (``state``) and the pk
+    of the open thread (``current``), which keeps ``aria-current`` on that row.
+    A missing or stale token re-renders the list.
     """
     viewer = cast("User", request.user)
-    try:
-        since = datetime.fromisoformat(request.GET.get("since", ""))
-    except ValueError:
-        since = None
-    if (
-        since is not None
-        and since.tzinfo is not None
-        and not inbox_for(viewer).filter(last_message_at__gt=since).exists()
-    ):
-        return HttpResponse(status=204)
-
     try:
         current_pk = UUID(request.GET.get("current", ""))
     except ValueError:
@@ -281,12 +281,14 @@ def partial_inbox_poll(request: HttpRequest) -> HttpResponse:
         else None
     )
     context = _inbox_context(request, current)
+    if request.GET.get("state") == context["inbox_state"]:
+        return HttpResponse(status=204)
     context["has_recipients"] = _has_recipients(request)
     body = render_to_string(
         "comms/partials/conversation_list.html#conversation-list", context, request
     )
     body += render_to_string(
-        "comms/partials/inbox_since.html", {**context, "oob": True}, request
+        "comms/partials/inbox_state.html", {**context, "oob": True}, request
     )
     return HttpResponse(body)
 

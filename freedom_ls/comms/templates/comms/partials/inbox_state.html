@@ -1,0 +1,10 @@
+{% comment %}
+A token for what the list shows, sent back with every inbox poll so the server
+answers only when a row changed: a new message, a read or unread flip, or a
+reply opening or closing. `oob` replaces the input already on the page.
+{% endcomment %}
+<input type="hidden"
+       name="state"
+       id="inbox-state"
+       value="{{ inbox_state }}"
+       {% if oob %}hx-swap-oob="outerHTML"{% endif %}>

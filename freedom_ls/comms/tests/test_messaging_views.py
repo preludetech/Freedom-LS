@@ -23,6 +23,7 @@ from freedom_ls.comms.messaging import (
     inbox_for,
     mark_conversation_read,
 )
+from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_policy import (
     MessagingDecision,
     MessagingPolicy,
@@ -1869,26 +1870,30 @@ class TestSendCarriesTheThreadSignals:
         assert poll.get("hx-sync") == "#thread-log:drop"
 
 
-def inbox_poll_url(*, since="", current="") -> str:
+def inbox_poll_url(*, state="", current="") -> str:
     base = reverse("conversations:inbox_poll")
-    return f"{base}?since={quote(since)}&current={current}"
+    return f"{base}?state={quote(state)}&current={current}"
+
+
+def inbox_state(client) -> str:
+    tree = html.fromstring(client.get(inbox_url()).content)
+    return str(tree.xpath("//input[@id='inbox-state']")[0].get("value"))
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures("allow_policy")
 class TestInboxPoll:
     @pytest.fixture
-    def seen(self, pair):
-        """The pair with one message already listed, and the inbox's marker."""
+    def seen(self, pair, logged_in_client):
+        """The pair with one unread message listed, and the inbox's state token."""
         user, other, conversation = pair
         MessageFactory(conversation=conversation, sender=other)
-        conversation.refresh_from_db()
-        return user, other, conversation, conversation.last_message_at.isoformat()
+        return user, other, conversation, inbox_state(logged_in_client(user))
 
     def test_the_inbox_carries_the_poller_and_the_marker(
         self, seen, logged_in_client, settings
     ) -> None:
-        user, _, _, since = seen
+        user, _, _, state = seen
         settings.MESSAGE_INBOX_POLL_SECONDS = 7
 
         tree = html.fromstring(logged_in_client(user).get(inbox_url()).content)
@@ -1901,16 +1906,17 @@ class TestInboxPoll:
         assert "conversationChanged from:body" in listing.get("hx-trigger")
         assert listing.get("hx-target") == "this"
         assert listing.get("hx-swap") == "outerHTML"
-        assert tree.xpath("//input[@id='inbox-since']")[0].get("value") == since
-        assert tree.xpath("//input[@id='inbox-since']")[0].get("name") == "since"
+        assert tree.xpath("//input[@id='inbox-state']")[0].get("value") == state
+        assert tree.xpath("//input[@id='inbox-state']")[0].get("name") == "state"
+        assert "#inbox-state" in listing.get("hx-include")
 
     def test_nothing_changed_is_204_and_writes_nothing(
         self, seen, logged_in_client
     ) -> None:
-        user, _, conversation, since = seen
+        user, _, conversation, state = seen
         before = Conversation.objects.get(pk=conversation.pk).last_message_at
 
-        response = logged_in_client(user).get(inbox_poll_url(since=since), **HTMX)
+        response = logged_in_client(user).get(inbox_poll_url(state=state), **HTMX)
 
         assert response.status_code == 204
         assert Conversation.objects.get(pk=conversation.pk).last_message_at == before
@@ -1918,27 +1924,53 @@ class TestInboxPoll:
     def test_a_new_message_rerenders_the_list_with_its_row_first(
         self, seen, logged_in_client
     ) -> None:
-        user, other, _, since = seen
+        user, other, _, state = seen
         third = UserFactory(first_name="Newest", last_name="Sender")
         MessageFactory(conversation=ConversationFactory(between=(user, third)))
 
-        response = logged_in_client(user).get(inbox_poll_url(since=since), **HTMX)
+        response = logged_in_client(user).get(inbox_poll_url(state=state), **HTMX)
 
         assert response.status_code == 200
         content = response.content.decode()
         assert content.index("Newest Sender") < content.index(other.display_name)
         assert "<html" not in content
-        marker = poll_tree(response).xpath("//input[@id='inbox-since']")[0]
+        marker = poll_tree(response).xpath("//input[@id='inbox-state']")[0]
         assert marker.get("hx-swap-oob") == "outerHTML"
-        assert marker.get("value") != since
+        assert marker.get("value") != state
 
-    @pytest.mark.parametrize("since", ["", "not-a-date", "2026-01-01T00:00:00"])
-    def test_a_missing_or_malformed_marker_rerenders(
-        self, seen, logged_in_client, since
+    def test_reading_a_conversation_rerenders_its_row_as_read(
+        self, seen, logged_in_client
+    ) -> None:
+        user, _, conversation, state = seen
+        conversation.refresh_from_db()
+        mark_conversation_read(
+            user=user, conversation=conversation, up_to=conversation.last_message_at
+        )
+
+        response = logged_in_client(user).get(inbox_poll_url(state=state), **HTMX)
+
+        assert response.status_code == 200
+        assert "Unread" not in response.content.decode()
+
+    def test_a_conversation_closing_rerenders_the_list(
+        self, seen, logged_in_client, settings
+    ) -> None:
+        user, _, _, state = seen
+        settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
+        get_messaging_policy.cache_clear()
+
+        response = logged_in_client(user).get(inbox_poll_url(state=state), **HTMX)
+
+        assert response.status_code == 200
+        assert "Read only" in response.content.decode()
+
+    @pytest.mark.parametrize("state", ["", "not-a-token"])
+    def test_a_missing_or_stale_token_rerenders(
+        self, seen, logged_in_client, state
     ) -> None:
         user, *_ = seen
 
-        response = logged_in_client(user).get(inbox_poll_url(since=since), **HTMX)
+        response = logged_in_client(user).get(inbox_poll_url(state=state), **HTMX)
 
         assert response.status_code == 200
         assert 'id="conversation-list"' in response.content.decode()

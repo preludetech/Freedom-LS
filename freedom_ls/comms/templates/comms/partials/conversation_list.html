@@ -2,18 +2,18 @@
 The inbox list. Rendered in place wherever this file is included, and on its
 own as the "conversation-list" partial when htmx asks for just the list.
 The wrapper polls the list and refreshes it when a conversation changes. The
-hidden inputs tell the poll the newest message the list shows and which
-thread is open, so the open row keeps aria-current.
+hidden inputs tell the poll what the list shows and which thread is open, so
+the open row keeps aria-current.
 {% endcomment %}
 <div x-data="refreshTimer" data-poll-seconds="{{ inbox_poll_seconds }}">
-    {% include "comms/partials/inbox_since.html" %}
+    {% include "comms/partials/inbox_state.html" %}
     <input type="hidden" name="current" id="inbox-current" value="{{ current_pk|default:'' }}">
     {% partialdef conversation-list inline %}
         <div id="conversation-list"
              x-ref="target"
              hx-get="{% url 'conversations:inbox_poll' %}"
              hx-trigger="refresh, conversationChanged from:body"
-             hx-include="#inbox-since, #inbox-current"
+             hx-include="#inbox-state, #inbox-current"
              hx-target="this"
              hx-swap="outerHTML">
             {% if inbox_rows %}
