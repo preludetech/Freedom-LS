@@ -13,11 +13,10 @@
                 </h1>
                 <p>
                     Press Confirm to verify <strong>{{ applicant_email }}</strong>.
-                    {% if not is_submitted %}You'll then be taken back to your application.{% endif %}
                     {% if sets_password %}
-                        You'll then choose a password for your new account.
+                        You'll then choose a password for your new account{% if returns_to_application %} and be taken back to your application{% endif %}.
                     {% else %}
-                        You'll then be signed in to your account.
+                        You'll then be signed in to your account{% if returns_to_application %} and taken back to your application{% endif %}.
                     {% endif %}
                 </p>
                 {% if held_application == "submitted" and not is_submitted %}

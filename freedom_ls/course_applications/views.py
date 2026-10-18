@@ -800,6 +800,9 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
             applicant_email=link.applicant.email,
             is_submitted=is_submitted,
             held_application=held_application,
+            returns_to_application=(
+                not is_submitted and held_application != "submitted"
+            ),
             sets_password=claim_sets_a_password(owner),
             signed_in_as=(
                 cast(User, request.user).email

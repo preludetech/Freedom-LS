@@ -2933,6 +2933,30 @@ def test_claim_get_of_a_draft_says_the_application_continues(client, claimable_d
 
 
 @pytest.mark.django_db
+def test_claim_get_of_a_draft_lists_the_password_step_before_returning_to_the_application(
+    client, claimable_draft
+):
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    body = " ".join(response.content.decode().split())
+    assert (
+        "You'll then choose a password for your new account and be taken back to your application."
+        in body
+    )
+
+
+@pytest.mark.django_db
+def test_claim_get_of_a_draft_over_a_held_submission_does_not_promise_the_application(
+    client, claimable_draft
+):
+    _account_holding(claimable_draft, draft=False)
+
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    assert "taken back to your application" not in response.content.decode()
+
+
+@pytest.mark.django_db
 def test_claim_post_of_a_draft_creates_the_user(client, claimable_draft):
     _claim(client, claimable_draft)
 
