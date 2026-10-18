@@ -1,1 +1,1 @@
-{% autoescape off %}Finish your application for {{ course.title }}{% endautoescape %}
+{% autoescape off %}{% if is_submitted %}Finish your application for {{ course.title }}{% else %}Continue your application for {{ course.title }}{% endif %}{% endautoescape %}

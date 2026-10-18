@@ -353,7 +353,8 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
         form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
         if form.is_valid():
             email: str = form.cleaned_data["email"]
-            if email != previous_email:
+            address_changed = email != previous_email
+            if address_changed:
                 limited: HttpResponse | None = ratelimit.consume_or_429(
                     request, action=DETAILS_RATE_LIMIT_ACTION, key=key
                 )
@@ -376,6 +377,11 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
             app = _start_application(course, anonymous_applicant=applicant)
             if app.form_progress is not None:
                 allow_anonymous_form_progress(request, app.form_progress)
+                if address_changed:
+                    # The result is reported by the notice on the next page, not
+                    # here: the applicant carries on into the form whether or not
+                    # the email went out.
+                    send_application_claim_email(request, applicant)
                 return redirect(_resume_url(app, app.form_progress))
             return redirect("course_applications:status", pk=app.pk)
         if form.tripped_honeypot:
@@ -533,8 +539,6 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             form_progress.complete()
             record_application_submitted(request, app.course)
             if not app.is_email_verified:
-                if app.anonymous_applicant is not None:
-                    send_application_claim_email(request, app.anonymous_applicant)
                 return redirect("course_applications:status", pk=app.pk)
             messages.success(
                 request,

@@ -1,11 +1,15 @@
 {% extends "emails/base_email.txt" %}
 
 {% block content %}
-We received your application for {{ course.title }} on {{ site_name }}.
+{% if is_submitted %}We received your application for {{ course.title }} on {{ site_name }}.
 
 Follow the link below to finish setting up your account. You can then see your application.
 
-Finish your application: {{ claim_url }}
+Finish your application: {{ claim_url }}{% else %}You started an application for {{ course.title }} on {{ site_name }}.
+
+Follow the link below to confirm your email address and get back to your application.
+
+Continue your application: {{ claim_url }}{% endif %}
 
 If you didn't apply, you can ignore this email. Nothing happens unless the link is followed.
 {% endblock %}

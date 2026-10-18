@@ -1,15 +1,20 @@
 {% extends "emails/base_email.html" %}
 
 {% block content %}
+{% if is_submitted %}
 <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">We received your application for {{ course.title }} on {{ site_name }}.</p>
 <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">Follow the link below to finish setting up your account. You can then see your application.</p>
+{% else %}
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">You started an application for {{ course.title }} on {{ site_name }}.</p>
+<p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.5;">Follow the link below to confirm your email address and get back to your application.</p>
+{% endif %}
 {% endblock %}
 
 {% block cta %}
 <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
   <tr>
     <td style="background-color: {{ color_primary }}; border-radius: {{ button_radius }};">
-      <a href="{{ claim_url }}" style="display: inline-block; padding: 12px 32px; color: {{ color_on_primary }}; text-decoration: none; font-weight: bold; font-size: 16px;">Finish your application</a>
+      <a href="{{ claim_url }}" style="display: inline-block; padding: 12px 32px; color: {{ color_on_primary }}; text-decoration: none; font-weight: bold; font-size: 16px;">{% if is_submitted %}Finish your application{% else %}Continue your application{% endif %}</a>
     </td>
   </tr>
 </table>

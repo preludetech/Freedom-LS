@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from freedom_ls.course_applications.applicant_email import email_rate_limit_key
 from freedom_ls.course_applications.claims import claim_url
-from freedom_ls.course_applications.models import AnonymousApplicant
+from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.mail.backends import QueuedEmailNotSentError
 from freedom_ls.site_aware_models.models import site_display_name_for_request
 
@@ -26,6 +26,10 @@ def send_application_claim_email(
     the per-address limit was hit, or the mail backend refused the message.
     The applicant is stamped only for a send that went out, so the status
     page can say the email did not and offer to send it again.
+
+    The wording follows whether the application is submitted. The email holds
+    only the course title, site name and link: an address typed by any visitor
+    can receive it, so nothing the applicant entered goes into it.
     """
     allowed: bool = ratelimit.consume(
         request,
@@ -34,6 +38,14 @@ def send_application_claim_email(
     )
     if not allowed:
         return False
+    # The row, not the applicant's cached reverse relation: the cache can hold
+    # an object made before the sitting was attached, which reads as submitted.
+    application = (
+        CourseApplication.objects.filter(anonymous_applicant=applicant)
+        .select_related("form_progress")
+        .first()
+    )
+    is_submitted = application is not None and application.is_submitted
     try:
         get_adapter(request).send_mail(
             "course_applications/email/application_claim",
@@ -45,6 +57,7 @@ def send_application_claim_email(
                 # The shared greeting reads `user`, which the request context
                 # would otherwise fill with whoever is signed in to this browser.
                 "user": None,
+                "is_submitted": is_submitted,
             },
         )
     # SMTP errors are OSErrors; the queued backend raises its own when the

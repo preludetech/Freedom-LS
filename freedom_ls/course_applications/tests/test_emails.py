@@ -9,6 +9,7 @@ import pytest
 
 from django.core import mail
 from django.core.cache import cache
+from django.core.mail import EmailMultiAlternatives
 from django.test import Client, override_settings
 from django.urls import reverse
 
@@ -91,11 +92,190 @@ def test_form_less_submission_emails_the_normalised_address(client, gated_course
     assert mail.outbox[0].to == ["ada@example.com"]
 
 
+def _form_course_details_post(client, **overrides: str):
+    course, _form = gated_course_with_form()
+    return course, _post_details(client, course, **overrides)
+
+
 @pytest.mark.django_db
-def test_check_answers_submission_sends_one_email(mock_site_context, client):
-    _submit_form_application(client)
+def test_form_course_details_step_sends_one_email(mock_site_context, client):
+    _form_course_details_post(client)
 
     assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_form_course_details_step_emails_the_normalised_address(
+    mock_site_context, client
+):
+    _form_course_details_post(client)
+
+    assert mail.outbox[0].to == ["ada@example.com"]
+
+
+@pytest.mark.django_db
+def test_form_course_details_step_redirects_to_page_one(mock_site_context, client):
+    _course, response = _form_course_details_post(client)
+
+    application = CourseApplication.objects.get()
+    assert response["Location"] == reverse(
+        "course_applications:form_page",
+        kwargs={"pk": application.pk, "page_number": 1},
+    )
+
+
+@pytest.mark.django_db
+def test_draft_email_subject_invites_continuing(mock_site_context, client):
+    course, _response = _form_course_details_post(client)
+
+    assert f"Continue your application for {course.title}" in mail.outbox[0].subject
+
+
+@pytest.mark.django_db
+def test_draft_email_body_offers_to_continue(mock_site_context, client):
+    _form_course_details_post(client)
+
+    assert "Continue your application" in mail.outbox[0].body
+
+
+@pytest.mark.django_db
+def test_draft_email_html_offers_to_continue(mock_site_context, client):
+    _form_course_details_post(client)
+
+    message = mail.outbox[0]
+    assert isinstance(message, EmailMultiAlternatives)
+    html = str(message.alternatives[0][0])
+    assert "Continue your application" in html
+
+
+@pytest.mark.django_db
+def test_draft_email_body_does_not_claim_receipt(mock_site_context, client):
+    _form_course_details_post(client)
+
+    assert "received" not in mail.outbox[0].body.lower()
+
+
+@pytest.mark.django_db
+def test_draft_email_body_does_not_mention_review(mock_site_context, client):
+    _form_course_details_post(client)
+
+    assert "review" not in mail.outbox[0].body.lower()
+
+
+@pytest.mark.django_db
+def test_draft_email_body_does_not_hold_the_first_name(mock_site_context, client):
+    _form_course_details_post(client, first_name="Zebulon")
+
+    assert "Zebulon" not in mail.outbox[0].body
+
+
+@pytest.mark.django_db
+def test_repost_with_only_a_name_change_sends_nothing(mock_site_context, client):
+    course, _response = _form_course_details_post(client)
+    mail.outbox.clear()
+
+    _post_details(client, course, first_name="Augusta")
+
+    assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+def test_repost_with_a_new_address_sends_one_email(mock_site_context, client):
+    course, _response = _form_course_details_post(client)
+    mail.outbox.clear()
+
+    _post_details(client, course, email="grace@example.com")
+
+    assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_repost_with_a_new_address_emails_only_the_new_address(
+    mock_site_context, client
+):
+    course, _response = _form_course_details_post(client)
+    mail.outbox.clear()
+
+    _post_details(client, course, email="grace@example.com")
+
+    assert mail.outbox[0].to == ["grace@example.com"]
+
+
+@pytest.mark.django_db
+def test_check_answers_submission_sends_no_further_email(mock_site_context, client):
+    application = _submit_form_application(client)
+    sent_before_submit = len(mail.outbox)
+
+    client.post(
+        reverse("course_applications:check_answers", kwargs={"pk": application.pk})
+    )
+
+    assert len(mail.outbox) == sent_before_submit
+
+
+@pytest.mark.django_db
+def test_a_refused_send_at_the_details_step_still_lands_on_page_one(
+    mock_site_context, client
+):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        _course, response = _form_course_details_post(client)
+
+    application = CourseApplication.objects.get()
+    assert response["Location"] == reverse(
+        "course_applications:form_page",
+        kwargs={"pk": application.pk, "page_number": 1},
+    )
+
+
+@pytest.mark.django_db
+def test_a_refused_send_at_the_details_step_leaves_the_applicant_unstamped(
+    mock_site_context, client
+):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        _form_course_details_post(client)
+
+    assert AnonymousApplicant.objects.get().claim_email_sent_at is None
+
+
+@pytest.mark.django_db
+def test_a_queued_send_that_fails_at_the_details_step_leaves_the_applicant_unstamped(
+    mock_site_context, client
+):
+    def fail_the_queue(*args: object, **kwargs: object) -> None:
+        raise QueuedEmailNotSentError("upstream refused")
+
+    with patch.object(AccountAdapter, "send_mail", fail_the_queue):
+        _form_course_details_post(client)
+
+    assert AnonymousApplicant.objects.get().claim_email_sent_at is None
+
+
+@pytest.mark.django_db
+def test_a_rate_limited_send_at_the_details_step_still_lands_on_page_one(
+    mock_site_context, client
+):
+    with override_settings(ACCOUNT_RATE_LIMITS=ONE_CLAIM_EMAIL_AN_HOUR):
+        cache.clear()
+        _form_course_details_post(client)
+        course, _form = gated_course_with_form()
+        response = _post_details(Client(), course, ip="10.0.0.2")
+
+    assert response.status_code == 302
+
+
+@pytest.mark.django_db
+def test_a_rate_limited_send_at_the_details_step_leaves_the_applicant_unstamped(
+    mock_site_context, client
+):
+    with override_settings(ACCOUNT_RATE_LIMITS=ONE_CLAIM_EMAIL_AN_HOUR):
+        cache.clear()
+        _form_course_details_post(client)
+        course, _form = gated_course_with_form()
+        _post_details(Client(), course, ip="10.0.0.2")
+
+    second = AnonymousApplicant.objects.order_by("created_at").last()
+    assert second is not None
+    assert second.claim_email_sent_at is None
 
 
 @pytest.mark.django_db
