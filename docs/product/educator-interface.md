@@ -1,6 +1,6 @@
 # Educator Interface
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-18_
 
 ## Summary
 
@@ -8,9 +8,10 @@ _Last updated: 2026-10-11_
 - A learner or cohort can be previewed in a read-only quick-view drawer without leaving the list.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
 - Educators can create, edit, deactivate and delete cohorts, and register a cohort for courses or unregister it. A cohort's page shows an overview with per-course completion, then Learners, Courses and Settings tabs. See [Cohorts](#cohorts).
+- Educators can add learners by email, see whether each is active, pending or removed, put them in or move them between cohorts, register them for courses, and deactivate or reactivate them. See [Learners](#learners).
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
 - **Access is granted by role** — site admin, organisation admin, cohort admin or cohort viewer. Cohorts, Learners and Courses are all scoped to the current organisation and filtered to what the educator's roles cover. See [Access Control](#access-control).
-- **Limits:** cohort membership, individual course registration, deadline management, and generating a cohort progress report are done in the Django admin. There is no messaging capability. See [Limits](#limits).
+- **Limits:** deadline management and generating a cohort progress report are done in the Django admin, and there are no bulk learner operations. There is no messaging capability. See [Limits](#limits).
 
 ## Panel Interface
 
@@ -32,16 +33,28 @@ Creating, editing, deactivating and deleting a cohort, and registering or unregi
 - **Creating and renaming** — a name is all a cohort needs, and names must be unique within an organisation. **Save and add another** keeps the dialog open for creating several in a row. An active cohort is renamed from its page header.
 - **Detail page** — four tabs. *Overview* shows the cohort's details, completion for each course it is registered for, the educators assigned to it with their roles, and a needs-attention card. *Learners* lists the members. *Courses* lists the cohort's course registrations. *Settings* holds deactivation and deletion. Only a cohort the educator has access to can be opened — see [Access Control](#access-control).
 - **Registering for courses** — the Courses tab registers the cohort for any course that is not coming soon, and unregisters it from a row. Unregistering is reversible and everyone keeps their progress. The confirmation says how many members lose access and names the members who keep it through another registration.
+- **Learners tab** — add learners to the cohort, and remove or move a member from their row. An inactive cohort takes no membership action. See [Learners](#learners).
 - **Deactivating** — an inactive cohort's registrations grant no access to their courses and the cohort becomes read-only; learners keep their place and progress, and reactivating restores access. See [learner tracking](./learner-tracking.md#what-is-recorded).
 - **Deleting** — only while the cohort has no learners and no course registrations, removed learners and inactive registrations included; otherwise the Settings tab says what still depends on it.
 
-Renaming, deactivating, reactivating and deleting need an organisation admin or site admin; a cohort admin can register and unregister courses on their own cohort. Not built: adding or removing cohort members (see [Limits](#limits)), bulk actions, and assigning a cohort's educators. The needs-attention card is a placeholder that always reads "Nothing needs attention yet."
+Renaming, deactivating, reactivating and deleting need an organisation admin or site admin; a cohort admin can register and unregister courses on their own cohort. Not built: bulk actions and assigning a cohort's educators. The needs-attention card is a placeholder that always reads "Nothing needs attention yet."
 
 ### Learners
 
-![Educator Learners list, including a learner who is not yet enrolled in anything](screenshots/educator_learners_list.png)
+![Educator Learners list showing each learner's status, cohorts and course progress](screenshots/educator_learners_list.png)
 
-Lists the learners of the current organisation the educator has access to — members of cohorts they can see, plus, for an educator holding an organisation-wide role, everyone associated with the organisation, whether or not they have enrolled in anything yet. Someone studying with more than one organisation appears once per organisation, showing only the cohort memberships and course registrations belonging to the one currently in view. Learners marked removed do not appear, and there is no filter to show them. Detail pages carry the same access check as the listing; see [Access Control](#access-control).
+Lists the learners of the current organisation the educator has access to — members of cohorts they can see, plus, for an educator holding an organisation-wide role, everyone associated with the organisation, whether or not they have enrolled in anything yet. Someone studying with more than one organisation appears once per organisation, showing only the cohort memberships and course registrations belonging to the one currently in view. Each learner has a status: **active**, **pending** (staff created their account and they have not yet set a password and signed in) or **removed**. Removed learners are hidden until the Status filter asks for them. Detail pages carry the same access check as the listing; see [Access Control](#access-control).
+
+- **Adding learners** — organisation admins and site admins paste up to 50 email addresses, optionally with names, and can put them straight into a cohort. An address that already has an account on the site joins the organisation; a new one gets an account and an **account setup email** with a link to choose a password, which can be resent from the learner's page. The dialog reports what happened to each address. Staff-created people still meet the site's terms and registration forms at first login.
+- **Learner page** — a header with name, email, status and actions, and tabs for an overview, each course with its progress and last activity, and history. The history tab is an empty placeholder.
+- **Cohort membership** — add a learner to a cohort, remove them, or **move** them to another active cohort in the organisation. Each confirmation names the courses the learner loses access to. A move carries course progress across, keeping whichever record is further along for a course both cohorts grant; nothing is deleted.
+- **Course registration** — register a learner for any course that is not coming soon, unregister and re-register them. Unregistering keeps their progress and says whether a cohort still gives them the course.
+- **Deactivating** — removes the learner's access to this organisation's courses while keeping their cohorts, registrations and progress, which return on reactivation. On the site's default organisation a learner can undo a deactivation or unregistration by registering themselves for an open course.
+- **Editing** — only a site admin can edit a learner's name. Email is the learner's login for every organisation, so it is changed only in the Django admin.
+
+![Moving a learner between cohorts, with the courses they lose and the progress they keep](screenshots/educator_learner_move.png)
+
+Cohort admins manage membership and course registrations within the cohorts they are assigned to; adding, deactivating and reactivating learners, and resending the setup email, need an organisation admin or site admin. Each action sends a [webhook](./webhooks.md) event.
 
 ### Courses
 
@@ -78,7 +91,7 @@ Access to the educator interface and to cohort reports comes from **role assignm
 - **Cohort admin** — manages who is in a cohort and what it is registered for; cannot rename or delete it.
 - **Cohort viewer** — sees a cohort and its reports; changes nothing.
 
-These describe what each role is allowed; several of those actions have no screen in this interface yet — see [Limits](#limits). A person holding several roles gets all of them. A role on an organisation covers every cohort in it, including ones created later; a role on a cohort covers that cohort and its learners. Organisation and cohort roles count only while the person is an active member of that organisation: deactivating membership switches off their access there without deleting their roles, and reactivating restores it. Organisation admins can assign roles only within their own organisation, nobody can change their own roles, and an organisation's last admin can be removed only by a site admin.
+These describe what each role is allowed; some of those actions have no screen in this interface yet — see [Limits](#limits). A person holding several roles gets all of them. A role on an organisation covers every cohort in it, including ones created later; a role on a cohort covers that cohort and its learners. Organisation and cohort roles count only while the person is an active member of that organisation: deactivating membership switches off their access there without deleting their roles, and reactivating restores it. Organisation admins can assign roles only within their own organisation, nobody can change their own roles, and an organisation's last admin can be removed only by a site admin.
 
 **Not yet built.** There is no screen, in this interface or the Django admin, for assigning roles or deactivating a member; both are currently done by a developer.
 
@@ -92,9 +105,9 @@ If an educator acts from a page that was open when their access was removed, a d
 
 These operations are not available in the educator interface:
 
-- **Cohort membership** — adding or removing learners.
-- **Learner roster** — associating a person with an organisation, or marking one removed, is done in the [Django admin](./admin-interface.md#learner-rosters).
-- **Individual course registration** — registering a single learner for a course.
+- **Bulk learner operations** — adding more than 50 people at once, importing from a file, and acting on several learners at once.
+- **Email changes** — a learner's email is changed in the [Django admin](./admin-interface.md#learner-rosters).
+- **Deleting a learner** — learners are deactivated, never deleted, here.
 - **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 - **Cohort progress reports** — generating a cohort's [progress report](./reports.md) is done from the Django admin. An educator with access to the cohort can have one produced, but not from this interface.
 

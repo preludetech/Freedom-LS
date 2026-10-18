@@ -1,10 +1,10 @@
 # Webhooks
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-18_
 
 ## Summary
 
-- FLS fires outbound webhooks on three events: user registration, course registration, and course completion. Each delivery carries a signed, tamper-detectable envelope.
+- FLS fires outbound webhooks on user registration, course registration and completion, and learner administration: learners added, deactivated or reactivated, cohort membership, and course registrations changed. Each delivery carries a signed, tamper-detectable envelope.
 - Endpoints authenticate either by HMAC signature in the [Standard Webhooks](https://www.standardwebhooks.com/) format, or through headers the integrator templates themselves.
 - Per-site secrets are encrypted at rest. `WEBHOOK_ENCRYPTION_SALT` is required in production and the application refuses to start without it.
 - Outbound URLs are SSRF-checked in production: HTTPS only, and no private, loopback, or link-local addresses.
@@ -13,11 +13,15 @@ _Last updated: 2026-10-11_
 
 ## Events and Data Leaving the System
 
-Webhooks are an outbound data flow to third-party systems. Three events ship by default:
+Webhooks are an outbound data flow to third-party systems. These events ship by default:
 
-- **User registration.** A new user completes email verification, or an anonymous course applicant [follows their emailed claim link](./learner-experience.md#applying-to-a-course) and a new account is created for them. That second kind can arrive before the account has a password, and while the site's signups are turned off. It does not fire for an applicant who never follows the link, or when the link attaches the application to an existing account.
-- **Course registration.** A learner self-registers, or is registered, for a course.
+- **User registration.** A new user completes email verification, or an anonymous course applicant [follows their emailed claim link](./learner-experience.md#applying-to-a-course) and a new account is created for them. That second kind can arrive before the account has a password, and while the site's signups are turned off. It does not fire for an applicant who never follows the link, or when the link attaches the application to an existing account. Accounts that staff create when [adding a learner](./educator-interface.md#learners) do not send it either; they send the learner-added event, so an integration listening only for sign-ups will miss them.
+- **Course registration.** A learner self-registers, or is registered, for a course, or an inactive registration is reactivated.
 - **Course completion.** A learner completes every item in a course.
+- **Learner administration.** A learner is added to an organisation (the event says whether a new account was created), deactivated, reactivated, added to or removed from a cohort, or unregistered from a course. Moving a learner between cohorts sends a removal followed by an addition that share a move identifier, so a receiver can tell a move from two unrelated changes.
+- **Cohort course registration.** A cohort is registered for, or unregistered from, a course. These events name the cohort and course but no individual learner.
+
+The learner administration events come from the actions in [the educator interface](./educator-interface.md#learners), and fire whether the action ran from a web request or not.
 
 Each delivery is an envelope carrying a unique event id, the event type, a UTC timestamp, and the details of what happened: who the learner is, and for the course events, which course.
 
