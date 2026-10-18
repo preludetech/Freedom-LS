@@ -142,10 +142,11 @@ def _ensure_and_announce(
 
     _base_manager on the Learner lookup, because this runs from anywhere a
     registration is written -- a management command with no ambient request,
-    or a request whose ambient site is not the learner's own.
+    or a request whose ambient site is not the learner's own. The webhook's site
+    comes from the registration for the same reason.
     """
     from freedom_ls.comms.notify import raise_notification
-    from freedom_ls.webhooks.events import fire_webhook_event
+    from freedom_ls.webhooks.events import fire_webhook_event_for_site
 
     learner = Learner._base_manager.select_related("user").get(
         pk=registration.learner_id
@@ -163,7 +164,7 @@ def _ensure_and_announce(
             data={"course_title": registration.course.title},
         )
 
-    fire_webhook_event(
+    fire_webhook_event_for_site(
         "course.registered",
         {
             "user_id": learner.user_id,
@@ -174,6 +175,7 @@ def _ensure_and_announce(
             "organisation_id": str(learner.organisation_id),
             "course_progress_id": str(record.id),
         },
+        registration.site_id,
     )
 
 

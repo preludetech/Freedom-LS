@@ -46,3 +46,33 @@ class RegistrationRule(SiteAwareModel, TimestampedModel):
 
     def __str__(self) -> str:
         return self.name
+
+
+class RuleRegistration(SiteAwareModel):
+    """The rule that made a registration. Exists only for rows a rule created.
+
+    Kept here, in the optional app, rather than as a column on the
+    registration: the core app must stay installable without rules.
+    """
+
+    registration = models.OneToOneField(
+        "freedom_ls_learner_management.LearnerCourseRegistration",
+        on_delete=models.CASCADE,
+        related_name="rule_registration",
+    )
+    # SET_NULL with the name snapshotted below: a registration still reads as
+    # rule-made after its rule is deleted.
+    rule = models.ForeignKey(
+        RegistrationRule,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rule_registrations",
+    )
+    rule_name = models.CharField(max_length=200)
+    # True while the rule has the registration deactivated because the learner
+    # stopped matching. A deactivation anyone else makes detaches the row.
+    is_retracted = models.BooleanField(default=False)
+
+    def __str__(self) -> str:
+        return self.rule_name

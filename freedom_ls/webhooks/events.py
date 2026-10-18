@@ -10,17 +10,11 @@ from freedom_ls.webhooks.registry import validate_event_type
 def fire_webhook_event(
     event_type: str, payload: dict[str, object], site: Site | None = None
 ) -> None:
-    """
-    Fire a webhook event.
+    """Fire a webhook event.
 
     The site comes from the caller when there is no request to read it from
     (an action run from a command or a task); otherwise from the request, and
     with neither the event is dropped.
-
-    1. Validate event_type against registry
-    2. Resolve the site (argument, else current request, else return early)
-    3. Create WebhookEvent record (with explicit site_id)
-    4. Enqueue dispatch_event task with event_id and site_id
     """
     validate_event_type(event_type)
 
@@ -32,7 +26,19 @@ def fire_webhook_event(
         if not isinstance(site_result, Site):
             return
         site = site_result
-    site_id: int = site.pk
+    fire_webhook_event_for_site(event_type, payload, site.pk)
+
+
+def fire_webhook_event_for_site(
+    event_type: str, payload: dict[str, object], site_id: int
+) -> None:
+    """Fire a webhook event for an explicit site: record it, then enqueue dispatch.
+
+    1. Validate event_type against registry
+    2. Create WebhookEvent record (with explicit site_id)
+    3. Enqueue dispatch_event task with event_id and site_id
+    """
+    validate_event_type(event_type)
 
     event = WebhookEvent.objects.create(
         event_type=event_type,

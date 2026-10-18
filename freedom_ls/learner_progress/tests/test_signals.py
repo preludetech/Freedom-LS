@@ -288,7 +288,9 @@ class TestRegistrationMintsARecord:
     ) -> None:
         """An import of a past enrolment grants nothing, and announces nothing."""
         with (
-            patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire,
+            patch(
+                "freedom_ls.webhooks.events.fire_webhook_event_for_site"
+            ) as mock_fire,
             django_capture_on_commit_callbacks(execute=True),
         ):
             LearnerCourseRegistrationFactory(is_active=False)
@@ -487,7 +489,7 @@ class TestCourseRegisteredWebhook:
 
         with (
             patch(
-                "freedom_ls.webhooks.events.fire_webhook_event",
+                "freedom_ls.webhooks.events.fire_webhook_event_for_site",
                 side_effect=lambda *args: readable_records.append(
                     CourseProgress.objects.count()
                 ),
@@ -502,13 +504,15 @@ class TestCourseRegisteredWebhook:
         self, mock_site_context, django_capture_on_commit_callbacks
     ) -> None:
         with (
-            patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire,
+            patch(
+                "freedom_ls.webhooks.events.fire_webhook_event_for_site"
+            ) as mock_fire,
             django_capture_on_commit_callbacks(execute=True),
         ):
             registration = LearnerCourseRegistrationFactory()
 
         record = CourseProgress.objects.get(learner_registration=registration)
-        _, payload = mock_fire.call_args.args
+        _, payload, _ = mock_fire.call_args.args
         assert payload["organisation_id"] == str(registration.learner.organisation_id)
         assert payload["course_progress_id"] == str(record.id)
 
@@ -563,7 +567,7 @@ class TestCourseRegisteredNotification:
         self, mock_site_context, django_capture_on_commit_callbacks
     ) -> None:
         with (
-            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            patch("freedom_ls.webhooks.events.fire_webhook_event_for_site") as fire,
             django_capture_on_commit_callbacks(execute=True),
         ):
             LearnerCourseRegistrationFactory(self_registered=True)
@@ -685,7 +689,7 @@ class TestCourseRegisteredNotification:
 
         with (
             patch(
-                "freedom_ls.webhooks.events.fire_webhook_event",
+                "freedom_ls.webhooks.events.fire_webhook_event_for_site",
                 side_effect=RuntimeError,
             ),
             pytest.raises(RuntimeError),
@@ -823,7 +827,9 @@ class TestCourseRegisteredWebhookEvent:
         self, mock_site_context: object
     ) -> None:
         """Creating a new LearnerCourseRegistration fires course.registered event."""
-        with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+        with patch(
+            "freedom_ls.webhooks.events.fire_webhook_event_for_site"
+        ) as mock_fire:
             registration = LearnerCourseRegistrationFactory()
 
         record = CourseProgress.objects.get(learner_registration=registration)
@@ -838,6 +844,7 @@ class TestCourseRegisteredWebhookEvent:
                 "organisation_id": str(registration.learner.organisation_id),
                 "course_progress_id": str(record.id),
             },
+            registration.site_id,
         )
 
     def test_saving_an_existing_registration_does_not_fire_the_event_again(
@@ -846,7 +853,9 @@ class TestCourseRegisteredWebhookEvent:
         """Saving an existing LearnerCourseRegistration does not fire the event again."""
         registration = LearnerCourseRegistrationFactory()
 
-        with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+        with patch(
+            "freedom_ls.webhooks.events.fire_webhook_event_for_site"
+        ) as mock_fire:
             registration.is_active = False
             registration.save()
 

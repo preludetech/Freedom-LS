@@ -74,6 +74,11 @@ freedom_ls.organisations.tests.test_models -> freedom_ls.role_based_permissions.
 
 # panel_framework
 
+# registration_rules
+freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.comms.models
+freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.learner_progress.models
+freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.webhooks.models
+
 # reports
 freedom_ls.reports.tests.test_admin -> freedom_ls.role_based_permissions.utils
 freedom_ls.reports.tests.test_views -> freedom_ls.role_based_permissions.loader

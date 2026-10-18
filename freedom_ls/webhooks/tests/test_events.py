@@ -67,6 +67,49 @@ class TestFireWebhookEvent:
         assert WebhookEvent.objects.count() == 0
 
 
+@pytest.mark.django_db(transaction=True)
+class TestFireWebhookEventForSite:
+    def test_creates_the_event_for_the_given_site_with_no_request(
+        self, mock_site_context: object
+    ) -> None:
+        from freedom_ls.tests.site_context import drop_ambient_request
+        from freedom_ls.webhooks.events import fire_webhook_event_for_site
+
+        site_id = mock_site_context.pk
+        drop_ambient_request()
+
+        with patch("freedom_ls.webhooks.events.default_task_backend") as mock_backend:
+            fire_webhook_event_for_site("user.registered", {"user_id": "abc"}, site_id)
+
+        event = WebhookEvent._base_manager.get()
+        assert event.site_id == site_id
+        assert event.payload == {"user_id": "abc"}
+        assert mock_backend.enqueue.call_args.kwargs["args"] == [
+            str(event.pk),
+            site_id,
+        ]
+
+    def test_raises_value_error_for_unknown_event_type(
+        self, mock_site_context: object
+    ) -> None:
+        from freedom_ls.webhooks.events import fire_webhook_event_for_site
+
+        with pytest.raises(ValueError, match="Unknown webhook event type"):
+            fire_webhook_event_for_site("nonexistent.event", {}, mock_site_context.pk)
+
+    def test_fire_webhook_event_still_creates_nothing_outside_a_request(
+        self, mock_site_context: object
+    ) -> None:
+        from freedom_ls.tests.site_context import drop_ambient_request
+        from freedom_ls.webhooks.events import fire_webhook_event
+
+        drop_ambient_request()
+
+        fire_webhook_event("user.registered", {"user_id": "abc"})
+
+        assert not WebhookEvent._base_manager.exists()
+
+
 @pytest.mark.django_db
 class TestDispatchEvent:
     def test_finds_matching_endpoints_and_creates_deliveries(
