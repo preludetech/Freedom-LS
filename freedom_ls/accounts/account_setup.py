@@ -98,11 +98,14 @@ def _send(user: User, organisation_name: str) -> None:
 def send_account_setup_email(user: User, organisation_name: str) -> None:
     """Email a pending user a link that sets their password and logs them in.
 
-    Sent on commit, with no request in scope. Starts the resend window.
+    Sent on commit, with no request in scope. Starts the resend window on
+    commit too, so a rolled-back send never blocks a resend.
     """
     if not is_pending(user):
         raise AccountAlreadySetUp(user.email)
-    cache.set(_guard_key(user), 1, config.SETUP_EMAIL_RESEND_SECONDS)
+    transaction.on_commit(
+        lambda: cache.set(_guard_key(user), 1, config.SETUP_EMAIL_RESEND_SECONDS)
+    )
     _send(user, organisation_name)
 
 

@@ -245,6 +245,20 @@ def test_send_account_setup_email_sends_nothing_when_the_transaction_rolls_back(
     assert mail.outbox == []
 
 
+@pytest.mark.django_db(transaction=True)
+def test_a_rolled_back_send_leaves_resending_open(
+    mock_site_context: Site, django_capture_on_commit_callbacks
+) -> None:
+    user = _pending(mock_site_context)
+    with pytest.raises(_RollBack):
+        _send_then_roll_back(user)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        resend_account_setup_email(user, "Acme Academy")
+
+    assert len(mail.outbox) == 1
+
+
 @pytest.mark.django_db
 def test_send_account_setup_email_raises_for_a_user_who_is_not_pending(
     mock_site_context: Site,
