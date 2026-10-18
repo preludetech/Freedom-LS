@@ -325,6 +325,19 @@ def refusal_alert_copy(refusal: MessagingRefusal | None, other: User | None) -> 
     )
 
 
+def unreachable_recipient_alert_copy() -> str:
+    """The refusal line for a recipient the sender isn't offered.
+
+    It names no one, so it reads the same whoever the posted id belongs to.
+    """
+    return str(
+        _(
+            "Not sent. This person can't receive messages from you here. "
+            "Your text is still in the box."
+        )
+    )
+
+
 def closed_note_copy(
     reason: MessagingRefusal | None, other: User | None
 ) -> tuple[str, str]:

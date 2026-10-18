@@ -140,7 +140,7 @@ def test_new_message_from_the_top_bar_on_a_phone(
     organisation = OrganisationFactory()
     grantor = LearnerFactory(user__superuser=True).user
     assign_role(grantor, educator_user, "organisation_admin", organisation)
-    LearnerFactory(
+    kai = LearnerFactory(
         organisation=organisation,
         user=UserFactory(
             first_name="Kai", last_name="Ngata", email="kai.ngata@example.com"
@@ -168,10 +168,25 @@ def test_new_message_from_the_top_bar_on_a_phone(
     assert row_box["height"] >= 24
     assert_no_horizontal_overflow(page)
 
-    # Choosing the learner shows the composer; sending lands on the thread.
+    # Choosing the learner shows the composer.
     row.click()
     expect(dialog.get_by_text("To Kai Ngata", exact=True)).to_be_visible()
-    dialog.get_by_label("Message to Kai Ngata").fill("Welcome to the course")
+    message_box = dialog.get_by_label("Message to Kai Ngata")
+    message_box.fill("Welcome to the course")
+
+    # The learner leaves before Send: the refusal shows and the draft stays.
+    kai.is_active = False
+    kai.save()
+    dialog.get_by_role("button", name="Send").click()
+    expect(dialog.get_by_role("alert")).to_contain_text(
+        "This person can't receive messages from you here."
+    )
+    expect(message_box).to_have_value("Welcome to the course")
+    expect(dialog.get_by_text("To Kai Ngata", exact=True)).to_be_visible()
+
+    # Once the learner is back, sending again lands on the thread.
+    kai.is_active = True
+    kai.save()
     dialog.get_by_role("button", name="Send").click()
     expect(page.get_by_role("link", name="Back to messages")).to_be_visible()
     expect(

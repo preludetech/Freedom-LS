@@ -37,10 +37,10 @@ from freedom_ls.comms.messaging import (
     reply_decisions,
     search_recipients,
     send_message,
+    unreachable_recipient_alert_copy,
     unread_conversation_count,
 )
 from freedom_ls.comms.messaging_loader import get_messaging_policy
-from freedom_ls.comms.messaging_policy import MessagingRefusal
 from freedom_ls.comms.models import Conversation, Message
 from freedom_ls.comms.views import messaging_view
 from freedom_ls.site_aware_models.models import get_cached_site
@@ -334,6 +334,25 @@ def _quick_view_box_response(
     )
 
 
+def unreachable_recipient_response(request: HttpRequest) -> HttpResponse:
+    """A 422 for a recipient the sender isn't offered, the same whoever the pk is.
+
+    Only the composer's alert is replaced, so the draft and the name already
+    on screen stay put and nothing here says who the pk belongs to.
+    """
+    response = HttpResponse(
+        render_to_string(
+            "comms/partials/composer.html#error",
+            {"composer": {"alert": unreachable_recipient_alert_copy()}},
+            request,
+        ),
+        status=422,
+    )
+    response["HX-Retarget"] = "#composer-error"
+    response["HX-Reswap"] = "outerHTML"
+    return response
+
+
 def _send_response(
     request: HttpRequest,
     result: SendResult,
@@ -505,19 +524,23 @@ def _start_post(request: HttpRequest) -> HttpResponse:
         return HttpResponseBadRequest("client_key must be a UUID")
     draft = request.POST.get("body", "")
     site = cast("Site", get_cached_site(request))
-    recipient = get_object_or_404(User, pk=_user_pk(request.POST.get("recipient")))
-    if not _offered_recipients(request).filter(pk=recipient.pk).exists():
-        # Not someone the policy offers this sender: refused the way a policy
-        # refusal is, with the draft kept and nothing stored.
-        result = SendResult(refusal=MessagingRefusal.NO_RELATIONSHIP)
-    else:
-        result = send_message(
-            sender=cast("User", request.user),
-            body=draft,
-            client_key=client_key,
-            site=site,
-            recipient=recipient,
-        )
+    recipient = (
+        _offered_recipients(request)
+        .filter(pk=_user_pk(request.POST.get("recipient")))
+        .first()
+    )
+    if recipient is None:
+        if request.headers.get("HX-Request") != "true":
+            # A full page can't keep the draft without naming the person.
+            raise Http404("recipient not offered")
+        return unreachable_recipient_response(request)
+    result = send_message(
+        sender=cast("User", request.user),
+        body=draft,
+        client_key=client_key,
+        site=site,
+        recipient=recipient,
+    )
     return _send_response(request, result, None, draft, client_key, recipient=recipient)
 
 

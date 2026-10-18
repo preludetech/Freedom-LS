@@ -68,6 +68,13 @@ class OnlyPolicy(AllowPolicy):
         return User.objects.filter(pk=self.only_pk)
 
 
+class OfferedButRefusedPolicy(AllowPolicy):
+    """Offers everyone in the picker, then refuses the send itself."""
+
+    def can_start(self, *, sender, recipient, site):
+        return MessagingDecision.refuse(MessagingRefusal.CLOSED_BY_CONFIGURATION)
+
+
 @pytest.fixture
 def allow_policy(settings) -> None:
     settings.MESSAGING_POLICY = f"{__name__}.AllowPolicy"
@@ -76,6 +83,11 @@ def allow_policy(settings) -> None:
 @pytest.fixture
 def closed_policy(settings) -> None:
     settings.MESSAGING_POLICY = f"{__name__}.ClosedPolicy"
+
+
+@pytest.fixture
+def offered_but_refused_policy(settings) -> None:
+    settings.MESSAGING_POLICY = f"{__name__}.OfferedButRefusedPolicy"
 
 
 @pytest.fixture
@@ -833,12 +845,26 @@ class TestStartSend:
         assert composer.xpath(".//*[@role='alert'][not(@x-show)]")
         assert Conversation.objects.count() == 0
 
-    def test_a_post_to_an_unknown_recipient_is_404(
+    def test_an_htmx_post_to_an_unknown_recipient_replaces_only_the_alert(
         self, mock_site_context, logged_in_client
     ) -> None:
         data = {"recipient": 999999, "body": "Hi", "client_key": str(uuid.uuid4())}
 
         response = logged_in_client(UserFactory()).post(start_url(), data, **HTMX)
+
+        tree = html.fromstring(f"<div>{response.content.decode()}</div>")
+        assert response.status_code == 422
+        assert response["HX-Retarget"] == "#composer-error"
+        assert response["HX-Reswap"] == "outerHTML"
+        assert tree.xpath("//*[@id='composer-error']//*[@role='alert'][not(@x-show)]")
+        assert not tree.xpath("//textarea")
+
+    def test_a_plain_post_to_an_unknown_recipient_is_404(
+        self, mock_site_context, logged_in_client
+    ) -> None:
+        data = {"recipient": 999999, "body": "Hi", "client_key": str(uuid.uuid4())}
+
+        response = logged_in_client(UserFactory()).post(start_url(), data)
 
         assert response.status_code == 404
 
@@ -855,7 +881,7 @@ class TestStartSend:
 @pytest.mark.django_db
 class TestStartRefused:
     def test_can_start_is_asked_again_and_a_refusal_returns_422_with_the_draft(
-        self, mock_site_context, logged_in_client, closed_policy
+        self, mock_site_context, logged_in_client, offered_but_refused_policy
     ) -> None:
         user, other = UserFactory(), UserFactory()
         key = str(uuid.uuid4())
@@ -887,10 +913,29 @@ class TestStartRefused:
         response = logged_in_client(user).post(start_url(), data, **HTMX)
 
         assert response.status_code == 422
+        assert response["HX-Retarget"] == "#composer-error"
+        assert name_of(stranger) not in response.content.decode()
         assert Message.objects.count() == 0
 
+    def test_a_stranger_reads_the_same_as_a_user_who_does_not_exist(
+        self, mock_site_context, logged_in_client, settings
+    ) -> None:
+        user, other, stranger = UserFactory(), UserFactory(), UserFactory()
+        OnlyPolicy.only_pk = other.pk
+        settings.MESSAGING_POLICY = f"{__name__}.OnlyPolicy"
+        client = logged_in_client(user)
+
+        def post(pk: int):
+            data = {"recipient": pk, "body": "Hi", "client_key": str(uuid.uuid4())}
+            return client.post(start_url(), data, **HTMX)
+
+        refused, absent = post(stranger.pk), post(999999)
+
+        assert refused.status_code == absent.status_code == 422
+        assert refused.content == absent.content
+
     def test_a_plain_refusal_renders_the_start_page_at_422(
-        self, mock_site_context, logged_in_client, closed_policy
+        self, mock_site_context, logged_in_client, offered_but_refused_policy
     ) -> None:
         user, other = UserFactory(), UserFactory()
         data = {
@@ -1986,8 +2031,8 @@ class TestSendFromTheQuickViewBox:
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("closed_policy")
 class TestRefusedFromTheQuickViewBox:
+    @pytest.mark.usefixtures("offered_but_refused_policy")
     def test_a_refused_first_message_keeps_the_draft_in_the_box(
         self, logged_in_client, mock_site_context
     ) -> None:
@@ -2011,4 +2056,25 @@ class TestRefusedFromTheQuickViewBox:
         assert box.xpath(".//input[@name='recipient']")[0].get("value") == str(
             recipient.pk
         )
+        assert Message.objects.count() == 0
+
+    @pytest.mark.usefixtures("closed_policy")
+    def test_a_recipient_not_offered_replaces_only_the_alert(
+        self, logged_in_client, mock_site_context
+    ) -> None:
+        user, recipient = UserFactory(), UserFactory()
+
+        response = logged_in_client(user).post(
+            reverse("conversations:start"),
+            {
+                "body": "Please read",
+                "client_key": str(uuid.uuid4()),
+                "recipient": recipient.pk,
+            },
+            **QUICK_VIEW,
+        )
+
+        assert response.status_code == 422
+        assert response["HX-Retarget"] == "#composer-error"
+        assert name_of(recipient) not in response.content.decode()
         assert Message.objects.count() == 0

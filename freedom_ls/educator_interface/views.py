@@ -44,6 +44,7 @@ from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_views import (
     composer_context,
     thread_context,
+    unreachable_recipient_response,
 )
 from freedom_ls.comms.models import Conversation
 from freedom_ls.comms.templatetags.comms_tags import badge_count
@@ -1221,13 +1222,17 @@ class NewMessageAction(PanelAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         request = ctx.request
-        recipient = get_object_or_404(
-            self._candidates(ctx), pk=_recipient_pk(request.POST.get("recipient"))
-        )
         try:
             client_key = UUID(request.POST.get("client_key", ""))
         except ValueError:
             return HttpResponseBadRequest("client_key must be a UUID")
+        recipient = (
+            self._candidates(ctx)
+            .filter(pk=_recipient_pk(request.POST.get("recipient")))
+            .first()
+        )
+        if recipient is None:
+            return unreachable_recipient_response(request)
         draft = request.POST.get("body", "")
         result = send_message(
             sender=cast(User, request.user),

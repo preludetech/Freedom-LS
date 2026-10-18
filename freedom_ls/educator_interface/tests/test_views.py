@@ -3018,17 +3018,54 @@ def test_posting_a_blank_new_message_returns_the_modal_at_422(msg_client_for):
 
 @pytest.mark.django_db
 @messages_section
-def test_posting_to_a_learner_of_another_organisation_is_a_404(msg_client_for):
+def test_posting_to_a_learner_of_another_organisation_replaces_only_the_alert(
+    msg_client_for,
+):
     organisation = OrganisationFactory()
     educator = _msg_educator(organisation)
-    foreign = _msg_learner(OrganisationFactory())
+    foreign = _msg_learner(
+        OrganisationFactory(), first_name="Zelda", last_name="Foreign"
+    )
 
     response = msg_client_for(educator).post(
         _new_message_url(organisation),
         {"recipient": foreign.user.pk, "body": "Hi", "client_key": str(uuid4())},
     )
 
-    assert response.status_code == 404
+    content = response.content.decode()
+    page = lxml.html.fromstring(f"<div>{content}</div>")
+    assert response.status_code == 422
+    assert response["HX-Retarget"] == "#composer-error"
+    assert response["HX-Reswap"] == "outerHTML"
+    assert page.xpath("//*[@id='composer-error']//*[@role='alert'][not(@x-show)]")
+    assert not page.xpath("//textarea")
+    assert "Zelda" not in content
+    assert not inbox_for(educator).exists()
+
+
+@pytest.mark.django_db
+@messages_section
+def test_posting_to_a_learner_who_left_reads_the_same_as_a_user_who_does_not_exist(
+    msg_client_for,
+):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    learner = _msg_learner(organisation, first_name="Bea", last_name="Learner")
+    learner.is_active = False
+    learner.save()
+    client = msg_client_for(educator)
+
+    def post(pk: int):
+        return client.post(
+            _new_message_url(organisation),
+            {"recipient": pk, "body": "Hi", "client_key": str(uuid4())},
+        )
+
+    left, absent = post(learner.user.pk), post(999999)
+
+    assert left.status_code == absent.status_code == 422
+    assert left.content == absent.content
+    assert "Bea" not in left.content.decode()
     assert not inbox_for(educator).exists()
 
 
