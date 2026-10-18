@@ -20,6 +20,7 @@ from freedom_ls.accounts.forms import (
     apply_signup_name_policy,
     honeypot_field,
     reject_honeypot,
+    tripped_honeypot,
 )
 from freedom_ls.accounts.models import LegalConsent
 
@@ -432,3 +433,15 @@ def test_accepted_legal_docs_skips_a_ticked_document_that_does_not_resolve(
     )
 
     assert accepted == []
+
+
+def test_tripped_honeypot_is_true_when_the_field_holds_text():
+    form = _cleaned_form(BOT_VALUE)
+
+    assert tripped_honeypot(form) is True
+
+
+def test_tripped_honeypot_is_false_when_the_field_is_empty():
+    form = _cleaned_form("")
+
+    assert tripped_honeypot(form) is False

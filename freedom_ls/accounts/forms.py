@@ -62,6 +62,11 @@ HONEYPOT_SIGNUP_MESSAGE = _(
 )
 
 
+def tripped_honeypot(form: forms.BaseForm) -> bool:
+    """Whether the submission filled the field only a bot can see."""
+    return bool(form.cleaned_data.get("fax_number"))
+
+
 def honeypot_field() -> forms.CharField:
     """The honeypot: bots fill it, people never see it. The name must not be one
     that browsers or password managers autofill, or real people get rejected."""

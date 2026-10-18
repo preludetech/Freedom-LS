@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import cast
 from urllib.parse import urlencode
 from uuid import UUID
@@ -324,6 +325,58 @@ def _details_in_flight_key(request: HttpRequest, course: Course, email: str) -> 
     return f"course_applications:details:{digest[:32]}"
 
 
+@dataclass(frozen=True)
+class _AddressLimit:
+    """The per-address `application_details` bucket one POST would spend.
+
+    Tested before validation, so nothing is written for an exhausted address,
+    and spent after it, so a typo or a name-only change costs nothing. The
+    bucket is shared by everyone who posts the address, so a POST that would
+    not spend it is never refused. A honeypot trip always spends it, changed
+    address or not: a bot pays for every attempt.
+    """
+
+    request: HttpRequest
+    key: str
+    would_spend: bool
+
+    @classmethod
+    def for_post(
+        cls, request: HttpRequest, posted_email: str, previous_email: str | None
+    ) -> _AddressLimit:
+        site = get_cached_site(request)
+        if not isinstance(site, Site):
+            # A host that resolves no Site could not save the applicant either.
+            raise Http404
+        return cls(
+            request,
+            email_rate_limit_key(site, posted_email),
+            normalise_email(posted_email) != previous_email,
+        )
+
+    def refuse_if_exhausted(self) -> HttpResponse | None:
+        if not self.would_spend:
+            return None
+        allowed: bool = ratelimit.consume(
+            self.request,
+            action=DETAILS_RATE_LIMIT_ACTION,
+            key=self.key,
+            dry_run=True,
+        )
+        return None if allowed else ratelimit.respond_429(self.request)
+
+    def spend(self) -> HttpResponse | None:
+        if not self.would_spend:
+            return None
+        limited: HttpResponse | None = ratelimit.consume_or_429(
+            self.request, action=DETAILS_RATE_LIMIT_ACTION, key=self.key
+        )
+        return limited
+
+    def spend_for_honeypot(self) -> None:
+        ratelimit.consume(self.request, action=DETAILS_RATE_LIMIT_ACTION, key=self.key)
+
+
 def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     """The step before the form that asks an anonymous visitor who they are.
 
@@ -352,31 +405,22 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
     instance = applicant if applicant is not None else AnonymousApplicant(course=course)
     status = 200
     if request.method == "POST":
-        site = get_cached_site(request)
-        if not isinstance(site, Site):
-            # A host that resolves no Site could not save the applicant either.
-            raise Http404
-        posted_email = request.POST.get("email", "")
-        key = email_rate_limit_key(site, posted_email)
         # Read before validation: a ModelForm writes its cleaned data onto the
         # instance while validating, so afterwards the two always agree.
         previous_email = applicant.email if applicant is not None else None
-        would_spend = normalise_email(posted_email) != previous_email
-        if would_spend and not ratelimit.consume(
-            request, action=DETAILS_RATE_LIMIT_ACTION, key=key, dry_run=True
-        ):
-            refused: HttpResponse = ratelimit.respond_429(request)
+        limit = _AddressLimit.for_post(
+            request, request.POST.get("email", ""), previous_email
+        )
+        refused = limit.refuse_if_exhausted()
+        if refused is not None:
             return refused
         form = ApplicantDetailsForm(request.POST, request=request, instance=instance)
         if form.is_valid():
             email: str = form.cleaned_data["email"]
             address_changed = email != previous_email
-            if address_changed:
-                limited: HttpResponse | None = ratelimit.consume_or_429(
-                    request, action=DETAILS_RATE_LIMIT_ACTION, key=key
-                )
-                if limited is not None:
-                    return limited
+            limited = limit.spend()
+            if limited is not None:
+                return limited
             if applicant is None and not cache.add(
                 _details_in_flight_key(request, course, email),
                 1,
@@ -408,7 +452,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                 return redirect(_resume_url(app, app.form_progress))
             return redirect("course_applications:status", pk=app.pk)
         if form.tripped_honeypot:
-            ratelimit.consume(request, action=DETAILS_RATE_LIMIT_ACTION, key=key)
+            limit.spend_for_honeypot()
         status = 422
     else:
         form = ApplicantDetailsForm(request=request, instance=instance)
