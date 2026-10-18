@@ -16,13 +16,14 @@ if app_not_installed("freedom_ls.registration_rules"):
 
 from freedom_ls.hr_attributes.factories import (
     JobTitleFactory,
+    LearnerHRAttributesFactory,
     OrganisationHRSettingsFactory,
 )
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.organisations.utils import get_default_organisation
 from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
@@ -39,11 +40,11 @@ def database_task_backend(settings) -> None:
     settings.TASKS = {"default": {"BACKEND": "django_tasks_db.DatabaseBackend"}}
 
 
-def _queued_tasks():
+def _queued_tasks(task_name: str = "evaluate_rule_task"):
     from django_tasks_db.models import DBTaskResult
 
     return DBTaskResult.objects.filter(
-        task_path="freedom_ls.registration_rules.tasks.evaluate_rule_task"
+        task_path=f"freedom_ls.registration_rules.tasks.{task_name}"
     )
 
 
@@ -322,3 +323,116 @@ def test_the_engines_own_update_keeps_the_rule_registration(
     link.refresh_from_db()
     assert link.is_retracted is True
     assert link.registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_queues_an_evaluation_of_the_learner(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory()
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        learner.is_active = False
+        learner.save()
+
+    # Assert
+    queued = _queued_tasks("evaluate_learner_task").get()
+    assert queued.args_kwargs["args"] == [str(learner.pk), learner.site_id]
+
+
+@pytest.mark.django_db
+def test_saving_learner_attributes_queues_an_evaluation_of_the_learner(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    attributes = LearnerHRAttributesFactory()
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        attributes.job_title = None
+        attributes.save()
+
+    # Assert
+    queued = _queued_tasks("evaluate_learner_task").get()
+    assert queued.args_kwargs["args"] == [
+        str(attributes.learner_id),
+        attributes.site_id,
+    ]
+
+
+@pytest.mark.django_db
+def test_deleting_learner_attributes_queues_an_evaluation_of_the_learner(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    attributes = LearnerHRAttributesFactory()
+    learner_id, site_id = attributes.learner_id, attributes.site_id
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        attributes.delete()
+
+    # Assert
+    queued = _queued_tasks("evaluate_learner_task").get()
+    assert queued.args_kwargs["args"] == [str(learner_id), site_id]
+
+
+@pytest.mark.django_db
+def test_turning_the_switch_on_queues_an_evaluation_of_the_organisation(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    settings_row = OrganisationHRSettingsFactory(registration_rules_enabled=False)
+    _queued_tasks("evaluate_organisation_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        settings_row.registration_rules_enabled = True
+        settings_row.save()
+
+    # Assert
+    queued = _queued_tasks("evaluate_organisation_task").get()
+    assert queued.args_kwargs["args"] == [
+        str(settings_row.organisation_id),
+        settings_row.site_id,
+    ]
+
+
+@pytest.mark.django_db
+def test_saving_the_switch_off_queues_no_evaluation(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    settings_row = OrganisationHRSettingsFactory(registration_rules_enabled=True)
+    _queued_tasks("evaluate_organisation_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        settings_row.registration_rules_enabled = False
+        settings_row.save()
+
+    # Assert
+    assert not _queued_tasks("evaluate_organisation_task").exists()
+
+
+@pytest.mark.django_db
+def test_loading_a_learner_fixture_queues_nothing(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    learner = LearnerFactory()
+    payload = serializers.serialize("json", [Learner._base_manager.get(pk=learner.pk)])
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True) as callbacks:
+        next(iter(serializers.deserialize("json", payload))).save()
+
+    # Assert
+    assert callbacks == []
+    assert not _queued_tasks("evaluate_learner_task").exists()

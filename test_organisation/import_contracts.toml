@@ -347,6 +347,7 @@ forbidden_modules = ["freedom_ls.accounts", "freedom_ls.blog", "freedom_ls.comms
 ignore_imports = [
     # allowance: the user-model app's factories
     "freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.accounts.factories",
+    "freedom_ls.registration_rules.tests.test_tasks -> freedom_ls.accounts.factories",
     # baseline
     "freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.comms.models",
     "freedom_ls.registration_rules.tests.test_evaluation -> freedom_ls.webhooks.models",

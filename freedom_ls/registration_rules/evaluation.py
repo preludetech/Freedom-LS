@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import OuterRef
+from django.db.models import OuterRef, Q
 from django.utils import timezone
 
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
@@ -283,4 +283,57 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
     RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).update(
         last_evaluated_at=timezone.now()
     )
+    return result
+
+
+def evaluate_learner(learner_id: UUID, site_id: int) -> EvaluationResult:
+    """Reconcile one learner against the rules that match or own them.
+
+    Locks only the Learner row; evaluate_rule locks only the rule. Both write
+    registrations in learner-pk order, so the two cannot deadlock.
+    """
+    result = EvaluationResult()
+    with transaction.atomic():
+        learner = (
+            Learner._base_manager.select_for_update()
+            .filter(pk=learner_id, site_id=site_id)
+            .first()
+        )
+        if learner is None:
+            return result
+        rules = (
+            RegistrationRule._base_manager.filter(site_id=site_id)
+            .filter(
+                Q(organisation_id=learner.organisation_id, is_enabled=True)
+                | Q(rule_registrations__registration__learner_id=learner_id)
+            )
+            .distinct()
+            .order_by("pk")
+        )
+        # One switch read per organisation: a learner who moved still holds
+        # the old organisation's rows, and that organisation has its own switch.
+        switches: dict[UUID, bool] = {}
+        for rule in rules:
+            if rule.organisation_id not in switches:
+                switches[rule.organisation_id] = rules_enabled_for(rule.organisation_id)
+            if not switches[rule.organisation_id]:
+                continue
+            changes = classify_rule_changes(
+                rule, RuleState.from_rule(rule), learner_ids=[learner_id]
+            )
+            result = result.merged_with(apply_rule_changes(rule, changes))
+    return result
+
+
+def evaluate_organisation(organisation_id: UUID, site_id: int) -> EvaluationResult:
+    """Every rule of the organisation, disabled ones included, so their registrations catch up."""
+    result = EvaluationResult()
+    for rule_id in (
+        RegistrationRule._base_manager.filter(
+            organisation_id=organisation_id, site_id=site_id
+        )
+        .order_by("pk")
+        .values_list("pk", flat=True)
+    ):
+        result = result.merged_with(evaluate_rule(rule_id, site_id))
     return result

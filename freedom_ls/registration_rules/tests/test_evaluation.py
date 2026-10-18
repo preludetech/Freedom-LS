@@ -30,8 +30,12 @@ from freedom_ls.webhooks.models import WebhookEvent
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
+from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.registration_rules.evaluation import (
+    EvaluationResult,
     classify_rule_changes,
+    evaluate_learner,
+    evaluate_organisation,
     evaluate_rule,
 )
 from freedom_ls.registration_rules.factories import (
@@ -732,3 +736,221 @@ def test_a_run_over_a_retracted_registration_that_still_does_not_match_changes_n
     assert result.reactivated == ()
     assert registration.is_active is False
     assert link.is_retracted is True
+
+
+@pytest.fixture
+def titled_learner(organisation_with_rules_on, job_title):
+    """A learner holding `job_title`, so title_rule matches them."""
+    learner = LearnerFactory(organisation=organisation_with_rules_on)
+    LearnerHRAttributesFactory(learner=learner, job_title=job_title)
+    return learner
+
+
+@pytest.fixture
+def other_organisation_rule(mock_site_context):
+    """An enabled rule with no conditions in a second organisation whose switch is on."""
+    rule = RegistrationRuleFactory(organisation=OrganisationFactory(), is_enabled=True)
+    OrganisationHRSettingsFactory(
+        organisation=rule.organisation, registration_rules_enabled=True
+    )
+    return rule
+
+
+def _move_learner(learner, organisation):
+    learner.organisation = organisation
+    learner.save()
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_registers_them_once_their_attributes_match(
+    title_rule, job_title, unmatched_learner
+):
+    # Arrange
+    LearnerHRAttributesFactory(learner=unmatched_learner, job_title=job_title)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_learner(unmatched_learner.pk, unmatched_learner.site_id)
+
+    # Assert
+    assert result.registered == (unmatched_learner.pk,)
+    assert _registrations_for(title_rule).filter(learner=unmatched_learner).exists()
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_retracts_them_once_their_attributes_stop_matching(
+    title_rule, titled_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, titled_learner)
+    titled_learner.hr_attributes.job_title = JobTitleFactory(
+        organisation=title_rule.organisation
+    )
+    titled_learner.hr_attributes.save()
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert result.retracted == (titled_learner.pk,)
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_who_moved_retracts_them_from_the_old_organisations_rule(
+    title_rule, titled_learner, other_organisation_rule
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, titled_learner)
+    _move_learner(titled_learner, other_organisation_rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_who_moved_registers_them_with_the_new_organisations_rule(
+    titled_learner, other_organisation_rule
+):
+    # Arrange
+    _move_learner(titled_learner, other_organisation_rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    assert (
+        _registrations_for(other_organisation_rule)
+        .filter(learner=titled_learner, is_active=True)
+        .exists()
+    )
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_who_moved_leaves_a_registration_of_an_organisation_whose_switch_is_off(
+    title_rule, titled_learner, other_organisation_rule
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, titled_learner)
+    _move_learner(titled_learner, other_organisation_rule.organisation)
+    OrganisationHRSettings._base_manager.filter(
+        organisation=title_rule.organisation
+    ).update(registration_rules_enabled=False)
+    drop_ambient_request()
+
+    # Act
+    evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is True
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_retracts_them_once_they_are_inactive(
+    title_rule, titled_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, titled_learner)
+    titled_learner.is_active = False
+    titled_learner.save()
+    drop_ambient_request()
+
+    # Act
+    evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_does_nothing_while_their_organisations_switch_is_off(
+    title_rule, titled_learner
+):
+    # Arrange
+    OrganisationHRSettings._base_manager.filter(
+        organisation=title_rule.organisation
+    ).update(registration_rules_enabled=False)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    assert result.registered == ()
+    assert not _registrations_for(title_rule).exists()
+
+
+@pytest.mark.django_db
+def test_evaluating_a_learner_who_no_longer_exists_returns_an_empty_result(
+    title_rule, titled_learner
+):
+    # Arrange
+    learner_id, site_id = titled_learner.pk, titled_learner.site_id
+    Learner._base_manager.filter(pk=learner_id).delete()
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_learner(learner_id, site_id)
+
+    # Assert
+    assert result == EvaluationResult()
+
+
+@pytest.mark.django_db
+def test_evaluating_an_organisation_registers_a_learner_who_matches_and_was_never_evaluated(
+    title_rule, titled_learner
+):
+    # Arrange
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_organisation(title_rule.organisation_id, title_rule.site_id)
+
+    # Assert
+    assert result.registered == (titled_learner.pk,)
+
+
+@pytest.mark.django_db
+def test_evaluating_an_organisation_retracts_the_registrations_of_a_disabled_rule(
+    title_rule, titled_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, titled_learner)
+    RegistrationRule._base_manager.filter(pk=title_rule.pk).update(is_enabled=False)
+    drop_ambient_request()
+
+    # Act
+    evaluate_organisation(title_rule.organisation_id, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_evaluating_an_organisation_leaves_another_organisations_rules_alone(
+    title_rule, other_organisation_rule
+):
+    # Arrange
+    bystander = LearnerFactory(organisation=other_organisation_rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    evaluate_organisation(title_rule.organisation_id, title_rule.site_id)
+
+    # Assert
+    assert (
+        not _registrations_for(other_organisation_rule)
+        .filter(learner=bystander)
+        .exists()
+    )

@@ -7,21 +7,41 @@ from typing import cast
 from uuid import UUID
 
 from django.db import models, transaction
-from django.db.models.signals import m2m_changed, post_save, pre_delete, pre_save
+from django.db.models.signals import (
+    m2m_changed,
+    post_delete,
+    post_save,
+    pre_delete,
+    pre_save,
+)
 from django.dispatch import receiver
 
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.hr_attributes.models import (
+    LearnerHRAttributes,
+    OrganisationHRSettings,
+)
+from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
     RuleRegistration,
 )
-from freedom_ls.registration_rules.tasks import evaluate_rule_task
+from freedom_ls.registration_rules.tasks import (
+    evaluate_learner_task,
+    evaluate_organisation_task,
+    evaluate_rule_task,
+)
 
 
 def _enqueue_rule(rule_id: UUID, site_id: int) -> None:
     # After commit, so the task never reads the rows this save is still writing.
     transaction.on_commit(partial(evaluate_rule_task.enqueue, str(rule_id), site_id))
+
+
+def _enqueue_learner(learner_id: UUID, site_id: int) -> None:
+    transaction.on_commit(
+        partial(evaluate_learner_task.enqueue, str(learner_id), site_id)
+    )
 
 
 @receiver(post_save, sender=RegistrationRule)
@@ -120,3 +140,57 @@ for _field in (
     AttributeRuleConditions.locations,
 ):
     m2m_changed.connect(_evaluate_rule_on_m2m_change, sender=_field.through)
+
+
+@receiver(post_save, sender=Learner)
+def evaluate_learner_on_save(
+    sender: type[Learner], instance: Learner, raw: bool = False, **kwargs: object
+) -> None:
+    """Queue an evaluation of every learner save.
+
+    Creation, an organisation change and an is_active change are all saves,
+    and evaluation reconciles state, so a run that finds nothing to do is harmless.
+    """
+    if raw:
+        return
+    _enqueue_learner(instance.pk, instance.site_id)
+
+
+@receiver(post_save, sender=LearnerHRAttributes)
+@receiver(post_delete, sender=LearnerHRAttributes)
+def evaluate_learner_on_attributes_change(
+    sender: type[LearnerHRAttributes],
+    instance: LearnerHRAttributes,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """Queue an evaluation of the learner whose attributes were saved or deleted.
+
+    A learner delete cascades here; the task then finds no learner and returns.
+    """
+    if raw:
+        return
+    _enqueue_learner(instance.learner_id, instance.site_id)
+
+
+@receiver(post_save, sender=OrganisationHRSettings)
+def evaluate_organisation_on_switch_save(
+    sender: type[OrganisationHRSettings],
+    instance: OrganisationHRSettings,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """Queue an evaluation of the whole organisation when its switch is on.
+
+    A switch left off changes nothing, and turning it off needs no run: the
+    engine already does nothing for an organisation whose switch is off.
+    """
+    if raw or not instance.registration_rules_enabled:
+        return
+    transaction.on_commit(
+        partial(
+            evaluate_organisation_task.enqueue,
+            str(instance.organisation_id),
+            instance.site_id,
+        )
+    )
