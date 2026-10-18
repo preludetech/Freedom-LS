@@ -969,3 +969,28 @@ def test_a_filters_default_does_not_apply_when_its_parameter_is_present() -> Non
     query = _DefaultedFilterTable.parse_query(request, "stub")
 
     assert query.filters == {"kind": ["b"]}
+
+
+def test_a_filters_default_does_not_apply_when_its_parameter_is_cleared() -> None:
+    request = RequestFactory().get("/", {"stub-kind": ""})
+
+    query = _DefaultedFilterTable.parse_query(request, "stub")
+
+    assert query.filters == {"kind": []}
+    assert query.to_params()["stub-kind"] == [""]
+
+
+def test_removing_a_defaulted_filter_keeps_its_parameter_empty() -> None:
+    request = RequestFactory().get("/")
+    query = _DefaultedFilterTable.parse_query(request, "stub")
+
+    assert query.filter_changes("kind", [])["stub-kind"] == [""]
+    assert query.clear_filters_changes(["kind"])["stub-kind"] == [""]
+
+
+def test_removing_a_filter_without_a_default_drops_its_parameter() -> None:
+    request = RequestFactory().get("/", {"stub-kind": "a"})
+    query = StubDataTable.parse_query(request, "stub")
+
+    assert query.filter_changes("kind", [])["stub-kind"] is None
+    assert query.clear_filters_changes(["kind"])["stub-kind"] is None

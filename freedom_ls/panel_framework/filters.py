@@ -20,7 +20,8 @@ class TableFilter:
     `always_shown` decides whether the filter renders as a pill with no
     value set, or only appears once applied (via a link) or opened from
     "Add filter". `default` is the selection used while the filter's query
-    parameter is absent from the request.
+    parameter is absent from the request. A cleared filter keeps its
+    parameter, empty, so clearing it does not bring the default back.
     """
 
     always_shown: bool = False
