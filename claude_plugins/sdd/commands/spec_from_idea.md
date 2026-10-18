@@ -8,6 +8,7 @@ You are helping to spin up a new feature spec for this application, from a short
 
 # Output
 
+- One `research_<topic>.md` per Step 1 topic, beside the idea file
 - Create a spec document in the same directory as the idea file. Name it `1. spec.md`
 - Run the review wave over it and edit in every clear fix
 - Print a summary with one line per applied fix (what, dimension, evidence) and the spec's line and word counts before and after the review
@@ -53,6 +54,17 @@ Don't wait for the research to finish before asking, and don't ask what it will 
 Only ask a question that passes the recipe's test (`claude-code-authoring` skill, `resources/fanout_recipe.md`): the answer changes the spec, nothing on disk or in the research answers it, and there is no obvious default. Once the spec is written in Step 3, a new question takes its default and is recorded as "When a question comes late" describes, until the end-of-run batch in Step 7.
 
 # Step 3: Write `1. spec.md` (synthesis at depth 0)
+
+## Gate: the research is on disk
+
+Before writing a word of the spec, check the directory, not the workers' returns. Every topic in
+the Step 1 table needs a `research_<topic>.md` beside the idea that ends `status: ok` or has no
+`status:` footer. Re-spawn a worker for each topic that fails the check, per the recipe's
+retry/blocked rules. If a topic still fails after that, stop: do not write the spec, and report
+each failing topic with its file's `status:` and `reason:` (or "missing"). Research held only in
+this conversation does not count; a later command can't read it.
+
+## Synthesis
 
 Read the `research_*.md` files (paths, not dumped contents) and author `1. spec.md`.
 
@@ -121,7 +133,9 @@ answers from Step 2, then the earning-its-place pass, then `unslop` and a re-rea
 and word counts.
 # Step 4: Commit `write the spec`
 
-Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and each `research_*.md` beside the idea that exists.
+Delegate to `sdd:sdd-mechanic`: read `${CLAUDE_PLUGIN_ROOT}/resources/commit_and_push.md` and follow its steps with `<summary>`: `write the spec`. Tell it to stage `1. spec.md` and the `research_<topic>.md` file for every Step 1 topic. A file
+already committed is staged as unchanged. If it reports any of them missing, the Step 3 gate was
+skipped: stop and report it rather than committing the spec without its research.
 
 # Step 5: Review wave
 
