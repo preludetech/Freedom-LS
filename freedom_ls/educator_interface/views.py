@@ -49,6 +49,7 @@ from freedom_ls.comms.messaging_views import (
 )
 from freedom_ls.comms.models import Conversation
 from freedom_ls.comms.templatetags.comms_tags import badge_count
+from freedom_ls.comms.views import login_required_htmx_to
 from freedom_ls.content_engine.models import Course
 from freedom_ls.educator_interface.actions import (
     AddExistingLearnersAction,
@@ -1717,7 +1718,7 @@ def _resolve_organisation(user: User, organisation_slug: str) -> Organisation:
     return organisation
 
 
-@login_required
+@login_required_htmx_to("educator_interface:root")
 def messages_unread_count(request: HttpRequest, organisation_slug: str) -> HttpResponse:
     """The Messages nav item's count: the unread conversations of the organisation.
 

@@ -541,7 +541,7 @@ class TestInbox:
 
         assert response.status_code == 404
 
-    def test_an_anonymous_request_redirects_to_login_with_next_set_to_the_inbox(
+    def test_an_anonymous_request_redirects_to_login_with_next_set_to_the_thread(
         self, client, pair
     ) -> None:
         _, _, conversation = pair
@@ -549,7 +549,9 @@ class TestInbox:
         response = client.get(thread_url(conversation))
 
         assert response.status_code == 302
-        assert response["Location"] == f"{django_settings.LOGIN_URL}?next={inbox_url()}"
+        assert response["Location"] == (
+            f"{django_settings.LOGIN_URL}?next={quote(thread_url(conversation))}"
+        )
 
     def test_the_fragment_has_no_page_wrapper(
         self, mock_site_context, logged_in_client

@@ -2649,6 +2649,17 @@ def test_the_count_view_counts_unread_conversations_of_the_organisation(
 
 @pytest.mark.django_db
 @messages_section
+def test_an_anonymous_htmx_count_poll_is_sent_to_login(client):
+    organisation = OrganisationFactory()
+
+    response = client.get(_count_url(organisation), HTTP_HX_REQUEST="true")
+
+    assert response.status_code == 204
+    assert "HX-Redirect" in response
+
+
+@pytest.mark.django_db
+@messages_section
 def test_the_count_view_is_empty_when_nothing_is_unread(msg_client_for):
     organisation = OrganisationFactory()
     educator = _msg_educator(organisation)

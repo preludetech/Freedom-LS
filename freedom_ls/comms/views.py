@@ -33,7 +33,12 @@ def login_required_htmx_to(
 ) -> Callable[[Callable[..., HttpResponse]], Callable[..., HttpResponse]]:
     """Like login_required, but an expired session under HTMX gets a 204 with
     HX-Redirect instead of a 302 htmx would try to swap into the calling
-    element. The visitor returns to ``next_url_name`` after signing in."""
+    element.
+
+    A full-page GET returns to the page asked for after signing in, as
+    login_required does. An htmx request or a POST names no page worth
+    returning to, so the visitor returns to ``next_url_name`` instead.
+    """
 
     def decorator(view: Callable[..., HttpResponse]) -> Callable[..., HttpResponse]:
         @wraps(view)
@@ -41,7 +46,13 @@ def login_required_htmx_to(
             request: HttpRequest, *args: object, **kwargs: object
         ) -> HttpResponse:
             if not request.user.is_authenticated:
-                return redirect_to_auth(request, next_url=reverse(next_url_name))
+                is_page = request.method == "GET" and not request.headers.get(
+                    "HX-Request"
+                )
+                next_url = (
+                    request.get_full_path() if is_page else reverse(next_url_name)
+                )
+                return redirect_to_auth(request, next_url=next_url)
             return view(request, *args, **kwargs)
 
         return wrapper
