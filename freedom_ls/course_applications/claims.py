@@ -65,6 +65,15 @@ class ClaimOutcome:
     must_set_password: bool
 
 
+@dataclass(frozen=True)
+class AttachResult:
+    # The application the account holds for the course after the attach.
+    application: CourseApplication
+    # True when the account's own unfinished application was deleted to make
+    # room for the incoming one.
+    discarded_draft: bool
+
+
 def claim_token(applicant: AnonymousApplicant) -> str:
     return signing.dumps(str(applicant.pk), salt=CLAIM_TOKEN_SALT)
 
@@ -168,14 +177,16 @@ def attach_claimed_application(
             user = _user_for_claim(applicant, owner)
         if user is None:
             return None
-        held = attach_to_user(application, applicant, user)
+        attached = attach_to_user(application, applicant, user)
     if owner is None:
         announce_user_registered(request, user)
         # The attribution receiver listens here; sending the signal keeps its
         # best-effort handling rather than copying it.
         user_signed_up.send(sender=User, request=request, user=user)
     return ClaimOutcome(
-        user, application=held, must_set_password=claim_sets_a_password(owner)
+        user,
+        application=attached.application,
+        must_set_password=claim_sets_a_password(owner),
     )
 
 
@@ -204,16 +215,17 @@ def _user_for_claim(
 
 def attach_to_user(
     application: CourseApplication, applicant: AnonymousApplicant, user: User
-) -> CourseApplication:
+) -> AttachResult:
     """Hand an anonymous application, its sitting and its applicant to an account.
 
     Returns the application the account holds for the course afterwards. An
     account holds one application per course, so when it already holds one,
     one of the two goes: a submitted application beats a draft, and between
-    two of a kind the one already on the account stays. A draft the account
-    loses goes with its sitting. An incoming application that loses goes with
-    its applicant, as if it had never been made; the consent it carried was
-    already written to the account by the caller.
+    two drafts the incoming one stays, because the applicant has just been
+    working on it. A draft the account loses goes with its sitting. An
+    incoming application that loses goes with its applicant, as if it had
+    never been made; the consent it carried was already written to the
+    account by the caller.
 
     One transaction, with the account's row locked, so two attachments for
     one course cannot both find the account empty: the second waits, then
@@ -231,9 +243,14 @@ def attach_to_user(
             .first()
         )
         if held is not None:
-            if held.is_submitted or not application.is_submitted:
+            if held.is_submitted:
+                # A request already made stands; the incoming one could only
+                # repeat or precede it, so it goes with its applicant.
                 erase_anonymous_applicant(applicant)
-                return held
+                return AttachResult(held, discarded_draft=False)
+            # The account's draft gives way: the applicant has just been
+            # working on the incoming one, whether that is further along or a
+            # submission.
             _discard_draft(held)
         application.user = user
         application.save(update_fields=["user", "updated_at"])
@@ -243,7 +260,7 @@ def attach_to_user(
         applicant.user = user
         applicant.claimed_at = timezone.now()
         applicant.save(update_fields=["user", "claimed_at", "updated_at"])
-    return application
+    return AttachResult(application, discarded_draft=held is not None)
 
 
 def _discard_draft(draft: CourseApplication) -> None:

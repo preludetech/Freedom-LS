@@ -20,6 +20,19 @@
                         You'll then be signed in to your account.
                     {% endif %}
                 </p>
+                {% if held_application == "submitted" and not is_submitted %}
+                    <p>
+                        You've already applied for {{ course.title }}. This unfinished application will be discarded.
+                    </p>
+                {% elif held_application == "submitted" %}
+                    <p>
+                        You've already applied for {{ course.title }}. This application will be discarded.
+                    </p>
+                {% elif held_application == "draft" %}
+                    <p>
+                        This replaces the unfinished application for {{ course.title }} already on your account.
+                    </p>
+                {% endif %}
                 {% if signed_in_as %}
                     <p>
                         You're signed in as {{ signed_in_as }}. Pressing Confirm will sign you out of that account.

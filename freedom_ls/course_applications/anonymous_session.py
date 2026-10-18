@@ -48,7 +48,7 @@ def remembered_anonymous_applicants(
     """Every unclaimed applicant this session holds, across courses."""
     return AnonymousApplicant.objects.filter(
         pk__in=list(_session_map(request).values()), user__isnull=True
-    ).select_related("course_application__form_progress")
+    ).select_related("course", "course_application__form_progress")
 
 
 def anonymous_applicant_for_course(

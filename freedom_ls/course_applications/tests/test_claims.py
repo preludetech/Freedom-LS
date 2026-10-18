@@ -26,10 +26,12 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.claims import (
+    AttachResult,
     ClaimLink,
     ClaimOutcome,
     ClaimOwner,
     attach_claimed_application,
+    attach_to_user,
     claim_sets_a_password,
     claim_token,
     read_claim_token,
@@ -244,8 +246,8 @@ def test_attaching_for_an_address_verified_on_another_site_returns_none(
 
 
 def test_a_claim_over_a_draft_on_the_account_replaces_the_draft(mock_site_context, rf):
-    """The draft could only repeat a request already made, so it goes, and
-    its sitting with it."""
+    """The incoming application is a request the account has not yet made, so
+    it wins; the unfinished draft goes, and its sitting with it."""
     user = UserFactory(email="taken@example.com")
     EmailAddressFactory(user=user)
     application = _anonymous_application_for("taken@example.com")
@@ -282,6 +284,135 @@ def test_a_claim_over_a_submission_on_the_account_keeps_that_one(mock_site_conte
     assert not CourseApplication.objects.filter(pk=application.pk).exists()
     assert not AnonymousApplicant.objects.filter(pk=applicant_pk).exists()
     assert list(CourseApplication.objects.filter(user=user)) == [held]
+
+
+def _anonymous_draft_for(email: str, course=None):
+    application = CourseApplicationFactory(
+        anonymous=True,
+        **({"course": course} if course is not None else {}),
+        form_progress=FormProgressFactory(user=None, completed_time=None),
+    )
+    applicant = application.anonymous_applicant
+    applicant.email = email
+    applicant.save(update_fields=["email"])
+    return application
+
+
+@pytest.fixture
+def account_with_user(mock_site_context):
+    user = UserFactory(email="taken@example.com")
+    EmailAddressFactory(user=user)
+    return user
+
+
+def _held_draft(user, course):
+    return CourseApplicationFactory(
+        user=user,
+        course=course,
+        form_progress=FormProgressFactory(user=user, completed_time=None),
+    )
+
+
+def test_a_draft_claim_over_a_submission_on_the_account_keeps_the_submission(
+    account_with_user, rf
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    held = CourseApplicationFactory(user=account_with_user, course=incoming.course)
+
+    outcome = attach_claimed_application(rf.get("/"), incoming)
+
+    assert outcome == ClaimOutcome(
+        account_with_user, application=held, must_set_password=False
+    )
+
+
+def test_a_draft_claim_over_a_submission_on_the_account_erases_the_incoming_draft(
+    account_with_user, rf
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    applicant_pk = incoming.anonymous_applicant_id
+    sitting_pk = incoming.form_progress_id
+    CourseApplicationFactory(user=account_with_user, course=incoming.course)
+
+    attach_claimed_application(rf.get("/"), incoming)
+
+    assert (
+        CourseApplication.objects.filter(pk=incoming.pk).exists(),
+        AnonymousApplicant.objects.filter(pk=applicant_pk).exists(),
+        FormProgress.objects.filter(pk=sitting_pk).exists(),
+    ) == (False, False, False)
+
+
+def test_a_draft_claim_over_a_draft_on_the_account_attaches_the_incoming_draft(
+    account_with_user, rf
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    _held_draft(account_with_user, incoming.course)
+
+    outcome = attach_claimed_application(rf.get("/"), incoming)
+
+    assert outcome == ClaimOutcome(
+        account_with_user, application=incoming, must_set_password=False
+    )
+
+
+def test_a_draft_claim_over_a_draft_on_the_account_deletes_the_held_draft(
+    account_with_user, rf
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    held = _held_draft(account_with_user, incoming.course)
+    held_sitting_pk = held.form_progress_id
+
+    attach_claimed_application(rf.get("/"), incoming)
+
+    assert (
+        CourseApplication.objects.filter(pk=held.pk).exists(),
+        FormProgress.objects.filter(pk=held_sitting_pk).exists(),
+    ) == (False, False)
+
+
+def test_a_draft_claim_over_a_draft_on_the_account_gives_the_incoming_sitting_the_user(
+    account_with_user, rf
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    _held_draft(account_with_user, incoming.course)
+
+    attach_claimed_application(rf.get("/"), incoming)
+
+    incoming.form_progress.refresh_from_db()
+    assert incoming.form_progress.user == account_with_user
+
+
+def test_attaching_over_a_held_draft_reports_the_draft_as_discarded(
+    account_with_user,
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    _held_draft(account_with_user, incoming.course)
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=incoming, discarded_draft=True)
+
+
+def test_attaching_over_a_held_submission_reports_no_draft_discarded(
+    account_with_user,
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+    held = CourseApplicationFactory(user=account_with_user, course=incoming.course)
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=held, discarded_draft=False)
+
+
+def test_attaching_to_an_account_holding_nothing_reports_no_draft_discarded(
+    account_with_user,
+):
+    incoming = _anonymous_draft_for("taken@example.com")
+
+    result = attach_to_user(incoming, incoming.anonymous_applicant, account_with_user)
+
+    assert result == AttachResult(application=incoming, discarded_draft=False)
 
 
 @pytest.mark.django_db(transaction=True)

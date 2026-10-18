@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from allauth.account.models import EmailAddress
 
+from django.contrib import messages
 from django.contrib.auth.signals import user_logged_in
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
@@ -78,7 +79,8 @@ def adopt_anonymous_applications_on_login(
     the same thing the claim link would, so those applications are attached
     the same way. Any other applicant the session holds is dropped from it:
     the browser now belongs to a known person, and a draft typed under some
-    other address must not become theirs to read.
+    other address must not become theirs to read. The applicant is told when
+    the attach kept the account's own application or replaced its draft.
     """
     if request is None or not hasattr(request, "session"):
         return
@@ -89,6 +91,26 @@ def adopt_anonymous_applications_on_login(
         if EmailAddress.objects.filter(
             user=user, email__iexact=applicant.email, verified=True
         ).exists():
-            attach_to_user(application, applicant, user)
+            # Read before the attach: an incoming application that loses is
+            # erased with its applicant, and the message still has to name
+            # the course.
+            course_title = applicant.course.title
+            result = attach_to_user(application, applicant, user)
+            # fail_silently: a login from the shell or a test client has no
+            # messages storage.
+            if result.application.pk != application.pk:
+                messages.info(
+                    request,
+                    f"You had already applied for {course_title}, "
+                    "so that application was kept.",
+                    fail_silently=True,
+                )
+            elif result.discarded_draft:
+                messages.info(
+                    request,
+                    f"Your unfinished application for {course_title} "
+                    "was replaced by the one you just started.",
+                    fail_silently=True,
+                )
     forget_all_anonymous_applicants(request)
     forget_all_anonymous_form_progress(request)

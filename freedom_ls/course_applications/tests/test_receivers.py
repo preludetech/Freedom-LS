@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.messages import get_messages
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import (
@@ -111,6 +112,90 @@ def test_signing_in_drops_a_draft_for_a_course_the_account_already_applied_to(
     assert list(CourseApplication.objects.filter(course=application.course)) == [held]
     assert not AnonymousApplicant.objects.filter(email="ada@example.com").exists()
     assert FormProgress.objects.count() == 0
+
+
+def test_signing_in_over_a_held_submission_says_that_application_was_kept(
+    client, mock_site_context
+):
+    application = _start_anonymous_draft(client, "ada@example.com")
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+    CourseApplicationFactory(user=user, course=application.course)
+
+    _sign_in(client, user)
+
+    assert _application_messages(client) == [
+        f"You had already applied for {application.course.title}, "
+        "so that application was kept."
+    ]
+
+
+def _sign_in(client, user) -> None:
+    """Sign in through the login form, the only path with a messages storage."""
+    client.post(reverse("account_login"), {"login": user.email, "password": user.email})
+
+
+def _application_messages(client) -> list[str]:
+    """The pending messages about applications, leaving out the sign-in one."""
+    return [
+        str(m)
+        for m in get_messages(client.get("/").wsgi_request)
+        if "application" in str(m)
+    ]
+
+
+def _held_draft_and_signed_in_client(client):
+    application = _start_anonymous_draft(client, "ada@example.com")
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+    held = CourseApplicationFactory(
+        user=user,
+        course=application.course,
+        form_progress=FormProgressFactory(user=user, completed_time=None),
+    )
+    _sign_in(client, user)
+    return application, held
+
+
+def test_signing_in_with_a_held_draft_adopts_the_incoming_draft(
+    client, mock_site_context
+):
+    application, held = _held_draft_and_signed_in_client(client)
+
+    application.refresh_from_db()
+    assert (
+        application.user,
+        CourseApplication.objects.filter(pk=held.pk).exists(),
+    ) == (held.user, False)
+
+
+def test_signing_in_with_a_held_draft_deletes_the_held_sitting(
+    client, mock_site_context
+):
+    _application, held = _held_draft_and_signed_in_client(client)
+
+    assert not FormProgress.objects.filter(pk=held.form_progress_id).exists()
+
+
+def test_signing_in_with_a_held_draft_says_it_was_replaced(client, mock_site_context):
+    application, _held = _held_draft_and_signed_in_client(client)
+
+    assert _application_messages(client) == [
+        f"Your unfinished application for {application.course.title} "
+        "was replaced by the one you just started."
+    ]
+
+
+def test_signing_in_to_adopt_a_draft_with_nothing_held_says_nothing(
+    client, mock_site_context
+):
+    _start_anonymous_draft(client, "ada@example.com")
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+
+    _sign_in(client, user)
+
+    assert _application_messages(client) == []
 
 
 def test_signing_in_to_an_unverified_address_adopts_nothing(client, mock_site_context):

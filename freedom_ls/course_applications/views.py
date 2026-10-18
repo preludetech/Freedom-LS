@@ -643,12 +643,25 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
     if owner is not None and owner.user.site_id != link.applicant.site_id:
         return _render_claim(request, "invalid")
     if request.method != "POST":
+        held = (
+            CourseApplication.objects.filter(
+                user=owner.user, course=link.applicant.course
+            )
+            .select_related("form_progress")
+            .first()
+            if owner is not None
+            else None
+        )
+        held_application = (
+            "" if held is None else ("submitted" if held.is_submitted else "draft")
+        )
         return _render_claim(
             request,
             "confirm",
             link.applicant,
             applicant_email=link.applicant.email,
             is_submitted=is_submitted,
+            held_application=held_application,
             sets_password=claim_sets_a_password(owner),
             signed_in_as=(
                 cast(User, request.user).email

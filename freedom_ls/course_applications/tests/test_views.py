@@ -3114,6 +3114,74 @@ def claimable_for_passwordless_user(mock_site_context):
     return application
 
 
+def _account_holding(application, *, draft: bool):
+    """The account of the application's address, holding its own application
+    for the same course: an unfinished one, or a submitted one."""
+    user = UserFactory(email=application.anonymous_applicant.email)
+    EmailAddressFactory(user=user)
+    CourseApplicationFactory(
+        user=user,
+        course=application.course,
+        form_progress=(
+            FormProgressFactory(user=user, completed_time=None) if draft else None
+        ),
+    )
+
+
+@pytest.mark.django_db
+def test_claim_get_of_a_draft_over_a_held_submission_says_the_draft_is_discarded(
+    client, claimable_draft
+):
+    _account_holding(claimable_draft, draft=False)
+
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    assert (
+        response.context["held_application"],
+        "This unfinished application will be discarded." in response.content.decode(),
+    ) == ("submitted", True)
+
+
+@pytest.mark.django_db
+def test_claim_get_of_a_submission_over_a_held_submission_says_it_is_discarded(
+    client, claimable
+):
+    _account_holding(claimable, draft=False)
+
+    response = client.get(_claim_url(claimable.anonymous_applicant))
+
+    body = response.content.decode()
+    assert (
+        response.context["held_application"],
+        "This application will be discarded." in body,
+        "unfinished application will be discarded" in body,
+    ) == ("submitted", True, False)
+
+
+@pytest.mark.django_db
+def test_claim_get_over_a_held_draft_says_it_is_replaced(client, claimable_draft):
+    _account_holding(claimable_draft, draft=True)
+
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    assert (
+        response.context["held_application"],
+        "replaces the unfinished application" in response.content.decode(),
+    ) == ("draft", True)
+
+
+@pytest.mark.django_db
+def test_claim_get_with_nothing_held_says_nothing_is_discarded(client, claimable_draft):
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    body = response.content.decode()
+    assert (
+        response.context["held_application"],
+        "will be discarded" in body,
+        "replaces the unfinished application" in body,
+    ) == ("", False, False)
+
+
 @pytest.mark.django_db
 def test_claim_get_for_a_passwordless_account_says_a_password_comes_next(
     client, claimable_for_passwordless_user
