@@ -7,8 +7,13 @@ client test can prove work.
 
 from __future__ import annotations
 
+import re
+from urllib.parse import urlparse
+
 import pytest
 from playwright.sync_api import Page, expect
+
+from django.core import mail
 
 from freedom_ls.conftest import reverse_url
 from freedom_ls.form_engine.uploads import MAX_UPLOAD_BYTES
@@ -172,6 +177,16 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
     page.get_by_label("First name").fill("Ada")
     page.get_by_role("button", name="Next").click()
 
+    notice = page.get_by_test_id("claim-link-notice")
+    expect(notice).to_be_visible()
+    expect(notice).to_contain_text("anon.applicant@example.com")
+
+    # The dashboard lists the unfinished draft and resumes it on page 1.
+    page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+    expect(page.get_by_text("Incomplete")).to_be_visible()
+    page.get_by_role("link", name="Continue application").click()
+    expect(page.get_by_label("Your name")).to_be_visible()
+
     page.get_by_label("Your name").fill("Ada Lovelace")
     form_page_url = page.url
     page.get_by_role("button", name="Next").click()
@@ -199,7 +214,57 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
 
     page.get_by_role("button", name="Submit application").click()
     expect(page.get_by_text("Before anyone reviews it")).to_be_visible()
+    expect(page.get_by_test_id("change-email-form")).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
         assert_no_horizontal_overflow(page)
+
+
+@pytest.mark.playwright
+@pytest.mark.django_db(transaction=True)
+def test_the_claim_link_from_the_details_step_signs_a_second_browser_in_on_the_draft(
+    live_server, live_server_site, mock_site_context, page: Page, browser
+):
+    """The live server shares the test process, so the locmem outbox holds the
+    email the details step sent."""
+    course, _form = gated_course_with_form()
+    page.goto(
+        reverse_url(
+            live_server,
+            "course_applications:apply",
+            kwargs={"course_slug": course.slug},
+        )
+    )
+    page.get_by_label("Email").fill("anon.applicant@example.com")
+    page.get_by_label("First name").fill("Ada")
+    page.get_by_role("button", name="Next").click()
+    expect(page.get_by_test_id("claim-link-notice")).to_be_visible()
+
+    (claim_email,) = mail.outbox
+    claim_url = re.search(r"https?://[^\s\"<>]*/claim/[^\s\"<>]+", claim_email.body)
+    assert claim_url is not None
+
+    other_context = browser.new_context()
+    try:
+        other_page = other_context.new_page()
+        other_page.goto(live_server.url + urlparse(claim_url.group(0)).path)
+        expect(
+            other_page.get_by_role(
+                "heading", name=f"Continue your application for {course.title}"
+            )
+        ).to_be_visible()
+        other_page.get_by_role("button", name="Confirm").click()
+
+        other_page.get_by_label(re.compile(r"^Password:?$")).fill("a-Strong-pass-123")
+        other_page.get_by_label(re.compile(r"^Password \(again\):?$")).fill(
+            "a-Strong-pass-123"
+        )
+        other_page.get_by_role("button", name="Set Password").click()
+
+        expect(other_page.get_by_label("Your name")).to_be_visible()
+        other_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
+        expect(other_page.get_by_text("Incomplete")).to_be_visible()
+        expect(other_page.get_by_role("link", name="Sign in")).to_be_hidden()
+    finally:
+        other_context.close()
