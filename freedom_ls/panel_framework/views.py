@@ -841,7 +841,8 @@ def _respond(
     A plain GET, and a history restore, get the full page. htmx requests get
     the navigation bundle, one tab, or one panel's region, chosen by the
     target they name; an unrecognised target gets the navigation bundle, never
-    a bare fragment. Before any of that, a table panel's export flag gets a
+    a bare fragment. An instance page's header, targeted on its own, gets
+    just the header. Before any of that, a table panel's export flag gets a
     streamed CSV instead.
     """
     if resolved is not None and isinstance(resolved.panel, DataTablePanel):
@@ -864,6 +865,10 @@ def _respond(
     if resolved is None or hx_target == "main-content":
         return render(
             request, "panel_framework/navigation_response.html", navigation_context
+        )
+    if hx_target == "instance-header" and resolved.instance_view is not None:
+        return render(
+            request, "panel_framework/views/_instance_header.html", page_context
         )
 
     panel = resolved.panel

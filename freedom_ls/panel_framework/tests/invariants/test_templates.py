@@ -126,7 +126,7 @@ def test_a_leaf_declaring_refresh_events_refetches_its_own_region(
 
     html = _render(panel)
 
-    assert 'hx-trigger="a from:body, b from:body"' in html
+    assert 'hx-trigger="a from:body delay:10ms, b from:body delay:10ms"' in html
     assert f'hx-target="#{panel.region_id}"' in html
     assert f'id="{panel.region_id}"' in html
 

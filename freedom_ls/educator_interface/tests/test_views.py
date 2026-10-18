@@ -730,6 +730,23 @@ def test_cohort_header_refreshes_its_counts_when_the_cohort_changes(
 
 
 @pytest.mark.django_db
+def test_a_header_refresh_gets_the_header_alone(staff_client: Client):
+    cohort = CohortFactory(organisation=OrganisationFactory())
+    _add_member(cohort)
+
+    response = staff_client.get(
+        _interface_url(cohort.organisation.slug, f"cohorts/{cohort.pk}"),
+        headers={"HX-Request": "true", "HX-Target": "instance-header"},
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert (
+        document.get("id"),
+        len(document.cssselect("[data-panel]")),
+    ) == ("instance-header", 0)
+
+
+@pytest.mark.django_db
 def test_the_cohort_page_opens_on_the_overview_tab(staff_client: Client):
     cohort = CohortFactory(organisation=OrganisationFactory())
 

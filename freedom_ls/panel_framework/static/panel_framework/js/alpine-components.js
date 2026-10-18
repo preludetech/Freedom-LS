@@ -558,10 +558,11 @@ document.addEventListener("alpine:init", () => {
 
     // Instance-page header auto-refresh (panel_framework/views/_instance_view_base.html).
     // The header's stats and tab counts sit outside every panel, so a panel's
-    // own refresh never reaches them. Re-fetch the current page, which keeps
-    // the active tab because the address bar follows tab clicks, and swap in
-    // just the header. The component sits inside the header, so the swap
-    // replaces it with a fresh one.
+    // own refresh never reaches them. Re-fetch the current page targeting
+    // #instance-header, which the server answers with the header alone; the
+    // address bar follows tab clicks, so the active tab is kept. The
+    // component sits inside the header, so the swap replaces it with a fresh
+    // one.
     Alpine.data("headerRefresh", () => ({
         _handlers: [],
         init() {

@@ -8,7 +8,9 @@ inside it is free to change. A panel with no region template is its own
 refresh region, so the section carries the region id itself. The hx-get
 re-fetches the region when one of the panel's declared refresh_events fires
 on body, which is how a saved edit shows up without a page load. A panel
-that declares none never refreshes itself in place.
+that declares none never refreshes itself in place. With several events, a
+short delay folds a response that fires more than one into one re-fetch:
+htmx keeps one delay timer per element, so the later event resets it.
 
 panel_header is a hook for content above the body, now that the card renders
 the heading itself from title.
@@ -17,7 +19,7 @@ the heading itself from title.
          {% if not region_template_name %}id="{{ region_id }}"{% endif %}
          {% if refresh_events %}
          hx-get="{{ base_url }}"
-         hx-trigger="{% for event in refresh_events %}{{ event }} from:body{% if not forloop.last %}, {% endif %}{% endfor %}"
+         hx-trigger="{% for event in refresh_events %}{{ event }} from:body{% if refresh_events|length > 1 %} delay:10ms{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}"
          hx-target="#{{ region_id }}"
          hx-swap="outerHTML"
          {% endif %}>

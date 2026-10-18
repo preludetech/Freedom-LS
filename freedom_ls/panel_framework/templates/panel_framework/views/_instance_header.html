@@ -1,0 +1,25 @@
+{% load panel_tags %}
+{% comment %}
+The instance page's header band: heading, badge, stats, actions and tab row.
+Rendered inside the full page, and alone for an htmx request whose target is
+#instance-header, which is how headerRefresh brings the stats up to date.
+{% endcomment %}
+<div id="instance-header">
+{% if main.header_refresh_events %}
+    <div x-data="headerRefresh" data-header-refresh-events="{{ main.header_refresh_events }}"></div>
+{% endif %}
+<c-panel-page-header title="{{ main.title }}" title_id="instance-title" subtitle="{{ main.subtitle }}" panel_toggle="true">
+    {% if main.status_badge %}<c-slot name="badge"><c-panel-status-badge tone="{{ main.status_badge.tone }}" label="{{ main.status_badge.label }}" /></c-slot>{% endif %}
+    {% if main.stats %}
+        <c-slot name="stats">
+            <c-panel-stat-row variant="inline">
+                {% for stat in main.stats %}<c-panel-stat-tile variant="inline" label="{{ stat.label }}" value="{{ stat.value }}" />{% endfor %}
+            </c-panel-stat-row>
+        </c-slot>
+    {% endif %}
+    <c-slot name="actions">{% for action in main.actions %}{% render_action action main.ctx %}{% endfor %}</c-slot>
+</c-panel-page-header>
+{% if main.panel.tabs|length > 1 %}
+    {% include "panel_framework/panels/_tab_nav.html" with tabs=main.panel.tabs title=main.panel.title region_id=main.panel.region_id in_band=True only %}
+{% endif %}
+</div>

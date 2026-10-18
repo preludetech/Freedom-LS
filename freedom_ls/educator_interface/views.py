@@ -605,8 +605,10 @@ class LearnerRegistrationsPanel(Panel):
 
 
 class LearnerOverviewStack(PanelStack):
+    """No refresh events of its own: each child re-fetches itself on
+    LEARNER_CHANGED, so a stack refresh would render them all twice."""
+
     title = "Overview"
-    refresh_events = (LEARNER_CHANGED,)
     children = {
         "details": LearnerDetailsPanel,
         "cohorts": LearnerCohortsPanel,
