@@ -2,19 +2,31 @@
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
+from django.test import RequestFactory
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.form_engine.factories import FormProgressFactory
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
+from freedom_ls.content_engine.models import Course
+from freedom_ls.course_applications.anonymous_session import (
+    remember_anonymous_applicant,
+)
 from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.models import (
+    AnonymousApplicant,
+    CourseApplication,
+)
 
 
 @pytest.mark.django_db
@@ -632,3 +644,116 @@ class TestGetAccessType:
         backend = ApplicationCourseAccessBackend()
 
         assert backend.get_access_type(course=course) == "free"
+
+
+def _anonymous_request(*applicants: AnonymousApplicant):
+    """An anonymous request whose session remembers each applicant."""
+    request = RequestFactory().get("/")
+    request.user = AnonymousUser()
+    request.session = {}
+    for applicant in applicants:
+        remember_anonymous_applicant(request, applicant)
+    return request
+
+
+@pytest.mark.django_db
+class TestGetAccessForRequest:
+    """get_access_for_request on ApplicationCourseAccessBackend."""
+
+    def test_session_holding_a_draft_gets_view_my_application(self, mock_site_context):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        application = _application_with_sitting_anonymous()
+        request = _anonymous_request(application.anonymous_applicant)
+
+        decision = ApplicationCourseAccessBackend().get_access_for_request(
+            request=request, course=application.course
+        )
+
+        assert decision.cta_label == "View my application"
+
+    def test_session_holding_a_draft_points_at_the_status_page(self, mock_site_context):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        application = _application_with_sitting_anonymous()
+        request = _anonymous_request(application.anonymous_applicant)
+
+        decision = ApplicationCourseAccessBackend().get_access_for_request(
+            request=request, course=application.course
+        )
+
+        assert decision.cta_url == reverse(
+            "course_applications:status", kwargs={"pk": application.pk}
+        )
+
+    def test_session_holding_a_submitted_application_gets_view_my_application(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        application = CourseApplicationFactory(anonymous=True, course=_gated_course())
+        request = _anonymous_request(application.anonymous_applicant)
+
+        decision = ApplicationCourseAccessBackend().get_access_for_request(
+            request=request, course=application.course
+        )
+
+        assert decision.cta_label == "View my application"
+
+    def test_session_with_no_entry_gets_apply_now_without_a_query(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        course = _gated_course()
+        request = _anonymous_request()
+
+        with django_assert_max_num_queries(0):
+            decision = ApplicationCourseAccessBackend().get_access_for_request(
+                request=request, course=course
+            )
+
+        assert decision.cta_label == "Apply now"
+
+    def test_signed_in_request_gets_the_get_access_decision(self, mock_site_context):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        application = CourseApplicationFactory(course=_gated_course())
+        request = RequestFactory().get("/")
+        request.user = application.user
+        backend = ApplicationCourseAccessBackend()
+
+        decision = backend.get_access_for_request(
+            request=request, course=application.course
+        )
+
+        assert decision == backend.get_access(
+            user=application.user, course=application.course
+        )
+
+
+def _gated_course() -> Course:
+    return cast(
+        Course, CourseFactory(access_config={"access_type": "application_gated"})
+    )
+
+
+def _application_with_sitting_anonymous() -> CourseApplication:
+    return cast(
+        CourseApplication,
+        CourseApplicationFactory(
+            anonymous=True,
+            course=_gated_course(),
+            form_progress=FormProgressFactory(user=None),
+        ),
+    )

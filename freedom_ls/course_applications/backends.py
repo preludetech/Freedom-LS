@@ -24,6 +24,7 @@ from freedom_ls.learner_management.utils import is_registered_for_course
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AnonymousUser
+    from django.http import HttpRequest
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
@@ -108,9 +109,44 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         into a gated course by an admin or via a cohort therefore reaches content:
         admin/cohort enrolment deliberately bypasses the gate.
         Free, not registered → Enrol for free/self-register (inherited from parent).
-        Application-gated, not registered → Apply now / apply URL.
-        Invalid config → safe no-action decision (inherited from parent).
+        Application-gated, not registered → View my application when one exists,
+        otherwise Apply now.
+        Invalid config → safe no-action decision.
         """
+        decision = self._ungated_decision(user=user, course=course)
+        if decision is not None:
+            return decision
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        return self._gated_decision(
+            course=course,
+            application=get_application_for_course(user=user, course=course),
+        )
+
+    def get_access_for_request(
+        self, *, request: HttpRequest, course: Course
+    ) -> CourseAccessDecision:
+        """Like get_access, but an anonymous session that holds an application for
+        the course is sent to it the way a signed-in applicant is."""
+        if request.user.is_authenticated:
+            return self.get_access(user=request.user, course=course)
+        decision = self._ungated_decision(user=request.user, course=course)
+        if decision is not None:
+            return decision
+        from freedom_ls.course_applications.anonymous_session import (
+            anonymous_applicant_for_course,
+            application_of,
+        )
+
+        applicant = anonymous_applicant_for_course(request, course)
+        application = application_of(applicant) if applicant is not None else None
+        return self._gated_decision(course=course, application=application)
+
+    def _ungated_decision(
+        self, *, user: RequestUser, course: Course
+    ) -> CourseAccessDecision | None:
+        """The decision when the gate does not apply: invalid config, a free
+        course or a registered learner. None leaves it to the gated branch."""
         try:
             config = self.validate_course_config(course.access_config)
         except ValueError:
@@ -124,25 +160,25 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         # Delegate to parent for free-course handling AND for any registered
         # learner — including one enrolled into a gated course by admin/cohort,
         # who must reach content (registered → Continue/content). Only an
-        # unregistered learner on a gated course falls through to "Apply now".
+        # unregistered learner on a gated course falls through to the gate.
         # Parent's get_access also calls validate_course_config, but that's
         # a cheap call and keeps the delegation simple.
         if config["access_type"] != APPLICATION_GATED or is_registered_for_course(
             user, course
         ):
             return super().get_access(user=user, course=course)
+        return None
 
-        # application_gated branch. A returning applicant gets a CTA straight to
-        # their status page; a first-time visitor gets "Apply now".
-        from freedom_ls.course_applications.queries import get_application_for_course
-
-        existing_app = get_application_for_course(user=user, course=course)
-        if existing_app is not None:
+    def _gated_decision(
+        self, *, course: Course, application: CourseApplication | None
+    ) -> CourseAccessDecision:
+        """ "View my application" for an applicant, "Apply now" for anyone else."""
+        if application is not None:
             return CourseAccessDecision(
                 cta_label="View my application",
                 cta_url=reverse(
                     "course_applications:status",
-                    kwargs={"pk": existing_app.pk},
+                    kwargs={"pk": application.pk},
                 ),
                 can_self_register=False,
                 can_access_content=False,

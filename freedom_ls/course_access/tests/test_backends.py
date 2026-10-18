@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from django.contrib.auth.models import AnonymousUser
+from django.test import RequestFactory
+
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.learner_management.factories import (
@@ -23,6 +26,15 @@ class TestCourseAccessBackend:
         backend = CourseAccessBackend()
         with pytest.raises(NotImplementedError):
             backend.get_access(user=None, course=None)
+
+    def test_get_access_for_request_raises(self):
+        from freedom_ls.course_access.backends import CourseAccessBackend
+
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+        backend = CourseAccessBackend()
+        with pytest.raises(NotImplementedError):
+            backend.get_access_for_request(request=request, course=None)
 
     def test_filter_visible_raises(self):
         from freedom_ls.course_access.backends import CourseAccessBackend
@@ -45,6 +57,43 @@ class TestCourseAccessBackend:
         backend = CourseAccessBackend()
         result = backend.get_dashboard_contributions(user=None)
         assert result == []
+
+
+@pytest.mark.django_db
+class TestFreeOnlyCourseAccessBackendGetAccessForRequest:
+    """FreeOnlyCourseAccessBackend.get_access_for_request decides by user alone."""
+
+    def test_anonymous_request_gets_the_get_access_decision(self, mock_site_context):
+        from django.contrib.auth.models import AnonymousUser
+
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+        backend = FreeOnlyCourseAccessBackend()
+
+        decision = backend.get_access_for_request(request=request, course=course)
+
+        assert decision == backend.get_access(user=request.user, course=course)
+
+    def test_registered_user_request_gets_the_get_access_decision(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        course = CourseFactory(access_config={"access_type": "free"})
+        user = UserFactory()
+        LearnerCourseRegistrationFactory(
+            learner__user=user, course=course, is_active=True
+        )
+        request = RequestFactory().get("/")
+        request.user = user
+        backend = FreeOnlyCourseAccessBackend()
+
+        decision = backend.get_access_for_request(request=request, course=course)
+
+        assert decision == backend.get_access(user=user, course=course)
 
 
 class TestFreeOnlyCourseAccessBackendValidate:

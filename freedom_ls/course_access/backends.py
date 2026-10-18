@@ -25,6 +25,7 @@ from freedom_ls.learner_management.utils import is_registered_for_course
 if TYPE_CHECKING:
     from django.contrib.auth.models import AnonymousUser
     from django.db.models import QuerySet
+    from django.http import HttpRequest
 
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
@@ -106,6 +107,17 @@ class CourseAccessBackend:
     def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
         """Return an access decision for this user + course pair."""
         raise NotImplementedError
+
+    def get_access_for_request(
+        self, *, request: HttpRequest, course: Course
+    ) -> CourseAccessDecision:
+        """The access decision for whoever is making this request.
+
+        The default reads nothing but the user, so a backend that decides by
+        user alone overrides get_access only. A backend that also recognises an
+        anonymous session overrides this.
+        """
+        return self.get_access(user=request.user, course=course)
 
     def is_accessible_for_free(self, *, course: Course) -> bool:
         """User-independent free/gated signal for badges and JSON-LD.
@@ -354,7 +366,10 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
     def __init__(self, inner: CourseAccessBackend) -> None:
         self._inner = inner
 
-    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
+    def _visibility_decision(
+        self, *, user: RequestUser, course: Course
+    ) -> CourseAccessDecision | None:
+        """The decision visibility forces, or None when the inner backend decides."""
         from freedom_ls.content_engine.models import CourseVisibility
         from freedom_ls.course_access.overrides import (
             override_access_to_free,
@@ -393,7 +408,21 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
             # Dev/staging preview: replace the inner backend's real decision with
             # the canonical free decision, ignoring the course's actual access_config.
             return _free_access_decision(user=user, course=course)
+        return None
+
+    def get_access(self, *, user: RequestUser, course: Course) -> CourseAccessDecision:
+        forced = self._visibility_decision(user=user, course=course)
+        if forced is not None:
+            return forced
         return self._inner.get_access(user=user, course=course)
+
+    def get_access_for_request(
+        self, *, request: HttpRequest, course: Course
+    ) -> CourseAccessDecision:
+        forced = self._visibility_decision(user=request.user, course=course)
+        if forced is not None:
+            return forced
+        return self._inner.get_access_for_request(request=request, course=course)
 
     def is_accessible_for_free(self, *, course: Course) -> bool:
         from freedom_ls.course_access.overrides import override_access_to_free

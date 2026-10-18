@@ -45,6 +45,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.organisations.factories import OrganisationFactory
+from freedom_ls.tests.app_guards import app_not_installed
 
 # The wrapper the express-interest partial renders around its call to action.
 EXPRESS_INTEREST_CTA = 'id="express-interest-cta-'
@@ -93,6 +94,25 @@ def test_anonymous_free_course_detail_cta_href_is_access_url(
         kwargs={"course_slug": course.slug},
     )
     assert access_url in response.content.decode()
+
+
+_DETAILS = {"email": "ada@example.com", "first_name": "Ada", "last_name": "Lovelace"}
+
+
+def _gated_form_course() -> Course:
+    return cast(
+        Course,
+        CourseFactory(
+            access_config={"access_type": "application_gated"},
+            application_form=FormFactory(strategy=FormStrategy.UNSCORED),
+        ),
+    )
+
+
+def _details_post_url(course: Course) -> str:
+    return reverse(
+        "course_applications:applicant_details", kwargs={"course_slug": course.slug}
+    )
 
 
 @pytest.mark.django_db
@@ -148,6 +168,47 @@ def test_anonymous_gated_course_detail_cta_href_is_apply_url(
         "course_applications:apply", kwargs={"course_slug": course.slug}
     )
     assert apply_url in response.content.decode()
+
+
+needs_course_applications = pytest.mark.skipif(
+    app_not_installed("freedom_ls.course_applications"),
+    reason="course_applications not installed",
+)
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_anonymous_applicant_sees_view_my_application_on_the_course_page(
+    mock_site_context, settings
+):
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+    course = _gated_form_course()
+    client = Client()
+    posted = client.post(_details_post_url(course), _DETAILS)
+    application_pk = re.findall(r"[0-9a-f-]{36}", posted["Location"])[0]
+
+    response = client.get(_detail_url(course))
+
+    status_url = reverse("course_applications:status", kwargs={"pk": application_pk})
+    content = response.content.decode()
+    assert "View my application" in content
+    assert status_url in content
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_fresh_anonymous_visitor_still_sees_apply_now_on_a_gated_course_page(
+    mock_site_context, settings
+):
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+    course = _gated_form_course()
+    Client().post(_details_post_url(course), _DETAILS)
+
+    response = Client().get(_detail_url(course))
+
+    content = response.content.decode()
+    assert "Apply now" in content
+    assert "View my application" not in content
 
 
 @pytest.mark.django_db

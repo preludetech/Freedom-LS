@@ -713,7 +713,9 @@ def course_detail(request: HttpRequest, course_slug: str) -> HttpResponse:
     # Hidden courses 404 for anyone not registered, matching the wrapper's
     # filter_visible rule (coming_soon and published detail pages stay accessible).
     raise_404_if_hidden_unregistered(request.user, course)
-    decision = get_course_access_backend().get_access(user=request.user, course=course)
+    decision = get_course_access_backend().get_access_for_request(
+        request=request, course=course
+    )
     # get_course_index is anonymous-safe (it fetches user-scoped progress/deadlines
     # only behind its own is_authenticated / can_access_content guards).
     children = get_course_index(

@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
-from django.test import override_settings
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 
 from freedom_ls.accounts.factories import UserFactory
@@ -168,6 +168,53 @@ class TestVisibilityEnforcingBackendGetAccess:
         # learner on a free course; the wrapper delegates unchanged.
         assert decision.cta_label == "Enrol for free"
         assert decision.can_self_register is True
+
+
+def _request_decision_for(backend_path, *, course):
+    """The wrapped backend's request-aware decision for an anonymous request."""
+    request = RequestFactory().get("/")
+    request.user = AnonymousUser()
+    request.session = {}
+    return _backend_for(backend_path).get_access_for_request(
+        request=request, course=course
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("backend_path", BACKEND_PATHS)
+class TestVisibilityEnforcingBackendGetAccessForRequest:
+    """get_access_for_request enforces visibility the way get_access does."""
+
+    def test_coming_soon_unregistered_request_gets_the_interested_decision(
+        self, mock_site_context, backend_path
+    ):
+        course = CourseFactory(visibility=CourseVisibility.COMING_SOON)
+
+        decision = _request_decision_for(backend_path, course=course)
+
+        assert decision.cta_label == "I'm interested"
+
+    def test_hidden_unregistered_request_gets_the_closed_decision(
+        self, mock_site_context, backend_path
+    ):
+        course = CourseFactory(visibility=CourseVisibility.HIDDEN)
+
+        decision = _request_decision_for(backend_path, course=course)
+
+        assert decision.cta_label is None
+        assert decision.cta_url is None
+        assert decision.can_access_content is False
+
+    def test_published_request_gets_the_inner_backends_decision(
+        self, mock_site_context, backend_path
+    ):
+        course = CourseFactory(visibility=CourseVisibility.PUBLISHED)
+
+        decision = _request_decision_for(backend_path, course=course)
+
+        assert decision == _decision_for(
+            backend_path, user=AnonymousUser(), course=course
+        )
 
 
 @pytest.mark.django_db
