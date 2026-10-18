@@ -23,7 +23,7 @@ above it changes. `oob` swaps it over the entry already on screen.
                       title="{{ message.created_at }}">{{ message.created_at|relative_time }}</time>
             </p>
         {% endif %}
-        <div class="max-w-[85%] rounded-lg px-3 py-2 [overflow-wrap:anywhere] {% if message.sender_id == request.user.pk %}bg-primary text-on-primary{% else %}border border-border bg-surface text-on-surface{% endif %}">
+        <div class="max-w-[85%] rounded-lg px-3 py-2 [overflow-wrap:anywhere] {% if message.sender_id == request.user.pk %}bg-primary text-on-primary [&_a]:text-inherit [&_a]:underline{% else %}border border-border bg-surface text-on-surface{% endif %}">
             {{ message.body|urlize|linebreaksbr }}
         </div>
     </li>

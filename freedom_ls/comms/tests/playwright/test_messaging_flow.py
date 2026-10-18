@@ -91,6 +91,23 @@ def test_inbox_to_thread_and_back_on_a_phone(
         page.get_by_role("link", name="Kai Ngata").get_by_text("Unread", exact=True)
     ).to_have_count(0)
 
+    # A link inside the viewer's own bubble is not painted in the bubble's colour.
+    own = MessageFactory(
+        conversation=Conversation.objects.get(),
+        sender=logged_in_user,
+        body="See https://example.com/a for details",
+    )
+    page.goto(
+        reverse_url(live_server, "conversations:thread", args=[own.conversation.pk])
+    )
+    own_link = page.locator("li[data-own] a[href='https://example.com/a']")
+    expect(own_link).to_be_visible()
+    link_colour, bubble_colour = own_link.evaluate(
+        "el => [getComputedStyle(el).color,"
+        " getComputedStyle(el.parentElement).backgroundColor]"
+    )
+    assert link_colour != bubble_colour
+
     # Layout: no horizontal overflow on the inbox or the thread at any viewport.
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
