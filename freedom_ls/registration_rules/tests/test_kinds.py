@@ -23,7 +23,11 @@ from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
 )
-from freedom_ls.registration_rules.kinds import AttributeRuleKind, RuleState
+from freedom_ls.registration_rules.kinds import (
+    AttributeConditions,
+    AttributeRuleKind,
+    RuleState,
+)
 from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS
 from freedom_ls.tests.site_context import drop_ambient_request
 
@@ -311,3 +315,51 @@ def test_an_empty_conditions_row_matches_the_whole_organisation(mock_site_contex
 
     # Assert
     assert matched == set(learners)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("name", ["job_titles", "departments", "locations"])
+def test_conditions_from_cleaned_data_reads_each_picker_into_a_set_of_pks(
+    mock_site_context, name
+):
+    # Arrange
+    organisation = OrganisationFactory()
+    entries = {
+        "job_titles": JobTitleFactory(organisation=organisation),
+        "departments": DepartmentFactory(organisation=organisation),
+        "locations": LocationFactory(organisation=organisation),
+    }
+    cleaned = {name: type(entries[name]).objects.filter(pk=entries[name].pk)}
+    attribute = {
+        "job_titles": "job_title_ids",
+        "departments": "department_ids",
+        "locations": "location_ids",
+    }[name]
+
+    # Act
+    conditions = AttributeRuleKind().conditions_from_cleaned_data(cleaned)
+
+    # Assert
+    assert getattr(conditions, attribute) == frozenset({entries[name].pk})
+
+
+@pytest.mark.parametrize(
+    "field", [field for pair in DATE_BOUND_PAIRS for field in pair[:2]]
+)
+def test_conditions_from_cleaned_data_reads_each_date_by_name(field):
+    # Arrange
+    cleaned = {field: date(2024, 3, 1)}
+
+    # Act
+    conditions = AttributeRuleKind().conditions_from_cleaned_data(cleaned)
+
+    # Assert
+    assert getattr(conditions, field) == date(2024, 3, 1)
+
+
+def test_conditions_from_cleaned_data_gives_empty_conditions_for_an_empty_mapping():
+    # Act
+    conditions = AttributeRuleKind().conditions_from_cleaned_data({})
+
+    # Assert
+    assert conditions == AttributeConditions()

@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load static unfold %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static 'admin/js/cancel.js' %}" async></script>
+{% endblock %}
+
+{% block content %}
+    {% component "unfold/components/card.html" %}
+        {% component "unfold/components/text.html" %}
+            Saving "{{ rule.name }}" changes who is registered on {{ rule.course }}.
+        {% endcomponent %}
+
+        {% if switch_is_off %}
+            <p class="mt-4 font-semibold">
+                Registration rules are switched off for {{ rule.organisation }}. Nothing changes
+                until they are switched on; this is what would change then.
+            </p>
+        {% endif %}
+
+        <section class="mt-6" id="will-register">
+            <h2 class="font-semibold">Will be registered ({{ will_register|length }})</h2>
+            {% include "admin/registration_rules/preview_list.html" with entries=will_register %}
+        </section>
+
+        <section class="mt-6" id="will-retract">
+            <h2 class="font-semibold">Will be retracted ({{ will_retract|length }})</h2>
+            {% include "admin/registration_rules/preview_list.html" with entries=will_retract %}
+        </section>
+
+        <section class="mt-6" id="stays-registered">
+            <h2 class="font-semibold">Stops matching but stays registered ({{ stays_registered|length }})</h2>
+            {% if stays_registered %}
+                {% if can_view_learners %}
+                    <ul class="mt-2 flex flex-col gap-1">
+                        {% for learner, reason in stays_registered %}
+                            <li>{{ learner.user.display_name }} ({{ learner.user.email }}): {{ reason }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            {% else %}
+                <p class="mt-2">Nobody</p>
+            {% endif %}
+        </section>
+
+        <form method="post" action="{{ form_url }}" class="flex flex-wrap items-center gap-4 mt-8">
+            {% csrf_token %}
+            {% for name, value in posted %}
+                <input type="hidden" name="{{ name }}" value="{{ value }}">
+            {% endfor %}
+            {% component "unfold/components/button.html" with submit=1 name="_confirmed" %}
+                Confirm and save
+            {% endcomponent %}
+            <a href="#" class="cancel-link">Back to the form</a>
+        </form>
+    {% endcomponent %}
+{% endblock %}

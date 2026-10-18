@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 
 from freedom_ls.learner_management.models import Learner
 from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS, RegistrationRule
@@ -76,6 +77,31 @@ class AttributeRuleKind:
                 for pair in DATE_BOUND_PAIRS
                 for field in pair[:2]
             },
+        )
+
+    def conditions_from_cleaned_data(
+        self, cleaned: Mapping[str, object]
+    ) -> AttributeConditions:
+        """The conditions a bound, valid conditions form describes.
+
+        An empty mapping is an inline form left blank, which constrains nothing.
+        """
+
+        def held(name: str) -> frozenset[UUID]:
+            chosen = cleaned.get(name)
+            if not isinstance(chosen, QuerySet | list | tuple):
+                return frozenset()
+            return frozenset(entry.pk for entry in chosen if isinstance(entry, Model))
+
+        def bound(name: str) -> date | None:
+            value = cleaned.get(name)
+            return value if isinstance(value, date) else None
+
+        return AttributeConditions(
+            job_title_ids=held("job_titles"),
+            department_ids=held("departments"),
+            location_ids=held("locations"),
+            **{field: bound(field) for pair in DATE_BOUND_PAIRS for field in pair[:2]},
         )
 
     def matching_learners(self, state: RuleState) -> QuerySet[Learner]:

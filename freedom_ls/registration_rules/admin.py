@@ -1,29 +1,40 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from uuid import UUID
 
 from unfold.admin import StackedInline
 
 from django.contrib import admin, messages
+from django.contrib.admin.options import csrf_protect_m
 from django.contrib.admin.utils import unquote
 from django.db.models import Exists, OuterRef, QuerySet
 from django.db.models.fields.related import ManyToManyField
-from django.forms import ModelMultipleChoiceField
+from django.forms import ModelMultipleChoiceField, all_valid
 from django.http import HttpRequest, HttpResponse
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
 from freedom_ls.learner_management.admin import LearnerCourseRegistrationAdmin
-from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.learner_management.models import (
+    Learner,
+    LearnerCourseRegistration,
+)
+from freedom_ls.registration_rules.evaluation import (
+    classify_rule_changes,
+    rules_enabled_for,
+)
+from freedom_ls.registration_rules.kinds import RuleState
+from freedom_ls.registration_rules.loader import get_rule_kind
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
     RuleRegistration,
 )
-from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin
+from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_page_context
 
 #: Each picker's model, so the narrowed queryset is built from the field name alone.
 _PICKER_MODELS: dict[str, type[JobTitle | Department | Location]] = {
@@ -172,6 +183,19 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
             )
         return warnings
 
+    def _stock_changeform(
+        self,
+        request: HttpRequest,
+        object_id: str | None,
+        form_url: str,
+        extra_context: dict[str, object] | None,
+    ) -> HttpResponse:
+        response: HttpResponse = super().changeform_view(
+            request, object_id, form_url, extra_context
+        )
+        return response
+
+    @csrf_protect_m
     def changeform_view(
         self,
         request: HttpRequest,
@@ -185,10 +209,116 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
                 # Warnings belong on the page a person is about to edit.
                 for warning in self._change_form_warnings(obj):
                     messages.warning(request, warning)
-        response: HttpResponse = super().changeform_view(
-            request, object_id, form_url, extra_context
+        if (
+            request.method != "POST"
+            or object_id is None
+            or "_confirmed" in request.POST
+        ):
+            return self._stock_changeform(request, object_id, form_url, extra_context)
+        rule = self.get_object(request, unquote(object_id))
+        if rule is None or not self.has_change_permission(request, rule):
+            # The stock view answers both cases: a redirect for a missing
+            # object, a 403 for a forbidden one.
+            return self._stock_changeform(request, object_id, form_url, extra_context)
+        enabled_before = rule.is_enabled
+        model_form = self.get_form(request, rule, change=True)
+        form = model_form(request.POST, request.FILES, instance=rule)
+        if not form.is_valid():
+            return self._stock_changeform(request, object_id, form_url, extra_context)
+        # is_valid() has written the submitted values onto `rule`; the saved
+        # values are now only in the database.
+        formsets, _ = self._create_formsets(request, rule, change=True)
+        if not all_valid(formsets):
+            return self._stock_changeform(request, object_id, form_url, extra_context)
+        if not (enabled_before or rule.is_enabled):
+            # Disabled before and after: nothing can change for any learner.
+            return self._stock_changeform(request, object_id, form_url, extra_context)
+        # Without the inline (a user who may not change conditions) the save
+        # leaves the stored conditions alone, so the preview reads them too.
+        conditions_form = (
+            formsets[0].forms[0] if formsets and formsets[0].forms else None
         )
-        return response
+        cleaned = conditions_form.cleaned_data if conditions_form else None
+        return self._render_preview(request, rule, cleaned, form_url)
+
+    def _render_preview(
+        self,
+        request: HttpRequest,
+        rule: RegistrationRule,
+        cleaned: Mapping[str, object] | None,
+        form_url: str,
+    ) -> HttpResponse:
+        """The confirmation page: who a save would register, retract or keep."""
+        # The saved rule is re-read so ownership comes from the database
+        # while the match comes from the submission.
+        saved = RegistrationRule.objects.select_related("organisation", "course").get(
+            pk=rule.pk
+        )
+        kind = get_rule_kind(saved.kind)
+        submitted = RuleState(
+            site_id=saved.site_id,
+            organisation_id=saved.organisation_id,
+            course_id=saved.course_id,
+            is_enabled=rule.is_enabled,
+            conditions=(
+                kind.conditions_from_rule(saved)
+                if cleaned is None
+                else kind.conditions_from_cleaned_data(cleaned)
+            ),
+        )
+        changes = classify_rule_changes(saved, submitted)
+        # The lists name people. Counts are enough for someone allowed to run
+        # rules but not to look at learners.
+        can_view_learners = request.user.has_perm(
+            "freedom_ls_learner_management.view_learner"
+        )
+        learner_ids = {
+            *changes.register,
+            *changes.reactivate,
+            *changes.retract,
+            *changes.kept_started,
+            *(handed.learner_id for handed in changes.hand_over),
+        }
+        learners = (
+            {
+                learner.pk: learner
+                for learner in Learner.objects.filter(
+                    pk__in=learner_ids
+                ).select_related("user")
+            }
+            if can_view_learners
+            else {}
+        )
+        context = {
+            "rule": saved,
+            "can_view_learners": can_view_learners,
+            "will_register": [
+                learners.get(pk) for pk in (*changes.register, *changes.reactivate)
+            ],
+            "will_retract": [learners.get(pk) for pk in changes.retract],
+            "stays_registered": [
+                *(
+                    (learners.get(pk), "Started the course")
+                    for pk in changes.kept_started
+                ),
+                *(
+                    (learners.get(h.learner_id), f"Still matched by {h.rule_name}")
+                    for h in changes.hand_over
+                ),
+            ],
+            "switch_is_off": not rules_enabled_for(saved.organisation_id),
+            "posted": [
+                (name, value)
+                for name in request.POST
+                if name != "csrfmiddlewaretoken"
+                for value in request.POST.getlist(name)
+            ],
+            "form_url": form_url or request.path,
+            **admin_page_context(request, self, f"Confirm changes to {saved.name}"),
+        }
+        return TemplateResponse(
+            request, "admin/registration_rules/preview.html", context
+        )
 
     def get_fields(
         self, request: HttpRequest, obj: RegistrationRule | None = None
