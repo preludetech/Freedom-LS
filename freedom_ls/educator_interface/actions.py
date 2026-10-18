@@ -641,6 +641,56 @@ class ReregisterLearnerForCourseAction(PanelAction):
         return _registration_changed_response(learner)
 
 
+def _membership_changed_response(
+    learner_event_ids: list[str], cohort_event_ids: list[str]
+) -> HttpResponse:
+    """The 204 every membership change answers with: both events, and the
+    modal closed."""
+    response = HttpResponse(status=204)
+    response["HX-Trigger"] = build_hx_trigger(
+        {LEARNER_CHANGED: learner_event_ids, COHORT_CHANGED: cohort_event_ids},
+        close_modal=True,
+    )
+    return response
+
+
+def _joinable_cohorts(ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
+    """Active cohorts the user may add `learner` to and they are not in."""
+    scoped = cast("OrganisationScopedRequest", ctx.request)
+    return (
+        cohorts_visible_to(
+            scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
+        )
+        .filter(is_active=True)
+        .exclude(cohortmembership__learner=learner)
+    )
+
+
+def _cohort_picker(
+    ctx: PanelContext,
+    learner: Learner,
+    get_data: Mapping[str, str] | None,
+    *,
+    field_name: str = "cohort",
+) -> CohortPickerForm:
+    """The picker of cohorts to put `learner` in, bound to `get_data` on a GET.
+
+    A POST picks from every cohort of the organisation the learner is not in,
+    wider than the offered set, so a cohort the user may see but not add to
+    reaches the permission check and is refused as a denial.
+    """
+    if ctx.request.method == "POST":
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        queryset = Cohort.objects.filter(organisation=scoped.organisation).exclude(
+            cohortmembership__learner=learner
+        )
+        data: Mapping[str, str] | None = ctx.request.POST
+    else:
+        queryset = _joinable_cohorts(ctx, learner)
+        data = get_data
+    return CohortPickerForm(data, queryset=queryset, field_name=field_name)
+
+
 class MembershipAction(PanelAction):
     """A change to one learner's membership of one cohort, after confirmation.
 
@@ -695,11 +745,7 @@ class MembershipAction(PanelAction):
             return inactive_cohort_response(ctx.request, cohort)
         self.perform(learner, cohort)
         ids = [str(learner.pk), str(cohort.pk)]
-        response = HttpResponse(status=204)
-        response["HX-Trigger"] = build_hx_trigger(
-            {LEARNER_CHANGED: ids, COHORT_CHANGED: ids}, close_modal=True
-        )
-        return response
+        return _membership_changed_response(ids, ids)
 
 
 class RemoveFromCohortAction(MembershipAction):
@@ -742,31 +788,9 @@ class MoveToCohortAction(MembershipAction):
     capability = "freedom_ls_learner_management.delete_cohortmembership"
     template_name = "educator_interface/modal/move_confirmation.html"
 
-    def _offered(self, ctx: PanelContext, learner: Learner) -> QuerySet[Cohort]:
-        scoped = cast("OrganisationScopedRequest", ctx.request)
-        return (
-            cohorts_visible_to(
-                scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
-            )
-            .filter(is_active=True)
-            .exclude(cohortmembership__learner=learner)
-        )
-
     def _picker(self, ctx: PanelContext, learner: Learner) -> CohortPickerForm:
-        scoped = cast("OrganisationScopedRequest", ctx.request)
-        if ctx.request.method == "POST":
-            # Wider than the offered set, so a cohort the user may see but not
-            # add to reaches the permission check and is refused as a denial.
-            queryset = Cohort.objects.filter(organisation=scoped.organisation)
-            data: Mapping[str, str] | None = ctx.request.POST
-        else:
-            queryset = self._offered(ctx, learner)
-            data = ctx.request.GET if "destination" in ctx.request.GET else None
-        return CohortPickerForm(
-            data,
-            queryset=queryset.exclude(cohortmembership__learner=learner),
-            field_name="destination",
-        )
+        get_data = ctx.request.GET if "destination" in ctx.request.GET else None
+        return _cohort_picker(ctx, learner, get_data, field_name="destination")
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner, source = self._pair(ctx)
@@ -774,7 +798,7 @@ class MoveToCohortAction(MembershipAction):
         if not CohortMembership.objects.filter(learner=learner, cohort=source).exists():
             context.update({"learner": learner, "cohort": source, "not_a_member": True})
             return context
-        if not self._offered(ctx, learner).exists():
+        if not _joinable_cohorts(ctx, learner).exists():
             name = learner.user.display_name
             context.update(
                 {
@@ -847,11 +871,7 @@ class MoveToCohortAction(MembershipAction):
         except ValueError as error:
             return self._refusal(ctx, str(error))
         ids = [str(learner.pk), str(source.pk), str(destination.pk)]
-        response = HttpResponse(status=204)
-        response["HX-Trigger"] = build_hx_trigger(
-            {LEARNER_CHANGED: ids, COHORT_CHANGED: ids}, close_modal=True
-        )
-        return response
+        return _membership_changed_response(ids, ids)
 
     def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
         context = self.get_context_data(ctx)
@@ -863,7 +883,7 @@ class MoveToCohortAction(MembershipAction):
         learner, _ = self._pair(ctx)
         cast(
             forms.ModelChoiceField, form.fields["destination"]
-        ).queryset = self._offered(ctx, learner)
+        ).queryset = _joinable_cohorts(ctx, learner)
         return render(ctx.request, self.template_name, context, status=422)
 
 
@@ -898,16 +918,6 @@ def _picker_fragment(
     return HttpResponse(html, status=status)
 
 
-def _membership_changed_response(
-    learner_ids: list[str], cohort_id: str
-) -> HttpResponse:
-    response = HttpResponse(status=204)
-    response["HX-Trigger"] = build_hx_trigger(
-        {LEARNER_CHANGED: learner_ids, COHORT_CHANGED: [cohort_id]}, close_modal=True
-    )
-    return response
-
-
 class AddToCohortAction(PanelAction):
     """Adds the learner on the page to an active cohort the user may add to."""
 
@@ -924,21 +934,7 @@ class AddToCohortAction(PanelAction):
     }
 
     def _form(self, ctx: PanelContext) -> CohortPickerForm:
-        scoped = cast("OrganisationScopedRequest", ctx.request)
-        learner = cast(Learner, ctx.instance)
-        if ctx.request.method == "POST":
-            # Wider than the offered set, so a cohort the user may see but not
-            # add to reaches the permission check and is refused as a denial.
-            queryset = Cohort.objects.filter(organisation=scoped.organisation)
-            data = ctx.request.POST
-        else:
-            queryset = cohorts_visible_to(
-                scoped.user, scoped.organisation, capability=ADD_COHORTMEMBERSHIP
-            ).filter(is_active=True)
-            data = None
-        return CohortPickerForm(
-            data, queryset=queryset.exclude(cohortmembership__learner=learner)
-        )
+        return _cohort_picker(ctx, cast(Learner, ctx.instance), None)
 
     def _title(self, ctx: PanelContext) -> str:
         return f"Add {cast(Learner, ctx.instance).user.display_name} to a cohort"
@@ -971,7 +967,7 @@ class AddToCohortAction(PanelAction):
             return inactive_cohort_response(ctx.request, cohort)
         learner = cast(Learner, ctx.instance)
         add_to_cohort(learner, cohort)
-        return _membership_changed_response([str(learner.pk)], str(cohort.pk))
+        return _membership_changed_response([str(learner.pk)], [str(cohort.pk)])
 
 
 class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
@@ -1036,7 +1032,7 @@ class AddExistingLearnersAction(RequiresActiveCohortMixin, PanelAction):
             for learner in learners:
                 add_to_cohort(learner, cohort)
         return _membership_changed_response(
-            [str(learner.pk) for learner in learners], str(cohort.pk)
+            [str(learner.pk) for learner in learners], [str(cohort.pk)]
         )
 
 
