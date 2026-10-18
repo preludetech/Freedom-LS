@@ -63,6 +63,15 @@ def test_an_applicant_can_fill_in_attach_change_and_submit(
     # the form.
     logged_in_page.goto(reverse_url(live_server, "learner_interface:dashboard"))
     expect(logged_in_page.get_by_text("Incomplete")).to_be_visible()
+    # The rows line up with their heading rather than sitting in the list's
+    # default indent.
+    heading_box = logged_in_page.get_by_role(
+        "heading", name="Your applications"
+    ).bounding_box()
+    row_box = logged_in_page.get_by_role("listitem").first.bounding_box()
+    assert heading_box is not None
+    assert row_box is not None
+    assert row_box["x"] == pytest.approx(heading_box["x"], abs=1)
     logged_in_page.goto(
         reverse_url(
             live_server,
