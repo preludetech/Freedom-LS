@@ -1,7 +1,7 @@
 <div class="space-y-4     text-left">
     {% for field in form %}
         <div class="form-field">
-            {{ field.label_tag }}
+            {% if not field.is_hidden %}{{ field.label_tag }}{% endif %}
             {{ field }}
             {% if field.help_text %}
                 <p class="text-sm text-muted mt-1">
