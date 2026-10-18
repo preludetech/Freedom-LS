@@ -57,7 +57,20 @@ def rule_run_for_one_learner(mock_site_context, django_capture_on_commit_callbac
 
 
 @pytest.mark.django_db
-def test_registers_a_matching_learner_and_links_the_rule(rule_run_for_one_learner):
+def test_registers_a_matching_learner(rule_run_for_one_learner):
+    # Arrange
+    rule, learner, _ = rule_run_for_one_learner
+
+    # Act
+    registration = _registrations_for(rule).get(learner=learner)
+
+    # Assert
+    assert registration.is_active is True
+    assert registration.self_registered is False
+
+
+@pytest.mark.django_db
+def test_a_registered_learner_is_linked_to_the_rule(rule_run_for_one_learner):
     # Arrange
     rule, learner, _ = rule_run_for_one_learner
 
@@ -66,8 +79,6 @@ def test_registers_a_matching_learner_and_links_the_rule(rule_run_for_one_learne
     link = RuleRegistration._base_manager.get(registration=registration)
 
     # Assert
-    assert registration.is_active is True
-    assert registration.self_registered is False
     assert link.rule == rule
     assert link.rule_name == rule.name
     assert link.is_retracted is False
