@@ -2193,6 +2193,29 @@ def test_unregister_fragment_names_the_cohort_keeping_access(staff_client: Clien
 
 
 @pytest.mark.django_db
+def test_unregister_fragment_does_not_name_a_cohort_the_educator_cannot_see(
+    mock_site_context: Site, logged_in_client
+):
+    organisation = OrganisationFactory()
+    learner, seen = _membership(organisation, name="Year 10")
+    hidden = cast(Cohort, CohortFactory(organisation=organisation, name="Staff Room"))
+    CohortMembershipFactory(cohort=hidden, learner=learner)
+    course = CourseFactory(title="Algebra")
+    CohortCourseRegistrationFactory(cohort=hidden, course=course)
+    registration = LearnerCourseRegistrationFactory(learner=learner, course=course)
+    educator = _cohort_admin_on(organisation, seen)
+
+    text = _get_fragment(
+        logged_in_client(educator),
+        _learner_unregister_url(organisation, learner)
+        + f"?registration={registration.pk}",
+    )
+
+    assert "Staff Room" not in text
+    assert "They keep access through another cohort." in text
+
+
+@pytest.mark.django_db
 def test_unregister_fragment_says_the_learner_loses_access_without_a_cohort(
     staff_client: Client,
 ):

@@ -1,14 +1,17 @@
 {% comment %}
 The modal fragment an UnregisterLearnerFromCourseAction's GET returns. Context:
 learner, registration, course, keeping_cohorts (a prose list of the cohorts
-still granting the course, empty when none does), on_default_organisation,
-confirm_url.
+the educator can see that still grant the course, empty when none does),
+keeps_access (whether any cohort, seen or not, still grants it),
+on_default_organisation, confirm_url.
 {% endcomment %}
 <c-modal-header>Unregister {{ learner.user.display_name }} from {{ course }}</c-modal-header>
 
 <div class="space-y-3 px-6 py-4 text-sm">
     {% if keeping_cohorts %}
         <p>They keep access through {{ keeping_cohorts }}.</p>
+    {% elif keeps_access %}
+        <p>They keep access through another cohort.</p>
     {% else %}
         <p>They lose access to {{ course }}.</p>
     {% endif %}

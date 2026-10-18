@@ -566,6 +566,14 @@ class UnregisterLearnerFromCourseAction(PanelAction):
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         learner = cast(Learner, ctx.instance)
         registration = self._registration(ctx)
+        scoped = cast("OrganisationScopedRequest", ctx.request)
+        granting = other_grants_for(learner, registration.course)
+        # A cohort the educator cannot see is never named.
+        visible_ids = set(
+            cohorts_visible_to(scoped.user, scoped.organisation).values_list(
+                "pk", flat=True
+            )
+        )
         context = super().get_context_data(ctx)
         context.update(
             {
@@ -573,11 +581,9 @@ class UnregisterLearnerFromCourseAction(PanelAction):
                 "registration": registration,
                 "course": registration.course,
                 "keeping_cohorts": join_prose(
-                    [
-                        cohort.name
-                        for cohort in other_grants_for(learner, registration.course)
-                    ]
+                    [cohort.name for cohort in granting if cohort.pk in visible_ids]
                 ),
+                "keeps_access": bool(granting),
                 "on_default_organisation": (
                     learner.organisation_id == get_default_organisation(learner.site).pk
                 ),
