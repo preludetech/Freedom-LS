@@ -219,16 +219,14 @@ def _add_one(
     existing = Learner._base_manager.filter(
         user=user, organisation=organisation
     ).first()
-    if existing is not None and existing.is_active:
-        learner, outcome = existing, AddOutcome.ALREADY_LEARNER
-    else:
+    if existing is None:
         learner = ensure_learner(user, organisation)
-        if existing is None:
-            outcome = AddOutcome.CREATED if account_created else AddOutcome.JOINED
-            _fire("learner.added", learner, {"account_created": account_created})
-        else:
-            outcome = AddOutcome.REACTIVATED
-            _fire("learner.reactivated", learner)
+        outcome = AddOutcome.CREATED if account_created else AddOutcome.JOINED
+        _fire("learner.added", learner, {"account_created": account_created})
+    elif reactivate_learner(existing):
+        learner, outcome = existing, AddOutcome.REACTIVATED
+    else:
+        learner, outcome = existing, AddOutcome.ALREADY_LEARNER
     if account_created:
         send_account_setup_email(user, organisation.name)
 
