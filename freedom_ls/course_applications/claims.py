@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
+from uuid import UUID
 
 from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
@@ -17,6 +18,7 @@ from django.utils import timezone
 
 from freedom_ls.accounts.allauth_account_adapter import announce_user_registered
 from freedom_ls.accounts.models import LegalConsent, User
+from freedom_ls.course_applications.applicant_email import normalise_email
 from freedom_ls.course_applications.erasure import erase_anonymous_applicant
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 
@@ -75,13 +77,36 @@ class AttachResult:
 
 
 def claim_token(applicant: AnonymousApplicant) -> str:
-    return signing.dumps(str(applicant.pk), salt=CLAIM_TOKEN_SALT)
+    return signing.dumps(
+        {"a": str(applicant.pk), "v": applicant.claim_link_version},
+        salt=CLAIM_TOKEN_SALT,
+    )
 
 
 def claim_url(request: HttpRequest, applicant: AnonymousApplicant) -> str:
     return request.build_absolute_uri(
         reverse("course_applications:claim", kwargs={"token": claim_token(applicant)})
     )
+
+
+def _token_payload(payload: object) -> tuple[UUID, int] | None:
+    """The applicant pk and link version a token names, or None for a shape
+    that was never ours.
+
+    A bare pk string is a link signed before versions existed; it reads as
+    version 0, so links already in mailboxes keep working until the address
+    next changes.
+    """
+    if isinstance(payload, str):
+        pk_text, version = payload, 0
+    elif isinstance(payload, dict) and isinstance(payload.get("v"), int):
+        pk_text, version = str(payload.get("a", "")), payload["v"]
+    else:
+        return None
+    try:
+        return UUID(pk_text), version
+    except ValueError:
+        return None
 
 
 def read_claim_token(token: str) -> ClaimLink | None:
@@ -93,21 +118,55 @@ def read_claim_token(token: str) -> ClaimLink | None:
     """
     max_age = timedelta(days=allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS)
     try:
-        pk = signing.loads(token, salt=CLAIM_TOKEN_SALT, max_age=max_age)
+        payload = signing.loads(token, salt=CLAIM_TOKEN_SALT, max_age=max_age)
         expired = False
     except signing.SignatureExpired:
         # The signature is good; only its age failed. The applicant is still
         # needed, to offer a fresh link to the same address.
-        pk = signing.loads(token, salt=CLAIM_TOKEN_SALT)
+        payload = signing.loads(token, salt=CLAIM_TOKEN_SALT)
         expired = True
     except signing.BadSignature:
         return None
+    named = _token_payload(payload)
+    if named is None:
+        return None
+    pk, version = named
     applicant = (
         AnonymousApplicant.objects.filter(pk=pk)
         .select_related("course", "course_application__form_progress")
         .first()
     )
-    return None if applicant is None else ClaimLink(applicant, expired)
+    # A link whose version is behind was sent to an address the applicant has
+    # since changed; it is unusable even for a fresh link, which would go to
+    # that old address.
+    if applicant is None or applicant.claim_link_version != version:
+        return None
+    return ClaimLink(applicant, expired)
+
+
+def update_applicant_email(applicant: AnonymousApplicant, email: str) -> bool:
+    """Change the address every claim link for this applicant is bound to.
+
+    The version moves on so earlier links stop matching, and the sent stamp
+    clears so the pages say truthfully that nothing has reached the new
+    address yet. Returns False, and writes nothing, for an address equal to
+    the stored one.
+    """
+    email = normalise_email(email)
+    if email == applicant.email:
+        return False
+    applicant.email = email
+    applicant.claim_link_version += 1
+    applicant.claim_email_sent_at = None
+    applicant.save(
+        update_fields=[
+            "email",
+            "claim_link_version",
+            "claim_email_sent_at",
+            "updated_at",
+        ]
+    )
+    return True
 
 
 def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:

@@ -53,6 +53,10 @@ class AnonymousApplicant(SiteAwareModel, TimestampedModel):
     # When the claim email last went out. Null means every send so far was
     # skipped by the rate limit or failed, so the status page offers another.
     claim_email_sent_at = models.DateTimeField(null=True, blank=True)
+    # Carried in every claim token. A changed address bumps it, so links sent to
+    # the old address stop matching; a plain resend to the same address does not,
+    # because every link in that mailbox reaches the same person.
+    claim_link_version = models.PositiveIntegerField(default=0)
 
     def __str__(self) -> str:
         # No email here: the admin writes this into its log on delete, and the

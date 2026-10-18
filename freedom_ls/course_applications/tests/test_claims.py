@@ -13,6 +13,7 @@ from allauth.account import app_settings as allauth_account_settings
 from allauth.account.models import EmailAddress
 
 from django.contrib.sessions.backends.db import SessionStore
+from django.core import signing
 from django.db import IntegrityError, connection
 from django.test import RequestFactory
 from django.utils import timezone
@@ -26,6 +27,7 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.claims import (
+    CLAIM_TOKEN_SALT,
     AttachResult,
     ClaimLink,
     ClaimOutcome,
@@ -36,6 +38,7 @@ from freedom_ls.course_applications.claims import (
     claim_token,
     read_claim_token,
     resolve_claim_owner,
+    update_applicant_email,
 )
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
@@ -72,6 +75,163 @@ def test_claim_token_past_the_confirmation_window_reads_as_expired(mock_site_con
         link = read_claim_token(token)
 
     assert link == ClaimLink(applicant, expired=True)
+
+
+def test_bare_pk_claim_token_reads_as_the_applicant_at_version_zero(mock_site_context):
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    token = signing.dumps(str(applicant.pk), salt=CLAIM_TOKEN_SALT)
+
+    link = read_claim_token(token)
+
+    assert link == ClaimLink(applicant, expired=False)
+
+
+def test_bare_pk_claim_token_reads_as_none_once_the_version_has_moved(
+    mock_site_context,
+):
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    token = signing.dumps(str(applicant.pk), salt=CLAIM_TOKEN_SALT)
+    update_applicant_email(applicant, "other@example.com")
+
+    link = read_claim_token(token)
+
+    assert link is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(
+            {"a": "00000000-0000-0000-0000-000000000000"}, id="dict-without-v"
+        ),
+        pytest.param({"a": "not-a-uuid", "v": 0}, id="non-uuid-pk"),
+        pytest.param(["a", 0], id="list"),
+    ],
+)
+def test_claim_token_of_a_validly_signed_wrong_shape_reads_as_none(
+    mock_site_context, payload
+):
+    token = signing.dumps(payload, salt=CLAIM_TOKEN_SALT)
+
+    link = read_claim_token(token)
+
+    assert link is None
+
+
+def test_claim_token_minted_before_an_address_change_reads_as_none(mock_site_context):
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    token = claim_token(applicant)
+    update_applicant_email(applicant, "other@example.com")
+
+    link = read_claim_token(token)
+
+    assert link is None
+
+
+def test_expired_claim_token_minted_before_an_address_change_reads_as_none(
+    mock_site_context,
+):
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    token = claim_token(applicant)
+    update_applicant_email(applicant, "other@example.com")
+    days = allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS
+
+    with time_machine.travel(timezone.now() + timedelta(days=days, hours=1)):
+        link = read_claim_token(token)
+
+    assert link is None
+
+
+def test_changing_the_address_away_and_back_leaves_the_first_link_invalid(
+    mock_site_context,
+):
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    original = applicant.email
+    token = claim_token(applicant)
+    update_applicant_email(applicant, "other@example.com")
+    update_applicant_email(applicant, original)
+
+    link = read_claim_token(token)
+
+    assert link is None
+
+
+@pytest.mark.parametrize("spelling", ["same", "upper", "padded"])
+def test_update_applicant_email_with_the_stored_address_returns_false(
+    mock_site_context, spelling
+):
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    posted = {
+        "same": applicant.email,
+        "upper": applicant.email.upper(),
+        "padded": f"  {applicant.email} ",
+    }[spelling]
+
+    changed = update_applicant_email(applicant, posted)
+
+    assert changed is False
+
+
+def test_update_applicant_email_with_the_stored_address_keeps_version_and_stamp(
+    mock_site_context,
+):
+    sent_at = timezone.now()
+    application = CourseApplicationFactory(anonymous=True)
+    applicant = application.anonymous_applicant
+    applicant.claim_email_sent_at = sent_at
+    applicant.save(update_fields=["claim_email_sent_at"])
+
+    update_applicant_email(applicant, f"  {applicant.email.upper()} ")
+
+    applicant.refresh_from_db()
+    assert (applicant.claim_link_version, applicant.claim_email_sent_at) == (0, sent_at)
+
+
+def test_update_applicant_email_with_a_new_address_returns_true(mock_site_context):
+    applicant = CourseApplicationFactory(anonymous=True).anonymous_applicant
+
+    changed = update_applicant_email(applicant, "New@Example.com")
+
+    assert changed is True
+
+
+def test_update_applicant_email_with_a_new_address_stores_it_lowercased(
+    mock_site_context,
+):
+    applicant = CourseApplicationFactory(anonymous=True).anonymous_applicant
+
+    update_applicant_email(applicant, " New@Example.com ")
+
+    applicant.refresh_from_db()
+    assert applicant.email == "new@example.com"
+
+
+def test_update_applicant_email_with_a_new_address_bumps_the_version(mock_site_context):
+    applicant = CourseApplicationFactory(anonymous=True).anonymous_applicant
+
+    update_applicant_email(applicant, "new@example.com")
+
+    applicant.refresh_from_db()
+    assert applicant.claim_link_version == 1
+
+
+def test_update_applicant_email_with_a_new_address_clears_the_sent_stamp(
+    mock_site_context,
+):
+    applicant = CourseApplicationFactory(anonymous=True).anonymous_applicant
+    applicant.claim_email_sent_at = timezone.now()
+    applicant.save(update_fields=["claim_email_sent_at"])
+
+    update_applicant_email(applicant, "new@example.com")
+
+    applicant.refresh_from_db()
+    assert applicant.claim_email_sent_at is None
 
 
 def test_attaching_an_already_claimed_applicant_returns_none(mock_site_context, rf):

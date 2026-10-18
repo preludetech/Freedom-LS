@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import threading
 import time
 from datetime import timedelta
@@ -45,7 +46,7 @@ from freedom_ls.course_applications.anonymous_session import (
     ANONYMOUS_APPLICANTS_SESSION_KEY,
     anonymous_applicant_for_course,
 )
-from freedom_ls.course_applications.claims import claim_token
+from freedom_ls.course_applications.claims import claim_token, update_applicant_email
 from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.views import (
@@ -1969,6 +1970,73 @@ def test_details_step_name_edit_on_an_exhausted_address_is_not_refused(
     )
 
 
+def _repost_details_with_a_new_address(client):
+    """Post details on a form course, then repost with another address; returns
+    the earlier claim link's url and the applicant."""
+    course, _form = gated_course_with_form()
+    _post_details(client, course)
+    applicant = AnonymousApplicant.objects.get(course=course)
+    earlier_url = _claim_url(applicant)
+    mail.outbox.clear()
+    _post_details(client, course, email="new@example.com")
+    applicant.refresh_from_db()
+    return earlier_url, applicant
+
+
+@pytest.mark.django_db
+def test_reposting_details_with_a_new_address_bumps_the_claim_link_version(
+    mock_site_context, client
+):
+    _earlier_url, applicant = _repost_details_with_a_new_address(client)
+
+    assert applicant.claim_link_version == 1
+
+
+@pytest.mark.django_db
+def test_reposting_details_with_a_new_address_sends_one_email_to_it(
+    mock_site_context, client
+):
+    _repost_details_with_a_new_address(client)
+
+    assert [message.to for message in mail.outbox] == [["new@example.com"]]
+
+
+@pytest.mark.django_db
+def test_reposting_details_with_a_new_address_invalidates_the_earlier_link(
+    mock_site_context, client
+):
+    earlier_url, _applicant = _repost_details_with_a_new_address(client)
+
+    response = client.get(earlier_url)
+
+    assert response.context["claim_state"] == "invalid"
+
+
+@pytest.mark.django_db
+def test_reposting_details_with_only_a_new_name_keeps_the_claim_link_version(
+    mock_site_context, client
+):
+    course, _form = gated_course_with_form()
+    _post_details(client, course)
+
+    _post_details(client, course, first_name="Grace")
+
+    assert AnonymousApplicant.objects.get(course=course).claim_link_version == 0
+
+
+@pytest.mark.django_db
+def test_reposting_details_with_only_a_new_name_sends_nothing(
+    mock_site_context, client
+):
+    course, _form = gated_course_with_form()
+    _post_details(client, course)
+    mail.outbox.clear()
+
+    _post_details(client, course, first_name="Grace")
+
+    assert mail.outbox == []
+
+
 @pytest.mark.django_db
 def test_details_step_changing_the_address_spends_the_new_addresss_limit(
     client, gated_course
@@ -3605,6 +3673,21 @@ def test_expired_token_post_sends_one_email_to_the_stored_address(client, claima
     assert [message.to for message in mail.outbox] == [
         [claimable.anonymous_applicant.email]
     ]
+
+
+@pytest.mark.django_db
+def test_expired_token_post_after_an_address_change_sends_a_link_that_confirms(
+    client, claimable
+):
+    applicant = claimable.anonymous_applicant
+    update_applicant_email(applicant, "new@example.com")
+    mail.outbox.clear()
+
+    _expired_claim_post(client, claimable)
+
+    emailed_link = re.search(r"https?://\S+/claim/[^\s\"<]+", mail.outbox[0].body)
+    assert emailed_link is not None
+    assert client.get(emailed_link.group(0)).context["claim_state"] == "confirm"
 
 
 @pytest.mark.django_db

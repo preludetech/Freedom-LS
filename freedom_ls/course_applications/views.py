@@ -48,6 +48,7 @@ from freedom_ls.course_applications.claims import (
     claim_sets_a_password,
     read_claim_token,
     resolve_claim_owner,
+    update_applicant_email,
 )
 from freedom_ls.course_applications.emails import send_application_claim_email
 from freedom_ls.course_applications.forms import ApplicantDetailsForm
@@ -370,6 +371,12 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                 return redirect(
                     "course_applications:applicant_details", course_slug=course.slug
                 )
+            if applicant is not None and previous_email is not None and address_changed:
+                # Validation already wrote the posted address onto the instance.
+                # The stored one goes back first, so the change runs through the
+                # one helper that invalidates the links sent to it.
+                applicant.email = previous_email
+                update_applicant_email(applicant, email)
             applicant = form.save()
             remember_anonymous_applicant(request, applicant)
             if course.application_form is None:
