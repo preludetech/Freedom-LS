@@ -57,6 +57,7 @@ TIMESTAMPED_MODELS = frozenset(
         "freedom_ls_messaging_policy.OrganisationMessagingConfig",
         "freedom_ls_messaging_policy.SiteMessagingConfig",
         "freedom_ls_organisations.Organisation",
+        "freedom_ls_registration_rules.RegistrationRule",
     }
 )
 

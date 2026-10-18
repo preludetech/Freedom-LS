@@ -101,6 +101,26 @@ def _clear_course_access_backend_cache():
 
 
 @pytest.fixture(autouse=True)
+def _clear_rule_kind_cache():
+    """Reset the cached rule kinds before and after each test.
+
+    get_rule_kind() is @functools.cache'd for the process lifetime; a test that
+    overrides REGISTRATION_RULE_KINDS would otherwise leak its kind. Imported
+    only when the app is installed, so the suite still runs without it.
+    """
+    from django.apps import apps
+
+    if not apps.is_installed("freedom_ls.registration_rules"):
+        yield
+        return
+    from freedom_ls.registration_rules.loader import get_rule_kind
+
+    get_rule_kind.cache_clear()
+    yield
+    get_rule_kind.cache_clear()
+
+
+@pytest.fixture(autouse=True)
 def _clear_messaging_policy_cache():
     """Reset the cached messaging policy before and after each test.
 

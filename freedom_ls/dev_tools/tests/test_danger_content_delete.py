@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from django.apps import apps
 from django.core.management import call_command
 from django.db import transaction
 from django.db.models import ProtectedError
@@ -55,3 +56,20 @@ def test_danger_content_delete_removes_articles(mock_site_context):
     call_command("danger_content_delete", "--yes")
 
     assert Article.objects.count() == 0
+
+
+def test_danger_content_delete_succeeds_with_registration_rules_present(
+    mock_site_context,
+):
+    """RegistrationRule.course is PROTECTed; the command clears rules first."""
+    if not apps.is_installed("freedom_ls.registration_rules"):
+        pytest.skip("registration_rules not installed")
+    from freedom_ls.registration_rules.factories import RegistrationRuleFactory
+    from freedom_ls.registration_rules.models import RegistrationRule
+
+    RegistrationRuleFactory()
+
+    call_command("danger_content_delete", "--yes")
+
+    assert Course.objects.count() == 0
+    assert RegistrationRule.objects.count() == 0

@@ -38,6 +38,8 @@ freedom_ls.course_interest.tests.test_views -> freedom_ls.learner_management.fac
 # dev_tools
 freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.course_applications.factories
 freedom_ls.dev_tools.tests.test_danger_commands_with_applications -> freedom_ls.course_applications.models
+freedom_ls.dev_tools.tests.test_danger_content_delete -> freedom_ls.registration_rules.factories
+freedom_ls.dev_tools.tests.test_danger_content_delete -> freedom_ls.registration_rules.models
 
 # educator_interface
 freedom_ls.educator_interface.tests.test_course_visibility_and_interest -> freedom_ls.course_interest.factories

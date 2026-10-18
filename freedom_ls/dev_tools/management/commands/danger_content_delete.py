@@ -106,6 +106,11 @@ def command(yes: bool) -> None:
             deletion_order.insert(
                 0, ("freedom_ls_course_applications", "CourseApplication")
             )
+        # Rules PROTECT the course they name, so they go after the registrations
+        # that explain them and before the course delete below. Appended, not
+        # inserted: nothing above depends on a rule.
+        if apps.is_installed("freedom_ls.registration_rules"):
+            deletion_order.append(("freedom_ls_registration_rules", "RegistrationRule"))
         for app_label, label in deletion_order:
             apps.get_model(app_label, label).objects.all().delete()
 
