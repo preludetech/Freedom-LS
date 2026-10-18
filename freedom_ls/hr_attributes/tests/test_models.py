@@ -255,7 +255,9 @@ def test_for_picker_returns_active_entries_and_the_held_inactive_one_in_name_ord
     factory_class(name="Other organisation")
 
     # Act
-    names = [entry.name for entry in model.objects.for_picker(organisation.pk, held.pk)]
+    names = [
+        entry.name for entry in model.objects.for_picker(organisation.pk, [held.pk])
+    ]
 
     # Assert
     assert names == ["Alpha", "Bravo", "Charlie"]
@@ -273,7 +275,7 @@ def test_for_picker_without_a_held_entry_omits_inactive_entries(
     factory_class(organisation=organisation, name="Bravo", is_active=False)
 
     # Act
-    names = [entry.name for entry in model.objects.for_picker(organisation.pk, None)]
+    names = [entry.name for entry in model.objects.for_picker(organisation.pk, [])]
 
     # Assert
     assert names == ["Alpha"]

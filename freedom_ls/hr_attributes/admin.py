@@ -120,7 +120,7 @@ def _picker_querysets(
         return {name: model.objects.none() for name, model in _PICKER_MODELS.items()}
     organisation_id, *held_pks = stored
     return {
-        name: model.objects.for_picker(organisation_id, held_pk)
+        name: model.objects.for_picker(organisation_id, [held_pk] if held_pk else [])
         for (name, model), held_pk in zip(_PICKER_MODELS.items(), held_pks, strict=True)
     }
 

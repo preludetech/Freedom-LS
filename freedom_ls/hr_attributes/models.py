@@ -6,6 +6,7 @@ is empty, lie in the future, or fall before another, because rehires and
 acquisitions produce real data any ordering rule would reject.
 """
 
+from collections.abc import Iterable
 from typing import TYPE_CHECKING, Self, cast
 from uuid import UUID
 
@@ -18,14 +19,14 @@ from freedom_ls.site_aware_models.models import SiteAwareManager, SiteAwareModel
 
 
 class ListEntryQuerySet(models.QuerySet):
-    def for_picker(self, organisation_id: UUID, current_pk: UUID | None) -> Self:
-        """Active entries of the organisation, plus the one currently held.
+    def for_picker(self, organisation_id: UUID, held_pks: Iterable[UUID]) -> Self:
+        """Active entries of the organisation, plus the ones currently held.
 
         A deactivated entry leaves every picker but stays valid where it is
         already chosen, so a learner holding one can still be saved.
         """
         return self.filter(organisation_id=organisation_id).filter(
-            Q(is_active=True) | Q(pk=current_pk)
+            Q(is_active=True) | Q(pk__in=held_pks)
         )
 
 
@@ -35,10 +36,10 @@ class ListEntryManager(SiteAwareManager):
     _queryset_class = ListEntryQuerySet
 
     def for_picker(
-        self, organisation_id: UUID, current_pk: UUID | None
+        self, organisation_id: UUID, held_pks: Iterable[UUID]
     ) -> ListEntryQuerySet:
         return cast("ListEntryQuerySet", self.get_queryset()).for_picker(
-            organisation_id, current_pk
+            organisation_id, held_pks
         )
 
 

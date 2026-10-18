@@ -6,26 +6,11 @@ from dataclasses import dataclass
 from datetime import date
 from uuid import UUID
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import QuerySet
 
 from freedom_ls.learner_management.models import Learner
-from freedom_ls.registration_rules.models import RegistrationRule
-
-#: (on-or-after bound, before bound, the LearnerHRAttributes date they test).
-DATE_BOUND_PAIRS: tuple[tuple[str, str, str], ...] = (
-    (
-        "organisation_start_on_or_after",
-        "organisation_start_before",
-        "organisation_start_date",
-    ),
-    ("job_title_start_on_or_after", "job_title_start_before", "job_title_start_date"),
-    (
-        "department_start_on_or_after",
-        "department_start_before",
-        "department_start_date",
-    ),
-    ("location_start_on_or_after", "location_start_before", "location_start_date"),
-)
+from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS, RegistrationRule
 
 
 @dataclass(frozen=True)
@@ -78,15 +63,49 @@ class AttributeRuleKind:
     def conditions_from_rule(self, rule: RegistrationRule) -> AttributeConditions:
         # A rule with no conditions row constrains nothing, so it matches the
         # whole organisation.
-        return AttributeConditions()
+        try:
+            stored = rule.attribute_conditions
+        except ObjectDoesNotExist:
+            return AttributeConditions()
+        return AttributeConditions(
+            job_title_ids=frozenset(stored.job_titles.values_list("pk", flat=True)),
+            department_ids=frozenset(stored.departments.values_list("pk", flat=True)),
+            location_ids=frozenset(stored.locations.values_list("pk", flat=True)),
+            **{
+                field: getattr(stored, field)
+                for pair in DATE_BOUND_PAIRS
+                for field in pair[:2]
+            },
+        )
 
     def matching_learners(self, state: RuleState) -> QuerySet[Learner]:
         # _base_manager and explicit site: a task has no request for the
         # site-aware manager to read.
         if not state.is_enabled:
             return Learner._base_manager.none()
-        return Learner._base_manager.filter(
+        learners = Learner._base_manager.filter(
             site_id=state.site_id,
             organisation_id=state.organisation_id,
             is_active=True,
-        ).order_by("pk")
+        )
+        conditions = state.conditions
+        for field, ids in (
+            ("job_title", conditions.job_title_ids),
+            ("department", conditions.department_ids),
+            ("location", conditions.location_ids),
+        ):
+            if ids:
+                learners = learners.filter(**{f"hr_attributes__{field}_id__in": ids})
+        for on_or_after, before, stored_date in DATE_BOUND_PAIRS:
+            lower = getattr(conditions, on_or_after)
+            upper = getattr(conditions, before)
+            # A null date never satisfies a bound: gte and lt are both false on NULL.
+            if lower is not None:
+                learners = learners.filter(
+                    **{f"hr_attributes__{stored_date}__gte": lower}
+                )
+            if upper is not None:
+                learners = learners.filter(
+                    **{f"hr_attributes__{stored_date}__lt": upper}
+                )
+        return learners.order_by("pk")

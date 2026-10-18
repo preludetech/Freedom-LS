@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
 from django.core import serializers
@@ -11,7 +13,9 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
+from freedom_ls.hr_attributes.factories import JobTitleFactory
 from freedom_ls.registration_rules.factories import (
+    AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
     RuleRegistrationFactory,
 )
@@ -87,3 +91,77 @@ def test_deleting_a_rule_snapshots_its_name_onto_its_registrations(mock_site_con
     link = RuleRegistration.objects.get(pk=link.pk)
     assert link.rule is None
     assert link.rule_name == name
+
+
+@pytest.mark.django_db
+def test_saving_a_conditions_row_queues_an_evaluation_of_its_rule(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory()
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        conditions.organisation_start_on_or_after = date(2024, 1, 1)
+        conditions.save()
+
+    # Assert
+    queued = _queued_tasks().get()
+    assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]
+
+
+@pytest.mark.django_db
+def test_adding_an_entry_to_a_picker_queues_an_evaluation_of_the_rule(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory()
+    entry = JobTitleFactory(organisation=conditions.rule.organisation)
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        conditions.job_titles.add(entry)
+
+    # Assert
+    queued = _queued_tasks().get()
+    assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]
+
+
+@pytest.mark.django_db
+def test_adding_a_conditions_row_from_the_entry_side_queues_an_evaluation_of_the_rule(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory()
+    entry = JobTitleFactory(organisation=conditions.rule.organisation)
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        entry.registration_rule_conditions.add(conditions)
+
+    # Assert
+    queued = _queued_tasks().get()
+    assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]
+
+
+@pytest.mark.django_db
+def test_removing_an_entry_from_a_picker_queues_an_evaluation_of_the_rule(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    entry = JobTitleFactory()
+    conditions = AttributeRuleConditionsFactory(
+        rule__organisation=entry.organisation, job_titles=[entry]
+    )
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        conditions.job_titles.remove(entry)
+
+    # Assert
+    queued = _queued_tasks().get()
+    assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]

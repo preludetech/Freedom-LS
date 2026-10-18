@@ -1,0 +1,100 @@
+"""Tests for the registration rule models."""
+
+from __future__ import annotations
+
+from datetime import date
+
+import pytest
+
+from django.core.exceptions import ValidationError
+
+from freedom_ls.tests.app_guards import app_not_installed
+
+if app_not_installed("freedom_ls.registration_rules"):
+    pytest.skip("registration_rules not installed", allow_module_level=True)
+
+from freedom_ls.registration_rules.factories import AttributeRuleConditionsFactory
+from freedom_ls.registration_rules.models import DATE_BOUND_PAIRS
+
+LOWER = date(2024, 6, 1)
+
+#: (on-or-after field, before field), one per start date.
+PAIRS = [pytest.param(pair[0], pair[1], id=pair[2]) for pair in DATE_BOUND_PAIRS]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    (
+        "on_or_after",
+        "before",
+    ),
+    PAIRS,
+)
+def test_a_before_date_earlier_than_its_on_or_after_date_is_refused_on_the_before_field(
+    mock_site_context, on_or_after, before
+):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory.build(
+        **{on_or_after: LOWER, before: date(2024, 1, 1)}
+    )
+
+    # Act
+    with pytest.raises(ValidationError) as excinfo:
+        conditions.clean()
+
+    # Assert
+    assert set(excinfo.value.error_dict) == {before}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    (
+        "on_or_after",
+        "before",
+    ),
+    PAIRS,
+)
+def test_equal_dates_are_refused(mock_site_context, on_or_after, before):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory.build(
+        **{on_or_after: LOWER, before: LOWER}
+    )
+
+    # Act
+    with pytest.raises(ValidationError) as excinfo:
+        conditions.clean()
+
+    # Assert
+    assert set(excinfo.value.error_dict) == {before}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    (
+        "on_or_after",
+        "before",
+    ),
+    PAIRS,
+)
+def test_a_before_date_later_than_its_on_or_after_date_is_accepted(
+    mock_site_context, on_or_after, before
+):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory.build(
+        **{on_or_after: LOWER, before: date(2025, 1, 1)}
+    )
+
+    # Act / Assert
+    conditions.clean()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "field", [field for pair in DATE_BOUND_PAIRS for field in pair[:2]]
+)
+def test_one_bound_alone_is_accepted(mock_site_context, field):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory.build(**{field: LOWER})
+
+    # Act / Assert
+    conditions.clean()

@@ -5,9 +5,26 @@ Evaluation runs in the background and reconciles the course's registrations
 with the current match, so a repeated or stale run changes nothing.
 """
 
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from freedom_ls.site_aware_models.models import SiteAwareModel, TimestampedModel
+
+#: (on-or-after bound, before bound, the LearnerHRAttributes date they test).
+DATE_BOUND_PAIRS: tuple[tuple[str, str, str], ...] = (
+    (
+        "organisation_start_on_or_after",
+        "organisation_start_before",
+        "organisation_start_date",
+    ),
+    ("job_title_start_on_or_after", "job_title_start_before", "job_title_start_date"),
+    (
+        "department_start_on_or_after",
+        "department_start_before",
+        "department_start_date",
+    ),
+    ("location_start_on_or_after", "location_start_before", "location_start_date"),
+)
 
 
 class RegistrationRule(SiteAwareModel, TimestampedModel):
@@ -76,3 +93,58 @@ class RuleRegistration(SiteAwareModel):
 
     def __str__(self) -> str:
         return self.rule_name
+
+
+class AttributeRuleConditions(SiteAwareModel):
+    """What an attribute rule asks of a learner.
+
+    AND across the three lists and the dates, OR within a list. An empty list
+    or a null bound constrains nothing, so a rule with no conditions matches
+    the whole organisation.
+    """
+
+    rule = models.OneToOneField(
+        RegistrationRule, on_delete=models.CASCADE, related_name="attribute_conditions"
+    )
+    job_titles = models.ManyToManyField(
+        "freedom_ls_hr_attributes.JobTitle",
+        blank=True,
+        related_name="registration_rule_conditions",
+    )
+    departments = models.ManyToManyField(
+        "freedom_ls_hr_attributes.Department",
+        blank=True,
+        related_name="registration_rule_conditions",
+    )
+    locations = models.ManyToManyField(
+        "freedom_ls_hr_attributes.Location",
+        blank=True,
+        related_name="registration_rule_conditions",
+    )
+    organisation_start_on_or_after = models.DateField(null=True, blank=True)
+    organisation_start_before = models.DateField(null=True, blank=True)
+    job_title_start_on_or_after = models.DateField(null=True, blank=True)
+    job_title_start_before = models.DateField(null=True, blank=True)
+    department_start_on_or_after = models.DateField(null=True, blank=True)
+    department_start_before = models.DateField(null=True, blank=True)
+    location_start_on_or_after = models.DateField(null=True, blank=True)
+    location_start_before = models.DateField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "attribute conditions"
+        verbose_name_plural = "attribute conditions"
+
+    def __str__(self) -> str:
+        return f"Attribute conditions for {self.rule}"
+
+    def clean(self) -> None:
+        super().clean()
+        errors: dict[str, ValidationError] = {}
+        for on_or_after, before, _ in DATE_BOUND_PAIRS:
+            lower, upper = getattr(self, on_or_after), getattr(self, before)
+            if lower is not None and upper is not None and upper <= lower:
+                errors[before] = ValidationError(
+                    "Must be later than the 'on or after' date."
+                )
+        if errors:
+            raise ValidationError(errors)
