@@ -2519,6 +2519,24 @@ def test_opening_the_thread_marks_it_read(msg_client_for):
 
 @pytest.mark.django_db
 @messages_section
+def test_opening_an_unread_thread_asks_the_page_to_refresh_its_counts(msg_client_for):
+    organisation = OrganisationFactory()
+    educator = _msg_educator(organisation)
+    learner = _msg_learner(organisation)
+    conversation = _msg_conversation(educator, learner.user)
+    MessageFactory(conversation=conversation, sender=learner.user)
+    client = msg_client_for(educator)
+    url = _msg_url(organisation, f"messages/{conversation.pk}")
+
+    first = lxml.html.fromstring(client.get(url, HTTP_HX_REQUEST="true").content)
+    again = lxml.html.fromstring(client.get(url, HTTP_HX_REQUEST="true").content)
+
+    assert first.xpath("//section[@data-just-read]")
+    assert not again.xpath("//section[@data-just-read]")
+
+
+@pytest.mark.django_db
+@messages_section
 def test_a_conversation_with_a_learner_of_another_organisation_is_a_404(msg_client_for):
     organisation = OrganisationFactory()
     educator = _msg_educator(organisation)

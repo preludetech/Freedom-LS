@@ -24,7 +24,6 @@ from django.db.models import (
     Value,
     When,
 )
-from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.utils.translation import ngettext
@@ -204,17 +203,22 @@ def reply_decisions(
 
 def mark_conversation_read(
     *, user: User, conversation: Conversation, up_to: datetime
-) -> None:
+) -> bool:
     """Advance the user's read marker to ``up_to``; it never moves backwards.
+
+    Returns whether the marker moved, so a caller can tell the page its unread
+    counts changed.
 
     The conversation's notification is marked read too, unless a message from
     someone else is newer than ``up_to``: that message has refreshed the
     notification and has not been shown. The reverse does not hold: reading or
     unreading a notification leaves the marker alone.
     """
-    ConversationParticipant.objects.filter(conversation=conversation, user=user).update(
-        last_read_at=Greatest(Coalesce("last_read_at", Value(up_to)), Value(up_to))
-    )
+    moved = ConversationParticipant.objects.filter(
+        Q(last_read_at__isnull=True) | Q(last_read_at__lt=up_to),
+        conversation=conversation,
+        user=user,
+    ).update(last_read_at=up_to)
     newer_incoming = Message.objects.filter(
         conversation=conversation, created_at__gt=up_to
     ).exclude(sender=user)
@@ -224,6 +228,7 @@ def mark_conversation_read(
         site_id=conversation.site_id,
         condition=~Q(Exists(newer_incoming)),
     )
+    return moved > 0
 
 
 def _has_unread_incoming(conversation: Conversation, user: User) -> bool:

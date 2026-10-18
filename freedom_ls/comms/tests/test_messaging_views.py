@@ -617,6 +617,19 @@ class TestThreadMarksRead:
 
         assert last_read_at(conversation, user) is None
 
+    def test_opening_an_unread_thread_asks_the_page_to_refresh_its_counts(
+        self, pair, logged_in_client
+    ) -> None:
+        user, other, conversation = pair
+        MessageFactory(conversation=conversation, sender=other)
+        client = logged_in_client(user)
+
+        first = html.fromstring(client.get(thread_url(conversation)).content)
+        again = html.fromstring(client.get(thread_url(conversation)).content)
+
+        assert first.xpath("//section[@data-just-read]")
+        assert not again.xpath("//section[@data-just-read]")
+
     def test_a_message_landing_after_the_page_loaded_stays_unread(
         self, pair, logged_in_client
     ) -> None:

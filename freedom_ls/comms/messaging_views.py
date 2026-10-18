@@ -210,12 +210,12 @@ def thread_context(
     closed_heading, closed_body = ("", "")
     if not decision.allowed:
         closed_heading, closed_body = closed_note_copy(decision.reason, other)
-    if shown:
-        mark_conversation_read(
-            user=viewer, conversation=conversation, up_to=shown[-1].created_at
-        )
+    just_read = bool(shown) and mark_conversation_read(
+        user=viewer, conversation=conversation, up_to=shown[-1].created_at
+    )
     return {
         "conversation": conversation,
+        "just_read": just_read,
         "other": other,
         "decision": decision,
         "closed_heading": closed_heading,

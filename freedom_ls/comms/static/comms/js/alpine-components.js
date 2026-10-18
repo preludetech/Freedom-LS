@@ -243,6 +243,9 @@ document.addEventListener("alpine:init", () => {
             this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
             this.measure();
             this.scrollToLatest();
+            if ("justRead" in this.$el.dataset) {
+                this.$dispatch("conversationChanged");
+            }
         },
         get hasNew() {
             return this.newCount > 0;

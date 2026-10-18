@@ -4,8 +4,11 @@ height is the viewport below the site header, so the composer stays in view
 and the log is the only part that scrolls. A host that embeds the pane in a
 page of its own passes pane_height (a height class) and heading_tag, so the
 pane fits its card and does not add a second h1.
+data-just-read marks a render that moved the read marker, so the pane tells
+the header badge and sidebar count to refresh.
 {% endcomment %}
 <section x-data="conversationThread"
+         {% if just_read %}data-just-read{% endif %}
          x-on:resize.window="measure"
          x-on:htmx:before-swap="rememberScroll"
          x-on:htmx:after-settle="keepScrollAfterPrepend"

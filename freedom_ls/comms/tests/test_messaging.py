@@ -543,6 +543,21 @@ class TestReadState:
             == later
         )
 
+    def test_mark_read_says_whether_the_marker_moved(self, mock_site_context) -> None:
+        user, other = UserFactory(), UserFactory()
+        conversation = ConversationFactory(between=(user, other))
+        moment = timezone.now()
+
+        first = mark_conversation_read(
+            user=user, conversation=conversation, up_to=moment
+        )
+        again = mark_conversation_read(
+            user=user, conversation=conversation, up_to=moment
+        )
+
+        assert first is True
+        assert again is False
+
 
 @pytest.mark.django_db
 class TestConversationQueries:
