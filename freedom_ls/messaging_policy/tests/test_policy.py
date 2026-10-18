@@ -94,6 +94,7 @@ QUERIES_ALLOWED = 4
 QUERIES_CLOSED = 4
 QUERIES_NO_RELATIONSHIP = 4
 QUERIES_GROUPS = 11
+QUERIES_GROUPS_SITE_ADMIN = 6
 
 
 def open_course_peers(settings: SettingsWrapper) -> None:
@@ -1388,6 +1389,36 @@ def test_group_recipients_runs_a_fixed_number_of_queries_whatever_the_world_size
         policy.group_recipients(
             sender=sender, site=scaled_world.site, recipients=recipients
         )
+
+
+def test_grouping_for_a_sender_who_sees_every_cohort_costs_the_same_whatever_their_number(
+    policy: LayeredMessagingPolicy,
+    scaled_world: World,
+    django_assert_num_queries: DjangoAssertNumQueries,
+) -> None:
+    _warm_content_types(scaled_world)
+    sender = scaled_world.role_holders["site_admin"]
+    recipients = _everyone(policy, sender, scaled_world.site)
+
+    with django_assert_num_queries(QUERIES_GROUPS_SITE_ADMIN):
+        policy.group_recipients(
+            sender=sender, site=scaled_world.site, recipients=recipients
+        )
+
+
+def test_cohort_groups_come_in_cohort_name_order(
+    policy: LayeredMessagingPolicy, world: World
+) -> None:
+    sender = world.role_holders["site_admin"]
+
+    groups = policy.group_recipients(
+        sender=sender, site=world.site, recipients=_everyone(policy, sender, world.site)
+    )
+
+    cohort_names = {cohort.name for cohort in world.cohorts.values()}
+    labels = [group.label for group in groups if group.label in cohort_names]
+    assert labels == sorted(labels)
+    assert world.cohorts["c1"].name in labels
 
 
 def test_a_course_the_sender_holds_through_a_cohort_groups_its_individual_registrants(

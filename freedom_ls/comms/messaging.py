@@ -565,9 +565,15 @@ def search_recipients(
     elif len(term) < PICKER_MIN_TERM_LENGTH:
         return RecipientSearch(groups=[], needs_term=True)
     else:
-        condition = Q(first_name__icontains=term) | Q(last_name__icontains=term)
-        if include_email:
-            condition |= Q(email__icontains=term)
+        # Every word must match some field, so "Jane Smith" finds Jane Smith.
+        condition = Q()
+        for word in term.split():
+            word_condition = Q(first_name__icontains=word) | Q(
+                last_name__icontains=word
+            )
+            if include_email:
+                word_condition |= Q(email__icontains=word)
+            condition &= word_condition
         fetched = list(
             candidates.filter(condition).order_by("first_name", "last_name", "pk")[
                 : PICKER_RESULT_LIMIT + 1

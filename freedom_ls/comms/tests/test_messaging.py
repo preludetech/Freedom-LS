@@ -799,6 +799,18 @@ class TestSearchRecipients:
 
         assert self.names(result) == ["Ana Kaiser", "Kai Ngata"]
 
+    def test_a_full_name_matches_across_first_and_last_name(
+        self, sender, mock_site_context
+    ) -> None:
+        UserFactory(first_name="Jane", last_name="Smith")
+        UserFactory(first_name="Jane", last_name="Doe")
+
+        result = self.search(
+            sender, mock_site_context, "jane  smith", User.objects.exclude(pk=sender.pk)
+        )
+
+        assert self.names(result) == ["Jane Smith"]
+
     def test_it_caps_at_twenty_and_flags_truncation(
         self, sender, mock_site_context
     ) -> None:

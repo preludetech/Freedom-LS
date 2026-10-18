@@ -288,26 +288,36 @@ class LayeredMessagingPolicy(MessagingPolicy):
 
         A person is listed once, under the first group that claims them, in this
         order: offered educator roles, the sender's courses, the cohorts the
-        sender can see, colleagues, then anyone left over. Each group is one query over the
-        recipients' ids, so the query count follows the number of groups, never
-        the number of people.
+        sender can see, colleagues, then anyone left over. Each role, course and
+        catch-all group is one query over the recipients' ids, and the cohort
+        groups share one, so the query count follows neither the number of
+        people nor the number of cohorts.
         """
         ids = [user.pk for user in recipients]
         groups: list[RecipientGroup] = []
         placed: set[int] = set()
 
-        def place(label: str, members: QuerySet[User]) -> None:
+        def place_ids(label: str, claimed: set[int]) -> None:
             # A person is listed once, under the first group that claims them.
-            claimed = set(
-                members.filter(pk__in=ids)
-                .exclude(pk__in=placed)
-                .values_list("pk", flat=True)
-            )
-            found = [user for user in recipients if user.pk in claimed]
+            found = [
+                user
+                for user in recipients
+                if user.pk in claimed and user.pk not in placed
+            ]
             if not found:
                 return
             placed.update(user.pk for user in found)
             groups.append(RecipientGroup(label=label, users=found))
+
+        def place(label: str, members: QuerySet[User]) -> None:
+            place_ids(
+                label,
+                set(
+                    members.filter(pk__in=ids)
+                    .exclude(pk__in=placed)
+                    .values_list("pk", flat=True)
+                ),
+            )
 
         resolution = self._resolve(sender, site)
         if resolution.rows:
@@ -339,11 +349,25 @@ class LayeredMessagingPolicy(MessagingPolicy):
             if isinstance(scope, Organisation)
             else all_cohorts_visible_to(sender)
         )
-        for cohort in cohorts.order_by("name"):
-            members = Learner.objects.filter(
-                site=site, is_active=True, cohortmembership__cohort=cohort
+        memberships = (
+            Learner.objects.filter(
+                site=site,
+                is_active=True,
+                user_id__in=ids,
+                cohortmembership__cohort__in=cohorts,
             )
-            place(cohort.name, User.objects.filter(pk__in=members.values("user_id")))
+            .order_by("cohortmembership__cohort__name", "cohortmembership__cohort_id")
+            .values_list(
+                "cohortmembership__cohort_id",
+                "cohortmembership__cohort__name",
+                "user_id",
+            )
+        )
+        cohort_members: dict[UUID, tuple[str, set[int]]] = {}
+        for cohort_id, cohort_name, user_id in memberships:
+            cohort_members.setdefault(cohort_id, (cohort_name, set()))[1].add(user_id)
+        for cohort_name, member_ids in cohort_members.values():
+            place_ids(cohort_name, member_ids)
         place(_("Colleagues"), colleagues_of(sender, site))
         # Anyone the policy offers but no group above claimed still appears.
         place(_("Others"), User.objects.filter(site=site))
