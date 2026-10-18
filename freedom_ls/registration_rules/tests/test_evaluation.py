@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 import pytest
 import time_machine
 
-from django.contrib.sites.models import Site
 from django.db.models.signals import post_save
 
+from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.comms.models import Notification
 from freedom_ls.hr_attributes.factories import OrganisationHRSettingsFactory
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
@@ -46,31 +46,63 @@ def _registrations_for(rule):
     return LearnerCourseRegistration._base_manager.filter(course=rule.course)
 
 
-@pytest.mark.django_db
-def test_registers_a_matching_learner_and_records_the_rule(
-    mock_site_context, django_capture_on_commit_callbacks
-):
-    # Arrange
+@pytest.fixture
+def rule_run_for_one_learner(mock_site_context, django_capture_on_commit_callbacks):
     rule = _enabled_rule()
     learner = LearnerFactory(organisation=rule.organisation)
     drop_ambient_request()
-
-    # Act
     with django_capture_on_commit_callbacks(execute=True):
         result = evaluate_rule(rule.pk, rule.site_id)
+    return rule, learner, result
+
+
+@pytest.mark.django_db
+def test_registers_a_matching_learner_and_links_the_rule(rule_run_for_one_learner):
+    # Arrange
+    rule, learner, _ = rule_run_for_one_learner
+
+    # Act
+    registration = _registrations_for(rule).get(learner=learner)
+    link = RuleRegistration._base_manager.get(registration=registration)
 
     # Assert
-    registration = _registrations_for(rule).get(learner=learner)
-    assert result.registered == (learner.pk,)
     assert registration.is_active is True
     assert registration.self_registered is False
-    link = RuleRegistration._base_manager.get(registration=registration)
     assert link.rule == rule
     assert link.rule_name == rule.name
     assert link.is_retracted is False
+
+
+@pytest.mark.django_db
+def test_the_run_reports_the_learner_it_registered(rule_run_for_one_learner):
+    # Arrange
+    _, learner, result = rule_run_for_one_learner
+
+    # Assert
+    assert result.registered == (learner.pk,)
+
+
+@pytest.mark.django_db
+def test_registering_a_matching_learner_creates_their_course_progress(
+    rule_run_for_one_learner,
+):
+    # Arrange
+    rule, learner, _ = rule_run_for_one_learner
+
+    # Assert
     assert CourseProgress._base_manager.filter(
         learner=learner, course=rule.course
     ).exists()
+
+
+@pytest.mark.django_db
+def test_registering_a_matching_learner_raises_one_course_registered_notification(
+    rule_run_for_one_learner,
+):
+    # Arrange
+    _, learner, _ = rule_run_for_one_learner
+
+    # Assert
     assert (
         Notification._base_manager.filter(
             user=learner.user, category="course.registered"
@@ -100,21 +132,19 @@ def test_a_finished_run_stamps_last_evaluated_at_without_moving_updated_at(
     assert rule.updated_at == updated_at
 
 
+def _assert_nothing_registered_and_not_stamped(rule):
+    assert not _registrations_for(rule).exists()
+    rule = RegistrationRule._base_manager.get(pk=rule.pk)
+    assert rule.last_evaluated_at is None
+
+
 @pytest.mark.django_db
-@pytest.mark.parametrize("settings_row", [False, True], ids=["switch-off", "no-row"])
-def test_registers_nobody_while_the_organisation_switch_is_off(
-    mock_site_context, settings_row
-):
+def test_registers_nobody_while_the_organisation_switch_is_off(mock_site_context):
     # Arrange
     rule = RegistrationRuleFactory(is_enabled=True)
-    if settings_row:
-        OrganisationHRSettings._base_manager.filter(
-            organisation=rule.organisation
-        ).delete()
-    else:
-        OrganisationHRSettingsFactory(
-            organisation=rule.organisation, registration_rules_enabled=False
-        )
+    OrganisationHRSettingsFactory(
+        organisation=rule.organisation, registration_rules_enabled=False
+    )
     LearnerFactory(organisation=rule.organisation)
     drop_ambient_request()
 
@@ -122,9 +152,24 @@ def test_registers_nobody_while_the_organisation_switch_is_off(
     evaluate_rule(rule.pk, rule.site_id)
 
     # Assert
-    assert not _registrations_for(rule).exists()
-    rule = RegistrationRule._base_manager.get(pk=rule.pk)
-    assert rule.last_evaluated_at is None
+    _assert_nothing_registered_and_not_stamped(rule)
+
+
+@pytest.mark.django_db
+def test_registers_nobody_while_the_organisation_has_no_settings_row(
+    mock_site_context,
+):
+    # Arrange
+    rule = RegistrationRuleFactory(is_enabled=True)
+    OrganisationHRSettings._base_manager.filter(organisation=rule.organisation).delete()
+    LearnerFactory(organisation=rule.organisation)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    _assert_nothing_registered_and_not_stamped(rule)
 
 
 @pytest.mark.django_db
@@ -175,62 +220,70 @@ def test_registers_every_learner_across_several_batches(mock_site_context, setti
     assert _registrations_for(rule).count() == 5
 
 
-def _on_first_registration_saved(action):
-    """Connect `action` to the first LearnerCourseRegistration save; returns a disconnect."""
-    calls: list[int] = []
+@pytest.fixture
+def on_first_registration_saved():
+    """Return a function that runs an action on the first LearnerCourseRegistration save.
 
-    def receiver(sender, instance, created, **kwargs):
-        calls.append(1)
-        if len(calls) == 1:
-            action()
+    The receiver is disconnected at teardown.
+    """
+    receivers = []
 
-    post_save.connect(receiver, sender=LearnerCourseRegistration, weak=False)
-    return lambda: post_save.disconnect(receiver, sender=LearnerCourseRegistration)
+    def connect(action):
+        calls: list[int] = []
+
+        def receiver(sender, instance, created, **kwargs):
+            calls.append(1)
+            if len(calls) == 1:
+                action()
+
+        post_save.connect(receiver, sender=LearnerCourseRegistration, weak=False)
+        receivers.append(receiver)
+
+    yield connect
+
+    for receiver in receivers:
+        post_save.disconnect(receiver, sender=LearnerCourseRegistration)
 
 
 @pytest.mark.django_db
 def test_a_rule_disabled_between_batches_registers_nobody_afterwards(
-    mock_site_context, settings
+    mock_site_context, settings, on_first_registration_saved
 ):
     # Arrange
     settings.REGISTRATION_RULE_BATCH_SIZE = 2
     rule = _enabled_rule()
     LearnerFactory.create_batch(5, organisation=rule.organisation)
     drop_ambient_request()
-    disconnect = _on_first_registration_saved(
+    on_first_registration_saved(
         lambda: RegistrationRule._base_manager.filter(pk=rule.pk).update(
             is_enabled=False
         )
     )
 
     # Act
-    try:
-        evaluate_rule(rule.pk, rule.site_id)
-    finally:
-        disconnect()
+    evaluate_rule(rule.pk, rule.site_id)
 
     # Assert
     assert _registrations_for(rule).count() == 2
 
 
 @pytest.mark.django_db
-def test_a_switch_turned_off_between_batches_stops_the_run(mock_site_context, settings):
+def test_a_switch_turned_off_between_batches_stops_the_run(
+    mock_site_context, settings, on_first_registration_saved
+):
     # Arrange
     settings.REGISTRATION_RULE_BATCH_SIZE = 2
     rule = _enabled_rule()
     LearnerFactory.create_batch(5, organisation=rule.organisation)
     drop_ambient_request()
-    disconnect = _on_first_registration_saved(
+    on_first_registration_saved(
         lambda: OrganisationHRSettings._base_manager.filter(
             organisation=rule.organisation
         ).update(registration_rules_enabled=False)
     )
 
     # Act
-    try:
-        evaluate_rule(rule.pk, rule.site_id)
-    finally:
-        disconnect()
+    evaluate_rule(rule.pk, rule.site_id)
 
     # Assert
     assert _registrations_for(rule).count() == 2
@@ -245,12 +298,9 @@ def test_leaves_learners_of_the_same_organisation_on_another_site_alone(
     # Arrange
     rule = _enabled_rule()
     own = LearnerFactory(organisation=rule.organisation)
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
-    foreign = Learner._base_manager.create(
-        site=other_site,
-        user=LearnerFactory().user,
-        organisation=rule.organisation,
-    )
+    other_site = SiteFactory()
+    foreign = LearnerFactory(organisation=rule.organisation)
+    Learner._base_manager.filter(pk=foreign.pk).update(site=other_site)
     drop_ambient_request()
 
     # Act
@@ -267,7 +317,7 @@ def test_a_run_against_another_site_does_nothing(mock_site_context):
     # Arrange
     rule = _enabled_rule()
     LearnerFactory(organisation=rule.organisation)
-    other_site = Site.objects.create(domain="other.example.com", name="Other")
+    other_site = SiteFactory()
     drop_ambient_request()
 
     # Act

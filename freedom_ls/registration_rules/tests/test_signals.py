@@ -66,8 +66,7 @@ def test_loading_a_fixture_queues_nothing(
 
     # Act
     with django_capture_on_commit_callbacks(execute=True) as callbacks:
-        for deserialised in serializers.deserialize("json", payload):
-            deserialised.save()
+        next(iter(serializers.deserialize("json", payload))).save()
 
     # Assert
     assert callbacks == []

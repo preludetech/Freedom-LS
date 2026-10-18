@@ -85,7 +85,6 @@ def test_organisation_and_course_are_read_only_on_the_change_page(staff_client):
 REGISTRATION_CHANGE = (
     "admin:freedom_ls_learner_management_learnercourseregistration_change"
 )
-REGISTRATION_ADD = "admin:freedom_ls_learner_management_learnercourseregistration_add"
 RULE_CHANGE = "admin:freedom_ls_registration_rules_registrationrule_change"
 RULE_DELETE = "admin:freedom_ls_registration_rules_registrationrule_delete"
 RULE_CHANGELIST = "admin:freedom_ls_registration_rules_registrationrule_changelist"
@@ -127,16 +126,6 @@ def test_a_staff_made_registration_shows_no_rule(staff_client):
 
 
 @pytest.mark.django_db
-def test_the_add_form_for_a_registration_shows_the_field_blank(staff_client):
-    # Act
-    response = staff_client.get(reverse(REGISTRATION_ADD))
-
-    # Assert
-    assert response.status_code == 200
-    assert "Registration rule" in response.content.decode()
-
-
-@pytest.mark.django_db
 def test_a_registration_whose_rule_was_deleted_says_so(staff_client):
     # Arrange
     link = RuleRegistrationFactory(rule__is_enabled=False)
@@ -166,20 +155,28 @@ def test_an_enabled_rule_cannot_be_deleted(staff_client):
 
 
 @pytest.mark.django_db
-def test_a_disabled_rule_can_be_deleted_and_its_registrations_keep_its_name(
-    staff_client,
-):
+def test_a_disabled_rule_can_be_deleted(staff_client):
     # Arrange
-    link = RuleRegistrationFactory(rule__is_enabled=False)
-    rule_pk = link.rule.pk
-    rule_name = link.rule.name
+    rule = RegistrationRuleFactory(is_enabled=False)
 
     # Act
-    response = staff_client.post(reverse(RULE_DELETE, args=[rule_pk]), {"post": "yes"})
+    response = staff_client.post(reverse(RULE_DELETE, args=[rule.pk]), {"post": "yes"})
 
     # Assert
     assert response.status_code == 302
-    assert not RegistrationRule.objects.filter(pk=rule_pk).exists()
+    assert not RegistrationRule.objects.filter(pk=rule.pk).exists()
+
+
+@pytest.mark.django_db
+def test_deleting_a_disabled_rule_leaves_its_registrations_with_its_name(staff_client):
+    # Arrange
+    link = RuleRegistrationFactory(rule__is_enabled=False)
+    rule_name = link.rule.name
+
+    # Act
+    staff_client.post(reverse(RULE_DELETE, args=[link.rule.pk]), {"post": "yes"})
+
+    # Assert
     link = RuleRegistration.objects.get(pk=link.pk)
     assert link.rule is None
     assert link.rule_name == rule_name

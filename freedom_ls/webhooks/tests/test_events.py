@@ -67,6 +67,7 @@ class TestFireWebhookEvent:
         assert WebhookEvent.objects.count() == 0
 
 
+# transaction=True so that on_commit hooks for webhook delivery fire under test
 @pytest.mark.django_db(transaction=True)
 class TestFireWebhookEventForSite:
     def test_creates_the_event_for_the_given_site_with_no_request(
