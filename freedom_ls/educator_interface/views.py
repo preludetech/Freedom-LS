@@ -24,7 +24,6 @@ from django.http import (
     Http404,
     HttpRequest,
     HttpResponse,
-    HttpResponseBadRequest,
     StreamingHttpResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
@@ -43,6 +42,8 @@ from freedom_ls.comms.messaging import (
 from freedom_ls.comms.messaging_loader import get_messaging_policy
 from freedom_ls.comms.messaging_views import (
     composer_context,
+    posted_client_key,
+    recipient_pk,
     thread_context,
     unreachable_recipient_response,
 )
@@ -1217,18 +1218,15 @@ class NewMessageAction(PanelAction):
         raw = ctx.request.GET.get("recipient")
         if raw is None:
             return self._modal_context(ctx, None)
-        recipient = get_object_or_404(self._candidates(ctx), pk=_recipient_pk(raw))
+        recipient = get_object_or_404(self._candidates(ctx), pk=recipient_pk(raw))
         return self._modal_context(ctx, recipient)
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         request = ctx.request
-        try:
-            client_key = UUID(request.POST.get("client_key", ""))
-        except ValueError:
-            return HttpResponseBadRequest("client_key must be a UUID")
+        client_key = posted_client_key(request)
         recipient = (
             self._candidates(ctx)
-            .filter(pk=_recipient_pk(request.POST.get("recipient")))
+            .filter(pk=recipient_pk(request.POST.get("recipient")))
             .first()
         )
         if recipient is None:
@@ -1256,13 +1254,6 @@ class NewMessageAction(PanelAction):
             ),
             status=422,
         )
-
-
-def _recipient_pk(raw: str | None) -> int:
-    try:
-        return int(raw or "")
-    except ValueError:
-        raise Http404("recipient must be a user id") from None
 
 
 class ConversationInstanceView(InstanceView):

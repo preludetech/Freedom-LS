@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, cast
 from uuid import UUID, uuid4
 
 from django.contrib.sites.models import Site
+from django.core.exceptions import BadRequest
 from django.http import Http404, HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -450,10 +451,7 @@ def _send_response(
 @require_POST
 def send(request: HttpRequest, pk: UUID) -> HttpResponse:
     conversation = participant_conversation(request, pk)
-    try:
-        client_key = UUID(request.POST.get("client_key", ""))
-    except ValueError:
-        return HttpResponseBadRequest("client_key must be a UUID")
+    client_key = posted_client_key(request)
     draft = request.POST.get("body", "")
     site = cast("Site", get_cached_site(request))
     result = send_message(
@@ -466,7 +464,16 @@ def send(request: HttpRequest, pk: UUID) -> HttpResponse:
     return _send_response(request, result, conversation, draft, client_key)
 
 
-def _user_pk(raw: str | None) -> int:
+def posted_client_key(request: HttpRequest) -> UUID:
+    """The send's ``client_key`` from the POST body; a 400 when it is not a UUID."""
+    try:
+        return UUID(request.POST.get("client_key", ""))
+    except ValueError:
+        raise BadRequest("client_key must be a UUID") from None
+
+
+def recipient_pk(raw: str | None) -> int:
+    """A posted or queried recipient id; a 404 when it is not an integer."""
     try:
         return int(raw or "")
     except ValueError:
@@ -505,7 +512,7 @@ def _start_get(request: HttpRequest) -> HttpResponse:
             "comms/start.html",
             {"recipient": None, **_picker_context(request, request.GET.get("q", ""))},
         )
-    recipient = get_object_or_404(_offered_recipients(request), pk=_user_pk(raw))
+    recipient = get_object_or_404(_offered_recipients(request), pk=recipient_pk(raw))
     return render(
         request,
         "comms/start.html",
@@ -518,15 +525,12 @@ def _start_get(request: HttpRequest) -> HttpResponse:
 
 
 def _start_post(request: HttpRequest) -> HttpResponse:
-    try:
-        client_key = UUID(request.POST.get("client_key", ""))
-    except ValueError:
-        return HttpResponseBadRequest("client_key must be a UUID")
+    client_key = posted_client_key(request)
     draft = request.POST.get("body", "")
     site = cast("Site", get_cached_site(request))
     recipient = (
         _offered_recipients(request)
-        .filter(pk=_user_pk(request.POST.get("recipient")))
+        .filter(pk=recipient_pk(request.POST.get("recipient")))
         .first()
     )
     if recipient is None:
@@ -573,6 +577,22 @@ def partial_recipient_search(request: HttpRequest) -> HttpResponse:
     )
 
 
+def _boundary_message(
+    conversation: Conversation, cursor: tuple[datetime, UUID] | None
+) -> Message | None:
+    """The message a cursor names, which new entries are laid out against."""
+    if cursor is None:
+        return None
+    return cast(
+        "Message | None",
+        Message.objects.filter(
+            conversation=conversation, pk=cursor[1], created_at=cursor[0]
+        )
+        .select_related("sender")
+        .first(),
+    )
+
+
 @messaging_view
 def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
     """The page of messages older than ``?before=``, for prepending to the log.
@@ -587,15 +607,12 @@ def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
     if cursor is None:
         return HttpResponseBadRequest("before must be a cursor")
     older, has_more = page_before(conversation, cursor)
-    boundary = Message.objects.filter(
-        conversation=conversation, pk=cursor[1], created_at=cursor[0]
-    ).select_related("sender")
+    boundary_message = _boundary_message(conversation, cursor)
     body = ""
     for entry in render_message_entries(older, None):
         body += render_to_string(
             "comms/partials/message_entry.html", {"entry": entry}, request
         )
-    boundary_message = boundary.first()
     if older and boundary_message is not None:
         body += render_to_string(
             "comms/partials/message_entry.html",
@@ -615,22 +632,6 @@ def partial_thread_older(request: HttpRequest, pk: UUID) -> HttpResponse:
         request,
     )
     return HttpResponse(body)
-
-
-def _boundary_message(
-    conversation: Conversation, cursor: tuple[datetime, UUID] | None
-) -> Message | None:
-    """The message a cursor names, which new entries are laid out against."""
-    if cursor is None:
-        return None
-    return cast(
-        "Message | None",
-        Message.objects.filter(
-            conversation=conversation, pk=cursor[1], created_at=cursor[0]
-        )
-        .select_related("sender")
-        .first(),
-    )
 
 
 def _incoming_announcement(incoming: list[Message]) -> str:
