@@ -3902,11 +3902,6 @@ def test_resend_post_from_a_draft_with_a_refused_send_adds_the_error_toast(
     ]
 
 
-# ---------------------------------------------------------------------------
-# Changing the address on a submitted, unverified application
-# ---------------------------------------------------------------------------
-
-
 def _change_email_url(application) -> str:
     return reverse(
         "course_applications:change_applicant_email", kwargs={"pk": application.pk}
