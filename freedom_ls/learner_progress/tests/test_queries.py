@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
+from django.db.models import OuterRef
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
@@ -18,6 +19,7 @@ from freedom_ls.learner_management.factories import (
 )
 from freedom_ls.learner_management.models import (
     CohortCourseRegistration,
+    Learner,
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_progress.factories import CourseProgressFactory
@@ -26,6 +28,7 @@ from freedom_ls.learner_progress.queries import (
     course_progress_by_course_for,
     course_progress_for,
     registrations_with_progress_for_learner,
+    started_course_exists,
 )
 from freedom_ls.learner_progress.utils import ensure_course_progress_record
 
@@ -545,3 +548,69 @@ class TestQueryCost:
             result = registrations_with_progress_for_learner(learner)
 
         assert len(result) == registration_count * 2
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "progress_fields",
+    [
+        {"started_at": timezone.now()},
+        {"progress_percentage": 10},
+        {"completed_time": timezone.now()},
+    ],
+)
+def test_started_course_exists_is_true_for_each_sign_of_progress(
+    mock_site_context, progress_fields
+):
+    # Arrange
+    progress = CourseProgressFactory(**progress_fields)
+    learners = Learner.objects.filter(pk=progress.learner_id)
+
+    # Act
+    started = learners.filter(
+        started_course_exists(OuterRef("pk"), progress.course_id)
+    ).exists()
+
+    # Assert
+    assert started is True
+
+
+@pytest.mark.django_db
+def test_started_course_exists_is_false_for_a_fresh_record(mock_site_context):
+    # Arrange
+    progress = CourseProgressFactory()
+    learners = Learner.objects.filter(pk=progress.learner_id)
+
+    # Act
+    started = learners.filter(
+        started_course_exists(OuterRef("pk"), progress.course_id)
+    ).exists()
+
+    # Assert
+    assert started is False
+
+
+@pytest.mark.django_db
+def test_started_course_exists_reads_a_record_minted_by_a_cohort_registration(
+    mock_site_context,
+):
+    # Arrange
+    cohort_registration = CohortCourseRegistrationFactory()
+    learner = LearnerFactory()
+    progress = CourseProgressFactory(
+        learner=learner,
+        course=cohort_registration.course,
+        learner_registration=None,
+        cohort_registration=cohort_registration,
+        progress_percentage=10,
+    )
+
+    # Act
+    started = (
+        Learner.objects.filter(pk=learner.pk)
+        .filter(started_course_exists(OuterRef("pk"), progress.course_id))
+        .exists()
+    )
+
+    # Assert
+    assert started is True

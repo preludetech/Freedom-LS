@@ -14,10 +14,12 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
+from django.db.models import OuterRef
 from django.utils import timezone
 
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.learner_progress.queries import started_course_exists
 from freedom_ls.registration_rules.config import config
 from freedom_ls.registration_rules.kinds import RuleState
 from freedom_ls.registration_rules.loader import get_rule_kind
@@ -81,11 +83,81 @@ def classify_rule_changes(
         matching = matching.filter(pk__in=learner_ids)
         registrations = registrations.filter(learner_id__in=learner_ids)
     matching_ids = set(matching.values_list("pk", flat=True))
-    registered_ids = set(registrations.values_list("learner_id", flat=True))
+    rows = list(
+        registrations.values_list(
+            "learner_id",
+            "is_active",
+            "rule_registration__rule_id",
+            "rule_registration__is_retracted",
+        )
+    )
+    registered_ids = {learner_id for learner_id, *_ in rows}
     # Register the matching learners who have no registration row at all. Any
-    # existing row, active or not, belongs to someone else and is never touched.
+    # existing row, active or not, belongs to someone else unless a rule made it.
     register = sorted(matching_ids - registered_ids)
-    return RuleChanges(register=tuple(register))
+    # A retracted row owned by a rule whose learner matches again.
+    reactivate = sorted(
+        learner_id
+        for learner_id, is_active, owner_id, is_retracted in rows
+        if learner_id in matching_ids and is_retracted
+    )
+    # Owned by this rule, active, and no longer matching.
+    candidates = sorted(
+        learner_id
+        for learner_id, is_active, owner_id, is_retracted in rows
+        if owner_id == rule.pk and is_active and learner_id not in matching_ids
+    )
+    hand_over = _hand_overs(rule, state, candidates)
+    remaining = [learner_id for learner_id in candidates if learner_id not in hand_over]
+    started = set(
+        Learner._base_manager.filter(site_id=state.site_id, pk__in=remaining)
+        .filter(started_course_exists(OuterRef("pk"), state.course_id))
+        .values_list("pk", flat=True)
+    )
+    retract = [learner_id for learner_id in remaining if learner_id not in started]
+    return RuleChanges(
+        register=tuple(register),
+        reactivate=tuple(reactivate),
+        retract=tuple(retract),
+        hand_over=tuple(
+            hand_over[learner_id]
+            for learner_id in candidates
+            if learner_id in hand_over
+        ),
+        kept_started=tuple(sorted(started)),
+    )
+
+
+def _hand_overs(
+    rule: RegistrationRule, state: RuleState, learner_ids: Sequence[UUID]
+) -> dict[UUID, HandOver]:
+    """Which other enabled rule on the course takes each learner this rule lets go of.
+
+    Rules are tried in name order so two runs hand the same learner to the
+    same rule.
+    """
+    others = (
+        RegistrationRule._base_manager.filter(
+            site_id=state.site_id,
+            organisation_id=state.organisation_id,
+            course_id=state.course_id,
+            is_enabled=True,
+        )
+        .exclude(pk=rule.pk)
+        .order_by("name", "pk")
+    )
+    remaining = set(learner_ids)
+    taken: dict[UUID, HandOver] = {}
+    for other in others:
+        if not remaining:
+            break
+        matched = get_rule_kind(other.kind).matching_learners(
+            RuleState.from_rule(other)
+        )
+        for learner_id in matched.filter(pk__in=remaining).values_list("pk", flat=True):
+            taken[learner_id] = HandOver(learner_id, other.pk, other.name)
+            remaining.discard(learner_id)
+    return taken
 
 
 def apply_rule_changes(
@@ -118,7 +190,55 @@ def apply_rule_changes(
         except IntegrityError:
             continue
         registered.append(learner_id)
-    return EvaluationResult(registered=tuple(registered))
+
+    # Reactivate: update(), never save(), so the detach receiver can tell the
+    # engine's writes from anyone else's. No post_save means no second
+    # course.registered: the learner was told the first time.
+    LearnerCourseRegistration._base_manager.filter(
+        site_id=rule.site_id,
+        course_id=rule.course_id,
+        learner_id__in=changes.reactivate,
+        rule_registration__is_retracted=True,
+    ).update(is_active=True)
+    RuleRegistration._base_manager.filter(
+        site_id=rule.site_id,
+        registration__course_id=rule.course_id,
+        registration__learner_id__in=changes.reactivate,
+        is_retracted=True,
+    ).update(rule=rule, rule_name=rule.name, is_retracted=False)
+
+    for hand_over in changes.hand_over:
+        RuleRegistration._base_manager.filter(
+            site_id=rule.site_id,
+            registration__course_id=rule.course_id,
+            registration__learner_id=hand_over.learner_id,
+            rule=rule,
+        ).update(rule_id=hand_over.rule_id, rule_name=hand_over.rule_name)
+
+    # Retract: the started check sits inside the UPDATE, so a learner who
+    # opens the course between the read above and this write keeps it.
+    to_retract = LearnerCourseRegistration._base_manager.filter(
+        site_id=rule.site_id,
+        course_id=rule.course_id,
+        learner_id__in=changes.retract,
+        is_active=True,
+        rule_registration__rule=rule,
+    ).filter(~started_course_exists(OuterRef("learner_id"), rule.course_id))
+    retracted = list(to_retract.values_list("learner_id", "pk"))
+    retracted_pks = [pk for _, pk in retracted]
+    LearnerCourseRegistration._base_manager.filter(
+        site_id=rule.site_id, pk__in=retracted_pks
+    ).update(is_active=False)
+    RuleRegistration._base_manager.filter(
+        site_id=rule.site_id,
+        registration__in=retracted_pks,
+        registration__is_active=False,
+    ).update(is_retracted=True)
+    return EvaluationResult(
+        registered=tuple(registered),
+        reactivated=changes.reactivate,
+        retracted=tuple(sorted(learner_id for learner_id, _ in retracted)),
+    )
 
 
 def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:

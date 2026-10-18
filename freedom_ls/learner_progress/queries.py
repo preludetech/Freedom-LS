@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from django.db.models import F, Q
+from django.db.models import Exists, F, OuterRef, Q
 
 from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.form_engine.queries import attempt_completes_form
@@ -23,6 +23,22 @@ if TYPE_CHECKING:
     from freedom_ls.accounts.models import User
     from freedom_ls.content_engine.models import Course
     from freedom_ls.learner_management.models import Cohort, Learner
+
+
+def started_course_exists(learner: OuterRef | UUID, course: OuterRef | UUID) -> Exists:
+    """Whether the learner has started the course, from any registration's record.
+
+    Any of three fields counts. Only the course player stamps started_at, so
+    progress written by an import or bulk_create shows through the other two.
+    Erring towards "started" never loses a learner's place.
+    """
+    return Exists(
+        CourseProgress._base_manager.filter(Q(learner=learner, course=course)).filter(
+            Q(started_at__isnull=False)
+            | Q(progress_percentage__gt=0)
+            | Q(completed_time__isnull=False)
+        )
+    )
 
 
 def completed_form_item_ids(attempts: Iterable[CourseFormAttempt]) -> set[UUID]:

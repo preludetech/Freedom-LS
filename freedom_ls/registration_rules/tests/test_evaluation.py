@@ -11,13 +11,18 @@ from django.db.models.signals import post_save
 
 from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.comms.models import Notification
-from freedom_ls.hr_attributes.factories import OrganisationHRSettingsFactory
+from freedom_ls.hr_attributes.factories import (
+    JobTitleFactory,
+    LearnerHRAttributesFactory,
+    OrganisationHRSettingsFactory,
+)
 from freedom_ls.hr_attributes.models import OrganisationHRSettings
 from freedom_ls.learner_management.factories import (
     LearnerCourseRegistrationFactory,
     LearnerFactory,
 )
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.learner_progress.models import CourseProgress
 from freedom_ls.tests.app_guards import app_not_installed
 from freedom_ls.webhooks.models import WebhookEvent
@@ -25,11 +30,16 @@ from freedom_ls.webhooks.models import WebhookEvent
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
-from freedom_ls.registration_rules.evaluation import evaluate_rule
+from freedom_ls.registration_rules.evaluation import (
+    classify_rule_changes,
+    evaluate_rule,
+)
 from freedom_ls.registration_rules.factories import (
+    AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
     RuleRegistrationFactory,
 )
+from freedom_ls.registration_rules.kinds import RuleState
 from freedom_ls.registration_rules.models import RegistrationRule, RuleRegistration
 from freedom_ls.tests.site_context import drop_ambient_request
 
@@ -379,3 +389,346 @@ def test_a_rule_made_registration_fires_the_webhook_with_no_request(
     event = WebhookEvent._base_manager.get(event_type="course.registered")
     assert event.site_id == rule.site_id
     assert event.payload["course_id"] == str(rule.course_id)
+
+
+@pytest.fixture
+def organisation_with_rules_on(mock_site_context):
+    return OrganisationHRSettingsFactory(registration_rules_enabled=True).organisation
+
+
+@pytest.fixture
+def job_title(organisation_with_rules_on):
+    return JobTitleFactory(organisation=organisation_with_rules_on)
+
+
+@pytest.fixture
+def title_rule(organisation_with_rules_on, job_title):
+    """An enabled rule that matches only learners holding `job_title`."""
+    rule = RegistrationRuleFactory(
+        organisation=organisation_with_rules_on, is_enabled=True
+    )
+    AttributeRuleConditionsFactory(rule=rule, job_titles=[job_title])
+    return rule
+
+
+@pytest.fixture
+def unmatched_learner(organisation_with_rules_on):
+    """A learner holding no job title, so title_rule does not match them."""
+    return LearnerFactory(organisation=organisation_with_rules_on)
+
+
+def _rule_made_registration(rule, learner, *, is_active=True, is_retracted=False):
+    registration = LearnerCourseRegistrationFactory(
+        learner=learner,
+        course=rule.course,
+        is_active=is_active,
+        self_registered=False,
+    )
+    link = RuleRegistrationFactory(
+        rule=rule, registration=registration, is_retracted=is_retracted
+    )
+    return registration, link
+
+
+@pytest.mark.django_db
+def test_retracts_an_unstarted_learner_who_stopped_matching(
+    title_rule, unmatched_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, unmatched_learner)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+    assert result.retracted == (unmatched_learner.pk,)
+
+
+@pytest.mark.django_db
+def test_a_retracted_registration_is_marked_retracted(title_rule, unmatched_learner):
+    # Arrange
+    _, link = _rule_made_registration(title_rule, unmatched_learner)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    link.refresh_from_db()
+    assert link.is_retracted is True
+    assert link.rule == title_rule
+
+
+@pytest.mark.django_db
+def test_keeps_the_registration_of_a_learner_who_started_the_course(
+    title_rule, unmatched_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, unmatched_learner)
+    CourseProgressFactory(
+        learner=unmatched_learner,
+        course=title_rule.course,
+        learner_registration=registration,
+        progress_percentage=10,
+    )
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is True
+    assert result.retracted == ()
+
+
+@pytest.mark.django_db
+def test_retracting_keeps_the_learners_progress_record(title_rule, unmatched_learner):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, unmatched_learner)
+    progress = CourseProgressFactory(
+        learner=unmatched_learner,
+        course=title_rule.course,
+        learner_registration=registration,
+    )
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    assert CourseProgress._base_manager.filter(pk=progress.pk).exists()
+
+
+@pytest.mark.django_db
+def test_classification_reports_a_started_learner_as_kept(
+    title_rule, unmatched_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(title_rule, unmatched_learner)
+    CourseProgressFactory(
+        learner=unmatched_learner,
+        course=title_rule.course,
+        learner_registration=registration,
+        progress_percentage=10,
+    )
+    drop_ambient_request()
+
+    # Act
+    changes = classify_rule_changes(title_rule, RuleState.from_rule(title_rule))
+
+    # Assert
+    assert changes.kept_started == (unmatched_learner.pk,)
+    assert changes.retract == ()
+
+
+@pytest.mark.django_db
+def test_classification_reports_the_rule_that_takes_a_learner_over(
+    organisation_with_rules_on, unmatched_learner
+):
+    # Arrange
+    owner = RegistrationRuleFactory(
+        organisation=organisation_with_rules_on, is_enabled=False
+    )
+    taker = RegistrationRuleFactory(
+        organisation=organisation_with_rules_on,
+        course=owner.course,
+        is_enabled=True,
+        name="Taker",
+    )
+    _rule_made_registration(owner, unmatched_learner)
+    drop_ambient_request()
+
+    # Act
+    changes = classify_rule_changes(owner, RuleState.from_rule(owner))
+
+    # Assert
+    (hand_over,) = changes.hand_over
+    assert hand_over.learner_id == unmatched_learner.pk
+    assert hand_over.rule_id == taker.pk
+    assert hand_over.rule_name == "Taker"
+
+
+@pytest.mark.django_db
+def test_reactivates_a_retracted_registration_on_the_same_row(
+    title_rule, job_title, unmatched_learner
+):
+    # Arrange
+    registration, link = _rule_made_registration(
+        title_rule, unmatched_learner, is_active=False, is_retracted=True
+    )
+    LearnerHRAttributesFactory(learner=unmatched_learner, job_title=job_title)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    link.refresh_from_db()
+    assert registration.is_active is True
+    assert link.is_retracted is False
+    assert result.reactivated == (unmatched_learner.pk,)
+    assert _registrations_for(title_rule).count() == 1
+
+
+@pytest.mark.django_db
+def test_reactivating_keeps_the_progress_record_unchanged(
+    title_rule, job_title, unmatched_learner
+):
+    # Arrange
+    registration, _ = _rule_made_registration(
+        title_rule, unmatched_learner, is_active=False, is_retracted=True
+    )
+    progress = CourseProgressFactory(
+        learner=unmatched_learner,
+        course=title_rule.course,
+        learner_registration=registration,
+        progress_percentage=40,
+    )
+    LearnerHRAttributesFactory(learner=unmatched_learner, job_title=job_title)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    assert (
+        CourseProgress._base_manager.filter(course=title_rule.course).get() == progress
+    )
+    progress.refresh_from_db()
+    assert progress.progress_percentage == 40
+
+
+@pytest.mark.django_db
+def test_reactivating_raises_no_notification(
+    title_rule, job_title, unmatched_learner, django_capture_on_commit_callbacks
+):
+    # Arrange
+    _rule_made_registration(
+        title_rule, unmatched_learner, is_active=False, is_retracted=True
+    )
+    LearnerHRAttributesFactory(learner=unmatched_learner, job_title=job_title)
+    drop_ambient_request()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    assert not Notification._base_manager.filter(
+        user=unmatched_learner.user, category="course.registered"
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_hands_a_learner_to_another_enabled_rule_and_keeps_them_registered(
+    organisation_with_rules_on, unmatched_learner
+):
+    # Arrange
+    owner = RegistrationRuleFactory(
+        organisation=organisation_with_rules_on, is_enabled=False
+    )
+    taker = RegistrationRuleFactory(
+        organisation=organisation_with_rules_on, course=owner.course, is_enabled=True
+    )
+    registration, link = _rule_made_registration(owner, unmatched_learner)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(owner.pk, owner.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    link.refresh_from_db()
+    assert registration.is_active is True
+    assert link.rule == taker
+    assert link.rule_name == taker.name
+    assert link.is_retracted is False
+
+
+@pytest.mark.django_db
+def test_retracts_a_learner_when_no_other_enabled_rule_takes_them(
+    organisation_with_rules_on, unmatched_learner
+):
+    # Arrange
+    owner = RegistrationRuleFactory(
+        organisation=organisation_with_rules_on, is_enabled=False
+    )
+    RegistrationRuleFactory(
+        organisation=organisation_with_rules_on, course=owner.course, is_enabled=False
+    )
+    registration, _ = _rule_made_registration(owner, unmatched_learner)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(owner.pk, owner.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+
+
+@pytest.mark.django_db
+def test_never_reactivates_a_registration_staff_deactivated(
+    title_rule, job_title, unmatched_learner
+):
+    # Arrange
+    registration = LearnerCourseRegistrationFactory(
+        learner=unmatched_learner,
+        course=title_rule.course,
+        is_active=False,
+        self_registered=False,
+    )
+    LearnerHRAttributesFactory(learner=unmatched_learner, job_title=job_title)
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+    assert result.reactivated == ()
+
+
+@pytest.mark.django_db
+def test_never_retracts_a_registration_whose_rule_was_deleted(
+    title_rule, unmatched_learner
+):
+    # Arrange
+    registration, link = _rule_made_registration(title_rule, unmatched_learner)
+    RuleRegistration._base_manager.filter(pk=link.pk).update(rule=None)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is True
+
+
+@pytest.mark.django_db
+def test_a_run_over_a_retracted_registration_that_still_does_not_match_changes_nothing(
+    title_rule, unmatched_learner
+):
+    # Arrange
+    registration, link = _rule_made_registration(
+        title_rule, unmatched_learner, is_active=False, is_retracted=True
+    )
+    drop_ambient_request()
+
+    # Act
+    result = evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    link.refresh_from_db()
+    assert result.retracted == ()
+    assert result.reactivated == ()
+    assert registration.is_active is False
+    assert link.is_retracted is True

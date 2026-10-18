@@ -7,9 +7,10 @@ from typing import cast
 from uuid import UUID
 
 from django.db import models, transaction
-from django.db.models.signals import m2m_changed, post_save, pre_delete
+from django.db.models.signals import m2m_changed, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 
+from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
@@ -47,6 +48,31 @@ def snapshot_rule_name_before_delete(
     RuleRegistration._base_manager.filter(
         rule=instance, site_id=instance.site_id
     ).update(rule_name=instance.name)
+
+
+@receiver(pre_save, sender=LearnerCourseRegistration)
+def detach_rule_on_foreign_is_active_change(
+    sender: type[LearnerCourseRegistration],
+    instance: LearnerCourseRegistration,
+    raw: bool = False,
+    **kwargs: object,
+) -> None:
+    """A deactivation or reactivation the engine did not make ends the rule's ownership.
+
+    The engine only ever changes is_active with QuerySet.update(), which never
+    reaches here, so any save that flips the stored value is someone else's
+    decision: staff in the admin, or the learner registering again.
+    """
+    if raw or instance._state.adding:
+        return
+    stored = (
+        LearnerCourseRegistration._base_manager.filter(pk=instance.pk)
+        .values_list("is_active", flat=True)
+        .first()
+    )
+    if stored is None or stored == instance.is_active:
+        return
+    RuleRegistration._base_manager.filter(registration_id=instance.pk).delete()
 
 
 @receiver(post_save, sender=AttributeRuleConditions)

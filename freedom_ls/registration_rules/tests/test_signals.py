@@ -7,19 +7,31 @@ from datetime import date
 import pytest
 
 from django.core import serializers
+from django.urls import reverse
 
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
-from freedom_ls.hr_attributes.factories import JobTitleFactory
+from freedom_ls.hr_attributes.factories import (
+    JobTitleFactory,
+    OrganisationHRSettingsFactory,
+)
+from freedom_ls.learner_management.factories import (
+    LearnerCourseRegistrationFactory,
+    LearnerFactory,
+)
+from freedom_ls.learner_management.models import LearnerCourseRegistration
+from freedom_ls.organisations.utils import get_default_organisation
+from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
     RuleRegistrationFactory,
 )
 from freedom_ls.registration_rules.models import RegistrationRule, RuleRegistration
+from freedom_ls.tests.site_context import drop_ambient_request
 
 
 @pytest.fixture
@@ -165,3 +177,148 @@ def test_removing_an_entry_from_a_picker_queues_an_evaluation_of_the_rule(
     # Assert
     queued = _queued_tasks().get()
     assert queued.args_kwargs["args"] == [str(conditions.rule_id), conditions.site_id]
+
+
+REGISTRATION_CHANGE = (
+    "admin:freedom_ls_learner_management_learnercourseregistration_change"
+)
+
+
+@pytest.fixture
+def rule_made_registration(mock_site_context):
+    """A rule-made registration, active, for a learner in the site's default organisation."""
+    organisation = get_default_organisation(mock_site_context)
+    OrganisationHRSettingsFactory(
+        organisation=organisation, registration_rules_enabled=True
+    )
+    rule = RegistrationRuleFactory(organisation=organisation, is_enabled=True)
+    AttributeRuleConditionsFactory(
+        rule=rule, job_titles=[JobTitleFactory(organisation=organisation)]
+    )
+    registration = LearnerCourseRegistrationFactory(
+        learner=LearnerFactory(organisation=organisation),
+        course=rule.course,
+        self_registered=False,
+    )
+    link = RuleRegistrationFactory(rule=rule, registration=registration)
+    return link
+
+
+def _registration_form_post(response, *, is_active: bool) -> dict[str, str]:
+    """The registration change form's own values, with is_active set."""
+    form = response.context["adminform"].form
+    payload = {
+        name: "" if form.initial.get(name) is None else str(form.initial.get(name))
+        for name in form.fields
+        if name != "is_active"
+    }
+    if is_active:
+        payload["is_active"] = "on"
+    for inline in response.context["inline_admin_formsets"]:
+        prefix = inline.formset.prefix
+        payload[f"{prefix}-TOTAL_FORMS"] = "0"
+        payload[f"{prefix}-INITIAL_FORMS"] = "0"
+        payload[f"{prefix}-MIN_NUM_FORMS"] = "0"
+        payload[f"{prefix}-MAX_NUM_FORMS"] = "1000"
+    return payload
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("is_active", [False, True])
+def test_changing_is_active_in_the_admin_detaches_the_rule(
+    staff_client, rule_made_registration, is_active
+):
+    # Arrange
+    registration = rule_made_registration.registration
+    LearnerCourseRegistration._base_manager.filter(pk=registration.pk).update(
+        is_active=not is_active
+    )
+    url = reverse(REGISTRATION_CHANGE, args=[registration.pk])
+    payload = _registration_form_post(staff_client.get(url), is_active=is_active)
+
+    # Act
+    response = staff_client.post(url, payload)
+
+    # Assert
+    assert response.status_code == 302
+    assert not RuleRegistration._base_manager.filter(registration=registration).exists()
+
+
+@pytest.mark.django_db
+def test_saving_the_admin_form_without_changing_is_active_keeps_the_rule(
+    staff_client, rule_made_registration
+):
+    # Arrange
+    registration = rule_made_registration.registration
+    url = reverse(REGISTRATION_CHANGE, args=[registration.pk])
+    payload = _registration_form_post(staff_client.get(url), is_active=True)
+
+    # Act
+    response = staff_client.post(url, payload)
+
+    # Assert
+    assert response.status_code == 302
+    assert RuleRegistration._base_manager.filter(registration=registration).exists()
+
+
+@pytest.mark.django_db
+def test_a_learner_registering_again_detaches_the_rule_from_a_retracted_row(
+    mock_site_context, logged_in_client, rule_made_registration
+):
+    # Arrange
+    registration = rule_made_registration.registration
+    LearnerCourseRegistration._base_manager.filter(pk=registration.pk).update(
+        is_active=False
+    )
+    RuleRegistration._base_manager.filter(pk=rule_made_registration.pk).update(
+        is_retracted=True
+    )
+    client = logged_in_client(registration.learner.user)
+
+    # Act
+    client.post(
+        reverse(
+            "learner_interface:initiate_course_access",
+            kwargs={"course_slug": registration.course.slug},
+        )
+    )
+
+    # Assert
+    assert not RuleRegistration._base_manager.filter(registration=registration).exists()
+
+
+@pytest.mark.django_db
+def test_a_detached_registration_is_left_alone_by_the_next_run(
+    mock_site_context, rule_made_registration
+):
+    # Arrange
+    link = rule_made_registration
+    registration = link.registration
+    registration.is_active = False
+    registration.save()
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(link.rule.pk, link.rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    assert registration.is_active is False
+    assert not RuleRegistration._base_manager.filter(registration=registration).exists()
+
+
+@pytest.mark.django_db
+def test_the_engines_own_update_keeps_the_rule_registration(
+    mock_site_context, rule_made_registration
+):
+    # Arrange
+    link = rule_made_registration
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(link.rule.pk, link.rule.site_id)
+
+    # Assert
+    link.refresh_from_db()
+    assert link.is_retracted is True
+    assert link.registration.is_active is False
