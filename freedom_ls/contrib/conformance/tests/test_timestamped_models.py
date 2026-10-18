@@ -73,13 +73,22 @@ def _timestamped_fls_models() -> set[str]:
     }
 
 
+def _recorded_models_of_installed_apps() -> set[str]:
+    """TIMESTAMPED_MODELS minus the models of optional apps this project leaves out."""
+    installed_labels = {config.label for config in apps.get_app_configs()}
+    return {
+        name for name in TIMESTAMPED_MODELS if name.split(".")[0] in installed_labels
+    }
+
+
 def test_timestamped_models_match_the_recorded_decision() -> None:
     actual = _timestamped_fls_models()
+    expected = _recorded_models_of_installed_apps()
 
-    assert actual == TIMESTAMPED_MODELS, (
+    assert actual == expected, (
         "The set of models taking TimestampedModel has drifted. "
-        f"Gained: {sorted(actual - TIMESTAMPED_MODELS)}. "
-        f"Lost: {sorted(TIMESTAMPED_MODELS - actual)}. "
+        f"Gained: {sorted(actual - expected)}. "
+        f"Lost: {sorted(expected - actual)}. "
         "Either restore the mixin on the model, or update TIMESTAMPED_MODELS "
         "above to record the new decision."
     )
