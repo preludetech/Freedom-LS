@@ -1,227 +1,146 @@
-# Frontend QA report: learner administration
-
-The run covered the whole plan at three viewports. Desktop (1920x1080) has 61 tests: 56 pass, 5 fail, 0 skip. The earlier 2.9 skip was superseded by a pass. Mobile (375x812) has 5 tests: 5 pass, 0 fail, 0 skip. Tablet (768x1024) has 3 tests: 3 pass, 0 fail, 0 skip. The failures group into 5 distinct bugs (B1 to B5). B1 is a stale count on the cohort Learners tab. B2 is a stray label. B3 and B4 are Move dialog problems. B5 is a disagreement between the spec and the plan about the cohort admin's picker.
+# Frontend QA report: educator-interface-7-learner-administration
 
 ## Methodology
 
 - Playwright MCP, driven by hand at 1920x1080 (desktop), 375x812 (mobile) and 768x1024 (tablet).
-- Logged in as the plan's personas (org.admin, cohort.admin, cohort.viewer, and the demodev superuser), each in a separate browser context.
-- Mailpit and the database were used to check emails and webhook events.
-- Screenshots were collected into `screenshots/` beside this report. Every image referenced here exists there.
-- This run followed a rebase onto main. One test-file conflict was resolved by keeping both tests, and the full test tier passed with 7927 tests.
-- The run also covered the post-rebase front-end check, so that check did not run separately.
+- Dev DB wiped and re-seeded with `create_demo_data`, `content_save` and `qa_create_learner_administration_scenario`.
+- Test plan: `3. frontend_qa.md` in this spec directory.
+- Screenshots were collected into `screenshots/` beside this report. Every image referenced below exists there.
+- Compression ran and found nothing over 1MB.
 
 ## Diff scoping
 
-Class: **FULL**. 29 front-end files triggered it:
-
-- `freedom_ls/accounts/templates/account/email/account_setup_message.html`
-- `freedom_ls/accounts/templates/account/email/account_setup_message.txt`
-- `freedom_ls/accounts/templates/account/email/account_setup_subject.txt`
-- `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/cohort_member_actions.html`
-- `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner.html`
-- `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner_courses.html`
-- `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner_last_active.html`
-- `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/learner_status.html`
-- `freedom_ls/educator_interface/templates/educator_interface/data-table-cells/membership_actions.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/account_already_set_up.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/add_learners_results.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/deactivate_learner_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/learner_already_in_state.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/move_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/reactivate_learner_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/remove_from_cohort_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/reregister_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/resend_setup_email_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/setup_email_recently_sent.html`
-- `freedom_ls/educator_interface/templates/educator_interface/modal/unregister_from_course_confirmation.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/learner_courses.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/learner_details.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/learner_history.html`
-- `freedom_ls/educator_interface/templates/educator_interface/panels/learner_registrations.html`
-- `freedom_ls/educator_interface/templates/educator_interface/quick_views/learner.html`
-- `freedom_ls/panel_framework/static/panel_framework/js/alpine-components.js`
-- `freedom_ls/panel_framework/templates/cotton/panel-page-header.html`
-- `freedom_ls/panel_framework/templates/panel_framework/views/_instance_view_base.html`
-
-Nothing was skipped. Desktop, mobile and tablet all ran. This also covers the pre-step front-end check after the rebase onto main.
+Class: **FULL**. Front-end templates changed (32 front-end files of 161 changed files), so every test ran. Nothing was skipped.
 
 ## Smoke gate
 
-Outcome: **pass**. Pages loaded:
+**pass**. Pages checked:
 
-- `http://127.0.0.1:8502/`
-- `http://127.0.0.1:8502/educator/organisations/northside/learners`
-- `http://127.0.0.1:8502/accounts/signup/` (changed upstream; it redirects a signed-in user home)
+- http://127.0.0.1:8390/
+- http://127.0.0.1:8390/educator/organisations/northside/learners
 
-## Results
+No failure URL or reason.
 
-### Desktop (1920x1080)
+## Results table
 
-| Test | Status | Note |
-|---|---|---|
-| 1.1 | pass | Columns, chips and statuses correct. Course Hid reads 0%, not blank, because registration auto-creates a 0% progress record. |
-| 1.2 | pass | First name sorts asc and desc; Last active sorts without error. |
-| 1.3 | pass | Removed filter shows Rae with a Removed badge; removing the chip restores the default. |
-| 1.4 | pass | Cohort filter includes 'Cohort Old (inactive)'; results correct; Clear all works. |
-| 1.5 | pass | Course filter results correct. It lists every site course. |
-| 1.6 | pass | Search 'name' leaves only nameless@qa.test. |
-| 1.7 | pass | Quick view status reads Pending and Removed as expected. |
-| 1.8 | pass | Nameless learner's heading is the email; Back returns to the list. |
-| 2.1 | pass | Dialog has the textarea hint and a Cohort select (A, B, C, not Old). |
-| 2.2 | pass | Five result rows with the expected wording; duplicate collapsed. |
-| 2.3 | pass | List refreshed behind the dialog. |
-| 2.4 | pass | One setup email with the expected content. Link host is the Site record's domain 127.0.0.1:8000. |
-| 2.5 | pass | 51 lines gives a 422 and the dialog stays open; empty submit blocked by the browser. |
-| 2.6 | FAIL | Results correct, but the Learners tab count and header stat stay stale (B1). Dialog shows a bare 'Cohort:' label (B2). |
-| 2.7 | pass | Inactive cohort gives 422 and nothing is created. |
-| 2.8 | pass | Setup link opens the set-password form; Nia is signed in and Active. |
-| 2.9 | pass | Re-run after the guard expired. Resend returned 204 and a second email arrived; an immediate repeat gave 422. Supersedes the earlier skip. |
-| 2.10 | FAIL | Picker offers nobody and shows an empty multi-select (B5). Tab count stale after the add (B1). |
-| 3.1 | pass | Header, actions, tabs and cards correct. Date formats differ between Details and the Cohorts card. |
-| 3.2 | pass | Courses tab shows progress bars. |
-| 3.3 | pass | History empty state shown. |
-| 3.4 | pass | Pending badge and Resend setup email offered. |
-| 3.5 | pass | Inactive cohort row has no Remove or Move. |
-| 3.6 | pass | Edit name saved and restored. The page has no name breadcrumb, only a 'Learners' back link. |
-| 4.1 | pass | Deactivate dialog wording correct. |
-| 4.2 | pass | Badge Removed; Reactivate offered; other cards unchanged. |
-| 4.3 | pass | Ben hidden by default and shown with Removed ticked; Cohort B count 2 to 1. |
-| 4.4 | pass | Stale tab gets a 422 refusal. Its header still reads Active afterwards. |
-| 4.5 | pass | Reactivate restores access and the Active badge. |
-| 4.6 | pass | Default-org dialog adds the self-register line. |
-| 4.7 | pass | Cohort admin has no Deactivate. |
-| 5.1 | pass | Add to cohort offers A, B, C; Cohort C added with its registration. |
-| 5.2 | pass | Cohort C no longer offered. |
-| 5.3 | pass | Remove from Cohort C names the lost course; row and registration gone. |
-| 5.4 | pass | Remove dialog names only courses actually lost. |
-| 5.5 | FAIL | Remove works, but the Learners tab count stays at 7; reload shows 5 (B1). |
-| 5.6 | pass | Re-add through the tab dialog works. |
-| 5.7 | pass | Inactive cohort offers only Reactivate; stale Remove gives 422. |
-| 5.8 | pass | Cohort admin sees Remove and Move on Cohort A. Cohort C is hidden, not shown without actions. |
-| 6.1 | pass | Move offers B and C only and is disabled until a destination is chosen. |
-| 6.2 | pass | Preview shows lost access and 40% continuing; confirmed. |
-| 6.3 | pass | Cohorts card and Courses tab updated. |
-| 6.4 | pass | Ben B to A keeps 70%. |
-| 6.5 | pass | Ben A to B keeps 70%. |
-| 6.6 | FAIL | Stale Move form offers the source cohort and gives the wrong reason (B3, B4). |
-| 6.7 | pass | Move from a cohort tab works. |
-| 6.8 | pass | Cohort admin's Move offers Cohort B only. |
-| 6.9 | pass | Each move fired member_removed then member_added with the same move_id. |
-| 6.x-move-422-inactive | FAIL | Exploratory: the 422 re-render lists inactive Cohort Old (B4). |
-| 7.1 | pass | Register picker offers Course Hid, not held or upcoming courses. It lists every site course. |
-| 7.2 | pass | Unregister shows Inactive with Re-register. |
-| 7.3 | pass | Individual registration, unregister and re-register behave correctly. |
-| 7.4 | pass | Picker offers Course Pub only when not actively registered. |
-| 7.5 | pass | Default-org re-register dialog wording correct. |
-| 7.6 | pass | Registration events fired in the expected order. |
-| 8.1 | pass | Cohort viewer sees no action buttons. |
-| 8.2 | pass | Cohort admin POSTs return 403. The plan's move URL lacks `/__tabs/overview`. |
-| 8.3 | pass | Other organisation's resources return 404. The register action is `register_for_course`. |
-| 8.4 | pass | Foreign `?learners-cohort=` leaves the default list. |
-| 9.1-9.3 | pass | No new webhook events; 'Already in the cohort' shown. Results title still reads 'Added to Cohort A'. |
-| 10 | pass | No overflow on the list or Ada's page at 1920. |
-
-### Mobile (375x812)
-
-| Test | Status | Note |
-|---|---|---|
-| 10.1 | pass | No overflow; card rows; filter sheet works. The status chip's remove 'x' is 12x20px. |
-| 10.2 | pass | Header wraps cleanly; Move dialog is a bottom sheet. |
-| 10.2-move | pass | Move dialog with preview readable at 375px. |
-| 10.3 | pass | Add learners fits the sheet; long results scroll inside the dialog. |
-| 10-nav | pass | Hamburger navigation sheet opens; cohort Learners tab has no overflow. |
-
-### Tablet (768x1024)
-
-| Test | Status | Note |
-|---|---|---|
-| 10.1 | pass | Table layout with hamburger navigation; no overflow. |
-| 10.2 | pass | Ada's page has no overflow; Move dialog centred at 512px. |
-| 10.3 | pass | Add learners dialog 512px wide; no JS errors in the console across the run. |
+| Test | Viewport | Status | Note | Screenshot |
+|---|---|---|---|---|
+| 1.1 | desktop | pass | Columns, chips, statuses and progress correct; Course Hid shows 0% (seed data, see general notes) | [s1-1-list.png](screenshots/s1-1-list.png) |
+| 1.2 | desktop | pass | Learner header sorts asc/desc; Last active sort has no error | |
+| 1.3 | desktop | fail | Removed filter works, but removing the Status chip goes to `?learners-status=` and shows everyone including Rae Removed (B1) | [s1-3-removed.png](screenshots/s1-3-removed.png) |
+| 1.4 | desktop | pass | Cohort filter correct incl. Cohort Old (inactive); Clear all shows all 8 incl. Rae (same cause as B1) | [s1-4-cohortA.png](screenshots/s1-4-cohortA.png) |
+| 1.5 | desktop | pass | Course filter results as expected | |
+| 1.6 | desktop | pass | Search 'name' leaves only nameless@qa.test | |
+| 1.7 | desktop | pass | Quick view Status reads Pending / Removed | [s1-7-quickview-pending.png](screenshots/s1-7-quickview-pending.png) |
+| 1.8 | desktop | pass | Nameless learner link opens page; back works | |
+| 2.1 | desktop | pass | Dialog has entries textarea with hint and Cohort select (A, B, C) | [s2-1-dialog.png](screenshots/s2-1-dialog.png) |
+| 2.2 | desktop | pass | Five result rows as expected, duplicate collapsed | [s2-2-results.png](screenshots/s2-2-results.png) |
+| 2.3 | desktop | pass | List refreshed behind the dialog | |
+| 2.4 | desktop | pass | One setup email with correct subject, greeting, link, expiry; link host is the Site domain (see general notes) | |
+| 2.5 | desktop | pass | 51 lines and empty entry both give 422 with dialog open | [s2-5-limit.png](screenshots/s2-5-limit.png) |
+| 2.6 | desktop | fail | Flow passes; dialog renders a bare 'Cohort:' label for the hidden cohort input (B2) | [s2-6-cohort-dialog.png](screenshots/s2-6-cohort-dialog.png) |
+| 2.7 | desktop | pass | Inactive cohort answers 'Cohort A is inactive'; no learner created | [s2-7-inactive.png](screenshots/s2-7-inactive.png) |
+| 2.8 | desktop | pass | Setup link opens set-password page; user signed in afterwards; list shows Active | [s2-8-after.png](screenshots/s2-8-after.png) |
+| 2.9 | desktop | pass | Exercised on pending@qa.test (see general notes); second resend 422 'Try again in 15 minutes' | [s2-9-resend-second.png](screenshots/s2-9-resend-second.png) |
+| 2.10 | desktop | pass | Cohort admin picker offers Pat Pick only; viewer-scoped lists correct | [s2-10-picker.png](screenshots/s2-10-picker.png) |
+| 3.1 | desktop | pass | Ada's overview header, actions, tabs, cards correct | [s3-1-ada-overview.png](screenshots/s3-1-ada-overview.png) |
+| 3.2 | desktop | pass | Courses tab progress and Last active correct | [s3-2-courses.png](screenshots/s3-2-courses.png) |
+| 3.3 | desktop | pass | History empty state shown | |
+| 3.4 | desktop | pass | Pending badge and Resend offered | |
+| 3.5 | desktop | pass | Cohort Old row Inactive, no Remove/Move | [s3-5-olga.png](screenshots/s3-5-olga.png) |
+| 3.6 | desktop | pass | Edit name updates heading, title and Details; changed back | [s3-6-edit-name.png](screenshots/s3-6-edit-name.png) |
+| 4.1 | desktop | pass | Deactivate dialog wording correct | [s4-1-deactivate-dialog.png](screenshots/s4-1-deactivate-dialog.png) |
+| 4.2 | desktop | pass | Removed badge, Reactivate button, cards unchanged | [s4-2-removed.png](screenshots/s4-2-removed.png) |
+| 4.3 | desktop | pass | Ben hidden by default, visible with Removed ticked | |
+| 4.4 | desktop | pass | Stale Deactivate answers 'was already changed' | [s4-4-stale.png](screenshots/s4-4-stale.png) |
+| 4.5 | desktop | pass | Reactivate dialog and result correct | [s4-5-reactivate.png](screenshots/s4-5-reactivate.png) |
+| 4.6 | desktop | pass | Default-org dialog adds self-registration sentence | [s4-6-default-org.png](screenshots/s4-6-default-org.png) |
+| 4.7 | desktop | pass | Cohort admin has no Deactivate | |
+| 5.1 | desktop | pass | Add to cohort offers A, B, C; Cohort C added with registration | [s5-1-sol-cohortC.png](screenshots/s5-1-sol-cohortC.png) |
+| 5.2 | desktop | pass | Cohort C no longer offered | |
+| 5.3 | desktop | pass | Remove dialog and result correct | |
+| 5.4 | desktop | pass | Remove dialog names only courses actually lost | [s5-4-remove-hid-only.png](screenshots/s5-4-remove-hid-only.png) |
+| 5.5 | desktop | pass | Cohort-side remove matches; count 5 to 4 | [s5-5-cohort-remove.png](screenshots/s5-5-cohort-remove.png) |
+| 5.6 | desktop | pass | Re-add via tab paste works; count back to 5 | |
+| 5.7 | desktop | pass | Inactive cohort hides actions; stale Remove refused | [s5-7-stale-inactive.png](screenshots/s5-7-stale-inactive.png) |
+| 5.8 | desktop | pass | Cohort admin's Cohorts card hides ungranted cohorts (see general notes) | [s5-8-cohort-admin-rows.png](screenshots/s5-8-cohort-admin-rows.png) |
+| 6.1 | desktop | pass | Destinations B and C; Move disabled until chosen | [s6-1-move-dialog.png](screenshots/s6-1-move-dialog.png) |
+| 6.2 | desktop | pass | Preview shows lost access and continued progress | [s6-2-move-preview.png](screenshots/s6-2-move-preview.png) |
+| 6.3 | desktop | pass | Cohorts and Courses tab correct after move | [s6-3-courses-after-move.png](screenshots/s6-3-courses-after-move.png) |
+| 6.4 | desktop | pass | Ben B to A preview 70% continues; one row | [s6-4-preview.png](screenshots/s6-4-preview.png) |
+| 6.5 | desktop | pass | Ben A to B preview 70% continues | [s6-5-preview.png](screenshots/s6-5-preview.png) |
+| 6.6 | desktop | pass | Stale move refused with 'no longer in Cohort A' | [s6-6-stale-move.png](screenshots/s6-6-stale-move.png) |
+| 6.7 | desktop | pass | Cohort-side move preview and row removal correct | [s6-7-cohort-side-move.png](screenshots/s6-7-cohort-side-move.png) |
+| 6.8 | desktop | pass | Cohort admin destinations: Cohort B only | [s6-8-cohort-admin-move.png](screenshots/s6-8-cohort-admin-move.png) |
+| 6.9 | desktop | pass | Removed/added events share one move_id (admin ordering, see general notes) | [s6-9-webhook-events.png](screenshots/s6-9-webhook-events.png) |
+| 7.1 | desktop | pass | Register select and new Individual registration correct | [s7-1-registered.png](screenshots/s7-1-registered.png) |
+| 7.2 | desktop | pass | Unregister wording and Inactive/Re-register row | [s7-2-unregistered.png](screenshots/s7-2-unregistered.png) |
+| 7.3 | desktop | pass | 'They keep access through Cohort A'; Re-register works | [s7-3-unregister-cohort-grants.png](screenshots/s7-3-unregister-cohort-grants.png) |
+| 7.4 | desktop | pass | Held course not offered; offered again after unregister | |
+| 7.5 | desktop | pass | Default-org unregister adds self-registration sentence | [s7-5-default-unregister.png](screenshots/s7-5-default-unregister.png) |
+| 7.6 | desktop | pass | course.registered / course.unregistered events present | |
+| 8.1 | desktop | pass | Cohort viewer sees no action buttons anywhere | [s8-1-viewer-tab.png](screenshots/s8-1-viewer-tab.png) |
+| 8.2 | desktop | pass | Cohort admin POSTs to org-admin actions all 403 (URL drift, see general notes) | |
+| 8.3 | desktop | pass | Cross-organisation requests 404 / 422; nothing created | |
+| 8.4 | desktop | pass | Foreign cohort param ignored, list unfiltered | [s8-4-foreign-cohort-param.png](screenshots/s8-4-foreign-cohort-param.png) |
+| 9.1-9.3 | desktop | pass | Repeat actions are no-ops; WebhookEvent count unchanged | [s9-2-repeat.png](screenshots/s9-2-repeat.png) |
+| 10.1 | mobile | pass | No overflow, card rows, 44x44 quick view; filter sheet Reset shares B1's cause | [s10-mobile-list.png](screenshots/s10-mobile-list.png) |
+| 10.2 | mobile | pass | Header wraps, tabs reachable, Move preview readable | [s10-mobile-ada.png](screenshots/s10-mobile-ada.png) |
+| 10.3 | mobile | pass | Dialog fits; long results list scrolls, Close reachable | [s10-mobile-add-results-long.png](screenshots/s10-mobile-add-results-long.png) |
+| 10.1 | tablet | pass | Table layout, no page overflow | [s10-tablet-list.png](screenshots/s10-tablet-list.png) |
+| 10.2 | tablet | pass | Cohorts table action column clipped ~29px inside its scroller (cosmetic, see general notes) | [s10-tablet-ada.png](screenshots/s10-tablet-ada.png) |
+| 10.3 | tablet | pass | Dialog 512px centred, fields fit | [s10-tablet-add-dialog.png](screenshots/s10-tablet-add-dialog.png) |
+| 10.1-10.3 | desktop | pass | No overflow at 1920x1080; Move preview and dialog fit | [s1-1-list.png](screenshots/s1-1-list.png) |
 
 ## Design check
 
 No design states tested.
 
-## B1 — Cohort Learners tab count and header Learners stat do not update after a membership change made from the tab
+## B1: Removing the Status chip (or Clear all / the mobile sheet's Reset) shows every learner, including Removed, instead of the Active+Pending default
 
-Manifestations: 2.6 (desktop), 2.10 (desktop), 5.5 (desktop).
+**Manifestations**
 
-![](screenshots/page-2026-10-12T17-42-15-679Z.png)
+- 1.3 (desktop)
+- 1.4 (desktop)
+- 10.1 (mobile)
 
-**Expected:** After adding (paste dialog or picker) or removing learners on a cohort's Learners tab, the tab count and the header Learners stat show the new number of active members. Plan 2.6 says "the tab count rose by two"; plan 5.5 says "the count drops".
+![](screenshots/s1-3-chip-removed.png)
 
-**Actual:** The table rows refresh, but the 'Learners N' tab label and the header stat keep the old number. They showed 4 after adding two, 6 after a picker add, and 7 after removing two. Only a full reload shows the right count.
+**Expected**: Test plan 1.3: removing the Status chip returns the list to Active and Pending (the default), not to everyone.
 
-## B2 — Cohort-scoped Add learners dialog shows a bare 'Cohort:' label for a hidden input
+**Actual**: The chip's remove link, Clear all, and the filter sheet's Reset all navigate to `?learners-status=` (an empty value). The filter treats the parameter as present-but-empty, applies no status narrowing, and Rae Removed appears. The spec says TableFilter's default applies "when the query parameter is absent", so the code follows the spec's letter while the test plan expects the default back. The spec, plan and code disagree on what an empty status means.
 
-Manifestations: 2.6 (desktop).
+## B2: Cohort-scoped Add learners dialog renders a bare 'Cohort:' label for its hidden cohort input
 
-![](screenshots/page-2026-10-12T17-42-15-679Z.png)
+**Manifestations**
 
-**Expected:** Opened from a cohort's Learners tab, the dialog names the cohort in its title and shows no cohort field.
+- 2.6 (desktop)
 
-**Actual:** Below the textarea hint the dialog renders a 'Cohort:' label with nothing after it. The field is `<input type=hidden name=cohort>`, but its label is still rendered.
+![](screenshots/s2-6-cohort-dialog.png)
 
-## B3 — Stale Move dialog renders a form (offering the source cohort as a destination) instead of saying the learner is no longer in the source cohort
+**Expected**: On a cohort's Learners tab the dialog has no cohort select and no cohort field label (the cohort is fixed by the title).
 
-Manifestations: 6.6 (desktop). No screenshot.
-
-**Expected:** Opening Move from a stale row (the learner is no longer in that cohort) answers with a reason in the dialog, as Remove and the other stale actions do. Plan 6.6 says "she is no longer in Cohort A". Nothing changes.
-
-**Actual:** `GET .../__panels/cohorts/__actions/move?cohort=<A>` for a learner now in B renders 'Move Ada Lovelace from Cohort A'. Its destinations are Cohort A (the source) and Cohort C. A POST with destination=B answers 422 'Choose a cohort to move them to.', which is the wrong reason. A POST with destination=C answers 422 'The learner is not a member of the source cohort.' No data changed.
-
-## B4 — Move dialog's 422 re-render offers inactive cohorts (and the source cohort) as destinations
-
-Manifestations: 6.x-move-422-inactive (desktop), 6.6 (desktop). No screenshot.
-
-**Expected:** When the Move form is re-rendered after a validation error, the destination select offers the same cohorts as the first render: same organisation, active, not the source, and not already a member. Spec Decision 13 says no membership picker offers an inactive cohort.
-
-**Actual:** A POST to move with cohort=Cohort B and an empty destination returns a 422 whose select lists Cohort A, Cohort C and the inactive Cohort Old. The initial GET correctly lists only Cohort A and Cohort C. Submitting Cohort Old is refused server-side ('Cohort Old is inactive').
-
-## B5 — Cohort admin's Add learners picker offers nobody and shows an empty multi-select (plan expects org learners outside their cohorts)
-
-Manifestations: 2.10 (desktop).
-
-![](screenshots/page-2026-10-12T17-46-16-872Z.png)
-
-**Expected:** Plan 2.10 expects the picker to offer existing Northside learners who are not yet members, including Sol Solo, who is in no cohort.
-
-**Actual:** Spec R5 limits a cohort admin's picker to learners they can already see (members of their cohorts), so Sol is not offered. With every visible learner already in Cohort A, the dialog shows an empty multi-select with no message. Options are labelled 'pick@qa.test - Northside' (the model string), not the learner's name. The spec and the plan disagree.
+**Actual**: The dialog shows the 'Entries:' textarea and then a lone 'Cohort:' label with no control beneath it. Already filed as an open todo item from the previous QA run.
 
 ## Bug status
 
-- B1: **FIXED** (commit: 299a5c29) — Cohort Learners tab count and header stat do not update after a membership change. Re-verified: Cohort B's tab and header read 2 → 1 → 2 across a remove and an add, no reload.
-- B2: **UNRESOLVED** — Bare 'Cohort:' label for a hidden input in the cohort-scoped Add learners dialog (reason: fix budget exhausted this run)
-- B3: **FIXED** (commit: 63412e83) — Stale Move dialog renders a form instead of a reason. Re-verified: a stale GET or POST answers "Ada Lovelace is no longer in Cohort B. Nothing changed."; a fresh Move still offers Cohort B and Cohort C.
-- B4: **FIXED** (commit: 0e0b486f) — Move 422 re-render offers inactive cohorts and the source cohort. Re-verified: the 422 re-render offers only Cohort B and Cohort C, the same as the GET.
-- B5: **FIXED** (commits: 9532cef7, d4b375cf) — Spec R5 kept (decided). An empty picker now shows the spec R6 sentence and a Close button with no submit (all four pickers), and the learner picker's options read as the learner's display name. Covered by tests; not re-verified in a browser.
+- **UNRESOLVED** — Status chip removal / Clear all / Reset shows Removed learners instead of the default (reason: product decision — the spec applies the status default only when the parameter is absent, the test plan expects removing the chip to restore Active+Pending; someone must decide what an empty status selection means)
+- **FIXED** (commit: a9f64247) — Bare 'Cohort:' label in cohort-scoped Add learners dialog. Re-verified: the cohort-scoped dialog shows no Cohort label and keeps its hidden cohort input ![](screenshots/reverify-b2-cohort-dialog.png); the org-wide Add learners, Add to cohort, Register for course and cohort Edit dialogs still render their labelled fields.
 
 ## General notes
 
-### Plan corrections found by the run
+Observations from the run that are not bugs:
 
-- **2.9:** Creating an account sets the 15-minute resend guard. A resend straight after creation is refused by design (spec R2), so the plan's order cannot succeed. The success path was verified after the guard expired.
-- **8.2:** The move URL lacks `/__tabs/overview`.
-- **8.3:** The register URL should be `register_for_course`.
-- **1.1:** 'Course Hid with no percentage' reads 0%, because registration auto-creates a 0% progress record.
-- **2.4:** The link host is the Site record's domain, 127.0.0.1:8000.
-- **Starting states:** §2.6 put Ben in Cohort A, so the run removed him again before §6. The run also removed Ada from Cohort C after 5.8. Both restore the plan's starting states.
-- **Extra learner:** A learner pick@qa.test was added to Cohort B to exercise the cohort admin's picker.
+- **0% Course Hid rows**: the seed's membership signal creates 0% progress rows, so Course Hid shows "0%" rather than no percentage (1.1, 3.2). This is data, not a defect.
+- **Setup email link host**: the link uses the Site domain 127.0.0.1:8000. The plan assumed the Site domain equals the run port. For 2.8 the host was rewritten to the run port.
+- **Noor's resend (2.9)**: refused because her creation email in 2.6 starts the 15-minute cooldown. 2.9 was exercised on pending@qa.test instead.
+- **Cohort admin's Cohorts card (5.8)**: it hides cohorts they hold no grant on, instead of showing them without actions as the plan expects. No over-granting either way.
+- **Webhook events admin (6.9)**: ordered by UUID, not created_at, so the newest events are not at the top. The admin is not changed on this branch.
+- **Course Other in Register select (7.1)**: Course Other (hidden, Southside-only) is offered in Northside's Register select because courses are site-wide. Not treated as a leak.
+- **Tablet Cohorts table (10.2)**: the table is 747px in a 718px overflow-x:auto container, so the Remove/Move column is clipped by about 29px until scrolled sideways. Reachable; cosmetic.
+- **Plan URL drift in section 8**: the move action lives under `__tabs/overview/__panels/...` (the plan's path without `__tabs/overview` is 404), and the register action is `register_for_course` (the plan says `register`).
+- **Plan 2.10 leftover state**: the plan leaves Ben in Cohort A from 2.6, so he was removed manually to keep later sections on the seeded memberships.
+- **Rae Removed**: reactivated in section 2, so no removed learner existed for the mobile Removed-filter check in 10.1.
 
-### Tangential observations
-
-- 5.8 hides cohorts outside a cohort admin's grants instead of showing them without actions.
-- The Course filter and the Register picker list every site course.
-- Details shows '12 Oct 2026' while the Cohorts card shows 'Oct. 12, 2026, 5:36 p.m.'.
-- The Add learners results title reads 'Added to Cohort A' when nothing was added.
-- The set-password page is headed 'Change Password'.
-- allauth sends a 'Password Reset' email after the setup link is used.
-- Each learner cell inlines a `<style>` block.
-- The webhook events admin orders by UUID, and its Created at column did not sort.
-- The stale tab in 4.4 keeps showing 'Active' after the refusal.
-- The status chip's remove 'x' is 12x20px on mobile.
-- The dev-only debug toolbar handle overlaps the header buttons on narrow screens.
-
-status: ok · reason: 5 bugs — 3 fixed, 2 unresolved; report rendered, screenshots verified
+status: ok
+reason: 2 bugs — 1 fixed, 1 unresolved; report rendered, screenshots verified

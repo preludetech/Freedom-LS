@@ -178,6 +178,7 @@ def _seed(site: Site) -> None:
     nameless = _ensure_user(site, "nameless@qa.test", "", "")
     pending, _ = match_or_create_user(site, "pending@qa.test", "Pending", "Person")
     ben = _ensure_user(site, "ben@qa.test", "Ben", "Brown")
+    pick = _ensure_user(site, "pick@qa.test", "Pat", "Pick")
     old = _ensure_user(site, "old@qa.test", "Olga", "Old")
     removed = _ensure_user(site, "removed@qa.test", "Rae", "Removed")
     solo = _ensure_user(site, "solo@qa.test", "Sol", "Solo")
@@ -191,6 +192,7 @@ def _seed(site: Site) -> None:
     for user in (ada, nameless, pending, removed):
         _ensure_member(site, cohort_a, user)
     _ensure_member(site, cohort_b, ben)
+    _ensure_member(site, cohort_b, pick)
     _ensure_member(site, cohort_old, old)
     _ensure_member(site, cohort_s, south_user)
 
