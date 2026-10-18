@@ -2077,6 +2077,35 @@ def test_stale_move_dialog_for_a_departed_member_gives_the_reason_and_no_form(
 
 
 @pytest.mark.django_db
+def test_a_member_leaving_mid_move_answers_422_with_the_reason(
+    staff_client: Client, monkeypatch: pytest.MonkeyPatch
+):
+    organisation = OrganisationFactory()
+    learner, source = _membership(organisation)
+    destination = CohortFactory(organisation=organisation)
+
+    def leave_then_refuse(*args: object) -> str:
+        CohortMembership.objects.filter(learner=learner, cohort=source).delete()
+        raise ValueError("The learner is not a member of the source cohort.")
+
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.move_between_cohorts",
+        leave_then_refuse,
+    )
+
+    response = _post(
+        staff_client,
+        _move_url_from_learner(organisation, learner),
+        {"cohort": str(source.pk), "destination": str(destination.pk)},
+    )
+
+    assert (
+        response.status_code,
+        "is no longer a member of" in response.content.decode(),
+    ) == (422, True)
+
+
+@pytest.mark.django_db
 def test_stale_move_post_for_a_departed_member_answers_422_with_the_reason(
     staff_client: Client,
 ):

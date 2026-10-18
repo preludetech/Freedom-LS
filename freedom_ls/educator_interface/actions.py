@@ -855,7 +855,7 @@ class MoveToCohortAction(MembershipAction):
 
     def _refusal(self, ctx: PanelContext, reason: str) -> HttpResponse:
         context = self.get_context_data(ctx)
-        if context.get("empty_message"):
+        if context.get("empty_message") or context.get("not_a_member"):
             return render(ctx.request, self.template_name, context, status=422)
         context["refusal"] = reason
         # The re-rendered select offers what the fresh dialog offered.
