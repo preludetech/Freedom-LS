@@ -19,6 +19,7 @@ from freedom_ls.course_applications.admin import (
     AnonymousApplicantAdmin,
     CourseApplicationAdmin,
 )
+from freedom_ls.course_applications.claims import update_applicant_email
 from freedom_ls.course_applications.factories import (
     AnonymousApplicantFactory,
     CourseApplicationFactory,
@@ -791,3 +792,16 @@ def test_erasing_a_claimed_applicants_user_removes_the_applicant_and_its_records
     assert not CourseApplication.objects.filter(pk=unverified.application.pk).exists()
     assert not FormProgress.objects.filter(pk=progress.pk).exists()
     assert not storage.exists(name)
+
+
+def test_changelist_shows_a_changed_address_as_unverified(staff_client):
+    application = CourseApplicationFactory(anonymous=True)
+    update_applicant_email(application.anonymous_applicant, "corrected@example.com")
+
+    response = staff_client.get(reverse(CHANGELIST))
+
+    row = response.context["cl"].result_list[0]
+    assert (
+        row.applicant_email,
+        CourseApplicationAdmin(CourseApplication, None).is_email_verified(row),
+    ) == ("corrected@example.com", False)

@@ -19,8 +19,8 @@
                 </p>
             {% else %}
                 <p>
-                    Your application for <strong>{{ application.course.title }}</strong> has been
-                    received.
+                    Your application for <strong>{{ application.course.title }}</strong> is in.
+                    Before anyone reviews it, confirm your email address.
                 </p>
                 {% if application.anonymous_applicant.claim_email_sent_at %}
                     <p class="text-muted">
@@ -43,6 +43,21 @@
                         {% csrf_token %}
                         <c-button type="submit" variant="secondary">
                             Send the email again
+                        </c-button>
+                    </form>
+                {% endif %}
+                {% if email_form %}
+                    <form method="post" action="{% url 'course_applications:change_applicant_email' pk=application.pk %}" class="space-y-3" data-testid="change-email-form">
+                        {% csrf_token %}
+                        {% if email_form.non_field_errors %}
+                            <div role="alert">
+                                <c-callout level="error">{% for error in email_form.non_field_errors %}{{ error }} {% endfor %}</c-callout>
+                            </div>
+                        {% endif %}
+                        {% include "course_applications/partials/applicant_details_field.html" with field=email_form.email %}
+                        <div hidden>{% for field in email_form.hidden_fields %}{{ field }}{% endfor %}</div>
+                        <c-button type="submit" variant="secondary">
+                            Change address and send the link
                         </c-button>
                     </form>
                 {% endif %}

@@ -1717,7 +1717,7 @@ def test_status_page_renders_for_the_applying_session(client, gated_course):
     )
 
     assert response.status_code == 200
-    assert "has been" in response.content.decode()
+    assert "Before anyone reviews it" in response.content.decode()
 
 
 @pytest.mark.django_db
@@ -3900,3 +3900,303 @@ def test_resend_post_from_a_draft_with_a_refused_send_adds_the_error_toast(
     assert [str(m) for m in get_messages(response.wsgi_request)] == [
         "We couldn't email ada@example.com just now. Try again in a little while."
     ]
+
+
+# ---------------------------------------------------------------------------
+# Changing the address on a submitted, unverified application
+# ---------------------------------------------------------------------------
+
+
+def _change_email_url(application) -> str:
+    return reverse(
+        "course_applications:change_applicant_email", kwargs={"pk": application.pk}
+    )
+
+
+def _submitted_unverified(client, course):
+    """Take a session through details and submit; returns the application."""
+    _post_details(client, course)
+    client.post(_apply_url(course))
+    mail.outbox.clear()
+    return CourseApplication.objects.get(course=course)
+
+
+def _change_email(client, application, **data: str):
+    return client.post(
+        _change_email_url(application), {"email": "new@example.com", **data}
+    )
+
+
+@pytest.mark.django_db
+def test_changing_the_address_bumps_the_claim_link_version(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    _change_email(client, application)
+
+    application.anonymous_applicant.refresh_from_db()
+    assert application.anonymous_applicant.claim_link_version == 1
+
+
+@pytest.mark.django_db
+def test_changing_the_address_sends_one_email_to_the_new_address_only(
+    client, gated_course
+):
+    application = _submitted_unverified(client, gated_course)
+
+    _change_email(client, application)
+
+    assert [message.to for message in mail.outbox] == [["new@example.com"]]
+
+
+@pytest.mark.django_db
+def test_changing_the_address_invalidates_the_earlier_link(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+    earlier_url = _claim_url(application.anonymous_applicant)
+
+    _change_email(client, application)
+
+    assert client.get(earlier_url).context["claim_state"] == "invalid"
+
+
+@pytest.mark.django_db
+def test_changing_the_address_redirects_to_the_status_page(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    response = _change_email(client, application)
+
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+
+
+@pytest.mark.django_db
+def test_changing_the_address_names_the_new_address_in_the_toast(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    response = _change_email(client, application)
+
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        "We've emailed a link to new@example.com."
+    ]
+
+
+@pytest.mark.django_db
+def test_posting_the_same_address_sends_nothing(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    _change_email(client, application, email="ada@example.com")
+
+    assert mail.outbox == []
+
+
+@pytest.mark.django_db
+def test_posting_the_same_address_keeps_the_claim_link_version(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    response = _change_email(client, application, email="ada@example.com")
+
+    application.anonymous_applicant.refresh_from_db()
+    assert (
+        response.status_code,
+        application.anonymous_applicant.claim_link_version,
+    ) == (
+        302,
+        0,
+    )
+
+
+@pytest.mark.django_db
+def test_posting_an_invalid_address_is_422_with_the_field_error(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    response = _change_email(client, application, email="not-an-address")
+
+    assert response.status_code == 422
+    assert "email" in response.context["email_form"].errors
+    assert "course_applications/application_status.html" in [
+        t.name for t in response.templates
+    ]
+
+
+@pytest.mark.django_db
+def test_posting_an_invalid_address_sends_nothing(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    _change_email(client, application, email="not-an-address")
+
+    assert mail.outbox == []
+
+
+@pytest.mark.django_db
+def test_posting_a_filled_honeypot_is_422_with_the_non_field_error(
+    client, gated_course
+):
+    application = _submitted_unverified(client, gated_course)
+
+    response = _change_email(client, application, fax_number="bot")
+
+    assert response.status_code == 422
+    assert len(response.context["email_form"].non_field_errors()) == 1
+
+
+@pytest.mark.django_db
+def test_change_email_honeypot_trips_spend_the_address_limit(gated_course):
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        client = Client()
+        application = _submitted_unverified(client, gated_course)
+        for index in range(4):
+            Client().post(
+                _details_url(gated_course),
+                _details_data(email="new@example.com", fax_number="bot"),
+                REMOTE_ADDR=f"10.0.0.{index + 1}",
+            )
+        _change_email(client, application, fax_number="bot")
+
+        response = Client().post(
+            _details_url(gated_course),
+            _details_data(email="new@example.com"),
+            REMOTE_ADDR="10.1.1.1",
+        )
+
+    assert response.status_code == 429
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("has_account", [True, False])
+def test_change_answers_the_same_whether_or_not_the_address_has_an_account(
+    client, gated_course, has_account
+):
+    application = _submitted_unverified(client, gated_course)
+    address = str(UserFactory().email) if has_account else "free@example.com"
+
+    response = _change_email(client, application, email=address)
+
+    assert response.status_code == 302
+    assert response["Location"] == reverse(
+        "course_applications:status", kwargs={"pk": application.pk}
+    )
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        f"We've emailed a link to {address}."
+    ]
+
+
+@pytest.mark.django_db
+def test_change_post_reads_no_user_table(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    with CaptureQueriesContext(connection) as queries:
+        _change_email(client, application)
+
+    sql = " ".join(query["sql"] for query in queries.captured_queries)
+    assert (
+        any(table in sql for table in ("accounts_user", "account_emailaddress"))
+        is False
+    )
+
+
+@pytest.mark.django_db
+def test_change_email_on_a_draft_is_404(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    response = _change_email(client, application)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_change_email_on_a_verified_application_is_404(client, mock_site_context):
+    user = UserFactory()
+    application = CourseApplicationFactory(user=user)
+    client.force_login(user)
+
+    response = _change_email(client, application)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_change_email_on_an_application_with_no_applicant_is_404(
+    client, mock_site_context
+):
+    user = UserFactory()
+    application = CourseApplicationFactory(user=user)
+    CourseApplication.objects.filter(pk=application.pk).update(
+        user=None, anonymous_applicant=None
+    )
+    client.force_login(user)
+
+    response = _change_email(client, application)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_change_email_from_a_fresh_client_is_sent_to_log_in_at_the_status_page(
+    client, gated_course
+):
+    application = _submitted_unverified(client, gated_course)
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+
+    response = _change_email(Client(), application)
+
+    assert response["Location"] == f"{reverse('account_login')}?next={status_url}"
+
+
+@pytest.mark.django_db
+def test_change_email_get_is_405(client, gated_course):
+    application = _submitted_unverified(client, gated_course)
+
+    response = client.get(_change_email_url(application))
+
+    assert response.status_code == 405
+
+
+@pytest.mark.django_db
+def test_change_email_over_the_per_ip_limit_is_429_and_writes_nothing(gated_course):
+    client = Client()
+    with override_settings(ACCOUNT_RATE_LIMITS=DETAILS_RATE_LIMITS):
+        cache.clear()
+        application = _submitted_unverified(client, gated_course)
+        _post_details_from_one_ip(gated_course, 5)
+
+        response = client.post(
+            _change_email_url(application),
+            {"email": "new@example.com"},
+            REMOTE_ADDR="10.9.9.9",
+        )
+
+    application.anonymous_applicant.refresh_from_db()
+    assert (response.status_code, application.anonymous_applicant.email) == (
+        429,
+        "ada@example.com",
+    )
+
+
+@pytest.mark.django_db
+def test_status_page_of_an_unverified_application_offers_the_change_form(
+    client, gated_course
+):
+    application = _submitted_unverified(client, gated_course)
+
+    body = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    ).content.decode()
+
+    assert 'data-testid="change-email-form"' in body
+    assert f'action="{_change_email_url(application)}"' in body
+
+
+@pytest.mark.django_db
+def test_status_page_of_a_verified_application_has_no_change_form(
+    client, mock_site_context
+):
+    user = UserFactory()
+    application = CourseApplicationFactory(user=user)
+    client.force_login(user)
+
+    body = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    ).content.decode()
+
+    assert 'data-testid="change-email-form"' not in body

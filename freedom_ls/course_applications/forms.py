@@ -98,3 +98,26 @@ class ApplicantDetailsForm(forms.ModelForm):
         if accepted:
             applicant.consent_ip_address = get_client_ip(self.request) or None
             applicant.consented_at = timezone.now()
+
+
+class ApplicantEmailForm(forms.Form):
+    """The one field an applicant may change after submitting: where the claim link goes.
+
+    Not the details form: the name and consent were given once, and the
+    honeypot is the only other thing a bot would fill in.
+    """
+
+    email = forms.EmailField(max_length=254, label="Wrong address? Enter the right one")
+    fax_number = honeypot_field()
+
+    def __init__(self, data: QueryDict | None = None, *, request: HttpRequest) -> None:
+        super().__init__(data)
+        self.request = request
+
+    def clean_email(self) -> str:
+        return normalise_email(self.cleaned_data["email"])
+
+    def clean(self) -> dict[str, object]:
+        cleaned_data: dict[str, object] = super().clean() or {}
+        reject_honeypot(self, self.request, HONEYPOT_APPLICATION_MESSAGE)
+        return cleaned_data

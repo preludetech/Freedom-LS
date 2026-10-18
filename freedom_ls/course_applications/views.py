@@ -19,7 +19,9 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.crypto import salted_hmac
+from django.views.decorators.http import require_POST
 
+from freedom_ls.accounts.forms import tripped_honeypot
 from freedom_ls.accounts.models import User
 from freedom_ls.accounts.utils import (
     get_client_ip,
@@ -52,7 +54,10 @@ from freedom_ls.course_applications.claims import (
     update_applicant_email,
 )
 from freedom_ls.course_applications.emails import send_application_claim_email
-from freedom_ls.course_applications.forms import ApplicantDetailsForm
+from freedom_ls.course_applications.forms import (
+    ApplicantDetailsForm,
+    ApplicantEmailForm,
+)
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.course_applications.queries import get_application_for_course
 from freedom_ls.form_engine.models import Form, FormProgress
@@ -230,11 +235,68 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         return redirect("course_applications:status", pk=app.pk)
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))
+    return _render_status(
+        request,
+        app,
+        ApplicantEmailForm(request=request)
+        if app.anonymous_applicant is not None and not app.is_email_verified
+        else None,
+    )
+
+
+def _render_status(
+    request: HttpRequest,
+    app: CourseApplication,
+    email_form: ApplicantEmailForm | None,
+    *,
+    status: int = 200,
+) -> HttpResponse:
     return render(
         request,
         "course_applications/application_status.html",
-        {"application": app},
+        {"application": app, "email_form": email_form},
+        status=status,
     )
+
+
+@require_POST
+def change_applicant_email(request: HttpRequest, pk: UUID) -> HttpResponse:
+    """Move a submitted, unverified application to another address.
+
+    The old address was never proven, so it hears nothing. Every link sent to
+    it stops working and one new link goes to the new address. A draft
+    changes its address on the details step instead, where the applicant
+    already is.
+    """
+    status_url = reverse("course_applications:status", kwargs={"pk": pk})
+    # A visitor whose session ended is sent to log in and then to the status
+    # page, not back to this POST-only URL.
+    found = _owned_application(
+        request, _status_applications(request), pk, next_url=status_url
+    )
+    if isinstance(found, HttpResponse):
+        return found
+    app = found
+    applicant = _unverified_applicant_of(app)
+    if not app.is_submitted:
+        raise Http404
+    limit = _AddressLimit.for_post(
+        request, request.POST.get("email", ""), applicant.email
+    )
+    refused = limit.refuse_if_exhausted()
+    if refused is not None:
+        return refused
+    form = ApplicantEmailForm(request.POST, request=request)
+    if form.is_valid():
+        limited = limit.spend()
+        if limited is not None:
+            return limited
+        if update_applicant_email(applicant, form.cleaned_data["email"]):
+            _report_claim_email(request, applicant)
+        return redirect(status_url)
+    if tripped_honeypot(form):
+        limit.spend_for_honeypot()
+    return _render_status(request, app, form, status=422)
 
 
 def _anonymous_applications_allowed(course: Course) -> bool:
@@ -465,20 +527,25 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
 
 
 def _owned_application(
-    request: HttpRequest, queryset: QuerySet[CourseApplication], pk: UUID
+    request: HttpRequest,
+    queryset: QuerySet[CourseApplication],
+    pk: UUID,
+    *,
+    next_url: str | None = None,
 ) -> CourseApplication | HttpResponse:
     """The applicant's own application, or the response that stands in for it.
 
     A signed-in user who owns no such application gets 404. A visitor is sent
     to log in instead, whether or not the application exists: an owner whose
-    session has ended is the usual case, and the login page returns them here.
+    session has ended is the usual case, and the login page returns them to
+    `next_url`, which defaults to the requested page.
     """
     app = queryset.filter(pk=pk).first()
     if app is not None:
         return app
     if request.user.is_authenticated:
         raise Http404
-    return redirect_to_auth(request, next_url=request.get_full_path())
+    return redirect_to_auth(request, next_url=next_url or request.get_full_path())
 
 
 def _owned_application_with_form(

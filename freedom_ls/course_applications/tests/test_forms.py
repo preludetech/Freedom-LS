@@ -17,6 +17,7 @@ from freedom_ls.course_applications.factories import AnonymousApplicantFactory
 from freedom_ls.course_applications.forms import (
     HONEYPOT_APPLICATION_MESSAGE,
     ApplicantDetailsForm,
+    ApplicantEmailForm,
 )
 from freedom_ls.course_applications.models import AnonymousApplicant
 
@@ -159,3 +160,32 @@ def test_save_without_a_terms_policy_leaves_the_evidence_blank(request_for_site,
     assert applicant.terms_version == ""
     assert applicant.consent_ip_address is None
     assert applicant.consented_at is None
+
+
+def _email_form(request, **data: str) -> ApplicantEmailForm:
+    query = QueryDict(mutable=True)
+    query.update({"email": "ada@example.com", **data})
+    return ApplicantEmailForm(query, request=request)
+
+
+def test_email_form_normalises_the_address(request_for_site):
+    form = _email_form(request_for_site, email="  Ada@Example.COM ")
+
+    assert form.is_valid() is True
+    assert form.cleaned_data["email"] == "ada@example.com"
+
+
+def test_email_form_refuses_a_filled_honeypot_with_the_application_message(
+    request_for_site,
+):
+    form = _email_form(request_for_site, fax_number="bot")
+
+    assert form.is_valid() is False
+    assert form.non_field_errors() == [str(HONEYPOT_APPLICATION_MESSAGE)]
+
+
+def test_email_form_refuses_an_invalid_address(request_for_site):
+    form = _email_form(request_for_site, email="not-an-address")
+
+    assert form.is_valid() is False
+    assert "email" in form.errors

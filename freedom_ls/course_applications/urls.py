@@ -13,6 +13,11 @@ urlpatterns = [
     ),
     path("status/<uuid:pk>/", views.application_status, name="status"),
     path(
+        "status/<uuid:pk>/change-email/",
+        views.change_applicant_email,
+        name="change_applicant_email",
+    ),
+    path(
         "application/<uuid:pk>/page/<int:page_number>/",
         views.application_form_page,
         name="form_page",

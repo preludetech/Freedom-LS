@@ -198,7 +198,7 @@ def test_an_anonymous_visitor_can_apply_from_details_to_submit(
     page.goto(check_url)
 
     page.get_by_role("button", name="Submit application").click()
-    expect(page.get_by_text("has been received")).to_be_visible()
+    expect(page.get_by_text("Before anyone reviews it")).to_be_visible()
 
     for viewport in QA_VIEWPORTS:
         page.set_viewport_size(viewport)
