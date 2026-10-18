@@ -1,6 +1,6 @@
 # Learner Experience
 
-_Last updated: 2026-10-12_
+_Last updated: 2026-10-18_
 
 ## Summary
 
@@ -20,6 +20,7 @@ _Last updated: 2026-10-12_
 - A site has a public blog: an index of its published articles and a page for each article, readable without logging in. An article can carry an image, shown on its page, its cards and its social-sharing preview. See [Blog](#blog).
 - A site footer with a copyright line and links to the site's terms of service and privacy policy appears on every page, shortened to a single line inside the course player. It is left off error pages and the form or quiz page a learner is answering.
 - When a site turns on notifications, a learner sees a bell in the header telling them when someone else has registered them for a course. See [Notifications](./notifications.md).
+- When a site turns on messaging, a learner has a Messages button in the header that opens an inbox, where they can read and reply to messages. They can start a conversation only where the site's messaging policy allows it, which by default it does not. See [messaging](./messaging.md).
 
 ## Dashboard
 

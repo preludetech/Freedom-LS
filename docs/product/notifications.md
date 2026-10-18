@@ -1,11 +1,11 @@
 # Notifications
 
-_Last updated: 2026-10-01_
+_Last updated: 2026-10-18_
 
 ## Summary
 
 - Signed-in users get an in-app bell with an unread badge in the header, a panel of recent notifications, and a notification centre page.
-- One event raises a notification today: a learner is registered for a course by someone else.
+- Two events raise a notification today: a learner is registered for a course by someone else, and a user receives a new [direct message](./messaging.md).
 - The bell is **off by default**. Notifications are recorded either way.
 - A project can add its own notification categories.
 - Not built: email or any other delivery, preferences, pop-up alerts, retention, and backfill.
@@ -20,9 +20,11 @@ Every signed-in user, learner or educator, has a bell in the shared header. It c
 
 FLS never notifies someone about what they just did. A learner is notified when someone else registers them for a course. Self-registering and finishing a course notify nobody, because the learner is already looking at the result. The corresponding [webhooks](./webhooks.md) still fire in both cases.
 
+A user is also notified when they receive a [direct message](./messaging.md). Each conversation has at most one unread notification for a user: a later message refreshes it rather than adding another. Opening the conversation marks it read.
+
 ## Turning It On and Extending It
 
-The bell is hidden until a project sets `NOTIFICATIONS_ENABLED`. Notifications are recorded whether or not it is set, so a site that turns the bell on later shows the history it has built up. A project adds its own notification categories through the `NOTIFICATION_CATEGORIES` setting. Each category can optionally be given one of a fixed set of colours for the icon tile beside its notifications; without one the tile is neutral, as it is for the category FLS ships.
+The bell is hidden until a project sets `NOTIFICATIONS_ENABLED`. Notifications are recorded whether or not it is set, so a site that turns the bell on later shows the history it has built up. A project adds its own notification categories through the `NOTIFICATION_CATEGORIES` setting. Each category can optionally be given one of a fixed set of colours for the icon tile beside its notifications; without one the tile is neutral, as it is for the categories FLS ships.
 
 ## Not Built
 

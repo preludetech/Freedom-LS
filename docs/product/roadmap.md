@@ -5,7 +5,7 @@ _Last updated: 2026-10-21_
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), direct messaging (one-to-one conversations built, off by default; moderation, email, real-time delivery and group messaging not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
 - **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadlines), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -71,7 +71,19 @@ Not built:
 
 **Status: In-app notifications built; delivery and most events not built.**
 
-FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). One event raises a notification: a learner being registered for a course by someone else. Still missing: email or any other delivery channel, notification preferences, digests, direct messaging between educators and learners, and notifications for course launch, removal from an organisation, deadlines and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
+FLS has an in-app bell and notification centre, off by default, described in [notifications](./notifications.md). Two things raise a notification: a learner being registered for a course by someone else, and a new [direct message](./messaging.md). Still missing: email or any other delivery channel, notification preferences, digests, and notifications for course launch, removal from an organisation, deadlines and cohort events. Beyond the bell, FLS sends only the transactional emails for verification and password reset.
+
+## Direct Messaging
+
+**Status: One-to-one messaging built; moderation, email and real-time delivery not built.**
+
+Educators and learners can exchange one-to-one messages where the site's messaging policy allows it; see [messaging](./messaging.md) for what is built. Not built:
+
+- **Reporting and blocking** — nobody can report a message or block a user, and there is no moderation queue for site admins. Planned.
+- **Email about messages** — a new message shows only in the in-app bell and Messages badge. Email delivery, preferences and digests are planned together with notification email.
+- **Push delivery** — the inbox and open threads update by polling. Optional real-time push is planned, off by default.
+- **Group, broadcast and cohort-wide messaging** — conversations are between two people only. Not planned in the current effort.
+- **Attachments, editing and deleting messages, typing and presence indicators** — not built.
 
 ## Two-Factor Authentication (2FA / MFA)
 
@@ -130,7 +142,7 @@ The educator interface can create, edit, deactivate, reactivate and delete cohor
 
 Also not built in the educator interface: bulk actions on lists, and data for the cohort overview's "needs attention" card, which shows a placeholder.
 
-There is also **no messaging capability** — educators cannot contact learners from within FLS (see [Notification System](#notification-system)).
+Educators can message learners from within FLS; see [Direct Messaging](#direct-messaging) for what messaging still lacks.
 
 ## Enforcing Content Security Policy
 

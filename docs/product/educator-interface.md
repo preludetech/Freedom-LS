@@ -4,15 +4,16 @@ _Last updated: 2026-10-21_
 
 ## Summary
 
-- Educators use a single-page HTMX panel with three sections: Cohorts, Learners, and Courses. Organisation admins also get a Members section, under Administration.
-- A learner or cohort can be previewed in a read-only quick-view drawer without leaving the list.
+- Educators use a single-page HTMX panel with three sections: Cohorts, Learners, and Courses, plus Messages when direct messaging is turned on. Organisation admins also get a Members section, under Administration.
+- A learner or cohort can be previewed in a quick-view drawer without leaving the list.
 - The interface is scoped to one organisation at a time, chosen with a switcher and carried in the URL. See [Organisation Scope](#organisation-scope).
 - Educators can create, edit, deactivate and delete cohorts, and register a cohort for courses or unregister it. A cohort's page shows an overview with per-course completion, then Learners, Courses and Settings tabs. See [Cohorts](#cohorts).
 - Educators can add learners by email, see whether each is active, pending or removed, put them in or move them between cohorts, register them for courses, and deactivate or reactivate them. See [Learners](#learners).
 - The Courses list shows each course's visibility and an interest count. Visibility is read-only here.
+- When direct messaging is turned on, educators can message learners from a Messages section or from a learner's quick view. See [Messages](#messages).
 - **Access is granted by role**: site admin, organisation admin, cohort admin or cohort viewer. Cohorts, Learners and Courses are all scoped to the current organisation and filtered to what the educator's roles cover. See [Access Control](#access-control).
 - Organisation admins add members, give and remove their roles, and suspend or reactivate them from the Members section. See [Members and roles](#members-and-roles).
-- **Limits:** deadline management and generating a cohort progress report are done in the Django admin, and there are no bulk learner operations. There is no messaging capability. See [Limits](#limits).
+- **Limits:** deadline management and generating a cohort progress report are done in the Django admin, and there are no bulk learner operations. See [Limits](#limits).
 
 ## Panel Interface
 
@@ -20,7 +21,7 @@ _Last updated: 2026-10-21_
 
 The educator interface is a single-page application, scoped to one organisation at a time — see [Organisation Scope](#organisation-scope). Navigation within it is HTMX-driven: selecting a section or item updates the main panel, sidebar, and breadcrumb without a full page reload.
 
-**Quick view.** Clicking a learner's or cohort's name opens a read-only summary in a drawer beside the list, with a link through to the full page. On a wide screen the drawer docks beside the page, and on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active in a course. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view.
+**Quick view.** Clicking a learner's or cohort's name opens a summary in a drawer beside the list, with a link through to the full page. On a wide screen the drawer docks beside the page, and on a phone it opens as a sheet. For a learner it shows email, status, cohorts, course registrations with progress, and when they were last active in a course. For a cohort it shows status, learner count and courses. It shows only what the educator could already see on the full page. Courses have no quick view. When direct messaging is turned on, a learner's quick view also has a box showing the latest messages with that learner and a composer to reply.
 
 ![Learner quick view open beside the Learners list](screenshots/educator_learner_quick_view.png)
 
@@ -92,6 +93,10 @@ The Members section, under Administration in the navigation, is visible only to 
 
 Admins can give only roles at or below their own. Any change that gives someone access they did not have, or takes access away, is confirmed first and says what changes. Roles add up: to change someone's role, add the new one and remove the old. The person is not notified when a role is given or removed, a setup email cannot be resent from this section, members have no page of their own, and there is no record of past role changes.
 
+### Messages
+
+When direct messaging is turned on, the sidebar has a Messages link with a count of unread conversations. It lists the educator's conversations with learners in the current organisation, with a **New message** action to start another; conversations with colleagues stay in the shared inbox. Who an educator may message is decided by the messaging policy. See [messaging](./messaging.md).
+
 ## Organisation Scope
 
 The educator interface is scoped to one **organisation** at a time — a grouping layer within a site, sitting above cohorts and course registrations. See [multi-tenancy and isolation](./multi-tenancy-and-isolation.md#organisations) for what an organisation is and where the isolation boundary actually sits, and [admin interface](./admin-interface.md#organisation-management) for how organisations are created.
@@ -127,4 +132,4 @@ These operations are not available in the educator interface:
 - **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 - **Cohort progress reports** — generating a cohort's [progress report](./reports.md) is done from the Django admin. An educator with access to the cohort can have one produced, but not from this interface.
 
-**There is no messaging capability.** Educators cannot send messages or emails to learners from FLS.
+Educators cannot send email to learners from FLS, and there is no group or broadcast messaging; see [messaging](./messaging.md#not-built).
