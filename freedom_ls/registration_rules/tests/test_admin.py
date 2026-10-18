@@ -3,21 +3,26 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+import time_machine
 
 from django.contrib.auth.models import Permission
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.learner_management.factories import LearnerCourseRegistrationFactory
 from freedom_ls.learner_management.models import LearnerCourseRegistration
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.tests.app_guards import app_not_installed
+from freedom_ls.tests.site_context import drop_ambient_request
 
 if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
@@ -28,6 +33,7 @@ from freedom_ls.hr_attributes.factories import (
     LearnerHRAttributesFactory,
     OrganisationHRSettingsFactory,
 )
+from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
     RegistrationRuleFactory,
@@ -829,3 +835,162 @@ def test_the_preview_posts_back_the_inline_management_form(preview_inputs):
 @pytest.mark.django_db
 def test_the_preview_carries_one_csrf_token(preview_inputs):
     assert preview_inputs.count("csrfmiddlewaretoken") == 1
+
+
+_FEB = datetime(2026, 2, 1, tzinfo=UTC)
+
+
+def _warnings(response) -> list[str]:
+    return [str(message) for message in response.context["messages"]]
+
+
+def _flag_for(client, rule) -> bool:
+    response = client.get(reverse(RULE_CHANGELIST))
+    (listed,) = response.context["cl"].result_list
+    assert listed.pk == rule.pk
+    return bool(listed.change_not_yet_applied)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("is_enabled", "last_evaluated_at", "expected"),
+    [
+        (False, None, False),
+        (True, None, True),
+        (True, _FEB - timedelta(days=1), True),
+        (True, _FEB + timedelta(days=1), False),
+    ],
+    ids=[
+        "disabled",
+        "never_evaluated",
+        "evaluated_before_edit",
+        "evaluated_after_edit",
+    ],
+)
+def test_the_changelist_flags_a_change_no_run_has_applied(
+    staff_client, mock_site_context, is_enabled, last_evaluated_at, expected
+):
+    # Arrange
+    with time_machine.travel(_FEB, tick=False):
+        rule = RegistrationRuleFactory(
+            is_enabled=is_enabled, last_evaluated_at=last_evaluated_at
+        )
+
+    # Act
+    flagged = _flag_for(staff_client, rule)
+
+    # Assert
+    assert flagged is expected
+
+
+@pytest.mark.django_db
+def test_the_changelist_stops_flagging_a_rule_once_it_has_run(staff_client, rules_on):
+    # Arrange
+    rule = RegistrationRuleFactory(organisation=rules_on, is_enabled=True)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert _flag_for(staff_client, rule) is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("visibility", "expected"),
+    [
+        (CourseVisibility.PUBLISHED, False),
+        (CourseVisibility.COMING_SOON, True),
+        (CourseVisibility.HIDDEN, True),
+    ],
+)
+def test_the_change_page_warns_when_the_course_is_not_published(
+    staff_client, mock_site_context, visibility, expected
+):
+    # Arrange
+    rule = RegistrationRuleFactory(course=CourseFactory(visibility=visibility))
+
+    # Act
+    response = _change_page(staff_client, rule)
+
+    # Assert
+    assert any("not published" in w for w in _warnings(response)) is expected
+
+
+@pytest.mark.django_db
+def test_a_rule_on_an_unpublished_course_still_registers_learners(rules_on):
+    # Arrange
+    rule = RegistrationRuleFactory(
+        organisation=rules_on,
+        is_enabled=True,
+        course=CourseFactory(visibility=CourseVisibility.HIDDEN),
+    )
+    learner = _learner_in(rules_on)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(rule.pk, rule.site_id)
+
+    # Assert
+    assert _active_learner_ids(rule.course) == {learner.pk}
+
+
+@pytest.mark.django_db
+def test_an_unapplied_change_with_the_switch_off_names_the_organisation(
+    staff_client, mock_site_context
+):
+    # Arrange
+    rule = RegistrationRuleFactory(is_enabled=True)
+
+    # Act
+    response = _change_page(staff_client, rule)
+
+    # Assert
+    assert any(
+        "switched off" in w and rule.organisation.name in w for w in _warnings(response)
+    )
+
+
+@pytest.mark.django_db
+def test_an_unapplied_change_with_the_switch_on_names_the_task_worker(
+    staff_client, rules_on
+):
+    # Arrange
+    rule = RegistrationRuleFactory(organisation=rules_on, is_enabled=True)
+
+    # Act
+    response = _change_page(staff_client, rule)
+
+    # Assert
+    assert any("task worker" in w for w in _warnings(response))
+
+
+@pytest.mark.django_db
+def test_an_unapplied_change_with_the_switch_on_does_not_blame_the_switch(
+    staff_client, rules_on
+):
+    # Arrange
+    rule = RegistrationRuleFactory(organisation=rules_on, is_enabled=True)
+
+    # Act
+    response = _change_page(staff_client, rule)
+
+    # Assert
+    assert not any("switched off" in w for w in _warnings(response))
+
+
+@pytest.mark.django_db
+def test_an_applied_change_shows_no_warning(staff_client, rules_on):
+    # Arrange
+    rule = RegistrationRuleFactory(
+        organisation=rules_on,
+        is_enabled=True,
+        last_evaluated_at=timezone.now() + timedelta(hours=1),
+    )
+
+    # Act
+    response = _change_page(staff_client, rule)
+
+    # Assert
+    assert _warnings(response) == []

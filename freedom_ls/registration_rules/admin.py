@@ -8,7 +8,15 @@ from unfold.admin import StackedInline
 from django.contrib import admin, messages
 from django.contrib.admin.options import csrf_protect_m
 from django.contrib.admin.utils import unquote
-from django.db.models import Exists, OuterRef, QuerySet
+from django.db.models import (
+    BooleanField,
+    Exists,
+    ExpressionWrapper,
+    F,
+    OuterRef,
+    Q,
+    QuerySet,
+)
 from django.db.models.fields.related import ManyToManyField
 from django.forms import ModelMultipleChoiceField, all_valid
 from django.http import HttpRequest, HttpResponse
@@ -17,6 +25,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
+from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
 from freedom_ls.learner_management.admin import LearnerCourseRegistrationAdmin
 from freedom_ls.learner_management.models import (
@@ -123,6 +132,7 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         "course",
         "is_enabled",
         "uses_inactive_entries",
+        "change_not_yet_applied",
         "last_evaluated_at",
     ]
     list_filter = ["organisation", "is_enabled", "course"]
@@ -139,7 +149,9 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         return [] if obj is None else list(super().get_inlines(request, obj))
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[RegistrationRule]:
-        # One query for the changelist's "Uses inactive entries" column.
+        # One query for the changelist's "Uses inactive entries" column. The
+        # "Change not yet applied" column and the change form's warning share
+        # one predicate.
         inactive = [
             Exists(
                 model.objects.filter(
@@ -151,7 +163,15 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         ]
         queryset: QuerySet[RegistrationRule] = super().get_queryset(request)
         return queryset.annotate(
-            uses_inactive_entries=inactive[0] | inactive[1] | inactive[2]
+            uses_inactive_entries=inactive[0] | inactive[1] | inactive[2],
+            change_not_yet_applied=ExpressionWrapper(
+                Q(is_enabled=True)
+                & (
+                    Q(last_evaluated_at__isnull=True)
+                    | Q(last_evaluated_at__lt=F("updated_at"))
+                ),
+                output_field=BooleanField(),
+            ),
         )
 
     @admin.display(
@@ -161,6 +181,14 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
     )
     def uses_inactive_entries(self, obj: RegistrationRule) -> bool:
         return bool(getattr(obj, "uses_inactive_entries", False))
+
+    @admin.display(
+        boolean=True,
+        description="Change not yet applied",
+        ordering="change_not_yet_applied",
+    )
+    def change_not_yet_applied(self, obj: RegistrationRule) -> bool:
+        return bool(getattr(obj, "change_not_yet_applied", False))
 
     def _change_form_warnings(self, obj: RegistrationRule) -> list[str]:
         """What a person editing this rule should know before they save."""
@@ -181,6 +209,22 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
                 "This rule still matches learners who hold the deactivated entries: "
                 f"{', '.join(inactive)}. New learners cannot be given them."
             )
+        if obj.course.visibility != CourseVisibility.PUBLISHED:
+            warnings.append(
+                "This course is not published. The rule still registers learners, "
+                "who will not see it until it is."
+            )
+        if getattr(obj, "change_not_yet_applied", False):
+            if not rules_enabled_for(obj.organisation_id):
+                warnings.append(
+                    f"Registration rules are switched off for {obj.organisation}; "
+                    "this rule's changes apply once they are switched on."
+                )
+            else:
+                warnings.append(
+                    "This rule's last change has not been applied yet. "
+                    "The task is queued or has failed; check the task worker."
+                )
         return warnings
 
     def _stock_changeform(
