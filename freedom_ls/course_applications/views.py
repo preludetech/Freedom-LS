@@ -620,19 +620,25 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
     """
     link = read_claim_token(token)
     application = application_of(link.applicant) if link is not None else None
-    if (
-        link is None
-        or link.applicant.claimed_at is not None
-        or application is None
-        or not application.is_submitted
-    ):
+    if link is None or link.applicant.claimed_at is not None or application is None:
         return _render_claim(request, "invalid")
+    is_submitted = application.is_submitted
     if link.expired:
         if request.method == "POST":
             if send_application_claim_email(request, link.applicant):
-                return _render_claim(request, "resent", link.applicant)
-            return _render_claim(request, "expired", link.applicant, resend_failed=True)
-        return _render_claim(request, "expired", link.applicant)
+                return _render_claim(
+                    request, "resent", link.applicant, is_submitted=is_submitted
+                )
+            return _render_claim(
+                request,
+                "expired",
+                link.applicant,
+                is_submitted=is_submitted,
+                resend_failed=True,
+            )
+        return _render_claim(
+            request, "expired", link.applicant, is_submitted=is_submitted
+        )
     owner = resolve_claim_owner(link.applicant)
     if owner is not None and owner.user.site_id != link.applicant.site_id:
         return _render_claim(request, "invalid")
@@ -642,6 +648,7 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
             "confirm",
             link.applicant,
             applicant_email=link.applicant.email,
+            is_submitted=is_submitted,
             sets_password=claim_sets_a_password(owner),
             signed_in_as=(
                 cast(User, request.user).email

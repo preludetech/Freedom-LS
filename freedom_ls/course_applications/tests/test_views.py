@@ -19,7 +19,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import connection
-from django.test import Client, override_settings
+from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
@@ -43,6 +43,7 @@ if app_not_installed("freedom_ls.course_applications"):
 
 from freedom_ls.course_applications.anonymous_session import (
     ANONYMOUS_APPLICANTS_SESSION_KEY,
+    anonymous_applicant_for_course,
 )
 from freedom_ls.course_applications.claims import claim_token
 from freedom_ls.course_applications.factories import CourseApplicationFactory
@@ -2825,17 +2826,179 @@ def test_claim_get_after_a_claim_renders_the_invalid_page(client, claimable):
     assert response.context["claim_state"] == "invalid"
 
 
-@pytest.mark.django_db
-def test_claim_of_a_draft_application_renders_the_invalid_page(
-    client, mock_site_context
-):
+def _draft_application():
+    """A form application whose sitting has not been completed yet."""
     application = _submitted_form_application()
+    _stamp_consent(application.anonymous_applicant)
     application.form_progress.completed_time = None
     application.form_progress.save(update_fields=["completed_time"])
+    return application
 
-    response = client.get(_claim_url(application.anonymous_applicant))
 
-    assert response.context["claim_state"] == "invalid"
+@pytest.fixture
+def claimable_draft(mock_site_context):
+    return _draft_application()
+
+
+@pytest.mark.django_db
+def test_claim_of_a_draft_application_renders_the_confirm_page(client, claimable_draft):
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    assert (response.context["claim_state"], response.context["is_submitted"]) == (
+        "confirm",
+        False,
+    )
+
+
+@pytest.mark.django_db
+def test_claim_get_of_a_draft_says_the_application_continues(client, claimable_draft):
+    response = client.get(_claim_url(claimable_draft.anonymous_applicant))
+
+    body = response.content.decode()
+    assert (
+        "Continue your application for" in body,
+        "taken back to your application" in body,
+        "Finish your application for" in body,
+    ) == (True, True, False)
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_creates_the_user(client, claimable_draft):
+    _claim(client, claimable_draft)
+
+    assert User.objects.filter(email=claimable_draft.anonymous_applicant.email).exists()
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_writes_the_consent(client, claimable_draft):
+    _claim(client, claimable_draft)
+
+    user = User.objects.get(email=claimable_draft.anonymous_applicant.email)
+    assert LegalConsent.objects.filter(user=user).count() == 2
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_fires_the_user_registered_webhook_once(
+    client, claimable_draft
+):
+    with patch("freedom_ls.webhooks.events.fire_webhook_event") as fire:
+        _claim(client, claimable_draft)
+
+    assert (fire.call_count, fire.call_args.args[0]) == (1, "user.registered")
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_changes_the_session_key(client, claimable_draft):
+    client.get(_claim_url(claimable_draft.anonymous_applicant))
+    session = client.session
+    session["warmup"] = "1"
+    session.save()
+    key_before = client.session.session_key
+
+    _claim(client, claimable_draft)
+
+    assert client.session.session_key != key_before
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_attaches_the_user_to_the_application_and_sitting(
+    client, claimable_draft
+):
+    _claim(client, claimable_draft)
+
+    claimable_draft.refresh_from_db()
+    claimable_draft.form_progress.refresh_from_db()
+    user = User.objects.get(email=claimable_draft.anonymous_applicant.email)
+    assert (claimable_draft.user, claimable_draft.form_progress.user) == (user, user)
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_redirects_to_set_password_with_the_status_page_as_next(
+    client, claimable_draft
+):
+    response = _claim(client, claimable_draft)
+
+    status_url = reverse(
+        "course_applications:status", kwargs={"pk": claimable_draft.pk}
+    )
+    assert response["Location"] == (
+        f"{reverse('account_set_password')}?{urlencode({'next': status_url})}"
+    )
+
+
+@pytest.mark.django_db
+def test_status_page_after_a_draft_claim_lands_on_the_first_form_page(
+    client, claimable_draft
+):
+    _claim(client, claimable_draft)
+
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": claimable_draft.pk})
+    )
+
+    assert response["Location"] == reverse(
+        "course_applications:form_page",
+        kwargs={"pk": claimable_draft.pk, "page_number": 1},
+    )
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_drops_the_applicant_from_the_claiming_session(
+    client, claimable_draft
+):
+    session = client.session
+    session[ANONYMOUS_APPLICANTS_SESSION_KEY] = {
+        str(claimable_draft.course_id): str(claimable_draft.anonymous_applicant.pk)
+    }
+    session.save()
+
+    _claim(client, claimable_draft)
+
+    request = RequestFactory().get("/")
+    request.session = client.session
+    assert anonymous_applicant_for_course(request, claimable_draft.course) is None
+
+
+@pytest.mark.django_db
+def test_claim_post_of_a_draft_for_an_existing_account_lands_on_the_resume_page(
+    client, mock_site_context
+):
+    user = UserFactory(email="ada@example.com")
+    EmailAddressFactory(user=user)
+    application = _draft_application()
+    applicant = application.anonymous_applicant
+    applicant.email = "ada@example.com"
+    applicant.save(update_fields=["email"])
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+
+    response = _claim(client, application)
+    followed = client.get(response["Location"])
+
+    assert (
+        response["Location"],
+        client.session["_auth_user_id"],
+        followed["Location"],
+    ) == (
+        status_url,
+        str(user.pk),
+        reverse(
+            "course_applications:form_page",
+            kwargs={"pk": application.pk, "page_number": 1},
+        ),
+    )
+
+
+@pytest.mark.django_db
+def test_claim_with_an_expired_token_of_a_draft_uses_the_draft_wording(
+    client, claimable_draft
+):
+    url = _claim_url(claimable_draft.anonymous_applicant)
+    days = allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS
+
+    with time_machine.travel(timezone.now() + timedelta(days=days, hours=1)):
+        response = client.get(url)
+
+    assert "Links to continue an application stop working" in response.content.decode()
 
 
 @pytest.mark.django_db

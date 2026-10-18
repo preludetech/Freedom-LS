@@ -1,7 +1,7 @@
 {% extends "_base.html" %}
 
 {% block head_title %}
-    Finish your application
+    {% if is_submitted == False %}Continue{% else %}Finish{% endif %} your application
 {% endblock %}
 
 {% block content %}
@@ -9,10 +9,11 @@
         <div class="space-y-6">
             {% if claim_state == "confirm" %}
                 <h1>
-                    Finish your application for {{ course.title }}
+                    {% if is_submitted %}Finish{% else %}Continue{% endif %} your application for {{ course.title }}
                 </h1>
                 <p>
                     Press Confirm to verify <strong>{{ applicant_email }}</strong>.
+                    {% if not is_submitted %}You'll then be taken back to your application.{% endif %}
                     {% if sets_password %}
                         You'll then choose a password for your new account.
                     {% else %}
@@ -35,7 +36,7 @@
                     This link has expired
                 </h1>
                 <p class="text-muted">
-                    Links to finish an application stop working after a few days.
+                    {% if is_submitted %}Links to finish an application{% else %}Links to continue an application{% endif %} stop working after a few days.
                 </p>
                 {% if resend_failed %}
                     <p class="text-error" role="alert">
