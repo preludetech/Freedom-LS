@@ -303,3 +303,31 @@ class TestMoveProgressPreview:
         assert (
             move_progress_preview(world.learner, world.source, world.destination) == []
         )
+
+    def test_a_record_minted_concurrently_does_not_stop_the_fan_out(
+        self, mock_site_context, monkeypatch
+    ):
+        """A member's own catch-up can mint their record between the exclude
+        and the insert; every other member still gets theirs."""
+        course = CourseFactory()
+        racing_learner = LearnerFactory()
+        other_learner = LearnerFactory(organisation=racing_learner.organisation)
+        cohort = CohortFactory(organisation=racing_learner.organisation)
+        CohortMembershipFactory(learner=racing_learner, cohort=cohort)
+        CohortMembershipFactory(learner=other_learner, cohort=cohort)
+        registration = CohortCourseRegistrationFactory(cohort=cohort, course=course)
+        manager = CourseProgress._base_manager
+        original_bulk_create = manager.bulk_create
+
+        def bulk_create_after_a_concurrent_mint(objs, *args, **kwargs):
+            ensure_course_progress_record(racing_learner, course, registration)
+            return original_bulk_create(objs, *args, **kwargs)
+
+        monkeypatch.setattr(manager, "bulk_create", bulk_create_after_a_concurrent_mint)
+
+        ensure_course_progress_records_for_cohort_registration(registration)
+
+        records = CourseProgress.objects.filter(cohort_registration=registration)
+        assert sorted(records.values_list("learner_id", flat=True)) == sorted(
+            [racing_learner.id, other_learner.id]
+        )

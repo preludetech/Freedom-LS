@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
+from django.db import IntegrityError, transaction
+
 from freedom_ls.content_engine.models import Course
 from freedom_ls.learner_management.models import (
     Cohort,
@@ -102,26 +104,38 @@ def ensure_course_progress_records_for_cohort_registration(
     bulk_create so a large cohort is one statement. Members who already hold a
     record for this registration are excluded up front, so a re-fired signal
     creates nothing; ignore_conflicts is not used because Postgres will not
-    apply it to a deferrable unique constraint. bulk_create bypasses save(),
-    so every instance carries its site and its grant before the call -- there
-    is no _set_site_from_request to fall back on, which is what we want here.
+    apply it to a deferrable unique constraint. A member's own catch-up can
+    still mint their record between the exclude and the insert, so a
+    conflicting insert falls back to one idempotent create per member.
+    bulk_create bypasses save(), so every instance carries its site and its
+    grant before the call -- there is no _set_site_from_request to fall back
+    on, which is what we want here.
     """
     # No .distinct(): unique_learner_cohort_membership guarantees one
     # membership row per (learner, cohort), so the join cannot duplicate.
-    learners = Learner._base_manager.filter(
-        cohortmembership__cohort_id=cohort_registration.cohort_id, is_active=True
-    ).exclude(course_progress_records__cohort_registration=cohort_registration)
-    CourseProgress._base_manager.bulk_create(
-        [
-            CourseProgress(
-                site_id=learner.site_id,
-                learner=learner,
-                course_id=cohort_registration.course_id,
-                **_registration_kwargs(cohort_registration),
-            )
-            for learner in learners
-        ]
+    learners = list(
+        Learner._base_manager.filter(
+            cohortmembership__cohort_id=cohort_registration.cohort_id, is_active=True
+        ).exclude(course_progress_records__cohort_registration=cohort_registration)
     )
+    try:
+        with transaction.atomic():
+            CourseProgress._base_manager.bulk_create(
+                [
+                    CourseProgress(
+                        site_id=learner.site_id,
+                        learner=learner,
+                        course_id=cohort_registration.course_id,
+                        **_registration_kwargs(cohort_registration),
+                    )
+                    for learner in learners
+                ]
+            )
+    except IntegrityError:
+        for learner in learners:
+            ensure_course_progress_record(
+                learner, cohort_registration.course, cohort_registration
+            )
 
 
 @dataclass(frozen=True)
