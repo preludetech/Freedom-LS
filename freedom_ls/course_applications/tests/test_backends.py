@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import cast
 
 import pytest
@@ -9,10 +10,12 @@ import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.form_engine.factories import FormProgressFactory
+from freedom_ls.form_engine.models import FormProgress
 from freedom_ls.tests.app_guards import app_not_installed
 
 if app_not_installed("freedom_ls.course_applications"):
@@ -757,3 +760,115 @@ def _application_with_sitting_anonymous() -> CourseApplication:
             form_progress=FormProgressFactory(user=None),
         ),
     )
+
+
+def _anonymous_draft(*, created_at=None) -> CourseApplication:
+    application = _application_with_sitting_anonymous()
+    if created_at is not None:
+        CourseApplication.objects.filter(pk=application.pk).update(
+            created_at=created_at
+        )
+    return application
+
+
+def _contributed_applications(request) -> list[CourseApplication]:
+    from freedom_ls.course_applications.backends import ApplicationCourseAccessBackend
+
+    contributions = (
+        ApplicationCourseAccessBackend().get_dashboard_contributions_for_request(
+            request=request
+        )
+    )
+    return [a for c in contributions for a in c.context["applications"]]
+
+
+@pytest.mark.django_db
+class TestGetDashboardContributionsForRequest:
+    """get_dashboard_contributions_for_request on ApplicationCourseAccessBackend."""
+
+    def test_anonymous_session_gets_one_contribution(self, mock_site_context):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        request = _anonymous_request(
+            _anonymous_draft().anonymous_applicant,
+            _anonymous_draft().anonymous_applicant,
+        )
+
+        contributions = (
+            ApplicationCourseAccessBackend().get_dashboard_contributions_for_request(
+                request=request
+            )
+        )
+
+        assert len(contributions) == 1
+
+    def test_anonymous_session_lists_its_drafts_newest_first(self, mock_site_context):
+        older = _anonymous_draft(created_at=timezone.now() - timedelta(days=2))
+        newer = _anonymous_draft(created_at=timezone.now() - timedelta(days=1))
+        request = _anonymous_request(
+            older.anonymous_applicant, newer.anonymous_applicant
+        )
+
+        assert _contributed_applications(request) == [newer, older]
+
+    def test_submitted_application_is_absent(self, mock_site_context):
+        submitted = CourseApplicationFactory(anonymous=True, course=_gated_course())
+        request = _anonymous_request(submitted.anonymous_applicant)
+
+        assert _contributed_applications(request) == []
+
+    def test_completed_sitting_is_absent(self, mock_site_context):
+        application = _anonymous_draft()
+        FormProgress.objects.filter(pk=application.form_progress_id).update(
+            completed_time=timezone.now()
+        )
+        request = _anonymous_request(application.anonymous_applicant)
+
+        assert _contributed_applications(request) == []
+
+    def test_claimed_application_is_absent(self, mock_site_context):
+        application = _anonymous_draft()
+        request = _anonymous_request(application.anonymous_applicant)
+        CourseApplication.objects.filter(pk=application.pk).update(user=UserFactory())
+
+        assert _contributed_applications(request) == []
+
+    def test_erased_application_is_absent(self, mock_site_context):
+        from freedom_ls.course_applications.erasure import erase_anonymous_applicant
+
+        application = _anonymous_draft()
+        request = _anonymous_request(application.anonymous_applicant)
+        erase_anonymous_applicant(application.anonymous_applicant)
+
+        assert _contributed_applications(request) == []
+
+    def test_application_of_another_session_is_absent(self, mock_site_context):
+        _anonymous_draft()
+        request = _anonymous_request(_anonymous_draft().anonymous_applicant)
+
+        assert len(_contributed_applications(request)) == 1
+
+    def test_session_with_no_map_gets_nothing_without_a_query(
+        self, mock_site_context, django_assert_max_num_queries
+    ):
+        from freedom_ls.course_applications.backends import (
+            ApplicationCourseAccessBackend,
+        )
+
+        request = _anonymous_request()
+
+        with django_assert_max_num_queries(0):
+            contributions = ApplicationCourseAccessBackend().get_dashboard_contributions_for_request(
+                request=request
+            )
+
+        assert contributions == []
+
+    def test_signed_in_request_gets_the_users_applications(self, mock_site_context):
+        application = CourseApplicationFactory()
+        request = RequestFactory().get("/")
+        request.user = application.user
+
+        assert _contributed_applications(request) == [application]

@@ -189,6 +189,12 @@ class CourseAccessBackend:
         """
         return []
 
+    def get_dashboard_contributions_for_request(
+        self, *, request: HttpRequest
+    ) -> list[DashboardContribution]:
+        """Dashboard panels for whoever is making this request. Default: the user's."""
+        return self.get_dashboard_contributions(user=request.user)
+
 
 # ---------------------------------------------------------------------------
 # Core default backend
@@ -481,3 +487,8 @@ class VisibilityEnforcingBackend(CourseAccessBackend):
         self, *, user: RequestUser
     ) -> list[DashboardContribution]:
         return self._inner.get_dashboard_contributions(user=user)
+
+    def get_dashboard_contributions_for_request(
+        self, *, request: HttpRequest
+    ) -> list[DashboardContribution]:
+        return self._inner.get_dashboard_contributions_for_request(request=request)

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import re
+from typing import cast
 
 import pytest
 
 from django.contrib.auth.models import AnonymousUser
 from django.contrib.sites.models import Site
 from django.db.models import QuerySet
+from django.http import HttpResponse
 from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -37,6 +39,7 @@ from freedom_ls.learner_management.factories import (
     LearnerFactory,
 )
 from freedom_ls.learner_progress.tests.helpers import course_progress_record
+from freedom_ls.tests.app_guards import app_not_installed
 
 # Tests for the all_courses view at the context level.
 #
@@ -1644,7 +1647,8 @@ def test_coming_soon_card_shows_details_link(mock_site_context, logged_in_client
 # - Anonymous home renders the anonymous hero with a link to the catalogue
 # - Anonymous home does NOT show authenticated-only content
 # - Anonymous home offers login / sign-up routes (un-parameterised, no next=)
-# - Anonymous GET / does NOT call backend.get_dashboard_contributions
+# - Anonymous GET / asks the backend for its panels, so a session holding
+#   application drafts sees them and any other visitor sees none
 # - Authenticated dashboard unchanged (hero absent for auth user)
 #
 # The assertions key on template names and structural hooks rather than on the
@@ -1745,3 +1749,123 @@ def test_authenticated_dashboard_does_not_show_hero(mock_site_context):
     response = client.get(reverse("learner_interface:dashboard"))
     assert 'id="dashboard-greeting"' in response.content.decode()
     assert ANONYMOUS_HERO_TEMPLATE not in [t.name for t in response.templates]
+
+
+needs_course_applications = pytest.mark.skipif(
+    app_not_installed("freedom_ls.course_applications"),
+    reason="course_applications not installed",
+)
+
+_APPLICANT_DETAILS = {
+    "email": "ada@example.com",
+    "first_name": "Ada",
+    "last_name": "Lovelace",
+}
+
+
+def _gated_form_course(title: str) -> Course:
+    from freedom_ls.form_engine.factories import FormFactory
+    from freedom_ls.form_engine.models import FormStrategy
+
+    return cast(
+        Course,
+        CourseFactory(
+            title=title,
+            access_config={"access_type": "application_gated"},
+            application_form=FormFactory(strategy=FormStrategy.UNSCORED),
+        ),
+    )
+
+
+def _post_applicant_details(client: Client, course: Course) -> HttpResponse:
+    return cast(
+        HttpResponse,
+        client.post(
+            reverse(
+                "course_applications:applicant_details",
+                kwargs={"course_slug": course.slug},
+            ),
+            _APPLICANT_DETAILS,
+        ),
+    )
+
+
+def _start_anonymous_application(client: Client, course: Course) -> str:
+    """Post the details step for the course and return the new application's pk."""
+    response = _post_applicant_details(client, course)
+    return str(re.findall(r"[0-9a-f-]{36}", response["Location"])[0])
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_anonymous_dashboard_lists_the_drafts_the_session_holds(
+    mock_site_context, settings
+):
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+    first = _gated_form_course("Cartography")
+    second = _gated_form_course("Metallurgy")
+    client = Client()
+    _start_anonymous_application(client, first)
+    _start_anonymous_application(client, second)
+
+    body = client.get(reverse("learner_interface:dashboard")).content.decode()
+
+    assert "Your applications" in body
+    assert "Cartography" in body
+    assert "Metallurgy" in body
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_anonymous_dashboard_draft_continues_at_its_status_url(
+    mock_site_context, settings
+):
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+    client = Client()
+    pk = _start_anonymous_application(client, _gated_form_course("Cartography"))
+
+    body = client.get(reverse("learner_interface:dashboard")).content.decode()
+
+    status_url = reverse("course_applications:status", kwargs={"pk": pk})
+    assert "Continue application" in body
+    assert f'href="{status_url}"' in body
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_anonymous_dashboard_shows_no_name_or_email_of_the_applicant(
+    mock_site_context, settings
+):
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+    client = Client()
+    _start_anonymous_application(client, _gated_form_course("Cartography"))
+
+    body = client.get(reverse("learner_interface:dashboard")).content.decode()
+
+    assert "Ada" not in body
+    assert "ada@example.com" not in body
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_anonymous_dashboard_without_a_session_map_shows_no_applications_heading(
+    mock_site_context,
+):
+    body = Client().get(reverse("learner_interface:dashboard")).content.decode()
+
+    assert "Your applications" not in body
+
+
+@needs_course_applications
+@pytest.mark.django_db
+def test_anonymous_dashboard_omits_a_submitted_application(mock_site_context, settings):
+    settings.REQUIRE_TERMS_ACCEPTANCE = False
+    course = CourseFactory(
+        title="Cartography", access_config={"access_type": "application_gated"}
+    )
+    client = Client()
+    _post_applicant_details(client, course)
+
+    body = client.get(reverse("learner_interface:dashboard")).content.decode()
+
+    assert "Your applications" not in body

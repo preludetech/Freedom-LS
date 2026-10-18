@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import pytest
 
-from django.test import override_settings
+from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -540,6 +540,17 @@ def test_dashboard_without_applications_shows_no_extra_panel(
 
     assert response.status_code == 200
     assert "dashboard_panels" in response.context
+    assert response.context["dashboard_panels"] == []
+
+
+@pytest.mark.django_db
+def test_anonymous_dashboard_without_applications_shows_no_extra_panel(
+    mock_site_context,
+):
+    """An anonymous visitor whose session holds nothing gets an empty panel list."""
+    response = Client().get(reverse("learner_interface:dashboard"))
+
+    assert response.status_code == 200
     assert response.context["dashboard_panels"] == []
 
 

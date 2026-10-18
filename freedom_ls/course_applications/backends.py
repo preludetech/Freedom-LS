@@ -245,13 +245,42 @@ class ApplicationCourseAccessBackend(FreeOnlyCourseAccessBackend):
         from freedom_ls.course_applications.queries import get_active_applications
 
         # Materialise once to avoid a second DB hit when the template iterates.
-        apps: list[CourseApplication] = list(get_active_applications(user))
-        if not apps:
-            return []
+        return self._applications_panel(list(get_active_applications(user)))
 
+    def get_dashboard_contributions_for_request(
+        self, *, request: HttpRequest
+    ) -> list[DashboardContribution]:
+        """The signed-in user's applications, or the drafts an anonymous session holds.
+
+        A visitor sees only what their browser can still act on: a submitted
+        application waits for the claim link, so it is not listed here.
+        """
+        if request.user.is_authenticated:
+            return self.get_dashboard_contributions(user=request.user)
+        from freedom_ls.course_applications.anonymous_session import (
+            owned_applications,
+        )
+
+        # An empty session map makes this an `IN ()` filter, which Django
+        # answers without a query.
+        drafts = list(
+            owned_applications(request)
+            .filter(
+                form_progress__isnull=False, form_progress__completed_time__isnull=True
+            )
+            .select_related("course", "form_progress")
+            .order_by("-created_at")
+        )
+        return self._applications_panel(drafts)
+
+    def _applications_panel(
+        self, applications: list[CourseApplication]
+    ) -> list[DashboardContribution]:
+        if not applications:
+            return []
         return [
             DashboardContribution(
                 template_name="course_applications/partials/dashboard_applications.html",
-                context={"applications": apps},
+                context={"applications": applications},
             )
         ]

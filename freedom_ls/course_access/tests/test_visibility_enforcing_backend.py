@@ -21,7 +21,10 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
-from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.course_applications.factories import (
+    CourseApplicationFactory,
+    anonymous_request_holding,
+)
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -344,6 +347,16 @@ class TestVisibilityEnforcingBackendDelegatesAccessModel:
 
         assert backend.get_dashboard_contributions(user=user) == []
 
+    def test_dashboard_contributions_for_request_empty_without_applications(
+        self, mock_site_context, backend_path
+    ):
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+        request.session = {}
+        backend = _backend_for(backend_path)
+
+        assert backend.get_dashboard_contributions_for_request(request=request) == []
+
 
 @pytest.mark.django_db
 class TestVisibilityEnforcingBackendDelegatesToApplicationBackend:
@@ -385,6 +398,17 @@ class TestVisibilityEnforcingBackendDelegatesToApplicationBackend:
         contributions = backend.get_dashboard_contributions(user=application.user)
 
         assert len(contributions) == 1
+
+    def test_dashboard_contributions_for_request_delegates_anonymous_drafts(
+        self, mock_site_context
+    ):
+        application = CourseApplicationFactory(anonymous_draft=True)
+        request = anonymous_request_holding(application.anonymous_applicant)
+        backend = _backend_for(self.application_backend)
+
+        contributions = backend.get_dashboard_contributions_for_request(request=request)
+
+        assert [c.context["applications"] for c in contributions] == [[application]]
 
 
 @pytest.mark.django_db

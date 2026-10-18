@@ -617,10 +617,10 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     """Dashboard view — authenticated or anonymous, whole page or one section.
 
     Authenticated users see their personalised course lists, backend-contributed
-    panels, and the welcome greeting. Anonymous users see a hero and the
-    discovery sections only. An htmx request naming a section's swap target in
-    ``HX-Target`` gets that section's page fragment instead of the whole page;
-    any other htmx request, a boosted navigation included, gets the whole page.
+    panels, and the welcome greeting. Anonymous users see a hero, any panel the
+    backend contributes for their session, and the discovery sections. An htmx
+    request naming a section's swap target in ``HX-Target`` gets that section's
+    page fragment instead of the whole page; any other htmx request, a boosted navigation included, gets the whole page.
     """
     slug = requested_section_slug(request)
     inputs = _dashboard_inputs(request)
@@ -628,16 +628,15 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     if slug is not None:
         return _section_page_response(request, inputs, slug)
 
-    # Dashboard contributions from the active backend (e.g. the applications panel).
-    # Only fetched for authenticated users — anonymous visitors have no panels,
-    # and calling get_dashboard_contributions for an anonymous user is unnecessary.
-    dashboard_panels: list[str] = []
-    if inputs.is_auth:
-        contributions = inputs.backend.get_dashboard_contributions(user=request.user)
-        dashboard_panels = [
-            render_to_string(c.template_name, c.context, request=request)
-            for c in contributions
-        ]
+    # Panels come from the active backend, for every visitor: the backend decides
+    # what an anonymous session may see of its own.
+    contributions = inputs.backend.get_dashboard_contributions_for_request(
+        request=request
+    )
+    dashboard_panels = [
+        render_to_string(c.template_name, c.context, request=request)
+        for c in contributions
+    ]
 
     context = {
         "sections": _dashboard_sections(request, inputs),

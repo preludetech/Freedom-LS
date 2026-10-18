@@ -58,6 +58,18 @@ class TestCourseAccessBackend:
         result = backend.get_dashboard_contributions(user=None)
         assert result == []
 
+    def test_get_dashboard_contributions_for_request_returns_empty_list(self):
+        from freedom_ls.course_access.backends import CourseAccessBackend
+
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+
+        result = CourseAccessBackend().get_dashboard_contributions_for_request(
+            request=request
+        )
+
+        assert result == []
+
 
 @pytest.mark.django_db
 class TestFreeOnlyCourseAccessBackendGetAccessForRequest:
@@ -335,6 +347,20 @@ class TestFreeOnlyCourseAccessBackendGetAccess:
 
         backend = FreeOnlyCourseAccessBackend()
         result = backend.get_dashboard_contributions(user=AnonymousUser())
+        assert result == []
+
+    def test_get_dashboard_contributions_for_request_returns_empty_list(
+        self, mock_site_context
+    ):
+        from freedom_ls.course_access.backends import FreeOnlyCourseAccessBackend
+
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+
+        result = FreeOnlyCourseAccessBackend().get_dashboard_contributions_for_request(
+            request=request
+        )
+
         assert result == []
 
 
