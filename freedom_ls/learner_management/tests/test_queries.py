@@ -52,6 +52,7 @@ from freedom_ls.learner_management.queries import (
     cohort_learner_count,
     cohorts_visible_to,
     colleagues_of,
+    courses_gaining_access,
     courses_losing_access,
     educators_of,
     holds_registration_for_any_expression,
@@ -1764,3 +1765,49 @@ def test_courses_losing_access_ignores_an_inactive_registration_as_another_grant
     CohortCourseRegistrationFactory(cohort=other, course=course, is_active=False)
 
     assert courses_losing_access(learner, cohort) == [course]
+
+
+@pytest.mark.django_db
+def test_courses_gaining_access_skips_courses_the_learner_already_reaches(
+    mock_site_context,
+) -> None:
+    held, granted_elsewhere, new = CourseFactory(), CourseFactory(), CourseFactory()
+    cohort = _make_cohort()
+    destination = _make_cohort(organisation=cohort.organisation)
+    learner = _member_of(cohort)
+    LearnerCourseRegistrationFactory(learner=learner, course=held)
+    CohortCourseRegistrationFactory(cohort=cohort, course=granted_elsewhere)
+    for course in (held, granted_elsewhere, new):
+        CohortCourseRegistrationFactory(cohort=destination, course=course)
+
+    assert courses_gaining_access(learner, destination) == [new]
+
+
+def _cohorts_granting_three_courses():
+    cohort = _make_cohort()
+    destination = _make_cohort(organisation=cohort.organisation)
+    learner = _member_of(cohort)
+    for _ in range(3):
+        CohortCourseRegistrationFactory(cohort=cohort, course=CourseFactory())
+        CohortCourseRegistrationFactory(cohort=destination, course=CourseFactory())
+    return learner, cohort, destination
+
+
+@pytest.mark.django_db
+def test_courses_losing_access_runs_a_fixed_number_of_queries(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    learner, cohort, destination = _cohorts_granting_three_courses()
+
+    with django_assert_num_queries(4):
+        courses_losing_access(learner, cohort, destination)
+
+
+@pytest.mark.django_db
+def test_courses_gaining_access_runs_a_fixed_number_of_queries(
+    mock_site_context, django_assert_num_queries
+) -> None:
+    learner, _, destination = _cohorts_granting_three_courses()
+
+    with django_assert_num_queries(3):
+        courses_gaining_access(learner, destination)

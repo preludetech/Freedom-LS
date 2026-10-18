@@ -34,6 +34,8 @@ from freedom_ls.organisations.models import Organisation
 from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from django.contrib.auth.models import AbstractBaseUser, AnonymousUser
     from django.contrib.sites.models import Site
     from django.db.models import QuerySet
@@ -404,6 +406,30 @@ def other_grants_for(
     return list(cohorts.distinct().order_by("name"))
 
 
+def _courses_granted_by(cohort: Cohort) -> QuerySet[Course]:
+    return Course.objects.filter(
+        pk__in=access_granting_cohort_registrations()
+        .filter(cohort=cohort)
+        .values("course_id")
+    ).order_by("title")
+
+
+def _courses_reached(learner: Learner, *, excluding: Cohort | None = None) -> set[UUID]:
+    """Ids of the courses the learner reaches through an active individual
+    registration or a cohort they belong to other than `excluding`."""
+    held_individually = LearnerCourseRegistration.objects.filter(
+        learner=learner, is_active=True
+    ).values_list("course_id", flat=True)
+    through_cohorts = access_granting_cohort_registrations().filter(
+        cohort__cohortmembership__learner=learner
+    )
+    if excluding is not None:
+        through_cohorts = through_cohorts.exclude(cohort=excluding)
+    return set(held_individually) | set(
+        through_cohorts.values_list("course_id", flat=True)
+    )
+
+
 def courses_losing_access(
     learner: Learner, removing: Cohort, adding: Cohort | None = None
 ) -> list[Course]:
@@ -411,52 +437,23 @@ def courses_losing_access(
     ordered by title. A course is kept when an active individual registration
     holds it, when another cohort the learner belongs to still grants it, or
     when `adding` (the cohort they move into) grants it."""
-    granted = Course.objects.filter(
-        pk__in=access_granting_cohort_registrations()
-        .filter(cohort=removing)
-        .values("course_id")
-    ).order_by("title")
-    held_individually = set(
-        LearnerCourseRegistration.objects.filter(
-            learner=learner, is_active=True
-        ).values_list("course_id", flat=True)
-    )
-    added = (
-        set(
+    kept = _courses_reached(learner, excluding=removing)
+    if adding is not None:
+        kept |= set(
             access_granting_cohort_registrations()
             .filter(cohort=adding)
             .values_list("course_id", flat=True)
         )
-        if adding is not None
-        else set()
-    )
-    return [
-        course
-        for course in granted
-        if course.pk not in held_individually
-        and course.pk not in added
-        and not other_grants_for(learner, course, excluding=removing)
-    ]
+    return [course for course in _courses_granted_by(removing) if course.pk not in kept]
 
 
 def courses_gaining_access(learner: Learner, adding: Cohort) -> list[Course]:
     """Courses `adding` grants that the learner does not reach today, ordered
     by title. A course already held by an active individual registration or
     granted by a cohort the learner belongs to is not new to them."""
-    granted = Course.objects.filter(
-        pk__in=access_granting_cohort_registrations()
-        .filter(cohort=adding)
-        .values("course_id")
-    ).order_by("title")
-    held_individually = set(
-        LearnerCourseRegistration.objects.filter(
-            learner=learner, is_active=True
-        ).values_list("course_id", flat=True)
-    )
+    reached = _courses_reached(learner)
     return [
-        course
-        for course in granted
-        if course.pk not in held_individually and not other_grants_for(learner, course)
+        course for course in _courses_granted_by(adding) if course.pk not in reached
     ]
 
 
