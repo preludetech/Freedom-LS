@@ -56,8 +56,8 @@ Checklist for taking this spec from idea to merged PR. Tick items as they are co
 - [x] (user) Decide what a cohort admin's Add learners picker shows when nobody is eligible, then add it to the spec's cohort learners tab: a sentence, Close and no submit, for all four pickers (spec R6, Empty pickers)
 - [x] (user + cmd) Fix QA bug: the four pickers (cohort Add learners, Add to cohort, Register for course, Move) show an empty select with no message; give each the spec R6 "Empty pickers" sentence (TDD — failing test first, then fix)
 - [x] (user + cmd) Fix QA bug: a cohort admin's Add learners picker labels options 'email - Organisation' instead of the learner's Decision 14 text (TDD — failing test first, then fix)
-- [ ] (user) Decide whether an empty Status selection on the learners list (removing the Status chip, Clear all, or the filter sheet's Reset) restores the Active and Pending default or shows every learner, then update the spec's Filters line or test plan §1.3 to match
-- [ ] (user + cmd) Fix QA bug: removing the learners Status chip, Clear all or Reset sends learners-status= and shows Removed learners instead of the Active and Pending default (TDD — failing test first, then fix)
+- [x] (user) Decide whether an empty Status selection on the learners list (removing the Status chip, Clear all, or the filter sheet's Reset) restores the Active and Pending default or shows every learner: it restores the default, and a filter with a default has no chip remove control (spec Filters line, test plan §1.3, §1.4 and the mobile sheet check updated)
+- [x] (user + cmd) Fix QA bug: Clear all, the filter sheet's Reset or unticking every status sends learners-status= and shows Removed learners instead of the Active and Pending default; make `TableFilter` fall back to its `default` on an empty selection and drop the remove control from a defaulted filter's chip (TDD — failing test first, then fix)
 
 ## 10. Product documentation
 

@@ -156,6 +156,29 @@ def test_learners_list_shows_a_removed_learner_when_filtered_to_removed(
 
 
 @pytest.mark.django_db
+def test_learners_list_hides_a_removed_learner_when_the_status_filter_is_emptied(
+    educator_client,
+):
+    """Clear all, the filter sheet's Reset and unticking every status all
+    send the status parameter empty."""
+    organisation = OrganisationFactory()
+    _make_learner(organisation=organisation)
+    removed = _make_learner(
+        organisation=organisation, first_name="Grace", last_name="Hopper"
+    )
+    removed.is_active = False
+    removed.save(update_fields=["is_active"])
+
+    response = educator_client(organisation).get(
+        _learners_url(organisation.slug), {"learners-status": ""}
+    )
+
+    content = response.content.decode()
+    assert "Ada" in content
+    assert "Grace" not in content
+
+
+@pytest.mark.django_db
 def test_a_removed_learners_detail_page_answers_200(educator_client):
     organisation = OrganisationFactory()
     removed = _make_learner(organisation=organisation)

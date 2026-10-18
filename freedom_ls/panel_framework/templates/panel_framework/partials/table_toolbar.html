@@ -56,14 +56,16 @@ off.
                         {% if entry.values %}
                             <c-chip variant="secondary" class="cursor-pointer">
                                 {{ entry.chip_text }}
-                                {% querystring request.GET entry.remove_changes as remove_qs %}
-                                <a href="{{ page_url }}{{ remove_qs }}"
-                                   hx-get="{{ base_url }}{{ remove_qs }}"
-                                   hx-target="#{{ region_id }}"
-                                   hx-swap="outerHTML"
-                                   aria-label="Remove {{ entry.filter.label }} filter">
-                                    <c-icon name="close" class="size-3" />
-                                </a>
+                                {% if not entry.filter.default %}
+                                    {% querystring request.GET entry.remove_changes as remove_qs %}
+                                    <a href="{{ page_url }}{{ remove_qs }}"
+                                       hx-get="{{ base_url }}{{ remove_qs }}"
+                                       hx-target="#{{ region_id }}"
+                                       hx-swap="outerHTML"
+                                       aria-label="Remove {{ entry.filter.label }} filter">
+                                        <c-icon name="close" class="size-3" />
+                                    </a>
+                                {% endif %}
                                 <c-icon name="dropdown" class="size-3" />
                             </c-chip>
                         {% else %}
@@ -129,14 +131,16 @@ off.
                 {% if entry.values %}
                     <c-chip variant="secondary">
                         {{ entry.chip_text }}
-                        {% querystring request.GET entry.remove_changes as remove_qs %}
-                        <a href="{{ page_url }}{{ remove_qs }}"
-                           hx-get="{{ base_url }}{{ remove_qs }}"
-                           hx-target="#{{ region_id }}"
-                           hx-swap="outerHTML"
-                           aria-label="Remove {{ entry.filter.label }} filter">
-                            <c-icon name="close" class="size-3" />
-                        </a>
+                        {% if not entry.filter.default %}
+                            {% querystring request.GET entry.remove_changes as remove_qs %}
+                            <a href="{{ page_url }}{{ remove_qs }}"
+                               hx-get="{{ base_url }}{{ remove_qs }}"
+                               hx-target="#{{ region_id }}"
+                               hx-swap="outerHTML"
+                               aria-label="Remove {{ entry.filter.label }} filter">
+                                <c-icon name="close" class="size-3" />
+                            </a>
+                        {% endif %}
                     </c-chip>
                 {% endif %}
             {% endfor %}

@@ -24,9 +24,6 @@ class TableQuery:
     sort: str = ""  # a sort_field, "-" prefix for descending
     page: str = "1"  # raw; Paginator.get_page clamps it
     filters: dict[str, list[str]] = field(default_factory=dict)
-    # Filters with a default. Clearing one keeps its parameter, empty, in the
-    # query string: a missing parameter would bring the default back.
-    defaulted: frozenset[str] = frozenset()
 
     def param(self, name: str) -> str:
         """This table's own name for a bare parameter name, e.g. "page"."""
@@ -36,8 +33,7 @@ class TableQuery:
         """This query's current state as prefixed GET parameters.
 
         Only non-empty values are included, so a table with nothing set
-        contributes nothing to a query string built from it. A cleared
-        defaulted filter is the exception: it stays as an empty value.
+        contributes nothing to a query string built from it.
         """
         params: dict[str, list[str]] = {}
         if self.search:
@@ -47,8 +43,8 @@ class TableQuery:
         if self.page:
             params[self.param("page")] = [self.page]
         for filter_key, values in self.filters.items():
-            if values or filter_key in self.defaulted:
-                params[self.param(filter_key)] = values or [""]
+            if values:
+                params[self.param(filter_key)] = values
         return params
 
     def page_changes(self, number: int) -> dict[str, object]:
@@ -71,23 +67,16 @@ class TableQuery:
         clearing it when `values` is empty. Filtering always returns to page
         1, since the current page may not exist once the rows are narrowed."""
         return {
-            self.param(filter_key): values or self._cleared(filter_key),
+            self.param(filter_key): values or None,
             self.param("page"): None,
         }
 
     def clear_filters_changes(self, filter_keys: list[str]) -> dict[str, object]:
         """The `{% querystring %}` changes "Clear all" applies: every filter
         removed and the page reset. Search and sort are left alone."""
-        changes: dict[str, object] = {
-            self.param(key): self._cleared(key) for key in filter_keys
-        }
+        changes: dict[str, object] = {self.param(key): None for key in filter_keys}
         changes[self.param("page")] = None
         return changes
-
-    def _cleared(self, filter_key: str) -> list[str] | None:
-        """The `{% querystring %}` value that clears `filter_key`: an empty
-        value for a defaulted filter, otherwise no parameter at all."""
-        return [""] if filter_key in self.defaulted else None
 
 
 def page_links(page_obj: Page, query: TableQuery) -> dict[str, object]:
@@ -260,30 +249,18 @@ class DataTable:
         if sort_field not in sortable_fields:
             sort = ""
         filters: dict[str, list[str]] = {}
-        defaulted: set[str] = set()
         for table_filter in cls.get_filters():
-            name = f"{key}-{table_filter.key}"
-            present = name in request.GET
-            values = (
-                [value for value in request.GET.getlist(name) if value]
-                if present
-                else list(table_filter.default)
+            values = [
+                value
+                for value in request.GET.getlist(f"{key}-{table_filter.key}")
+                if value
+            ]
+            validated = table_filter.validate(values, request) or table_filter.validate(
+                list(table_filter.default), request
             )
-            validated = table_filter.validate(values, request)
-            if table_filter.default:
-                defaulted.add(table_filter.key)
             if validated:
                 filters[table_filter.key] = validated
-            elif present and table_filter.default:
-                filters[table_filter.key] = []
-        return TableQuery(
-            key=key,
-            search=search,
-            sort=sort,
-            page=page,
-            filters=filters,
-            defaulted=frozenset(defaulted),
-        )
+        return TableQuery(key=key, search=search, sort=sort, page=page, filters=filters)
 
     @classmethod
     def filter_queryset(
@@ -421,7 +398,7 @@ class DataTable:
             "toolbar": toolbar,
             "add_filter": [entry for entry in toolbar if not entry["shown"]],
             "clear_changes": query.clear_filters_changes(filter_keys),
-            "any_filter_set": any(entry["values"] for entry in toolbar),
+            "any_filter_set": any(entry["changed"] for entry in toolbar),
             "exports": bool(cls.get_export_columns()),
             "export_changes": {query.param("export"): "csv"},
             "primary_column": primary_column,
@@ -464,6 +441,8 @@ def _toolbar_entry(
         "labels": labels,
         "chip_text": chip_text,
         "shown": table_filter.always_shown or bool(values),
+        # Whether "Clear all" would change this filter's selection.
+        "changed": set(values) != set(table_filter.default),
         "choices": [
             {
                 "value": value,

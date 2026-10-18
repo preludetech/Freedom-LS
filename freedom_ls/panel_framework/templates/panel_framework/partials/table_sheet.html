@@ -48,7 +48,6 @@ when htmx swaps this fragment in.
                 {% else %}
                     <fieldset class="space-y-2">
                         <legend class="text-xs font-semibold uppercase tracking-wide text-muted">{{ entry.filter.label }}</legend>
-                        {% if entry.filter.default %}<input type="hidden" name="{{ query.key }}-{{ entry.filter.key }}" value="">{% endif %}
                         <div class="flex flex-wrap gap-2">
                             {% for choice in entry.choices %}
                                 <label class="relative inline-flex cursor-pointer items-center gap-1 rounded-full border border-border px-3 py-1 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary has-[:checked]:text-on-primary">

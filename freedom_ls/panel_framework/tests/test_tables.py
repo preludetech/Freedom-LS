@@ -971,21 +971,80 @@ def test_a_filters_default_does_not_apply_when_its_parameter_is_present() -> Non
     assert query.filters == {"kind": ["b"]}
 
 
-def test_a_filters_default_does_not_apply_when_its_parameter_is_cleared() -> None:
+def test_a_filters_default_applies_when_its_parameter_is_empty() -> None:
     request = RequestFactory().get("/", {"stub-kind": ""})
 
     query = _DefaultedFilterTable.parse_query(request, "stub")
 
-    assert query.filters == {"kind": []}
-    assert query.to_params()["stub-kind"] == [""]
+    assert query.filters == {"kind": ["a"]}
 
 
-def test_removing_a_defaulted_filter_keeps_its_parameter_empty() -> None:
-    request = RequestFactory().get("/")
+def test_a_filters_default_applies_when_none_of_its_values_are_valid() -> None:
+    request = RequestFactory().get("/", {"stub-kind": "zzz"})
+
     query = _DefaultedFilterTable.parse_query(request, "stub")
 
-    assert query.filter_changes("kind", [])["stub-kind"] == [""]
-    assert query.clear_filters_changes(["kind"])["stub-kind"] == [""]
+    assert query.filters == {"kind": ["a"]}
+
+
+def test_removing_a_defaulted_filter_drops_its_parameter() -> None:
+    request = RequestFactory().get("/", {"stub-kind": "b"})
+    query = _DefaultedFilterTable.parse_query(request, "stub")
+
+    assert query.filter_changes("kind", [])["stub-kind"] is None
+    assert query.clear_filters_changes(["kind"])["stub-kind"] is None
+
+
+class _DefaultedFilterTablePanel(DataTablePanel):
+    title = "Defaulted"
+    data_table = _DefaultedFilterTable
+    table_key = "stub"
+
+
+def _render_defaulted_filter_table(data: dict[str, str]) -> lxml.html.HtmlElement:
+    panel = _DefaultedFilterTablePanel(
+        PanelContext(
+            request=RequestFactory().get("/p", data),
+            instance=None,
+            base_url="/p",
+            name="",
+            config=SectionConfigBase,
+            page_url="/p",
+        )
+    )
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+    return lxml.html.fromstring(html)
+
+
+@pytest.mark.django_db
+def test_a_defaulted_filters_chip_has_no_remove_control(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({"stub-kind": "b"})
+
+    assert document.xpath(".//*[contains(normalize-space(), 'Kind: B')]")
+    assert not document.cssselect('a[aria-label="Remove Kind filter"]')
+
+
+@pytest.mark.django_db
+def test_clear_all_is_hidden_while_a_defaulted_filter_is_at_its_default(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({})
+
+    assert not document.xpath(".//a[normalize-space()='Clear all']")
+
+
+@pytest.mark.django_db
+def test_clear_all_shows_once_a_defaulted_filter_leaves_its_default(
+    mock_site_context: Site,
+) -> None:
+    document = _render_defaulted_filter_table({"stub-kind": "b"})
+
+    (clear_link,) = document.xpath(".//a[normalize-space()='Clear all']")
+    assert "stub-kind" not in clear_link.get("href")
 
 
 def test_removing_a_filter_without_a_default_drops_its_parameter() -> None:
