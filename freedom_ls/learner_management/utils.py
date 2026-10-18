@@ -114,6 +114,17 @@ def ensure_organisation_member(
     return member
 
 
+def learner_webhook_payload(learner: Learner) -> dict[str, object]:
+    """The fields every learner event's payload opens with."""
+    user = learner.user
+    return {
+        "user_id": user.pk,
+        "user_email": user.email,
+        "organisation_id": str(learner.organisation_id),
+        "learner_id": str(learner.pk),
+    }
+
+
 def fire_webhook_event_on_commit(
     event_type: str, payload: dict[str, object], site: Site
 ) -> None:

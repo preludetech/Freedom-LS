@@ -29,6 +29,10 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
 )
 from freedom_ls.learner_management.signals import cohort_membership_moved
+from freedom_ls.learner_management.utils import (
+    fire_webhook_event_on_commit,
+    learner_webhook_payload,
+)
 from freedom_ls.learner_progress.models import (
     CourseFormAttempt,
     CourseItemProgress,
@@ -173,6 +177,23 @@ def _ensure_and_announce(
     )
 
 
+def _announce_unregistered(registration: LearnerCourseRegistration) -> None:
+    """Tell integrators a registration was withdrawn, whichever path withdrew it."""
+    learner = Learner._base_manager.select_related("user").get(
+        pk=registration.learner_id
+    )
+    course = registration.course
+    fire_webhook_event_on_commit(
+        "course.unregistered",
+        {
+            **learner_webhook_payload(learner),
+            "course_id": str(course.pk),
+            "course_title": course.title,
+        },
+        learner.site,
+    )
+
+
 def _ensure_for_membership(membership: CohortMembership) -> None:
     """One record per course the new member's cohort is currently registered for."""
     learner = membership.learner
@@ -210,8 +231,13 @@ def ensure_course_progress_on_learner_registration(
         # fixture author did not ask for.
         return
     reactivated = not created and instance.loaded_is_active is False
+    deactivated = (
+        not created and instance.loaded_is_active is True and not instance.is_active
+    )
     # Remembered so a second save of this instance is not a second reactivation.
     instance.loaded_is_active = instance.is_active
+    if deactivated:
+        _announce_unregistered(instance)
     if not instance.is_active:
         # A withdrawn registration grants nothing: not on a deactivating save,
         # and not on a creation either -- an import of a past enrolment would

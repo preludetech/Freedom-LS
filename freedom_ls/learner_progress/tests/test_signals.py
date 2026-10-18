@@ -850,7 +850,35 @@ class TestCourseRegisteredWebhookEvent:
             registration.is_active = False
             registration.save()
 
-        mock_fire.assert_not_called()
+        assert "course.registered" not in [
+            call.args[0] for call in mock_fire.call_args_list
+        ]
+
+    def test_deactivating_a_loaded_registration_fires_course_unregistered(
+        self, mock_site_context: object
+    ) -> None:
+        """A registration turned off outside unregister_from_course -- the
+        admin, a command, an import -- is announced all the same."""
+        created = LearnerCourseRegistrationFactory()
+        registration = LearnerCourseRegistration.objects.get(pk=created.pk)
+        learner = registration.learner
+
+        with patch("freedom_ls.webhooks.events.fire_webhook_event") as mock_fire:
+            registration.is_active = False
+            registration.save()
+
+        mock_fire.assert_called_once_with(
+            "course.unregistered",
+            {
+                "user_id": learner.user.pk,
+                "user_email": learner.user.email,
+                "organisation_id": str(learner.organisation_id),
+                "learner_id": str(learner.pk),
+                "course_id": str(registration.course_id),
+                "course_title": registration.course.title,
+            },
+            site=learner.site,
+        )
 
 
 @pytest.mark.django_db(transaction=True)

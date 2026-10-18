@@ -27,25 +27,16 @@ from freedom_ls.learner_management.signals import cohort_membership_moved
 from freedom_ls.learner_management.utils import (
     ensure_learner,
     fire_webhook_event_on_commit,
+    learner_webhook_payload,
 )
 from freedom_ls.organisations.models import Organisation
-
-
-def _learner_payload(learner: Learner) -> dict[str, object]:
-    user = learner.user
-    return {
-        "user_id": user.pk,
-        "user_email": user.email,
-        "organisation_id": str(learner.organisation_id),
-        "learner_id": str(learner.pk),
-    }
 
 
 def _fire(
     event_type: str, learner: Learner, extra: dict[str, object] | None = None
 ) -> None:
     fire_webhook_event_on_commit(
-        event_type, {**_learner_payload(learner), **(extra or {})}, learner.site
+        event_type, {**learner_webhook_payload(learner), **(extra or {})}, learner.site
     )
 
 
@@ -165,7 +156,8 @@ def register_for_course(learner: Learner, course: Course) -> bool:
 
 def unregister_from_course(learner: Learner, course: Course) -> bool:
     """Deactivate the learner's individual registration for the course; False
-    when they hold no active one. Course progress records are kept."""
+    when they hold no active one. Course progress records are kept.
+    `course.unregistered` comes from the registration's `post_save` receiver."""
     with transaction.atomic():
         registration = LearnerCourseRegistration._base_manager.filter(
             learner=learner, course=course, is_active=True
@@ -174,11 +166,6 @@ def unregister_from_course(learner: Learner, course: Course) -> bool:
             return False
         registration.is_active = False
         registration.save(update_fields=["is_active"])
-        _fire(
-            "course.unregistered",
-            learner,
-            {"course_id": str(course.pk), "course_title": course.title},
-        )
     return True
 
 
