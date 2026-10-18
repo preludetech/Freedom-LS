@@ -169,6 +169,37 @@ def apply(request: HttpRequest, course_slug: str) -> HttpResponse:
     )
 
 
+def _status_applications(request: HttpRequest) -> QuerySet[CourseApplication]:
+    """The request's own applications with everything the status page reads."""
+    return owned_applications(request).select_related(
+        "course", "form_progress", "anonymous_applicant"
+    )
+
+
+def _unverified_applicant_of(app: CourseApplication) -> AnonymousApplicant:
+    """The applicant whose address is still unproven, or 404: a verified
+    application has no claim email to send or address to change."""
+    if app.anonymous_applicant is None or app.is_email_verified:
+        raise Http404
+    return app.anonymous_applicant
+
+
+def _report_claim_email(request: HttpRequest, applicant: AnonymousApplicant) -> None:
+    """Send the claim email and tell the applicant, by toast, whether it went out.
+
+    The details step does not use this: there the notice on the next page
+    reports the outcome instead.
+    """
+    if send_application_claim_email(request, applicant):
+        messages.success(request, f"We've emailed a link to {applicant.email}.")
+    else:
+        messages.error(
+            request,
+            f"We couldn't email {applicant.email} just now. "
+            "Try again in a little while.",
+        )
+
+
 def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Applicant status page.
 
@@ -177,42 +208,27 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     visitor is sent to log in. Ownership covers an anonymous session's own
     unverified application.
 
-    An application whose form is still unfinished is sent back to it: there is
-    nothing to say about a request that has not been made yet.
+    A GET for an application whose form is still unfinished is sent back to
+    it: there is nothing to say about a request that has not been made yet.
 
-    POST, for an unverified application, sends the claim email again. The
-    page says whether an email has gone out at all, so an applicant whose
-    first one was skipped or lost is never left waiting for it.
+    POST, for an unverified application, sends the claim email again. It
+    serves a draft too, and the redirect then carries the applicant on to
+    their form. The page says whether an email has gone out at all, so an
+    applicant whose first one was skipped or lost is never left waiting for it.
 
     NOTE: when application review lands, dynamic state rendering (state badge,
       reviewer message, withdraw action via get_available_user_state_transitions)
       goes here.
     """
-    found = _owned_application(
-        request,
-        owned_applications(request).select_related(
-            "course", "form_progress", "anonymous_applicant"
-        ),
-        pk,
-    )
+    found = _owned_application(request, _status_applications(request), pk)
     if isinstance(found, HttpResponse):
         return found
     app = found
+    if request.method == "POST":
+        _report_claim_email(request, _unverified_applicant_of(app))
+        return redirect("course_applications:status", pk=app.pk)
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))
-    if request.method == "POST":
-        if app.anonymous_applicant is None or app.is_email_verified:
-            raise Http404
-        applicant = app.anonymous_applicant
-        if send_application_claim_email(request, applicant):
-            messages.success(request, f"We've emailed a link to {applicant.email}.")
-        else:
-            messages.error(
-                request,
-                f"We couldn't email {applicant.email} just now. "
-                "Try again in a little while.",
-            )
-        return redirect("course_applications:status", pk=app.pk)
     return render(
         request,
         "course_applications/application_status.html",

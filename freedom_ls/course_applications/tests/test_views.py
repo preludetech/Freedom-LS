@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import smtplib
 import threading
 import time
 from datetime import timedelta
@@ -25,6 +26,7 @@ from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 
+from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import (
     EmailAddressFactory,
     SiteFactory,
@@ -3729,3 +3731,172 @@ def test_expired_token_post_over_the_limit_still_offers_the_button(client, claim
         response = _expired_claim_post(client, claimable)
 
     assert "Send a new link" in response.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# claim link notice and resending from a draft
+# ---------------------------------------------------------------------------
+
+
+def _refuse_every_send(*args: object, **kwargs: object) -> None:
+    raise smtplib.SMTPRecipientsRefused({})
+
+
+def _anonymous_draft(client):
+    """Take a fresh session through the details step of a form-bearing course."""
+    course, _form = gated_course_with_form()
+    _post_details(client, course)
+    return CourseApplication.objects.get(course=course)
+
+
+@pytest.mark.django_db
+def test_form_page_of_an_unverified_draft_shows_the_notice_as_sent(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+
+    response = client.get(_page_url(application, 1))
+
+    assert (
+        'data-testid="claim-link-notice" data-sent="true"' in response.content.decode()
+    )
+
+
+@pytest.mark.django_db
+def test_form_page_notice_shows_not_sent_when_the_send_was_refused(
+    client, mock_site_context
+):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        application = _anonymous_draft(client)
+
+    response = client.get(_page_url(application, 1))
+
+    assert (
+        'data-testid="claim-link-notice" data-sent="false"' in response.content.decode()
+    )
+
+
+@pytest.mark.django_db
+def test_form_page_notice_names_the_applicants_address(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    body = client.get(_page_url(application, 1)).content.decode()
+
+    assert "<strong>ada@example.com</strong>" in body
+
+
+@pytest.mark.django_db
+def test_check_your_answers_of_an_unverified_draft_shows_the_notice(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+
+    body = client.get(_check_url(application)).content.decode()
+
+    assert 'data-testid="claim-link-notice"' in body
+
+
+@pytest.mark.django_db
+def test_form_page_of_a_signed_in_applicant_has_no_notice(client, mock_site_context):
+    course, _form = gated_course_with_form()
+    application = _applied(client, course)
+
+    body = client.get(_page_url(application, 1)).content.decode()
+
+    assert "claim-link-notice" not in body
+
+
+@pytest.mark.django_db
+def test_check_your_answers_of_a_signed_in_applicant_has_no_notice(
+    client, mock_site_context
+):
+    course, _form = gated_course_with_form()
+    application = _applied(client, course)
+
+    body = client.get(_check_url(application)).content.decode()
+
+    assert "claim-link-notice" not in body
+
+
+@pytest.mark.django_db
+def test_notice_form_posts_to_the_status_url(client, mock_site_context):
+    application = _anonymous_draft(client)
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+
+    body = client.get(_page_url(application, 1)).content.decode()
+
+    assert f'<form method="post" action="{status_url}">' in body
+
+
+@pytest.mark.django_db
+def test_notice_link_points_at_the_details_step(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    body = client.get(_page_url(application, 1)).content.decode()
+
+    assert (
+        f'<a href="{_details_url(application.course)}">Wrong address? Change it</a>'
+        in body
+    )
+
+
+@pytest.mark.django_db
+def test_resend_post_from_a_draft_sends_one_more_email(client, mock_site_context):
+    application = _anonymous_draft(client)
+    mail.outbox.clear()
+
+    client.post(reverse("course_applications:status", kwargs={"pk": application.pk}))
+
+    assert len(mail.outbox) == 1
+
+
+@pytest.mark.django_db
+def test_resend_post_from_a_draft_confirms_with_a_message(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    response = client.post(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        "We've emailed a link to ada@example.com."
+    ]
+
+
+@pytest.mark.django_db
+def test_resend_post_from_a_draft_redirects_to_the_status_url(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+
+    response = client.post(status_url)
+
+    assert response["Location"] == status_url
+
+
+@pytest.mark.django_db
+def test_status_url_of_a_draft_redirects_on_to_page_one(client, mock_site_context):
+    application = _anonymous_draft(client)
+
+    response = client.get(
+        reverse("course_applications:status", kwargs={"pk": application.pk})
+    )
+
+    assert response["Location"] == _page_url(application, 1)
+
+
+@pytest.mark.django_db
+def test_resend_post_from_a_draft_with_a_refused_send_adds_the_error_toast(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        response = client.post(
+            reverse("course_applications:status", kwargs={"pk": application.pk})
+        )
+
+    assert [str(m) for m in get_messages(response.wsgi_request)] == [
+        "We couldn't email ada@example.com just now. Try again in a little while."
+    ]

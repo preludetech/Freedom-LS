@@ -13,6 +13,8 @@
             <p class="text-muted">Application for {{ course.title }}</p>
             <h1>{{ form_page.title }}</h1>
 
+            {% include "course_applications/partials/claim_link_notice.html" with application=application %}
+
             <nav aria-label="Application pages" class="flex flex-wrap gap-2">
                 {% for page in page_links %}
                     <c-form-page-link :number="page.number"

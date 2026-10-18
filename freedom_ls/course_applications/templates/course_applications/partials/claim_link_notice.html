@@ -1,0 +1,26 @@
+{% comment %}
+The callout an unverified draft carries on every form page: where the claim link
+went, and the two ways to get another one. It reads the applicant row, so a
+reload or a new tab shows the same state the last send left. Renders nothing
+for a verified application or one with no applicant.
+{% endcomment %}
+{% if application.anonymous_applicant and not application.is_email_verified %}
+{% with applicant=application.anonymous_applicant %}
+<div data-testid="claim-link-notice" data-sent="{% if applicant.claim_email_sent_at %}true{% else %}false{% endif %}">
+    <c-callout level="{% if applicant.claim_email_sent_at %}info{% else %}warning{% endif %}">
+        {% if applicant.claim_email_sent_at %}
+            <p>We've emailed a link to <strong>{{ applicant.email }}</strong> so you can come back to this application. Carry on here.</p>
+        {% else %}
+            <p>We couldn't email <strong>{{ applicant.email }}</strong> just now. You can carry on and send the link again.</p>
+        {% endif %}
+        <div class="flex flex-wrap items-center gap-3">
+            <form method="post" action="{% url 'course_applications:status' pk=application.pk %}">
+                {% csrf_token %}
+                <c-button type="submit" variant="secondary" size="small">Send the link again</c-button>
+            </form>
+            <a href="{% url 'course_applications:applicant_details' course_slug=application.course.slug %}">Wrong address? Change it</a>
+        </div>
+    </c-callout>
+</div>
+{% endwith %}
+{% endif %}

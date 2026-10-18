@@ -16,6 +16,8 @@
                 {% endif %}
             </div>
 
+            {% include "course_applications/partials/claim_link_notice.html" with application=application %}
+
             {% if required_answers_error %}
                 <c-callout level="error">{{ required_answers_error }}</c-callout>
             {% endif %}
