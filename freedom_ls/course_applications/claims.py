@@ -109,16 +109,28 @@ def _token_payload(payload: object) -> tuple[UUID, int] | None:
         return None
 
 
+def claim_link_max_age() -> timedelta:
+    """How long a claim link works. It matches the signup confirmation link, so
+    one setting governs both."""
+    return timedelta(days=allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS)
+
+
+def claim_link_is_live(applicant: AnonymousApplicant) -> bool:
+    """Whether the last link emailed to the applicant still works."""
+    sent_at = applicant.claim_email_sent_at
+    return sent_at is not None and sent_at > timezone.now() - claim_link_max_age()
+
+
 def read_claim_token(token: str) -> ClaimLink | None:
     """The applicant a claim token names, and whether the token has expired.
 
     None for a token that was never ours, or whose applicant this site cannot
-    see. The expiry matches the signup confirmation link, so one setting
-    governs both.
+    see.
     """
-    max_age = timedelta(days=allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS)
     try:
-        payload = signing.loads(token, salt=CLAIM_TOKEN_SALT, max_age=max_age)
+        payload = signing.loads(
+            token, salt=CLAIM_TOKEN_SALT, max_age=claim_link_max_age()
+        )
         expired = False
     except signing.SignatureExpired:
         # The signature is good; only its age failed. The applicant is still

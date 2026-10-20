@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import smtplib
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from allauth.account import app_settings as allauth_account_settings
 
 from django.core import mail
 from django.core.cache import cache
 from django.core.mail import EmailMultiAlternatives
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.content_engine.factories import CourseFactory
@@ -61,7 +64,8 @@ def _apply_form_less(client, course, ip: str = "10.0.0.1"):
     return client.post(_apply_url(course))
 
 
-def _submit_form_application(client):
+def _fill_form_application(client):
+    """A draft with every page filled in, one step short of submitting."""
     course, form = gated_course_with_form()
     _post_details(client, course)
     application = CourseApplication.objects.get(course=course)
@@ -72,10 +76,13 @@ def _submit_form_application(client):
         {f"question_{name.id}": "Ada"},
     )
     client.post(reverse(page_url, kwargs={"pk": application.pk, "page_number": 2}), {})
+    return application
+
+
+def _submit(client, application) -> None:
     client.post(
         reverse("course_applications:check_answers", kwargs={"pk": application.pk})
     )
-    return application
 
 
 @pytest.mark.django_db
@@ -202,15 +209,52 @@ def test_repost_with_a_new_address_emails_only_the_new_address(
 
 
 @pytest.mark.django_db
-def test_check_answers_submission_sends_no_further_email(mock_site_context, client):
-    application = _submit_form_application(client)
-    sent_before_submit = len(mail.outbox)
+def test_check_answers_submission_with_a_live_link_sends_no_further_email(
+    mock_site_context, client
+):
+    application = _fill_form_application(client)
+    mail.outbox.clear()
 
-    client.post(
-        reverse("course_applications:check_answers", kwargs={"pk": application.pk})
+    _submit(client, application)
+
+    assert len(mail.outbox) == 0
+
+
+def _backdate_claim_email(application, days: int) -> None:
+    AnonymousApplicant.objects.filter(pk=application.anonymous_applicant_id).update(
+        claim_email_sent_at=timezone.now() - timedelta(days=days)
     )
 
-    assert len(mail.outbox) == sent_before_submit
+
+@pytest.mark.django_db
+def test_check_answers_submission_after_the_link_expired_sends_a_fresh_one(
+    mock_site_context, client
+):
+    application = _fill_form_application(client)
+    _backdate_claim_email(
+        application, allauth_account_settings.EMAIL_CONFIRMATION_EXPIRE_DAYS + 1
+    )
+    mail.outbox.clear()
+
+    _submit(client, application)
+
+    assert len(mail.outbox) == 1
+    assert (
+        f"Finish your application for {application.course.title}"
+        in mail.outbox[0].subject
+    )
+
+
+@pytest.mark.django_db
+def test_check_answers_submission_with_no_link_sent_sends_one(
+    mock_site_context, client
+):
+    with patch.object(AccountAdapter, "send_mail", _refuse_every_send):
+        application = _fill_form_application(client)
+
+    _submit(client, application)
+
+    assert len(mail.outbox) == 1
 
 
 @pytest.mark.django_db

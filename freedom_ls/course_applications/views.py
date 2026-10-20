@@ -48,6 +48,7 @@ from freedom_ls.course_applications.backends import APPLICATION_GATED
 from freedom_ls.course_applications.claims import (
     ClaimOwner,
     attach_claimed_application,
+    claim_link_is_live,
     claim_sets_a_password,
     read_claim_token,
     resolve_claim_owner,
@@ -206,6 +207,19 @@ def _report_claim_email(request: HttpRequest, applicant: AnonymousApplicant) -> 
         )
 
 
+def _send_claim_email_unless_live(
+    request: HttpRequest, applicant: AnonymousApplicant
+) -> None:
+    """Email a claim link unless the last one sent still works.
+
+    The details step is the usual send. This covers an applicant who never got
+    that one, or whose link expired while they were filling in the form; the
+    notice on the next page reports the outcome.
+    """
+    if not claim_link_is_live(applicant):
+        send_application_claim_email(request, applicant)
+
+
 def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     """Applicant status page.
 
@@ -342,6 +356,7 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
             # The course gained a form after the details step, so there is a
             # sitting to fill in before anything is submitted.
             allow_anonymous_form_progress(request, app.form_progress)
+            _send_claim_email_unless_live(request, applicant)
             return redirect(_resume_url(app, app.form_progress))
         record_application_submitted(request, course)
         send_application_claim_email(request, applicant)
@@ -673,6 +688,8 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             form_progress.complete()
             record_application_submitted(request, app.course)
             if not app.is_email_verified:
+                if app.anonymous_applicant is not None:
+                    _send_claim_email_unless_live(request, app.anonymous_applicant)
                 return redirect("course_applications:status", pk=app.pk)
             messages.success(
                 request,

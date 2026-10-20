@@ -2344,7 +2344,22 @@ def test_a_course_that_gains_a_form_after_the_details_step_sends_the_visitor_int
     response = client.post(_apply_url(course))
 
     application = CourseApplication.objects.get(course=course)
-    assert (response["Location"], len(mail.outbox)) == (_page_url(application, 1), 0)
+    assert response["Location"] == _page_url(application, 1)
+
+
+@pytest.mark.django_db
+def test_a_course_that_gains_a_form_after_the_details_step_emails_the_claim_link(
+    mock_site_context, client
+):
+    course = CourseFactory(access_config={"access_type": "application_gated"})
+    _post_details(client, course)
+    _with_form, form = gated_course_with_form()
+    course.application_form = form
+    course.save(update_fields=["application_form"])
+
+    client.post(_apply_url(course))
+
+    assert len(mail.outbox) == 1
 
 
 @pytest.mark.django_db
