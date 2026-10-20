@@ -820,6 +820,35 @@ def test_a_user_without_view_learner_permission_sees_counts_and_no_names(
 
 
 @pytest.mark.django_db
+def test_the_preview_for_a_user_who_may_only_view_conditions_reads_the_stored_ones(
+    mock_site_context, logged_in_client, rules_on, department
+):
+    # Arrange
+    user = UserFactory(staff=True)
+    user.user_permissions.set(
+        Permission.objects.filter(
+            codename__in=[
+                "view_registrationrule",
+                "change_registrationrule",
+                "view_attributeruleconditions",
+                "view_learner",
+            ]
+        )
+    )
+    rule = RegistrationRuleFactory(organisation=rules_on)
+    AttributeRuleConditionsFactory(rule=rule, departments=[department])
+    matching = _learner_in(rules_on, department=department)
+    _learner_in(rules_on)
+
+    # Act
+    response = _post_change(logged_in_client(user), rule, is_enabled=True)
+
+    # Assert
+    assert response.templates[0].name == "admin/registration_rules/preview.html"
+    assert _listed_ids(response, "will_register") == {matching.pk}
+
+
+@pytest.mark.django_db
 def test_a_user_with_view_permission_only_cannot_post_a_change(
     mock_site_context, logged_in_client
 ):

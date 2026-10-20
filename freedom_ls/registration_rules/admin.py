@@ -279,8 +279,10 @@ class RegistrationRuleAdmin(SiteAwareModelAdmin):
         if not (enabled_before or rule.is_enabled):
             # Disabled before and after: nothing can change for any learner.
             return self._stock_changeform(request, object_id, form_url, extra_context)
-        # Without the inline (a user who may not change conditions) the save
-        # leaves the stored conditions alone, so the preview reads them too.
+        # A user who may only view the conditions posts none of them; Django
+        # then sets the inline form's cleaned_data to its stored initial values,
+        # so the preview still reads the saved conditions. Without the inline
+        # at all, the preview reads them from the rule.
         conditions_form = (
             formsets[0].forms[0] if formsets and formsets[0].forms else None
         )
