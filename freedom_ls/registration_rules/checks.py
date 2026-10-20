@@ -1,7 +1,9 @@
 """Django system checks for the registration_rules app.
 
-E001 - hr_attributes is not installed.
 E002 - A REGISTRATION_RULE_KINDS path does not import.
+
+A missing hr_attributes is refused by the app config instead (E001 is retired):
+the app cannot load far enough without it for a check to run.
 """
 
 from __future__ import annotations
@@ -11,24 +13,6 @@ from collections.abc import Sequence
 from django.apps import AppConfig
 from django.core.checks import CheckMessage, Error, register
 from django.utils.module_loading import import_string
-
-
-@register()
-def check_hr_attributes_installed(
-    app_configs: Sequence[AppConfig] | None, **kwargs: object
-) -> list[CheckMessage]:
-    """E001: rules read the lists and the switch that hr_attributes owns."""
-    from django.apps import apps
-
-    if apps.is_installed("freedom_ls.hr_attributes"):
-        return []
-    return [
-        Error(
-            "freedom_ls.registration_rules requires freedom_ls.hr_attributes.",
-            hint='Add "freedom_ls.hr_attributes" to INSTALLED_APPS before "freedom_ls.registration_rules".',
-            id="freedom_ls_registration_rules.E001",
-        )
-    ]
 
 
 @register()
