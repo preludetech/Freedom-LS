@@ -14,6 +14,7 @@ if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
 from freedom_ls.course_applications.factories import CourseApplicationFactory
+from freedom_ls.form_engine.factories import FormProgressFactory
 
 
 @pytest.mark.django_db
@@ -48,6 +49,23 @@ class TestGetApplicationForCourse:
         course = CourseFactory()
 
         assert get_application_for_course(user=user, course=course) is None
+
+    def test_reads_whether_submitted_in_one_query(
+        self, mock_site_context, django_assert_num_queries
+    ):
+        """The sitting comes with the application, so is_submitted costs nothing more."""
+        from freedom_ls.course_applications.queries import get_application_for_course
+
+        user = UserFactory()
+        course = CourseFactory()
+        CourseApplicationFactory(
+            user=user, course=course, form_progress=FormProgressFactory(user=user)
+        )
+
+        with django_assert_num_queries(1):
+            application = get_application_for_course(user=user, course=course)
+            assert application is not None
+            assert application.is_submitted is False
 
     def test_anonymous_user_returns_none_with_no_query(
         self, mock_site_context, django_assert_num_queries

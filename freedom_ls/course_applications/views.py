@@ -807,11 +807,7 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
         return _render_claim(request, "invalid")
     if request.method != "POST":
         held = (
-            CourseApplication.objects.filter(
-                user=owner.user, course=link.applicant.course
-            )
-            .select_related("form_progress")
-            .first()
+            get_application_for_course(user=owner.user, course=link.applicant.course)
             if owner is not None
             else None
         )

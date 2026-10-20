@@ -33,7 +33,11 @@ def get_application_for_course(
         return None
     from freedom_ls.course_applications.models import CourseApplication
 
-    return CourseApplication.objects.filter(user=user, course=course).first()
+    return (
+        CourseApplication.objects.filter(user=user, course=course)
+        .select_related("form_progress")
+        .first()
+    )
 
 
 def get_active_applications(user: RequestUser) -> QuerySet[CourseApplication]:
