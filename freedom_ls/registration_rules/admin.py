@@ -26,6 +26,7 @@ from django.utils.html import format_html
 from django.utils.safestring import SafeString
 
 from freedom_ls.content_engine.models import CourseVisibility
+from freedom_ls.hr_attributes.admin import ListEntryAdmin
 from freedom_ls.hr_attributes.models import Department, JobTitle, Location
 from freedom_ls.learner_management.admin import LearnerCourseRegistrationAdmin
 from freedom_ls.learner_management.models import (
@@ -42,6 +43,7 @@ from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
     RuleRegistration,
+    rules_naming,
 )
 from freedom_ls.site_aware_models.admin import SiteAwareModelAdmin, admin_page_context
 
@@ -467,3 +469,34 @@ _fieldsets = (
     *_rest,
 )
 setattr(LearnerCourseRegistrationAdmin, "fieldsets", _fieldsets)  # noqa: B010
+
+
+_list_entry_deleted_objects = ListEntryAdmin.get_deleted_objects
+
+
+def _list_entry_deleted_objects_naming_rules(
+    self: ListEntryAdmin,
+    objs: Iterable[JobTitle | Department | Location],
+    request: HttpRequest,
+) -> tuple[list[str], dict[str, int], set[str], list[str]]:
+    """The stock delete confirmation, refusing entries a rule names.
+
+    The delete itself is refused by a pre_delete receiver; listing the rules
+    as protected makes the confirmation page say so instead of failing.
+    """
+    entries = list(objs)
+    to_delete, model_count, perms_needed, protected = _list_entry_deleted_objects(
+        self, entries, request
+    )
+    named = [
+        f"Registration rule: {rule.name}"
+        for entry in entries
+        for rule in rules_naming(entry)
+    ]
+    return to_delete, model_count, perms_needed, [*protected, *named]
+
+
+# Wired from here for the same reason as the registration admin above.
+setattr(  # noqa: B010 - the function binds as a method of the admin class
+    ListEntryAdmin, "get_deleted_objects", _list_entry_deleted_objects_naming_rules
+)

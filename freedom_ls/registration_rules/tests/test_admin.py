@@ -33,6 +33,7 @@ from freedom_ls.hr_attributes.factories import (
     LearnerHRAttributesFactory,
     OrganisationHRSettingsFactory,
 )
+from freedom_ls.hr_attributes.models import JobTitle
 from freedom_ls.registration_rules.evaluation import evaluate_rule
 from freedom_ls.registration_rules.factories import (
     AttributeRuleConditionsFactory,
@@ -224,6 +225,44 @@ def test_bulk_delete_confirmation_names_an_enabled_rule_as_protected(staff_clien
     # Assert
     assert response.status_code == 200
     assert response.context["protected"] == [f"Enabled rule: {enabled.name}"]
+
+
+JOB_TITLE_DELETE = "admin:freedom_ls_hr_attributes_jobtitle_delete"
+
+
+@pytest.mark.django_db
+def test_the_delete_page_of_an_entry_a_rule_names_lists_the_rule_as_protected(
+    staff_client,
+):
+    # Arrange
+    entry = JobTitleFactory()
+    conditions = AttributeRuleConditionsFactory(
+        rule__organisation=entry.organisation, job_titles=[entry]
+    )
+
+    # Act
+    response = staff_client.get(reverse(JOB_TITLE_DELETE, args=[entry.pk]))
+
+    # Assert
+    assert response.status_code == 200
+    assert response.context["protected"] == [
+        f"Registration rule: {conditions.rule.name}"
+    ]
+
+
+@pytest.mark.django_db
+def test_an_entry_a_rule_names_is_not_deleted_from_the_admin(staff_client):
+    # Arrange
+    entry = JobTitleFactory()
+    AttributeRuleConditionsFactory(
+        rule__organisation=entry.organisation, job_titles=[entry]
+    )
+
+    # Act
+    staff_client.post(reverse(JOB_TITLE_DELETE, args=[entry.pk]), {"post": "yes"})
+
+    # Assert
+    assert JobTitle.objects.filter(pk=entry.pk).exists()
 
 
 def _picker_field(response, name: str):

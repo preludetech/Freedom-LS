@@ -7,6 +7,7 @@ from typing import cast
 from uuid import UUID
 
 from django.db import models, transaction
+from django.db.models import ProtectedError
 from django.db.models.signals import (
     m2m_changed,
     post_delete,
@@ -17,7 +18,10 @@ from django.db.models.signals import (
 from django.dispatch import receiver
 
 from freedom_ls.hr_attributes.models import (
+    Department,
+    JobTitle,
     LearnerHRAttributes,
+    Location,
     OrganisationHRSettings,
 )
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
@@ -25,6 +29,7 @@ from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
     RuleRegistration,
+    rules_naming,
 )
 from freedom_ls.registration_rules.tasks import (
     evaluate_learner_task,
@@ -140,6 +145,28 @@ for _field in (
     AttributeRuleConditions.locations,
 ):
     m2m_changed.connect(_evaluate_rule_on_m2m_change, sender=_field.through)
+
+
+@receiver(pre_delete, sender=JobTitle)
+@receiver(pre_delete, sender=Department)
+@receiver(pre_delete, sender=Location)
+def protect_entry_a_rule_names(
+    sender: type[JobTitle | Department | Location],
+    instance: JobTitle | Department | Location,
+    **kwargs: object,
+) -> None:
+    """Refuse to delete an entry a rule names.
+
+    The delete would cascade to the picker's through row with no m2m_changed,
+    and an emptied picker constrains nothing, so the rule would silently widen
+    to the whole organisation. Deactivating the entry is the way to retire it.
+    """
+    rules = list(rules_naming(instance))
+    if rules:
+        raise ProtectedError(
+            f"{instance} is named by registration rules and cannot be deleted.",
+            set(rules),
+        )
 
 
 @receiver(post_save, sender=Learner)

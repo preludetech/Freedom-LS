@@ -148,3 +148,23 @@ class AttributeRuleConditions(SiteAwareModel):
                 )
         if errors:
             raise ValidationError(errors)
+
+
+#: The conditions field that names a list's entries, by the list's model name.
+_CONDITIONS_FIELD_BY_LIST: dict[str, str] = {
+    "jobtitle": "job_titles",
+    "department": "departments",
+    "location": "locations",
+}
+
+
+def rules_naming(entry: models.Model) -> models.QuerySet[RegistrationRule]:
+    """The rules whose conditions name this job title, department or location.
+
+    Explicit site: a delete can run with no request for the site-aware manager.
+    """
+    field = _CONDITIONS_FIELD_BY_LIST[entry._meta.model_name or ""]
+    return RegistrationRule._base_manager.filter(
+        site_id=getattr(entry, "site_id"),  # noqa: B009 - typed as Model
+        **{f"attribute_conditions__{field}": entry},
+    ).order_by("name")

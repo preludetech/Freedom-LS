@@ -7,6 +7,8 @@ from datetime import date
 import pytest
 
 from django.core import serializers
+from django.db import transaction
+from django.db.models import ProtectedError
 from django.urls import reverse
 
 from freedom_ls.tests.app_guards import app_not_installed
@@ -15,6 +17,7 @@ if app_not_installed("freedom_ls.registration_rules"):
     pytest.skip("registration_rules not installed", allow_module_level=True)
 
 from freedom_ls.hr_attributes.factories import (
+    DepartmentFactory,
     JobTitleFactory,
     LearnerHRAttributesFactory,
     OrganisationHRSettingsFactory,
@@ -436,3 +439,32 @@ def test_loading_a_learner_fixture_queues_nothing(
     # Assert
     assert callbacks == []
     assert not _queued_tasks("evaluate_learner_task").exists()
+
+
+@pytest.mark.django_db
+def test_deleting_an_entry_a_rule_names_is_refused(mock_site_context):
+    # Arrange
+    entry = DepartmentFactory()
+    conditions = AttributeRuleConditionsFactory(
+        rule__organisation=entry.organisation, departments=[entry]
+    )
+
+    # Act
+    with pytest.raises(ProtectedError), transaction.atomic():
+        entry.delete()
+
+    # Assert
+    assert list(conditions.departments.all()) == [entry]
+
+
+@pytest.mark.django_db
+def test_an_entry_no_rule_names_can_be_deleted(mock_site_context):
+    # Arrange
+    entry = JobTitleFactory()
+    AttributeRuleConditionsFactory(rule__organisation=entry.organisation)
+
+    # Act
+    entry.delete()
+
+    # Assert
+    assert not type(entry).objects.filter(pk=entry.pk).exists()
