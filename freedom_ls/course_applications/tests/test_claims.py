@@ -261,13 +261,37 @@ def test_update_applicant_email_with_a_new_address_clears_the_sent_stamp(
     assert applicant.claim_email_sent_at is None
 
 
+def test_attaching_with_a_link_to_an_address_since_changed_returns_none(
+    mock_site_context, rf
+):
+    application = CourseApplicationFactory(anonymous=True)
+    # The address changed after the link was read, before the claim locked it.
+    update_applicant_email(application.anonymous_applicant, "other@example.com")
+
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
+
+    assert outcome is None
+
+
+def test_attaching_with_a_link_to_an_address_since_changed_creates_no_user(
+    mock_site_context, rf
+):
+    application = CourseApplicationFactory(anonymous=True)
+    update_applicant_email(application.anonymous_applicant, "other@example.com")
+    users_before = User._base_manager.count()
+
+    attach_claimed_application(rf.get("/"), application, link_version=0)
+
+    assert User._base_manager.count() == users_before
+
+
 def test_attaching_an_already_claimed_applicant_returns_none(mock_site_context, rf):
     application = CourseApplicationFactory(anonymous=True)
     applicant = application.anonymous_applicant
     applicant.claimed_at = timezone.now()
     applicant.save(update_fields=["claimed_at"])
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome is None
 
@@ -279,7 +303,7 @@ def test_attaching_an_already_claimed_applicant_creates_no_user(mock_site_contex
     applicant.save(update_fields=["claimed_at"])
     users_before = User._base_manager.count()
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert User._base_manager.count() == users_before
 
@@ -291,7 +315,7 @@ def test_attaching_for_an_address_on_another_site_returns_none(mock_site_context
     applicant.email = "taken@example.com"
     applicant.save(update_fields=["email"])
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome is None
 
@@ -306,7 +330,7 @@ def test_attaching_for_an_address_on_another_site_creates_nothing(
     applicant.save(update_fields=["email"])
     users_before = User._base_manager.count()
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert User._base_manager.count() == users_before
 
@@ -324,7 +348,7 @@ def test_attaching_for_a_same_site_account_returns_that_account(mock_site_contex
     EmailAddressFactory(user=user)
     application = _anonymous_application_for("taken@example.com")
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome == ClaimOutcome(
         user, application=application, must_set_password=False
@@ -352,7 +376,7 @@ def test_attaching_for_a_verified_secondary_address_attaches_without_a_new_user(
     EmailAddressFactory(user=user, email="old@example.com", primary=False)
     application = _anonymous_application_for("old@example.com")
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome == ClaimOutcome(
         user, application=application, must_set_password=False
@@ -391,7 +415,7 @@ def test_an_account_made_for_the_address_mid_claim_receives_the_application(
         "freedom_ls.course_applications.claims._create_claimed_user",
         side_effect=_somebody_else_registers_first,
     ):
-        outcome = attach_claimed_application(rf.get("/"), application)
+        outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     application.refresh_from_db()
     assert (application.user, outcome) == (
@@ -414,7 +438,7 @@ def test_attaching_past_an_unverified_secondary_address_creates_a_new_user(
     request = rf.get("/")
     request.session = SessionStore()
 
-    outcome = attach_claimed_application(request, application)
+    outcome = attach_claimed_application(request, application, link_version=0)
 
     assert outcome is not None
     assert (outcome.user != other, outcome.must_set_password) == (True, True)
@@ -427,7 +451,7 @@ def test_attaching_for_an_address_verified_on_another_site_returns_none(
     EmailAddressFactory(user=user, email="old@example.com", primary=False)
     application = _anonymous_application_for("old@example.com")
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome is None
 
@@ -445,7 +469,7 @@ def test_a_claim_over_a_draft_on_the_account_replaces_the_draft(mock_site_contex
     )
     draft_sitting_pk = draft.form_progress_id
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     application.refresh_from_db()
     assert outcome == ClaimOutcome(
@@ -465,7 +489,7 @@ def test_a_claim_over_a_submission_on_the_account_keeps_that_one(mock_site_conte
     applicant_pk = application.anonymous_applicant_id
     held = CourseApplicationFactory(user=user, course=application.course)
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome == ClaimOutcome(user, application=held, must_set_password=False)
     assert not CourseApplication.objects.filter(pk=application.pk).exists()
@@ -506,7 +530,7 @@ def test_a_draft_claim_over_a_submission_on_the_account_keeps_the_submission(
     incoming = _anonymous_draft_for("taken@example.com")
     held = CourseApplicationFactory(user=account_with_user, course=incoming.course)
 
-    outcome = attach_claimed_application(rf.get("/"), incoming)
+    outcome = attach_claimed_application(rf.get("/"), incoming, link_version=0)
 
     assert outcome == ClaimOutcome(
         account_with_user, application=held, must_set_password=False
@@ -521,7 +545,7 @@ def test_a_draft_claim_over_a_submission_on_the_account_erases_the_incoming_draf
     sitting_pk = incoming.form_progress_id
     CourseApplicationFactory(user=account_with_user, course=incoming.course)
 
-    attach_claimed_application(rf.get("/"), incoming)
+    attach_claimed_application(rf.get("/"), incoming, link_version=0)
 
     assert (
         CourseApplication.objects.filter(pk=incoming.pk).exists(),
@@ -536,7 +560,7 @@ def test_a_draft_claim_over_a_draft_on_the_account_attaches_the_incoming_draft(
     incoming = _anonymous_draft_for("taken@example.com")
     _held_draft(account_with_user, incoming.course)
 
-    outcome = attach_claimed_application(rf.get("/"), incoming)
+    outcome = attach_claimed_application(rf.get("/"), incoming, link_version=0)
 
     assert outcome == ClaimOutcome(
         account_with_user, application=incoming, must_set_password=False
@@ -550,7 +574,7 @@ def test_a_draft_claim_over_a_draft_on_the_account_deletes_the_held_draft(
     held = _held_draft(account_with_user, incoming.course)
     held_sitting_pk = held.form_progress_id
 
-    attach_claimed_application(rf.get("/"), incoming)
+    attach_claimed_application(rf.get("/"), incoming, link_version=0)
 
     assert (
         CourseApplication.objects.filter(pk=held.pk).exists(),
@@ -564,7 +588,7 @@ def test_a_draft_claim_over_a_draft_on_the_account_gives_the_incoming_sitting_th
     incoming = _anonymous_draft_for("taken@example.com")
     _held_draft(account_with_user, incoming.course)
 
-    attach_claimed_application(rf.get("/"), incoming)
+    attach_claimed_application(rf.get("/"), incoming, link_version=0)
 
     incoming.form_progress.refresh_from_db()
     assert incoming.form_progress.user == account_with_user
@@ -639,7 +663,7 @@ def test_two_claims_for_one_address_and_course_at_once_leave_one_application(
         request = RequestFactory().get("/")
         try:
             with site_context(site):
-                attach_claimed_application(request, application)
+                attach_claimed_application(request, application, link_version=0)
         except BaseException as exc:
             failures.append(exc)
         finally:
@@ -681,7 +705,7 @@ def test_claiming_a_squatted_address_revokes_the_squatters_password(
 ):
     application, squatter = squatted_application
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     squatter.refresh_from_db()
     assert squatter.has_usable_password() is False
@@ -690,7 +714,7 @@ def test_claiming_a_squatted_address_revokes_the_squatters_password(
 def test_claiming_a_squatted_address_verifies_it(squatted_application, rf):
     application, squatter = squatted_application
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     address = EmailAddress.objects.get(user=squatter, email="victim@example.com")
     assert address.verified is True
@@ -699,7 +723,7 @@ def test_claiming_a_squatted_address_verifies_it(squatted_application, rf):
 def test_claiming_a_squatted_address_asks_for_a_new_password(squatted_application, rf):
     application, squatter = squatted_application
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome == ClaimOutcome(
         squatter, application=application, must_set_password=True
@@ -719,7 +743,7 @@ def test_claiming_a_squatted_address_writes_the_claimants_consent(
     applicant.consent_ip_address = "203.0.113.9"
     applicant.save()
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     consents = LegalConsent.objects.filter(
         user=squatter, consent_method="application_details_step"
@@ -737,7 +761,7 @@ def test_an_operator_created_account_has_its_password_revoked_when_claimed(
     user = UserFactory(email="staffmade@example.com", password="their-own")
     application = _anonymous_application_for("staffmade@example.com")
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     user.refresh_from_db()
     assert (user.has_usable_password(), outcome) == (
@@ -763,7 +787,7 @@ def test_claiming_a_login_synced_address_revokes_the_password(
 ):
     application, user = login_synced_application
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     user.refresh_from_db()
     assert user.has_usable_password() is False
@@ -774,7 +798,7 @@ def test_claiming_a_login_synced_address_verifies_the_one_row(
 ):
     application, user = login_synced_application
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     addresses = EmailAddress.objects.filter(user=user)
     assert [(a.email, a.verified, a.primary) for a in addresses] == [
@@ -793,7 +817,7 @@ def test_a_verified_owner_without_a_usable_password_sets_one_on_claim(
     EmailAddressFactory(user=user)
     application = _anonymous_application_for("taken@example.com")
 
-    outcome = attach_claimed_application(rf.get("/"), application)
+    outcome = attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert outcome == ClaimOutcome(
         user, application=application, must_set_password=True
@@ -819,7 +843,7 @@ def test_claiming_a_mixed_case_verified_address_adds_no_second_row(
     EmailAddressFactory(user=user, email="Ada.Lovelace@example.com")
     application = _anonymous_application_for("ada.lovelace@example.com")
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     assert EmailAddress.objects.filter(user=user).count() == 1
 
@@ -831,7 +855,7 @@ def test_claiming_a_mixed_case_unverified_address_verifies_that_row(
     EmailAddressFactory(user=user, email="Ada.Lovelace@example.com", verified=False)
     application = _anonymous_application_for("ada.lovelace@example.com")
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     addresses = EmailAddress.objects.filter(user=user)
     assert [(a.email, a.verified) for a in addresses] == [
@@ -845,7 +869,7 @@ def test_an_operator_created_account_gains_a_verified_primary_address_when_claim
     user = UserFactory(email="staffmade@example.com")
     application = _anonymous_application_for("staffmade@example.com")
 
-    attach_claimed_application(rf.get("/"), application)
+    attach_claimed_application(rf.get("/"), application, link_version=0)
 
     address = EmailAddress.objects.get(user=user)
     assert (address.email, address.verified, address.primary) == (

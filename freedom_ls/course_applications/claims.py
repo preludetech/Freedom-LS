@@ -218,7 +218,7 @@ def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:
 
 
 def attach_claimed_application(
-    request: HttpRequest, application: CourseApplication
+    request: HttpRequest, application: CourseApplication, *, link_version: int
 ) -> ClaimOutcome | None:
     """Attach an unverified application to the account that owns its address.
 
@@ -237,14 +237,19 @@ def attach_claimed_application(
     address: a signup, or the claim of another application under the same
     address, can take the address between the lookup and the create. The
     account that did is then the owner, and the application goes to it.
-    None means nothing changed: the link was already used, or the address
-    belongs to an account on another site.
+    None means nothing changed: the link was already used, the address it
+    went to has since changed (`link_version` is the version the link carried,
+    checked again under the lock), or the address belongs to an account on
+    another site.
     """
     with transaction.atomic():
         applicant = AnonymousApplicant.objects.select_for_update().get(
             pk=application.anonymous_applicant_id
         )
-        if applicant.claimed_at is not None:
+        if (
+            applicant.claimed_at is not None
+            or applicant.claim_link_version != link_version
+        ):
             return None
         owner = resolve_claim_owner(applicant)
         if owner is not None and owner.user.site_id != applicant.site_id:

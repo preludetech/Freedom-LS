@@ -833,7 +833,9 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
         # signing out empties the session, and the sign-up analytics event a
         # new account records has to land in the session the claimant keeps.
         adapter.logout(request)
-    outcome = attach_claimed_application(request, application)
+    outcome = attach_claimed_application(
+        request, application, link_version=link.applicant.claim_link_version
+    )
     if outcome is None:
         return _render_claim(request, "invalid")
     forget_anonymous_applicant(request, link.applicant)
