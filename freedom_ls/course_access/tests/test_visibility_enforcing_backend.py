@@ -297,6 +297,23 @@ class TestVisibilityEnforcingBackendFilterVisible:
         assert len([c for c in result if c.pk == course.pk]) == 1
 
 
+def test_wrapper_overrides_every_backend_method():
+    """A method the wrapper does not override falls back to the base default,
+    skipping the inner backend's own logic without any error."""
+    from freedom_ls.course_access.backends import (
+        CourseAccessBackend,
+        VisibilityEnforcingBackend,
+    )
+
+    backend_methods = {
+        name
+        for name, value in vars(CourseAccessBackend).items()
+        if callable(value) and not name.startswith("_")
+    }
+
+    assert backend_methods - set(vars(VisibilityEnforcingBackend)) == set()
+
+
 @pytest.mark.django_db
 class TestLoaderReturnsVisibilityEnforcingBackend:
     """get_course_access_backend() always returns a VisibilityEnforcingBackend."""
