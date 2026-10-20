@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 import pytest
 from allauth.account import app_settings as allauth_account_settings
+from allauth.core.context import request_context
 
 from django.core import mail
 from django.core.cache import cache
@@ -24,6 +25,8 @@ from freedom_ls.tests.app_guards import app_not_installed
 if app_not_installed("freedom_ls.course_applications"):
     pytest.skip("course_applications not installed", allow_module_level=True)
 
+from freedom_ls.course_applications.emails import send_application_claim_email
+from freedom_ls.course_applications.factories import CourseApplicationFactory
 from freedom_ls.course_applications.models import AnonymousApplicant, CourseApplication
 from freedom_ls.form_engine.queries import page_questions
 
@@ -443,3 +446,16 @@ def test_email_subject_keeps_an_ampersand_in_the_course_title(
     _apply_form_less(client, course)
 
     assert "Arts & Crafts" in mail.outbox[0].subject
+
+
+@pytest.mark.django_db
+def test_email_wording_follows_the_callers_is_submitted(mock_site_context, client):
+    application = CourseApplicationFactory(anonymous_draft=True)
+    request = client.get("/").wsgi_request
+
+    with request_context(request):
+        send_application_claim_email(
+            request, application.anonymous_applicant, is_submitted=True
+        )
+
+    assert "Finish your application" in mail.outbox[0].subject

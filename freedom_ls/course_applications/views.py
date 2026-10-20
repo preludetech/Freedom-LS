@@ -192,13 +192,14 @@ def _unverified_applicant_of(app: CourseApplication) -> AnonymousApplicant:
     return app.anonymous_applicant
 
 
-def _report_claim_email(request: HttpRequest, applicant: AnonymousApplicant) -> None:
+def _report_claim_email(request: HttpRequest, app: CourseApplication) -> None:
     """Send the claim email and tell the applicant, by toast, whether it went out.
 
     The details step does not use this: there the notice on the next page
     reports the outcome instead.
     """
-    if send_application_claim_email(request, applicant):
+    applicant = _unverified_applicant_of(app)
+    if send_application_claim_email(request, applicant, is_submitted=app.is_submitted):
         messages.success(request, f"We've emailed a link to {applicant.email}.")
     else:
         messages.error(
@@ -209,7 +210,7 @@ def _report_claim_email(request: HttpRequest, applicant: AnonymousApplicant) -> 
 
 
 def _send_claim_email_unless_live(
-    request: HttpRequest, applicant: AnonymousApplicant
+    request: HttpRequest, applicant: AnonymousApplicant, *, is_submitted: bool
 ) -> None:
     """Email a claim link unless the last one sent still works.
 
@@ -218,7 +219,7 @@ def _send_claim_email_unless_live(
     notice on the next page reports the outcome.
     """
     if not claim_link_is_live(applicant):
-        send_application_claim_email(request, applicant)
+        send_application_claim_email(request, applicant, is_submitted=is_submitted)
 
 
 def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
@@ -246,7 +247,7 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
         return found
     app = found
     if request.method == "POST":
-        _report_claim_email(request, _unverified_applicant_of(app))
+        _report_claim_email(request, app)
         next_url = request.POST.get("next", "")
         if next_url and url_has_allowed_host_and_scheme(
             next_url,
@@ -314,7 +315,7 @@ def change_applicant_email(request: HttpRequest, pk: UUID) -> HttpResponse:
         if limited is not None:
             return limited
         if update_applicant_email(applicant, form.cleaned_data["email"]):
-            _report_claim_email(request, applicant)
+            _report_claim_email(request, app)
         return redirect(status_url)
     if tripped_honeypot(form):
         limit.spend_for_honeypot()
@@ -364,10 +365,10 @@ def _anonymous_apply(request: HttpRequest, course: Course) -> HttpResponse:
             # The course gained a form after the details step, so there is a
             # sitting to fill in before anything is submitted.
             allow_anonymous_form_progress(request, app.form_progress)
-            _send_claim_email_unless_live(request, applicant)
+            _send_claim_email_unless_live(request, applicant, is_submitted=False)
             return redirect(_resume_url(app, app.form_progress))
         record_application_submitted(request, course)
-        send_application_claim_email(request, applicant)
+        send_application_claim_email(request, applicant, is_submitted=True)
         return redirect("course_applications:status", pk=app.pk)
     return render(
         request,
@@ -533,7 +534,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                     # The result is reported by the notice on the next page, not
                     # here: the applicant carries on into the form whether or not
                     # the email went out.
-                    send_application_claim_email(request, applicant)
+                    send_application_claim_email(request, applicant, is_submitted=False)
                 return redirect(_resume_url(app, app.form_progress))
             return redirect("course_applications:status", pk=app.pk)
         if form.tripped_honeypot:
@@ -697,7 +698,9 @@ def application_check_answers(request: HttpRequest, pk: UUID) -> HttpResponse:
             record_application_submitted(request, app.course)
             if not app.is_email_verified:
                 if app.anonymous_applicant is not None:
-                    _send_claim_email_unless_live(request, app.anonymous_applicant)
+                    _send_claim_email_unless_live(
+                        request, app.anonymous_applicant, is_submitted=True
+                    )
                 return redirect("course_applications:status", pk=app.pk)
             messages.success(
                 request,
@@ -788,7 +791,9 @@ def claim_application(request: HttpRequest, token: str) -> HttpResponse:
     is_submitted = application.is_submitted
     if link.expired:
         if request.method == "POST":
-            if send_application_claim_email(request, link.applicant):
+            if send_application_claim_email(
+                request, link.applicant, is_submitted=is_submitted
+            ):
                 return _render_claim(
                     request, "resent", link.applicant, is_submitted=is_submitted
                 )
