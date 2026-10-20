@@ -537,7 +537,7 @@ def applicant_details(request: HttpRequest, course_slug: str) -> HttpResponse:
                     send_application_claim_email(request, applicant, is_submitted=False)
                 return redirect(_resume_url(app, app.form_progress))
             return redirect("course_applications:status", pk=app.pk)
-        if form.tripped_honeypot:
+        if tripped_honeypot(form):
             limit.spend_for_honeypot()
         status = 422
     else:

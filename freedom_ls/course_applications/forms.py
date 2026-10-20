@@ -14,7 +14,6 @@ from freedom_ls.accounts.forms import (
     apply_signup_name_policy,
     honeypot_field,
     reject_honeypot,
-    tripped_honeypot,
 )
 from freedom_ls.accounts.utils import get_client_ip, get_signup_policy_for_request
 from freedom_ls.course_applications.applicant_email import normalise_email
@@ -57,11 +56,6 @@ class ApplicantDetailsForm(forms.ModelForm):
 
     def clean_email(self) -> str:
         return normalise_email(self.cleaned_data["email"])
-
-    @property
-    def tripped_honeypot(self) -> bool:
-        """Whether the submission filled the field only a bot can see."""
-        return tripped_honeypot(self)
 
     def clean(self) -> dict[str, object]:
         cleaned_data: dict[str, object] = super().clean() or {}

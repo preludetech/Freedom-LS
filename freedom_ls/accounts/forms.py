@@ -103,7 +103,7 @@ def reject_honeypot(
     form: forms.BaseForm, request: HttpRequest | None, message: StrPromise
 ) -> None:
     """Refuse a submission whose honeypot is filled, logging the site and IP, never the values."""
-    if not form.cleaned_data.get("fax_number"):
+    if not tripped_honeypot(form):
         return
     _log_honeypot_trip(request)
     # Don't say which check failed, but give a person a way forward.
