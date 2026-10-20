@@ -221,6 +221,33 @@ def test_update_applicant_email_with_a_new_address_bumps_the_version(mock_site_c
     assert applicant.claim_link_version == 1
 
 
+def test_update_applicant_email_bumps_the_stored_version_not_a_stale_copy(
+    mock_site_context,
+):
+    applicant = CourseApplicationFactory(anonymous=True).anonymous_applicant
+    # Another request changed the address twice since this copy was read.
+    AnonymousApplicant.objects.filter(pk=applicant.pk).update(claim_link_version=2)
+
+    update_applicant_email(applicant, "new@example.com")
+
+    stored = AnonymousApplicant.objects.get(pk=applicant.pk)
+    assert (stored.claim_link_version, applicant.claim_link_version) == (3, 3)
+
+
+def test_update_applicant_email_compares_against_the_stored_address(
+    mock_site_context,
+):
+    applicant = CourseApplicationFactory(anonymous=True).anonymous_applicant
+    AnonymousApplicant.objects.filter(pk=applicant.pk).update(
+        email="new@example.com", claim_link_version=1
+    )
+
+    changed = update_applicant_email(applicant, "new@example.com")
+
+    assert changed is False
+    assert AnonymousApplicant.objects.get(pk=applicant.pk).claim_link_version == 1
+
+
 def test_update_applicant_email_with_a_new_address_clears_the_sent_stamp(
     mock_site_context,
 ):

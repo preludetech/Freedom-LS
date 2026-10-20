@@ -163,22 +163,32 @@ def update_applicant_email(applicant: AnonymousApplicant, email: str) -> bool:
     clears so the pages say truthfully that nothing has reached the new
     address yet. Returns False, and writes nothing, for an address equal to
     the stored one.
+
+    The row is locked and re-read, so two changes at once each move the
+    version on from the other's. The stored address, version and stamp are
+    copied back onto `applicant`, so a link built from it afterwards matches
+    the address it goes to.
     """
     email = normalise_email(email)
-    if email == applicant.email:
-        return False
-    applicant.email = email
-    applicant.claim_link_version += 1
-    applicant.claim_email_sent_at = None
-    applicant.save(
-        update_fields=[
-            "email",
-            "claim_link_version",
-            "claim_email_sent_at",
-            "updated_at",
-        ]
-    )
-    return True
+    with transaction.atomic():
+        stored = AnonymousApplicant.objects.select_for_update().get(pk=applicant.pk)
+        changed: bool = email != stored.email
+        if changed:
+            stored.email = email
+            stored.claim_link_version += 1
+            stored.claim_email_sent_at = None
+            stored.save(
+                update_fields=[
+                    "email",
+                    "claim_link_version",
+                    "claim_email_sent_at",
+                    "updated_at",
+                ]
+            )
+    applicant.email = stored.email
+    applicant.claim_link_version = stored.claim_link_version
+    applicant.claim_email_sent_at = stored.claim_email_sent_at
+    return changed
 
 
 def resolve_claim_owner(applicant: AnonymousApplicant) -> ClaimOwner | None:
