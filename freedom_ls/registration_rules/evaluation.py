@@ -253,6 +253,9 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
     rule = RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).first()
     if rule is None or not rules_enabled_for(rule.organisation_id):
         return EvaluationResult()
+    # The run's start, not its end: an edit made while it runs is not applied
+    # by it, and must still read as unapplied afterwards.
+    started_at = timezone.now()
     state = RuleState.from_rule(rule)
     in_scope = sorted(
         set(
@@ -288,7 +291,7 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
             result = result.merged_with(apply_rule_changes(rule, changes))
     # update(), not save(): a finished run is not an edit of the rule.
     RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).update(
-        last_evaluated_at=timezone.now()
+        last_evaluated_at=started_at
     )
     return result
 

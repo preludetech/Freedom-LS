@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import date
+import contextlib
+from datetime import UTC, date, datetime
 
 import pytest
+import time_machine
 
 from django.core import serializers
 from django.db import transaction
@@ -328,12 +330,24 @@ def test_the_engines_own_update_keeps_the_rule_registration(
     assert link.registration.is_active is False
 
 
+@pytest.fixture
+def organisation_using_rules(mock_site_context):
+    """An organisation whose switch is on and that has a rule."""
+    organisation = OrganisationHRSettingsFactory(
+        registration_rules_enabled=True
+    ).organisation
+    RegistrationRuleFactory(organisation=organisation)
+    return organisation
+
+
 @pytest.mark.django_db
 def test_saving_a_learner_queues_an_evaluation_of_the_learner(
-    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+    organisation_using_rules,
+    database_task_backend,
+    django_capture_on_commit_callbacks,
 ):
     # Arrange
-    learner = LearnerFactory()
+    learner = LearnerFactory(organisation=organisation_using_rules)
     _queued_tasks("evaluate_learner_task").delete()
 
     # Act
@@ -348,10 +362,14 @@ def test_saving_a_learner_queues_an_evaluation_of_the_learner(
 
 @pytest.mark.django_db
 def test_saving_learner_attributes_queues_an_evaluation_of_the_learner(
-    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+    organisation_using_rules,
+    database_task_backend,
+    django_capture_on_commit_callbacks,
 ):
     # Arrange
-    attributes = LearnerHRAttributesFactory()
+    attributes = LearnerHRAttributesFactory(
+        learner__organisation=organisation_using_rules
+    )
     _queued_tasks("evaluate_learner_task").delete()
 
     # Act
@@ -369,10 +387,14 @@ def test_saving_learner_attributes_queues_an_evaluation_of_the_learner(
 
 @pytest.mark.django_db
 def test_deleting_learner_attributes_queues_an_evaluation_of_the_learner(
-    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+    organisation_using_rules,
+    database_task_backend,
+    django_capture_on_commit_callbacks,
 ):
     # Arrange
-    attributes = LearnerHRAttributesFactory()
+    attributes = LearnerHRAttributesFactory(
+        learner__organisation=organisation_using_rules
+    )
     learner_id, site_id = attributes.learner_id, attributes.site_id
     _queued_tasks("evaluate_learner_task").delete()
 
@@ -468,3 +490,138 @@ def test_an_entry_no_rule_names_can_be_deleted(mock_site_context):
 
     # Assert
     assert not type(entry).objects.filter(pk=entry.pk).exists()
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_whose_organisation_has_rules_switched_off_queues_nothing(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    organisation = OrganisationHRSettingsFactory(
+        registration_rules_enabled=False
+    ).organisation
+    RegistrationRuleFactory(organisation=organisation)
+    learner = LearnerFactory(organisation=organisation)
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        learner.save()
+
+    # Assert
+    assert not _queued_tasks("evaluate_learner_task").exists()
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_whose_organisation_has_no_rules_queues_nothing(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    organisation = OrganisationHRSettingsFactory(
+        registration_rules_enabled=True
+    ).organisation
+    attributes = LearnerHRAttributesFactory(learner__organisation=organisation)
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        attributes.learner.save()
+        attributes.save()
+
+    # Assert
+    assert not _queued_tasks("evaluate_learner_task").exists()
+
+
+@pytest.mark.django_db
+def test_saving_a_learner_a_rule_registered_queues_an_evaluation_wherever_they_work(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    link = RuleRegistrationFactory()
+    learner = Learner._base_manager.get(pk=link.registration.learner_id)
+    _queued_tasks("evaluate_learner_task").delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        learner.save()
+
+    # Assert
+    assert _queued_tasks("evaluate_learner_task").count() == 1
+
+
+@pytest.mark.django_db
+def test_one_save_of_a_rule_and_its_pickers_queues_one_evaluation(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    conditions = AttributeRuleConditionsFactory()
+    organisation = conditions.rule.organisation
+    job_title = JobTitleFactory(organisation=organisation)
+    department = DepartmentFactory(organisation=organisation)
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True), transaction.atomic():
+        conditions.rule.save()
+        conditions.save()
+        conditions.job_titles.set([job_title])
+        conditions.departments.set([department])
+        conditions.locations.set([])
+
+    # Assert
+    assert _queued_tasks().count() == 1
+
+
+@pytest.mark.django_db
+def test_a_rolled_back_save_does_not_stop_a_later_one_queueing(
+    mock_site_context, database_task_backend, django_capture_on_commit_callbacks
+):
+    # Arrange
+    rule = RegistrationRuleFactory()
+    _queued_tasks().delete()
+
+    # Act
+    with django_capture_on_commit_callbacks(execute=True):
+        with contextlib.suppress(RuntimeError), transaction.atomic():
+            rule.save()
+            raise RuntimeError
+        rule.save()
+
+    # Assert
+    assert _queued_tasks().count() == 1
+
+
+@pytest.mark.django_db
+def test_changing_a_picker_outside_the_admin_marks_the_rule_changed(
+    mock_site_context,
+):
+    # Arrange
+    with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
+        conditions = AttributeRuleConditionsFactory()
+    entry = JobTitleFactory(organisation=conditions.rule.organisation)
+
+    # Act
+    with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
+        conditions.job_titles.add(entry)
+
+    # Assert
+    rule = RegistrationRule._base_manager.get(pk=conditions.rule_id)
+    assert rule.updated_at == datetime(2026, 2, 1, tzinfo=UTC)
+
+
+@pytest.mark.django_db
+def test_saving_conditions_outside_the_admin_marks_the_rule_changed(
+    mock_site_context,
+):
+    # Arrange
+    with time_machine.travel(datetime(2026, 1, 1, tzinfo=UTC), tick=False):
+        conditions = AttributeRuleConditionsFactory()
+
+    # Act
+    with time_machine.travel(datetime(2026, 2, 1, tzinfo=UTC), tick=False):
+        conditions.organisation_start_before = date(2025, 1, 1)
+        conditions.save()
+
+    # Assert
+    rule = RegistrationRule._base_manager.get(pk=conditions.rule_id)
+    assert rule.updated_at == datetime(2026, 2, 1, tzinfo=UTC)

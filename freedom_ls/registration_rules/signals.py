@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from functools import partial
+from dataclasses import dataclass
 from typing import cast
 from uuid import UUID
 
@@ -16,6 +16,8 @@ from django.db.models.signals import (
     pre_save,
 )
 from django.dispatch import receiver
+from django.tasks import Task
+from django.utils import timezone
 
 from freedom_ls.hr_attributes.models import (
     Department,
@@ -25,6 +27,7 @@ from freedom_ls.hr_attributes.models import (
     OrganisationHRSettings,
 )
 from freedom_ls.learner_management.models import Learner, LearnerCourseRegistration
+from freedom_ls.registration_rules.evaluation import rules_enabled_for
 from freedom_ls.registration_rules.models import (
     AttributeRuleConditions,
     RegistrationRule,
@@ -38,15 +41,66 @@ from freedom_ls.registration_rules.tasks import (
 )
 
 
+@dataclass(frozen=True)
+class _Enqueue:
+    """An on-commit callback that compares equal to another for the same task and args."""
+
+    task: Task[[str, int], None]
+    args: tuple[str, int]
+
+    def __call__(self) -> None:
+        self.task.enqueue(*self.args)
+
+
+def _enqueue_once(callback: _Enqueue) -> None:
+    """Enqueue after commit, once per transaction.
+
+    After commit, so the task never reads the rows this save is still writing.
+    Once, because one admin save fires the rule, its conditions and each
+    picker's add, remove and clear, and every one asks for the same run. A
+    rolled-back savepoint drops its callbacks, so nothing stale blocks a later one.
+    """
+    pending = transaction.get_connection().run_on_commit
+    if any(func == callback for _, func, _ in pending):
+        return
+    transaction.on_commit(callback)
+
+
 def _enqueue_rule(rule_id: UUID, site_id: int) -> None:
-    # After commit, so the task never reads the rows this save is still writing.
-    transaction.on_commit(partial(evaluate_rule_task.enqueue, str(rule_id), site_id))
+    _enqueue_once(_Enqueue(evaluate_rule_task, (str(rule_id), site_id)))
+
+
+def _rule_changed(rule_id: UUID, site_id: int) -> None:
+    """A change to the rule's conditions, from the admin or anywhere else.
+
+    Moves updated_at, so the change counts as unapplied until a run starts
+    after it, then queues that run.
+    """
+    RegistrationRule._base_manager.filter(pk=rule_id, site_id=site_id).update(
+        updated_at=timezone.now()
+    )
+    _enqueue_rule(rule_id, site_id)
 
 
 def _enqueue_learner(learner_id: UUID, site_id: int) -> None:
-    transaction.on_commit(
-        partial(evaluate_learner_task.enqueue, str(learner_id), site_id)
-    )
+    _enqueue_once(_Enqueue(evaluate_learner_task, (str(learner_id), site_id)))
+
+
+def _learner_needs_evaluation(
+    learner_id: UUID, organisation_id: UUID, site_id: int
+) -> bool:
+    """Whether any rule could register or retract this learner.
+
+    True when their organisation has rules and its switch on, or when a rule
+    already owns one of their registrations (a learner who moved away).
+    """
+    if RegistrationRule._base_manager.filter(
+        site_id=site_id, organisation_id=organisation_id
+    ).exists() and rules_enabled_for(organisation_id):
+        return True
+    return RuleRegistration._base_manager.filter(
+        site_id=site_id, registration__learner_id=learner_id
+    ).exists()
 
 
 @receiver(post_save, sender=RegistrationRule)
@@ -110,7 +164,7 @@ def evaluate_rule_on_conditions_save(
     """Queue an evaluation when a rule's conditions are saved."""
     if raw:
         return
-    _enqueue_rule(instance.rule_id, instance.site_id)
+    _rule_changed(instance.rule_id, instance.site_id)
 
 
 def _evaluate_rule_on_m2m_change(
@@ -126,7 +180,7 @@ def _evaluate_rule_on_m2m_change(
         return
     if not reverse:
         conditions = cast(AttributeRuleConditions, instance)
-        _enqueue_rule(conditions.rule_id, conditions.site_id)
+        _rule_changed(conditions.rule_id, conditions.site_id)
         return
     # Reverse side: an entry's conditions set changed and pk_set holds
     # conditions pks. post_clear gives no pk_set, so there is nothing to
@@ -136,7 +190,7 @@ def _evaluate_rule_on_m2m_change(
     for rule_id, site_id in AttributeRuleConditions._base_manager.filter(
         pk__in=pk_set
     ).values_list("rule_id", "site_id"):
-        _enqueue_rule(rule_id, site_id)
+        _rule_changed(rule_id, site_id)
 
 
 for _field in (
@@ -173,14 +227,18 @@ def protect_entry_a_rule_names(
 def evaluate_learner_on_save(
     sender: type[Learner], instance: Learner, raw: bool = False, **kwargs: object
 ) -> None:
-    """Queue an evaluation of every learner save.
+    """Queue an evaluation of a learner save that a rule could act on.
 
     Creation, an organisation change and an is_active change are all saves,
-    and evaluation reconciles state, so a run that finds nothing to do is harmless.
+    and evaluation reconciles state, so a run that finds nothing to do is
+    harmless. An organisation that does not use rules gets no runs at all.
     """
     if raw:
         return
-    _enqueue_learner(instance.pk, instance.site_id)
+    if _learner_needs_evaluation(
+        instance.pk, instance.organisation_id, instance.site_id
+    ):
+        _enqueue_learner(instance.pk, instance.site_id)
 
 
 @receiver(post_save, sender=LearnerHRAttributes)
@@ -193,11 +251,20 @@ def evaluate_learner_on_attributes_change(
 ) -> None:
     """Queue an evaluation of the learner whose attributes were saved or deleted.
 
-    A learner delete cascades here; the task then finds no learner and returns.
+    A learner delete cascades here; with the learner gone there is nothing to
+    evaluate, and a task that still runs finds no learner and returns.
     """
     if raw:
         return
-    _enqueue_learner(instance.learner_id, instance.site_id)
+    organisation_id = (
+        Learner._base_manager.filter(pk=instance.learner_id)
+        .values_list("organisation_id", flat=True)
+        .first()
+    )
+    if organisation_id is not None and _learner_needs_evaluation(
+        instance.learner_id, organisation_id, instance.site_id
+    ):
+        _enqueue_learner(instance.learner_id, instance.site_id)
 
 
 @receiver(post_save, sender=OrganisationHRSettings)
@@ -214,10 +281,9 @@ def evaluate_organisation_on_switch_save(
     """
     if raw or not instance.registration_rules_enabled:
         return
-    transaction.on_commit(
-        partial(
-            evaluate_organisation_task.enqueue,
-            str(instance.organisation_id),
-            instance.site_id,
+    _enqueue_once(
+        _Enqueue(
+            evaluate_organisation_task,
+            (str(instance.organisation_id), instance.site_id),
         )
     )

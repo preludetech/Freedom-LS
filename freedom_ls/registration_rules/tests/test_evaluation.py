@@ -10,6 +10,7 @@ import time_machine
 from django.db import connection
 from django.db.models.signals import post_save
 from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.comms.models import Notification
@@ -1077,3 +1078,30 @@ def test_a_learner_who_starts_the_course_after_classification_is_not_retracted(
     assert registration.is_active is True
     assert link.is_retracted is False
     assert result.retracted == ()
+
+
+@pytest.mark.django_db
+def test_a_rule_edited_during_a_run_still_shows_its_change_as_not_applied(
+    title_rule, titled_learner, monkeypatch
+):
+    # Arrange
+    from freedom_ls.registration_rules import evaluation
+
+    classify = evaluation.classify_rule_changes
+
+    def classify_then_edit(rule, state, learner_ids=None):
+        RegistrationRule._base_manager.filter(pk=rule.pk).update(
+            updated_at=timezone.now()
+        )
+        return classify(rule, state, learner_ids=learner_ids)
+
+    monkeypatch.setattr(evaluation, "classify_rule_changes", classify_then_edit)
+    drop_ambient_request()
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    rule = RegistrationRule._base_manager.get(pk=title_rule.pk)
+    assert rule.last_evaluated_at is not None
+    assert rule.last_evaluated_at < rule.updated_at
