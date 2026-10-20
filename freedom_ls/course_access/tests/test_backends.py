@@ -70,6 +70,25 @@ class TestCourseAccessBackend:
 
         assert result == []
 
+    def test_get_dashboard_contributions_for_request_keeps_anonymous_users_away(
+        self,
+    ):
+        """A backend whose panels assume a signed-in user never sees a visitor."""
+        from freedom_ls.course_access.backends import CourseAccessBackend
+
+        class SignedInOnlyBackend(CourseAccessBackend):
+            def get_dashboard_contributions(self, *, user):
+                raise AssertionError("called with an anonymous user")
+
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+
+        result = SignedInOnlyBackend().get_dashboard_contributions_for_request(
+            request=request
+        )
+
+        assert result == []
+
 
 @pytest.mark.django_db
 class TestFreeOnlyCourseAccessBackendGetAccessForRequest:

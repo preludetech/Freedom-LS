@@ -192,7 +192,14 @@ class CourseAccessBackend:
     def get_dashboard_contributions_for_request(
         self, *, request: HttpRequest
     ) -> list[DashboardContribution]:
-        """Dashboard panels for whoever is making this request. Default: the user's."""
+        """Dashboard panels for whoever is making this request.
+
+        Default: the signed-in user's, and nothing for a visitor, so a backend
+        whose panels assume a signed-in user is never handed an anonymous one.
+        A backend with something to show a visitor overrides this.
+        """
+        if not request.user.is_authenticated:
+            return []
         return self.get_dashboard_contributions(user=request.user)
 
 
