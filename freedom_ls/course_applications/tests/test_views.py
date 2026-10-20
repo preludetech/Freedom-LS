@@ -25,6 +25,7 @@ from django.test import Client, RequestFactory, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import escape
 
 from freedom_ls.accounts.allauth_account_adapter import AccountAdapter
 from freedom_ls.accounts.factories import (
@@ -3910,6 +3911,43 @@ def test_resend_post_from_a_draft_redirects_to_the_status_url(
     status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
 
     response = client.post(status_url)
+
+    assert response["Location"] == status_url
+
+
+@pytest.mark.django_db
+def test_notice_form_carries_the_page_it_was_sent_from(client, mock_site_context):
+    application = _anonymous_draft(client)
+    page_url = f"{_page_url(application, 1)}?return=check"
+
+    body = client.get(page_url).content.decode()
+
+    assert f'<input type="hidden" name="next" value="{escape(page_url)}">' in body
+
+
+@pytest.mark.django_db
+def test_resend_post_from_a_draft_returns_to_the_page_it_was_sent_from(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    page_url = f"{_page_url(application, 1)}?return=check"
+
+    response = client.post(
+        reverse("course_applications:status", kwargs={"pk": application.pk}),
+        {"next": page_url},
+    )
+
+    assert response["Location"] == page_url
+
+
+@pytest.mark.django_db
+def test_resend_post_with_an_offsite_next_returns_to_the_status_url(
+    client, mock_site_context
+):
+    application = _anonymous_draft(client)
+    status_url = reverse("course_applications:status", kwargs={"pk": application.pk})
+
+    response = client.post(status_url, {"next": "https://elsewhere.example/"})
 
     assert response["Location"] == status_url
 

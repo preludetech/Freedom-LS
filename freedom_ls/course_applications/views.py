@@ -19,6 +19,7 @@ from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.crypto import salted_hmac
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from freedom_ls.accounts.forms import tripped_honeypot
@@ -232,8 +233,8 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     it: there is nothing to say about a request that has not been made yet.
 
     POST, for an unverified application, sends the claim email again. It
-    serves a draft too, and the redirect then carries the applicant on to
-    their form. The page says whether an email has gone out at all, so an
+    serves a draft too: the redirect goes back to the page in `next`, the one
+    the resend came from, or here, which carries a draft on to its form. The page says whether an email has gone out at all, so an
     applicant whose first one was skipped or lost is never left waiting for it.
 
     NOTE: when application review lands, dynamic state rendering (state badge,
@@ -246,6 +247,13 @@ def application_status(request: HttpRequest, pk: UUID) -> HttpResponse:
     app = found
     if request.method == "POST":
         _report_claim_email(request, _unverified_applicant_of(app))
+        next_url = request.POST.get("next", "")
+        if next_url and url_has_allowed_host_and_scheme(
+            next_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        ):
+            return redirect(next_url)
         return redirect("course_applications:status", pk=app.pk)
     if app.form_progress is not None and app.form_progress.completed_time is None:
         return redirect(_resume_url(app, app.form_progress))

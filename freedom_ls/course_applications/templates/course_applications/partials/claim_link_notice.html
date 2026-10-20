@@ -1,7 +1,8 @@
 {% comment %}
 The callout an unverified draft carries on every form page: where the claim link
 went, and the two ways to get another one. It reads the applicant row, so a
-reload or a new tab shows the same state the last send left. Renders nothing
+reload or a new tab shows the same state the last send left. The resend comes
+back to the page it was sent from. Renders nothing
 for a verified application or one with no applicant.
 {% endcomment %}
 {% if application.anonymous_applicant and not application.is_email_verified %}
@@ -16,6 +17,7 @@ for a verified application or one with no applicant.
         <div class="flex flex-wrap items-center gap-3">
             <form method="post" action="{% url 'course_applications:status' pk=application.pk %}">
                 {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
                 <c-button type="submit" variant="secondary" size="small">Send the link again</c-button>
             </form>
             <a href="{% url 'course_applications:applicant_details' course_slug=application.course.slug %}">Wrong address? Change it</a>
