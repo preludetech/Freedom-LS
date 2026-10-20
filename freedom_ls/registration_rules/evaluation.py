@@ -133,13 +133,14 @@ def _hand_overs(
 ) -> dict[UUID, HandOver]:
     """Which other enabled rule on the course takes each learner this rule lets go of.
 
+    Rules of every organisation are tried: a learner who moved is matched only
+    by their new organisation's rules, which may take the registration over.
     Rules are tried in name order so two runs hand the same learner to the
     same rule.
     """
     others = (
         RegistrationRule._base_manager.filter(
             site_id=state.site_id,
-            organisation_id=state.organisation_id,
             course_id=state.course_id,
             is_enabled=True,
         )
@@ -148,9 +149,14 @@ def _hand_overs(
     )
     remaining = set(learner_ids)
     taken: dict[UUID, HandOver] = {}
+    switches: dict[UUID, bool] = {}
     for other in others:
         if not remaining:
             break
+        if other.organisation_id not in switches:
+            switches[other.organisation_id] = rules_enabled_for(other.organisation_id)
+        if not switches[other.organisation_id]:
+            continue
         matched = get_rule_kind(other.kind).matching_learners(
             RuleState.from_rule(other)
         )
@@ -217,22 +223,23 @@ def apply_rule_changes(
 
     # Retract: the started check sits inside the UPDATE, so a learner who
     # opens the course between the read above and this write keeps it.
-    to_retract = LearnerCourseRegistration._base_manager.filter(
+    owned = LearnerCourseRegistration._base_manager.filter(
         site_id=rule.site_id,
         course_id=rule.course_id,
         learner_id__in=changes.retract,
-        is_active=True,
         rule_registration__rule=rule,
-    ).filter(~started_course_exists(OuterRef("learner_id"), rule.course_id))
-    retracted = list(to_retract.values_list("learner_id", "pk"))
-    retracted_pks = [pk for _, pk in retracted]
-    LearnerCourseRegistration._base_manager.filter(
-        site_id=rule.site_id, pk__in=retracted_pks
+    )
+    owned.filter(is_active=True).filter(
+        ~started_course_exists(OuterRef("learner_id"), rule.course_id)
     ).update(is_active=False)
+    # The rows just deactivated: inactive but not yet marked retracted.
+    retracted = list(
+        owned.filter(
+            is_active=False, rule_registration__is_retracted=False
+        ).values_list("learner_id", "pk")
+    )
     RuleRegistration._base_manager.filter(
-        site_id=rule.site_id,
-        registration__in=retracted_pks,
-        registration__is_active=False,
+        site_id=rule.site_id, registration__in=[pk for _, pk in retracted]
     ).update(is_retracted=True)
     return EvaluationResult(
         registered=tuple(registered),
@@ -269,7 +276,7 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
         # batch rather than after the whole organisation.
         with transaction.atomic():
             rule = (
-                RegistrationRule._base_manager.select_for_update()
+                RegistrationRule._base_manager.select_for_update(no_key=True)
                 .filter(pk=rule_id, site_id=site_id)
                 .first()
             )
@@ -289,13 +296,15 @@ def evaluate_rule(rule_id: UUID, site_id: int) -> EvaluationResult:
 def evaluate_learner(learner_id: UUID, site_id: int) -> EvaluationResult:
     """Reconcile one learner against the rules that match or own them.
 
-    Locks only the Learner row; evaluate_rule locks only the rule. Both write
-    registrations in learner-pk order, so the two cannot deadlock.
+    Locks only the Learner row; evaluate_rule locks only the rule. Both locks
+    are no-key, so the key-share lock a foreign key check takes on the other
+    run's row does not wait: registering this learner under a locked rule, or
+    a batch learner under this lock, goes through.
     """
     result = EvaluationResult()
     with transaction.atomic():
         learner = (
-            Learner._base_manager.select_for_update()
+            Learner._base_manager.select_for_update(no_key=True)
             .filter(pk=learner_id, site_id=site_id)
             .first()
         )

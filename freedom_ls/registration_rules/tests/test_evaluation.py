@@ -7,7 +7,9 @@ from datetime import UTC, datetime
 import pytest
 import time_machine
 
+from django.db import connection
 from django.db.models.signals import post_save
+from django.test.utils import CaptureQueriesContext
 
 from freedom_ls.accounts.factories import SiteFactory
 from freedom_ls.comms.models import Notification
@@ -33,6 +35,7 @@ if app_not_installed("freedom_ls.registration_rules"):
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.registration_rules.evaluation import (
     EvaluationResult,
+    apply_rule_changes,
     classify_rule_changes,
     evaluate_learner,
     evaluate_organisation,
@@ -954,3 +957,123 @@ def test_evaluating_an_organisation_leaves_another_organisations_rules_alone(
         .filter(learner=bystander)
         .exists()
     )
+
+
+def _locking_queries(captured):
+    return [q["sql"] for q in captured.captured_queries if " FOR " in q["sql"]]
+
+
+@pytest.mark.django_db
+def test_a_rule_run_locks_the_rule_without_blocking_foreign_key_checks(
+    title_rule, titled_learner
+):
+    # Arrange
+    drop_ambient_request()
+
+    # Act
+    with CaptureQueriesContext(connection) as captured:
+        evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    locks = _locking_queries(captured)
+    assert locks
+    assert all("FOR NO KEY UPDATE" in sql for sql in locks)
+
+
+@pytest.mark.django_db
+def test_a_learner_run_locks_the_learner_without_blocking_foreign_key_checks(
+    title_rule, titled_learner
+):
+    # Arrange
+    drop_ambient_request()
+
+    # Act
+    with CaptureQueriesContext(connection) as captured:
+        evaluate_learner(titled_learner.pk, titled_learner.site_id)
+
+    # Assert
+    locks = _locking_queries(captured)
+    assert locks
+    assert all("FOR NO KEY UPDATE" in sql for sql in locks)
+
+
+@pytest.fixture
+def learner_moved_between_organisations_with_rules_on_one_course(
+    title_rule, unmatched_learner, other_organisation_rule
+):
+    """A learner registered by title_rule who moved to an organisation whose rule
+    targets the same course and matches everyone."""
+    other_organisation_rule.course = title_rule.course
+    other_organisation_rule.save()
+    registration, link = _rule_made_registration(title_rule, unmatched_learner)
+    _move_learner(unmatched_learner, other_organisation_rule.organisation)
+    drop_ambient_request()
+    return registration, link, other_organisation_rule
+
+
+@pytest.mark.django_db
+def test_the_old_organisations_rule_hands_a_moved_learner_to_the_new_organisations_rule(
+    learner_moved_between_organisations_with_rules_on_one_course, title_rule
+):
+    # Arrange
+    registration, link, new_rule = (
+        learner_moved_between_organisations_with_rules_on_one_course
+    )
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    link.refresh_from_db()
+    assert registration.is_active is True
+    assert link.rule == new_rule
+
+
+@pytest.mark.django_db
+def test_the_old_organisations_rule_keeps_a_moved_learner_whose_new_switch_is_off(
+    learner_moved_between_organisations_with_rules_on_one_course, title_rule
+):
+    # Arrange
+    registration, link, new_rule = (
+        learner_moved_between_organisations_with_rules_on_one_course
+    )
+    OrganisationHRSettings._base_manager.filter(
+        organisation=new_rule.organisation
+    ).update(registration_rules_enabled=False)
+
+    # Act
+    evaluate_rule(title_rule.pk, title_rule.site_id)
+
+    # Assert
+    registration.refresh_from_db()
+    link.refresh_from_db()
+    assert registration.is_active is False
+    assert link.rule == title_rule
+
+
+@pytest.mark.django_db
+def test_a_learner_who_starts_the_course_after_classification_is_not_retracted(
+    title_rule, unmatched_learner
+):
+    # Arrange
+    registration, link = _rule_made_registration(title_rule, unmatched_learner)
+    changes = classify_rule_changes(title_rule, RuleState.from_rule(title_rule))
+    CourseProgressFactory(
+        learner=unmatched_learner,
+        course=title_rule.course,
+        learner_registration=registration,
+        progress_percentage=10,
+    )
+    drop_ambient_request()
+
+    # Act
+    result = apply_rule_changes(title_rule, changes)
+
+    # Assert
+    registration.refresh_from_db()
+    link.refresh_from_db()
+    assert changes.retract == (unmatched_learner.pk,)
+    assert registration.is_active is True
+    assert link.is_retracted is False
+    assert result.retracted == ()
