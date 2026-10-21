@@ -1028,6 +1028,25 @@ class TestListRootActions:
 
         assert f'<span class="stub-row-action">{ROW_URL}</span>' in html
 
+    def test_a_full_page_load_checks_each_actions_availability_once(
+        self, mock_site_context: Site, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The page header and the table share one evaluation, so a permission
+        check behind is_available runs once per action, not once per consumer."""
+        make_stub()
+        checked: list[str] = []
+        real_is_available = PanelAction.is_available
+
+        def counting(action: PanelAction, ctx: PanelContext) -> bool:
+            checked.append(action.action_name)
+            return real_is_available(action, ctx)
+
+        monkeypatch.setattr(PanelAction, "is_available", counting)
+
+        _row_actions_page()
+
+        assert sorted(checked) == ["footer_thing", "row_thing"]
+
     def test_the_empty_state_renders_the_footer_action_from_header_actions(
         self, mock_site_context: Site
     ) -> None:

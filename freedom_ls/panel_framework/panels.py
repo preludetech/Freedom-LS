@@ -142,6 +142,15 @@ class Panel:
         """
         return "panel-" + re.sub(r"[^\w-]+", "-", self.ctx.base_url).strip("-")
 
+    @cached_property
+    def available_actions(self) -> list[PanelAction]:
+        """`get_actions()` narrowed to what this request may use. Evaluated
+        once per panel instance, since a page header and the panel's own
+        context both read it and each check may cost a permission query."""
+        return [
+            action for action in self.get_actions() if action.is_available(self.ctx)
+        ]
+
     def get_context_data(self) -> dict[str, object]:
         """The context `template_name` renders with.
 
@@ -150,9 +159,7 @@ class Panel:
         `row_action_urls` maps each row-scoped action's name to its URL, for
         the cell template that renders its trigger per row.
         """
-        available = [
-            action for action in self.get_actions() if action.is_available(self.ctx)
-        ]
+        available = self.available_actions
         return {
             "panel": self,
             "request": self.request,

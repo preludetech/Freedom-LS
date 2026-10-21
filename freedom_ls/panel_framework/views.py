@@ -765,10 +765,9 @@ def _main_for(
             section.get_instance_label(resolved.instance),
         )
     if issubclass(section, ListViewConfig):
+        # The same instances the list panel renders, checked once for both.
         list_actions = [
-            action
-            for action in section.get_actions(request)
-            if action.renders_in_footer and action.is_available(root.ctx)
+            action for action in root.available_actions if action.renders_in_footer
         ]
         return (
             "panel_framework/views/list_view.html",
