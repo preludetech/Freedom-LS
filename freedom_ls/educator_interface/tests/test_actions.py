@@ -3050,6 +3050,31 @@ def test_granting_organisation_admin_to_a_holder_is_422_with_the_message(
 
 
 @pytest.mark.django_db
+def test_a_confirmed_grant_of_organisation_admin_to_a_holder_is_422_and_restamps_nothing(
+    admin_client, organisation
+):
+    """Two admins can open the dialog for the same person; the second to
+    confirm must not overwrite who granted the role and when."""
+    holder = UserFactory(email="ada@example.com", first_name="Ada", last_name="L")
+    original_grantor = UserFactory(superuser=True)
+    assign_role(original_grantor, holder, "organisation_admin", organisation)
+    assignment = ObjectRoleAssignment.objects.get(
+        user=holder, role="organisation_admin"
+    )
+    stamped_at = assignment.assigned_at
+
+    response = _confirm(
+        admin_client, organisation, "ada@example.com", "organisation_admin"
+    )
+
+    assert response.status_code == 422
+    assert "Ada L is already an organisation admin here." in _text(response)
+    assignment.refresh_from_db()
+    assert assignment.assigned_by == original_grantor
+    assert assignment.assigned_at == stamped_at
+
+
+@pytest.mark.django_db
 def test_a_role_outside_the_grantors_reach_is_the_403_fragment_and_writes_nothing(
     admin_client, organisation, monkeypatch
 ):

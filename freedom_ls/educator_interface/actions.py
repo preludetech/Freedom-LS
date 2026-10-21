@@ -1483,6 +1483,14 @@ class AddMemberAction(PanelAction):
         if targets is None:
             return denied_response(ctx, self)
         email = cast(str, form.cleaned_data["email"])
+        before = (
+            [] if matched is None else current_role_entries(matched, _organisation(ctx))
+        )
+        if role == "organisation_admin" and any(e.role == role for e in before):
+            return _refused(
+                ctx,
+                f"{_member_name(matched, email)} is already an organisation admin here.",
+            )
         held = self._already_held(ctx, matched, role, cohorts)
         names = (
             (
@@ -1502,7 +1510,7 @@ class AddMemberAction(PanelAction):
         new_targets: list[Organisation | Cohort] = [*new_cohorts] or targets
         if ctx.request.POST.get("confirmed") != "1":
             return self._confirmation(
-                ctx, email, matched, role, new_cohorts, held, cohorts, names
+                ctx, email, matched, role, new_cohorts, held, cohorts, names, before
             )
         return self._perform(ctx, matched, email, role, new_targets, names)
 
@@ -1529,14 +1537,12 @@ class AddMemberAction(PanelAction):
         already_held: list[Cohort],
         chosen: list[Cohort],
         names: tuple[str, str],
+        before: list[RoleEntry],
     ) -> HttpResponse:
         organisation = _organisation(ctx)
         site = organisation.site
         role_config = get_role_config(site.name)[role]
         name = _member_name(user, email)
-        before = [] if user is None else current_role_entries(user, organisation)
-        if role == "organisation_admin" and any(entry.role == role for entry in before):
-            return _refused(ctx, f"{name} is already an organisation admin here.")
         member = (
             None
             if user is None
