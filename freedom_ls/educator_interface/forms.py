@@ -212,6 +212,9 @@ class AddMemberForm(forms.Form):
         preset: Cohort | None = None,
         new_account: bool = False,
     ) -> None:
+        if preset is not None and isinstance(data, QueryDict):
+            data = data.copy()
+            data.setlist("cohorts", [str(preset.pk)])
         super().__init__(data)
         if not new_account:
             del self.fields["first_name"]

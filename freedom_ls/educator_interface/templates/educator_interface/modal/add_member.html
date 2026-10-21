@@ -2,7 +2,7 @@
 The Add member dialog, one template for every step. Context: step (email,
 role or confirmation) and form_url; email adds form, role adds
 match (None for an address with no account), new_account, form, role_cards (key, display_name, description, needs_cohorts),
-cohort_rows (pk, name, roles, checked), selected_role and role_note;
+preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role and role_note;
 confirmation adds match, member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
 scope, current_entries, after_entries, already_held, widening, member_state and
 site_level.
@@ -63,6 +63,9 @@ site_level.
                 </label>
                 {% endfor %}
             </fieldset>
+            {% if preset_cohort %}
+            <input type="hidden" name="cohorts" value="{{ preset_cohort.pk }}">
+            {% else %}
             <fieldset x-show="showsCohorts" x-cloak x-transition>
                 <legend class="mb-2 font-semibold">Cohorts</legend>
                 <div x-data="cohortChecklist" x-on:member-role-chosen.window="filter" class="space-y-2">
@@ -81,6 +84,7 @@ site_level.
                     <p class="text-muted">Choosing every cohort is not the same as organisation admin: the role covers only the cohorts chosen, not ones added later.</p>
                 </div>
             </fieldset>
+            {% endif %}
         </div>
         {% if role_note %}<p class="text-muted">{{ role_note }}</p>{% endif %}
     </div>

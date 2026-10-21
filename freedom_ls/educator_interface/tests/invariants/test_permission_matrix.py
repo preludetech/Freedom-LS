@@ -577,6 +577,24 @@ def test_every_capability_reachable_from_the_interface_is_in_matrix(
 
 
 @pytest.mark.django_db
+def test_assign_cohort_viewer_is_reachable_from_the_interface(
+    mock_site_context: Site,
+) -> None:
+    organisation = OrganisationFactory()
+    capabilities = {
+        item.action.get_capability(item.ctx)
+        for item in walk_interface(organisation)
+        if isinstance(item, WalkedAction)
+    }
+
+    assert ASSIGN_COHORT_VIEWER in capabilities
+
+
+def test_assign_cohort_viewer_is_in_the_matrix() -> None:
+    assert ASSIGN_COHORT_VIEWER in MATRIX
+
+
+@pytest.mark.django_db
 def test_cohort_admin_holds_delete_cohortmembership_on_its_own_cohort(
     mock_site_context: Site,
 ) -> None:

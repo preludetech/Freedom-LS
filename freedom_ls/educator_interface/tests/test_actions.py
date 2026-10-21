@@ -4344,3 +4344,149 @@ def test_the_state_dialogs_escape_the_persons_name(admin_client, organisation):
 
     assert "<b>Bold</b>" not in html
     assert "&lt;b&gt;Bold&lt;/b&gt;" in html
+
+
+def _cohort_add_member_url(organisation: Organisation, cohort: Cohort) -> str:
+    return _cohort_url(
+        organisation,
+        cohort,
+        "/__tabs/overview/__panels/educators/__actions/add_member",
+    )
+
+
+def _cohort_overview_lookup(client: Client, organisation: Organisation, cohort: Cohort):
+    return _post(
+        client,
+        _cohort_add_member_url(organisation, cohort),
+        {"step": "lookup", "email": "ada@example.com"},
+    )
+
+
+def _cohort_overview_confirm(
+    client: Client, organisation: Organisation, cohort: Cohort, cohorts: list[Cohort]
+):
+    return client.post(
+        _cohort_add_member_url(organisation, cohort),
+        {
+            "step": "submit",
+            "email": "ada@example.com",
+            "role": "cohort_viewer",
+            "cohorts": [str(other.pk) for other in cohorts],
+            "confirmed": "1",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _cohort_viewer_cohorts(user: User) -> set[str]:
+    return set(
+        ObjectRoleAssignment.objects.filter(
+            user=user, role="cohort_viewer"
+        ).values_list("object_id", flat=True)
+    )
+
+
+@pytest.mark.django_db
+def test_the_cohort_dialog_offers_only_cohort_roles(admin_client, organisation):
+    cohort = _cohort(organisation)
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_overview_lookup(admin_client, organisation, cohort)
+
+    document = lxml.html.fromstring(response.content.decode())
+    roles = [radio.get("value") for radio in document.cssselect("input[name='role']")]
+    assert roles == ["cohort_admin", "cohort_viewer"]
+
+
+@pytest.mark.django_db
+def test_the_cohort_dialog_has_no_cohort_checklist(admin_client, organisation):
+    cohort = _cohort(organisation)
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_overview_lookup(admin_client, organisation, cohort)
+
+    document = lxml.html.fromstring(response.content.decode())
+    assert not document.cssselect("input[type='checkbox'][name='cohorts']")
+
+
+@pytest.mark.django_db
+def test_the_cohort_dialog_carries_the_cohort_as_a_hidden_input(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_overview_lookup(admin_client, organisation, cohort)
+
+    document = lxml.html.fromstring(response.content.decode())
+    hidden = document.cssselect("input[type='hidden'][name='cohorts']")
+    assert [field.get("value") for field in hidden] == [str(cohort.pk)]
+
+
+@pytest.mark.django_db
+def test_confirming_on_a_cohort_page_grants_the_role_on_that_cohort_alone(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    other = _cohort(organisation)
+    user = UserFactory(email="ada@example.com")
+
+    _cohort_overview_confirm(admin_client, organisation, cohort, [cohort])
+
+    assert _cohort_viewer_cohorts(user) == {str(cohort.pk)}
+    assert str(other.pk) not in _cohort_viewer_cohorts(user)
+
+
+@pytest.mark.django_db
+def test_the_cohort_confirmation_names_the_cohort_as_the_scope(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Spring")
+    UserFactory(email="ada@example.com")
+
+    response = admin_client.post(
+        _cohort_add_member_url(organisation, cohort),
+        {
+            "step": "submit",
+            "email": "ada@example.com",
+            "role": "cohort_viewer",
+            "cohorts": [str(cohort.pk)],
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+    assert "Scope: Spring." in _text(response)
+
+
+@pytest.mark.django_db
+def test_a_post_naming_another_cohort_grants_nothing_on_it(admin_client, organisation):
+    cohort = _cohort(organisation)
+    other = _cohort(organisation)
+    user = UserFactory(email="ada@example.com")
+
+    _cohort_overview_confirm(admin_client, organisation, cohort, [other])
+
+    assert _cohort_viewer_cohorts(user) == {str(cohort.pk)}
+
+
+@pytest.mark.django_db
+def test_the_educators_panel_offers_add_member_to_an_organisation_admin(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+
+    html = admin_client.get(_cohort_url(organisation, cohort)).content.decode()
+
+    assert "/__panels/educators/__actions/add_member" in html
+
+
+@pytest.mark.django_db
+def test_the_educators_panel_hides_add_member_from_a_cohort_admin(
+    mock_site_context, logged_in_client, organisation
+):
+    cohort = _cohort(organisation)
+    client, _ = _holder_client(logged_in_client, cohort, "cohort_admin")
+
+    html = client.get(_cohort_url(organisation, cohort)).content.decode()
+
+    assert "/__panels/educators/__actions/add_member" not in html

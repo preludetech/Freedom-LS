@@ -1388,6 +1388,7 @@ class AddMemberAction(PanelAction):
                 "form": form,
                 "form_url": self.get_action_url(ctx),
                 "role_cards": self._role_cards(ctx),
+                "preset_cohort": self._preset(ctx),
                 "cohort_rows": self._cohort_rows(ctx, chosen),
                 "selected_role": form["role"].value() or "",
                 "role_note": self._role_note(ctx),
@@ -1604,6 +1605,26 @@ class AddMemberAction(PanelAction):
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
         return member_changed_response(user)
+
+
+class AddMemberToCohortAction(AddMemberAction):
+    """Add a member on a cohort's page, with the cohort fixed."""
+
+    capability = "freedom_ls_role_based_permissions.assign_cohort_viewer"
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return ctx.instance
+
+    def _grantable(self, ctx: PanelContext) -> list[GrantableRole]:
+        cohort = cast(Cohort, ctx.instance)
+        return [
+            grantable
+            for grantable in grantable_roles_for(ctx.request)
+            if grantable.cohorts is not None and cohort in grantable.cohorts
+        ]
+
+    def _preset(self, ctx: PanelContext) -> Cohort | None:
+        return cast(Cohort, ctx.instance)
 
 
 class MemberRoleAction(PanelAction):

@@ -927,6 +927,41 @@ def test_educators_block_names_each_educator_and_their_role(
 
 
 @pytest.mark.django_db
+def test_educators_panel_lists_a_person_added_from_the_cohort_page(
+    mock_site_context, logged_in_client
+):
+    organisation = OrganisationFactory()
+    cohort = cast(Cohort, CohortFactory(organisation=organisation))
+    admin = LearnerFactory(user__staff=True, organisation=organisation).user
+    assign_role(
+        LearnerFactory(user__superuser=True).user,
+        admin,
+        "organisation_admin",
+        organisation,
+    )
+    ada = UserFactory(first_name="Ada", last_name="Lovelace", email="ada@example.com")
+    client = logged_in_client(admin)
+
+    client.post(
+        _educators_url(organisation, cohort) + "/__actions/add_member",
+        {
+            "step": "submit",
+            "email": "ada@example.com",
+            "role": "cohort_viewer",
+            "cohorts": [str(cohort.pk)],
+            "confirmed": "1",
+        },
+        HTTP_HX_REQUEST="true",
+    )
+
+    document = _get_document(
+        client, _interface_url(organisation.slug, f"cohorts/{cohort.pk}")
+    )
+    (card,) = document.cssselect("section[data-panel='educators']")
+    assert ada.display_name in card.text_content()
+
+
+@pytest.mark.django_db
 def test_educators_block_shows_an_empty_state_without_educators(staff_client: Client):
     organisation = OrganisationFactory()
     cohort = cast(Cohort, CohortFactory(organisation=organisation))

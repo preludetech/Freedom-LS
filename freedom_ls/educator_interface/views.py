@@ -30,6 +30,7 @@ from freedom_ls.educator_interface.actions import (
     AddLearnersAction,
     AddLearnersToCohortAction,
     AddMemberAction,
+    AddMemberToCohortAction,
     AddToCohortAction,
     ChangeCohortsAction,
     DeleteEmptyCohortAction,
@@ -881,7 +882,7 @@ class CohortEducatorsPanel(Panel):
     refresh_events = (COHORT_CHANGED, MEMBER_CHANGED)
 
     def get_actions(self) -> list[PanelAction]:
-        return []
+        return [AddMemberToCohortAction()]
 
     def get_context_data(self) -> dict[str, object]:
         context = super().get_context_data()
