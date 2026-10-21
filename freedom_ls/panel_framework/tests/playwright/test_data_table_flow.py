@@ -280,6 +280,16 @@ def test_data_table_interaction(
             card_checkboxes.first.check()
             expect(page.get_by_text("1 selected", exact=False)).to_be_visible()
 
+            # The phone toolbar buttons and the pager meet the 44px touch target.
+            for control in (
+                page.get_by_role("button", name="Filter"),
+                page.get_by_role("button", name="Sort"),
+                page.get_by_role("link", name="Next", exact=True),
+            ):
+                box = control.bounding_box()
+                assert box is not None
+                assert box["height"] >= 44, f"{control} is {box['height']}px high"
+
             # "Sort" opens the one combined sheet; the inputs sit behind their
             # chip labels, so a tap lands on the label.
             page.get_by_role("button", name="Sort").click()

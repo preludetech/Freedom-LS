@@ -8,8 +8,9 @@ either way. When the primary column links to the row's page, a decorative
 open-page icon ends the primary line, in line with the name and its
 quick-view trigger. Every other value is labelled with its
 column header, since the table headings aren't on screen to explain it.
+Cards only exist below md, so every button in one is a 44px touch target.
 {% endcomment %}
-<li class="flex items-center gap-3 px-4 py-3 sm:px-6">
+<li class="flex items-center gap-3 px-4 py-3 sm:px-6 [&_.btn]:min-h-11">
     {% if selectable %}
         <label class="flex size-11 shrink-0 items-center justify-center">
             <input type="checkbox"

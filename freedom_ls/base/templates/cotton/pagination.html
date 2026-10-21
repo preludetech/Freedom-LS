@@ -24,7 +24,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm">
+                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                         Previous
                     </a>
                 {% endif %}
@@ -39,7 +39,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm">
+                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                         Next
                     </a>
                 {% endif %}
@@ -56,7 +56,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm">
+                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                         Previous
                     </a>
                 {% endif %}
@@ -64,14 +64,14 @@
                 {% for link in links.pages %}
                     {% if link.number %}
                         {% if link.current %}
-                            <span class="btn btn-primary btn-sm">{{ link.number }}</span>
+                            <span class="btn btn-primary btn-sm min-h-11 md:min-h-0">{{ link.number }}</span>
                         {% else %}
                             {% querystring request.GET link.changes as qs %}
                             <a href="{{ page_url }}{{ qs }}"
                                hx-get="{{ base_url }}{{ qs }}"
                                hx-target="#{{ table_id }}"
                                hx-swap="outerHTML"
-                               class="btn btn-secondary btn-sm">
+                               class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                                 {{ link.number }}
                             </a>
                         {% endif %}
@@ -86,7 +86,7 @@
                        hx-get="{{ base_url }}{{ qs }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
-                       class="btn btn-secondary btn-sm">
+                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                         Next
                     </a>
                 {% endif %}
@@ -105,7 +105,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm">
+                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                     Previous
                 </a>
             {% endif %}
@@ -120,7 +120,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm">
+                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                     Next
                 </a>
             {% endif %}
@@ -137,7 +137,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm">
+                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                     First
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.previous_page_number }}{{ suffix }}"
@@ -145,21 +145,21 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm">
+                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                     Previous
                 </a>
             {% endif %}
 
             {% for num in page_obj.paginator.page_range %}
                 {% if num == page_obj.number %}
-                    <span class="btn btn-primary btn-sm">{{ num }}</span>
+                    <span class="btn btn-primary btn-sm min-h-11 md:min-h-0">{{ num }}</span>
                 {% elif num <= 2 or num >= page_obj.paginator.num_pages|add:'-1' or num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
                     <a href="?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-get="{{ base_url }}?{{ page_param_name }}={{ num }}{{ suffix }}"
                        hx-target="#{{ table_id }}"
                        hx-swap="outerHTML"
                        {% if push_url %}hx-push-url="true"{% endif %}
-                       class="btn btn-secondary btn-sm">
+                       class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                         {{ num }}
                     </a>
                 {% elif num == 3 and page_obj.number > 5 %}
@@ -175,7 +175,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm">
+                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                     Next
                 </a>
                 <a href="?{{ page_param_name }}={{ page_obj.paginator.num_pages }}{{ suffix }}"
@@ -183,7 +183,7 @@
                    hx-target="#{{ table_id }}"
                    hx-swap="outerHTML"
                    {% if push_url %}hx-push-url="true"{% endif %}
-                   class="btn btn-secondary btn-sm">
+                   class="btn btn-secondary btn-sm min-h-11 md:min-h-0">
                     Last
                 </a>
             {% endif %}

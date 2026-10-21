@@ -146,10 +146,10 @@ off.
             {% endfor %}
 
             {% if toolbar %}
-                <c-button type="button" variant="secondary" size="small" icon_left="filter" x-on:click="toggle">Filter</c-button>
+                <c-button type="button" variant="secondary" size="small" icon_left="filter" class="min-h-11" x-on:click="toggle">Filter</c-button>
             {% endif %}
             {% if sortable_columns %}
-                <c-button type="button" variant="secondary" size="small" icon_left="sort_neutral" class="ml-auto" x-on:click="toggle">Sort</c-button>
+                <c-button type="button" variant="secondary" size="small" icon_left="sort_neutral" class="ml-auto min-h-11" x-on:click="toggle">Sort</c-button>
             {% endif %}
 
             {% include "panel_framework/partials/table_sheet.html" %}
