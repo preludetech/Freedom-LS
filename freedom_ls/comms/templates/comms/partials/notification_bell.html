@@ -51,6 +51,7 @@ buttons rather than menu items, and it does not trap focus.
         <div id="notification-panel"
              x-ref="content"
              x-show="contentVisible"
+             data-htmx-owns-errors
              aria-labelledby="notification-panel-heading"
              hx-get="{% url 'comms:notification_panel' %}"
              hx-trigger="refresh"

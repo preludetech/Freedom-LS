@@ -11,7 +11,9 @@
 // longer allows, or whose object has left the user's scope), and on any other
 // 4xx/5xx response that contains an OOB toast fragment so server-rendered
 // messages still surface on errors. An unmarked 403 or 404 is a full page and
-// is never swapped in.
+// is never swapped in: the user has lost access to what they are looking at,
+// so the page reloads onto the page a fresh visit shows instead of a click
+// that does nothing.
 document.addEventListener("htmx:beforeSwap", (event) => {
     const status = event.detail.xhr.status;
     const body = event.detail.xhr.responseText || "";
@@ -23,6 +25,28 @@ document.addEventListener("htmx:beforeSwap", (event) => {
         event.detail.shouldSwap = true;
         event.detail.isError = false;
         return;
+    }
+    if (
+        (status === 403 || status === 404) &&
+        !body.includes("data-htmx-swap-error")
+    ) {
+        // Only a real user action reloads, so polling and scripted refreshes
+        // can never loop. #interface-main has its own fallback, and a
+        // container that draws its own error state keeps doing so.
+        const trigger =
+            event.detail.requestConfig && event.detail.requestConfig.triggeringEvent;
+        const target = event.detail.target;
+        if (
+            trigger &&
+            trigger.isTrusted &&
+            target &&
+            target.id !== "interface-main" &&
+            !target.closest("[data-htmx-owns-errors]")
+        ) {
+            event.detail.shouldSwap = false;
+            window.location.reload();
+            return;
+        }
     }
     if (status >= 400 && status < 600) {
         if (body.includes('hx-swap-oob="beforeend:#toast-region-')) {
