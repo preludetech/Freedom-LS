@@ -1,6 +1,6 @@
 # Security and Data Handling
 
-_Last updated: 2026-10-12_
+_Last updated: 2026-10-21_
 
 This is the cross-cutting reviewer document. Every claim is labelled by its actual state: **built** (in code and active), **operational** (requires correct deployment configuration), or **not yet built**.
 
@@ -17,8 +17,8 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 - **Not yet built:** FLS runs no malware or content scanning on documents applicants upload; a reviewer downloads exactly what was attached, PDF contents included. See [applicant uploads](#applicant-uploads-built).
 - **Operational:** Report PDFs are written to a private storage location, separate from the buckets that hold course media and public branding. There is no fallback: an unconfigured location fails at startup, and a deploy pipeline running Django's deployment check catches a location that resolves to the wrong bucket before anything is written to it.
 - **Report-only:** Content Security Policy runs in report-only mode — violations are reported, not blocked. HSTS is configurable but needs a staged rollout at deployment time; it is not meaningfully on by default.
-- **Built:** every section of the educator interface — Cohorts, Learners and Courses — is permission-checked and denies by default. The Courses list shows published courses plus those registered to a cohort or learner the viewer can see in the current organisation; any other course page is refused as though it did not exist. See [educator interface authorisation](#educator-interface-authorisation-built).
-- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, applicant-uploaded documents or anonymous applicant data, and an access log for report downloads. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
+- **Built:** every section of the educator interface — Cohorts, Learners, Courses and Members — is permission-checked and denies by default. Members, where roles are given and removed, opens only for organisation admins and site admins. The Courses list shows published courses plus those registered to a cohort or learner the viewer can see in the current organisation; any other course page is refused as though it did not exist. See [educator interface authorisation](#educator-interface-authorisation-built).
+- **Not yet built:** 2FA/MFA, automated data-deletion and data-subject-rights tooling, a formal incident-response runbook, centralised logging and alerting, per-request access-controlled media downloads, a retention or expiry policy for generated report files, applicant-uploaded documents or anonymous applicant data, an access log for report downloads, and an audit log of role changes. All are covered honestly below and tracked in the [roadmap](./roadmap.md).
 - **Infrastructure:** The target deployment uses Vultr Johannesburg (ISO 27001:2022 certified). Vultr's certification covers physical and hypervisor layers; the operator owns everything above. See [shared responsibility](#infrastructure-and-shared-responsibility).
 
 ---
@@ -37,7 +37,7 @@ This is the cross-cutting reviewer document. Every claim is labelled by its actu
 
 ### Educator Interface Authorisation (built)
 
-Access to the educator interface is decided by [role assignments](./educator-interface.md#access-control) alone, on a whole organisation or on a single cohort. A person's roles in an organisation count only while they are an active member of it, so deactivating that membership revokes everything they hold there at once without deleting the roles. Assigning roles is guarded: nobody changes their own, no role goes to an inactive user, an organisation admin assigns only within their own organisation, and the last organisation admin or last site admin cannot be removed; no screen applies those rules yet, because roles are only assigned by a developer.
+Access to the educator interface is decided by [role assignments](./educator-interface.md#access-control) alone, on a whole organisation or on a single cohort. A person's roles in an organisation count only while they are an active member of it, so deactivating that membership revokes everything they hold there at once without deleting the roles. Assigning roles is guarded: nobody changes their own, no role goes to an inactive user, an organisation admin assigns only within their own organisation, and the last organisation admin or last site admin cannot be removed. The educator interface's [Members section](./educator-interface.md#members-and-roles) applies those rules and opens only for organisation admins and site admins; any change that widens or removes someone's access is confirmed first. Site admin is not given or removed there, and no record is kept of who changed a role or when.
 
 The Cohorts, Learners and Courses listings and their detail pages are permission-checked and **deny by default**: a visitor without the right role gets the same not-found response as a record that does not exist, so cohort, learner, course and organisation identifiers cannot be enumerated by guessing URLs. Every write action is checked against the user's role as well.
 

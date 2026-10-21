@@ -1,11 +1,11 @@
 # Roadmap
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-21_
 
 ## Summary
 
 - This is the canonical home for features that are planned, partially built, or not started. Other product docs link here rather than restating half-built status.
-- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (decides educator-interface and report access; no screen to assign roles or manage organisation members), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
+- **Half-built:** course applications (apply flow and authored application form built; review/approval workflow not built), role-based access control (organisation and cohort roles are managed in the educator interface; site admin is still assigned by a developer, and role changes are not logged), notifications (in-app bell and notification centre built, off by default; email and most events not built), xAPI (non-functional stub), site-aware user groups (drafted, disabled), registration rules (HR attributes built; the rules themselves not built).
 - **Not built:** 2FA/MFA, the remaining educator-interface management actions (cohort membership, bulk actions, individual learner registration, deadlines), notify-on-launch for coming-soon courses, per-request access-controlled media downloads, data-retention/data-subject-rights tooling, the deliberately deferred organisation capabilities, and the deliberately deferred cohort report capabilities.
 - Shipped features are documented in their own product docs; this one covers only what is incomplete.
 
@@ -81,12 +81,12 @@ No 2FA or MFA code exists in any form — no MFA app, no one-time-password integ
 
 ## Role-Based Access Control (RBAC)
 
-**Status: Decides educator access; the tools to manage it are not built.**
+**Status: Organisation and cohort roles are managed in the educator interface; site admin and an audit log are not.**
 
-Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#access-control). Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
+Role assignments decide who can use the educator interface and who can generate or download a cohort report; the roles and what each allows are in [educator interface](./educator-interface.md#members-and-roles). An organisation admin adds, removes, suspends and reactivates the organisation's members and their roles from the educator interface. Role definitions also exist for a system administrator, learner and observer, but grant nothing yet. What is missing:
 
-- **No screen to assign roles.** There is no educator-interface or Django admin page for granting or removing one; a developer does it.
-- **No screen to manage organisation members**, so nobody can yet deactivate a person's membership of an organisation.
+- **Site admin is assigned by a developer.** Neither the educator interface nor the Django admin can grant or remove it.
+- **No notification** tells a person that a role was granted or removed.
 - **No audit log** of role or membership changes.
 
 ## Per-Request Media Access Control
@@ -128,7 +128,7 @@ The educator interface can create, edit, deactivate, reactivate and delete cohor
 - **Individual course registration** — registering a single learner for a course.
 - **Deadlines** — cohort deadlines, per-learner deadlines, and overrides.
 
-Also not built in the educator interface: bulk actions on lists, changing which educators a cohort has (see [Role-Based Access Control](#role-based-access-control-rbac)), and data for the cohort overview's "needs attention" card, which shows a placeholder.
+Also not built in the educator interface: bulk actions on lists, and data for the cohort overview's "needs attention" card, which shows a placeholder.
 
 There is also **no messaging capability** — educators cannot contact learners from within FLS (see [Notification System](#notification-system)).
 

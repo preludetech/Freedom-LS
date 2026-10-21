@@ -1,6 +1,6 @@
 # Freedom LS — Product Documentation
 
-_Last updated: 2026-10-11_
+_Last updated: 2026-10-21_
 
 High-level product documentation for evaluators, operators, and downstream integrators: what Freedom LS does and what can be configured. It is not developer or API reference.
 
@@ -19,7 +19,7 @@ Each document labels its claims by actual state — built, operational (needs de
 | [Authentication](./authentication.md) | Email-only login with mandatory verification, per-site signup policy with optional extra registration forms, hardened password and lockout policy, and an append-only legal-consent audit trail. No MFA. |
 | [Learner Experience](./learner-experience.md) | Public catalogue, course pages and article blog, personalised dashboard, self-enrolment or application, coming-soon and hidden course visibility with an express-interest waitlist, sequential unlock with resume, multi-page forms, quiz feedback, and deadlines. |
 | [Learner Tracking](./learner-tracking.md) | Per-item completion, quiz attempts and scores, course progress percentage, and a resume pointer. No time-on-task and no score export. |
-| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, learner, and course views, scoped to one organisation at a time. Cohorts can be created, edited, deactivated, reactivated, deleted when empty, and registered for courses; the Courses section is read-only and shows only what the organisation can see. Access follows four built-in roles — site admin, organisation admin, cohort admin and cohort viewer — with no screen yet for assigning them. No cohort membership, bulk or deadline actions yet. |
+| [Educator Interface](./educator-interface.md) | Single-page panel with cohort, learner, and course views, scoped to one organisation at a time. Cohorts can be created, edited, deactivated, reactivated, deleted when empty, and registered for courses; the Courses section is read-only and shows only what the organisation can see. Access follows four built-in roles — site admin, organisation admin, cohort admin and cohort viewer — and organisation admins add, remove and suspend members from a Members section; site admin is not assigned there. No cohort membership, bulk or deadline actions yet. |
 | [Cohort Reports](./reports.md) | A per-cohort A4 PDF covering every course the cohort is registered for: a summary table per course, a detail section per learner, at-risk flags, and a cohort-wide analysis of which quiz questions caused the most trouble. Generated on demand from the admin and downloaded through a permission-checked link. No scheduling, no email, no retention policy. |
 | [Admin Interface](./admin-interface.md) | Django admin enhanced with Unfold, a configurable admin path, organisation management, read-only consent records, and a webhook test-send action. |
 | [Webhooks](./webhooks.md) | Outbound events for registration, course registration, and course completion, with HMAC signing, encrypted per-site secrets, templated payloads, SSRF protection, retries, and a circuit breaker. |
