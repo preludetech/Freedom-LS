@@ -1669,9 +1669,14 @@ class MemberRoleAction(PanelAction):
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
 
-    def _entry(self, ctx: PanelContext, user: User) -> RoleEntry:
+    def _entries(self, ctx: PanelContext, user: User) -> list[RoleEntry]:
+        """Every role `user` holds here, loaded once per request."""
+        return current_role_entries(user, _organisation(ctx))
+
+    def _entry(self, ctx: PanelContext, entries: list[RoleEntry]) -> RoleEntry:
+        """The entry the `role` parameter names, from `entries`."""
         role = _action_params(ctx.request).get("role", "")
-        for entry in current_role_entries(user, _organisation(ctx)):
+        for entry in entries:
             if entry.role == role:
                 return entry
         raise Http404("The member does not hold this role")
@@ -1682,11 +1687,17 @@ class RemoveRoleAction(MemberRoleAction):
     action_name = "remove_role"
     template_name = "educator_interface/modal/remove_role_confirmation.html"
 
-    def _kept(self, ctx: PanelContext, user: User, removed: RoleEntry) -> str:
+    def _kept(
+        self,
+        ctx: PanelContext,
+        user: User,
+        removed: RoleEntry,
+        entries: list[RoleEntry],
+    ) -> str:
         organisation = _organisation(ctx)
         kept = [
             f"{entry.display_name} on {entry.scope}"
-            for entry in current_role_entries(user, organisation)
+            for entry in entries
             if entry.role != removed.role
         ]
         has_learner = Learner.objects.filter(
@@ -1702,7 +1713,8 @@ class RemoveRoleAction(MemberRoleAction):
         site = organisation.site
         grantor = cast("User", ctx.request.user)
         user = _member_param(ctx)
-        entry = self._entry(ctx, user)
+        entries = self._entries(ctx, user)
+        entry = self._entry(ctx, entries)
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
         return {
             "member": user,
@@ -1713,7 +1725,7 @@ class RemoveRoleAction(MemberRoleAction):
                 if entry.role == "organisation_admin"
                 else join_prose([cohort.name for cohort in entry.cohorts])
             ),
-            "keeps": self._kept(ctx, user, entry),
+            "keeps": self._kept(ctx, user, entry, entries),
             "last_organisation_admin": entry.role == "organisation_admin"
             and is_last_organisation_admin(organisation, user),
             "grantor_is_site_level": is_site_level_admin(grantor, site),
@@ -1724,7 +1736,7 @@ class RemoveRoleAction(MemberRoleAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
         user = _member_param(ctx)
-        entry = self._entry(ctx, user)
+        entry = self._entry(ctx, self._entries(ctx, user))
         targets: list[Organisation | Cohort] = (
             [organisation] if entry.role == "organisation_admin" else [*entry.cohorts]
         )
@@ -1805,7 +1817,7 @@ class ChangeCohortsAction(MemberRoleAction):
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         user = _member_param(ctx)
-        entry = self._entry(ctx, user)
+        entry = self._entry(ctx, self._entries(ctx, user))
         return {"step": "form", **self._dialog(ctx, user, entry)}
 
     def _chosen(self, ctx: PanelContext, entry: RoleEntry) -> list[Cohort]:
@@ -1823,7 +1835,7 @@ class ChangeCohortsAction(MemberRoleAction):
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         user = _member_param(ctx)
         grantor = cast("User", ctx.request.user)
-        entry = self._entry(ctx, user)
+        entry = self._entry(ctx, self._entries(ctx, user))
         chosen = self._chosen(ctx, entry)
         if user == grantor:
             return _refused(ctx, REFUSAL_MESSAGES[RefusalReason.SELF])

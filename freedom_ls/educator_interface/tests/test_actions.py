@@ -30,6 +30,7 @@ from freedom_ls.educator_interface.events import (
     MEMBER_CHANGED,
     REGISTRATION_CHANGED,
 )
+from freedom_ls.educator_interface.members import current_role_entries
 from freedom_ls.learner_management.capabilities import can
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
@@ -3605,6 +3606,31 @@ def test_the_remove_confirmation_lists_what_the_person_keeps(
         "They keep their account, Cohort viewer on Evening group "
         "and their learner access in this organisation."
     ) in text
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_loads_the_persons_roles_once(
+    admin_client, organisation, monkeypatch
+):
+    cohort = _cohort(organisation)
+    user = _member_holding("cohort_admin", cohort)
+    assign_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
+    calls: list[User] = []
+    real_entries = current_role_entries
+
+    def counting(target_user, target_organisation):
+        calls.append(target_user)
+        return real_entries(target_user, target_organisation)
+
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.current_role_entries", counting
+    )
+
+    response = _remove_dialog(admin_client, organisation, user, "cohort_admin")
+
+    assert response.status_code == 200
+    assert "They keep their account and Cohort viewer on" in _text(response)
+    assert len(calls) == 1
 
 
 @pytest.mark.django_db
