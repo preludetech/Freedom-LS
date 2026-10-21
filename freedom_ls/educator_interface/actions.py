@@ -158,6 +158,16 @@ def _uuid_param(request: HttpRequest, name: str) -> UUID:
     return _uuid_from(_action_params(request), name)
 
 
+def _member_param(ctx: PanelContext) -> User:
+    """The organisation member named by the action's `user` parameter. A
+    missing, malformed or non-member value is a 404."""
+    try:
+        pk = int(_action_params(ctx.request).get("user", ""))
+    except ValueError:
+        raise Http404("No such user") from None
+    return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
+
+
 def inactive_cohort_response(request: HttpRequest, cohort: Cohort) -> HttpResponse:
     """The 422 fragment for a change aimed at an inactive cohort."""
     return render(
@@ -1647,13 +1657,6 @@ class MemberRoleAction(PanelAction):
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
 
-    def _member(self, ctx: PanelContext) -> User:
-        try:
-            pk = int(_action_params(ctx.request).get("user", ""))
-        except ValueError:
-            raise Http404("No such user") from None
-        return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
-
     def _entry(self, ctx: PanelContext, user: User) -> RoleEntry:
         role = _action_params(ctx.request).get("role", "")
         for entry in current_role_entries(user, _organisation(ctx)):
@@ -1686,7 +1689,7 @@ class RemoveRoleAction(MemberRoleAction):
         organisation = _organisation(ctx)
         site = organisation.site
         grantor = cast("User", ctx.request.user)
-        user = self._member(ctx)
+        user = _member_param(ctx)
         entry = self._entry(ctx, user)
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
         return {
@@ -1703,7 +1706,7 @@ class RemoveRoleAction(MemberRoleAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = self._member(ctx)
+        user = _member_param(ctx)
         entry = self._entry(ctx, user)
         targets: list[Organisation | Cohort] = (
             [organisation] if entry.role == "organisation_admin" else [*entry.cohorts]
@@ -1784,7 +1787,7 @@ class ChangeCohortsAction(MemberRoleAction):
         }
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = self._member(ctx)
+        user = _member_param(ctx)
         entry = self._entry(ctx, user)
         return {"step": "form", **self._dialog(ctx, user, entry)}
 
@@ -1801,7 +1804,7 @@ class ChangeCohortsAction(MemberRoleAction):
         return chosen
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
-        user = self._member(ctx)
+        user = _member_param(ctx)
         grantor = cast("User", ctx.request.user)
         entry = self._entry(ctx, user)
         chosen = self._chosen(ctx, entry)
@@ -1880,13 +1883,6 @@ class MemberStateAction(PanelAction):
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
 
-    def _member(self, ctx: PanelContext) -> User:
-        try:
-            pk = int(_action_params(ctx.request).get("user", ""))
-        except ValueError:
-            raise Http404("No such user") from None
-        return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
-
     def _row(self, user: User, organisation: Organisation) -> OrganisationMember | None:
         return OrganisationMember.objects.filter(
             user=user, organisation=organisation
@@ -1901,7 +1897,7 @@ class SuspendMemberAction(MemberStateAction):
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         organisation = _organisation(ctx)
-        user = self._member(ctx)
+        user = _member_param(ctx)
         return {
             "member": user,
             "organisation": organisation,
@@ -1914,7 +1910,7 @@ class SuspendMemberAction(MemberStateAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = self._member(ctx)
+        user = _member_param(ctx)
         row = self._row(user, organisation)
         if row is None or not row.is_active:
             raise Http404("The member is already suspended")
@@ -1932,7 +1928,7 @@ class ReactivateMemberAction(MemberStateAction):
     template_name = "educator_interface/modal/reactivate_member_confirmation.html"
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
-        user = self._member(ctx)
+        user = _member_param(ctx)
         entries = current_role_entries(user, _organisation(ctx))
         return {
             "member": user,
@@ -1944,7 +1940,7 @@ class ReactivateMemberAction(MemberStateAction):
 
     def handle_submit(self, ctx: PanelContext) -> HttpResponse:
         organisation = _organisation(ctx)
-        user = self._member(ctx)
+        user = _member_param(ctx)
         row = self._row(user, organisation)
         if row is not None and row.is_active:
             raise Http404("The member is already active")
