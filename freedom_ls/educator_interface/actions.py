@@ -1695,7 +1695,12 @@ class RemoveRoleAction(MemberRoleAction):
         return {
             "member": user,
             "entry": entry,
-            "loss": description[:1].lower() + description[1:],
+            "description": description,
+            "full_scope": (
+                entry.full_scope
+                if entry.role == "organisation_admin"
+                else join_prose([cohort.name for cohort in entry.cohorts])
+            ),
             "keeps": self._kept(ctx, user, entry),
             "last_organisation_admin": entry.role == "organisation_admin"
             and is_last_organisation_admin(organisation, user),

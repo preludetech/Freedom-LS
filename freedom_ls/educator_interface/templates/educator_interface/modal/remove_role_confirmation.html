@@ -1,6 +1,6 @@
 {% comment %}
 The modal fragment a RemoveRoleAction's GET returns. Context: member, entry,
-loss (the role's description with a lower-case first letter), keeps (a prose
+description (the role's description), full_scope (every scope name in prose), keeps (a prose
 list), last_organisation_admin, grantor_is_site_level, target_is_site_level,
 confirm_url.
 {% endcomment %}
@@ -10,7 +10,7 @@ confirm_url.
     {% if target_is_site_level %}
         <p>Their site-level access is unaffected; this only takes them off this organisation's member list.</p>
     {% else %}
-        <p>They lose {{ loss }} on {{ entry.scope }}.</p>
+        <p>They lose {{ entry.display_name }} on {{ full_scope }}: {{ description }}.</p>
     {% endif %}
     <p>They keep {{ keeps }}.</p>
     {% if last_organisation_admin and grantor_is_site_level %}

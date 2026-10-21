@@ -3567,9 +3567,27 @@ def test_the_remove_confirmation_names_the_person_the_role_and_the_scope(
 
     assert "Remove Ada Lovelace from Cohort admin" in text
     assert (
-        "They lose manages the learners and course registrations in their cohorts on Evening group."
+        "They lose Cohort admin on Evening group: Manages the learners and course registrations in their cohorts."
         in text
     )
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_names_every_cohort_without_truncating(
+    admin_client, organisation
+):
+    """The sentence used to splice a verb phrase after "They lose" and reuse
+    the list's shortened scope, hiding cohorts that were being lost."""
+    cohorts = [
+        _cohort(organisation, name="Cohort A"),
+        _cohort(organisation, name="Cohort B"),
+        _cohort(organisation, name="Cohort C"),
+    ]
+    user = _member_holding("cohort_admin", cohorts)
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "cohort_admin"))
+
+    assert "They lose Cohort admin on Cohort A, Cohort B and Cohort C: " in text
 
 
 @pytest.mark.django_db
