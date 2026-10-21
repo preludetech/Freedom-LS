@@ -729,7 +729,7 @@ class TestReactivationAnnouncesTheRegistration:
         self, deactivated_registration, django_capture_on_commit_callbacks
     ) -> None:
         with (
-            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            patch("freedom_ls.webhooks.events.fire_webhook_event_for_site") as fire,
             django_capture_on_commit_callbacks(execute=True),
         ):
             register_for_course(
@@ -758,7 +758,7 @@ class TestReactivationAnnouncesTheRegistration:
         Notification._base_manager.all().delete()
 
         with (
-            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            patch("freedom_ls.webhooks.events.fire_webhook_event_for_site") as fire,
             django_capture_on_commit_callbacks(execute=True),
         ):
             client.post(url)
@@ -774,7 +774,7 @@ class TestReactivationAnnouncesTheRegistration:
             deactivated_registration.save()
 
         with (
-            patch("freedom_ls.webhooks.events.fire_webhook_event") as fire,
+            patch("freedom_ls.webhooks.events.fire_webhook_event_for_site") as fire,
             django_capture_on_commit_callbacks(execute=True),
         ):
             deactivated_registration.save()
