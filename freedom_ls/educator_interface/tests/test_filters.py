@@ -8,16 +8,18 @@ import pytest
 
 from django.test import RequestFactory
 
+from freedom_ls.accounts.factories import UserFactory
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.content_engine.models import CourseVisibility
 from freedom_ls.educator_interface.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
+    MemberRoleFilter,
     ShowInactiveFilter,
     VisibleCourseFilter,
 )
-from freedom_ls.educator_interface.views import CohortDataTable
+from freedom_ls.educator_interface.views import CohortDataTable, MemberDataTable
 from freedom_ls.learner_management.factories import (
     CohortCourseRegistrationFactory,
     CohortFactory,
@@ -301,3 +303,99 @@ def test_learner_course_filter_drops_a_member_of_an_inactive_cohort_registered()
     result = _course_filter().apply(Learner.objects.all(), [str(course.pk)])
 
     assert list(result) == []
+
+
+# the member list's role filter narrows through the table
+
+
+def _member_pks(request, roles: list[str] | None = None) -> list:
+    filters = {} if roles is None else {"role": roles}
+    query = TableQuery(key="members", filters=filters)
+    return [
+        user.pk
+        for user in MemberDataTable.filter_queryset(
+            request, MemberDataTable.get_queryset(request), query
+        )
+    ]
+
+
+@pytest.fixture
+def members_request(site_aware_request: RequestFactory):
+    organisation = OrganisationFactory()
+    request = _educator_request(site_aware_request, organisation)
+    return request, organisation
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "role", ["organisation_admin", "cohort_admin", "cohort_viewer"]
+)
+def test_the_role_filter_narrows_members_to_each_role(members_request, role):
+    request, organisation = members_request
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory(superuser=True)
+    holders = {}
+    for held in ("organisation_admin", "cohort_admin", "cohort_viewer"):
+        holders[held] = UserFactory()
+        target = organisation if held == "organisation_admin" else cohort
+        assign_role(grantor, holders[held], held, target)
+
+    result = set(_member_pks(request, [role]))
+
+    assert result & {h.pk for h in holders.values()} == {holders[role].pk}
+
+
+@pytest.mark.django_db
+def test_a_member_holding_two_roles_is_returned_once(members_request):
+    request, organisation = members_request
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory(superuser=True)
+    both = UserFactory()
+    assign_role(grantor, both, "cohort_admin", cohort)
+    assign_role(grantor, both, "cohort_viewer", cohort)
+
+    result = _member_pks(request, ["cohort_admin", "cohort_viewer"])
+
+    assert result.count(both.pk) == 1
+
+
+@pytest.mark.django_db
+def test_all_roles_narrows_nothing(members_request):
+    request, organisation = members_request
+    cohort = CohortFactory(organisation=organisation)
+    assign_role(UserFactory(superuser=True), UserFactory(), "cohort_viewer", cohort)
+
+    assert len(_member_pks(request, [MemberRoleFilter.ALL])) == len(
+        _member_pks(request)
+    )
+    assert len(_member_pks(request)) == 2
+
+
+@pytest.mark.django_db
+def test_all_roles_beside_a_role_still_means_every_role(members_request):
+    request, organisation = members_request
+    cohort = CohortFactory(organisation=organisation)
+    assign_role(UserFactory(superuser=True), UserFactory(), "cohort_viewer", cohort)
+
+    result = _member_pks(request, [MemberRoleFilter.ALL, "organisation_admin"])
+
+    assert len(result) == 2
+
+
+@pytest.mark.django_db
+def test_all_roles_is_the_roles_default(members_request):
+    assert MemberRoleFilter().default == (MemberRoleFilter.ALL,)
+
+
+@pytest.mark.django_db
+def test_the_role_choices_carry_the_display_names(members_request):
+    request, _ = members_request
+
+    choices = MemberRoleFilter().get_choices(request)
+
+    assert choices == [
+        ("all", "All roles"),
+        ("organisation_admin", "Organisation admin"),
+        ("cohort_admin", "Cohort admin"),
+        ("cohort_viewer", "Cohort viewer"),
+    ]

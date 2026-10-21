@@ -46,6 +46,7 @@ from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
 from freedom_ls.panel_framework.tables import DataTable
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 
 def _interface_url(organisation_slug: str, path_string: str) -> str:
@@ -1806,3 +1807,139 @@ def test_a_full_page_of_members_stays_within_a_fixed_query_bound(
         )
         == 10
     )
+
+
+# search, the role filter, the help paragraph and the empty states
+
+
+def _member_emails(document) -> list[str]:
+    return [
+        row.cssselect("td")[0].text_content()
+        for row in document.cssselect("#main-content tbody tr")
+    ]
+
+
+def _members_search(client: Client, organisation: Organisation, term: str):
+    return _get_document(
+        client, _interface_url(organisation.slug, "members") + f"?members-q={term}"
+    )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "term", ["Wanjiru", "Kamau", "wanjiru.k@"], ids=["first", "last", "email"]
+)
+def test_members_search_matches_first_name_last_name_and_email(members_client, term):
+    organisation = OrganisationFactory()
+    _hold(
+        UserFactory(first_name="Wanjiru", last_name="Kamau", email="wanjiru.k@x.org"),
+        "organisation_admin",
+        organisation,
+    )
+    _hold(UserFactory(email="other@x.org"), "organisation_admin", organisation)
+    client = members_client(organisation, "organisation_admin")
+
+    document = _members_search(client, organisation, term)
+
+    (row,) = document.cssselect("#main-content tbody tr")
+    assert "wanjiru.k@x.org" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_role_filter_narrows_the_members_page(members_client):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    _hold(UserFactory(email="viewer@x.org"), "cohort_viewer", cohort)
+    client = members_client(organisation, "organisation_admin")
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, "members") + "?members-role=cohort_viewer",
+    )
+
+    (row,) = document.cssselect("#main-content tbody tr")
+    assert "viewer@x.org" in row.text_content()
+
+
+@pytest.mark.django_db
+def test_the_help_paragraph_carries_each_role_description(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+    config = get_role_config(organisation.site.name)
+
+    text = (
+        _members_document(client, organisation)
+        .cssselect("#main-content")[0]
+        .text_content()
+    )
+
+    assert "Members are the people who help run this organisation" in text
+    assert all(
+        f"{config[role].display_name}: {config[role].description}" in text
+        for role in ("organisation_admin", "cohort_admin", "cohort_viewer")
+    )
+
+
+ONLY_MEMBER_LINE = "You're the only member here."
+
+
+@pytest.mark.django_db
+def test_a_lone_organisation_admin_is_told_they_are_the_only_member(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    text = _members_document(client, organisation).text_content()
+
+    assert ONLY_MEMBER_LINE in text
+
+
+@pytest.mark.django_db
+def test_the_only_member_line_goes_once_a_second_member_exists(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+    _hold(UserFactory(), "organisation_admin", organisation)
+
+    text = _members_document(client, organisation).text_content()
+
+    assert ONLY_MEMBER_LINE not in text
+
+
+@pytest.mark.django_db
+def test_a_search_with_no_match_says_so_and_offers_to_clear_filters(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    document = _members_search(client, organisation, "nobody-has-this-name")
+
+    (cell,) = document.cssselect("#main-content tbody td")
+    (link,) = cell.cssselect("a")
+    assert cell.text_content().split("Clear filters")[0].strip() == "No members match."
+    assert "members-q" not in link.get("href")
+
+
+@pytest.mark.django_db
+def test_a_filter_with_no_match_says_so(members_client):
+    organisation = OrganisationFactory()
+    client = members_client(organisation, "organisation_admin")
+
+    document = _get_document(
+        client,
+        _interface_url(organisation.slug, "members") + "?members-role=cohort_viewer",
+    )
+
+    (cell,) = document.cssselect("#main-content tbody td")
+    assert "No members match." in cell.text_content()
+
+
+@pytest.mark.django_db
+def test_an_organisation_with_no_members_says_so(mock_site_context, logged_in_client):
+    organisation = OrganisationFactory()
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", mock_site_context
+    )
+
+    document = _members_document(logged_in_client(site_admin), organisation)
+
+    (cell,) = document.cssselect("#main-content tbody td")
+    assert cell.text_content().strip() == "No members in this organisation yet."

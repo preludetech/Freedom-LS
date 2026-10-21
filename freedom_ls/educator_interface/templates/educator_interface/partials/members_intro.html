@@ -1,0 +1,9 @@
+{% comment %}
+The help copy above the Members list: who counts as a member, what each role
+allows, and a note when the viewer is the only member. Renders with intro
+(roles, only_member_is_viewer).
+{% endcomment %}
+<p class="text-on-surface">Members are the people who help run this organisation, whether or not they teach.{% for role in intro.roles %} {{ role.display_name }}: {{ role.description }}{% endfor %}</p>
+{% if intro.only_member_is_viewer %}
+    <c-callout level="info">You're the only member here. Add another organisation admin so the organisation doesn't depend on one account.</c-callout>
+{% endif %}

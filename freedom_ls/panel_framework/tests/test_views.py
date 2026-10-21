@@ -875,3 +875,62 @@ class TestCellContext:
         )
 
         assert 'class="stub-cell-context">from the config<' in response.content.decode()
+
+
+# ListViewConfig.intro_template_name renders above the list's table.
+
+
+class IntroTable(StubDataTable):
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return []
+
+
+class IntroConfig(RecordingCapabilityConfig, ListViewConfig):
+    url_name = "intro"
+    menu_label = "Intro"
+    model = StubModel
+    list_view = IntroTable
+    table_key = "intro"
+    instance_view = None
+    intro_template_name = "panel_framework/test_intro.html"
+
+    @classmethod
+    def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:
+        return {"greeting": "Read this first"}
+
+
+INTRO_CONFIG = [NavGroup("Intro", [IntroConfig, StubBaseConfig])]
+
+
+class TestIntro:
+    def test_a_configs_intro_renders_with_its_context(
+        self, mock_site_context: Site
+    ) -> None:
+        IntroConfig.reset(answer=True, scope=make_stub())
+
+        response = call_view(make_request("intro"), "intro", config=INTRO_CONFIG)
+
+        assert 'class="stub-intro">Read this first<' in response.content.decode()
+
+    def test_a_configs_intro_renders_above_the_table(
+        self, mock_site_context: Site
+    ) -> None:
+        IntroConfig.reset(answer=True, scope=make_stub())
+
+        html = call_view(
+            make_request("intro"), "intro", config=INTRO_CONFIG
+        ).content.decode()
+
+        assert html.index("stub-intro") < html.index("data-table-region")
+
+    def test_a_config_without_an_intro_renders_none(
+        self, mock_site_context: Site
+    ) -> None:
+        CellContextConfig.reset(answer=True, scope=make_stub())
+
+        response = call_view(
+            make_request("cell-context"), "cell-context", config=CELL_CONTEXT_CONFIG
+        )
+
+        assert "stub-intro" not in response.content.decode()

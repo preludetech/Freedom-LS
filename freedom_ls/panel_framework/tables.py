@@ -200,6 +200,12 @@ class DataTable:
     #: cell rendering) below md, for a denser layout than the generic card
     #: gives. `None` keeps the default.
     card_template: str | None = None
+    #: A template that replaces the fixed "No data available" text when the
+    #: page has no rows. It renders with the table's own context (query,
+    #: any_filter_set, clear_changes, clear_search_changes, page_url, base_url,
+    #: region_id), so it can tell "nothing yet" from "nothing matches" and offer
+    #: the way back.
+    empty_state_template: str | None = None
 
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
@@ -401,10 +407,12 @@ class DataTable:
             "any_filter_set": any(entry["changed"] for entry in toolbar),
             "exports": bool(cls.get_export_columns()),
             "export_changes": {query.param("export"): "csv"},
+            "clear_search_changes": {query.param("q"): None, query.param("page"): None},
             "primary_column": primary_column,
             "secondary_columns": secondary_columns,
             "sortable_columns": sortable_columns,
             "card_template": cls.card_template,
+            "empty_state_template": cls.empty_state_template,
             "sheet_hidden_inputs": hidden_inputs(
                 request, query, exclude=("page", "sort", *filter_keys)
             ),

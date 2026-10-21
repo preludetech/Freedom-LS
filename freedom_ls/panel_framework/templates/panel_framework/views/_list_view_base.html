@@ -8,6 +8,7 @@
 {% endblock page_header %}
 
 {% block main %}
+    {% if main.intro_template_name %}{% include main.intro_template_name with intro=main.intro request=request only %}{% endif %}
     {% if main.refresh_events %}
         {% include "panel_framework/partials/list_refresh.html" with refresh_events=main.refresh_events refresh_url=main.refresh_url refresh_target=main.panel.region_id only %}
     {% endif %}

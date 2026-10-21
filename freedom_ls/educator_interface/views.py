@@ -56,6 +56,7 @@ from freedom_ls.educator_interface.filters import (
     LearnerCohortFilter,
     LearnerCourseFilter,
     LearnerStatusFilter,
+    MemberRoleFilter,
     ShowInactiveFilter,
     VisibleCourseFilter,
 )
@@ -77,6 +78,7 @@ from freedom_ls.learner_management.models import (
 )
 from freedom_ls.learner_management.queries import (
     DELETE_COHORTMEMBERSHIP,
+    MEMBER_ROLES,
     LearnerStatus,
     active_organisation_admins,
     cohort_counts,
@@ -114,6 +116,7 @@ from freedom_ls.panel_framework.views import (
     panel_framework_view,
     sections_by_url_name,
 )
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 #: Session key remembering the educator's last-visited organisation, used
 #: only to pick a default for the bare /educator/ redirect. Re-authorised on
@@ -1262,6 +1265,9 @@ class DashboardConfig(OrganisationSectionConfig, BaseViewConfig):
 
 
 class MemberDataTable(DataTable):
+    search_fields = ["first_name", "last_name", "email"]
+    empty_state_template = "educator_interface/partials/members_empty.html"
+
     @staticmethod
     def get_queryset(request: HttpRequest) -> QuerySet:
         organisation = cast(OrganisationScopedRequest, request).organisation
@@ -1286,6 +1292,26 @@ class MemberDataTable(DataTable):
                 to_attr="learner_rows",
             ),
         )
+
+    @staticmethod
+    def get_filters() -> list[TableFilter]:
+        return [MemberRoleFilter()]
+
+    @classmethod
+    def filter_queryset(
+        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
+    ) -> QuerySet:
+        # "All roles" beside a role still means every role, so the table
+        # narrows only when it is absent.
+        roles = query.filters.get("role", [])
+        if roles and MemberRoleFilter.ALL not in roles:
+            organisation = cast(OrganisationScopedRequest, request).organisation
+            queryset = queryset.filter(
+                pk__in=member_assignments(organisation)
+                .filter(role__in=roles)
+                .values("user_id")
+            )
+        return super().filter_queryset(request, queryset, query)
 
     @classmethod
     def get_rows(
@@ -1331,9 +1357,24 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
     # Rows have no page of their own, so there is nothing to authorise.
     check_access_exempt_reason = "members have no instance pages"
 
+    intro_template_name = "educator_interface/partials/members_intro.html"
+
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
         return {"viewer": request.user}
+
+    @classmethod
+    def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:
+        scoped = cast(OrganisationScopedRequest, request)
+        config = get_role_config(scoped.organisation.site.name)
+        members = members_of(scoped.organisation)
+        return {
+            "roles": [config[role] for role in MEMBER_ROLES],
+            # One query: the first two member pks are the viewer's alone only
+            # when the viewer is the sole member.
+            "only_member_is_viewer": set(members.values_list("pk", flat=True)[:2])
+            == {scoped.user.pk},
+        }
 
 
 interface_config = [

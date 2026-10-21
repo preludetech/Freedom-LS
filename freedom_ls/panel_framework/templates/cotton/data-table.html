@@ -15,6 +15,7 @@
         toolbar=""
         add_filter=""
         clear_changes=""
+        clear_search_changes=""
         any_filter_set="False"
         bulk_actions=""
         noun=""
@@ -22,6 +23,7 @@
         secondary_columns=""
         sortable_columns=""
         card_template=""
+        empty_state_template=""
         sheet_hidden_inputs=""
         reset_changes="" />
 
@@ -114,7 +116,7 @@
                     {% else %}
                         <tr>
                             <td colspan="{% if bulk_actions %}{{ columns|length|add:1 }}{% else %}{{ columns|length }}{% endif %}" class="text-center text-muted py-8">
-                                {{ empty_message }}
+                                {% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}
                             </td>
                         </tr>
                     {% endif %}
@@ -132,7 +134,7 @@
                                     :card_template="card_template" />
             {% endfor %}
         {% else %}
-            <li class="py-8 text-center text-muted">{{ empty_message }}</li>
+            <li class="py-8 text-center text-muted">{% if empty_state_template %}{% include empty_state_template %}{% else %}{{ empty_message }}{% endif %}</li>
         {% endif %}
     </ul>
 

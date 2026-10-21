@@ -1,5 +1,7 @@
 """Tests for base role configuration."""
 
+import pytest
+
 from freedom_ls.role_based_permissions.registry import PERMISSIONS
 from freedom_ls.role_based_permissions.roles import BASE_ROLES
 
@@ -95,3 +97,27 @@ class TestBaseRoles:
         assert BASE_ROLES["cohort_admin"].permissions.issubset(
             BASE_ROLES["site_admin"].permissions
         )
+
+
+@pytest.mark.parametrize(
+    ("role", "description"),
+    [
+        ("site_admin", "Full access to every organisation on this site."),
+        (
+            "organisation_admin",
+            "Manages learners, cohorts and members in this organisation.",
+        ),
+        (
+            "cohort_admin",
+            "Manages the learners and course registrations in their cohorts.",
+        ),
+        (
+            "cohort_viewer",
+            "Sees the learners and progress in their cohorts, and changes nothing.",
+        ),
+    ],
+)
+def test_a_role_description_reads_as_the_product_states_it(
+    role: str, description: str
+) -> None:
+    assert BASE_ROLES[role].description == description

@@ -1053,3 +1053,61 @@ def test_removing_a_filter_without_a_default_drops_its_parameter() -> None:
 
     assert query.filter_changes("kind", [])["stub-kind"] is None
     assert query.clear_filters_changes(["kind"])["stub-kind"] is None
+
+
+class _EmptyStateDataTable(StubDataTable):
+    empty_state_template = "panel_framework/test_empty_state.html"
+
+
+class _EmptyStateTablePanel(DataTablePanel):
+    title = "Empty state"
+    data_table = _EmptyStateDataTable
+    table_key = "emptystate"
+
+
+def _render_empty_state_table() -> lxml.html.HtmlElement:
+    panel = _bind_table_panel(_EmptyStateTablePanel)
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+    return lxml.html.fromstring(html)
+
+
+def test_an_empty_state_template_replaces_the_fixed_text_in_the_table(
+    mock_site_context: Site,
+) -> None:
+    document = _render_empty_state_table()
+
+    (cell,) = document.cssselect("table tbody td")
+    assert cell.text_content().strip() == "Nothing here yet in emptystate-table."
+
+
+def test_an_empty_state_template_replaces_the_fixed_text_in_the_cards(
+    mock_site_context: Site,
+) -> None:
+    document = _render_empty_state_table()
+
+    (card,) = document.cssselect("ul li")
+    assert card.text_content().strip() == "Nothing here yet in emptystate-table."
+
+
+def test_an_empty_state_template_is_not_rendered_on_a_page_with_rows(
+    mock_site_context: Site,
+) -> None:
+    make_stub(name="row-a")
+
+    document = _render_empty_state_table()
+
+    assert document.cssselect(".stub-empty-state") == []
+
+
+def test_a_table_without_an_empty_state_template_keeps_the_fixed_text(
+    mock_site_context: Site,
+) -> None:
+    panel = _bind_table_panel(StubDataTablePanel)
+
+    html = render_to_string(
+        panel.region_template_name, panel.get_context_data(), request=panel.request
+    )
+
+    assert "Nothing to see" in html

@@ -17,7 +17,7 @@ BASE_ROLES = SiteRolesConfig(
             display_name="Site admin",
             assignment_scope=SCOPE_SITE,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
-            description="Everything, in every organisation on the site.",
+            description="Full access to every organisation on this site.",
             permissions=frozenset(
                 {
                     # Django built-in permissions
@@ -54,7 +54,7 @@ BASE_ROLES = SiteRolesConfig(
             display_name="Cohort admin",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
-            description="Manages who is in a cohort and what it is registered for.",
+            description="Manages the learners and course registrations in their cohorts.",
             permissions=frozenset(
                 {
                     # Django built-in permissions
@@ -76,7 +76,7 @@ BASE_ROLES = SiteRolesConfig(
             display_name="Cohort viewer",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,  # FUTURE: assign LTI URI when LTI is implemented
-            description="Sees a cohort and its reports. Changes nothing.",
+            description="Sees the learners and progress in their cohorts, and changes nothing.",
             permissions=frozenset(
                 {
                     # Django built-in permissions
@@ -92,7 +92,7 @@ BASE_ROLES = SiteRolesConfig(
             display_name="Organisation admin",
             assignment_scope=SCOPE_OBJECT,
             lti_role=None,
-            description="Everything in one organisation, including who else administers it.",
+            description="Manages learners, cohorts and members in this organisation.",
             permissions=frozenset(
                 {
                     "freedom_ls_organisations.view_organisation",

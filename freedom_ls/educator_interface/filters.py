@@ -15,6 +15,7 @@ from freedom_ls.learner_management.models import (
     Learner,
 )
 from freedom_ls.learner_management.queries import (
+    MEMBER_ROLES,
     LearnerStatus,
     cohorts_visible_to,
     courses_visible_to,
@@ -26,8 +27,10 @@ from freedom_ls.panel_framework.filters import (
     RelatedChoiceFilter,
     TableFilter,
 )
+from freedom_ls.role_based_permissions.loader import get_role_config
 
 if TYPE_CHECKING:
+    from freedom_ls.accounts.models import User
     from freedom_ls.educator_interface.views import OrganisationScopedRequest
 
 
@@ -126,3 +129,32 @@ class LearnerCourseFilter(VisibleCourseFilter):
         self, queryset: QuerySet[Learner], values: list[str]
     ) -> QuerySet[Learner]:
         return queryset.filter(holds_registration_for_any_expression(None, values))
+
+
+class MemberRoleFilter(ChoiceFilter):
+    """Narrows members to those holding a chosen role here; every role while
+    the parameter is absent or "All roles" is among the values.
+
+    The table does the narrowing: apply() has no request, and the
+    organisation is only known there. The same split holds for
+    ShowInactiveFilter and the cohort table.
+    """
+
+    ALL = "all"
+    widget = "select"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "role", "Role", lookup="", default=(self.ALL,), always_shown=True
+        )
+
+    def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
+        scoped = cast("OrganisationScopedRequest", request)
+        config = get_role_config(scoped.organisation.site.name)
+        return [
+            (self.ALL, "All roles"),
+            *((role, config[role].display_name) for role in MEMBER_ROLES),
+        ]
+
+    def apply(self, queryset: QuerySet[User], values: list[str]) -> QuerySet[User]:
+        return queryset

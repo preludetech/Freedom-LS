@@ -104,6 +104,9 @@ class SectionConfigBase:
     #: authorise its detail views yet. Introspectable, so a test can assert
     #: every exemption is declared rather than accidental.
     check_access_exempt_reason: str | None = None
+    #: A template rendered above the list's table, for a section's own help
+    #: copy. None renders nothing there.
+    intro_template_name: str | None = None
 
     #: Names of request attributes that must be resolved and non-None before
     #: a detail view is served. A host app that scopes its requests — to an
@@ -229,6 +232,11 @@ class ListViewConfig(SectionConfigBase):
     @classmethod
     def get_bulk_actions(cls, request: HttpRequest) -> list[BulkAction]:
         return []
+
+    @classmethod
+    def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:
+        """Context the intro template renders with. Empty by default."""
+        return {}
 
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
@@ -764,6 +772,8 @@ def _main_for(
                 # escaping is needed in the data-* attribute.
                 "refresh_events": " ".join(section.refresh_events),
                 "refresh_url": root.ctx.base_url,
+                "intro_template_name": section.intro_template_name,
+                "intro": section.get_intro_context(request),
             },
             section.menu_label,
         )
