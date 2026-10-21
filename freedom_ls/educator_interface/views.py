@@ -1313,22 +1313,6 @@ class MemberDataTable(DataTable):
         return [MemberRoleFilter()]
 
     @classmethod
-    def filter_queryset(
-        cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
-    ) -> QuerySet:
-        # "All roles" beside a role still means every role, so the table
-        # narrows only when it is absent.
-        roles = query.filters.get("role", [])
-        if roles and MemberRoleFilter.ALL not in roles:
-            organisation = cast(OrganisationScopedRequest, request).organisation
-            queryset = queryset.filter(
-                pk__in=member_assignments(organisation)
-                .filter(role__in=roles)
-                .values("user_id")
-            )
-        return super().filter_queryset(request, queryset, query)
-
-    @classmethod
     def get_rows(
         cls, request: HttpRequest, queryset: QuerySet, query: TableQuery
     ) -> Page:

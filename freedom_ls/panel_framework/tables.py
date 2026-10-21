@@ -307,7 +307,7 @@ class DataTable:
         for table_filter in cls.get_filters():
             values = query.filters.get(table_filter.key)
             if values:
-                queryset = table_filter.apply(queryset, values)
+                queryset = table_filter.apply(request, queryset, values)
 
         if query.sort:
             # The queryset's own ordering stays behind the sort, and pk ends

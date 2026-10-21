@@ -21,6 +21,7 @@ from freedom_ls.learner_management.queries import (
     courses_visible_to,
     holds_registration_for_any_expression,
     learner_status_q,
+    member_assignments,
 )
 from freedom_ls.panel_framework.filters import (
     ChoiceFilter,
@@ -48,7 +49,9 @@ class ShowInactiveFilter(TableFilter):
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         return [("1", self.label)]
 
-    def apply(self, queryset: QuerySet, values: list[str]) -> QuerySet:
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
         return queryset
 
 
@@ -60,7 +63,9 @@ class VisibleCourseFilter(RelatedChoiceFilter):
         scoped = cast("OrganisationScopedRequest", request)
         return courses_visible_to(scoped.user, scoped.organisation).order_by("title")
 
-    def apply(self, queryset: QuerySet, values: list[str]) -> QuerySet:
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
         # A subquery rather than a join: the queryset carries a Count()
         # annotation that a join through the registrations would inflate, and
         # a cohort registered for two chosen courses must not repeat.
@@ -86,7 +91,7 @@ class LearnerStatusFilter(ChoiceFilter):
         )
 
     def apply(
-        self, queryset: QuerySet[Learner], values: list[str]
+        self, request: HttpRequest, queryset: QuerySet[Learner], values: list[str]
     ) -> QuerySet[Learner]:
         # filter_queryset only calls apply with at least one value.
         return queryset.filter(
@@ -112,7 +117,7 @@ class LearnerCohortFilter(RelatedChoiceFilter):
         ]
 
     def apply(
-        self, queryset: QuerySet[Learner], values: list[str]
+        self, request: HttpRequest, queryset: QuerySet[Learner], values: list[str]
     ) -> QuerySet[Learner]:
         return queryset.filter(
             pk__in=CohortMembership.objects.filter(cohort__in=values).values(
@@ -126,19 +131,14 @@ class LearnerCourseFilter(VisibleCourseFilter):
     course, individually or through an active cohort."""
 
     def apply(
-        self, queryset: QuerySet[Learner], values: list[str]
+        self, request: HttpRequest, queryset: QuerySet[Learner], values: list[str]
     ) -> QuerySet[Learner]:
         return queryset.filter(holds_registration_for_any_expression(None, values))
 
 
 class MemberRoleFilter(ChoiceFilter):
     """Narrows members to those holding a chosen role here; every role while
-    the parameter is absent or "All roles" is among the values.
-
-    The table does the narrowing: apply() has no request, and the
-    organisation is only known there. The same split holds for
-    ShowInactiveFilter and the cohort table.
-    """
+    the parameter is absent or "All roles" is among the values."""
 
     ALL = "all"
     widget = "select"
@@ -163,5 +163,15 @@ class MemberRoleFilter(ChoiceFilter):
             return [self.ALL]
         return super().toggled([v for v in values if v != self.ALL], value)
 
-    def apply(self, queryset: QuerySet[User], values: list[str]) -> QuerySet[User]:
-        return queryset
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet[User], values: list[str]
+    ) -> QuerySet[User]:
+        # "All roles" beside a role still means every role.
+        if self.ALL in values:
+            return queryset
+        scoped = cast("OrganisationScopedRequest", request)
+        return queryset.filter(
+            pk__in=member_assignments(scoped.organisation)
+            .filter(role__in=values)
+            .values("user_id")
+        )

@@ -49,12 +49,19 @@ def _educator_request(site_aware_request: RequestFactory, organisation):
     return request
 
 
+def _any_request():
+    """For a filter whose apply() reads nothing from the request."""
+    return RequestFactory().get("/")
+
+
 @pytest.mark.django_db
 def test_show_inactive_filter_returns_its_queryset_unchanged():
     CohortFactory(is_active=False)
     queryset = Cohort.objects.all()
 
-    result = ShowInactiveFilter("inactive", "Show inactive").apply(queryset, ["1"])
+    result = ShowInactiveFilter("inactive", "Show inactive").apply(
+        _any_request(), queryset, ["1"]
+    )
 
     assert result is queryset
 
@@ -90,7 +97,7 @@ def test_visible_course_filter_keeps_a_cohort_with_an_active_registration():
 
     result = VisibleCourseFilter(
         "course", "Course", lookup="course_registrations__course"
-    ).apply(Cohort.objects.all(), [str(course.pk)])
+    ).apply(_any_request(), Cohort.objects.all(), [str(course.pk)])
 
     assert list(result) == [cohort]
 
@@ -102,7 +109,7 @@ def test_visible_course_filter_drops_a_cohort_whose_registration_is_inactive():
 
     result = VisibleCourseFilter(
         "course", "Course", lookup="course_registrations__course"
-    ).apply(Cohort.objects.all(), [str(course.pk)])
+    ).apply(_any_request(), Cohort.objects.all(), [str(course.pk)])
 
     assert list(result) == []
 
@@ -194,7 +201,9 @@ def _status_learners() -> dict[str, Learner]:
 def test_status_filter_narrows_to_each_status(status: str) -> None:
     learners = _status_learners()
 
-    result = LearnerStatusFilter().apply(Learner.objects.all(), [status])
+    result = LearnerStatusFilter().apply(
+        _any_request(), Learner.objects.all(), [status]
+    )
 
     assert list(result) == [learners[status]]
 
@@ -203,7 +212,9 @@ def test_status_filter_narrows_to_each_status(status: str) -> None:
 def test_status_filter_with_two_statuses_returns_both() -> None:
     learners = _status_learners()
 
-    result = LearnerStatusFilter().apply(Learner.objects.all(), ["active", "pending"])
+    result = LearnerStatusFilter().apply(
+        _any_request(), Learner.objects.all(), ["active", "pending"]
+    )
 
     assert set(result) == {learners["active"], learners["pending"]}
 
@@ -242,7 +253,9 @@ def test_learner_cohort_filter_narrows_to_members_of_the_chosen_cohort():
     LearnerFactory(organisation=organisation)
     CohortMembershipFactory(cohort=cohort, learner=member)
 
-    result = _cohort_filter().apply(Learner.objects.all(), [str(cohort.pk)])
+    result = _cohort_filter().apply(
+        _any_request(), Learner.objects.all(), [str(cohort.pk)]
+    )
 
     assert list(result) == [member]
 
@@ -271,7 +284,9 @@ def test_learner_course_filter_keeps_a_learner_registered_individually():
     LearnerFactory()
     LearnerCourseRegistrationFactory(learner=learner, course=course)
 
-    result = _course_filter().apply(Learner.objects.all(), [str(course.pk)])
+    result = _course_filter().apply(
+        _any_request(), Learner.objects.all(), [str(course.pk)]
+    )
 
     assert list(result) == [learner]
 
@@ -285,7 +300,9 @@ def test_learner_course_filter_keeps_a_member_of_an_active_cohort_registered():
     member = LearnerFactory(organisation=organisation)
     CohortMembershipFactory(cohort=cohort, learner=member)
 
-    result = _course_filter().apply(Learner.objects.all(), [str(course.pk)])
+    result = _course_filter().apply(
+        _any_request(), Learner.objects.all(), [str(course.pk)]
+    )
 
     assert list(result) == [member]
 
@@ -300,7 +317,9 @@ def test_learner_course_filter_drops_a_member_of_an_inactive_cohort_registered()
         cohort=cohort, learner=LearnerFactory(organisation=organisation)
     )
 
-    result = _course_filter().apply(Learner.objects.all(), [str(course.pk)])
+    result = _course_filter().apply(
+        _any_request(), Learner.objects.all(), [str(course.pk)]
+    )
 
     assert list(result) == []
 
@@ -377,6 +396,24 @@ def test_all_roles_beside_a_role_still_means_every_role(members_request):
     result = _member_pks(request, [MemberRoleFilter.ALL, "organisation_admin"])
 
     assert len(result) == 2
+
+
+@pytest.mark.django_db
+def test_the_role_filter_narrows_by_itself(members_request):
+    request, organisation = members_request
+    cohort = CohortFactory(organisation=organisation)
+    grantor = UserFactory(superuser=True)
+    admin = UserFactory()
+    assign_role(grantor, admin, "cohort_admin", cohort)
+    viewer = UserFactory()
+    assign_role(grantor, viewer, "cohort_viewer", cohort)
+    everyone = MemberDataTable.get_queryset(request)
+
+    narrowed = MemberRoleFilter().apply(request, everyone, ["cohort_admin"])
+    unchanged = MemberRoleFilter().apply(request, everyone, [MemberRoleFilter.ALL])
+
+    assert set(narrowed) == {admin}
+    assert set(unchanged) == set(everyone)
 
 
 @pytest.mark.django_db

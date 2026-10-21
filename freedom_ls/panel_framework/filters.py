@@ -66,7 +66,11 @@ class TableFilter:
             return [existing for existing in values if existing != value]
         return [*values, value]
 
-    def apply(self, queryset: QuerySet, values: list[str]) -> QuerySet:
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
+        """`queryset` narrowed to `values`. The request is there for a filter
+        whose narrowing depends on who is asking or on the page's scope."""
         return queryset.filter(**{f"{self.lookup}__in": values})
 
 
@@ -130,7 +134,9 @@ class BooleanFilter(TableFilter):
     def get_choices(self, request: HttpRequest) -> list[tuple[str, str]]:
         return [("1", self.label)]
 
-    def apply(self, queryset: QuerySet, values: list[str]) -> QuerySet:
+    def apply(
+        self, request: HttpRequest, queryset: QuerySet, values: list[str]
+    ) -> QuerySet:
         if "1" in values:
             return queryset.filter(**{self.lookup: True})
         return queryset
