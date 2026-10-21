@@ -469,13 +469,42 @@ def test_grantable_roles_query_count_does_not_grow_with_cohorts(
             True,
         ),
         ({("cohort_viewer", "c1")}, {("cohort_viewer", "c1")}, False),
+        (
+            {("cohort_admin", "c1")},
+            {("cohort_admin", "c1"), ("cohort_viewer", "c1")},
+            False,
+        ),
+        (
+            {("cohort_viewer", "c1")},
+            {("cohort_viewer", "c1"), ("cohort_admin", "c1")},
+            True,
+        ),
+        (
+            {("organisation_admin", "org")},
+            {("organisation_admin", "org"), ("cohort_admin", "c1")},
+            False,
+        ),
+        (
+            {("cohort_admin", "c1")},
+            {("cohort_admin", "c1"), ("organisation_admin", "org")},
+            True,
+        ),
     ],
-    ids=["add", "remove", "mixed", "unchanged"],
+    ids=[
+        "add",
+        "remove",
+        "mixed",
+        "unchanged",
+        "weaker-role-on-a-held-cohort",
+        "stronger-role-on-a-held-cohort",
+        "cohort-role-for-an-organisation-admin",
+        "organisation-admin-for-a-cohort-admin",
+    ],
 )
 def test_is_widening(
     before: set[tuple[str, str]], after: set[tuple[str, str]], expected: bool
 ) -> None:
-    assert is_widening(before, after) is expected
+    assert is_widening(before, after, BASE_ROLES, "org") is expected
 
 
 @pytest.mark.django_db

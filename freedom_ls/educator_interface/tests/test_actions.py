@@ -3435,6 +3435,21 @@ def test_the_confirmation_names_the_cohorts_escaped(admin_client, organisation):
 
 
 @pytest.mark.django_db
+def test_a_weaker_role_on_a_cohort_already_held_with_a_stronger_one_is_no_widening(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Spring")
+    holder = UserFactory(email="ada@example.com")
+    assign_role(UserFactory(superuser=True), holder, "cohort_admin", cohort)
+
+    response = _cohort_post(admin_client, organisation, "cohort_viewer", [cohort])
+
+    text = _text(response)
+    assert "Cohort viewer" in text
+    assert "will be able to do more than they can now" not in text
+
+
+@pytest.mark.django_db
 def test_the_confirmation_for_new_cohorts_says_what_the_person_gains(
     admin_client, organisation
 ):
@@ -3964,6 +3979,24 @@ def test_the_confirmation_for_an_added_cohort_names_it_as_a_widening(
     assert "Adds: Newly given" in text
     assert "will be able to do more than they can now" in text
     assert "Removes:" not in text
+
+
+@pytest.mark.django_db
+def test_adding_a_cohort_held_with_a_stronger_role_is_no_widening(
+    admin_client, organisation
+):
+    held = _cohort(organisation)
+    administered = _cohort(organisation, name="Already run")
+    user = _member_holding("cohort_viewer", held)
+    assign_role(UserFactory(superuser=True), user, "cohort_admin", administered)
+
+    response = _change(
+        admin_client, organisation, user, [held, administered], confirmed=False
+    )
+
+    text = _text(response)
+    assert "Adds: Already run" in text
+    assert "will be able to do more than they can now" not in text
 
 
 @pytest.mark.django_db

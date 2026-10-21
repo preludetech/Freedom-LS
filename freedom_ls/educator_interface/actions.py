@@ -1260,6 +1260,14 @@ def member_changed_response(user: User) -> HttpResponse:
     return changed_response({MEMBER_CHANGED: [str(user.pk)]})
 
 
+def _held_pairs(user: User, organisation: Organisation) -> set[tuple[str, str]]:
+    """Every (role, target key) pair `user` holds here, for is_widening."""
+    return {
+        (assignment.role, assignment.object_id)
+        for assignment in member_assignments(organisation).filter(user=user)
+    }
+
+
 def member_state(user: User | None, organisation: Organisation) -> str:
     """Where a role given now would land: "new" for an account not yet
     created, "missing" for one with no OrganisationMember row here,
@@ -1570,16 +1578,12 @@ class AddMemberAction(PanelAction):
             if before
             else []
         )
-        before_pairs = (
-            set()
-            if user is None
-            else {
-                (assignment.role, assignment.object_id)
-                for assignment in member_assignments(organisation).filter(user=user)
-            }
-        )
+        before_pairs = set() if user is None else _held_pairs(user, organisation)
         new_keys = [str(cohort.pk) for cohort in cohorts] or [str(organisation.pk)]
         after_pairs = before_pairs | {(role, key) for key in new_keys}
+        widening = user is not None and is_widening(
+            before_pairs, after_pairs, get_role_config(site.name), str(organisation.pk)
+        )
         return render(
             ctx.request,
             self.template_name,
@@ -1595,7 +1599,7 @@ class AddMemberAction(PanelAction):
                 "role": role,
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
                 "already_held": join_prose([cohort.name for cohort in already_held]),
-                "widening": user is not None and is_widening(before_pairs, after_pairs),
+                "widening": widening,
                 "display_name": role_config.display_name,
                 "description": role_config.description,
                 "scope": (
@@ -1870,10 +1874,13 @@ class ChangeCohortsAction(MemberRoleAction):
         plan: CohortChange,
     ) -> HttpResponse:
         organisation = _organisation(ctx)
-        before = {(entry.role, str(cohort.pk)) for cohort in entry.cohorts}
+        before = _held_pairs(user, organisation)
         after = (before - {(entry.role, str(c.pk)) for c in plan.removed}) | {
             (entry.role, str(c.pk)) for c in plan.added
         }
+        widening = is_widening(
+            before, after, get_role_config(organisation.site.name), str(organisation.pk)
+        )
         return render(
             ctx.request,
             self.template_name,
@@ -1885,7 +1892,7 @@ class ChangeCohortsAction(MemberRoleAction):
                 "cohort_ids": [str(cohort.pk) for cohort in chosen],
                 "added": join_prose([cohort.name for cohort in plan.added]),
                 "removed": join_prose([cohort.name for cohort in plan.removed]),
-                "widening": is_widening(before, after),
+                "widening": widening,
                 "removes_role": not plan.added
                 and len(plan.removed) == len(entry.cohorts),
                 "member_state": member_state(user, organisation),

@@ -10,6 +10,7 @@ an organisation without anyone able to administer it.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,7 @@ from freedom_ls.role_based_permissions.exceptions import (
     RefusalReason,
     RoleChangeRefused,
 )
+from freedom_ls.role_based_permissions.types import Role
 from freedom_ls.role_based_permissions.utils import (
     assign_object_role,
     assign_site_role,
@@ -198,8 +200,34 @@ def grantable_roles(grantor: User, organisation: Organisation) -> list[Grantable
     return result
 
 
-def is_widening(before: set[tuple[str, str]], after: set[tuple[str, str]]) -> bool:
+def _permissions_by_target(
+    pairs: set[tuple[str, str]], roles: Mapping[str, Role]
+) -> dict[str, frozenset[str]]:
+    """The permissions held on each target key, from its (role, key) pairs."""
+    held: dict[str, frozenset[str]] = {}
+    for role, key in pairs:
+        held[key] = held.get(key, frozenset()) | roles[role].permissions
+    return held
+
+
+def is_widening(
+    before: set[tuple[str, str]],
+    after: set[tuple[str, str]],
+    roles: Mapping[str, Role],
+    organisation_key: str,
+) -> bool:
     """Whether `after` lets the person do anything `before` did not. Each
     pair is a role and the key of its target (the organisation's pk or a
-    cohort's pk)."""
-    return bool(after - before)
+    cohort's pk). Roles are compared by the permissions they carry, not by
+    name, so a weaker role on a cohort already held with a stronger one is
+    no widening, and a role on the organisation covers every cohort in it."""
+    none: frozenset[str] = frozenset()
+    before_held = _permissions_by_target(before, roles)
+    after_held = _permissions_by_target(after, roles)
+    before_organisation = before_held.get(organisation_key, none)
+    after_organisation = after_held.get(organisation_key, none)
+    for key, permissions in after_held.items():
+        had = before_held.get(key, none) | before_organisation
+        if not (permissions | after_organisation) <= had:
+            return True
+    return False
