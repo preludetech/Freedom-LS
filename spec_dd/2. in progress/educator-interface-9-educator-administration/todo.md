@@ -16,8 +16,13 @@ Checklist for taking this spec from idea to merged PR. Commands tick their own i
 ## 3. Implementation and QA
 
 - [x] (cmd) Run `/sdd:implement_plan` to execute the implementation plan
-- [ ] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
+- [x] (cmd) Run `/fls-dev:do_qa` to execute the QA plan
 - [ ] (user) Review the code and the QA report, and act on any `Decide` items QA filed
+- [ ] (user) Decide what to do about QA bug: 'Clear filters' on the Members empty state leaves the old search text in the search box (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: first click on the Members 'Member' header sorts ascending, identical to the default order (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: Members row actions are 38px tall at 375 wide, under the 44px touch target (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: cohort-preset Add member dialog does not name the cohort and tells an organisation admin 'You can only give roles at or below your own.' (TDD: failing test first, then fix)
+- [ ] (user) Decide what to do about QA bug: after losing access to the organisation, htmx tab clicks and open dialogs silently do nothing on the 404 (TDD: failing test first, then fix)
 
 ## 4. Documentation and pull request
 
