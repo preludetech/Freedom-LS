@@ -1684,6 +1684,17 @@ class MemberRoleAction(PanelAction):
         """Every role `user` holds here, loaded once per request."""
         return current_role_entries(user, _organisation(ctx))
 
+    def _reach(self, ctx: PanelContext, role: str) -> set[Cohort]:
+        """The cohorts the grantor may give or take `role` on, inactive
+        ones included."""
+        return set(
+            cohorts_visible_to(
+                cast("User", ctx.request.user),
+                _organisation(ctx),
+                capability=ASSIGN.format(role=role),
+            )
+        )
+
     def _entry(self, ctx: PanelContext, entries: list[RoleEntry]) -> RoleEntry:
         """The entry the `role` parameter names, from `entries`."""
         role = _action_params(ctx.request).get("role", "")
@@ -1694,9 +1705,25 @@ class MemberRoleAction(PanelAction):
 
 
 class RemoveRoleAction(MemberRoleAction):
+    """Takes one role entry off a member: on the organisation, or on every
+    cohort of the entry the grantor can act on. A cohort outside the
+    grantor's reach keeps the role, and the dialog says so. An entry with no
+    cohort in reach is a 404 dialog and a 403 submit, since the trigger
+    renders by role alone."""
+
     label = "Remove"
     action_name = "remove_role"
     template_name = "educator_interface/modal/remove_role_confirmation.html"
+
+    def _split(
+        self, ctx: PanelContext, entry: RoleEntry
+    ) -> tuple[list[Cohort], list[Cohort]]:
+        """The entry's cohorts the grantor may act on, then the ones that stay."""
+        reach = self._reach(ctx, entry.role)
+        return (
+            [cohort for cohort in entry.cohorts if cohort in reach],
+            [cohort for cohort in entry.cohorts if cohort not in reach],
+        )
 
     def _kept(
         self,
@@ -1726,6 +1753,9 @@ class RemoveRoleAction(MemberRoleAction):
         user = _member_param(ctx)
         entries = self._entries(ctx, user)
         entry = self._entry(ctx, entries)
+        removed, staying = self._split(ctx, entry)
+        if entry.role != "organisation_admin" and not removed:
+            raise Http404("No cohort of this role is within the grantor's reach")
         description = get_role_config(site.name)[entry.role].description.rstrip(".")
         return {
             "member": user,
@@ -1734,8 +1764,9 @@ class RemoveRoleAction(MemberRoleAction):
             "full_scope": (
                 entry.full_scope
                 if entry.role == "organisation_admin"
-                else join_prose([cohort.name for cohort in entry.cohorts])
+                else join_prose([cohort.name for cohort in removed])
             ),
+            "stays": join_prose([cohort.name for cohort in staying]),
             "keeps": self._kept(ctx, user, entry, entries),
             "last_organisation_admin": entry.role == "organisation_admin"
             and is_last_organisation_admin(organisation, user),
@@ -1748,9 +1779,12 @@ class RemoveRoleAction(MemberRoleAction):
         organisation = _organisation(ctx)
         user = _member_param(ctx)
         entry = self._entry(ctx, self._entries(ctx, user))
+        removed, _ = self._split(ctx, entry)
         targets: list[Organisation | Cohort] = (
-            [organisation] if entry.role == "organisation_admin" else [*entry.cohorts]
+            [organisation] if entry.role == "organisation_admin" else [*removed]
         )
+        if not targets:
+            return denied_response(ctx, self)
         try:
             with transaction.atomic():
                 for target in targets:

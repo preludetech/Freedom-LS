@@ -3697,6 +3697,64 @@ def test_a_confirmed_removal_ends_the_role_on_every_cohort_of_the_entry(
     assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
 
 
+def _reach_only(monkeypatch, *cohorts: Cohort) -> None:
+    """Make the grantor able to give and take roles on `cohorts` alone."""
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.cohorts_visible_to",
+        lambda *args, **kwargs: Cohort.objects.filter(pk__in=[c.pk for c in cohorts]),
+    )
+
+
+@pytest.mark.django_db
+def test_a_confirmed_removal_leaves_a_cohort_outside_the_grantors_reach(
+    admin_client, organisation, monkeypatch
+):
+    reachable = _cohort(organisation)
+    unreachable = _cohort(organisation)
+    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    _reach_only(monkeypatch, reachable)
+
+    response = _remove(admin_client, organisation, user, "cohort_viewer")
+
+    assert response.status_code == 204
+    assert _active_roles(user) == {("cohort_viewer", str(unreachable.pk))}
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_names_the_cohort_that_stays_out_of_reach(
+    admin_client, organisation, monkeypatch
+):
+    reachable = _cohort(organisation, name="Reachable")
+    unreachable = _cohort(organisation, name="Beyond reach")
+    user = _member_holding("cohort_viewer", [reachable, unreachable])
+    _reach_only(monkeypatch, reachable)
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "cohort_viewer"))
+
+    assert "They lose Cohort viewer on Reachable:" in text
+    assert (
+        "Cohort viewer on Beyond reach is outside the cohorts you can give, so it stays."
+        in text
+    )
+
+
+@pytest.mark.django_db
+def test_a_removal_with_no_cohort_in_reach_is_refused_and_writes_nothing(
+    admin_client, organisation, monkeypatch
+):
+    unreachable = _cohort(organisation)
+    user = _member_holding("cohort_viewer", unreachable)
+    _reach_only(monkeypatch, _cohort(organisation))
+    before = _active_roles(user)
+
+    dialog = _remove_dialog(admin_client, organisation, user, "cohort_viewer")
+    response = _remove(admin_client, organisation, user, "cohort_viewer")
+
+    assert dialog.status_code == 404
+    assert response.status_code == 403
+    assert _active_roles(user) == before
+
+
 @pytest.mark.django_db
 def test_a_confirmed_removal_leaves_the_other_roles_and_the_member_row(
     admin_client, organisation

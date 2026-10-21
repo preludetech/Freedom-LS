@@ -1,8 +1,9 @@
 {% comment %}
 The modal fragment a RemoveRoleAction's GET returns. Context: member, entry,
-description (the role's description), full_scope (every scope name in prose), keeps (a prose
-list), last_organisation_admin, grantor_is_site_level, target_is_site_level,
-confirm_url.
+description (the role's description), full_scope (every scope name being lost, in
+prose), stays (the cohorts outside the grantor's reach, in prose, or empty), keeps
+(a prose list), last_organisation_admin, grantor_is_site_level,
+target_is_site_level, confirm_url.
 {% endcomment %}
 <c-modal-header>Remove {{ member.display_name }} from {{ entry.display_name }}</c-modal-header>
 
@@ -11,6 +12,9 @@ confirm_url.
         <p>Their site-level access is unaffected; this only takes them off this organisation's member list.</p>
     {% else %}
         <p>They lose {{ entry.display_name }} on {{ full_scope }}: {{ description }}.</p>
+    {% endif %}
+    {% if stays %}
+        <p>{{ entry.display_name }} on {{ stays }} is outside the cohorts you can give, so it stays.</p>
     {% endif %}
     <p>They keep {{ keeps }}.</p>
     {% if last_organisation_admin and grantor_is_site_level %}
