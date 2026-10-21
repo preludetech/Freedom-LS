@@ -20,6 +20,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from freedom_ls.accounts.factories import UserFactory
+from freedom_ls.accounts.models import User
 from freedom_ls.content_engine.factories import CourseFactory
 from freedom_ls.educator_interface.events import COHORT_CHANGED
 from freedom_ls.educator_interface.tests.interface_walk import (
@@ -41,7 +42,7 @@ from freedom_ls.learner_management.models import (
     Learner,
     OrganisationMember,
 )
-from freedom_ls.learner_management.role_assignment import assign_role
+from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -1591,7 +1592,7 @@ def _scope_lines(row) -> list[str]:
 
 
 # Measured for a page of ten: the count must not grow with the number of rows.
-QUERY_BOUND = 45
+QUERY_BOUND = 47
 
 
 MARKERS = {"You", "Suspended", "Account turned off", "Also a learner"}
@@ -1954,3 +1955,72 @@ def test_the_educators_panel_refreshes_on_member_changes(staff_client: Client):
 
     (card,) = document.cssselect("section[data-panel='educators']")
     assert "memberChanged" in lxml.html.tostring(card).decode()
+
+
+def _remove_triggers(row) -> list[str]:
+    return [
+        button.get("hx-get")
+        for button in row.cssselect("button[hx-get]")
+        if "remove_role" in button.get("hx-get")
+    ]
+
+
+@pytest.mark.django_db
+def test_the_viewers_own_row_has_no_trigger_and_says_why(members_client):
+    organisation = OrganisationFactory()
+    viewer = UserFactory(staff=True, email="me@example.com")
+    assign_role(UserFactory(superuser=True), viewer, "organisation_admin", organisation)
+    client = Client()
+    client.force_login(viewer)
+
+    row = _member_row(_members_document(client, organisation), "me@example.com")
+
+    assert row.cssselect("button[hx-get]") == []
+    assert row.cssselect("[aria-label='Locked']")
+    assert "You can't change your own roles. Ask another organisation admin." in (
+        " ".join(row.text_content().split())
+    )
+
+
+@pytest.mark.django_db
+def test_another_members_entry_offers_remove_to_an_organisation_admin(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="other@example.com")
+    cohort = CohortFactory(organisation=organisation)
+    _hold(user, "cohort_viewer", cohort)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    (trigger,) = _remove_triggers(row)
+    assert f"user={user.pk}&role=cohort_viewer" in trigger
+
+
+@pytest.mark.django_db
+def test_an_entry_the_viewer_may_not_revoke_has_no_remove(members_client, monkeypatch):
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    _hold(UserFactory(email="other@example.com"), "cohort_viewer", cohort)
+    client = members_client(organisation, "organisation_admin")
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.grantable_roles",
+        lambda *args: [GrantableRole("organisation_admin", None)],
+    )
+
+    row = _member_row(_members_document(client, organisation), "other@example.com")
+
+    assert _remove_triggers(row) == []
+
+
+@pytest.mark.django_db
+def test_a_turned_off_accounts_row_offers_remove_and_nothing_else(members_client):
+    organisation = OrganisationFactory()
+    user = UserFactory(email="off@example.com")
+    _hold(user, "cohort_viewer", CohortFactory(organisation=organisation))
+    User.objects.filter(pk=user.pk).update(is_active=False)
+    client = members_client(organisation, "organisation_admin")
+
+    row = _member_row(_members_document(client, organisation), "off@example.com")
+
+    assert len(row.cssselect("button[hx-get]")) == 1
+    assert len(_remove_triggers(row)) == 1

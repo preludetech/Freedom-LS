@@ -1,0 +1,35 @@
+{% comment %}
+The modal fragment a RemoveRoleAction's GET returns. Context: member, entry,
+loss (the role's description with a lower-case first letter), keeps (a prose
+list), last_organisation_admin, grantor_is_site_level, target_is_site_level,
+confirm_url.
+{% endcomment %}
+<c-modal-header>Remove {{ member.display_name }} from {{ entry.display_name }}</c-modal-header>
+
+<div class="space-y-3 px-6 py-4 text-sm">
+    {% if target_is_site_level %}
+        <p>Their site-level access is unaffected; this only takes them off this organisation's member list.</p>
+    {% else %}
+        <p>They lose {{ loss }} on {{ entry.scope }}.</p>
+    {% endif %}
+    <p>They keep {{ keeps }}.</p>
+    {% if last_organisation_admin and grantor_is_site_level %}
+        <c-callout level="warning">
+            {{ member.display_name }} is the only organisation admin. After this, nobody in the organisation can administer it until you add one.
+        </c-callout>
+    {% endif %}
+</div>
+
+<c-button-group variant="right" class="flex-wrap border-t border-border px-6 py-4">
+    <c-button variant="secondary" x-on:click="requestClose" autofocus>Cancel</c-button>
+    <form hx-post="{{ confirm_url }}"
+          hx-target="#app-modal-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="find button[type='submit']">
+        <input type="hidden" name="user" value="{{ member.pk }}">
+        <input type="hidden" name="role" value="{{ entry.role }}">
+        <c-button type="submit" variant="secondary" loading="true" loading_text="Removing...">
+            Remove
+        </c-button>
+    </form>
+</c-button-group>

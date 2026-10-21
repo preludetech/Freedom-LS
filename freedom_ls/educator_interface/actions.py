@@ -77,14 +77,18 @@ from freedom_ls.learner_management.queries import (
     learners_visible_to,
     member_assignments,
     members_keeping_access,
+    members_of,
     other_grants_for,
 )
 from freedom_ls.learner_management.role_assignment import (
+    ASSIGN,
     GrantableRole,
     assign_role,
     grantable_roles,
+    is_last_organisation_admin,
     is_site_level_admin,
     is_widening,
+    remove_role,
 )
 from freedom_ls.learner_management.utils import (
     register_cohort_for_course,
@@ -1595,4 +1599,96 @@ class AddMemberAction(PanelAction):
             return refusal_response(ctx, self, refused, name)
         except EmailInUseOnAnotherSite:
             return self._other_site_response(ctx)
+        return member_changed_response(user)
+
+
+class MemberRoleAction(PanelAction):
+    """An action on one role entry of one member, named by the `user` and
+    `role` parameters. Renders per entry, never in the header. The target
+    is re-read on every request through members_of, so a member who has
+    since lost every role, or a role no longer held, is a 404 that the
+    action route answers with its unavailable fragment."""
+
+    variant = "secondary"
+    renders_in_footer = False
+    trigger_template_name = "panel_framework/partials/modal_trigger.html"
+
+    def get_capability(self, ctx: PanelContext) -> str | None:
+        role = _action_params(ctx.request).get("role", "")
+        if role in MEMBER_ROLES:
+            return ASSIGN.format(role=role)
+        return ASSIGN.format(role="cohort_viewer")
+
+    def permission_object(self, ctx: PanelContext) -> Model | None:
+        return _organisation(ctx)
+
+    def _member(self, ctx: PanelContext) -> User:
+        try:
+            pk = int(_action_params(ctx.request).get("user", ""))
+        except ValueError:
+            raise Http404("No such user") from None
+        return get_object_or_404(members_of(_organisation(ctx)), pk=pk)
+
+    def _entry(self, ctx: PanelContext, user: User) -> RoleEntry:
+        role = _action_params(ctx.request).get("role", "")
+        for entry in current_role_entries(user, _organisation(ctx)):
+            if entry.role == role:
+                return entry
+        raise Http404("The member does not hold this role")
+
+
+class RemoveRoleAction(MemberRoleAction):
+    label = "Remove"
+    action_name = "remove_role"
+    template_name = "educator_interface/modal/remove_role_confirmation.html"
+
+    def _kept(self, ctx: PanelContext, user: User, removed: RoleEntry) -> str:
+        organisation = _organisation(ctx)
+        kept = [
+            f"{entry.display_name} on {entry.scope}"
+            for entry in current_role_entries(user, organisation)
+            if entry.role != removed.role
+        ]
+        has_learner = Learner.objects.filter(
+            organisation=organisation, user=user, is_active=True
+        ).exists()
+        parts = ["their account", *kept]
+        if has_learner:
+            parts.append("their learner access in this organisation")
+        return join_prose(parts)
+
+    def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
+        organisation = _organisation(ctx)
+        site = organisation.site
+        grantor = cast("User", ctx.request.user)
+        user = self._member(ctx)
+        entry = self._entry(ctx, user)
+        description = get_role_config(site.name)[entry.role].description.rstrip(".")
+        return {
+            "member": user,
+            "entry": entry,
+            "loss": description[:1].lower() + description[1:],
+            "keeps": self._kept(ctx, user, entry),
+            "last_organisation_admin": entry.role == "organisation_admin"
+            and is_last_organisation_admin(organisation, user),
+            "grantor_is_site_level": is_site_level_admin(grantor, site),
+            "target_is_site_level": is_site_level_admin(user, site),
+            "confirm_url": self.get_action_url(ctx),
+        }
+
+    def handle_submit(self, ctx: PanelContext) -> HttpResponse:
+        organisation = _organisation(ctx)
+        user = self._member(ctx)
+        entry = self._entry(ctx, user)
+        targets: list[Organisation | Cohort] = (
+            [organisation] if entry.role == "organisation_admin" else [*entry.cohorts]
+        )
+        try:
+            with transaction.atomic():
+                for target in targets:
+                    remove_role(
+                        cast("User", ctx.request.user), user, entry.role, target
+                    )
+        except RoleChangeRefused as refused:
+            return refusal_response(ctx, self, refused, user.display_name)
         return member_changed_response(user)

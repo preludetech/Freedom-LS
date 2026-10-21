@@ -38,12 +38,14 @@ from freedom_ls.educator_interface.actions import (
     RegisterCohortForCourseAction,
     RegisterLearnerForCourseAction,
     RemoveFromCohortAction,
+    RemoveRoleAction,
     ReregisterLearnerForCourseAction,
     ResendSetupEmailAction,
     UnregisterCohortFromCourseAction,
     UnregisterLearnerFromCourseAction,
     cohort_not_empty_sentence,
     cohort_state_actions,
+    grantable_roles_for,
     learner_state_actions,
 )
 from freedom_ls.educator_interface.events import (
@@ -1342,6 +1344,11 @@ class MemberDataTable(DataTable):
                 template="educator_interface/data-table-cells/member_roles.html",
                 card="secondary",
             ),
+            Column(
+                header="",
+                template="educator_interface/data-table-cells/member_actions.html",
+                card="secondary",
+            ),
         ]
 
     @staticmethod
@@ -1365,11 +1372,14 @@ class MemberConfig(OrganisationSectionConfig, ListViewConfig):
 
     @classmethod
     def get_actions(cls, request: HttpRequest) -> list[PanelAction]:
-        return [AddMemberAction()]
+        return [AddMemberAction(), RemoveRoleAction()]
 
     @classmethod
     def get_cell_context(cls, request: HttpRequest) -> dict[str, object]:
-        return {"viewer": request.user}
+        return {
+            "viewer": request.user,
+            "grantable_role_keys": {g.role for g in grantable_roles_for(request)},
+        }
 
     @classmethod
     def get_intro_context(cls, request: HttpRequest) -> dict[str, object]:

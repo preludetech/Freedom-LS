@@ -45,7 +45,11 @@ from freedom_ls.learner_management.models import (
     LearnerCourseRegistration,
     OrganisationMember,
 )
-from freedom_ls.learner_management.role_assignment import GrantableRole, assign_role
+from freedom_ls.learner_management.role_assignment import (
+    GrantableRole,
+    assign_role,
+    remove_role,
+)
 from freedom_ls.learner_progress.factories import CourseProgressFactory
 from freedom_ls.organisations.factories import OrganisationFactory
 from freedom_ls.organisations.models import Organisation
@@ -3513,3 +3517,250 @@ def test_a_cohort_of_another_organisation_is_a_form_error_and_writes_nothing(
 
     assert response.status_code == 422
     assert not ObjectRoleAssignment.objects.filter(user=user).exists()
+
+
+def _remove_role_url(organisation: Organisation) -> str:
+    return _interface_url(organisation.slug, "members/__actions/remove_role")
+
+
+def _member_holding(
+    role: str, target: Organisation | Cohort | list[Cohort], **fields: str
+) -> User:
+    user = cast(User, UserFactory(**fields))
+    for each in target if isinstance(target, list) else [target]:
+        assign_role(UserFactory(superuser=True), user, role, each)
+    return user
+
+
+def _remove_dialog(client: Client, organisation: Organisation, user: User, role: str):
+    return client.get(
+        _remove_role_url(organisation),
+        {"user": str(user.pk), "role": role},
+        HTTP_HX_REQUEST="true",
+    )
+
+
+def _remove(client: Client, organisation: Organisation, user: User, role: str):
+    return _post(
+        client, _remove_role_url(organisation), {"user": str(user.pk), "role": role}
+    )
+
+
+def _active_roles(user: User) -> set[tuple[str, str]]:
+    return {
+        (a.role, a.object_id)
+        for a in ObjectRoleAssignment.objects.filter(user=user, is_active=True)
+    }
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_names_the_person_the_role_and_the_scope(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _member_holding(
+        "cohort_admin", cohort, first_name="Ada", last_name="Lovelace"
+    )
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "cohort_admin"))
+
+    assert "Remove Ada Lovelace from Cohort admin" in text
+    assert (
+        "They lose manages the learners and course registrations in their cohorts on Evening group."
+        in text
+    )
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_lists_what_the_person_keeps(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Evening group")
+    user = _member_holding("cohort_admin", cohort)
+    assign_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
+    LearnerFactory(user=user, organisation=organisation)
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "cohort_admin"))
+
+    assert (
+        "They keep their account, Cohort viewer on Evening group "
+        "and their learner access in this organisation."
+    ) in text
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_writes_nothing(admin_client, organisation):
+    user = _member_holding("cohort_admin", _cohort(organisation))
+    before = _active_roles(user)
+
+    _remove_dialog(admin_client, organisation, user, "cohort_admin")
+
+    assert _active_roles(user) == before
+
+
+@pytest.mark.django_db
+def test_a_confirmed_removal_ends_the_role_on_every_cohort_of_the_entry(
+    admin_client, organisation
+):
+    cohorts = [_cohort(organisation), _cohort(organisation)]
+    user = _member_holding("cohort_viewer", cohorts)
+
+    response = _remove(admin_client, organisation, user, "cohort_viewer")
+
+    assert response.status_code == 204
+    assert _active_roles(user) == set()
+    assert json.loads(response["HX-Trigger"])[MEMBER_CHANGED] == {"ids": [str(user.pk)]}
+
+
+@pytest.mark.django_db
+def test_a_confirmed_removal_leaves_the_other_roles_and_the_member_row(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    user = _member_holding("cohort_admin", cohort)
+    assign_role(UserFactory(superuser=True), user, "cohort_viewer", cohort)
+
+    _remove(admin_client, organisation, user, "cohort_admin")
+
+    assert _active_roles(user) == {("cohort_viewer", str(cohort.pk))}
+    assert OrganisationMember.objects.get(
+        user=user, organisation=organisation
+    ).is_active
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_for_a_site_level_target_says_their_access_is_unaffected(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+    assign_role(UserFactory(superuser=True), user, "site_admin", organisation.site)
+
+    text = _text(_remove_dialog(admin_client, organisation, user, "cohort_viewer"))
+
+    assert "Their site-level access is unaffected" in text
+
+
+@pytest.mark.django_db
+def test_an_organisation_admin_removing_the_last_organisation_admin_is_422(
+    admin_client, organisation, monkeypatch
+):
+    sole = _member_holding("organisation_admin", organisation)
+    monkeypatch.setattr(
+        "freedom_ls.learner_management.role_assignment.is_last_organisation_admin",
+        lambda *args: True,
+    )
+
+    response = _remove(admin_client, organisation, sole, "organisation_admin")
+
+    assert response.status_code == 422
+    assert "only organisation admin" in _text(response)
+    assert _active_roles(sole) == {("organisation_admin", str(organisation.pk))}
+
+
+@pytest.mark.django_db
+def test_a_site_admin_removing_the_last_organisation_admin_is_warned_then_succeeds(
+    mock_site_context, logged_in_client, organisation
+):
+    sole = _member_holding(
+        "organisation_admin", organisation, first_name="Ada", last_name="Lovelace"
+    )
+    site_admin = UserFactory(staff=True)
+    assign_role(
+        UserFactory(superuser=True), site_admin, "site_admin", organisation.site
+    )
+    client = logged_in_client(site_admin)
+
+    dialog = _text(_remove_dialog(client, organisation, sole, "organisation_admin"))
+    response = _remove(client, organisation, sole, "organisation_admin")
+
+    assert "Ada Lovelace is the only organisation admin." in dialog
+    assert response.status_code == 204
+    assert _active_roles(sole) == set()
+
+
+@pytest.mark.django_db
+def test_the_warning_is_absent_when_another_organisation_admin_remains(
+    admin_client, organisation
+):
+    other = _member_holding("organisation_admin", organisation)
+
+    text = _text(
+        _remove_dialog(admin_client, organisation, other, "organisation_admin")
+    )
+
+    assert "only organisation admin" not in text
+
+
+@pytest.mark.django_db
+def test_removing_your_own_role_is_422_with_the_self_message(
+    mock_site_context, logged_in_client, organisation
+):
+    client, me = _holder_client(logged_in_client, organisation)
+
+    response = _remove(client, organisation, me, "organisation_admin")
+
+    assert response.status_code == 422
+    assert "You can't change your own roles." in _text(response)
+    assert _active_roles(me) == {("organisation_admin", str(organisation.pk))}
+
+
+@pytest.mark.django_db
+def test_removing_a_role_the_user_does_not_hold_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    user = _member_holding("cohort_viewer", _cohort(organisation))
+
+    response = _remove(admin_client, organisation, user, "cohort_admin")
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_removing_a_role_from_a_user_who_is_no_member_answers_the_unavailable_fragment(
+    admin_client, organisation
+):
+    response = _remove(admin_client, organisation, UserFactory(), "cohort_viewer")
+
+    assert response.status_code == 404
+    assert "This is no longer available" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_a_refusal_partway_through_a_removal_is_403_and_keeps_every_cohort(
+    admin_client, organisation, monkeypatch
+):
+    cohorts = [_cohort(organisation), _cohort(organisation)]
+    user = _member_holding("cohort_viewer", cohorts)
+    before = _active_roles(user)
+    real_remove_role = remove_role
+    calls: list[Cohort] = []
+
+    def refuse_second(grantor, target_user, role, target):
+        if calls:
+            raise RoleChangeRefused(RefusalReason.NOT_PERMITTED)
+        calls.append(target)
+        real_remove_role(grantor, target_user, role, target)
+
+    monkeypatch.setattr(
+        "freedom_ls.educator_interface.actions.remove_role", refuse_second
+    )
+
+    response = _remove(admin_client, organisation, user, "cohort_viewer")
+
+    assert response.status_code == 403
+    assert _active_roles(user) == before
+
+
+@pytest.mark.django_db
+def test_the_remove_confirmation_escapes_the_persons_name(admin_client, organisation):
+    user = _member_holding(
+        "cohort_viewer", _cohort(organisation), first_name="<b>Bold</b>"
+    )
+
+    html = _remove_dialog(
+        admin_client, organisation, user, "cohort_viewer"
+    ).content.decode()
+
+    assert "<b>Bold</b>" not in html
+    assert "&lt;b&gt;Bold&lt;/b&gt;" in html

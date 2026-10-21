@@ -333,3 +333,32 @@ def test_a_cohort_admins_pasted_add_learners_post_answers_403_and_creates_nothin
 
     assert response.status_code == 403
     assert not User.objects.filter(email="new@example.com").exists()
+
+
+@pytest.mark.django_db
+def test_a_member_who_lost_every_role_gets_404_on_members_and_the_unavailable_fragment_on_a_stale_action(
+    mock_site_context: Site, logged_in_client
+) -> None:
+    organisation = OrganisationFactory()
+    cohort = CohortFactory(organisation=organisation)
+    user = UserFactory(staff=True)
+    target = UserFactory()
+    assign_object_role(user, organisation, "organisation_admin")
+    assign_object_role(user, cohort, "cohort_viewer")
+    assign_object_role(target, cohort, "cohort_viewer")
+    client = logged_in_client(user)
+    members_url = _interface_url(organisation.slug, "members")
+    action_url = _interface_url(organisation.slug, "members/__actions/remove_role")
+    assert client.get(members_url).status_code == 200
+
+    remove_object_role(user, organisation, "organisation_admin")
+
+    stale = client.post(
+        action_url,
+        {"user": str(target.pk), "role": "cohort_viewer"},
+        HTTP_HX_REQUEST="true",
+    )
+    assert client.get(members_url).status_code == 404
+    assert stale.status_code == 404
+    assert "data-htmx-swap-error" in stale.content.decode()
+    assert target.object_role_assignments.filter(is_active=True).exists()

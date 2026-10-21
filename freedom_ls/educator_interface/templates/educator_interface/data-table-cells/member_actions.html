@@ -1,0 +1,10 @@
+{% comment %}
+The actions column of a member row. The viewer's own row has no actions, only
+a note that their roles are changed by someone else.
+{% endcomment %}
+{% if object.pk == viewer.pk %}
+    <span class="flex items-center gap-2 text-sm text-muted">
+        <c-icon name="locked" class="size-4" aria_label="Locked" />
+        You can't change your own roles. Ask another organisation admin.
+    </span>
+{% endif %}
