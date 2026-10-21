@@ -1,6 +1,7 @@
 {% comment %}
 The Add member dialog, one template for every step. Context: step (email,
-role or confirmation) and form_url; email adds form, role adds
+role or confirmation) and form_url; email and role add dialog_title ("Add a
+member", or "Add a member to {cohort}" when the page fixes the cohort); email adds form, role adds
 match (None for an address with no account), new_account, form, role_cards (key, display_name, description, needs_cohorts),
 preset_cohort (the cohort fixed by the page, or None), cohort_rows (pk, name, roles, checked), selected_role and role_note;
 confirmation adds match, member_name, creates_account, first_name, last_name, email, role, cohort_ids, display_name, description,
@@ -8,7 +9,7 @@ scope, current_entries, after_entries, already_held, widening, member_state and
 site_level.
 {% endcomment %}
 {% if step == "email" %}
-<c-modal-header>Add a member</c-modal-header>
+<c-modal-header>{{ dialog_title }}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"
@@ -23,7 +24,7 @@ site_level.
     </c-button-group>
 </form>
 {% elif step == "role" %}
-<c-modal-header>Add a member</c-modal-header>
+<c-modal-header>{{ dialog_title }}</c-modal-header>
 <form hx-post="{{ form_url }}"
       hx-target="#app-modal-body"
       hx-swap="innerHTML"

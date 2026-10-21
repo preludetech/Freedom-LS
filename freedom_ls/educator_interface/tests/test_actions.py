@@ -4508,3 +4508,53 @@ def test_the_educators_panel_hides_add_member_from_a_cohort_admin(
     html = client.get(_cohort_url(organisation, cohort)).content.decode()
 
     assert "/__panels/educators/__actions/add_member" not in html
+
+
+@pytest.mark.django_db
+def test_the_members_dialog_is_titled_add_a_member(admin_client, organisation):
+    response = admin_client.get(_add_member_url(organisation), HTTP_HX_REQUEST="true")
+
+    document = lxml.html.fromstring(response.content.decode())
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Add a member"
+
+
+@pytest.mark.django_db
+def test_the_cohort_dialog_email_step_is_titled_with_the_cohort(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Spring")
+
+    response = admin_client.get(
+        _cohort_add_member_url(organisation, cohort), HTTP_HX_REQUEST="true"
+    )
+
+    document = lxml.html.fromstring(response.content.decode())
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Add a member to Spring"
+
+
+@pytest.mark.django_db
+def test_the_cohort_dialog_role_step_is_titled_with_the_cohort(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation, name="Spring")
+    UserFactory(email="ada@example.com")
+
+    response = _cohort_overview_lookup(admin_client, organisation, cohort)
+
+    document = lxml.html.fromstring(response.content.decode())
+    (title,) = document.cssselect("#app-modal-title")
+    assert title.text_content().strip() == "Add a member to Spring"
+
+
+@pytest.mark.django_db
+def test_the_cohort_dialog_does_not_tell_an_organisation_admin_about_rank(
+    admin_client, organisation
+):
+    cohort = _cohort(organisation)
+    UserFactory(email="ada@example.com")
+
+    text = _text(_cohort_overview_lookup(admin_client, organisation, cohort))
+
+    assert "You can only give roles at or below your own." not in text

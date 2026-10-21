@@ -1286,6 +1286,9 @@ class AddMemberAction(PanelAction):
     capability = "freedom_ls_learner_management.add_organisationmember"
     trigger_template_name = "panel_framework/partials/modal_trigger.html"
     template_name = "educator_interface/modal/add_member.html"
+    #: Every role this dialog could offer. A role missing from the grantor's
+    #: grantable roles counts as withheld only when it is in here.
+    offerable_roles: tuple[str, ...] = MEMBER_ROLES
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return _organisation(ctx)
@@ -1299,19 +1302,29 @@ class AddMemberAction(PanelAction):
     def _preset(self, ctx: PanelContext) -> Cohort | None:
         return None
 
+    def _dialog_title(self, ctx: PanelContext) -> str:
+        preset = self._preset(ctx)
+        return f"Add a member to {preset}" if preset else "Add a member"
+
     def _email_step(
         self, ctx: PanelContext, form: MemberEmailForm, status: int = 200
     ) -> HttpResponse:
         return render(
             ctx.request,
             self.template_name,
-            {"step": "email", "form": form, "form_url": self.get_action_url(ctx)},
+            {
+                "step": "email",
+                "dialog_title": self._dialog_title(ctx),
+                "form": form,
+                "form_url": self.get_action_url(ctx),
+            },
             status=status,
         )
 
     def get_context_data(self, ctx: PanelContext) -> dict[str, object]:
         return {
             "step": "email",
+            "dialog_title": self._dialog_title(ctx),
             "form": MemberEmailForm(),
             "form_url": self.get_action_url(ctx),
         }
@@ -1376,7 +1389,8 @@ class AddMemberAction(PanelAction):
             organisation=_organisation(ctx), is_active=True
         ).exists():
             return "This organisation has no active cohorts yet."
-        if len(self._grantable(ctx)) < len(MEMBER_ROLES):
+        offered = {grantable.role for grantable in self._grantable(ctx)}
+        if any(role not in offered for role in self.offerable_roles):
             return "You can only give roles at or below your own."
         return ""
 
@@ -1393,6 +1407,7 @@ class AddMemberAction(PanelAction):
             self.template_name,
             {
                 "step": "role",
+                "dialog_title": self._dialog_title(ctx),
                 "match": user,
                 "new_account": user is None,
                 "form": form,
@@ -1621,6 +1636,7 @@ class AddMemberToCohortAction(AddMemberAction):
     """Add a member on a cohort's page, with the cohort fixed."""
 
     capability = "freedom_ls_role_based_permissions.assign_cohort_viewer"
+    offerable_roles = ("cohort_admin", "cohort_viewer")
 
     def permission_object(self, ctx: PanelContext) -> Model | None:
         return ctx.instance
